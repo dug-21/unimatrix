@@ -31,6 +31,7 @@ Features follow `{phase}-{NNN}` pattern in `product/features/`:
 
 | Phase | Prefix | Focus |
 |-------|--------|-------|
+| Assimalate | `ass` | Pre-planning/Research features and spikes |
 | Nexus | `nxs` | Fredb, hnsw_rs, storage traits, embedding pipeline, schema|
 │ `col` │ Collective  │ Orchestration & flow engine │ Control injection, flow steps, wave management, agent spawning, gates │        
 │ `vnc`    │ Vinculum    │ MCP server & integration        │ stdio transport, tool definitions, Claude Code integration, context compilation      │        
