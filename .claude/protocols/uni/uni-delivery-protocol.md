@@ -49,10 +49,11 @@ Phase 4: Delivery
 
 The human starts Session 2 by providing the IMPLEMENTATION-BRIEF.md path (or GH Issue number).
 
-The Delivery Leader reads:
-1. `product/features/{feature-id}/IMPLEMENTATION-BRIEF.md` — Component Map, ADR references, constraints
-2. `product/features/{feature-id}/ACCEPTANCE-MAP.md` — AC verification methods
-3. Paths to the three source documents (listed in the brief)
+The Delivery Leader:
+1. Reads `product/features/{feature-id}/IMPLEMENTATION-BRIEF.md` — Component Map, ADR references, constraints
+2. Reads `product/features/{feature-id}/ACCEPTANCE-MAP.md` — AC verification methods
+3. Reads paths to the three source documents (listed in the brief)
+4. **Creates feature branch**: `git checkout -b feature/{phase}-{NNN}` (see `.claude/skills/uni-git/SKILL.md`)
 
 ---
 
@@ -150,7 +151,7 @@ Task(subagent_type: "uni-validator",
 ```
 
 **Gate results:**
-- **PASS** → Proceed to Stage 3b automatically
+- **PASS** → Commit pseudocode + test plans + updated brief (`pseudocode: component design + test plans (#{issue})`), then proceed to Stage 3b
 - **REWORKABLE FAIL** → Loop back to Stage 3a agents (max 2 iterations). Include failure details in re-spawn prompt.
 - **SCOPE FAIL** → Session stops. Return to human with recommendation.
 
@@ -224,7 +225,9 @@ Task(subagent_type: "uni-validator",
     Return: PASS / REWORKABLE FAIL / SCOPE FAIL, report path, issues.")
 ```
 
-**Gate results:** Same as Gate 3a.
+**Gate results:**
+- **PASS** → Commit all implementation code (`impl: Stage 3b complete (#{issue})`), then proceed to Stage 3c
+- **REWORKABLE FAIL** / **SCOPE FAIL** → Same as Gate 3a
 
 ---
 
@@ -297,24 +300,19 @@ Task(subagent_type: "uni-validator",
 **Prerequisite**: All three gates (3a, 3b, 3c) have passed.
 
 The Delivery Leader:
-1. Updates the GH Issue with final results
-2. Returns to the human with delivery summary
+1. Commits final artifacts (`test: risk coverage + gate reports (#{issue})`)
+2. Pushes feature branch and opens PR (see `.claude/skills/uni-git/SKILL.md` for PR template)
+3. Updates GH Issue with PR link
+4. Returns to the human — **human reviews PR and merges**
 
 ```bash
-gh issue comment <N> --body "## Feature Delivered
+# Commit final artifacts
+git add product/features/{id}/testing/ product/features/{id}/reports/
+git commit -m "test: risk coverage + gate reports (#{issue})"
+git push -u origin feature/{phase}-{NNN}
 
-All three validation gates passed.
-
-### Gate Results
-- Gate 3a (Design Review): PASS
-- Gate 3b (Code Review): PASS
-- Gate 3c (Risk Validation): PASS
-
-### Deliverables
-- Code: [file paths]
-- Tests: X passed
-- Risk Coverage: product/features/{id}/testing/RISK-COVERAGE-REPORT.md
-- Gate Reports: product/features/{id}/reports/gate-3{a,b,c}-report.md"
+# Open PR (see uni-git skill for full template)
+gh pr create --title "[{feature-id}] {title}" --body "..."
 ```
 
 **Return format:**

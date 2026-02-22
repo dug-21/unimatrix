@@ -83,6 +83,10 @@ Read relevant ADRs in `architecture/ADR-*.md`. These are binding design decision
 - No hardcoded secrets (use env vars or config)
 - New structs have `#[derive(Debug)]` at minimum
 
+## Git
+
+Commit your work before returning: `impl({component}): {description} (#{issue})`. See `.claude/skills/uni-git/SKILL.md`.
+
 ## What You Return
 
 - Files created/modified (paths only)

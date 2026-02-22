@@ -64,6 +64,7 @@ From the primary agent's spawn prompt:
 | GH Issue progress comments | You | |
 | Component Map routing (Session 2) | You | |
 | Rework loops (max 2 per gate) | You | |
+| Git: branch, gate commits, PR (`.claude/skills/uni-git/SKILL.md`) | You | |
 | SCOPE.md creation | | uni-researcher |
 | Architecture + ADRs | | uni-architect |
 | Specification | | uni-specification |
@@ -164,11 +165,13 @@ Before returning "complete" to the primary agent:
 - [ ] GH Issue created
 
 **Session 2:**
+- [ ] Feature branch created (`feature/{phase}-{NNN}`)
 - [ ] All three gates passed (3a, 3b, 3c)
+- [ ] Gate commits made after each PASS
 - [ ] All tests passing
 - [ ] No TODOs or stubs in code
-- [ ] GH Issue updated
 - [ ] RISK-COVERAGE-REPORT.md exists
+- [ ] PR opened, GH Issue updated with PR link
 
 If anything fails, report the specific failure — do not improvise fixes beyond the protocol's rework budget.
 
