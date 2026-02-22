@@ -13,9 +13,10 @@ SESSION 2 — DELIVERY
 ════════════════════
 
 Stage 3a: Component Design (pseudocode + test plans)
-  ★ Gate 3a: Design Review ★
+  ↓ Update Component Map in IMPLEMENTATION-BRIEF.md
+  ★ Gate 3a: Design Review (MANDATORY BLOCK) ★
          ↓
-Stage 3b: Code Implementation
+Stage 3b: Code Implementation (parallelized by component)
   ★ Gate 3b: Code Review ★
          ↓
 Stage 3c: Testing & Risk Validation
@@ -24,6 +25,8 @@ Stage 3c: Testing & Risk Validation
 Phase 4: Delivery
   ★ RETURN TO HUMAN ★
 ```
+
+**Critical sequence**: Stage 3a produces pseudocode + test plans → Delivery Leader updates the Component Map → Gate 3a validates designs → ONLY THEN does Stage 3b begin. Stage 3b agents each receive their specific component's validated pseudocode and test plan.
 
 **The Delivery Leader (uni-scrum-master) runs all stages autonomously.** Human re-enters only on scope/feasibility failures or when rework iterations are exhausted.
 
@@ -100,7 +103,23 @@ Task(subagent_type: "uni-tester",
 
 Wait for both agents to complete.
 
-### Gate 3a: Design Review
+### Component Map Update (MANDATORY — between Stage 3a and Gate 3a)
+
+After Stage 3a agents return, the Delivery Leader MUST update the IMPLEMENTATION-BRIEF.md Component Map with actual file paths before proceeding to Gate 3a.
+
+1. Collect component lists and file paths from both agents' returns
+2. Update the Component Map table in `product/features/{id}/IMPLEMENTATION-BRIEF.md`:
+   ```
+   | Component | Pseudocode | Test Plan |
+   |-----------|-----------|-----------|
+   | {component-1} | pseudocode/{component-1}.md | test-plan/{component-1}.md |
+   | {component-2} | pseudocode/{component-2}.md | test-plan/{component-2}.md |
+   ```
+3. This updated Component Map is what Gate 3a validates and what Stage 3b uses for per-component routing
+
+**Do NOT skip this step.** The IMPLEMENTATION-BRIEF from Session 1 has placeholder components from the architecture. Stage 3a produces the actual pseudocode/test-plan files. The Component Map must reflect reality before validation or implementation begins.
+
+### Gate 3a: Design Review (MANDATORY BLOCK — do NOT proceed to Stage 3b without PASS)
 
 Spawn `uni-validator` in Gate 3a mode:
 
@@ -137,37 +156,45 @@ Task(subagent_type: "uni-validator",
 
 ---
 
-## Stage 3b: Code Implementation
+## Stage 3b: Code Implementation (Parallelized by Component)
 
-**Agents**: uni-rust-dev (+ domain specialists as needed)
+**Agents**: uni-rust-dev (one per component, + domain specialists as needed)
 
-The Delivery Leader routes component context from the IMPLEMENTATION-BRIEF Component Map:
+**Prerequisite**: Gate 3a PASSED. Component Map in IMPLEMENTATION-BRIEF.md is updated with actual pseudocode/test-plan file paths.
+
+The Delivery Leader reads the updated Component Map and spawns **one implementation agent per component** (or groups small components). Each agent receives ONLY its component's pseudocode and test plan — not every file.
 
 ```
+# For each component in the Component Map, spawn in ONE message:
+
 Task(subagent_type: "uni-rust-dev",
-  prompt: "Your agent ID: {feature-id}-agent-3-rustdev
+  prompt: "Your agent ID: {feature-id}-agent-3-{component-1}
 
     Read these files before starting:
     - product/features/{id}/IMPLEMENTATION-BRIEF.md
     - product/features/{id}/architecture/ARCHITECTURE.md
     - product/features/{id}/pseudocode/OVERVIEW.md
-    - product/features/{id}/pseudocode/{component}.md
-    - product/features/{id}/test-plan/OVERVIEW.md
-    - product/features/{id}/test-plan/{component}.md
+    - product/features/{id}/pseudocode/{component-1}.md    ← YOUR component
+    - product/features/{id}/test-plan/{component-1}.md     ← YOUR component's test plan
 
-    YOUR TASK: Implement {component} from validated pseudocode.
+    YOUR TASK: Implement {component-1} from validated pseudocode.
     Build test cases per the component test plan.
     Execute component-level tests during development.
+    Keep files modular — no file should exceed 500 lines.
 
-    Files to create/modify: {paths from brief}
+    Files to create/modify: {paths from brief for this component}
 
     RETURN FORMAT:
     1. Files modified: [paths]
     2. Tests: pass/fail count
     3. Issues: [blockers]")
+
+Task(subagent_type: "uni-rust-dev",
+  prompt: "Your agent ID: {feature-id}-agent-4-{component-2}
+    ...same structure, with {component-2}'s pseudocode and test plan...")
 ```
 
-For multi-component features, spawn one agent per component (or group small components) in ONE message.
+**Key**: Each agent gets its OWN component's `pseudocode/{component}.md` and `test-plan/{component}.md`. Do NOT dump all pseudocode files into every agent.
 
 ### Gate 3b: Code Review
 
@@ -362,10 +389,12 @@ NEVER pipe full cargo output into context.
 DELIVERY LEADER (uni-scrum-master):
   Init:       Read IMPLEMENTATION-BRIEF.md + ACCEPTANCE-MAP.md
   Stage 3a:   Task(uni-pseudocode) + Task(uni-tester) — parallel, ONE message
-              ...wait...
-              Task(uni-validator, Gate 3a)
+              ...wait for both to complete...
+              UPDATE Component Map in IMPLEMENTATION-BRIEF.md with actual file paths
+              Task(uni-validator, Gate 3a) — MANDATORY BLOCK
               ...PASS → continue / FAIL → rework or stop...
-  Stage 3b:   Task(uni-rust-dev) [+ domain specialists] — parallel, ONE message
+  Stage 3b:   Task(uni-rust-dev per component) — parallel by component, ONE message
+              Each agent gets ONLY its component's pseudocode + test plan
               ...wait...
               Task(uni-validator, Gate 3b)
               ...PASS → continue / FAIL → rework or stop...

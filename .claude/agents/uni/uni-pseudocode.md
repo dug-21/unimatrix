@@ -51,6 +51,8 @@ Read individual ADR files in `product/features/{feature-id}/architecture/ADR-*.m
 
 6. **Tests are Hints** — Include key test scenarios in each component file. These guide the tester agent but aren't the test plan.
 
+7. **Design for Modular Files (500-line limit)** — Pseudocode should decompose components so that no single implementation file exceeds 500 lines. If a component's pseudocode implies a large file, split it into sub-modules in the pseudocode itself.
+
 ## Output Format
 
 Produce per-component pseudocode files, NOT one monolithic file:

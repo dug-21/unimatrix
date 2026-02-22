@@ -77,22 +77,35 @@ From the primary agent's spawn prompt:
 
 ---
 
-## Component Map Routing (Session 2)
+## Component Map Update (Session 2 — after Stage 3a, before Gate 3a)
 
-When constructing agent spawn prompts in Session 2, route context surgically:
+**This is the critical handoff step.** The IMPLEMENTATION-BRIEF from Session 1 has placeholder components from architecture. After Stage 3a agents produce the actual pseudocode and test-plan files, you MUST update the Component Map:
 
-1. Read the Component Map from `product/features/{id}/IMPLEMENTATION-BRIEF.md`
-2. For each agent, identify which component(s) its work touches
-3. Always include for every agent:
+1. Collect file paths and component lists from Stage 3a agent returns
+2. Edit `product/features/{id}/IMPLEMENTATION-BRIEF.md` — update the Component Map table with actual paths:
+   ```
+   | Component | Pseudocode | Test Plan |
+   |-----------|-----------|-----------|
+   | {component} | pseudocode/{component}.md | test-plan/{component}.md |
+   ```
+3. This updated Component Map drives Gate 3a validation AND Stage 3b routing
+
+**Do NOT skip this step.** Do NOT proceed to Gate 3a until the Component Map reflects actual files on disk.
+
+## Component Routing (Session 2 — Stage 3b)
+
+After Gate 3a passes, route context surgically to each implementation agent:
+
+1. Read the updated Component Map from `product/features/{id}/IMPLEMENTATION-BRIEF.md`
+2. **Spawn one agent per component** (or group small components)
+3. Each agent gets:
    - `product/features/{id}/IMPLEMENTATION-BRIEF.md`
    - `product/features/{id}/architecture/ARCHITECTURE.md`
    - `product/features/{id}/pseudocode/OVERVIEW.md`
-   - `product/features/{id}/test-plan/OVERVIEW.md`
-4. Add component-specific files per agent:
-   - `product/features/{id}/pseudocode/{component}.md`
-   - `product/features/{id}/test-plan/{component}.md`
+   - `product/features/{id}/pseudocode/{component}.md` — THIS agent's component only
+   - `product/features/{id}/test-plan/{component}.md` — THIS agent's component only
 
-**Do NOT dump every pseudocode and test-plan file into every agent's prompt.** Route only what each agent needs.
+**Do NOT dump every pseudocode and test-plan file into every agent's prompt.** Each agent gets only its own component's files.
 
 ---
 

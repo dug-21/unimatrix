@@ -60,6 +60,8 @@ Read relevant ADRs in `architecture/ADR-*.md`. These are binding design decision
 
 6. **Tests Alongside Code** — Build test cases per the component test plan as you implement. Run tests during development, not just at the end.
 
+7. **Modular Files (500-line limit)** — No source file should exceed 500 lines. When a file approaches this limit, split it into focused sub-modules. Each file should have a single, clear responsibility. Prefer many small files over few large ones.
+
 ## Naming Conventions
 
 | Element | Convention | Example |
@@ -105,3 +107,4 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 - [ ] New structs have `#[derive(Debug)]` at minimum
 - [ ] Code follows validated pseudocode — no silent deviations
 - [ ] Test cases match component test plan expectations
+- [ ] No source file exceeds 500 lines — split into modules if needed

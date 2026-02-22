@@ -39,3 +39,4 @@ cargo clippy --workspace -- -D warnings 2>&1 | head -30
 - Logging uses `tracing` macros (info!, error!, debug!)
 - No `.unwrap()` in non-test code
 - No hardcoded secrets (use env vars)
+- **Max 500 lines per file** — split into modules when approaching this limit. Focused, single-responsibility files over monolithic ones.

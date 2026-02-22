@@ -83,6 +83,7 @@ Your spawn prompt tells you which gate you're running. Read it carefully.
    - Compiles without errors (`cargo build --workspace`)
    - No `todo!()`, `unimplemented!()`, `TODO`, `FIXME`, or placeholder functions
    - No `.unwrap()` in non-test code (use proper error handling)
+   - No source file exceeds 500 lines — flag any file over this limit as FAIL
 
 ---
 
