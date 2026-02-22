@@ -1,15 +1,13 @@
 # NDP — Non-Negotiable Rules
 
-1. **Feature work uses swarms** — spawn `ndp-scrum-master` 
+1. **Feature work uses swarms** — spawn `uni-scrum-master` for Unimatrix product work. NDP agents retained as reference in `.claude/agents/ndp/`. 
 4. **Anti-stub**: Never leave TODO, `unimplemented!()`, `todo!()`, or placeholder functions. Ask the user if blocked.
 5. **Never save files to root.** Use project directory structure.
 
 ---
 
-## Project Context
-
-**Unimatrix** — Self learning e2e development orchstrator for multi workstream coordination of agentic development teams
-
+## Project Vision
+Unimatrix is a self-learning context engine that serves as the knowledge backbone for multi-agent development orchestration — accumulating conventions, decisions, patterns, and process intelligence across feature cycles, then delivering the right context to the right agent at the right workflow moment. Over time, it evolves from a knowledge store into a workflow-aware system that proposes process improvements from evidence, supports multiple concurrent projects, and provides a real-time interface for human visibility and control.
 
 ---
 
@@ -17,9 +15,12 @@
 
 ```
 /docs                    - Architecture docs and procedures
-/product/features/       - SPARC documentation per feature
-/.claude/agents/ndp      - NDP agent definitions
-/.claude/protocols       - Swarm protocols (planning, implementation, routing)
+/product/features/       - Feature documentation per feature
+/product/workflow/        - Workflow evolution (base-{NNN}/ proposals)
+/.claude/agents/uni      - Unimatrix product agents (active)
+/.claude/agents/ndp      - NDP agent definitions (reference)
+/.claude/protocols/uni   - Unimatrix protocols (design, delivery, routing)
+/.claude/protocols       - NDP swarm protocols (reference)
 /.claude/rules           - Contextual rules (testing, rust workspace)
 ```
 
@@ -31,35 +32,46 @@ Features follow `{phase}-{NNN}` pattern in `product/features/`:
 
 | Phase | Prefix | Focus |
 |-------|--------|-------|
-| Assimalate | `ass` | Pre-planning/Research features and spikes |
-| Nexus | `nxs` | Fredb, hnsw_rs, storage traits, embedding pipeline, schema|
-│ `col` │ Collective  │ Orchestration & flow engine │ Control injection, flow steps, wave management, agent spawning, gates │        
-│ `vnc`    │ Vinculum    │ MCP server & integration        │ stdio transport, tool definitions, Claude Code integration, context compilation      │        
-│ `alc`    │ Alcove │ Agent management & profiles     │ Agent registry, prompt assembly, context budgets, role definitions                   │
-│ `crt`    │ Cortical    │ Learning & drift detection      │ Corrections, reflexion loop, pattern effectiveness, drift events, suggested controls │
-│ `mtx`    │ Matrix      │ UI & dashboards │ Flow builder, control manager, retrospective dashboard, prompt debugger │
-│ `dsn` │ Designation │ Project & identity management   │ Project registry, isolation, auto-detection, config, export/import │
-│ `nan`    │ Nanites  │ Build, deploy, CI, tooling      │ Docker packaging, CLI, dev containers, release automation  │
+| Assimilate | `ass` | Pre-planning/Research features and spikes |
+| Nexus | `nxs` | redb, hnsw_rs, storage traits, embedding pipeline, schema |
+| Collective | `col` | Orchestration & flow engine |
+| Vinculum | `vnc` | MCP server & integration |
+| Alcove | `alc` | Agent management & profiles |
+| Cortical | `crt` | Learning & drift detection |
+| Matrix | `mtx` | UI & dashboards |
+| Designation | `dsn` | Project & identity management |
+| Nanites | `nan` | Build, deploy, CI, tooling |
 
 
 
-### Feature Directory Structure (SPARC)
+### Feature Directory Structure
 
 ```
 product/features/{phase}-{NNN}/
-├── SCOPE.md                    # Human writes, agents never modify
-├── IMPLEMENTATION-BRIEF.md     # Synthesizer output, implementation input
-├── ALIGNMENT-REPORT.md         # Vision guardian output
-├── ACCEPTANCE-MAP.md           # AC verification map
-├── LAUNCH-PROMPT.md            # Implementation launch prompt
-├── specification/              # SPARC S
-├── pseudocode/                 # SPARC P
-├── architecture/               # SPARC A
-├── test-plan/                  # Test strategy + per-component plans
-├── refinement/                 # SPARC R
-├── completion/                 # SPARC C
-├── agents/                     # Agent Reports
-└── reports/
+├── SCOPE.md                    # Phase 1: agent-authored, human-approved
+├── specification/              # Phase 2: source document
+│   └── SPECIFICATION.md
+├── architecture/               # Phase 2: source document
+│   ├── ARCHITECTURE.md
+│   └── ADR-NNN-{name}.md      # Individual ADR files
+├── RISK-TEST-STRATEGY.md       # Phase 2: source document (sacred)
+├── ALIGNMENT-REPORT.md         # Phase 2: vision check
+├── IMPLEMENTATION-BRIEF.md     # Phase 2: handoff to Session 2
+├── ACCEPTANCE-MAP.md           # Phase 2: AC verification map
+├── pseudocode/                 # Stage 3a: per-component pseudocode
+│   ├── OVERVIEW.md
+│   └── {component}.md
+├── test-plan/                  # Stage 3a: per-component test plans
+│   ├── OVERVIEW.md
+│   └── {component}.md
+├── testing/                    # Stage 3c: test execution output
+│   └── RISK-COVERAGE-REPORT.md
+├── reports/                    # Validation gate reports
+│   ├── gate-3a-report.md
+│   ├── gate-3b-report.md
+│   └── gate-3c-report.md
+└── agents/                     # Agent reports
+    └── {agent-id}-report.md
 ```
 
 ### Implementation Tracking

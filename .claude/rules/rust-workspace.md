@@ -35,7 +35,7 @@ cargo clippy --workspace -- -D warnings 2>&1 | head -30
 
 - `cargo fmt` before commit
 - `cargo clippy` — no warnings
-- Error handling uses `CoreError` with `.map_err()` context
+- Error handling uses the project error type with `.map_err()` context
 - Logging uses `tracing` macros (info!, error!, debug!)
 - No `.unwrap()` in non-test code
 - No hardcoded secrets (use env vars)
