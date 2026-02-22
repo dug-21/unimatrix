@@ -84,6 +84,12 @@ Features and bugs tracked via **GitHub Issues**, not in-repo STATUS.md files.
 
 ---
 
+## Testing Conventions
+
+- **Test infrastructure is cumulative.** Each feature builds on the testing infrastructure established by prior features — shared fixtures, helpers, database setup patterns, and assertion utilities. Never create isolated test scaffolding when existing infrastructure can be extended.
+
+---
+
 ## Behavioral Rules
 
 - Be concise. Prefer short answers. Skip preamble, summaries, and repetition unless asked.
