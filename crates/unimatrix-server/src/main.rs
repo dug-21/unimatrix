@@ -9,6 +9,7 @@ use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 use unimatrix_core::{CoreError, EmbedConfig, StoreAdapter, Store, VectorAdapter, VectorConfig, VectorIndex};
 
 use unimatrix_server::audit::AuditLog;
+use unimatrix_server::categories::CategoryAllowlist;
 use unimatrix_server::embed_handle::EmbedServiceHandle;
 use unimatrix_server::error::ServerError;
 use unimatrix_server::project;
@@ -94,6 +95,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
     let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
+    // Initialize category allowlist
+    let categories = Arc::new(CategoryAllowlist::new());
+
     // Build server
     let server = UnimatrixServer::new(
         async_entry_store,
@@ -101,6 +105,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&embed_handle),
         Arc::clone(&registry),
         Arc::clone(&audit),
+        categories,
+        Arc::clone(&store),
     );
 
     // Prepare lifecycle handles for shutdown

@@ -8,7 +8,7 @@ use crate::schema::COUNTERS;
 /// The first entry ID is `1` (not `0`). ID `0` is reserved as a sentinel.
 /// Reads the current value of `"next_entry_id"`, returns it, and stores
 /// the incremented value.
-pub(crate) fn next_entry_id(txn: &WriteTransaction) -> Result<u64> {
+pub fn next_entry_id(txn: &WriteTransaction) -> Result<u64> {
     let mut table = txn.open_table(COUNTERS)?;
     let current = match table.get("next_entry_id")? {
         Some(guard) => guard.value(),
@@ -33,7 +33,7 @@ pub(crate) fn read_counter_in_txn(txn: &WriteTransaction, key: &str) -> Result<u
 
 /// Increment a named counter within a write transaction.
 /// Creates the counter with the given delta if it doesn't exist.
-pub(crate) fn increment_counter(txn: &WriteTransaction, key: &str, delta: u64) -> Result<()> {
+pub fn increment_counter(txn: &WriteTransaction, key: &str, delta: u64) -> Result<()> {
     let mut table = txn.open_table(COUNTERS)?;
     let current = match table.get(key)? {
         Some(guard) => guard.value(),

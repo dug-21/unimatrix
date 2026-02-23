@@ -23,6 +23,12 @@ pub const ERROR_EMBED_NOT_READY: ErrorCode = ErrorCode(-32004);
 /// MCP error code: tool not yet implemented.
 pub const ERROR_NOT_IMPLEMENTED: ErrorCode = ErrorCode(-32005);
 
+/// MCP error code: content scan rejected.
+pub const ERROR_CONTENT_SCAN_REJECTED: ErrorCode = ErrorCode(-32006);
+
+/// MCP error code: invalid category.
+pub const ERROR_INVALID_CATEGORY: ErrorCode = ErrorCode(-32007);
+
 /// MCP error code: internal server error (standard JSON-RPC).
 pub const ERROR_INTERNAL: ErrorCode = ErrorCode(-32603);
 
@@ -52,6 +58,27 @@ pub enum ServerError {
     NotImplemented(String),
     /// Shutdown sequence error.
     Shutdown(String),
+    /// Input validation failure.
+    InvalidInput {
+        /// The field that failed validation.
+        field: String,
+        /// Why validation failed.
+        reason: String,
+    },
+    /// Content scan detected prohibited pattern.
+    ContentScanRejected {
+        /// The pattern category that matched.
+        category: String,
+        /// Human-readable description of the match.
+        description: String,
+    },
+    /// Category not in allowlist.
+    InvalidCategory {
+        /// The category that was rejected.
+        category: String,
+        /// Valid categories for guidance.
+        valid_categories: Vec<String>,
+    },
 }
 
 impl fmt::Display for ServerError {
@@ -71,6 +98,20 @@ impl fmt::Display for ServerError {
                 write!(f, "tool '{tool}' is not yet implemented")
             }
             ServerError::Shutdown(msg) => write!(f, "shutdown error: {msg}"),
+            ServerError::InvalidInput { field, reason } => {
+                write!(f, "invalid parameter '{field}': {reason}")
+            }
+            ServerError::ContentScanRejected {
+                category,
+                description,
+            } => write!(f, "content rejected: {description} ({category} detected)"),
+            ServerError::InvalidCategory {
+                category,
+                valid_categories,
+            } => {
+                let list = valid_categories.join(", ");
+                write!(f, "unknown category '{category}'. Valid: {list}")
+            }
         }
     }
 }
@@ -146,6 +187,34 @@ impl From<ServerError> for ErrorData {
                 format!("Shutdown error: {msg}"),
                 None,
             ),
+            ServerError::InvalidInput { field, reason } => ErrorData::new(
+                ERROR_INVALID_PARAMS,
+                format!("Invalid parameter '{field}': {reason}"),
+                None,
+            ),
+            ServerError::ContentScanRejected {
+                category,
+                description,
+            } => ErrorData::new(
+                ERROR_CONTENT_SCAN_REJECTED,
+                format!(
+                    "Content rejected: {description} ({category} detected). Remove the flagged content and retry."
+                ),
+                None,
+            ),
+            ServerError::InvalidCategory {
+                category,
+                valid_categories,
+            } => {
+                let mut sorted = valid_categories;
+                sorted.sort();
+                let list = sorted.join(", ");
+                ErrorData::new(
+                    ERROR_INVALID_CATEGORY,
+                    format!("Unknown category '{category}'. Valid categories: {list}."),
+                    None,
+                )
+            }
         }
     }
 }
@@ -239,5 +308,79 @@ mod tests {
         let core_err = CoreError::Store(StoreError::EntryNotFound(1));
         let server_err: ServerError = core_err.into();
         assert!(matches!(server_err, ServerError::Core(_)));
+    }
+
+    #[test]
+    fn test_invalid_input_maps_to_32602() {
+        let err = ServerError::InvalidInput {
+            field: "title".to_string(),
+            reason: "exceeds 200 characters".to_string(),
+        };
+        let data: ErrorData = err.into();
+        assert_eq!(data.code, ERROR_INVALID_PARAMS);
+        assert!(data.message.contains("title"));
+        assert!(data.message.contains("200"));
+    }
+
+    #[test]
+    fn test_content_scan_rejected_maps_to_32006() {
+        let err = ServerError::ContentScanRejected {
+            category: "InstructionOverride".to_string(),
+            description: "instruction override attempt detected".to_string(),
+        };
+        let data: ErrorData = err.into();
+        assert_eq!(data.code, ERROR_CONTENT_SCAN_REJECTED);
+        assert!(data.message.contains("InstructionOverride"));
+        assert!(data.message.contains("Remove the flagged content"));
+    }
+
+    #[test]
+    fn test_invalid_category_maps_to_32007() {
+        let err = ServerError::InvalidCategory {
+            category: "unknown".to_string(),
+            valid_categories: vec![
+                "convention".to_string(),
+                "decision".to_string(),
+                "outcome".to_string(),
+            ],
+        };
+        let data: ErrorData = err.into();
+        assert_eq!(data.code, ERROR_INVALID_CATEGORY);
+        assert!(data.message.contains("unknown"));
+        assert!(data.message.contains("convention"));
+    }
+
+    #[test]
+    fn test_display_invalid_input() {
+        let err = ServerError::InvalidInput {
+            field: "query".to_string(),
+            reason: "too long".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("query"));
+        assert!(msg.contains("too long"));
+        assert!(!msg.contains("ServerError"));
+    }
+
+    #[test]
+    fn test_display_content_scan_rejected() {
+        let err = ServerError::ContentScanRejected {
+            category: "EmailAddress".to_string(),
+            description: "email detected".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("EmailAddress"));
+        assert!(msg.contains("email detected"));
+    }
+
+    #[test]
+    fn test_display_invalid_category() {
+        let err = ServerError::InvalidCategory {
+            category: "bogus".to_string(),
+            valid_categories: vec!["a".to_string(), "b".to_string()],
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("bogus"));
+        assert!(msg.contains("a, b"));
     }
 }
