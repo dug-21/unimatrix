@@ -58,7 +58,14 @@ impl EmbeddingModel {
         }
     }
 
-    /// ONNX model filename within the repository.
+    /// ONNX model path within the HuggingFace repository.
+    ///
+    /// Most sentence-transformer models store ONNX models under `onnx/model.onnx`.
+    pub fn onnx_repo_path(&self) -> &'static str {
+        "onnx/model.onnx"
+    }
+
+    /// Local filename for the cached ONNX model.
     pub fn onnx_filename(&self) -> &'static str {
         "model.onnx"
     }
@@ -120,6 +127,13 @@ mod tests {
     fn test_onnx_filename() {
         for model in &ALL_MODELS {
             assert_eq!(model.onnx_filename(), "model.onnx");
+        }
+    }
+
+    #[test]
+    fn test_onnx_repo_path() {
+        for model in &ALL_MODELS {
+            assert_eq!(model.onnx_repo_path(), "onnx/model.onnx");
         }
     }
 

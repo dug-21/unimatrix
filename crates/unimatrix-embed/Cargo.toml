@@ -9,7 +9,8 @@ license.workspace = true
 test-support = []
 
 [dependencies]
-ort = { version = "2.0.0-rc.11", features = ["download-binaries"] }
+ort = { version = "=2.0.0-rc.9", default-features = false }
+ort-sys = "=2.0.0-rc.9"
 tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
 hf-hub = "0.4"
 dirs = "6"

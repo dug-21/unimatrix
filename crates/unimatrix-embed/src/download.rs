@@ -31,10 +31,10 @@ pub fn ensure_model(model: EmbeddingModel, cache_dir: &Path) -> Result<PathBuf> 
 
     let repo = api.model(model.model_id().to_string());
 
-    // Download ONNX model file
+    // Download ONNX model file (repo path may differ from local filename)
     let downloaded_onnx = repo
-        .get(model.onnx_filename())
-        .map_err(|e| EmbedError::Download(format!("failed to download {}: {e}", model.onnx_filename())))?;
+        .get(model.onnx_repo_path())
+        .map_err(|e| EmbedError::Download(format!("failed to download {}: {e}", model.onnx_repo_path())))?;
 
     // Download tokenizer
     let downloaded_tokenizer = repo
@@ -85,9 +85,6 @@ mod tests {
         let model = EmbeddingModel::AllMiniLmL6V2;
         let result = ensure_model(model, &temp);
 
-        // Clean up regardless of result
-        let _ = fs::remove_dir_all(&temp);
-
         // This test requires network access; if download fails, verify error type
         match result {
             Ok(model_dir) => {
@@ -97,8 +94,14 @@ mod tests {
             Err(EmbedError::Download(_)) => {
                 // Network not available -- acceptable in CI
             }
-            Err(e) => panic!("unexpected error type: {e}"),
+            Err(e) => {
+                let _ = fs::remove_dir_all(&temp);
+                panic!("unexpected error type: {e}");
+            }
         }
+
+        // Clean up
+        let _ = fs::remove_dir_all(&temp);
     }
 
     #[test]
@@ -108,13 +111,15 @@ mod tests {
 
         let model = EmbeddingModel::AllMiniLmL6V2;
         let result = ensure_model(model, &temp);
-        let _ = fs::remove_dir_all(&temp);
 
-        if let Ok(model_dir) = result {
+        if let Ok(model_dir) = &result {
             assert_eq!(
                 model_dir.file_name().unwrap().to_str().unwrap(),
                 "sentence-transformers_all-MiniLM-L6-v2"
             );
         }
+
+        // Clean up
+        let _ = fs::remove_dir_all(&temp);
     }
 }

@@ -96,25 +96,25 @@ impl OnnxProvider {
         // Create tensors with shape [1, seq_len]
         let shape = vec![1_i64, seq_len as i64];
         let ids_tensor =
-            Tensor::from_array((shape.clone(), input_ids_i64.into_boxed_slice()))?;
+            Tensor::from_array((shape.clone(), input_ids_i64.clone()))?;
         let mask_tensor =
-            Tensor::from_array((shape.clone(), attention_mask_i64.clone().into_boxed_slice()))?;
+            Tensor::from_array((shape.clone(), attention_mask_i64.clone()))?;
         let type_tensor =
-            Tensor::from_array((shape, token_type_ids_i64.into_boxed_slice()))?;
+            Tensor::from_array((shape, token_type_ids_i64.clone()))?;
 
         let inputs = ort::inputs![
             "input_ids" => ids_tensor,
             "attention_mask" => mask_tensor,
             "token_type_ids" => type_tensor,
-        ];
+        ]?;
 
         // Run inference under lock, extract data, then release
         let (output_flat, actual_seq_len) = {
-            let mut session = self.session.lock().expect("session lock poisoned");
+            let session = self.session.lock().expect("session lock poisoned");
             let outputs = session.run(inputs)?;
 
             let output_value = &outputs[0];
-            let (shape, output_data) = output_value.try_extract_tensor::<f32>()?;
+            let (shape, output_data) = output_value.try_extract_raw_tensor::<f32>()?;
 
             let hidden_dim = self.model.dimension();
 
@@ -188,29 +188,27 @@ impl OnnxProvider {
             // Create tensors with shape [batch_size, seq_len]
             let shape = vec![batch_size as i64, seq_len as i64];
             let ids_tensor =
-                Tensor::from_array((shape.clone(), input_ids_flat.into_boxed_slice()))?;
-            let mask_tensor = Tensor::from_array((
-                shape.clone(),
-                attention_mask_flat.clone().into_boxed_slice(),
-            ))?;
+                Tensor::from_array((shape.clone(), input_ids_flat.clone()))?;
+            let mask_tensor =
+                Tensor::from_array((shape.clone(), attention_mask_flat.clone()))?;
             let type_tensor =
-                Tensor::from_array((shape, token_type_ids_flat.into_boxed_slice()))?;
+                Tensor::from_array((shape, token_type_ids_flat.clone()))?;
 
             let inputs = ort::inputs![
                 "input_ids" => ids_tensor,
                 "attention_mask" => mask_tensor,
                 "token_type_ids" => type_tensor,
-            ];
+            ]?;
 
             let hidden_dim = self.model.dimension();
 
             // Run inference under lock, extract data, then release
             let (output_flat, actual_seq_len) = {
-                let mut session = self.session.lock().expect("session lock poisoned");
+                let session = self.session.lock().expect("session lock poisoned");
                 let outputs = session.run(inputs)?;
 
                 let output_value = &outputs[0];
-                let (shape, output_data) = output_value.try_extract_tensor::<f32>()?;
+                let (shape, output_data) = output_value.try_extract_raw_tensor::<f32>()?;
 
                 let actual_seq_len = shape[1] as usize;
                 // Copy data out before session lock drops
