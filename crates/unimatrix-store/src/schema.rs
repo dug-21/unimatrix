@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::StoreError;
 
-// -- Table Definitions (8 total) --
+// -- Table Definitions (10 total) --
 
 /// Primary entry storage: entry_id -> bincode bytes.
 pub const ENTRIES: TableDefinition<u64, &[u8]> = TableDefinition::new("entries");
@@ -30,6 +30,13 @@ pub const VECTOR_MAP: TableDefinition<u64, u64> = TableDefinition::new("vector_m
 
 /// ID generation and statistics: counter_name -> value.
 pub const COUNTERS: TableDefinition<&str, u64> = TableDefinition::new("counters");
+
+/// Agent identity and trust records: agent_id -> bincode bytes.
+pub const AGENT_REGISTRY: TableDefinition<&str, &[u8]> =
+    TableDefinition::new("agent_registry");
+
+/// Append-only request audit trail: monotonic event_id -> bincode bytes.
+pub const AUDIT_LOG: TableDefinition<u64, &[u8]> = TableDefinition::new("audit_log");
 
 // -- Status Enum --
 

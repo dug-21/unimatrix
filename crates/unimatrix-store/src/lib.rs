@@ -14,5 +14,6 @@ mod query;
 pub mod test_helpers;
 
 pub use schema::{EntryRecord, Status, NewEntry, QueryFilter, TimeRange, DatabaseConfig};
+pub use schema::{AGENT_REGISTRY, AUDIT_LOG, COUNTERS};
 pub use db::Store;
 pub use error::{StoreError, Result};
