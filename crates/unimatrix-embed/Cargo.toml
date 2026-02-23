@@ -1,0 +1,20 @@
+[package]
+name = "unimatrix-embed"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+test-support = []
+
+[dependencies]
+ort = { version = "=2.0.0-rc.9", default-features = false }
+ort-sys = "=2.0.0-rc.9"
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
+hf-hub = "0.4"
+dirs = "6"
+thiserror = "2"
+
+[dev-dependencies]
+approx = "0.5"

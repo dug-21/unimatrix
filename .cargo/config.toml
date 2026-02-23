@@ -1,0 +1,13 @@
+# ONNX Runtime linking configuration.
+#
+# ort-sys download-binaries may fetch ONNX Runtime static libs compiled against
+# a newer glibc than available in the build environment. When that happens,
+# link dynamically against a locally-installed ONNX Runtime instead.
+#
+# These defaults work for the project devcontainer (ORT 1.20.1 at /usr/local/lib).
+# Override via environment variables for other setups:
+#   export ORT_LIB_LOCATION=/path/to/ort
+#   export ORT_PREFER_DYNAMIC_LINK=1
+[env]
+ORT_LIB_LOCATION = { value = "/usr/local/lib", force = false }
+ORT_PREFER_DYNAMIC_LINK = { value = "1", force = false }
