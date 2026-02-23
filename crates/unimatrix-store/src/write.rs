@@ -61,26 +61,26 @@ impl Store {
             trust_source: entry.trust_source,
         };
 
-        // Step 3: Serialize and write to ENTRIES
+        // Step 4: Serialize and write to ENTRIES
         let bytes = serialize_entry(&record)?;
         {
             let mut table = txn.open_table(ENTRIES)?;
             table.insert(id, bytes.as_slice())?;
         }
 
-        // Step 4: Write TOPIC_INDEX
+        // Step 5: Write TOPIC_INDEX
         {
             let mut table = txn.open_table(TOPIC_INDEX)?;
             table.insert((record.topic.as_str(), id), ())?;
         }
 
-        // Step 5: Write CATEGORY_INDEX
+        // Step 6: Write CATEGORY_INDEX
         {
             let mut table = txn.open_table(CATEGORY_INDEX)?;
             table.insert((record.category.as_str(), id), ())?;
         }
 
-        // Step 6: Write TAG_INDEX (multimap)
+        // Step 7: Write TAG_INDEX (multimap)
         {
             let mut table = txn.open_multimap_table(TAG_INDEX)?;
             for tag in &record.tags {
@@ -88,22 +88,22 @@ impl Store {
             }
         }
 
-        // Step 7: Write TIME_INDEX
+        // Step 8: Write TIME_INDEX
         {
             let mut table = txn.open_table(TIME_INDEX)?;
             table.insert((record.created_at, id), ())?;
         }
 
-        // Step 8: Write STATUS_INDEX
+        // Step 9: Write STATUS_INDEX
         {
             let mut table = txn.open_table(STATUS_INDEX)?;
             table.insert((record.status as u8, id), ())?;
         }
 
-        // Step 9: Increment status counter
+        // Step 10: Increment status counter
         counter::increment_counter(&txn, status_counter_key(record.status), 1)?;
 
-        // Step 10: Commit
+        // Step 11: Commit
         txn.commit()?;
         Ok(id)
     }
