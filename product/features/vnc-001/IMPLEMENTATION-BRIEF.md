@@ -171,6 +171,8 @@ pub struct LifecycleHandles {
     pub store: Arc<Store>,
     pub vector_index: Arc<VectorIndex>,
     pub vector_dir: PathBuf,
+    pub registry: Arc<AgentRegistry>,
+    pub audit: Arc<AuditLog>,
 }
 ```
 
