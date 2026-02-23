@@ -18,29 +18,31 @@ pub fn prepare_text(title: &str, content: &str, separator: &str) -> String {
 
 /// Embed a single entry's text fields using the given provider.
 ///
-/// Concatenates title and content with the default separator `": "`,
+/// Concatenates title and content with the given separator,
 /// then calls `provider.embed()`.
 pub fn embed_entry(
     provider: &dyn EmbeddingProvider,
     title: &str,
     content: &str,
+    separator: &str,
 ) -> Result<Vec<f32>> {
-    let text = prepare_text(title, content, ": ");
+    let text = prepare_text(title, content, separator);
     provider.embed(&text)
 }
 
 /// Embed a batch of entry text fields.
 ///
 /// Each entry is a `(title, content)` pair. Concatenates each pair with
-/// the default separator `": "`, then calls `provider.embed_batch()`.
+/// the given separator, then calls `provider.embed_batch()`.
 /// Returns one embedding per entry in the same order.
 pub fn embed_entries(
     provider: &dyn EmbeddingProvider,
     entries: &[(String, String)],
+    separator: &str,
 ) -> Result<Vec<Vec<f32>>> {
     let texts: Vec<String> = entries
         .iter()
-        .map(|(title, content)| prepare_text(title, content, ": "))
+        .map(|(title, content)| prepare_text(title, content, separator))
         .collect();
 
     let refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
@@ -102,7 +104,7 @@ mod tests {
     #[test]
     fn test_embed_entry_calls_provider() {
         let provider = MockProvider::new(384);
-        let result = embed_entry(&provider, "Auth", "Use JWT");
+        let result = embed_entry(&provider, "Auth", "Use JWT", ": ");
         assert!(result.is_ok());
         let embedding = result.unwrap();
         assert_eq!(embedding.len(), 384);
@@ -114,13 +116,22 @@ mod tests {
     }
 
     #[test]
+    fn test_embed_entry_custom_separator() {
+        let provider = MockProvider::new(384);
+        let with_default = embed_entry(&provider, "Auth", "Use JWT", ": ").unwrap();
+        let with_custom = embed_entry(&provider, "Auth", "Use JWT", " - ").unwrap();
+        // Different separators produce different concatenated text, so different embeddings
+        assert_ne!(with_default, with_custom);
+    }
+
+    #[test]
     fn test_embed_entries_batch() {
         let provider = MockProvider::new(384);
         let entries = vec![
             ("Title1".to_string(), "Content1".to_string()),
             ("Title2".to_string(), "Content2".to_string()),
         ];
-        let result = embed_entries(&provider, &entries);
+        let result = embed_entries(&provider, &entries, ": ");
         assert!(result.is_ok());
         let embeddings = result.unwrap();
         assert_eq!(embeddings.len(), 2);
@@ -132,7 +143,7 @@ mod tests {
     fn test_embed_entries_empty_list() {
         let provider = MockProvider::new(384);
         let entries: Vec<(String, String)> = vec![];
-        let result = embed_entries(&provider, &entries);
+        let result = embed_entries(&provider, &entries, ": ");
         assert!(result.is_ok());
         assert!(result.unwrap().is_empty());
     }
@@ -140,7 +151,7 @@ mod tests {
     #[test]
     fn test_embed_entry_empty_fields() {
         let provider = MockProvider::new(384);
-        let result = embed_entry(&provider, "", "");
+        let result = embed_entry(&provider, "", "", ": ");
         assert!(result.is_ok());
         assert_eq!(result.unwrap().len(), 384);
     }

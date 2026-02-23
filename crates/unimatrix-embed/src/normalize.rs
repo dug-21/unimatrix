@@ -2,7 +2,7 @@
 ///
 /// If the norm is below `1e-12` (near-zero vector), leaves the vector unchanged
 /// to avoid division by zero and noise amplification.
-pub fn l2_normalize(embedding: &mut Vec<f32>) {
+pub fn l2_normalize(embedding: &mut [f32]) {
     let norm_sq: f32 = embedding.iter().map(|v| v * v).sum();
     let norm = norm_sq.sqrt();
 

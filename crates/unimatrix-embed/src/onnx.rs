@@ -22,7 +22,6 @@ pub struct OnnxProvider {
     session: Mutex<Session>,
     tokenizer: Tokenizer,
     model: EmbeddingModel,
-    #[allow(dead_code)]
     config: EmbedConfig,
 }
 
@@ -507,7 +506,7 @@ mod tests {
     #[ignore]
     fn test_embed_entry_convenience() {
         let provider = OnnxProvider::new(EmbedConfig::default()).unwrap();
-        let entry_emb = embed_entry(&provider, "Auth", "Use JWT").unwrap();
+        let entry_emb = embed_entry(&provider, "Auth", "Use JWT", ": ").unwrap();
         let manual_emb = provider
             .embed(&prepare_text("Auth", "Use JWT", ": "))
             .unwrap();

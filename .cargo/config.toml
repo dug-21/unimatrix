@@ -1,10 +1,13 @@
 # ONNX Runtime linking configuration.
-# ort-sys 2.0.0-rc.11 download-binaries fetches ONNX Runtime 1.23 static libs
-# compiled against glibc 2.38+. This environment has glibc 2.36 (Debian 12).
-# Instead, we link dynamically against ONNX Runtime 1.20.1 installed at /usr/local/lib.
 #
-# Install: download aarch64 release from github.com/microsoft/onnxruntime/releases
-# and place libonnxruntime.so* in /usr/local/lib, then run ldconfig.
+# ort-sys download-binaries may fetch ONNX Runtime static libs compiled against
+# a newer glibc than available in the build environment. When that happens,
+# link dynamically against a locally-installed ONNX Runtime instead.
+#
+# These defaults work for the project devcontainer (ORT 1.20.1 at /usr/local/lib).
+# Override via environment variables for other setups:
+#   export ORT_LIB_LOCATION=/path/to/ort
+#   export ORT_PREFER_DYNAMIC_LINK=1
 [env]
-ORT_LIB_LOCATION = "/usr/local/lib"
-ORT_PREFER_DYNAMIC_LINK = "1"
+ORT_LIB_LOCATION = { value = "/usr/local/lib", force = false }
+ORT_PREFER_DYNAMIC_LINK = { value = "1", force = false }
