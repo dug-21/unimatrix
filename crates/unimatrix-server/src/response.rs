@@ -82,6 +82,9 @@ fn entry_to_json(entry: &EntryRecord) -> serde_json::Value {
         "created_at": entry.created_at,
         "updated_at": entry.updated_at,
         "created_by": entry.created_by,
+        "supersedes": entry.supersedes,
+        "superseded_by": entry.superseded_by,
+        "correction_count": entry.correction_count,
     })
 }
 
@@ -305,6 +308,312 @@ pub fn format_duplicate_found(
                 "duplicate": true,
                 "similarity": similarity,
                 "existing_entry": entry_to_json(existing),
+            });
+            CallToolResult::success(vec![Content::text(
+                serde_json::to_string_pretty(&obj).unwrap_or_default(),
+            )])
+        }
+    }
+}
+
+/// Aggregated health metrics for format_status_report.
+pub struct StatusReport {
+    /// Count of active entries.
+    pub total_active: u64,
+    /// Count of deprecated entries.
+    pub total_deprecated: u64,
+    /// Count of proposed entries.
+    pub total_proposed: u64,
+    /// Category name to entry count.
+    pub category_distribution: Vec<(String, u64)>,
+    /// Topic name to entry count.
+    pub topic_distribution: Vec<(String, u64)>,
+    /// Entries that supersede another entry.
+    pub entries_with_supersedes: u64,
+    /// Entries that are superseded by another entry.
+    pub entries_with_superseded_by: u64,
+    /// Sum of correction_count across all entries.
+    pub total_correction_count: u64,
+    /// Trust source to entry count.
+    pub trust_source_distribution: Vec<(String, u64)>,
+    /// Entries with empty created_by field.
+    pub entries_without_attribution: u64,
+}
+
+/// Assembled briefing for format_briefing.
+pub struct Briefing {
+    /// Role the briefing is for.
+    pub role: String,
+    /// Task description.
+    pub task: String,
+    /// Role conventions.
+    pub conventions: Vec<EntryRecord>,
+    /// Role duties.
+    pub duties: Vec<EntryRecord>,
+    /// Semantically relevant context with similarity scores.
+    pub relevant_context: Vec<(EntryRecord, f32)>,
+    /// Whether semantic search was available.
+    pub search_available: bool,
+}
+
+/// Format a correction success response showing both deprecated original and new correction.
+pub fn format_correct_success(
+    original: &EntryRecord,
+    correction: &EntryRecord,
+    format: ResponseFormat,
+) -> CallToolResult {
+    match format {
+        ResponseFormat::Summary => {
+            let text = format!(
+                "Corrected #{} -> #{} | {} | {}",
+                original.id, correction.id, correction.title, correction.category
+            );
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Markdown => {
+            let mut text = String::from("## Correction Applied\n\n");
+            text.push_str(&format!(
+                "**Original (deprecated):** #{} - {}\n",
+                original.id, original.title
+            ));
+            text.push_str(&format!(
+                "**Correction:** #{} - {}\n\n",
+                correction.id, correction.title
+            ));
+            text.push_str("### Corrected Entry\n\n");
+            text.push_str(&format_entry_markdown_section(1, correction, None));
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Json => {
+            let obj = serde_json::json!({
+                "corrected": true,
+                "original": entry_to_json(original),
+                "correction": entry_to_json(correction),
+            });
+            CallToolResult::success(vec![Content::text(
+                serde_json::to_string_pretty(&obj).unwrap_or_default(),
+            )])
+        }
+    }
+}
+
+/// Format a deprecation success response.
+pub fn format_deprecate_success(
+    entry: &EntryRecord,
+    reason: Option<&str>,
+    format: ResponseFormat,
+) -> CallToolResult {
+    match format {
+        ResponseFormat::Summary => {
+            let text = format!("Deprecated #{} | {}", entry.id, entry.title);
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Markdown => {
+            let mut text = String::from("## Entry Deprecated\n\n");
+            text.push_str(&format!(
+                "**Entry:** #{} - {}\n**Status:** deprecated\n",
+                entry.id, entry.title
+            ));
+            if let Some(r) = reason {
+                text.push_str(&format!("**Reason:** {r}\n"));
+            }
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Json => {
+            let obj = serde_json::json!({
+                "deprecated": true,
+                "entry": entry_to_json(entry),
+                "reason": reason,
+            });
+            CallToolResult::success(vec![Content::text(
+                serde_json::to_string_pretty(&obj).unwrap_or_default(),
+            )])
+        }
+    }
+}
+
+/// Format a status report response with health metrics.
+pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> CallToolResult {
+    match format {
+        ResponseFormat::Summary => {
+            let text = format!(
+                "Active: {} | Deprecated: {} | Proposed: {} | Corrections: {}",
+                report.total_active,
+                report.total_deprecated,
+                report.total_proposed,
+                report.total_correction_count
+            );
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Markdown => {
+            let mut text = String::from("## Knowledge Base Status\n\n");
+            text.push_str("### Entry Counts\n");
+            text.push_str("| Status | Count |\n|--------|-------|\n");
+            text.push_str(&format!("| Active | {} |\n", report.total_active));
+            text.push_str(&format!("| Deprecated | {} |\n", report.total_deprecated));
+            text.push_str(&format!("| Proposed | {} |\n\n", report.total_proposed));
+
+            text.push_str("### Category Distribution\n");
+            text.push_str("| Category | Count |\n|----------|-------|\n");
+            for (cat, count) in &report.category_distribution {
+                text.push_str(&format!("| {cat} | {count} |\n"));
+            }
+
+            text.push_str("\n### Topic Distribution\n");
+            text.push_str("| Topic | Count |\n|-------|-------|\n");
+            for (topic, count) in &report.topic_distribution {
+                text.push_str(&format!("| {topic} | {count} |\n"));
+            }
+
+            text.push_str("\n### Correction Chains\n");
+            text.push_str(&format!(
+                "- Entries with supersedes: {}\n",
+                report.entries_with_supersedes
+            ));
+            text.push_str(&format!(
+                "- Entries with superseded_by: {}\n",
+                report.entries_with_superseded_by
+            ));
+            text.push_str(&format!(
+                "- Total correction count: {}\n",
+                report.total_correction_count
+            ));
+
+            text.push_str("\n### Security Metrics\n");
+            text.push_str("| Trust Source | Count |\n|-------------|-------|\n");
+            for (source, count) in &report.trust_source_distribution {
+                text.push_str(&format!("| {source} | {count} |\n"));
+            }
+            text.push_str(&format!(
+                "\n- Entries without attribution: {}\n",
+                report.entries_without_attribution
+            ));
+
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Json => {
+            let cat_dist: serde_json::Value = report
+                .category_distribution
+                .iter()
+                .map(|(k, v)| (k.clone(), serde_json::json!(v)))
+                .collect::<serde_json::Map<String, serde_json::Value>>()
+                .into();
+            let topic_dist: serde_json::Value = report
+                .topic_distribution
+                .iter()
+                .map(|(k, v)| (k.clone(), serde_json::json!(v)))
+                .collect::<serde_json::Map<String, serde_json::Value>>()
+                .into();
+            let trust_dist: serde_json::Value = report
+                .trust_source_distribution
+                .iter()
+                .map(|(k, v)| (k.clone(), serde_json::json!(v)))
+                .collect::<serde_json::Map<String, serde_json::Value>>()
+                .into();
+
+            let obj = serde_json::json!({
+                "total_active": report.total_active,
+                "total_deprecated": report.total_deprecated,
+                "total_proposed": report.total_proposed,
+                "category_distribution": cat_dist,
+                "topic_distribution": topic_dist,
+                "correction_chains": {
+                    "entries_with_supersedes": report.entries_with_supersedes,
+                    "entries_with_superseded_by": report.entries_with_superseded_by,
+                    "total_correction_count": report.total_correction_count,
+                },
+                "security": {
+                    "trust_source_distribution": trust_dist,
+                    "entries_without_attribution": report.entries_without_attribution,
+                },
+            });
+            CallToolResult::success(vec![Content::text(
+                serde_json::to_string_pretty(&obj).unwrap_or_default(),
+            )])
+        }
+    }
+}
+
+/// Format a briefing response with conventions, duties, and relevant context.
+pub fn format_briefing(briefing: &Briefing, format: ResponseFormat) -> CallToolResult {
+    match format {
+        ResponseFormat::Summary => {
+            let mut lines = vec![
+                format!("Briefing for {}: {}", briefing.role, briefing.task),
+                format!(
+                    "Conventions: {} | Duties: {} | Context: {}",
+                    briefing.conventions.len(),
+                    briefing.duties.len(),
+                    briefing.relevant_context.len()
+                ),
+            ];
+            if !briefing.search_available {
+                lines.push("[search unavailable - lookup only]".to_string());
+            }
+            CallToolResult::success(vec![Content::text(lines.join("\n"))])
+        }
+        ResponseFormat::Markdown => {
+            let mut text = format!("## Briefing: {}\n\n", briefing.role);
+            text.push_str(&format!("**Task:** {}\n\n", briefing.task));
+
+            if !briefing.search_available {
+                text.push_str(
+                    "> Note: Semantic search unavailable. Showing lookup results only.\n\n",
+                );
+            }
+
+            text.push_str("### Conventions\n\n");
+            if briefing.conventions.is_empty() {
+                text.push_str("No conventions found for this role.\n\n");
+            } else {
+                for entry in &briefing.conventions {
+                    text.push_str(&format!("- **{}**: {}\n", entry.title, entry.content));
+                }
+                text.push('\n');
+            }
+
+            text.push_str("### Duties\n\n");
+            if briefing.duties.is_empty() {
+                text.push_str("No duties found for this role.\n\n");
+            } else {
+                for entry in &briefing.duties {
+                    text.push_str(&format!("- **{}**: {}\n", entry.title, entry.content));
+                }
+                text.push('\n');
+            }
+
+            text.push_str("### Relevant Context\n\n");
+            if briefing.relevant_context.is_empty() {
+                text.push_str("No relevant context found.\n");
+            } else {
+                for (entry, score) in &briefing.relevant_context {
+                    text.push_str(&format!(
+                        "- **{}** ({:.2}): {}\n",
+                        entry.title, score, entry.content
+                    ));
+                }
+            }
+
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Json => {
+            let conventions: Vec<serde_json::Value> =
+                briefing.conventions.iter().map(entry_to_json).collect();
+            let duties: Vec<serde_json::Value> =
+                briefing.duties.iter().map(entry_to_json).collect();
+            let context: Vec<serde_json::Value> = briefing
+                .relevant_context
+                .iter()
+                .map(|(e, s)| entry_to_json_with_similarity(e, *s))
+                .collect();
+
+            let obj = serde_json::json!({
+                "role": briefing.role,
+                "task": briefing.task,
+                "search_available": briefing.search_available,
+                "conventions": conventions,
+                "duties": duties,
+                "relevant_context": context,
             });
             CallToolResult::success(vec![Content::text(
                 serde_json::to_string_pretty(&obj).unwrap_or_default(),
@@ -583,6 +892,280 @@ mod tests {
         let result = format_single_entry(&entry, ResponseFormat::Json);
         let text = result_text(&result);
         assert!(!text.contains("[KNOWLEDGE DATA]"));
+    }
+
+    // -- vnc-003: entry_to_json correction fields --
+
+    #[test]
+    fn test_entry_to_json_includes_correction_fields() {
+        let mut entry = make_entry(1, "Test", "content");
+        entry.supersedes = Some(10);
+        entry.superseded_by = Some(20);
+        entry.correction_count = 3;
+        let json = entry_to_json(&entry);
+        assert_eq!(json["supersedes"], 10);
+        assert_eq!(json["superseded_by"], 20);
+        assert_eq!(json["correction_count"], 3);
+    }
+
+    // -- vnc-003: format_correct_success --
+
+    #[test]
+    fn test_format_correct_success_summary() {
+        let mut original = make_entry(42, "Original Title", "old content");
+        original.status = Status::Deprecated;
+        let correction = make_entry(43, "Corrected Title", "new content");
+        let result = format_correct_success(&original, &correction, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Corrected #42 -> #43"));
+        assert!(text.contains("Corrected Title"));
+    }
+
+    #[test]
+    fn test_format_correct_success_markdown() {
+        let mut original = make_entry(42, "Old", "old");
+        original.status = Status::Deprecated;
+        let correction = make_entry(43, "New", "new");
+        let result = format_correct_success(&original, &correction, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("Correction Applied"));
+        assert!(text.contains("Original (deprecated)"));
+        assert!(text.contains("#42"));
+        assert!(text.contains("#43"));
+    }
+
+    #[test]
+    fn test_format_correct_success_json() {
+        let mut original = make_entry(42, "Old", "old");
+        original.status = Status::Deprecated;
+        let correction = make_entry(43, "New", "new");
+        let result = format_correct_success(&original, &correction, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["corrected"], true);
+        assert_eq!(parsed["original"]["id"], 42);
+        assert_eq!(parsed["correction"]["id"], 43);
+    }
+
+    #[test]
+    fn test_format_correct_success_original_shows_deprecated() {
+        let mut original = make_entry(42, "Old", "old");
+        original.status = Status::Deprecated;
+        let correction = make_entry(43, "New", "new");
+        let result = format_correct_success(&original, &correction, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["original"]["status"], "deprecated");
+    }
+
+    // -- vnc-003: format_deprecate_success --
+
+    #[test]
+    fn test_format_deprecate_success_summary() {
+        let entry = make_entry(42, "Deprecated Entry", "content");
+        let result = format_deprecate_success(&entry, None, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Deprecated #42"));
+        assert!(text.contains("Deprecated Entry"));
+    }
+
+    #[test]
+    fn test_format_deprecate_success_markdown_with_reason() {
+        let entry = make_entry(42, "Entry", "content");
+        let result =
+            format_deprecate_success(&entry, Some("outdated"), ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("Entry Deprecated"));
+        assert!(text.contains("Reason:"));
+        assert!(text.contains("outdated"));
+    }
+
+    #[test]
+    fn test_format_deprecate_success_markdown_no_reason() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("Entry Deprecated"));
+        assert!(!text.contains("Reason:"));
+    }
+
+    #[test]
+    fn test_format_deprecate_success_json() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["deprecated"], true);
+        assert_eq!(parsed["entry"]["id"], 42);
+    }
+
+    #[test]
+    fn test_format_deprecate_success_json_with_reason() {
+        let entry = make_entry(42, "Entry", "content");
+        let result =
+            format_deprecate_success(&entry, Some("obsolete"), ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["reason"], "obsolete");
+    }
+
+    #[test]
+    fn test_format_deprecate_success_json_no_reason() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert!(parsed["reason"].is_null());
+    }
+
+    // -- vnc-003: format_status_report --
+
+    fn make_status_report() -> StatusReport {
+        StatusReport {
+            total_active: 10,
+            total_deprecated: 3,
+            total_proposed: 1,
+            category_distribution: vec![
+                ("convention".to_string(), 5),
+                ("decision".to_string(), 4),
+            ],
+            topic_distribution: vec![("auth".to_string(), 8)],
+            entries_with_supersedes: 2,
+            entries_with_superseded_by: 2,
+            total_correction_count: 3,
+            trust_source_distribution: vec![("agent".to_string(), 12)],
+            entries_without_attribution: 1,
+        }
+    }
+
+    #[test]
+    fn test_format_status_report_summary() {
+        let report = make_status_report();
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Active: 10"));
+        assert!(text.contains("Deprecated: 3"));
+        assert!(text.contains("Proposed: 1"));
+        assert!(text.contains("Corrections: 3"));
+    }
+
+    #[test]
+    fn test_format_status_report_markdown() {
+        let report = make_status_report();
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("Entry Counts"));
+        assert!(text.contains("Category Distribution"));
+        assert!(text.contains("Correction Chains"));
+        assert!(text.contains("Security Metrics"));
+    }
+
+    #[test]
+    fn test_format_status_report_json() {
+        let report = make_status_report();
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["total_active"], 10);
+        assert_eq!(parsed["total_deprecated"], 3);
+        assert!(parsed["category_distribution"]["convention"].is_number());
+        assert!(parsed["correction_chains"]["total_correction_count"].is_number());
+        assert!(parsed["security"]["entries_without_attribution"].is_number());
+    }
+
+    #[test]
+    fn test_format_status_report_empty() {
+        let report = StatusReport {
+            total_active: 0,
+            total_deprecated: 0,
+            total_proposed: 0,
+            category_distribution: vec![],
+            topic_distribution: vec![],
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: vec![],
+            entries_without_attribution: 0,
+        };
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Active: 0"));
+    }
+
+    // -- vnc-003: format_briefing --
+
+    fn make_briefing(search_available: bool) -> Briefing {
+        Briefing {
+            role: "architect".to_string(),
+            task: "design auth module".to_string(),
+            conventions: vec![make_entry(1, "Convention 1", "Always use trait objects")],
+            duties: vec![make_entry(2, "Duty 1", "Write ADRs")],
+            relevant_context: vec![(make_entry(3, "Context 1", "Auth patterns"), 0.85)],
+            search_available,
+        }
+    }
+
+    #[test]
+    fn test_format_briefing_summary() {
+        let briefing = make_briefing(true);
+        let result = format_briefing(&briefing, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Briefing for architect"));
+        assert!(text.contains("Conventions: 1"));
+        assert!(text.contains("Duties: 1"));
+        assert!(text.contains("Context: 1"));
+    }
+
+    #[test]
+    fn test_format_briefing_markdown_all_sections() {
+        let briefing = make_briefing(true);
+        let result = format_briefing(&briefing, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("### Conventions"));
+        assert!(text.contains("### Duties"));
+        assert!(text.contains("### Relevant Context"));
+        assert!(text.contains("Convention 1"));
+        assert!(text.contains("Duty 1"));
+        assert!(text.contains("Context 1"));
+    }
+
+    #[test]
+    fn test_format_briefing_markdown_search_unavailable() {
+        let briefing = make_briefing(false);
+        let result = format_briefing(&briefing, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("search unavailable"));
+    }
+
+    #[test]
+    fn test_format_briefing_json() {
+        let briefing = make_briefing(true);
+        let result = format_briefing(&briefing, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["role"], "architect");
+        assert_eq!(parsed["task"], "design auth module");
+        assert_eq!(parsed["search_available"], true);
+        assert!(parsed["conventions"].is_array());
+        assert!(parsed["duties"].is_array());
+        assert!(parsed["relevant_context"].is_array());
+    }
+
+    #[test]
+    fn test_format_briefing_empty_sections() {
+        let briefing = Briefing {
+            role: "dev".to_string(),
+            task: "code".to_string(),
+            conventions: vec![],
+            duties: vec![],
+            relevant_context: vec![],
+            search_available: true,
+        };
+        let result = format_briefing(&briefing, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("No conventions found"));
+        assert!(text.contains("No duties found"));
+        assert!(text.contains("No relevant context found"));
     }
 
     #[test]

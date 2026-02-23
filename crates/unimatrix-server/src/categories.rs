@@ -5,13 +5,15 @@ use std::sync::RwLock;
 
 use crate::error::ServerError;
 
-const INITIAL_CATEGORIES: [&str; 6] = [
+const INITIAL_CATEGORIES: [&str; 8] = [
     "outcome",
     "lesson-learned",
     "decision",
     "convention",
     "pattern",
     "procedure",
+    "duties",    // role duties for context_briefing
+    "reference", // general reference material
 ];
 
 /// Runtime-extensible category validation.
@@ -20,7 +22,7 @@ pub struct CategoryAllowlist {
 }
 
 impl CategoryAllowlist {
-    /// Create a new allowlist with the initial 6 categories.
+    /// Create a new allowlist with the initial 8 categories.
     pub fn new() -> Self {
         let mut set = HashSet::new();
         for cat in INITIAL_CATEGORIES {
@@ -102,6 +104,18 @@ mod tests {
     }
 
     #[test]
+    fn test_validate_duties() {
+        let al = CategoryAllowlist::new();
+        assert!(al.validate("duties").is_ok());
+    }
+
+    #[test]
+    fn test_validate_reference() {
+        let al = CategoryAllowlist::new();
+        assert!(al.validate("reference").is_ok());
+    }
+
+    #[test]
     fn test_validate_unknown_rejected() {
         let al = CategoryAllowlist::new();
         let err = al.validate("unknown").unwrap_err();
@@ -111,7 +125,7 @@ mod tests {
                 valid_categories,
             } => {
                 assert_eq!(category, "unknown");
-                assert_eq!(valid_categories.len(), 6);
+                assert_eq!(valid_categories.len(), 8);
             }
             _ => panic!("expected InvalidCategory"),
         }
@@ -141,7 +155,7 @@ mod tests {
     fn test_list_categories_sorted() {
         let al = CategoryAllowlist::new();
         let list = al.list_categories();
-        assert_eq!(list.len(), 6);
+        assert_eq!(list.len(), 8);
         // Verify sorted
         for i in 1..list.len() {
             assert!(list[i] >= list[i - 1]);
@@ -158,10 +172,12 @@ mod tests {
             } => {
                 assert!(valid_categories.contains(&"convention".to_string()));
                 assert!(valid_categories.contains(&"decision".to_string()));
+                assert!(valid_categories.contains(&"duties".to_string()));
                 assert!(valid_categories.contains(&"lesson-learned".to_string()));
                 assert!(valid_categories.contains(&"outcome".to_string()));
                 assert!(valid_categories.contains(&"pattern".to_string()));
                 assert!(valid_categories.contains(&"procedure".to_string()));
+                assert!(valid_categories.contains(&"reference".to_string()));
             }
             _ => panic!("expected InvalidCategory"),
         }

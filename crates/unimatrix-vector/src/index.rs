@@ -328,6 +328,47 @@ impl VectorIndex {
     pub(crate) fn store(&self) -> &Arc<Store> {
         &self.store
     }
+
+    /// Allocate the next HNSW data ID without performing any insertion.
+    ///
+    /// Used by the server's combined write transaction to write VECTOR_MAP
+    /// in the same transaction as entry insert + audit (GH #14 fix).
+    /// The returned data_id is unique and monotonically increasing.
+    pub fn allocate_data_id(&self) -> u64 {
+        self.next_data_id.fetch_add(1, Ordering::Relaxed)
+    }
+
+    /// Insert into HNSW index and update IdMap only.
+    ///
+    /// Skips the VECTOR_MAP write (caller already wrote it in a combined
+    /// transaction). The `data_id` must have been allocated via [`allocate_data_id`].
+    pub fn insert_hnsw_only(
+        &self,
+        entry_id: u64,
+        data_id: u64,
+        embedding: &[f32],
+    ) -> Result<()> {
+        self.validate_dimension(embedding)?;
+        self.validate_embedding(embedding)?;
+
+        // Insert into hnsw_rs
+        {
+            let hnsw = self.hnsw.write().unwrap_or_else(|e| e.into_inner());
+            let data_vec = embedding.to_vec();
+            hnsw.insert_slice((&data_vec, data_id as usize));
+        }
+
+        // Update IdMap (no VECTOR_MAP write)
+        {
+            let mut id_map = self.id_map.write().unwrap_or_else(|e| e.into_inner());
+            if let Some(old_data_id) = id_map.entry_to_data.insert(entry_id, data_id) {
+                id_map.data_to_entry.remove(&old_data_id);
+            }
+            id_map.data_to_entry.insert(data_id, entry_id);
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -876,6 +917,121 @@ mod tests {
     #[test]
     fn test_usize_at_least_8_bytes() {
         assert!(std::mem::size_of::<usize>() >= 8);
+    }
+
+    // -- C5 vnc-003: allocate_data_id + insert_hnsw_only --
+
+    #[test]
+    fn test_allocate_data_id_monotonic() {
+        let tvi = TestVectorIndex::new();
+        let mut prev = tvi.vi().allocate_data_id();
+        for _ in 0..9 {
+            let next = tvi.vi().allocate_data_id();
+            assert!(next > prev, "allocate_data_id must be strictly increasing");
+            prev = next;
+        }
+    }
+
+    #[test]
+    fn test_allocate_data_id_starts_at_zero() {
+        let tvi = TestVectorIndex::new();
+        assert_eq!(tvi.vi().allocate_data_id(), 0);
+        assert_eq!(tvi.vi().allocate_data_id(), 1);
+    }
+
+    #[test]
+    fn test_insert_hnsw_only_searchable() {
+        let tvi = TestVectorIndex::new();
+        let data_id = tvi.vi().allocate_data_id();
+        let emb = random_normalized_embedding(384);
+
+        // Manually write VECTOR_MAP (simulating server combined txn)
+        tvi.store().put_vector_mapping(1, data_id).unwrap();
+
+        // Insert into HNSW only
+        tvi.vi().insert_hnsw_only(1, data_id, &emb).unwrap();
+
+        // Should be searchable
+        let results = tvi.vi().search(&emb, 1, 32).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].entry_id, 1);
+    }
+
+    #[test]
+    fn test_insert_hnsw_only_validates_dimension() {
+        let tvi = TestVectorIndex::new();
+        let data_id = tvi.vi().allocate_data_id();
+        let emb = vec![0.0f32; 128]; // wrong dimension
+        let result = tvi.vi().insert_hnsw_only(1, data_id, &emb);
+        assert!(matches!(result, Err(VectorError::DimensionMismatch { .. })));
+    }
+
+    #[test]
+    fn test_insert_hnsw_only_validates_nan() {
+        let tvi = TestVectorIndex::new();
+        let data_id = tvi.vi().allocate_data_id();
+        let mut emb = random_normalized_embedding(384);
+        emb[0] = f32::NAN;
+        let result = tvi.vi().insert_hnsw_only(1, data_id, &emb);
+        assert!(matches!(result, Err(VectorError::InvalidEmbedding(_))));
+    }
+
+    #[test]
+    fn test_insert_hnsw_only_no_vector_map_write() {
+        let tvi = TestVectorIndex::new();
+        let data_id = tvi.vi().allocate_data_id();
+        let emb = random_normalized_embedding(384);
+
+        // Do NOT write VECTOR_MAP
+        tvi.vi().insert_hnsw_only(1, data_id, &emb).unwrap();
+
+        // VECTOR_MAP should NOT have a mapping (insert_hnsw_only skips it)
+        assert!(tvi.store().get_vector_mapping(1).unwrap().is_none());
+        // But HNSW point count increased
+        assert_eq!(tvi.vi().point_count(), 1);
+        // And IdMap knows about the entry
+        assert!(tvi.vi().contains(1));
+    }
+
+    #[test]
+    fn test_insert_hnsw_only_idmap_updated() {
+        let tvi = TestVectorIndex::new();
+        let data_id = tvi.vi().allocate_data_id();
+        let emb = random_normalized_embedding(384);
+        tvi.vi().insert_hnsw_only(1, data_id, &emb).unwrap();
+        assert!(tvi.vi().contains(1));
+    }
+
+    #[test]
+    fn test_existing_insert_still_works() {
+        let tvi = TestVectorIndex::new();
+        let emb = random_normalized_embedding(384);
+        tvi.vi().insert(1, &emb).unwrap();
+        // VECTOR_MAP written
+        assert!(tvi.store().get_vector_mapping(1).unwrap().is_some());
+        // Searchable
+        let results = tvi.vi().search(&emb, 1, 32).unwrap();
+        assert_eq!(results[0].entry_id, 1);
+    }
+
+    #[test]
+    fn test_allocate_then_insert_hnsw_sequence() {
+        let tvi = TestVectorIndex::new();
+        let emb = random_normalized_embedding(384);
+
+        // Full GH #14 fix sequence:
+        // 1. Allocate data_id
+        let data_id = tvi.vi().allocate_data_id();
+        // 2. Write VECTOR_MAP externally (server's combined txn)
+        tvi.store().put_vector_mapping(42, data_id).unwrap();
+        // 3. Insert into HNSW only
+        tvi.vi().insert_hnsw_only(42, data_id, &emb).unwrap();
+
+        // Verify end-to-end
+        assert!(tvi.vi().contains(42));
+        assert_eq!(tvi.store().get_vector_mapping(42).unwrap(), Some(data_id));
+        let results = tvi.vi().search(&emb, 1, 32).unwrap();
+        assert_eq!(results[0].entry_id, 42);
     }
 
     #[test]
