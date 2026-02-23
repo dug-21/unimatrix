@@ -8,6 +8,8 @@ Unimatrix is a self-learning context engine that serves as the knowledge backbon
 
 Start with Proposal A (Knowledge Oracle) — a focused, testable knowledge store. Evolve incrementally toward Proposal C (Workflow-Aware Hybrid) — adding usage tracking, outcome analysis, retrospective intelligence, and eventually thin-shell agent files. Each milestone is independently shippable and provable. The schema pre-seeds all known future fields from day 1, covering M2–M5 without schema changes. When new fields are added (M6+), a `schema_version` counter triggers automatic scan-and-rewrite migration on database open — fast at Unimatrix scale.
 
+Security is a cross-cutting concern woven into existing features, not a separate milestone. Foundational security fields are added to EntryRecord in nxs-004 (before MCP writes entries). Agent identity, audit logging, input validation, and capability checks are integrated into the Vinculum phase. Advanced defenses (contradiction detection, anomaly detection, behavioral analysis) align with the Cortical phase. See [Security Cross-Cutting Concerns](#security-cross-cutting-concerns) and `product/research/mcp-security/` for the full analysis.
+
 ---
 
 ## Feature Roadmap
@@ -21,7 +23,7 @@ Start with Proposal A (Knowledge Oracle) — a focused, testable knowledge store
 | Embedded Storage Engine | `nxs-001` | redb-backed entry store with 8 tables (ENTRIES, TOPIC_INDEX, CATEGORY_INDEX, TAG_INDEX, TIME_INDEX, STATUS_INDEX, VECTOR_MAP, COUNTERS). bincode v2 serialization. EntryRecord schema pre-seeds all known future fields (M2–M5). Schema versioning via COUNTERS table with scan-and-rewrite migration when fields are added. |
 | Vector Index | `nxs-002` | hnsw_rs integration — 384-dimension embeddings (all-MiniLM-L6-v2), DistDot, 16 max connections, ef_construction=200. VECTOR_MAP bridge table between entry IDs and hnsw data IDs. |
 | Embedding Pipeline | `nxs-003` | Local embedding generation via ONNX runtime or API-based fallback. Title+content concatenation strategy. Batch embedding on import. |
-| Core Traits & Domain Adapters | `nxs-004` | Storage traits (EntryStore, VectorStore, IndexStore) in core crate. Domain adapter pattern — implementations in domain modules. `spawn_blocking` with `Arc<Database>` for async. |
+| Core Traits & Domain Adapters | `nxs-004` | Storage traits (EntryStore, VectorStore, IndexStore) in core crate. Domain adapter pattern — implementations in domain modules. `spawn_blocking` with `Arc<Database>` for async. **Security schema**: Add 7 fields to EntryRecord — `created_by`, `modified_by`, `content_hash` (SHA-256), `previous_hash`, `version` (u32), `feature_cycle`, `trust_source` ("agent"\|"human"\|"system"). Implement scan-and-rewrite migration capability (first schema evolution event — establishes the migration pattern for all future field additions). |
 
 **Ships**: Functional storage + retrieval backend. No MCP yet — internal API only.
 
@@ -33,9 +35,9 @@ Start with Proposal A (Knowledge Oracle) — a focused, testable knowledge store
 
 | Feature | Prefix | Summary |
 |---------|--------|---------|
-| MCP Server Core | `vnc-001` | rmcp 0.16 SDK, stdio transport. Server `instructions` field for behavioral driving (70-85% agent compliance). Auto-init on first `context_store`. Project isolation via `~/.unimatrix/{project_hash}/`. **Persistence note**: vnc-001 must coordinate graceful shutdown — calling both `Store::compact()` (nxs-001) and `VectorIndex::dump()` (nxs-002) to ensure all data is persisted. Both are explicit-only; neither auto-persists on drop. |
-| v0.1 Tools | `vnc-002` | `context_search` (semantic, query-driven, returns top-k with similarity scores), `context_lookup` (deterministic, metadata-driven, category/topic/tags filters), `context_store` (with near-duplicate detection at 0.92 threshold), `context_get` (full entry by ID). Dual response format: compact markdown in `content`, JSON in `structuredContent`. |
-| v0.2 Tools | `vnc-003` | `context_correct` (supersede with correction chain), `context_deprecate` (mark irrelevant), `context_status` (health metrics — counts, age distribution, stale entries, duplicate candidates), `context_briefing` (compiled orientation — lookup duties + conventions + search task-relevant patterns in one call, <2000 token target). |
+| MCP Server Core | `vnc-001` | rmcp 0.16 SDK, stdio transport. Server `instructions` field for behavioral driving (70-85% agent compliance). Auto-init on first `context_store`. Project isolation via `~/.unimatrix/{project_hash}/`. **Persistence note**: vnc-001 must coordinate graceful shutdown — calling both `Store::compact()` (nxs-001) and `VectorIndex::dump()` (nxs-002) to ensure all data is persisted. Both are explicit-only; neither auto-persists on drop. **Security infrastructure**: AGENT_REGISTRY table (agent_id, trust_level, capabilities, allowed_topics/categories, enrollment metadata). AUDIT_LOG table (append-only — request_id, session_id, agent_id, operation, target_ids, outcome). Agent identification via `agent_id` tool parameter for stdio (design internal plumbing transport-agnostic for future `_meta` field and OAuth 2.1 bearer token support on HTTPS). Unknown agents auto-enroll as Restricted (read-only). |
+| v0.1 Tools | `vnc-002` | `context_search` (semantic, query-driven, returns top-k with similarity scores), `context_lookup` (deterministic, metadata-driven, category/topic/tags filters), `context_store` (with near-duplicate detection at 0.92 threshold), `context_get` (full entry by ID). Dual response format: compact markdown in `content`, JSON in `structuredContent`. **Security**: Input validation on all tool params (max lengths, pattern matching, no control chars). Category allowlist enforcement (initial: outcome, lesson-learned, decision, convention, pattern, procedure — extensible at runtime). Content scanning on `context_store` writes (~50 injection patterns + PII detection, native Rust `regex` crate). Output framing on read tools to distinguish data from instructions. Capability check per tool call against AGENT_REGISTRY (Read for search/lookup/get, Write for store). |
+| v0.2 Tools | `vnc-003` | `context_correct` (supersede with correction chain), `context_deprecate` (mark irrelevant), `context_status` (health metrics — counts, age distribution, stale entries, duplicate candidates), `context_briefing` (compiled orientation — lookup duties + conventions + search task-relevant patterns in one call, <2000 token target). **Security**: Content scanning on `context_correct` writes. Capability checks (Write for correct/deprecate, Admin for status, Read for briefing). Security metrics in `context_status` — entries by trust_source, entries without attribution, write frequency by agent, content_hash mismatches. |
 
 **Ships**: Agents can search, store, correct, and receive briefings. Knowledge accumulates across features.
 
@@ -61,9 +63,9 @@ Start with Proposal A (Knowledge Oracle) — a focused, testable knowledge store
 
 | Feature | Prefix | Summary |
 |---------|--------|---------|
-| Usage Tracking | `crt-001` | USAGE_LOG table — every retrieval logged with `(entry_id, timestamp, agent_role, feature_id, tool, helpful)`. FEATURE_ENTRIES multimap links features to entries used. Populate `usage_count`, `helpful_count`, `last_used_at` on EntryRecord. |
+| Usage Tracking | `crt-001` | USAGE_LOG table — every retrieval logged with `(entry_id, timestamp, agent_role, feature_id, tool, helpful)`. FEATURE_ENTRIES multimap links features to entries used. Populate `usage_count`, `helpful_count`, `last_used_at` on EntryRecord. **Security alignment**: Enables write rate limiting per agent and behavioral baseline establishment for anomaly detection. |
 | Confidence Evolution | `crt-002` | Helpfulness factor added to confidence formula: `confidence = base * usage * freshness * correction * helpfulness`. Before usage data, factor = 1.0 (neutral). Confidence boost (+0.03/access), time decay (-0.005/hr), floor at 0.1. |
-| Contradiction Detection | `crt-003` | Flag entries with high embedding similarity (>0.85) but conflicting content. Surface during `context_status`. Similar to ReasoningBank's contradiction pipeline — cheap, high value. |
+| Contradiction Detection | `crt-003` | Flag entries with high embedding similarity (>0.85) but conflicting content. Surface during `context_status`. Similar to ReasoningBank's contradiction pipeline — cheap, high value. **Security alignment**: This is also the primary defense against semantic poisoning — the highest-severity knowledge integrity risk (see `product/research/mcp-security/`). Extend with embedding consistency checks (re-embed and compare to detect relevance hijacking) and entry quarantine status in StatusIndex. |
 | Co-Access Boosting | `crt-004` | Track entries frequently retrieved together. Boost co-accessed entries in search results. Lightweight version of PageRank on access graph — 80% of value, 20% of complexity. |
 
 **Ships**: Knowledge quality improves automatically. Unused entries fade. Helpful entries strengthen. Contradictions surface.
@@ -142,6 +144,48 @@ Start with Proposal A (Knowledge Oracle) — a focused, testable knowledge store
 | Release Automation | `nan-004` | Versioned releases with changelog. Schema migration infrastructure (scan-and-rewrite on version bump, triggered automatically on database open). Homebrew/cargo install distribution. |
 
 **Ships**: Installable product. One command to add Unimatrix to any project.
+
+---
+
+## Security Cross-Cutting Concerns
+
+Security is integrated into existing features across milestones, not isolated into a separate phase. Full analysis: `product/research/mcp-security/`.
+
+### Threat Landscape Summary
+
+Unimatrix faces amplified versions of standard MCP security risks because it is a **cumulative knowledge engine** — a single poisoned entry propagates across feature cycles. OWASP classifies memory/context poisoning (ASI06) as a top agentic AI risk. Demonstrated attacks (PoisonedRAG, ADMIT, MemoryGraft) achieve 86-90% success rates with minimal poisoning. MCP's architectural weaknesses amplify attack success by 23-41% (arXiv:2601.17549).
+
+### Security by Milestone
+
+| Milestone | Security Responsibilities |
+|-----------|--------------------------|
+| **M1 (nxs-004)** | Schema fields: `created_by`, `modified_by`, `content_hash`, `previous_hash`, `version`, `feature_cycle`, `trust_source`. Scan-and-rewrite migration capability. |
+| **M2 (vnc-001)** | AGENT_REGISTRY table, AUDIT_LOG table (append-only), agent identification flow (self-reported `agent_id` param for stdio, transport-agnostic internal plumbing). |
+| **M2 (vnc-002)** | Input validation, content scanning (~50 injection patterns + PII, native Rust), output framing, capability checks (Read/Write per tool). |
+| **M2 (vnc-003)** | Security metrics in `context_status`, capability checks on mutations, content scanning on `context_correct`. |
+| **M4 (crt-001)** | Write rate limiting, behavioral baselines for anomaly detection. |
+| **M4 (crt-003)** | Semantic poisoning defense via contradiction detection, embedding consistency checks, entry quarantine. |
+| **M5 (col-004)** | Merkle root computation, trusted snapshots, rollback capability. |
+| **Future (HTTPS)** | OAuth 2.1 bearer tokens, TLS, CORS, hard rate limiting. Agent identity upgrades from self-reported to verified. No foundation changes required — internal plumbing is transport-agnostic. |
+
+### Agent Identity Evolution
+
+```
+stdio (M2):   agent_id tool parameter → AGENT_REGISTRY → capability check → execute
+                ↓ (future, non-breaking)
+_meta (M2+):  _meta.agent_id on MCP request → same pipeline
+                ↓ (future, non-breaking)
+HTTPS (M6+):  OAuth 2.1 bearer token claims → same pipeline
+```
+
+### Trust Hierarchy
+
+| Level | Who | Default Capabilities |
+|-------|-----|---------------------|
+| System | Unimatrix server internals | All operations |
+| Privileged | Human user via MCP client | All tools, all topics |
+| Internal | Orchestrator agents (e.g., scrum-master) | Read-write, scoped to active feature |
+| Restricted | Worker agents, unknown agents | Read-only |
 
 ---
 
