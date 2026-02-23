@@ -193,7 +193,7 @@ impl Default for DatabaseConfig {
 ///
 /// Uses `bincode::serde::encode_to_vec` with `standard()` config,
 /// NOT `bincode::encode_to_vec` (which requires native Encode derive).
-pub(crate) fn serialize_entry(record: &EntryRecord) -> crate::error::Result<Vec<u8>> {
+pub fn serialize_entry(record: &EntryRecord) -> crate::error::Result<Vec<u8>> {
     let bytes = bincode::serde::encode_to_vec(record, bincode::config::standard())?;
     Ok(bytes)
 }
@@ -202,14 +202,14 @@ pub(crate) fn serialize_entry(record: &EntryRecord) -> crate::error::Result<Vec<
 ///
 /// Uses `bincode::serde::decode_from_slice` with `standard()` config,
 /// NOT `bincode::decode_from_slice` (which requires native Decode derive).
-pub(crate) fn deserialize_entry(bytes: &[u8]) -> crate::error::Result<EntryRecord> {
+pub fn deserialize_entry(bytes: &[u8]) -> crate::error::Result<EntryRecord> {
     let (record, _) =
         bincode::serde::decode_from_slice::<EntryRecord, _>(bytes, bincode::config::standard())?;
     Ok(record)
 }
 
 /// Return the counter key for a given status.
-pub(crate) fn status_counter_key(status: Status) -> &'static str {
+pub fn status_counter_key(status: Status) -> &'static str {
     match status {
         Status::Active => "total_active",
         Status::Deprecated => "total_deprecated",

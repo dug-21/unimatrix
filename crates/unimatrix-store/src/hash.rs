@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 ///
 /// Format matches `prepare_text(title, content, ": ")` from unimatrix-embed.
 /// Returns lowercase hex string (64 chars).
-pub(crate) fn compute_content_hash(title: &str, content: &str) -> String {
+pub fn compute_content_hash(title: &str, content: &str) -> String {
     let text = match (title.is_empty(), content.is_empty()) {
         (true, true) => String::new(),
         (true, false) => content.to_string(),

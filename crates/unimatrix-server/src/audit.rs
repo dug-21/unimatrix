@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use redb::ReadableTable;
+use redb::{ReadableTable, WriteTransaction};
 use serde::{Deserialize, Serialize};
 use unimatrix_store::{AUDIT_LOG, COUNTERS, Store};
 
@@ -99,6 +99,52 @@ impl AuditLog {
         txn.commit()
             .map_err(|e| ServerError::Audit(e.to_string()))?;
         Ok(())
+    }
+
+    /// Write an audit event into an existing write transaction without committing.
+    ///
+    /// The caller owns the transaction and is responsible for committing.
+    /// Returns the assigned event_id.
+    pub fn write_in_txn(
+        &self,
+        txn: &WriteTransaction,
+        event: AuditEvent,
+    ) -> Result<u64, ServerError> {
+        // Get and increment the audit ID counter in the caller's transaction
+        let mut counters = txn
+            .open_table(COUNTERS)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        let current_id = match counters
+            .get("next_audit_id")
+            .map_err(|e| ServerError::Audit(e.to_string()))?
+        {
+            Some(guard) => guard.value(),
+            None => 1, // first event ever
+        };
+        counters
+            .insert("next_audit_id", current_id + 1)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        // Drop counters table handle before opening audit table
+        drop(counters);
+
+        // Build final event with assigned ID and timestamp
+        let final_event = AuditEvent {
+            event_id: current_id,
+            timestamp: current_unix_seconds(),
+            ..event
+        };
+
+        // Serialize and insert into AUDIT_LOG table (still in caller's txn)
+        let mut audit_table = txn
+            .open_table(AUDIT_LOG)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        let bytes = serialize_audit_event(&final_event)?;
+        audit_table
+            .insert(current_id, bytes.as_slice())
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+
+        // DO NOT commit -- caller owns the transaction
+        Ok(current_id)
     }
 }
 
@@ -277,6 +323,84 @@ mod tests {
         let bytes = serialize_audit_event(&event).unwrap();
         let deserialized = deserialize_audit_event(&bytes).unwrap();
         assert_eq!(deserialized.target_ids, vec![10, 20, 30]);
+    }
+
+    #[test]
+    fn test_write_in_txn_does_not_commit() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        // Write in a transaction but do NOT commit
+        let txn = store.begin_write().unwrap();
+        let event_id = audit.write_in_txn(&txn, make_event()).unwrap();
+        assert_eq!(event_id, 1);
+        drop(txn); // Drop without commit
+
+        // Event should NOT be persisted
+        let read_txn = store.begin_read().unwrap();
+        let table = read_txn.open_table(AUDIT_LOG).unwrap();
+        assert!(table.get(1u64).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_write_in_txn_with_commit() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        let txn = store.begin_write().unwrap();
+        let event_id = audit.write_in_txn(&txn, make_event()).unwrap();
+        txn.commit().unwrap();
+
+        assert_eq!(event_id, 1);
+
+        // Event should be persisted
+        let read_txn = store.begin_read().unwrap();
+        let table = read_txn.open_table(AUDIT_LOG).unwrap();
+        let guard = table.get(1u64).unwrap().unwrap();
+        let event = deserialize_audit_event(guard.value()).unwrap();
+        assert_eq!(event.event_id, 1);
+        assert!(event.timestamp > 0);
+    }
+
+    #[test]
+    fn test_write_in_txn_shares_counter_with_log_event() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        // Use log_event for first 3 events
+        for _ in 0..3 {
+            audit.log_event(make_event()).unwrap();
+        }
+
+        // Use write_in_txn for 4th
+        let txn = store.begin_write().unwrap();
+        let event_id = audit.write_in_txn(&txn, make_event()).unwrap();
+        txn.commit().unwrap();
+
+        assert_eq!(event_id, 4, "write_in_txn should continue from log_event counter");
+
+        // Use log_event for 5th
+        audit.log_event(make_event()).unwrap();
+
+        let read_txn = store.begin_read().unwrap();
+        let table = read_txn.open_table(AUDIT_LOG).unwrap();
+        let guard = table.get(5u64).unwrap().unwrap();
+        let event = deserialize_audit_event(guard.value()).unwrap();
+        assert_eq!(event.event_id, 5);
+    }
+
+    #[test]
+    fn test_write_in_txn_returns_event_id() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        let txn = store.begin_write().unwrap();
+        let id1 = audit.write_in_txn(&txn, make_event()).unwrap();
+        let id2 = audit.write_in_txn(&txn, make_event()).unwrap();
+        txn.commit().unwrap();
+
+        assert_eq!(id1, 1);
+        assert_eq!(id2, 2);
     }
 
     #[test]
