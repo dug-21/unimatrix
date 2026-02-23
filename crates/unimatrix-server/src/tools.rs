@@ -676,7 +676,7 @@ impl UnimatrixServer {
             ),
         };
         let (deprecated_original, new_correction) = self
-            .correct_with_audit(original_id, new_entry, embedding, params.reason, audit_event)
+            .correct_with_audit(original_id, new_entry, embedding, audit_event)
             .await
             .map_err(rmcp::ErrorData::from)?;
 

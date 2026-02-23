@@ -258,7 +258,6 @@ impl UnimatrixServer {
         original_id: u64,
         correction_entry: NewEntry,
         embedding: Vec<f32>,
-        _reason: Option<String>,
         audit_event: AuditEvent,
     ) -> Result<(EntryRecord, EntryRecord), ServerError> {
         let store = Arc::clone(&self.store);
