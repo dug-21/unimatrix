@@ -97,6 +97,21 @@ pub struct EntryRecord {
     pub correction_count: u32,
     #[serde(default)]
     pub embedding_dim: u16,
+    // -- nxs-004 security fields (appended after embedding_dim) --
+    #[serde(default)]
+    pub created_by: String,
+    #[serde(default)]
+    pub modified_by: String,
+    #[serde(default)]
+    pub content_hash: String,
+    #[serde(default)]
+    pub previous_hash: String,
+    #[serde(default)]
+    pub version: u32,
+    #[serde(default)]
+    pub feature_cycle: String,
+    #[serde(default)]
+    pub trust_source: String,
 }
 
 // -- NewEntry --
@@ -115,6 +130,10 @@ pub struct NewEntry {
     pub tags: Vec<String>,
     pub source: String,
     pub status: Status,
+    // -- nxs-004 caller-provided fields --
+    pub created_by: String,
+    pub feature_cycle: String,
+    pub trust_source: String,
 }
 
 // -- QueryFilter --
@@ -299,6 +318,13 @@ mod tests {
             superseded_by: Some(50),
             correction_count: 2,
             embedding_dim: 384,
+            created_by: "agent-1".to_string(),
+            modified_by: "agent-2".to_string(),
+            content_hash: "abc123def456".to_string(),
+            previous_hash: "def456abc123".to_string(),
+            version: 3,
+            feature_cycle: "nxs-004".to_string(),
+            trust_source: "agent".to_string(),
         };
 
         let bytes = serialize_entry(&record).expect("serialize");
@@ -326,6 +352,13 @@ mod tests {
             superseded_by: None,
             correction_count: 0,
             embedding_dim: 0,
+            created_by: String::new(),
+            modified_by: String::new(),
+            content_hash: String::new(),
+            previous_hash: String::new(),
+            version: 0,
+            feature_cycle: String::new(),
+            trust_source: String::new(),
         };
 
         let bytes = serialize_entry(&record).expect("serialize");
@@ -461,6 +494,13 @@ mod tests {
             superseded_by: None,
             correction_count: 0,
             embedding_dim: 0,
+            created_by: String::new(),
+            modified_by: String::new(),
+            content_hash: String::new(),
+            previous_hash: String::new(),
+            version: 0,
+            feature_cycle: String::new(),
+            trust_source: String::new(),
         }
     }
 }

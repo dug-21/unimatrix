@@ -39,6 +39,9 @@ pub struct TestEntry {
     tags: Vec<String>,
     source: String,
     status: Status,
+    created_by: String,
+    feature_cycle: String,
+    trust_source: String,
 }
 
 impl TestEntry {
@@ -52,6 +55,9 @@ impl TestEntry {
             tags: vec![],
             source: "test".to_string(),
             status: Status::Active,
+            created_by: String::new(),
+            feature_cycle: String::new(),
+            trust_source: String::new(),
         }
     }
 
@@ -85,6 +91,24 @@ impl TestEntry {
         self
     }
 
+    /// Set the created_by field.
+    pub fn with_created_by(mut self, val: &str) -> Self {
+        self.created_by = val.to_string();
+        self
+    }
+
+    /// Set the feature_cycle field.
+    pub fn with_feature_cycle(mut self, val: &str) -> Self {
+        self.feature_cycle = val.to_string();
+        self
+    }
+
+    /// Set the trust_source field.
+    pub fn with_trust_source(mut self, val: &str) -> Self {
+        self.trust_source = val.to_string();
+        self
+    }
+
     /// Build a `NewEntry` with sensible defaults for unset fields.
     pub fn build(self) -> NewEntry {
         NewEntry {
@@ -97,6 +121,9 @@ impl TestEntry {
             tags: self.tags,
             source: self.source,
             status: self.status,
+            created_by: self.created_by,
+            feature_cycle: self.feature_cycle,
+            trust_source: self.trust_source,
         }
     }
 }

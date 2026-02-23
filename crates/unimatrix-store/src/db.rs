@@ -48,6 +48,9 @@ impl Store {
         }
         txn.commit().map_err(StoreError::Commit)?;
 
+        // Run schema migration if needed (after tables exist)
+        crate::migration::migrate_if_needed(&db)?;
+
         Ok(Store { db })
     }
 

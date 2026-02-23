@@ -417,6 +417,9 @@ mod tests {
                 tags: vec![],
                 source: "test".to_string(),
                 status: Status::Active,
+                created_by: String::new(),
+                feature_cycle: String::new(),
+                trust_source: String::new(),
             };
             db.store().insert(entry).unwrap();
         }

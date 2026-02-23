@@ -131,6 +131,9 @@ pub fn seed_vectors(vi: &VectorIndex, store: &Store, count: usize) -> Vec<u64> {
             tags: vec![],
             source: "test".to_string(),
             status: unimatrix_store::Status::Active,
+            created_by: String::new(),
+            feature_cycle: String::new(),
+            trust_source: String::new(),
         };
         let entry_id = store.insert(entry).expect("failed to insert store entry");
 
