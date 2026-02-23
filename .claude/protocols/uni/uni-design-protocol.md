@@ -16,8 +16,10 @@ spawn scrum-master ──────────►   read protocol + SCOPE.md
                                  spawn researcher (Phase 1)
                                  ◄──────────────────────────────── SCOPE.md written
                                  human approves SCOPE.md
-                                 spawn 3 specialists (Phase 2a) ──► produce source docs
+                                 spawn 2 specialists (Phase 2a) ──► produce arch + spec
                                  ◄──────────────────────────────── return artifact paths
+                                 spawn risk strategist (Phase 2a+)► produce risk strategy
+                                 ◄──────────────────────────────── return artifact path
                                  spawn vision guardian (Phase 2b)
                                  spawn synthesizer (Phase 2c)
 ◄──────────────────────────────  return all artifacts to human
@@ -72,11 +74,11 @@ After the researcher returns, the Design Leader presents SCOPE.md to the human f
 
 ### Phase 2: Design (Three Source Documents + Vision + Synthesis)
 
-Phase 2 has four sequential steps: 2a (parallel specialists) → 2b (vision check) → 2c (synthesis) → 2d (return to human).
+Phase 2 has five sequential steps: 2a (architect + spec parallel) → 2a+ (risk strategist) → 2b (vision check) → 2c (synthesis) → 2d (return to human).
 
-#### Phase 2a: Three Specialist Agents (Parallel, ONE message)
+#### Phase 2a: Architect + Specification (Parallel, ONE message)
 
-The Design Leader spawns three specialists in parallel:
+The Design Leader spawns two specialists in parallel:
 
 **uni-architect → Architecture** (`architecture/ARCHITECTURE.md` + `ADR-NNN-{name}.md`)
 
@@ -94,6 +96,23 @@ The Design Leader spawns three specialists in parallel:
 - Domain models and ubiquitous language
 - Constraints and dependencies
 
+Each specialist receives:
+1. `Your agent ID: {feature-id}-agent-N-{role}`
+2. Path to approved SCOPE.md
+3. Task description
+
+```
+# Spawn both in ONE message:
+Task(subagent_type: "uni-architect", prompt: "Your agent ID: {id}-agent-1-architect ...")
+Task(subagent_type: "uni-specification", prompt: "Your agent ID: {id}-agent-2-spec ...")
+```
+
+Wait for BOTH to complete before proceeding to Phase 2a+.
+
+#### Phase 2a+: Risk Strategist (After Architect + Specification)
+
+The Design Leader spawns the risk strategist with the architecture and specification as additional inputs. This allows risk identification against concrete component boundaries, ADRs, acceptance criteria, and domain models — not just the scope.
+
 **uni-risk-strategist → Risk-Based Test Strategy** (`RISK-TEST-STRATEGY.md`)
 
 - Feature-level risk identification — what could fail and impact users
@@ -102,19 +121,31 @@ The Design Leader spawns three specialists in parallel:
 - Prioritization by severity and likelihood
 - Integration risks, edge cases, failure modes
 
-Each specialist receives:
-1. `Your agent ID: {feature-id}-agent-N-{role}`
+The risk strategist receives:
+1. `Your agent ID: {feature-id}-agent-3-risk`
 2. Path to approved SCOPE.md
-3. Task description
+3. Paths to architecture and specification artifacts (from Phase 2a)
+4. Task description
 
 ```
-# Spawn all three in ONE message:
-Task(subagent_type: "uni-architect", prompt: "Your agent ID: {id}-agent-1-architect ...")
-Task(subagent_type: "uni-specification", prompt: "Your agent ID: {id}-agent-2-spec ...")
-Task(subagent_type: "uni-risk-strategist", prompt: "Your agent ID: {id}-agent-3-risk ...")
+Task(
+  subagent_type: "uni-risk-strategist",
+  prompt: "Your agent ID: {id}-agent-3-risk
+    ...
+    Read these artifacts for context:
+    - SCOPE.md: product/features/{id}/SCOPE.md
+    - Architecture: product/features/{id}/architecture/ARCHITECTURE.md
+    - ADRs: {list ADR file paths from architect's return}
+    - Specification: product/features/{id}/specification/SPECIFICATION.md
+
+    Use the architecture (component boundaries, integration points, ADRs)
+    and specification (acceptance criteria, domain models, constraints)
+    to inform your risk analysis. Identify risks that are specific to
+    the designed architecture — not generic risks."
+)
 ```
 
-Wait for ALL three to complete before proceeding to Phase 2b.
+Wait for the risk strategist to complete before proceeding to Phase 2b.
 
 #### Phase 2b: Vision Alignment Check
 
@@ -224,8 +255,10 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 DESIGN LEADER (uni-scrum-master):
   Phase 1:    Task(uni-researcher) — scope exploration with human
               ...human approves SCOPE.md...
-  Phase 2a:   Task(uni-architect) + Task(uni-specification) + Task(uni-risk-strategist) — parallel, ONE message
-              ...wait for all three...
+  Phase 2a:   Task(uni-architect) + Task(uni-specification) — parallel, ONE message
+              ...wait for both...
+  Phase 2a+:  Task(uni-risk-strategist) — receives arch + spec artifact paths
+              ...wait...
   Phase 2b:   Task(uni-vision-guardian) — alignment check
   Phase 2c:   Task(uni-synthesizer) — brief + maps + GH Issue (fresh context)
   Phase 2d:   Return all artifacts to human — SESSION 1 ENDS
