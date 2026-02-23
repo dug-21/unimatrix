@@ -249,11 +249,11 @@ pub fn validate_briefing_params(params: &BriefingParams) -> Result<(), ServerErr
 pub fn validated_max_tokens(max_tokens: Option<i64>) -> Result<usize, ServerError> {
     match max_tokens {
         None => Ok(DEFAULT_MAX_TOKENS),
-        Some(v) if (v as usize) < MIN_MAX_TOKENS => Err(ServerError::InvalidInput {
+        Some(v) if v < MIN_MAX_TOKENS as i64 => Err(ServerError::InvalidInput {
             field: "max_tokens".to_string(),
             reason: format!("minimum is {MIN_MAX_TOKENS}"),
         }),
-        Some(v) if (v as usize) > MAX_MAX_TOKENS => Err(ServerError::InvalidInput {
+        Some(v) if v > MAX_MAX_TOKENS as i64 => Err(ServerError::InvalidInput {
             field: "max_tokens".to_string(),
             reason: format!("maximum is {MAX_MAX_TOKENS}"),
         }),
@@ -780,5 +780,17 @@ mod tests {
     fn test_validated_max_tokens_max_boundary() {
         assert_eq!(validated_max_tokens(Some(10000)).unwrap(), 10000);
         assert!(validated_max_tokens(Some(10001)).is_err());
+    }
+
+    #[test]
+    fn test_validated_max_tokens_negative_rejected() {
+        assert!(validated_max_tokens(Some(-1)).is_err());
+        assert!(validated_max_tokens(Some(-100)).is_err());
+        assert!(validated_max_tokens(Some(i64::MIN)).is_err());
+    }
+
+    #[test]
+    fn test_validated_max_tokens_zero_rejected() {
+        assert!(validated_max_tokens(Some(0)).is_err());
     }
 }

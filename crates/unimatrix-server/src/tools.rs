@@ -214,7 +214,8 @@ impl UnimatrixServer {
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 7. Embed query
+        // 7. Embed query — uses embed_entry("", query) to match how context_briefing
+        //    embeds tasks. All query-side embeddings MUST use this same pattern.
         let query = params.query.clone();
         let embedding: Vec<f32> = tokio::task::spawn_blocking({
             let adapter = Arc::clone(&adapter);
@@ -573,33 +574,26 @@ impl UnimatrixServer {
             .require_capability(&identity.agent_id, Capability::Write)
             .map_err(rmcp::ErrorData::from)?;
 
-        // 3. Validation
+        // 3. Validation (includes original_id range check)
         validate_correct_params(&params).map_err(rmcp::ErrorData::from)?;
 
         // 4. Parse format
         let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
 
-        // 5. Validate original_id
-        let original_id = validated_id(params.original_id).map_err(rmcp::ErrorData::from)?;
+        // 5. Extract validated original_id (range already checked by validate_correct_params)
+        let original_id = params.original_id as u64;
 
-        // 6. Get original entry
+        // 6. Get original entry (needed for field inheritance below)
         let original = self
             .entry_store
             .get(original_id)
             .await
             .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
 
-        // 7. Verify original is not deprecated
-        if original.status == Status::Deprecated {
-            return Err(rmcp::ErrorData::from(
-                crate::error::ServerError::InvalidInput {
-                    field: "original_id".to_string(),
-                    reason: "cannot correct a deprecated entry".to_string(),
-                },
-            ));
-        }
+        // Note: deprecated check is handled authoritatively inside correct_with_audit's
+        // write transaction. No pre-check here to avoid TOCTOU.
 
-        // 8. Category validation: only if explicit new category provided
+        // 7. Category validation: only if explicit new category provided
         if let Some(category) = &params.category {
             self.categories
                 .validate(category)
@@ -712,16 +706,16 @@ impl UnimatrixServer {
             .require_capability(&identity.agent_id, Capability::Write)
             .map_err(rmcp::ErrorData::from)?;
 
-        // 3. Validation
+        // 3. Validation (includes id range check)
         validate_deprecate_params(&params).map_err(rmcp::ErrorData::from)?;
 
         // 4. Parse format
         let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
 
-        // 5. Validate ID
-        let entry_id = validated_id(params.id).map_err(rmcp::ErrorData::from)?;
+        // 5. Extract validated ID (range already checked by validate_deprecate_params)
+        let entry_id = params.id as u64;
 
-        // 6. Get entry (verify exists)
+        // 6. Get entry (verify exists + idempotency check)
         let entry = self
             .entry_store
             .get(entry_id)
@@ -971,7 +965,9 @@ impl UnimatrixServer {
             .await
             .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
 
-        // 8. Semantic search (if embed ready)
+        // 8. Semantic search (if embed ready) — uses embed_entry("", task) to match
+        //    how context_search embeds queries. All query-side embeddings MUST use this
+        //    same pattern so results are comparable across tools.
         let (relevant_context, search_available) = match self.embed_service.get_adapter().await {
             Ok(adapter) => {
                 let task = params.task.clone();
