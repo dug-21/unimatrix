@@ -1,0 +1,18 @@
+[package]
+name = "unimatrix-vector"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+test-support = ["unimatrix-store/test-support"]
+
+[dependencies]
+unimatrix-store = { path = "../unimatrix-store" }
+hnsw_rs = { version = "0.3", features = ["simdeez_f"] }
+anndists = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
+rand = "0.9"

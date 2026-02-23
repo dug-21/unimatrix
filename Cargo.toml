@@ -11,3 +11,10 @@ license = "MIT OR Apache-2.0"
 redb = "3.1"
 serde = { version = "1", features = ["derive"] }
 bincode = { version = "2", features = ["serde"] }
+
+# Patch anndists 0.1.4: fix cfg_if + #[cfg] block compilation with edition 2024.
+# Upstream declares edition = "2024" but has code incompatible with it.
+# Replaces cfg_if! blocks with explicit #[cfg] attributes on fn eval impls
+# for DistL1, DistL2, and DistDot.
+[patch.crates-io]
+anndists = { path = "patches/anndists" }

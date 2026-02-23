@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use redb::{ReadTransaction, ReadableDatabase};
+use redb::{ReadTransaction, ReadableDatabase, ReadableTable};
 
 use crate::db::Store;
 use crate::error::{Result, StoreError};
@@ -181,6 +181,25 @@ impl Store {
             Some(guard) => Ok(Some(guard.value())),
             None => Ok(None),
         }
+    }
+
+    /// Iterate all entries in the VECTOR_MAP table.
+    ///
+    /// Returns all `(entry_id, hnsw_data_id)` pairs stored in VECTOR_MAP.
+    /// Used by unimatrix-vector to rebuild the IdMap from the crash-safe
+    /// source of truth on index load.
+    ///
+    /// Returns an empty `Vec` if no vector mappings exist.
+    pub fn iter_vector_mappings(&self) -> Result<Vec<(u64, u64)>> {
+        let txn = self.db.begin_read()?;
+        let table = txn.open_table(VECTOR_MAP)?;
+
+        let mut mappings = Vec::new();
+        for result in table.iter()? {
+            let (key, value) = result?;
+            mappings.push((key.value(), value.value()));
+        }
+        Ok(mappings)
     }
 
     /// Read a named counter value. Returns 0 if the counter does not exist.
@@ -517,6 +536,71 @@ mod tests {
         let db = TestDb::new();
         let val = db.store().read_counter("nonexistent").unwrap();
         assert_eq!(val, 0);
+    }
+
+    // -- iter_vector_mappings (W1 alignment: nxs-002) --
+
+    #[test]
+    fn test_iter_vector_mappings_empty() {
+        let db = TestDb::new();
+        let mappings = db.store().iter_vector_mappings().unwrap();
+        assert!(mappings.is_empty());
+    }
+
+    #[test]
+    fn test_iter_vector_mappings_populated() {
+        let db = TestDb::new();
+        db.store().put_vector_mapping(1, 100).unwrap();
+        db.store().put_vector_mapping(2, 200).unwrap();
+        db.store().put_vector_mapping(3, 300).unwrap();
+
+        let mappings = db.store().iter_vector_mappings().unwrap();
+        assert_eq!(mappings.len(), 3);
+        assert!(mappings.contains(&(1, 100)));
+        assert!(mappings.contains(&(2, 200)));
+        assert!(mappings.contains(&(3, 300)));
+    }
+
+    #[test]
+    fn test_iter_vector_mappings_after_overwrite() {
+        let db = TestDb::new();
+        db.store().put_vector_mapping(1, 100).unwrap();
+        db.store().put_vector_mapping(1, 999).unwrap(); // overwrite
+        db.store().put_vector_mapping(2, 200).unwrap();
+
+        let mappings = db.store().iter_vector_mappings().unwrap();
+        assert_eq!(mappings.len(), 2);
+        assert!(mappings.contains(&(1, 999)));
+        assert!(mappings.contains(&(2, 200)));
+    }
+
+    #[test]
+    fn test_iter_vector_mappings_consistency_with_get() {
+        let db = TestDb::new();
+        for i in 1..=50 {
+            db.store().put_vector_mapping(i, i * 10).unwrap();
+        }
+
+        let mappings = db.store().iter_vector_mappings().unwrap();
+        assert_eq!(mappings.len(), 50);
+
+        for (entry_id, data_id) in &mappings {
+            let got = db.store().get_vector_mapping(*entry_id).unwrap();
+            assert_eq!(got, Some(*data_id));
+        }
+    }
+
+    #[test]
+    fn test_iter_vector_mappings_after_delete() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("t", "c").build();
+        let id = db.store().insert(entry).unwrap();
+        db.store().put_vector_mapping(id, 100).unwrap();
+
+        db.store().delete(id).unwrap();
+
+        let mappings = db.store().iter_vector_mappings().unwrap();
+        assert!(mappings.is_empty());
     }
 
     #[test]
