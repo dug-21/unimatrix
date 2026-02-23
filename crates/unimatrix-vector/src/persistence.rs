@@ -86,8 +86,14 @@ impl VectorIndex {
             ))
         })?;
 
-        let (basename, _point_count, dimension, next_data_id) =
+        let (basename, point_count, dimension, next_data_id) =
             parse_metadata(&meta_content)?;
+
+        // Empty index: meta exists but no graph/data files were written.
+        // Return a fresh index instead of failing on missing files.
+        if point_count == Some(0) {
+            return VectorIndex::new(store, config);
+        }
 
         // Validate dimension
         if let Some(dim) = dimension {
@@ -226,6 +232,27 @@ mod tests {
         let dump_dir = tvi.dir().join("index");
         tvi.vi().dump(&dump_dir).unwrap();
         assert!(dump_dir.join("unimatrix-vector.meta").exists());
+    }
+
+    #[test]
+    fn test_load_after_empty_dump() {
+        let tvi = TestVectorIndex::new();
+        let dump_dir = tvi.dir().join("index");
+
+        // Dump an empty index (writes .meta but no graph/data files)
+        tvi.vi().dump(&dump_dir).unwrap();
+        assert!(dump_dir.join("unimatrix-vector.meta").exists());
+        assert!(!dump_dir.join("unimatrix.hnsw.graph").exists());
+        assert!(!dump_dir.join("unimatrix.hnsw.data").exists());
+
+        // Load should succeed — returns a fresh empty index
+        let loaded = VectorIndex::load(
+            tvi.store().clone(),
+            VectorConfig::default(),
+            &dump_dir,
+        )
+        .unwrap();
+        assert_eq!(loaded.point_count(), 0);
     }
 
     // -- AC-10: Load Restores Index --

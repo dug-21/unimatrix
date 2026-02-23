@@ -7,6 +7,7 @@ use clap::Parser;
 use rmcp::ServiceExt;
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 use unimatrix_core::{CoreError, EmbedConfig, StoreAdapter, Store, VectorAdapter, VectorConfig, VectorIndex};
+use unimatrix_store::StoreError;
 
 use unimatrix_server::audit::AuditLog;
 use unimatrix_server::categories::CategoryAllowlist;
@@ -55,9 +56,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Open database
-    let store = Arc::new(
-        Store::open(&paths.db_path).map_err(|e| ServerError::Core(CoreError::Store(e)))?,
-    );
+    let store = match Store::open(&paths.db_path) {
+        Ok(s) => Arc::new(s),
+        Err(StoreError::Database(redb::DatabaseError::DatabaseAlreadyOpen)) => {
+            eprintln!("error: database is locked by another process");
+            eprintln!("  path: {}", paths.db_path.display());
+            eprintln!(
+                "  hint: kill the other unimatrix-server process, or run: lsof {}",
+                paths.db_path.display()
+            );
+            std::process::exit(1);
+        }
+        Err(e) => return Err(ServerError::Core(CoreError::Store(e)).into()),
+    };
 
     // Initialize vector index
     let vector_config = VectorConfig::default();

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use redb::ReadableTable;
 use rmcp::handler::server::router::tool::ToolRouter;
-use rmcp::model::{Implementation, ServerInfo};
+use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
 use unimatrix_core::{
     CoreError, EntryRecord, NewEntry, StoreAdapter, Store, VectorAdapter, VectorIndex,
 };
@@ -73,6 +73,9 @@ impl UnimatrixServer {
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 ..Default::default()
             },
+            capabilities: ServerCapabilities::builder()
+                .enable_tools()
+                .build(),
             instructions: Some(SERVER_INSTRUCTIONS.to_string()),
             ..Default::default()
         };
@@ -616,6 +619,13 @@ mod tests {
         let instructions = info.instructions.unwrap();
         assert!(instructions.contains("knowledge engine"));
         assert!(instructions.contains("search for relevant patterns"));
+    }
+
+    #[test]
+    fn test_get_info_has_tools_capability() {
+        let server = make_server();
+        let info = rmcp::ServerHandler::get_info(&server);
+        assert!(info.capabilities.tools.is_some(), "tools capability must be advertised");
     }
 
     #[test]

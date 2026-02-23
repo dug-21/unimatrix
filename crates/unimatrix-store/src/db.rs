@@ -137,6 +137,19 @@ mod tests {
     }
 
     #[test]
+    fn test_open_already_open_returns_database_error() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.redb");
+        let _store1 = Store::open(&path).unwrap();
+        let result = Store::open(&path);
+        match result {
+            Err(StoreError::Database(redb::DatabaseError::DatabaseAlreadyOpen)) => {}
+            Err(e) => panic!("expected DatabaseAlreadyOpen, got: {e}"),
+            Ok(_) => panic!("expected error, got Ok"),
+        }
+    }
+
+    #[test]
     fn test_store_is_send_sync() {
         fn assert_send<T: Send>() {}
         fn assert_sync<T: Sync>() {}
