@@ -1,0 +1,28 @@
+# vnc-002 Acceptance Criteria Map
+
+| AC-ID | Description | Verification Method | Verification Detail | Status |
+|-------|-------------|--------------------|--------------------|--------|
+| AC-01 | `context_search` embeds query, performs vector search, returns up to k results ranked by similarity | test | Integration test: store 5 entries, search with related query, verify results ordered by similarity, count <= k (default 5) | PENDING |
+| AC-02 | `context_search` supports metadata pre-filtering (topic, category, tags restrict results) | test | Integration test: store entries in 2 topics, search with topic filter, verify only matching-topic entries returned | PENDING |
+| AC-03 | `context_search` returns EmbedNotReady (MCP -32004) when embedding model is loading | test | Unit test: embed handle in Loading state, call context_search, verify error code -32004 and message mentions context_lookup | PENDING |
+| AC-04 | `context_lookup` returns entries matching deterministic filters using intersection semantics | test | Integration test: store entries with varied metadata, lookup with topic+category, verify intersection | PENDING |
+| AC-05 | `context_lookup` with `id` parameter delegates to direct get, ignoring other filters | test | Unit test: lookup with id + unrelated topic filter, verify returned entry matches ID | PENDING |
+| AC-06 | `context_lookup` respects limit (default 10) and status parsing | test | Integration test: store 15 entries, lookup with limit=5, verify 5 returned. Test status "active"/"deprecated"/"proposed" parsing. | PENDING |
+| AC-07 | `context_store` populates security fields: created_by from identity, trust_source="agent" | test | Integration test: store entry with agent_id="human", retrieve, verify created_by="human", trust_source="agent", content_hash non-empty, version=1 | PENDING |
+| AC-08 | `context_store` embeds title+content and indexes in VectorStore | test | Integration test: store entry, verify vector_store.contains(entry_id) true and search returns the entry | PENDING |
+| AC-09 | `context_get` returns full EntryRecord or MCP -32001 with entry ID in message | test | Unit test: get existing entry returns record. Get nonexistent ID returns -32001 with ID in message. | PENDING |
+| AC-10 | Capability checks active: Search for search, Read for lookup/get, Write for store. Denied agents get -32003. | test | Unit test per tool: Restricted agent (Read+Search) calls context_store -> -32003 with agent ID and "Write" in message | PENDING |
+| AC-11 | Input validation rejects oversized strings, negative IDs, control characters | test | Unit tests: title >200 chars rejected, content >50000 rejected, negative ID rejected, control char in topic rejected. Each returns -32602 with field name. | PENDING |
+| AC-12 | Content scanning detects injection patterns and PII. Regexes compiled once. | test | Unit tests: "ignore previous instructions" -> rejected (InstructionOverride). Email pattern -> rejected (EmailAddress). OnceLock returns same instance. | PENDING |
+| AC-13 | Category allowlist rejects unknown categories. Error lists valid categories. | test | Unit test: store with category "unknown" -> -32007 listing 6 valid categories. Store with "convention" -> success. | PENDING |
+| AC-14 | Output framing wraps content in [KNOWLEDGE DATA]/[/KNOWLEDGE DATA] markers in markdown format only | test | Unit test per read tool: verify markdown format has markers around content. Verify summary format has no markers. Verify json format has no markers. | PENDING |
+| AC-15 | All tools accept optional `format` param: summary (default), markdown, json. Invalid values return error. | test | Unit test per tool: format="invalid" -> error. Each valid format -> single Content block. No format -> summary default. | PENDING |
+| AC-16 | Summary format returns compact one-line-per-entry results, minimal context consumption | test | Unit test: search 3 results with format="summary", verify 3 compact lines with no full content | PENDING |
+| AC-17 | Markdown returns full content with framing. JSON returns structured objects/arrays. All include similarity for search. | test | Integration test per format: search 3 results, verify markdown has 3 framed sections, json has 3-element array, all include similarity | PENDING |
+| AC-18 | Near-duplicate detection at 0.92 threshold returns existing entry instead of creating duplicate | test | Integration test: store entry A, store identical entry B, verify B returns A's ID with duplicate indicator | PENDING |
+| AC-19 | Duplicate response includes existing entry ID, similarity score, and duplicate indicator in requested format | test | Unit test: verify duplicate response includes required fields in each format (summary, markdown, json) | PENDING |
+| AC-20 | context_store audit event in same redb write transaction as entry insert | test | Integration test: store entry, verify both entry and audit event exist; audit target_ids contains new entry ID | PENDING |
+| AC-21 | Read-only tools use standalone audit transactions | test | Integration test: context_get, verify audit event exists (standalone path still logs) | PENDING |
+| AC-22 | Audit event monotonic IDs preserved across combined and standalone paths | test | Integration test: store (combined) -> get (standalone) -> store (combined), verify audit IDs sequential without gaps | PENDING |
+| AC-23 | All existing vnc-001 tests pass | shell | `cargo test -p unimatrix-server` passes 72+ tests including all existing tests | PENDING |
+| AC-24 | Code follows workspace conventions: forbid(unsafe_code), edition 2024, MSRV 1.89 | shell | `cargo build -p unimatrix-server` succeeds. `grep 'forbid(unsafe_code)' crates/unimatrix-server/src/lib.rs`. | PENDING |
