@@ -428,6 +428,9 @@ mod tests {
                 tags: vec![],
                 source: "test".to_string(),
                 status: unimatrix_store::Status::Active,
+                created_by: String::new(),
+                feature_cycle: String::new(),
+                trust_source: String::new(),
             };
             let eid = tvi.store().insert(entry).unwrap();
             loaded

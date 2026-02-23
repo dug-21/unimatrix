@@ -30,7 +30,10 @@ impl Store {
         // Step 1: Generate ID
         let id = counter::next_entry_id(&txn)?;
 
-        // Step 2: Build EntryRecord
+        // Step 2: Compute content hash before moving fields
+        let content_hash = crate::hash::compute_content_hash(&entry.title, &entry.content);
+
+        // Step 3: Build EntryRecord
         let record = EntryRecord {
             id,
             title: entry.title,
@@ -49,6 +52,13 @@ impl Store {
             superseded_by: None,
             correction_count: 0,
             embedding_dim: 0,
+            created_by: entry.created_by.clone(),
+            modified_by: entry.created_by,
+            content_hash,
+            previous_hash: String::new(),
+            version: 1,
+            feature_cycle: entry.feature_cycle,
+            trust_source: entry.trust_source,
         };
 
         // Step 3: Serialize and write to ENTRIES
@@ -159,8 +169,12 @@ impl Store {
             counter::increment_counter(&txn, status_counter_key(entry.status), 1)?;
         }
 
-        // Step 7: Write updated record to ENTRIES with new updated_at
+        // Step 7: Compute hash chain and version
         let mut updated = entry;
+        let new_hash = crate::hash::compute_content_hash(&updated.title, &updated.content);
+        updated.previous_hash = old.content_hash;
+        updated.content_hash = new_hash;
+        updated.version = old.version + 1;
         updated.updated_at = current_unix_timestamp_secs();
         let bytes = serialize_entry(&updated)?;
         {
@@ -302,6 +316,8 @@ impl Store {
 
 #[cfg(test)]
 mod tests {
+    use sha2::Digest;
+
     use crate::schema::{NewEntry, Status};
     use crate::test_helpers::{TestDb, TestEntry};
 
@@ -506,6 +522,13 @@ mod tests {
             superseded_by: None,
             correction_count: 0,
             embedding_dim: 0,
+            created_by: String::new(),
+            modified_by: String::new(),
+            content_hash: String::new(),
+            previous_hash: String::new(),
+            version: 0,
+            feature_cycle: String::new(),
+            trust_source: String::new(),
         };
         let result = db.store().update(record);
         assert!(matches!(result, Err(crate::StoreError::EntryNotFound(999))));
@@ -716,6 +739,9 @@ mod tests {
                 tags: vec!["rust".to_string()],
                 source: "test".to_string(),
                 status: Status::Active,
+                created_by: String::new(),
+                feature_cycle: String::new(),
+                trust_source: String::new(),
             };
             store.insert(entry).unwrap()
         };
@@ -726,5 +752,292 @@ mod tests {
         assert_eq!(record.title, "Persisted");
         assert_eq!(record.content, "Should survive reopen");
         assert_eq!(record.topic, "auth");
+    }
+
+    // -- nxs-004: Security Field Tests (R-02, R-03, R-10) --
+
+    #[test]
+    fn test_insert_sets_content_hash() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention")
+            .with_title("Hello")
+            .with_content("World")
+            .build();
+        let id = db.store().insert(entry).unwrap();
+        let record = db.store().get(id).unwrap();
+
+        // Independently compute expected hash
+        let expected = format!(
+            "{:x}",
+            sha2::Sha256::digest(b"Hello: World")
+        );
+        assert_eq!(record.content_hash, expected);
+    }
+
+    #[test]
+    fn test_insert_sets_version_1() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention").build();
+        let id = db.store().insert(entry).unwrap();
+        let record = db.store().get(id).unwrap();
+        assert_eq!(record.version, 1);
+    }
+
+    #[test]
+    fn test_insert_sets_modified_by_to_created_by() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention")
+            .with_created_by("agent-42")
+            .build();
+        let id = db.store().insert(entry).unwrap();
+        let record = db.store().get(id).unwrap();
+        assert_eq!(record.created_by, "agent-42");
+        assert_eq!(record.modified_by, "agent-42");
+    }
+
+    #[test]
+    fn test_insert_sets_previous_hash_empty() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention").build();
+        let id = db.store().insert(entry).unwrap();
+        let record = db.store().get(id).unwrap();
+        assert_eq!(record.previous_hash, "");
+    }
+
+    #[test]
+    fn test_insert_preserves_caller_fields() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention")
+            .with_created_by("agent-1")
+            .with_feature_cycle("nxs-004")
+            .with_trust_source("human")
+            .build();
+        let id = db.store().insert(entry).unwrap();
+        let record = db.store().get(id).unwrap();
+        assert_eq!(record.created_by, "agent-1");
+        assert_eq!(record.feature_cycle, "nxs-004");
+        assert_eq!(record.trust_source, "human");
+    }
+
+    #[test]
+    fn test_insert_empty_fields_hash() {
+        let db = TestDb::new();
+        let entry = NewEntry {
+            title: String::new(),
+            content: String::new(),
+            topic: "t".to_string(),
+            category: "c".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: Status::Active,
+            created_by: String::new(),
+            feature_cycle: String::new(),
+            trust_source: String::new(),
+        };
+        let id = db.store().insert(entry).unwrap();
+        let record = db.store().get(id).unwrap();
+        // SHA-256 of empty string
+        assert_eq!(
+            record.content_hash,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+    }
+
+    #[test]
+    fn test_update_increments_version() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention").build();
+        let id = db.store().insert(entry).unwrap();
+
+        let mut record = db.store().get(id).unwrap();
+        record.title = "Updated".to_string();
+        db.store().update(record).unwrap();
+
+        let updated = db.store().get(id).unwrap();
+        assert_eq!(updated.version, 2);
+    }
+
+    #[test]
+    fn test_update_version_multiple() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention").build();
+        let id = db.store().insert(entry).unwrap();
+
+        for i in 0..10 {
+            let mut record = db.store().get(id).unwrap();
+            record.title = format!("Update {i}");
+            db.store().update(record).unwrap();
+        }
+
+        let final_record = db.store().get(id).unwrap();
+        assert_eq!(final_record.version, 11); // 1 (insert) + 10 (updates)
+    }
+
+    #[test]
+    fn test_update_sets_previous_hash() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention")
+            .with_title("A")
+            .with_content("B")
+            .build();
+        let id = db.store().insert(entry).unwrap();
+        let after_insert = db.store().get(id).unwrap();
+        let h1 = after_insert.content_hash.clone();
+
+        let mut record = db.store().get(id).unwrap();
+        record.title = "C".to_string();
+        db.store().update(record).unwrap();
+
+        let after_update = db.store().get(id).unwrap();
+        assert_eq!(after_update.previous_hash, h1);
+
+        // New hash should be SHA-256 of "C: B"
+        let expected_h2 = format!("{:x}", sha2::Sha256::digest(b"C: B"));
+        assert_eq!(after_update.content_hash, expected_h2);
+    }
+
+    #[test]
+    fn test_update_hash_chain_three_steps() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention")
+            .with_title("T1")
+            .with_content("C1")
+            .build();
+        let id = db.store().insert(entry).unwrap();
+
+        // Step 0: After insert
+        let r0 = db.store().get(id).unwrap();
+        let h1 = r0.content_hash.clone();
+        assert_eq!(r0.previous_hash, "");
+        assert_eq!(r0.version, 1);
+
+        // Step 1: Update title
+        let mut r1 = db.store().get(id).unwrap();
+        r1.title = "T2".to_string();
+        db.store().update(r1).unwrap();
+        let r1 = db.store().get(id).unwrap();
+        let h2 = r1.content_hash.clone();
+        assert_eq!(r1.previous_hash, h1);
+        assert_eq!(r1.version, 2);
+        assert_ne!(h1, h2);
+
+        // Step 2: Update content
+        let mut r2 = db.store().get(id).unwrap();
+        r2.content = "C2".to_string();
+        db.store().update(r2).unwrap();
+        let r2 = db.store().get(id).unwrap();
+        let h3 = r2.content_hash.clone();
+        assert_eq!(r2.previous_hash, h2);
+        assert_eq!(r2.version, 3);
+        assert_ne!(h2, h3);
+
+        // Verify chain: "" -> H1 -> H2 -> H3
+        let expected_h3 = format!("{:x}", sha2::Sha256::digest(b"T2: C2"));
+        assert_eq!(h3, expected_h3);
+    }
+
+    #[test]
+    fn test_update_no_content_change() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention")
+            .with_title("X")
+            .with_content("Y")
+            .build();
+        let id = db.store().insert(entry).unwrap();
+        let after_insert = db.store().get(id).unwrap();
+        let h1 = after_insert.content_hash.clone();
+
+        // Update only category (no title/content change)
+        let mut record = db.store().get(id).unwrap();
+        record.category = "decision".to_string();
+        db.store().update(record).unwrap();
+
+        let after_update = db.store().get(id).unwrap();
+        // Hash unchanged (same title+content)
+        assert_eq!(after_update.content_hash, h1);
+        // previous_hash set to old hash (identical)
+        assert_eq!(after_update.previous_hash, h1);
+        // Version still increments
+        assert_eq!(after_update.version, 2);
+    }
+
+    #[test]
+    fn test_update_status_no_version_change() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention").build();
+        let id = db.store().insert(entry).unwrap();
+        let after_insert = db.store().get(id).unwrap();
+        let original_hash = after_insert.content_hash.clone();
+
+        db.store().update_status(id, Status::Deprecated).unwrap();
+
+        let after_status = db.store().get(id).unwrap();
+        assert_eq!(after_status.version, 1); // Unchanged
+        assert_eq!(after_status.content_hash, original_hash); // Unchanged
+        assert_eq!(after_status.previous_hash, ""); // Unchanged
+    }
+
+    #[test]
+    fn test_update_status_no_hash_change() {
+        let db = TestDb::new();
+        let entry = TestEntry::new("auth", "convention")
+            .with_title("Hash")
+            .with_content("Test")
+            .build();
+        let id = db.store().insert(entry).unwrap();
+        let original_hash = db.store().get(id).unwrap().content_hash.clone();
+
+        // Two status transitions
+        db.store().update_status(id, Status::Deprecated).unwrap();
+        db.store().update_status(id, Status::Active).unwrap();
+
+        let record = db.store().get(id).unwrap();
+        assert_eq!(record.content_hash, original_hash);
+    }
+
+    #[test]
+    fn test_insert_large_content_hash() {
+        let db = TestDb::new();
+        let entry = NewEntry {
+            title: "x".repeat(10_000),
+            content: "y".repeat(100_000),
+            topic: "t".to_string(),
+            category: "c".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: Status::Active,
+            created_by: String::new(),
+            feature_cycle: String::new(),
+            trust_source: String::new(),
+        };
+        let id = db.store().insert(entry).unwrap();
+        let record = db.store().get(id).unwrap();
+        assert_eq!(record.content_hash.len(), 64);
+        assert!(record.content_hash.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn test_insert_all_default_security_fields() {
+        let db = TestDb::new();
+        let entry = NewEntry {
+            title: "T".to_string(),
+            content: "C".to_string(),
+            topic: "t".to_string(),
+            category: "c".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: Status::Active,
+            created_by: String::new(),
+            feature_cycle: String::new(),
+            trust_source: String::new(),
+        };
+        let id = db.store().insert(entry).unwrap();
+        let record = db.store().get(id).unwrap();
+        assert_eq!(record.version, 1);
+        assert_eq!(record.created_by, "");
+        assert_eq!(record.modified_by, "");
+        assert_eq!(record.feature_cycle, "");
+        assert_eq!(record.trust_source, "");
+        assert!(!record.content_hash.is_empty());
     }
 }

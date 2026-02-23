@@ -4,6 +4,8 @@ mod schema;
 mod error;
 mod db;
 mod counter;
+mod hash;
+mod migration;
 mod write;
 mod read;
 mod query;

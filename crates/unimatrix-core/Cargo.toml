@@ -1,0 +1,24 @@
+[package]
+name = "unimatrix-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+async = ["dep:tokio"]
+test-support = [
+  "unimatrix-store/test-support",
+  "unimatrix-vector/test-support",
+  "unimatrix-embed/test-support",
+]
+
+[dependencies]
+unimatrix-store = { path = "../unimatrix-store" }
+unimatrix-vector = { path = "../unimatrix-vector" }
+unimatrix-embed = { path = "../unimatrix-embed" }
+tokio = { version = "1", features = ["rt"], optional = true }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["rt", "macros"] }
