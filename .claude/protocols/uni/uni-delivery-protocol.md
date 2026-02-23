@@ -375,6 +375,9 @@ cargo test --workspace 2>&1 | tail -30
 
 # Clippy: first warnings only
 cargo clippy --workspace -- -D warnings 2>&1 | head -30
+
+# Dependency audit (run during Gate 3b)
+cargo audit 2>&1 | tail -20
 ```
 
 NEVER pipe full cargo output into context.

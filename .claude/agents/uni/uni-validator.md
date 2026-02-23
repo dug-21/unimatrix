@@ -85,6 +85,14 @@ Your spawn prompt tells you which gate you're running. Read it carefully.
    - No `.unwrap()` in non-test code (use proper error handling)
    - No source file exceeds 500 lines — flag any file over this limit as FAIL
 
+6. **Security** — Is the code free of common vulnerabilities?
+   - No hardcoded secrets, API keys, or credentials (use env vars or config)
+   - Input validation at system boundaries (MCP tool inputs, file paths, user-provided data)
+   - No path traversal vulnerabilities in file operations (reject `..`, normalize paths)
+   - No command injection in any shell/process invocations
+   - Serialization/deserialization validates input — malformed data must not panic or corrupt state
+   - `cargo audit` passes (no known CVEs in dependencies)
+
 ---
 
 ## Gate 3c: Final Risk-Based Validation

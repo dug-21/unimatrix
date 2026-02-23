@@ -40,3 +40,10 @@ cargo clippy --workspace -- -D warnings 2>&1 | head -30
 - No `.unwrap()` in non-test code
 - No hardcoded secrets (use env vars)
 - **Max 500 lines per file** — split into modules when approaching this limit. Focused, single-responsibility files over monolithic ones.
+
+## Dependencies
+
+- Minimal dependency footprint — prefer std where possible
+- `cargo audit` must pass before merge (no known CVEs)
+- Pin major versions for security-sensitive crates (serde, bincode, redb)
+- No `unsafe` in dependencies without explicit review and ADR justification

@@ -68,6 +68,14 @@ Write to `product/features/{feature-id}/RISK-TEST-STRATEGY.md` (at feature root 
 
 {Boundary conditions, unusual inputs, timing issues, resource limits}
 
+## Security Risks
+
+{For each component that accepts external input, assess:}
+- What untrusted input does this feature accept?
+- What damage could a malicious or malformed input cause?
+- What is the blast radius if this component is compromised?
+- Are there path traversal, injection, or deserialization risks?
+
 ## Failure Modes
 
 {How the system should behave when things go wrong — graceful degradation, error messages, recovery}
@@ -96,6 +104,8 @@ Write to `product/features/{feature-id}/RISK-TEST-STRATEGY.md` (at feature root 
 
 6. **Every Risk Gets a Scenario** — No risk should exist without at least one test scenario that would detect it. If you can't describe a scenario, the risk is too vague.
 
+7. **Security is a Risk Category** — For every component that accepts external input, explicitly assess: what untrusted data enters, what damage malformed input could cause, and what the blast radius is if the component is compromised. Serialization, file paths, and query parameters are common attack surfaces.
+
 ## What You Return
 
 - RISK-TEST-STRATEGY.md path
@@ -121,3 +131,4 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 - [ ] Failure modes section describes expected behavior under failure
 - [ ] RISK-TEST-STRATEGY.md written to feature root (not in test-plan/)
 - [ ] No placeholder risks — each risk is specific to this feature
+- [ ] Security Risks section is present — untrusted inputs and blast radius assessed
