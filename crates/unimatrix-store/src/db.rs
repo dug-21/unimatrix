@@ -1,9 +1,11 @@
 use std::path::Path;
 
+use redb::ReadableDatabase;
+
 use crate::error::{Result, StoreError};
 use crate::schema::{
-    CATEGORY_INDEX, COUNTERS, DatabaseConfig, ENTRIES, STATUS_INDEX, TAG_INDEX, TIME_INDEX,
-    TOPIC_INDEX, VECTOR_MAP,
+    AGENT_REGISTRY, AUDIT_LOG, CATEGORY_INDEX, COUNTERS, DatabaseConfig, ENTRIES, STATUS_INDEX,
+    TAG_INDEX, TIME_INDEX, TOPIC_INDEX, VECTOR_MAP,
 };
 
 /// The storage engine handle. Wraps a redb::Database.
@@ -17,14 +19,14 @@ pub struct Store {
 impl Store {
     /// Open or create a database at the given path with default configuration.
     ///
-    /// All 8 tables are created if they don't already exist.
+    /// All 10 tables are created if they don't already exist.
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         Self::open_with_config(path, DatabaseConfig::default())
     }
 
     /// Open or create a database at the given path with custom configuration.
     ///
-    /// All 8 tables are created if they don't already exist.
+    /// All 10 tables are created if they don't already exist.
     pub fn open_with_config(path: impl AsRef<Path>, config: DatabaseConfig) -> Result<Self> {
         let builder = redb::Builder::new();
         // Note: redb v3.1 Builder cache_size is managed internally.
@@ -34,7 +36,7 @@ impl Store {
             .create(path.as_ref())
             .map_err(StoreError::Database)?;
 
-        // Ensure all 8 tables exist by opening them in a write transaction.
+        // Ensure all 10 tables exist by opening them in a write transaction.
         let txn = db.begin_write().map_err(StoreError::Transaction)?;
         {
             txn.open_table(ENTRIES).map_err(StoreError::Table)?;
@@ -45,6 +47,8 @@ impl Store {
             txn.open_table(STATUS_INDEX).map_err(StoreError::Table)?;
             txn.open_table(VECTOR_MAP).map_err(StoreError::Table)?;
             txn.open_table(COUNTERS).map_err(StoreError::Table)?;
+            txn.open_table(AGENT_REGISTRY).map_err(StoreError::Table)?;
+            txn.open_table(AUDIT_LOG).map_err(StoreError::Table)?;
         }
         txn.commit().map_err(StoreError::Commit)?;
 
@@ -52,6 +56,22 @@ impl Store {
         crate::migration::migrate_if_needed(&db)?;
 
         Ok(Store { db })
+    }
+
+    /// Begin a read transaction.
+    ///
+    /// Exposes raw redb read access for subsystems (registry, audit)
+    /// that manage their own tables.
+    pub fn begin_read(&self) -> Result<redb::ReadTransaction> {
+        self.db.begin_read().map_err(StoreError::Transaction)
+    }
+
+    /// Begin a write transaction.
+    ///
+    /// Exposes raw redb write access for subsystems (registry, audit)
+    /// that manage their own tables.
+    pub fn begin_write(&self) -> Result<redb::WriteTransaction> {
+        self.db.begin_write().map_err(StoreError::Transaction)
     }
 
     /// Compact the database file, reclaiming space from COW pages.
@@ -75,7 +95,7 @@ mod tests {
         let path = dir.path().join("test.redb");
         let store = Store::open(&path).unwrap();
 
-        // Verify all 8 tables exist by opening each in a read transaction
+        // Verify all 10 tables exist by opening each in a read transaction
         let txn = store.db.begin_read().unwrap();
         txn.open_table(ENTRIES).unwrap();
         txn.open_table(TOPIC_INDEX).unwrap();
@@ -85,6 +105,8 @@ mod tests {
         txn.open_table(STATUS_INDEX).unwrap();
         txn.open_table(VECTOR_MAP).unwrap();
         txn.open_table(COUNTERS).unwrap();
+        txn.open_table(AGENT_REGISTRY).unwrap();
+        txn.open_table(AUDIT_LOG).unwrap();
     }
 
     #[test]
