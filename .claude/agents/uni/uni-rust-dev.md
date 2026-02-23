@@ -36,7 +36,6 @@ From the Delivery Leader's spawn prompt:
 ### 1. Read Your Component Context
 
 Read the files specified in your spawn prompt:
-- `IMPLEMENTATION-BRIEF.md` — orchestration context, constraints
 - `architecture/ARCHITECTURE.md` — ADRs, integration surface
 - `pseudocode/OVERVIEW.md` — how your component connects to others
 - `pseudocode/{component}.md` — implementation detail for your component

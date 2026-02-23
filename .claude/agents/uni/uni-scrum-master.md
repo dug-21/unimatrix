@@ -100,7 +100,6 @@ After Gate 3a passes, route context surgically to each implementation agent:
 1. Read the updated Component Map from `product/features/{id}/IMPLEMENTATION-BRIEF.md`
 2. **Spawn one agent per component** (or group small components)
 3. Each agent gets:
-   - `product/features/{id}/IMPLEMENTATION-BRIEF.md`
    - `product/features/{id}/architecture/ARCHITECTURE.md`
    - `product/features/{id}/pseudocode/OVERVIEW.md`
    - `product/features/{id}/pseudocode/{component}.md` — THIS agent's component only
