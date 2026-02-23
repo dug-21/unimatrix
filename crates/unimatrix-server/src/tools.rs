@@ -242,14 +242,15 @@ impl UnimatrixServer {
         let limit = validated_limit(params.limit).map_err(rmcp::ErrorData::from)?;
 
         // 6. Branch: ID-based vs filter-based
-        let result = if let Some(id) = params.id {
+        let (result, target_ids) = if let Some(id) = params.id {
             let id = validated_id(id).map_err(rmcp::ErrorData::from)?;
             let entry = self
                 .entry_store
                 .get(id)
                 .await
                 .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
-            format_single_entry(&entry, format)
+            let ids = vec![entry.id];
+            (format_single_entry(&entry, format), ids)
         } else {
             // Build filter
             let status = match &params.status {
@@ -270,19 +271,21 @@ impl UnimatrixServer {
                 .await
                 .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
             entries.truncate(limit);
-            format_lookup_results(&entries, format)
+            let ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
+            (format_lookup_results(&entries, format), ids)
         };
 
         // 7. Audit (standalone, best-effort)
+        let result_count = target_ids.len();
         let _ = self.audit.log_event(AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
             agent_id: identity.agent_id,
             operation: "context_lookup".to_string(),
-            target_ids: vec![],
+            target_ids,
             outcome: Outcome::Success,
-            detail: "lookup completed".to_string(),
+            detail: format!("returned {result_count} results"),
         });
 
         Ok(result)
