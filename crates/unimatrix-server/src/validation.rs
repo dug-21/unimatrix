@@ -6,7 +6,10 @@
 use unimatrix_store::Status;
 
 use crate::error::ServerError;
-use crate::tools::{GetParams, LookupParams, SearchParams, StoreParams};
+use crate::tools::{
+    BriefingParams, CorrectParams, DeprecateParams, GetParams, LookupParams, SearchParams,
+    StatusParams, StoreParams,
+};
 
 const MAX_TITLE_LEN: usize = 200;
 const MAX_CONTENT_LEN: usize = 50_000;
@@ -16,6 +19,13 @@ const MAX_TAG_LEN: usize = 50;
 const MAX_TAGS_COUNT: usize = 20;
 const MAX_QUERY_LEN: usize = 1_000;
 const MAX_SOURCE_LEN: usize = 200;
+const MAX_REASON_LEN: usize = 1_000;
+const MAX_FEATURE_LEN: usize = 100;
+const MAX_ROLE_LEN: usize = 100;
+const MAX_TASK_LEN: usize = 1_000;
+const DEFAULT_MAX_TOKENS: usize = 3_000;
+const MIN_MAX_TOKENS: usize = 500;
+const MAX_MAX_TOKENS: usize = 10_000;
 const MAX_K: usize = 100;
 const MAX_LIMIT: usize = 100;
 const DEFAULT_K: usize = 5;
@@ -183,6 +193,72 @@ pub fn validate_store_params(params: &StoreParams) -> Result<(), ServerError> {
 pub fn validate_get_params(params: &GetParams) -> Result<(), ServerError> {
     validated_id(params.id)?;
     Ok(())
+}
+
+/// Validate context_correct parameters.
+pub fn validate_correct_params(params: &CorrectParams) -> Result<(), ServerError> {
+    validated_id(params.original_id)?;
+    validate_string_field("content", &params.content, MAX_CONTENT_LEN, true)?;
+    if let Some(reason) = &params.reason {
+        validate_string_field("reason", reason, MAX_REASON_LEN, true)?;
+    }
+    if let Some(topic) = &params.topic {
+        validate_string_field("topic", topic, MAX_TOPIC_LEN, false)?;
+    }
+    if let Some(category) = &params.category {
+        validate_string_field("category", category, MAX_CATEGORY_LEN, false)?;
+    }
+    validate_optional_tags(&params.tags)?;
+    if let Some(title) = &params.title {
+        validate_string_field("title", title, MAX_TITLE_LEN, true)?;
+    }
+    Ok(())
+}
+
+/// Validate context_deprecate parameters.
+pub fn validate_deprecate_params(params: &DeprecateParams) -> Result<(), ServerError> {
+    validated_id(params.id)?;
+    if let Some(reason) = &params.reason {
+        validate_string_field("reason", reason, MAX_REASON_LEN, true)?;
+    }
+    Ok(())
+}
+
+/// Validate context_status parameters.
+pub fn validate_status_params(params: &StatusParams) -> Result<(), ServerError> {
+    if let Some(topic) = &params.topic {
+        validate_string_field("topic", topic, MAX_TOPIC_LEN, false)?;
+    }
+    if let Some(category) = &params.category {
+        validate_string_field("category", category, MAX_CATEGORY_LEN, false)?;
+    }
+    Ok(())
+}
+
+/// Validate context_briefing parameters.
+pub fn validate_briefing_params(params: &BriefingParams) -> Result<(), ServerError> {
+    validate_string_field("role", &params.role, MAX_ROLE_LEN, false)?;
+    validate_string_field("task", &params.task, MAX_TASK_LEN, true)?;
+    if let Some(feature) = &params.feature {
+        validate_string_field("feature", feature, MAX_FEATURE_LEN, false)?;
+    }
+    Ok(())
+}
+
+/// Validate and default the `max_tokens` parameter for context_briefing.
+pub fn validated_max_tokens(max_tokens: Option<i64>) -> Result<usize, ServerError> {
+    match max_tokens {
+        None => Ok(DEFAULT_MAX_TOKENS),
+        Some(v) if v < MIN_MAX_TOKENS as i64 => Err(ServerError::InvalidInput {
+            field: "max_tokens".to_string(),
+            reason: format!("minimum is {MIN_MAX_TOKENS}"),
+        }),
+        Some(v) if v > MAX_MAX_TOKENS as i64 => Err(ServerError::InvalidInput {
+            field: "max_tokens".to_string(),
+            reason: format!("maximum is {MAX_MAX_TOKENS}"),
+        }),
+        Some(v) => Ok(v as usize),
+    }
 }
 
 #[cfg(test)]
@@ -434,5 +510,287 @@ mod tests {
             format: None,
         };
         assert!(validate_get_params(&params).is_err());
+    }
+
+    // -- vnc-003: validate_correct_params --
+
+    #[test]
+    fn test_validate_correct_params_minimal() {
+        let params = CorrectParams {
+            original_id: 1,
+            content: "corrected content".to_string(),
+            reason: None,
+            topic: None,
+            category: None,
+            tags: None,
+            title: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_correct_params(&params).is_ok());
+    }
+
+    #[test]
+    fn test_validate_correct_params_all_fields() {
+        let params = CorrectParams {
+            original_id: 42,
+            content: "corrected".to_string(),
+            reason: Some("outdated".to_string()),
+            topic: Some("auth".to_string()),
+            category: Some("convention".to_string()),
+            tags: Some(vec!["rust".to_string()]),
+            title: Some("New Title".to_string()),
+            agent_id: Some("agent".to_string()),
+            format: Some("json".to_string()),
+        };
+        assert!(validate_correct_params(&params).is_ok());
+    }
+
+    #[test]
+    fn test_validate_correct_params_negative_id() {
+        let params = CorrectParams {
+            original_id: -1,
+            content: "corrected".to_string(),
+            reason: None,
+            topic: None,
+            category: None,
+            tags: None,
+            title: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_correct_params(&params).is_err());
+    }
+
+    #[test]
+    fn test_validate_correct_params_content_too_long() {
+        let params = CorrectParams {
+            original_id: 1,
+            content: "a".repeat(MAX_CONTENT_LEN + 1),
+            reason: None,
+            topic: None,
+            category: None,
+            tags: None,
+            title: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_correct_params(&params).is_err());
+    }
+
+    #[test]
+    fn test_validate_correct_params_reason_too_long() {
+        let params = CorrectParams {
+            original_id: 1,
+            content: "ok".to_string(),
+            reason: Some("a".repeat(MAX_REASON_LEN + 1)),
+            topic: None,
+            category: None,
+            tags: None,
+            title: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_correct_params(&params).is_err());
+    }
+
+    #[test]
+    fn test_validate_correct_params_content_allows_newline() {
+        let params = CorrectParams {
+            original_id: 1,
+            content: "line1\nline2\ttab".to_string(),
+            reason: None,
+            topic: None,
+            category: None,
+            tags: None,
+            title: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_correct_params(&params).is_ok());
+    }
+
+    // -- vnc-003: validate_deprecate_params --
+
+    #[test]
+    fn test_validate_deprecate_params_minimal() {
+        let params = DeprecateParams {
+            id: 1,
+            reason: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_deprecate_params(&params).is_ok());
+    }
+
+    #[test]
+    fn test_validate_deprecate_params_negative_id() {
+        let params = DeprecateParams {
+            id: -1,
+            reason: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_deprecate_params(&params).is_err());
+    }
+
+    #[test]
+    fn test_validate_deprecate_params_reason_valid() {
+        let params = DeprecateParams {
+            id: 1,
+            reason: Some("outdated info".to_string()),
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_deprecate_params(&params).is_ok());
+    }
+
+    #[test]
+    fn test_validate_deprecate_params_reason_too_long() {
+        let params = DeprecateParams {
+            id: 1,
+            reason: Some("a".repeat(MAX_REASON_LEN + 1)),
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_deprecate_params(&params).is_err());
+    }
+
+    // -- vnc-003: validate_status_params --
+
+    #[test]
+    fn test_validate_status_params_empty() {
+        let params = StatusParams {
+            topic: None,
+            category: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_status_params(&params).is_ok());
+    }
+
+    #[test]
+    fn test_validate_status_params_topic_too_long() {
+        let params = StatusParams {
+            topic: Some("a".repeat(MAX_TOPIC_LEN + 1)),
+            category: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_status_params(&params).is_err());
+    }
+
+    #[test]
+    fn test_validate_status_params_category_control_chars() {
+        let params = StatusParams {
+            topic: None,
+            category: Some("bad\x00cat".to_string()),
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_status_params(&params).is_err());
+    }
+
+    // -- vnc-003: validate_briefing_params --
+
+    #[test]
+    fn test_validate_briefing_params_minimal() {
+        let params = BriefingParams {
+            role: "architect".to_string(),
+            task: "design auth module".to_string(),
+            feature: None,
+            max_tokens: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_briefing_params(&params).is_ok());
+    }
+
+    #[test]
+    fn test_validate_briefing_params_role_too_long() {
+        let params = BriefingParams {
+            role: "a".repeat(MAX_ROLE_LEN + 1),
+            task: "ok".to_string(),
+            feature: None,
+            max_tokens: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_briefing_params(&params).is_err());
+    }
+
+    #[test]
+    fn test_validate_briefing_params_task_too_long() {
+        let params = BriefingParams {
+            role: "ok".to_string(),
+            task: "a".repeat(MAX_TASK_LEN + 1),
+            feature: None,
+            max_tokens: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_briefing_params(&params).is_err());
+    }
+
+    #[test]
+    fn test_validate_briefing_params_feature_valid() {
+        let params = BriefingParams {
+            role: "dev".to_string(),
+            task: "impl".to_string(),
+            feature: Some("vnc-003".to_string()),
+            max_tokens: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_briefing_params(&params).is_ok());
+    }
+
+    #[test]
+    fn test_validate_briefing_params_feature_too_long() {
+        let params = BriefingParams {
+            role: "dev".to_string(),
+            task: "impl".to_string(),
+            feature: Some("a".repeat(MAX_FEATURE_LEN + 1)),
+            max_tokens: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_briefing_params(&params).is_err());
+    }
+
+    // -- vnc-003: validated_max_tokens --
+
+    #[test]
+    fn test_validated_max_tokens_none_default() {
+        assert_eq!(validated_max_tokens(None).unwrap(), 3000);
+    }
+
+    #[test]
+    fn test_validated_max_tokens_valid() {
+        assert_eq!(validated_max_tokens(Some(1000)).unwrap(), 1000);
+    }
+
+    #[test]
+    fn test_validated_max_tokens_min_boundary() {
+        assert_eq!(validated_max_tokens(Some(500)).unwrap(), 500);
+        assert!(validated_max_tokens(Some(499)).is_err());
+    }
+
+    #[test]
+    fn test_validated_max_tokens_max_boundary() {
+        assert_eq!(validated_max_tokens(Some(10000)).unwrap(), 10000);
+        assert!(validated_max_tokens(Some(10001)).is_err());
+    }
+
+    #[test]
+    fn test_validated_max_tokens_negative_rejected() {
+        assert!(validated_max_tokens(Some(-1)).is_err());
+        assert!(validated_max_tokens(Some(-100)).is_err());
+        assert!(validated_max_tokens(Some(i64::MIN)).is_err());
+    }
+
+    #[test]
+    fn test_validated_max_tokens_zero_rejected() {
+        assert!(validated_max_tokens(Some(0)).is_err());
     }
 }

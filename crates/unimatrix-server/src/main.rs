@@ -107,6 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&audit),
         categories,
         Arc::clone(&store),
+        Arc::clone(&vector_index),
     );
 
     // Prepare lifecycle handles for shutdown
