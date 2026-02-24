@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "unimatrix": {
+      "command": "/workspaces/unimatrix/target/release/unimatrix-server",
+      "args": [],
+      "env": {}
+    }
+  }
+}
