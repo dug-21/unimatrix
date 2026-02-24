@@ -4,6 +4,20 @@
 
 Unimatrix is a self-learning context engine that serves as the knowledge backbone for multi-agent development orchestration — accumulating conventions, decisions, patterns, and process intelligence across feature cycles, then delivering the right context to the right agent at the right workflow moment. Over time, it evolves from a knowledge store into a workflow-aware system that proposes process improvements from evidence, supports multiple concurrent projects, and provides a real-time interface for human visibility and control.
 
+## Core Value Proposition
+
+Agent memory systems remember. Unimatrix ensures what agents remember is **trustworthy, correctable, and auditable** — then learns from the accumulation to propose process improvements from evidence.
+
+The 10x story is not semantic search (ubiquitous) or local-first deployment (niche). It is the **auditable knowledge lifecycle**: hash-chained correction histories with attribution, trust-tiered capability-based access, confidence evolution from real usage signals, contradiction detection across the knowledge base, and evidence-based process intelligence that surfaces what's working and what isn't.
+
+This combination is architectural — it requires commitment from the data model up. Competitors cannot retrofit hash-chained correction histories, trust-tiered access, or process intelligence without fundamental restructuring. The defensible position is: **Trust + Lifecycle + Integrity + Learning + Process Intelligence**, delivered as a self-contained embedded engine with zero cloud dependency.
+
+Every design decision in M4 (Learning & Drift) and M5 (Orchestration Engine) must be evaluated against this value proposition. These two milestones are the bridge from "good knowledge store" to "category-defining product." Falling short on confidence evolution, contradiction detection, or retrospective intelligence reduces Unimatrix to a feature-competitive knowledge store in a crowded field. Delivering them makes Unimatrix the only system where knowledge quality improves automatically, contradictions surface proactively, and process improvements emerge from evidence rather than opinion.
+
+**Cross-domain portability note (ASS-009):** The core engine is domain-agnostic. The `EntryRecord` schema, `QueryFilter` model, correction chains, and security fields impose no domain coupling. Domain-specific behavior is confined to four server-level configuration items (category allowlist, server instructions, agent bootstrap, content scanning patterns). This means the value proposition above applies to any domain where knowledge evolves, requires trust, and benefits from lifecycle management — not just software development. See `product/research/ass-009/` for the full analysis.
+
+---
+
 ## Strategic Approach
 
 Start with Proposal A (Knowledge Oracle) — a focused, testable knowledge store. Evolve incrementally toward Proposal C (Workflow-Aware Hybrid) — adding usage tracking, outcome analysis, retrospective intelligence, and eventually thin-shell agent files. Each milestone is independently shippable and provable. The schema pre-seeds all known future fields from day 1, covering M2–M5 without schema changes. When new fields are added (M6+), a `schema_version` counter triggers automatic scan-and-rewrite migration on database open — fast at Unimatrix scale.
@@ -38,8 +52,9 @@ Security is a cross-cutting concern woven into existing features, not a separate
 | MCP Server Core | `vnc-001` | rmcp 0.16 SDK, stdio transport. Server `instructions` field for behavioral driving (70-85% agent compliance). Auto-init on first `context_store`. Project isolation via `~/.unimatrix/{project_hash}/`. **Persistence note**: vnc-001 must coordinate graceful shutdown — calling both `Store::compact()` (nxs-001) and `VectorIndex::dump()` (nxs-002) to ensure all data is persisted. Both are explicit-only; neither auto-persists on drop. **Security infrastructure**: AGENT_REGISTRY table (agent_id, trust_level, capabilities, allowed_topics/categories, enrollment metadata). AUDIT_LOG table (append-only — request_id, session_id, agent_id, operation, target_ids, outcome). Agent identification via `agent_id` tool parameter for stdio (design internal plumbing transport-agnostic for future `_meta` field and OAuth 2.1 bearer token support on HTTPS). Unknown agents auto-enroll as Restricted (read-only). |
 | v0.1 Tools | `vnc-002` | `context_search` (semantic, query-driven, returns top-k with similarity scores), `context_lookup` (deterministic, metadata-driven, category/topic/tags filters), `context_store` (with near-duplicate detection at 0.92 threshold), `context_get` (full entry by ID). Dual response format: compact markdown in `content`, JSON in `structuredContent`. **Security**: Input validation on all tool params (max lengths, pattern matching, no control chars). Category allowlist enforcement (initial: outcome, lesson-learned, decision, convention, pattern, procedure — extensible at runtime). Content scanning on `context_store` writes (~50 injection patterns + PII detection, native Rust `regex` crate). Output framing on read tools to distinguish data from instructions. Capability check per tool call against AGENT_REGISTRY (Read for search/lookup/get, Write for store). |
 | v0.2 Tools | `vnc-003` | `context_correct` (supersede with correction chain), `context_deprecate` (mark irrelevant), `context_status` (health metrics — counts, age distribution, stale entries, duplicate candidates), `context_briefing` (compiled orientation — lookup duties + conventions + search task-relevant patterns in one call, <2000 token target). **Security**: Content scanning on `context_correct` writes. Capability checks (Write for correct/deprecate, Admin for status, Read for briefing). Security metrics in `context_status` — entries by trust_source, entries without attribution, write frequency by agent, content_hash mismatches. |
+| Config Externalization | `vnc-004` | Extract domain-specific constants into `ServerConfig` loaded from `~/.unimatrix/config.toml` or per-project config file. Four items externalized: (1) initial category allowlist (replace `INITIAL_CATEGORIES` const), (2) server instructions text (replace `SERVER_INSTRUCTIONS` const), (3) default agent bootstrap (replace hardcoded `bootstrap_defaults()`), (4) content scanning pattern extensions (additive to built-in patterns). Fall back to current dev-focused defaults when no config file present — zero breaking changes. Enables multi-domain deployment (SRE, product management, scientific research, etc.) by swapping a config file, not rebuilding the binary. **Does not block M4** — can be implemented in parallel or between features. See `product/research/ass-009/` for domain opportunity analysis. |
 
-**Ships**: Agents can search, store, correct, and receive briefings. Knowledge accumulates across features.
+**Ships**: Agents can search, store, correct, and receive briefings. Knowledge accumulates across features. Config externalization enables multi-domain deployment.
 
 ---
 
@@ -64,7 +79,7 @@ Security is a cross-cutting concern woven into existing features, not a separate
 | Feature | Prefix | Summary |
 |---------|--------|---------|
 | Usage Tracking | `crt-001` | USAGE_LOG table — every retrieval logged with `(entry_id, timestamp, agent_role, feature_id, tool, helpful)`. FEATURE_ENTRIES multimap links features to entries used. Populate `usage_count`, `helpful_count`, `last_used_at` on EntryRecord. **Security alignment**: Enables write rate limiting per agent and behavioral baseline establishment for anomaly detection. |
-| Confidence Evolution | `crt-002` | Helpfulness factor added to confidence formula: `confidence = base * usage * freshness * correction * helpfulness`. Before usage data, factor = 1.0 (neutral). Confidence boost (+0.03/access), time decay (-0.005/hr), floor at 0.1. |
+| Confidence Evolution | `crt-002` | Helpfulness factor added to confidence formula: `confidence = base * usage * freshness * correction * helpfulness`. Before usage data, factor = 1.0 (neutral). Confidence boost (+0.03/access), time decay (-0.005/hr), floor at 0.1. **Gaming resistance note (from crt-001 design):** The multiplicative formula should be replaced with an additive weighted composite of independent signals, each clamped to [0,1], to bound the impact of gaming any single factor. Usage factor must use log-transform (not linear access_count). Helpfulness factor must use Wilson score lower bound (not naive ratio) with a **minimum sample size** (e.g., n >= 5 votes) before deviating from the neutral prior (0.5) — this defends against both boosting (helpful-flag stuffing) and active suppression (systematic unhelpful voting to degrade entry quality). See `product/research/ass-008/USAGE-TRACKING-RESEARCH.md` for full analysis and recommended formula. |
 | Contradiction Detection | `crt-003` | Flag entries with high embedding similarity (>0.85) but conflicting content. Surface during `context_status`. Similar to ReasoningBank's contradiction pipeline — cheap, high value. **Security alignment**: This is also the primary defense against semantic poisoning — the highest-severity knowledge integrity risk (see `product/research/mcp-security/`). Extend with embedding consistency checks (re-embed and compare to detect relevance hijacking) and entry quarantine status in StatusIndex. |
 | Co-Access Boosting | `crt-004` | Track entries frequently retrieved together. Boost co-accessed entries in search results. Lightweight version of PageRank on access graph — 80% of value, 20% of complexity. |
 
@@ -192,25 +207,29 @@ HTTPS (M6+):  OAuth 2.1 bearer token claims → same pipeline
 ## Milestone Dependency Graph
 
 ```
-M1: Foundation (nxs)
- └─► M2: MCP Server (vnc)
-      ├─► M3: Agent Integration (alc)
-      │    └─► M8: Thin-Shell Migration (alc)
-      └─► M4: Learning & Drift (crt)
-           └─► M5: Orchestration Engine (col)
-                └─► M6: Real-Time Interface (mtx)
-                     └─► M7: Multi-Project (dsn)
+M1: Foundation (nxs)         ✅ COMPLETE
+ └─► M2: MCP Server (vnc)   ✅ COMPLETE (vnc-001/002/003)
+      ├─► vnc-004: Config Externalization  ← does not block M4, parallel track
+      ├─► M4: Learning & Drift (crt)
+      │    └─► M5: Orchestration Engine (col)
+      │         └─► M6: Real-Time Interface (mtx)
+      │              └─► M7: Multi-Project (dsn)
+      └─► M3: Agent Integration (alc)    ← deferred, see note
+           └─► M8: Thin-Shell Migration (alc)
 
 M9: Build & Deploy (nan) — parallel track, ships incrementally alongside M2+
 ```
+
+**Milestone reordering note (2026-02-24):** M3 (Agent Integration) is deferred after M4/M5. M3's features (CLI init command, starter kit) formalize external adoption — but the *intent* (agents using Unimatrix) is achieved manually via CLAUDE.md and agent file edits. M4/M5 deliver higher value (learning, contradiction detection, process proposals) and only depend on M2 + agents actively using the tools, not on M3's automation. M3 will formalize the manual integration when external adoption matters.
 
 ## Phase-to-Proposal Mapping
 
 | Milestone | Proposal A territory | Proposal C territory |
 |-----------|---------------------|---------------------|
-| M1-M3 | Core A — knowledge store + MCP + agent integration | — |
+| M1-M2 | Core A — knowledge store + MCP | — |
 | M4 | Bridge — adds tracking infrastructure | First C capabilities active |
 | M5 | — | Full C — retrospective, proposals, process learning |
+| M3 | Formalized agent integration (deferred) | — |
 | M6 | — | Beyond C — visual management layer |
 | M7 | — | Beyond C — multi-project scale |
 | M8 | — | Beyond C — thin-shell agent pattern |

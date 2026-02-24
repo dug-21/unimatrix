@@ -99,7 +99,7 @@ Proposed Fix: {approach from investigator}
 Risk Assessment: {from investigator}
 Missing Test: {what test should have caught this}
 
-Report: product/features/{feature-id}/agents/{agent-id}-report.md
+Report: write back to the GH issue
 (or inline if no feature-id applies)
 
 Human action required: Review diagnosis and approve to proceed with fix.
@@ -117,7 +117,7 @@ Task(subagent_type: "uni-bug-investigator",
     Human feedback: {feedback}
     Previous diagnosis report: {path to investigator report}
 
-    Read your previous report first, then re-investigate
+    Read your previous report first from issue, then re-investigate
     with the human's feedback in mind.
 
     Return: revised root cause analysis, affected files,
@@ -162,6 +162,7 @@ Task(subagent_type: "uni-rust-dev",
 ```
 
 Wait for the rust-dev to complete.
+Provide updates back to the GH issue periodically
 
 ---
 
@@ -186,6 +187,7 @@ Task(subagent_type: "uni-tester",
 ```
 
 Wait for the tester to complete.
+Write updates back to GH issue
 
 ---
 
@@ -216,8 +218,7 @@ Task(subagent_type: "uni-validator",
     Changed files: {from rust-dev return}
     New tests: {from rust-dev return}
 
-    Write report to: product/features/{feature-id}/reports/gate-bugfix-report.md
-    (or to a temporary path if no feature-id applies)
+    Write report to GH issue
 
     Return: PASS / REWORKABLE FAIL / SCOPE FAIL, report path, issues.")
 ```
@@ -249,9 +250,9 @@ Task(subagent_type: "uni-security-reviewer",
     Bug report: {bug description or GH Issue URL}
     Root cause analysis: {path to investigator report}
 
-    Read these from disk:
+    Read these:
     - The git diff: run git diff main...HEAD
-    - The investigator's diagnosis report
+    - The investigator's report from the GH issue
     - Any relevant ADRs in the affected crate
 
     Assess security risks, blast radius, and regression potential.
@@ -261,7 +262,7 @@ Task(subagent_type: "uni-security-reviewer",
     whether any findings are blocking.")
 ```
 
-The security reviewer gets a fresh context window — it reads the diff and artifacts directly for unbiased review.
+Write results to GH issue
 
 ---
 
@@ -286,9 +287,7 @@ Security Review: {risk level} — {summary of findings}
 Blocking findings: {yes/no + details}
 
 Reports:
-- Investigator: {report path}
-- Gate: {gate report path}
-- Security: {security report path or "commented on PR"}
+- Link to GH issue
 
 Human action required: Review PR and approve merge.
 ```
