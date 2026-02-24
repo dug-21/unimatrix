@@ -6,8 +6,9 @@ use crate::counter;
 use crate::db::Store;
 use crate::error::{Result, StoreError};
 use crate::schema::{
-    CATEGORY_INDEX, ENTRIES, EntryRecord, NewEntry, STATUS_INDEX, Status, TAG_INDEX, TIME_INDEX,
-    TOPIC_INDEX, VECTOR_MAP, deserialize_entry, serialize_entry, status_counter_key,
+    CATEGORY_INDEX, ENTRIES, EntryRecord, FEATURE_ENTRIES, NewEntry, STATUS_INDEX, Status,
+    TAG_INDEX, TIME_INDEX, TOPIC_INDEX, VECTOR_MAP, deserialize_entry, serialize_entry,
+    status_counter_key,
 };
 
 /// Get the current unix timestamp in seconds.
@@ -59,6 +60,8 @@ impl Store {
             version: 1,
             feature_cycle: entry.feature_cycle,
             trust_source: entry.trust_source,
+            helpful_count: 0,
+            unhelpful_count: 0,
         };
 
         // Step 4: Serialize and write to ENTRIES
@@ -300,6 +303,107 @@ impl Store {
         Ok(())
     }
 
+    /// Record usage for a batch of entries in a single write transaction.
+    ///
+    /// For each entry_id in `all_ids`, updates `last_accessed_at` to `now`.
+    /// For each entry_id in `access_ids`, increments `access_count`.
+    /// For each entry_id in `helpful_ids`, increments `helpful_count`.
+    /// For each entry_id in `unhelpful_ids`, increments `unhelpful_count`.
+    /// For each entry_id in `decrement_helpful_ids`, decrements `helpful_count` (saturating at 0).
+    /// For each entry_id in `decrement_unhelpful_ids`, decrements `unhelpful_count` (saturating at 0).
+    ///
+    /// The caller (server layer) determines which IDs appear in which set
+    /// based on deduplication and vote correction. The store applies updates unconditionally.
+    pub fn record_usage(
+        &self,
+        all_ids: &[u64],
+        access_ids: &[u64],
+        helpful_ids: &[u64],
+        unhelpful_ids: &[u64],
+        decrement_helpful_ids: &[u64],
+        decrement_unhelpful_ids: &[u64],
+    ) -> Result<()> {
+        if all_ids.is_empty() {
+            return Ok(());
+        }
+
+        let now = current_unix_timestamp_secs();
+        let txn = self.db.begin_write()?;
+
+        let access_set: HashSet<u64> = access_ids.iter().copied().collect();
+        let helpful_set: HashSet<u64> = helpful_ids.iter().copied().collect();
+        let unhelpful_set: HashSet<u64> = unhelpful_ids.iter().copied().collect();
+        let dec_helpful_set: HashSet<u64> = decrement_helpful_ids.iter().copied().collect();
+        let dec_unhelpful_set: HashSet<u64> = decrement_unhelpful_ids.iter().copied().collect();
+
+        for &id in all_ids {
+            let old_bytes = {
+                let table = txn.open_table(ENTRIES)?;
+                match table.get(id)? {
+                    Some(guard) => guard.value().to_vec(),
+                    None => continue, // Entry deleted between retrieval and usage recording
+                }
+            };
+
+            let mut record = deserialize_entry(&old_bytes)?;
+
+            // Always update last_accessed_at (no dedup -- AC-05)
+            record.last_accessed_at = now;
+
+            // Conditionally increment access_count (deduped by server layer)
+            if access_set.contains(&id) {
+                record.access_count += 1;
+            }
+
+            // Increment helpful_count
+            if helpful_set.contains(&id) {
+                record.helpful_count += 1;
+            }
+
+            // Increment unhelpful_count
+            if unhelpful_set.contains(&id) {
+                record.unhelpful_count += 1;
+            }
+
+            // Decrement helpful_count (vote correction: was helpful, now unhelpful)
+            if dec_helpful_set.contains(&id) {
+                record.helpful_count = record.helpful_count.saturating_sub(1);
+            }
+
+            // Decrement unhelpful_count (vote correction: was unhelpful, now helpful)
+            if dec_unhelpful_set.contains(&id) {
+                record.unhelpful_count = record.unhelpful_count.saturating_sub(1);
+            }
+
+            let new_bytes = serialize_entry(&record)?;
+            {
+                let mut table = txn.open_table(ENTRIES)?;
+                table.insert(id, new_bytes.as_slice())?;
+            }
+        }
+
+        txn.commit()?;
+        Ok(())
+    }
+
+    /// Link a set of entry IDs to a feature in FEATURE_ENTRIES.
+    /// Idempotent: duplicate (feature, entry_id) pairs are no-ops.
+    pub fn record_feature_entries(&self, feature: &str, entry_ids: &[u64]) -> Result<()> {
+        if entry_ids.is_empty() {
+            return Ok(());
+        }
+
+        let txn = self.db.begin_write()?;
+        {
+            let mut table = txn.open_multimap_table(FEATURE_ENTRIES)?;
+            for &id in entry_ids {
+                table.insert(feature, id)?;
+            }
+        }
+        txn.commit()?;
+        Ok(())
+    }
+
     /// Write a vector map entry (entry_id -> hnsw_data_id).
     ///
     /// Inserts or overwrites the mapping. Used by nxs-002 (Vector Index).
@@ -529,6 +633,8 @@ mod tests {
             version: 0,
             feature_cycle: String::new(),
             trust_source: String::new(),
+            helpful_count: 0,
+            unhelpful_count: 0,
         };
         let result = db.store().update(record);
         assert!(matches!(result, Err(crate::StoreError::EntryNotFound(999))));

@@ -15,7 +15,7 @@ pub mod test_helpers;
 
 pub use schema::{EntryRecord, Status, NewEntry, QueryFilter, TimeRange, DatabaseConfig};
 pub use schema::{AGENT_REGISTRY, AUDIT_LOG, COUNTERS};
-pub use schema::{ENTRIES, TOPIC_INDEX, CATEGORY_INDEX, TAG_INDEX, TIME_INDEX, STATUS_INDEX, VECTOR_MAP};
+pub use schema::{ENTRIES, TOPIC_INDEX, CATEGORY_INDEX, TAG_INDEX, TIME_INDEX, STATUS_INDEX, VECTOR_MAP, FEATURE_ENTRIES};
 pub use schema::{serialize_entry, deserialize_entry, status_counter_key};
 pub use hash::compute_content_hash;
 pub use counter::{next_entry_id, increment_counter};

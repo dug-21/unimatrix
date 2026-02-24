@@ -145,6 +145,14 @@ impl<T: EntryStore + 'static> AsyncEntryStore<T> {
             .await
             .map_err(|e| CoreError::JoinError(e.to_string()))?
     }
+
+    pub async fn record_access(&self, entry_ids: &[u64]) -> Result<(), CoreError> {
+        let inner = Arc::clone(&self.inner);
+        let ids = entry_ids.to_vec();
+        tokio::task::spawn_blocking(move || inner.record_access(&ids))
+            .await
+            .map_err(|e| CoreError::JoinError(e.to_string()))?
+    }
 }
 
 /// Async wrapper for any `VectorStore` implementation.

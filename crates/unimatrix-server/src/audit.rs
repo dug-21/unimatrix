@@ -101,6 +101,45 @@ impl AuditLog {
         Ok(())
     }
 
+    /// Count write operations by a specific agent since a given timestamp.
+    ///
+    /// Scans AUDIT_LOG for entries where `agent_id` matches and `operation`
+    /// is a write tool (context_store, context_correct) with `timestamp >= since`.
+    /// Returns the count.
+    pub fn write_count_since(&self, agent_id: &str, since: u64) -> Result<u64, ServerError> {
+        let txn = self
+            .store
+            .begin_read()
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        let table = txn
+            .open_table(AUDIT_LOG)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+
+        let mut count = 0u64;
+
+        for result in table
+            .iter()
+            .map_err(|e| ServerError::Audit(e.to_string()))?
+        {
+            let (_, value) = result.map_err(|e| ServerError::Audit(e.to_string()))?;
+            let event = deserialize_audit_event(value.value())?;
+
+            if event.timestamp < since {
+                continue;
+            }
+
+            if event.agent_id != agent_id {
+                continue;
+            }
+
+            if is_write_operation(&event.operation) {
+                count += 1;
+            }
+        }
+
+        Ok(count)
+    }
+
     /// Write an audit event into an existing write transaction without committing.
     ///
     /// The caller owns the transaction and is responsible for committing.
@@ -162,9 +201,13 @@ fn serialize_audit_event(event: &AuditEvent) -> Result<Vec<u8>, ServerError> {
         .map_err(|e| ServerError::Audit(format!("serialization failed: {e}")))
 }
 
+/// Check if an operation name is a write operation.
+fn is_write_operation(operation: &str) -> bool {
+    matches!(operation, "context_store" | "context_correct")
+}
+
 /// Deserialize an AuditEvent from bincode bytes.
-#[cfg(test)]
-fn deserialize_audit_event(bytes: &[u8]) -> Result<AuditEvent, ServerError> {
+pub(crate) fn deserialize_audit_event(bytes: &[u8]) -> Result<AuditEvent, ServerError> {
     let (event, _) =
         bincode::serde::decode_from_slice::<AuditEvent, _>(bytes, bincode::config::standard())
             .map_err(|e| ServerError::Audit(format!("deserialization failed: {e}")))?;

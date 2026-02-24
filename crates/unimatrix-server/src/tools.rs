@@ -32,6 +32,7 @@ use crate::validation::{
     validate_correct_params, validate_deprecate_params, validate_status_params,
     validate_briefing_params, validated_max_tokens,
     validated_id, validated_k, validated_limit, parse_status,
+    validate_feature, validate_helpful,
 };
 
 /// HNSW search expansion factor.
@@ -57,6 +58,10 @@ pub struct SearchParams {
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
     pub format: Option<String>,
+    /// Feature context for usage tracking.
+    pub feature: Option<String>,
+    /// Whether the returned entries were helpful.
+    pub helpful: Option<bool>,
 }
 
 /// Parameters for deterministic lookup.
@@ -78,6 +83,10 @@ pub struct LookupParams {
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
     pub format: Option<String>,
+    /// Feature context for usage tracking.
+    pub feature: Option<String>,
+    /// Whether the returned entries were helpful.
+    pub helpful: Option<bool>,
 }
 
 /// Parameters for storing a new entry.
@@ -110,6 +119,10 @@ pub struct GetParams {
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
     pub format: Option<String>,
+    /// Feature context for usage tracking.
+    pub feature: Option<String>,
+    /// Whether the returned entries were helpful.
+    pub helpful: Option<bool>,
 }
 
 /// Parameters for correcting an existing entry.
@@ -176,6 +189,8 @@ pub struct BriefingParams {
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
     pub format: Option<String>,
+    /// Whether the returned entries were helpful.
+    pub helpful: Option<bool>,
 }
 
 #[rmcp::tool_router(vis = "pub(crate)")]
@@ -200,6 +215,8 @@ impl UnimatrixServer {
 
         // 3. Validation
         validate_search_params(&params).map_err(rmcp::ErrorData::from)?;
+        validate_feature(&params.feature).map_err(rmcp::ErrorData::from)?;
+        validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
 
         // 4. Parse format
         let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
@@ -280,12 +297,21 @@ impl UnimatrixServer {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
-            agent_id: identity.agent_id,
+            agent_id: identity.agent_id.clone(),
             operation: "context_search".to_string(),
-            target_ids,
+            target_ids: target_ids.clone(),
             outcome: Outcome::Success,
             detail: format!("returned {} results", results_with_scores.len()),
         });
+
+        // 12. Usage recording (fire-and-forget)
+        self.record_usage_for_entries(
+            &identity.agent_id,
+            identity.trust_level,
+            &target_ids,
+            params.helpful,
+            params.feature.as_deref(),
+        ).await;
 
         Ok(result)
     }
@@ -310,6 +336,8 @@ impl UnimatrixServer {
 
         // 3. Validation
         validate_lookup_params(&params).map_err(rmcp::ErrorData::from)?;
+        validate_feature(&params.feature).map_err(rmcp::ErrorData::from)?;
+        validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
 
         // 4. Parse format
         let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
@@ -357,12 +385,21 @@ impl UnimatrixServer {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
-            agent_id: identity.agent_id,
+            agent_id: identity.agent_id.clone(),
             operation: "context_lookup".to_string(),
-            target_ids,
+            target_ids: target_ids.clone(),
             outcome: Outcome::Success,
             detail: format!("returned {result_count} results"),
         });
+
+        // 8. Usage recording (fire-and-forget)
+        self.record_usage_for_entries(
+            &identity.agent_id,
+            identity.trust_level,
+            &target_ids,
+            params.helpful,
+            params.feature.as_deref(),
+        ).await;
 
         Ok(result)
     }
@@ -526,6 +563,8 @@ impl UnimatrixServer {
 
         // 3. Validation
         validate_get_params(&params).map_err(rmcp::ErrorData::from)?;
+        validate_feature(&params.feature).map_err(rmcp::ErrorData::from)?;
+        validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
 
         // 4. Parse format
         let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
@@ -546,12 +585,21 @@ impl UnimatrixServer {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
-            agent_id: identity.agent_id,
+            agent_id: identity.agent_id.clone(),
             operation: "context_get".to_string(),
             target_ids: vec![id],
             outcome: Outcome::Success,
             detail: format!("retrieved entry #{id}"),
         });
+
+        // 8. Usage recording (fire-and-forget)
+        self.record_usage_for_entries(
+            &identity.agent_id,
+            identity.trust_level,
+            &[id],
+            params.helpful,
+            params.feature.as_deref(),
+        ).await;
 
         Ok(result)
     }
@@ -931,6 +979,7 @@ impl UnimatrixServer {
 
         // 3. Validation
         validate_briefing_params(&params).map_err(rmcp::ErrorData::from)?;
+        validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
 
         // 4. Parse format
         let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
@@ -1057,19 +1106,42 @@ impl UnimatrixServer {
             search_available,
         };
 
-        // 11. Audit (standalone, best-effort)
+        // 11. Collect unique entry IDs for usage recording
+        let mut briefing_entry_ids: Vec<u64> = Vec::new();
+        for entry in &briefing.conventions {
+            briefing_entry_ids.push(entry.id);
+        }
+        for entry in &briefing.duties {
+            briefing_entry_ids.push(entry.id);
+        }
+        for (entry, _) in &briefing.relevant_context {
+            briefing_entry_ids.push(entry.id);
+        }
+        briefing_entry_ids.sort_unstable();
+        briefing_entry_ids.dedup();
+
+        // 12. Audit (standalone, best-effort)
         let _ = self.audit.log_event(AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
-            agent_id: identity.agent_id,
+            agent_id: identity.agent_id.clone(),
             operation: "context_briefing".to_string(),
-            target_ids: vec![],
+            target_ids: briefing_entry_ids.clone(),
             outcome: Outcome::Success,
             detail: format!("briefing for role={}, task={}", params.role, params.task),
         });
 
-        // 12. Format response
+        // 13. Usage recording (fire-and-forget)
+        self.record_usage_for_entries(
+            &identity.agent_id,
+            identity.trust_level,
+            &briefing_entry_ids,
+            params.helpful,
+            params.feature.as_deref(),
+        ).await;
+
+        // 14. Format response
         Ok(format_briefing(&briefing, format))
     }
 }
@@ -1086,6 +1158,8 @@ mod tests {
         assert!(params.topic.is_none());
         assert!(params.agent_id.is_none());
         assert!(params.format.is_none());
+        assert!(params.feature.is_none());
+        assert!(params.helpful.is_none());
     }
 
     #[test]
@@ -1097,13 +1171,17 @@ mod tests {
             "tags": ["rust"],
             "k": 10,
             "agent_id": "test-agent",
-            "format": "json"
+            "format": "json",
+            "feature": "crt-001",
+            "helpful": true
         }"#;
         let params: SearchParams = serde_json::from_str(json).unwrap();
         assert_eq!(params.query, "test");
         assert_eq!(params.topic.unwrap(), "auth");
         assert_eq!(params.k.unwrap(), 10);
         assert_eq!(params.format.unwrap(), "json");
+        assert_eq!(params.feature.unwrap(), "crt-001");
+        assert_eq!(params.helpful.unwrap(), true);
     }
 
     #[test]
