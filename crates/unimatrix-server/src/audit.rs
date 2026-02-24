@@ -470,4 +470,130 @@ mod tests {
         }
         assert_eq!(ids.len(), 100);
     }
+
+    // -- crt-001: write_count_since tests --
+
+    #[test]
+    fn test_write_count_since_counts_writes_only() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        // 5 write events (context_store)
+        for _ in 0..5 {
+            let mut event = make_event();
+            event.operation = "context_store".to_string();
+            event.agent_id = "agent-a".to_string();
+            event.outcome = Outcome::Success;
+            audit.log_event(event).unwrap();
+        }
+        // 5 read events (context_search)
+        for _ in 0..5 {
+            let mut event = make_event();
+            event.operation = "context_search".to_string();
+            event.agent_id = "agent-a".to_string();
+            event.outcome = Outcome::Success;
+            audit.log_event(event).unwrap();
+        }
+
+        let count = audit.write_count_since("agent-a", 0).unwrap();
+        assert_eq!(count, 5);
+    }
+
+    #[test]
+    fn test_write_count_since_agent_filtering() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        // Agent A: 3 writes
+        for _ in 0..3 {
+            let mut event = make_event();
+            event.operation = "context_store".to_string();
+            event.agent_id = "agent-a".to_string();
+            audit.log_event(event).unwrap();
+        }
+        // Agent B: 2 writes
+        for _ in 0..2 {
+            let mut event = make_event();
+            event.operation = "context_store".to_string();
+            event.agent_id = "agent-b".to_string();
+            audit.log_event(event).unwrap();
+        }
+
+        assert_eq!(audit.write_count_since("agent-a", 0).unwrap(), 3);
+        assert_eq!(audit.write_count_since("agent-b", 0).unwrap(), 2);
+        assert_eq!(audit.write_count_since("agent-c", 0).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_write_count_since_timestamp_boundary() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        // Log events -- they'll get current timestamp
+        let mut event = make_event();
+        event.operation = "context_store".to_string();
+        event.agent_id = "agent-a".to_string();
+        audit.log_event(event).unwrap();
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        // Events logged before "now" should be counted (since = 0)
+        assert_eq!(audit.write_count_since("agent-a", 0).unwrap(), 1);
+
+        // Events with since = far future should return 0
+        assert_eq!(
+            audit.write_count_since("agent-a", now + 10000).unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn test_write_count_since_empty_log() {
+        let store = make_store();
+        let audit = AuditLog::new(store);
+        assert_eq!(audit.write_count_since("any-agent", 0).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_write_count_since_both_write_ops() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        let mut e1 = make_event();
+        e1.operation = "context_store".to_string();
+        e1.agent_id = "agent-a".to_string();
+        audit.log_event(e1).unwrap();
+
+        let mut e2 = make_event();
+        e2.operation = "context_correct".to_string();
+        e2.agent_id = "agent-a".to_string();
+        audit.log_event(e2).unwrap();
+
+        assert_eq!(audit.write_count_since("agent-a", 0).unwrap(), 2);
+    }
+
+    #[test]
+    fn test_write_count_since_non_write_ops_excluded() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        for op in [
+            "context_search",
+            "context_lookup",
+            "context_get",
+            "context_briefing",
+            "context_deprecate",
+            "context_status",
+        ] {
+            let mut event = make_event();
+            event.operation = op.to_string();
+            event.agent_id = "agent-a".to_string();
+            audit.log_event(event).unwrap();
+        }
+
+        assert_eq!(audit.write_count_since("agent-a", 0).unwrap(), 0);
+    }
 }

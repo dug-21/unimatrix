@@ -1146,4 +1146,237 @@ mod tests {
         assert_eq!(record.trust_source, "");
         assert!(!record.content_hash.is_empty());
     }
+
+    // -- crt-001: record_usage tests --
+
+    #[test]
+    fn test_record_usage_5_entries_all_updated() {
+        let db = TestDb::new();
+        let mut ids = Vec::new();
+        for _ in 0..5 {
+            let e = TestEntry::new("test", "convention").build();
+            ids.push(db.store().insert(e).unwrap());
+        }
+
+        db.store()
+            .record_usage(&ids, &ids, &[], &[], &[], &[])
+            .unwrap();
+
+        for &id in &ids {
+            let r = db.store().get(id).unwrap();
+            assert_eq!(r.access_count, 1);
+            assert!(r.last_accessed_at > 0);
+        }
+    }
+
+    #[test]
+    fn test_record_usage_overlapping_sets() {
+        let db = TestDb::new();
+        let mut ids = Vec::new();
+        for _ in 0..3 {
+            let e = TestEntry::new("test", "convention").build();
+            ids.push(db.store().insert(e).unwrap());
+        }
+
+        // all_ids=[1,2,3], access_ids=[1,2], helpful_ids=[2,3]
+        db.store()
+            .record_usage(&ids, &ids[..2], &ids[1..], &[], &[], &[])
+            .unwrap();
+
+        let r1 = db.store().get(ids[0]).unwrap();
+        assert_eq!(r1.access_count, 1);
+        assert_eq!(r1.helpful_count, 0);
+
+        let r2 = db.store().get(ids[1]).unwrap();
+        assert_eq!(r2.access_count, 1);
+        assert_eq!(r2.helpful_count, 1);
+
+        let r3 = db.store().get(ids[2]).unwrap();
+        assert_eq!(r3.access_count, 0);
+        assert_eq!(r3.helpful_count, 1);
+    }
+
+    #[test]
+    fn test_record_usage_nonexistent_entry_skipped() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let valid_id = db.store().insert(e).unwrap();
+
+        // Mix valid and non-existent
+        db.store()
+            .record_usage(&[valid_id, 999], &[valid_id, 999], &[], &[], &[], &[])
+            .unwrap();
+
+        let r = db.store().get(valid_id).unwrap();
+        assert_eq!(r.access_count, 1);
+    }
+
+    #[test]
+    fn test_record_usage_empty_all_ids() {
+        let db = TestDb::new();
+        db.store()
+            .record_usage(&[], &[], &[], &[], &[], &[])
+            .unwrap();
+    }
+
+    #[test]
+    fn test_record_usage_cumulative_increments() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        // Store has no dedup -- increments each time
+        db.store()
+            .record_usage(&[id], &[id], &[], &[], &[], &[])
+            .unwrap();
+        db.store()
+            .record_usage(&[id], &[id], &[], &[], &[], &[])
+            .unwrap();
+
+        let r = db.store().get(id).unwrap();
+        assert_eq!(r.access_count, 2);
+    }
+
+    #[test]
+    fn test_record_usage_preserves_fields() {
+        let db = TestDb::new();
+        let e = TestEntry::new("auth", "convention")
+            .with_title("Preserve Me")
+            .with_content("Important content")
+            .with_tags(&["rust", "test"])
+            .build();
+        let id = db.store().insert(e).unwrap();
+
+        let before = db.store().get(id).unwrap();
+
+        db.store()
+            .record_usage(&[id], &[id], &[id], &[], &[], &[])
+            .unwrap();
+
+        let after = db.store().get(id).unwrap();
+        assert_eq!(after.title, before.title);
+        assert_eq!(after.content, before.content);
+        assert_eq!(after.topic, before.topic);
+        assert_eq!(after.tags, before.tags);
+        assert_eq!(after.content_hash, before.content_hash);
+        assert_eq!(after.version, before.version);
+    }
+
+    #[test]
+    fn test_record_usage_last_accessed_at_updated_without_access_count() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        // all_ids includes this entry but access_ids does not
+        db.store()
+            .record_usage(&[id], &[], &[], &[], &[], &[])
+            .unwrap();
+
+        let r = db.store().get(id).unwrap();
+        assert_eq!(r.access_count, 0, "access_count should not change");
+        assert!(r.last_accessed_at > 0, "last_accessed_at should be updated");
+    }
+
+    #[test]
+    fn test_record_usage_vote_correction() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        // First: mark unhelpful
+        db.store()
+            .record_usage(&[id], &[], &[], &[id], &[], &[])
+            .unwrap();
+        let r = db.store().get(id).unwrap();
+        assert_eq!(r.unhelpful_count, 1);
+        assert_eq!(r.helpful_count, 0);
+
+        // Correction: helpful + decrement unhelpful
+        db.store()
+            .record_usage(&[id], &[], &[id], &[], &[], &[id])
+            .unwrap();
+        let r = db.store().get(id).unwrap();
+        assert_eq!(r.helpful_count, 1);
+        assert_eq!(r.unhelpful_count, 0);
+    }
+
+    #[test]
+    fn test_record_usage_saturating_subtraction() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        // Decrement helpful_count when it's already 0
+        db.store()
+            .record_usage(&[id], &[], &[], &[], &[id], &[])
+            .unwrap();
+
+        let r = db.store().get(id).unwrap();
+        assert_eq!(r.helpful_count, 0, "should not underflow");
+    }
+
+    // -- crt-001: record_feature_entries tests --
+
+    #[test]
+    fn test_record_feature_entries_basic() {
+        let db = TestDb::new();
+        let mut ids = Vec::new();
+        for _ in 0..3 {
+            let e = TestEntry::new("test", "convention").build();
+            ids.push(db.store().insert(e).unwrap());
+        }
+
+        db.store().record_feature_entries("crt-001", &ids).unwrap();
+
+        // Read back from multimap
+        let txn = db.store().begin_read().unwrap();
+        let table = txn.open_multimap_table(crate::FEATURE_ENTRIES).unwrap();
+        let mut found: Vec<u64> = table
+            .get("crt-001")
+            .unwrap()
+            .map(|r| r.unwrap().value())
+            .collect();
+        found.sort();
+        assert_eq!(found, ids);
+    }
+
+    #[test]
+    fn test_record_feature_entries_idempotent() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        db.store().record_feature_entries("crt-001", &[id]).unwrap();
+        db.store().record_feature_entries("crt-001", &[id]).unwrap();
+
+        let txn = db.store().begin_read().unwrap();
+        let table = txn.open_multimap_table(crate::FEATURE_ENTRIES).unwrap();
+        let count = table.get("crt-001").unwrap().count();
+        assert_eq!(count, 1, "multimap should deduplicate");
+    }
+
+    #[test]
+    fn test_record_feature_entries_nonexistent_entry() {
+        let db = TestDb::new();
+        // Multimap doesn't validate entry existence
+        db.store()
+            .record_feature_entries("crt-001", &[999])
+            .unwrap();
+
+        let txn = db.store().begin_read().unwrap();
+        let table = txn.open_multimap_table(crate::FEATURE_ENTRIES).unwrap();
+        let found: Vec<u64> = table
+            .get("crt-001")
+            .unwrap()
+            .map(|r| r.unwrap().value())
+            .collect();
+        assert_eq!(found, vec![999]);
+    }
+
+    #[test]
+    fn test_record_feature_entries_empty() {
+        let db = TestDb::new();
+        db.store().record_feature_entries("crt-001", &[]).unwrap();
+    }
 }

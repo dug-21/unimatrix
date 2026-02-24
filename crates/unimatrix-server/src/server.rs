@@ -764,4 +764,298 @@ mod tests {
         let identity = server.resolve_agent(&None).unwrap();
         assert_eq!(identity.agent_id, "anonymous");
     }
+
+    // -- crt-001: record_usage_for_entries tests --
+
+    fn insert_test_entry(store: &unimatrix_core::Store) -> u64 {
+        let entry = unimatrix_core::NewEntry {
+            title: "Test".to_string(),
+            content: "Content".to_string(),
+            topic: "test".to_string(),
+            category: "convention".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: unimatrix_core::Status::Active,
+            created_by: String::new(),
+            feature_cycle: String::new(),
+            trust_source: String::new(),
+        };
+        store.insert(entry).unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_for_entries_updates_access() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                None,
+            )
+            .await;
+
+        let r = server.store.get(id).unwrap();
+        assert_eq!(r.access_count, 1);
+        assert!(r.last_accessed_at > 0);
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_for_entries_empty_ids() {
+        let server = make_server();
+        // Should return immediately without error
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[],
+                None,
+                None,
+            )
+            .await;
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_for_entries_access_dedup() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // First call: access_count increments
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                None,
+            )
+            .await;
+        assert_eq!(server.store.get(id).unwrap().access_count, 1);
+
+        // Second call: same agent, same entry -> deduped (access_count stays 1)
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                None,
+            )
+            .await;
+        assert_eq!(server.store.get(id).unwrap().access_count, 1);
+
+        // Different agent: access_count increments again
+        server
+            .record_usage_for_entries(
+                "other-agent",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                None,
+            )
+            .await;
+        assert_eq!(server.store.get(id).unwrap().access_count, 2);
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_for_entries_helpful_vote() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                Some(true),
+                None,
+            )
+            .await;
+
+        let r = server.store.get(id).unwrap();
+        assert_eq!(r.helpful_count, 1);
+        assert_eq!(r.unhelpful_count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_for_entries_unhelpful_vote() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                Some(false),
+                None,
+            )
+            .await;
+
+        let r = server.store.get(id).unwrap();
+        assert_eq!(r.helpful_count, 0);
+        assert_eq!(r.unhelpful_count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_for_entries_helpful_none() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                None,
+            )
+            .await;
+
+        let r = server.store.get(id).unwrap();
+        assert_eq!(r.helpful_count, 0);
+        assert_eq!(r.unhelpful_count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_for_entries_vote_correction() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // First: vote unhelpful
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                Some(false),
+                None,
+            )
+            .await;
+        assert_eq!(server.store.get(id).unwrap().unhelpful_count, 1);
+
+        // Correction: vote helpful (should flip)
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                Some(true),
+                None,
+            )
+            .await;
+        let r = server.store.get(id).unwrap();
+        assert_eq!(r.helpful_count, 1);
+        assert_eq!(r.unhelpful_count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_for_entries_feature_internal_agent() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                Some("crt-001"),
+            )
+            .await;
+
+        // Verify FEATURE_ENTRIES populated
+        let txn = server.store.begin_read().unwrap();
+        let table = txn
+            .open_multimap_table(unimatrix_store::FEATURE_ENTRIES)
+            .unwrap();
+        let found: Vec<u64> = table
+            .get("crt-001")
+            .unwrap()
+            .map(|r| r.unwrap().value())
+            .collect();
+        assert_eq!(found, vec![id]);
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_for_entries_feature_restricted_agent_ignored() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        server
+            .record_usage_for_entries(
+                "restricted-agent",
+                TrustLevel::Restricted,
+                &[id],
+                None,
+                Some("crt-001"),
+            )
+            .await;
+
+        // Verify FEATURE_ENTRIES NOT populated (Restricted ignored)
+        let txn = server.store.begin_read().unwrap();
+        let table = txn
+            .open_multimap_table(unimatrix_store::FEATURE_ENTRIES)
+            .unwrap();
+        let count = table.get("crt-001").unwrap().count();
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_for_entries_feature_privileged_agent() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        server
+            .record_usage_for_entries(
+                "human",
+                TrustLevel::Privileged,
+                &[id],
+                None,
+                Some("crt-001"),
+            )
+            .await;
+
+        let txn = server.store.begin_read().unwrap();
+        let table = txn
+            .open_multimap_table(unimatrix_store::FEATURE_ENTRIES)
+            .unwrap();
+        let count = table.get("crt-001").unwrap().count();
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_record_usage_for_entries_vote_after_access_only() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // First: access only (no helpful param)
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                None,
+            )
+            .await;
+
+        // Second: vote helpful (separate from access dedup)
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                Some(true),
+                None,
+            )
+            .await;
+
+        let r = server.store.get(id).unwrap();
+        assert_eq!(r.access_count, 1, "access deduped");
+        assert_eq!(r.helpful_count, 1, "vote recorded");
+    }
 }
