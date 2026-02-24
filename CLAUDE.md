@@ -49,6 +49,7 @@ Features follow `{phase}-{NNN}` pattern in `product/features/`:
 ```
 product/features/{phase}-{NNN}/
 ├── SCOPE.md                    # Phase 1: agent-authored, human-approved
+├── SCOPE-RISK-ASSESSMENT.md    # Phase 1b: scope-level risks (SR-XX)
 ├── specification/              # Phase 2: source document
 │   └── SPECIFICATION.md
 ├── architecture/               # Phase 2: source document

@@ -38,7 +38,7 @@ From the primary agent's spawn prompt:
 ## What You Return
 
 ### Session 1 (Design Leader)
-- All artifact paths (SCOPE.md, Architecture, Specification, Risk Strategy, Alignment Report, Brief, Acceptance Map)
+- All artifact paths (SCOPE.md, Scope Risk Assessment, Architecture, Specification, Risk Strategy, Alignment Report, Brief, Acceptance Map)
 - ADR file paths from architect
 - GH Issue URL
 - Vision alignment variances requiring human approval
@@ -157,6 +157,7 @@ Before returning "complete" to the primary agent:
 
 **Session 1:**
 - [ ] SCOPE.md exists and was approved by human
+- [ ] SCOPE-RISK-ASSESSMENT.md exists (from Phase 1b)
 - [ ] All three source documents exist (Architecture, Specification, Risk Strategy)
 - [ ] ALIGNMENT-REPORT.md exists
 - [ ] IMPLEMENTATION-BRIEF.md exists

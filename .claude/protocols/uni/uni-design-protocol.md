@@ -6,7 +6,7 @@ Triggers on: specification, architecture, design, research, scope, risk strategy
 
 ## Execution Model
 
-Session 1 produces three sacred source-of-truth documents, a vision alignment report, an implementation brief, and an acceptance map. The session ends by returning everything to the human for review and approval.
+Session 1 produces three sacred source-of-truth documents, a scope risk assessment, a vision alignment report, an implementation brief, and an acceptance map. The session ends by returning everything to the human for review and approval.
 
 ```
 Primary Agent                    uni-scrum-master (Design Leader)    Design Agents
@@ -16,6 +16,8 @@ spawn scrum-master ──────────►   read protocol + SCOPE.md
                                  spawn researcher (Phase 1)
                                  ◄──────────────────────────────── SCOPE.md written
                                  human approves SCOPE.md
+                                 spawn risk strategist (Phase 1b) ► scope risk assessment
+                                 ◄──────────────────────────────── return SR-XX risks
                                  spawn 2 specialists (Phase 2a) ──► produce arch + spec
                                  ◄──────────────────────────────── return artifact paths
                                  spawn risk strategist (Phase 2a+)► produce risk strategy
@@ -70,7 +72,32 @@ Task(
 )
 ```
 
-After the researcher returns, the Design Leader presents SCOPE.md to the human for review and approval. **Do not proceed to Phase 2 until the human approves SCOPE.md.**
+After the researcher returns, the Design Leader presents SCOPE.md to the human for review and approval. **Do not proceed to Phase 1b until the human approves SCOPE.md.**
+
+### Phase 1b: Scope Risk Assessment
+
+**Participants**: uni-risk-strategist (scope-risk mode)
+
+After SCOPE.md approval, the Design Leader spawns the risk strategist in scope-risk mode. This surfaces product-level risks (technology bets, dependency risks, scope boundary risks) BEFORE the architect and spec writer begin — so they can design with risk awareness.
+
+```
+Task(
+  subagent_type: "uni-risk-strategist",
+  prompt: "Your agent ID: {feature-id}-agent-0-scope-risk
+    MODE: scope-risk
+
+    Assess scope-level risks for {feature-id}.
+
+    Read these artifacts:
+    - SCOPE.md: product/features/{id}/SCOPE.md
+    - Product vision: product/PRODUCT-VISION.md
+
+    Produce SCOPE-RISK-ASSESSMENT.md at product/features/{id}/SCOPE-RISK-ASSESSMENT.md.
+    Return: file path, risk summary, top 3 risks for architect attention."
+)
+```
+
+Wait for the scope risk assessment to complete before proceeding to Phase 2.
 
 ### Phase 2: Design (Three Source Documents + Vision + Synthesis)
 
@@ -99,12 +126,19 @@ The Design Leader spawns two specialists in parallel:
 Each specialist receives:
 1. `Your agent ID: {feature-id}-agent-N-{role}`
 2. Path to approved SCOPE.md
-3. Task description
+3. Path to SCOPE-RISK-ASSESSMENT.md (from Phase 1b)
+4. Task description
 
 ```
 # Spawn both in ONE message:
-Task(subagent_type: "uni-architect", prompt: "Your agent ID: {id}-agent-1-architect ...")
-Task(subagent_type: "uni-specification", prompt: "Your agent ID: {id}-agent-2-spec ...")
+Task(subagent_type: "uni-architect", prompt: "Your agent ID: {id}-agent-1-architect
+    ...
+    Read scope risk assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
+    Address SR-XX risks in your architecture decisions where applicable. ...")
+Task(subagent_type: "uni-specification", prompt: "Your agent ID: {id}-agent-2-spec
+    ...
+    Read scope risk assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
+    Consider SR-XX risks when defining constraints and acceptance criteria. ...")
 ```
 
 Wait for BOTH to complete before proceeding to Phase 2a+.
@@ -131,17 +165,21 @@ The risk strategist receives:
 Task(
   subagent_type: "uni-risk-strategist",
   prompt: "Your agent ID: {id}-agent-3-risk
+    MODE: architecture-risk
     ...
     Read these artifacts for context:
     - SCOPE.md: product/features/{id}/SCOPE.md
     - Architecture: product/features/{id}/architecture/ARCHITECTURE.md
     - ADRs: {list ADR file paths from architect's return}
     - Specification: product/features/{id}/specification/SPECIFICATION.md
+    - Scope Risk Assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
 
     Use the architecture (component boundaries, integration points, ADRs)
     and specification (acceptance criteria, domain models, constraints)
     to inform your risk analysis. Identify risks that are specific to
-    the designed architecture — not generic risks."
+    the designed architecture — not generic risks.
+
+    Trace each SR-XX scope risk in the Scope Risk Traceability table."
 )
 ```
 
@@ -162,6 +200,7 @@ Task(
     - product/features/{id}/specification/SPECIFICATION.md
     - product/features/{id}/RISK-TEST-STRATEGY.md
     Read the scope: product/features/{id}/SCOPE.md
+    Read the scope risk assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
 
     Produce ALIGNMENT-REPORT.md at product/features/{id}/ALIGNMENT-REPORT.md.
     Flag any variances requiring human attention.
@@ -181,6 +220,7 @@ Task(
 
     Read these artifacts:
     - product/features/{id}/SCOPE.md
+    - product/features/{id}/SCOPE-RISK-ASSESSMENT.md
     - product/features/{id}/specification/SPECIFICATION.md
     - product/features/{id}/architecture/ARCHITECTURE.md
     - product/features/{id}/architecture/ADR-*.md (all ADR files)
@@ -203,6 +243,7 @@ The Design Leader collects all artifacts and returns to the human:
 
 **Artifacts to present:**
 - `SCOPE.md` — approved in Phase 1
+- `SCOPE-RISK-ASSESSMENT.md` — scope-level risks from Phase 1b
 - `architecture/ARCHITECTURE.md` + `ADR-NNN-{name}.md` files
 - `specification/SPECIFICATION.md`
 - `RISK-TEST-STRATEGY.md`
@@ -217,6 +258,7 @@ SESSION 1 COMPLETE — Design artifacts ready for review.
 
 Artifacts:
 - SCOPE.md: product/features/{id}/SCOPE.md
+- Scope Risk Assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
 - Architecture: product/features/{id}/architecture/ARCHITECTURE.md
 - ADRs: {list ADR file paths}
 - Specification: product/features/{id}/specification/SPECIFICATION.md
@@ -255,9 +297,11 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 DESIGN LEADER (uni-scrum-master):
   Phase 1:    Task(uni-researcher) — scope exploration with human
               ...human approves SCOPE.md...
+  Phase 1b:   Task(uni-risk-strategist, MODE: scope-risk) — scope risk assessment
+              ...wait...
   Phase 2a:   Task(uni-architect) + Task(uni-specification) — parallel, ONE message
               ...wait for both...
-  Phase 2a+:  Task(uni-risk-strategist) — receives arch + spec artifact paths
+  Phase 2a+:  Task(uni-risk-strategist, MODE: architecture-risk) — receives arch + spec + scope risks
               ...wait...
   Phase 2b:   Task(uni-vision-guardian) — alignment check
   Phase 2c:   Task(uni-synthesizer) — brief + maps + GH Issue (fresh context)
