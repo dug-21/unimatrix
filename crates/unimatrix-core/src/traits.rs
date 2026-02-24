@@ -24,6 +24,10 @@ pub trait EntryStore: Send + Sync {
     fn get_vector_mapping(&self, entry_id: u64) -> Result<Option<u64>, CoreError>;
     fn iter_vector_mappings(&self) -> Result<Vec<(u64, u64)>, CoreError>;
     fn read_counter(&self, name: &str) -> Result<u64, CoreError>;
+
+    /// Record access for a batch of entry IDs.
+    /// Updates access_count and last_accessed_at for each entry.
+    fn record_access(&self, entry_ids: &[u64]) -> Result<(), CoreError>;
 }
 
 /// Trait abstraction over vector similarity search (unimatrix-vector).

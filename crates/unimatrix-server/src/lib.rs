@@ -18,4 +18,5 @@ pub mod scanning;
 pub mod server;
 pub mod shutdown;
 pub mod tools;
+pub mod usage_dedup;
 pub mod validation;

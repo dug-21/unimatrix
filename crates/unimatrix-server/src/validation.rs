@@ -245,6 +245,22 @@ pub fn validate_briefing_params(params: &BriefingParams) -> Result<(), ServerErr
     Ok(())
 }
 
+/// Validate the optional `feature` parameter for usage tracking.
+pub fn validate_feature(feature: &Option<String>) -> Result<(), ServerError> {
+    if let Some(f) = feature {
+        validate_string_field("feature", f, MAX_FEATURE_LEN, false)?;
+    }
+    Ok(())
+}
+
+/// Validate the optional `helpful` parameter for usage tracking.
+///
+/// No validation needed -- Option<bool> is self-validating from deserialization.
+pub fn validate_helpful(helpful: &Option<bool>) -> Result<(), ServerError> {
+    let _ = helpful;
+    Ok(())
+}
+
 /// Validate and default the `max_tokens` parameter for context_briefing.
 pub fn validated_max_tokens(max_tokens: Option<i64>) -> Result<usize, ServerError> {
     match max_tokens {
@@ -468,6 +484,8 @@ mod tests {
             k: None,
             agent_id: None,
             format: None,
+            feature: None,
+            helpful: None,
         };
         assert!(validate_search_params(&params).is_ok());
     }
@@ -508,6 +526,8 @@ mod tests {
             id: -1,
             agent_id: None,
             format: None,
+            feature: None,
+            helpful: None,
         };
         assert!(validate_get_params(&params).is_err());
     }
@@ -702,6 +722,7 @@ mod tests {
             max_tokens: None,
             agent_id: None,
             format: None,
+            helpful: None,
         };
         assert!(validate_briefing_params(&params).is_ok());
     }
@@ -715,6 +736,7 @@ mod tests {
             max_tokens: None,
             agent_id: None,
             format: None,
+            helpful: None,
         };
         assert!(validate_briefing_params(&params).is_err());
     }
@@ -728,6 +750,7 @@ mod tests {
             max_tokens: None,
             agent_id: None,
             format: None,
+            helpful: None,
         };
         assert!(validate_briefing_params(&params).is_err());
     }
@@ -741,6 +764,7 @@ mod tests {
             max_tokens: None,
             agent_id: None,
             format: None,
+            helpful: None,
         };
         assert!(validate_briefing_params(&params).is_ok());
     }
@@ -754,6 +778,7 @@ mod tests {
             max_tokens: None,
             agent_id: None,
             format: None,
+            helpful: None,
         };
         assert!(validate_briefing_params(&params).is_err());
     }

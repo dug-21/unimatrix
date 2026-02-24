@@ -665,6 +665,8 @@ mod tests {
             version: 1,
             feature_cycle: String::new(),
             trust_source: "agent".to_string(),
+            helpful_count: 0,
+            unhelpful_count: 0,
         }
     }
 

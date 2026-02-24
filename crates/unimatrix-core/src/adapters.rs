@@ -81,6 +81,12 @@ impl EntryStore for StoreAdapter {
     fn read_counter(&self, name: &str) -> Result<u64, CoreError> {
         Ok(self.inner.read_counter(name)?)
     }
+
+    fn record_access(&self, entry_ids: &[u64]) -> Result<(), CoreError> {
+        Ok(self
+            .inner
+            .record_usage(entry_ids, entry_ids, &[], &[], &[], &[])?)
+    }
 }
 
 /// Adapter bridging `VectorIndex` to the `VectorStore` trait.

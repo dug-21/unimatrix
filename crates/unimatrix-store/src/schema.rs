@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::StoreError;
 
-// -- Table Definitions (10 total) --
+// -- Table Definitions (11 total) --
 
 /// Primary entry storage: entry_id -> bincode bytes.
 pub const ENTRIES: TableDefinition<u64, &[u8]> = TableDefinition::new("entries");
@@ -37,6 +37,11 @@ pub const AGENT_REGISTRY: TableDefinition<&str, &[u8]> =
 
 /// Append-only request audit trail: monotonic event_id -> bincode bytes.
 pub const AUDIT_LOG: TableDefinition<u64, &[u8]> = TableDefinition::new("audit_log");
+
+/// Feature-entry multimap: feature_id -> set of entry_ids.
+/// Populated when retrieval tools include a `feature` parameter AND agent trust >= Internal.
+pub const FEATURE_ENTRIES: MultimapTableDefinition<&str, u64> =
+    MultimapTableDefinition::new("feature_entries");
 
 // -- Status Enum --
 
@@ -119,6 +124,13 @@ pub struct EntryRecord {
     pub feature_cycle: String,
     #[serde(default)]
     pub trust_source: String,
+    // -- crt-001 usage tracking fields (appended after trust_source) --
+    /// Times this entry was marked helpful by agents (deduped per session).
+    #[serde(default)]
+    pub helpful_count: u32,
+    /// Times this entry was marked unhelpful by agents (deduped per session).
+    #[serde(default)]
+    pub unhelpful_count: u32,
 }
 
 // -- NewEntry --
@@ -332,6 +344,8 @@ mod tests {
             version: 3,
             feature_cycle: "nxs-004".to_string(),
             trust_source: "agent".to_string(),
+            helpful_count: 7,
+            unhelpful_count: 3,
         };
 
         let bytes = serialize_entry(&record).expect("serialize");
@@ -366,6 +380,8 @@ mod tests {
             version: 0,
             feature_cycle: String::new(),
             trust_source: String::new(),
+            helpful_count: 0,
+            unhelpful_count: 0,
         };
 
         let bytes = serialize_entry(&record).expect("serialize");
@@ -508,6 +524,8 @@ mod tests {
             version: 0,
             feature_cycle: String::new(),
             trust_source: String::new(),
+            helpful_count: 0,
+            unhelpful_count: 0,
         }
     }
 }

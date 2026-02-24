@@ -101,6 +101,45 @@ impl AuditLog {
         Ok(())
     }
 
+    /// Count write operations by a specific agent since a given timestamp.
+    ///
+    /// Scans AUDIT_LOG for entries where `agent_id` matches and `operation`
+    /// is a write tool (context_store, context_correct) with `timestamp >= since`.
+    /// Returns the count.
+    pub fn write_count_since(&self, agent_id: &str, since: u64) -> Result<u64, ServerError> {
+        let txn = self
+            .store
+            .begin_read()
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        let table = txn
+            .open_table(AUDIT_LOG)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+
+        let mut count = 0u64;
+
+        for result in table
+            .iter()
+            .map_err(|e| ServerError::Audit(e.to_string()))?
+        {
+            let (_, value) = result.map_err(|e| ServerError::Audit(e.to_string()))?;
+            let event = deserialize_audit_event(value.value())?;
+
+            if event.timestamp < since {
+                continue;
+            }
+
+            if event.agent_id != agent_id {
+                continue;
+            }
+
+            if is_write_operation(&event.operation) {
+                count += 1;
+            }
+        }
+
+        Ok(count)
+    }
+
     /// Write an audit event into an existing write transaction without committing.
     ///
     /// The caller owns the transaction and is responsible for committing.
@@ -162,9 +201,13 @@ fn serialize_audit_event(event: &AuditEvent) -> Result<Vec<u8>, ServerError> {
         .map_err(|e| ServerError::Audit(format!("serialization failed: {e}")))
 }
 
+/// Check if an operation name is a write operation.
+fn is_write_operation(operation: &str) -> bool {
+    matches!(operation, "context_store" | "context_correct")
+}
+
 /// Deserialize an AuditEvent from bincode bytes.
-#[cfg(test)]
-fn deserialize_audit_event(bytes: &[u8]) -> Result<AuditEvent, ServerError> {
+pub(crate) fn deserialize_audit_event(bytes: &[u8]) -> Result<AuditEvent, ServerError> {
     let (event, _) =
         bincode::serde::decode_from_slice::<AuditEvent, _>(bytes, bincode::config::standard())
             .map_err(|e| ServerError::Audit(format!("deserialization failed: {e}")))?;
@@ -426,5 +469,131 @@ mod tests {
             assert!(window[1] > window[0], "IDs not strictly increasing");
         }
         assert_eq!(ids.len(), 100);
+    }
+
+    // -- crt-001: write_count_since tests --
+
+    #[test]
+    fn test_write_count_since_counts_writes_only() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        // 5 write events (context_store)
+        for _ in 0..5 {
+            let mut event = make_event();
+            event.operation = "context_store".to_string();
+            event.agent_id = "agent-a".to_string();
+            event.outcome = Outcome::Success;
+            audit.log_event(event).unwrap();
+        }
+        // 5 read events (context_search)
+        for _ in 0..5 {
+            let mut event = make_event();
+            event.operation = "context_search".to_string();
+            event.agent_id = "agent-a".to_string();
+            event.outcome = Outcome::Success;
+            audit.log_event(event).unwrap();
+        }
+
+        let count = audit.write_count_since("agent-a", 0).unwrap();
+        assert_eq!(count, 5);
+    }
+
+    #[test]
+    fn test_write_count_since_agent_filtering() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        // Agent A: 3 writes
+        for _ in 0..3 {
+            let mut event = make_event();
+            event.operation = "context_store".to_string();
+            event.agent_id = "agent-a".to_string();
+            audit.log_event(event).unwrap();
+        }
+        // Agent B: 2 writes
+        for _ in 0..2 {
+            let mut event = make_event();
+            event.operation = "context_store".to_string();
+            event.agent_id = "agent-b".to_string();
+            audit.log_event(event).unwrap();
+        }
+
+        assert_eq!(audit.write_count_since("agent-a", 0).unwrap(), 3);
+        assert_eq!(audit.write_count_since("agent-b", 0).unwrap(), 2);
+        assert_eq!(audit.write_count_since("agent-c", 0).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_write_count_since_timestamp_boundary() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        // Log events -- they'll get current timestamp
+        let mut event = make_event();
+        event.operation = "context_store".to_string();
+        event.agent_id = "agent-a".to_string();
+        audit.log_event(event).unwrap();
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        // Events logged before "now" should be counted (since = 0)
+        assert_eq!(audit.write_count_since("agent-a", 0).unwrap(), 1);
+
+        // Events with since = far future should return 0
+        assert_eq!(
+            audit.write_count_since("agent-a", now + 10000).unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn test_write_count_since_empty_log() {
+        let store = make_store();
+        let audit = AuditLog::new(store);
+        assert_eq!(audit.write_count_since("any-agent", 0).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_write_count_since_both_write_ops() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        let mut e1 = make_event();
+        e1.operation = "context_store".to_string();
+        e1.agent_id = "agent-a".to_string();
+        audit.log_event(e1).unwrap();
+
+        let mut e2 = make_event();
+        e2.operation = "context_correct".to_string();
+        e2.agent_id = "agent-a".to_string();
+        audit.log_event(e2).unwrap();
+
+        assert_eq!(audit.write_count_since("agent-a", 0).unwrap(), 2);
+    }
+
+    #[test]
+    fn test_write_count_since_non_write_ops_excluded() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        for op in [
+            "context_search",
+            "context_lookup",
+            "context_get",
+            "context_briefing",
+            "context_deprecate",
+            "context_status",
+        ] {
+            let mut event = make_event();
+            event.operation = op.to_string();
+            event.agent_id = "agent-a".to_string();
+            audit.log_event(event).unwrap();
+        }
+
+        assert_eq!(audit.write_count_since("agent-a", 0).unwrap(), 0);
     }
 }

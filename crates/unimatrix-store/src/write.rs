@@ -6,8 +6,9 @@ use crate::counter;
 use crate::db::Store;
 use crate::error::{Result, StoreError};
 use crate::schema::{
-    CATEGORY_INDEX, ENTRIES, EntryRecord, NewEntry, STATUS_INDEX, Status, TAG_INDEX, TIME_INDEX,
-    TOPIC_INDEX, VECTOR_MAP, deserialize_entry, serialize_entry, status_counter_key,
+    CATEGORY_INDEX, ENTRIES, EntryRecord, FEATURE_ENTRIES, NewEntry, STATUS_INDEX, Status,
+    TAG_INDEX, TIME_INDEX, TOPIC_INDEX, VECTOR_MAP, deserialize_entry, serialize_entry,
+    status_counter_key,
 };
 
 /// Get the current unix timestamp in seconds.
@@ -59,6 +60,8 @@ impl Store {
             version: 1,
             feature_cycle: entry.feature_cycle,
             trust_source: entry.trust_source,
+            helpful_count: 0,
+            unhelpful_count: 0,
         };
 
         // Step 4: Serialize and write to ENTRIES
@@ -300,6 +303,107 @@ impl Store {
         Ok(())
     }
 
+    /// Record usage for a batch of entries in a single write transaction.
+    ///
+    /// For each entry_id in `all_ids`, updates `last_accessed_at` to `now`.
+    /// For each entry_id in `access_ids`, increments `access_count`.
+    /// For each entry_id in `helpful_ids`, increments `helpful_count`.
+    /// For each entry_id in `unhelpful_ids`, increments `unhelpful_count`.
+    /// For each entry_id in `decrement_helpful_ids`, decrements `helpful_count` (saturating at 0).
+    /// For each entry_id in `decrement_unhelpful_ids`, decrements `unhelpful_count` (saturating at 0).
+    ///
+    /// The caller (server layer) determines which IDs appear in which set
+    /// based on deduplication and vote correction. The store applies updates unconditionally.
+    pub fn record_usage(
+        &self,
+        all_ids: &[u64],
+        access_ids: &[u64],
+        helpful_ids: &[u64],
+        unhelpful_ids: &[u64],
+        decrement_helpful_ids: &[u64],
+        decrement_unhelpful_ids: &[u64],
+    ) -> Result<()> {
+        if all_ids.is_empty() {
+            return Ok(());
+        }
+
+        let now = current_unix_timestamp_secs();
+        let txn = self.db.begin_write()?;
+
+        let access_set: HashSet<u64> = access_ids.iter().copied().collect();
+        let helpful_set: HashSet<u64> = helpful_ids.iter().copied().collect();
+        let unhelpful_set: HashSet<u64> = unhelpful_ids.iter().copied().collect();
+        let dec_helpful_set: HashSet<u64> = decrement_helpful_ids.iter().copied().collect();
+        let dec_unhelpful_set: HashSet<u64> = decrement_unhelpful_ids.iter().copied().collect();
+
+        for &id in all_ids {
+            let old_bytes = {
+                let table = txn.open_table(ENTRIES)?;
+                match table.get(id)? {
+                    Some(guard) => guard.value().to_vec(),
+                    None => continue, // Entry deleted between retrieval and usage recording
+                }
+            };
+
+            let mut record = deserialize_entry(&old_bytes)?;
+
+            // Always update last_accessed_at (no dedup -- AC-05)
+            record.last_accessed_at = now;
+
+            // Conditionally increment access_count (deduped by server layer)
+            if access_set.contains(&id) {
+                record.access_count += 1;
+            }
+
+            // Increment helpful_count
+            if helpful_set.contains(&id) {
+                record.helpful_count += 1;
+            }
+
+            // Increment unhelpful_count
+            if unhelpful_set.contains(&id) {
+                record.unhelpful_count += 1;
+            }
+
+            // Decrement helpful_count (vote correction: was helpful, now unhelpful)
+            if dec_helpful_set.contains(&id) {
+                record.helpful_count = record.helpful_count.saturating_sub(1);
+            }
+
+            // Decrement unhelpful_count (vote correction: was unhelpful, now helpful)
+            if dec_unhelpful_set.contains(&id) {
+                record.unhelpful_count = record.unhelpful_count.saturating_sub(1);
+            }
+
+            let new_bytes = serialize_entry(&record)?;
+            {
+                let mut table = txn.open_table(ENTRIES)?;
+                table.insert(id, new_bytes.as_slice())?;
+            }
+        }
+
+        txn.commit()?;
+        Ok(())
+    }
+
+    /// Link a set of entry IDs to a feature in FEATURE_ENTRIES.
+    /// Idempotent: duplicate (feature, entry_id) pairs are no-ops.
+    pub fn record_feature_entries(&self, feature: &str, entry_ids: &[u64]) -> Result<()> {
+        if entry_ids.is_empty() {
+            return Ok(());
+        }
+
+        let txn = self.db.begin_write()?;
+        {
+            let mut table = txn.open_multimap_table(FEATURE_ENTRIES)?;
+            for &id in entry_ids {
+                table.insert(feature, id)?;
+            }
+        }
+        txn.commit()?;
+        Ok(())
+    }
+
     /// Write a vector map entry (entry_id -> hnsw_data_id).
     ///
     /// Inserts or overwrites the mapping. Used by nxs-002 (Vector Index).
@@ -529,6 +633,8 @@ mod tests {
             version: 0,
             feature_cycle: String::new(),
             trust_source: String::new(),
+            helpful_count: 0,
+            unhelpful_count: 0,
         };
         let result = db.store().update(record);
         assert!(matches!(result, Err(crate::StoreError::EntryNotFound(999))));
@@ -1039,5 +1145,238 @@ mod tests {
         assert_eq!(record.feature_cycle, "");
         assert_eq!(record.trust_source, "");
         assert!(!record.content_hash.is_empty());
+    }
+
+    // -- crt-001: record_usage tests --
+
+    #[test]
+    fn test_record_usage_5_entries_all_updated() {
+        let db = TestDb::new();
+        let mut ids = Vec::new();
+        for _ in 0..5 {
+            let e = TestEntry::new("test", "convention").build();
+            ids.push(db.store().insert(e).unwrap());
+        }
+
+        db.store()
+            .record_usage(&ids, &ids, &[], &[], &[], &[])
+            .unwrap();
+
+        for &id in &ids {
+            let r = db.store().get(id).unwrap();
+            assert_eq!(r.access_count, 1);
+            assert!(r.last_accessed_at > 0);
+        }
+    }
+
+    #[test]
+    fn test_record_usage_overlapping_sets() {
+        let db = TestDb::new();
+        let mut ids = Vec::new();
+        for _ in 0..3 {
+            let e = TestEntry::new("test", "convention").build();
+            ids.push(db.store().insert(e).unwrap());
+        }
+
+        // all_ids=[1,2,3], access_ids=[1,2], helpful_ids=[2,3]
+        db.store()
+            .record_usage(&ids, &ids[..2], &ids[1..], &[], &[], &[])
+            .unwrap();
+
+        let r1 = db.store().get(ids[0]).unwrap();
+        assert_eq!(r1.access_count, 1);
+        assert_eq!(r1.helpful_count, 0);
+
+        let r2 = db.store().get(ids[1]).unwrap();
+        assert_eq!(r2.access_count, 1);
+        assert_eq!(r2.helpful_count, 1);
+
+        let r3 = db.store().get(ids[2]).unwrap();
+        assert_eq!(r3.access_count, 0);
+        assert_eq!(r3.helpful_count, 1);
+    }
+
+    #[test]
+    fn test_record_usage_nonexistent_entry_skipped() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let valid_id = db.store().insert(e).unwrap();
+
+        // Mix valid and non-existent
+        db.store()
+            .record_usage(&[valid_id, 999], &[valid_id, 999], &[], &[], &[], &[])
+            .unwrap();
+
+        let r = db.store().get(valid_id).unwrap();
+        assert_eq!(r.access_count, 1);
+    }
+
+    #[test]
+    fn test_record_usage_empty_all_ids() {
+        let db = TestDb::new();
+        db.store()
+            .record_usage(&[], &[], &[], &[], &[], &[])
+            .unwrap();
+    }
+
+    #[test]
+    fn test_record_usage_cumulative_increments() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        // Store has no dedup -- increments each time
+        db.store()
+            .record_usage(&[id], &[id], &[], &[], &[], &[])
+            .unwrap();
+        db.store()
+            .record_usage(&[id], &[id], &[], &[], &[], &[])
+            .unwrap();
+
+        let r = db.store().get(id).unwrap();
+        assert_eq!(r.access_count, 2);
+    }
+
+    #[test]
+    fn test_record_usage_preserves_fields() {
+        let db = TestDb::new();
+        let e = TestEntry::new("auth", "convention")
+            .with_title("Preserve Me")
+            .with_content("Important content")
+            .with_tags(&["rust", "test"])
+            .build();
+        let id = db.store().insert(e).unwrap();
+
+        let before = db.store().get(id).unwrap();
+
+        db.store()
+            .record_usage(&[id], &[id], &[id], &[], &[], &[])
+            .unwrap();
+
+        let after = db.store().get(id).unwrap();
+        assert_eq!(after.title, before.title);
+        assert_eq!(after.content, before.content);
+        assert_eq!(after.topic, before.topic);
+        assert_eq!(after.tags, before.tags);
+        assert_eq!(after.content_hash, before.content_hash);
+        assert_eq!(after.version, before.version);
+    }
+
+    #[test]
+    fn test_record_usage_last_accessed_at_updated_without_access_count() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        // all_ids includes this entry but access_ids does not
+        db.store()
+            .record_usage(&[id], &[], &[], &[], &[], &[])
+            .unwrap();
+
+        let r = db.store().get(id).unwrap();
+        assert_eq!(r.access_count, 0, "access_count should not change");
+        assert!(r.last_accessed_at > 0, "last_accessed_at should be updated");
+    }
+
+    #[test]
+    fn test_record_usage_vote_correction() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        // First: mark unhelpful
+        db.store()
+            .record_usage(&[id], &[], &[], &[id], &[], &[])
+            .unwrap();
+        let r = db.store().get(id).unwrap();
+        assert_eq!(r.unhelpful_count, 1);
+        assert_eq!(r.helpful_count, 0);
+
+        // Correction: helpful + decrement unhelpful
+        db.store()
+            .record_usage(&[id], &[], &[id], &[], &[], &[id])
+            .unwrap();
+        let r = db.store().get(id).unwrap();
+        assert_eq!(r.helpful_count, 1);
+        assert_eq!(r.unhelpful_count, 0);
+    }
+
+    #[test]
+    fn test_record_usage_saturating_subtraction() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        // Decrement helpful_count when it's already 0
+        db.store()
+            .record_usage(&[id], &[], &[], &[], &[id], &[])
+            .unwrap();
+
+        let r = db.store().get(id).unwrap();
+        assert_eq!(r.helpful_count, 0, "should not underflow");
+    }
+
+    // -- crt-001: record_feature_entries tests --
+
+    #[test]
+    fn test_record_feature_entries_basic() {
+        let db = TestDb::new();
+        let mut ids = Vec::new();
+        for _ in 0..3 {
+            let e = TestEntry::new("test", "convention").build();
+            ids.push(db.store().insert(e).unwrap());
+        }
+
+        db.store().record_feature_entries("crt-001", &ids).unwrap();
+
+        // Read back from multimap
+        let txn = db.store().begin_read().unwrap();
+        let table = txn.open_multimap_table(crate::FEATURE_ENTRIES).unwrap();
+        let mut found: Vec<u64> = table
+            .get("crt-001")
+            .unwrap()
+            .map(|r| r.unwrap().value())
+            .collect();
+        found.sort();
+        assert_eq!(found, ids);
+    }
+
+    #[test]
+    fn test_record_feature_entries_idempotent() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        db.store().record_feature_entries("crt-001", &[id]).unwrap();
+        db.store().record_feature_entries("crt-001", &[id]).unwrap();
+
+        let txn = db.store().begin_read().unwrap();
+        let table = txn.open_multimap_table(crate::FEATURE_ENTRIES).unwrap();
+        let count = table.get("crt-001").unwrap().count();
+        assert_eq!(count, 1, "multimap should deduplicate");
+    }
+
+    #[test]
+    fn test_record_feature_entries_nonexistent_entry() {
+        let db = TestDb::new();
+        // Multimap doesn't validate entry existence
+        db.store()
+            .record_feature_entries("crt-001", &[999])
+            .unwrap();
+
+        let txn = db.store().begin_read().unwrap();
+        let table = txn.open_multimap_table(crate::FEATURE_ENTRIES).unwrap();
+        let found: Vec<u64> = table
+            .get("crt-001")
+            .unwrap()
+            .map(|r| r.unwrap().value())
+            .collect();
+        assert_eq!(found, vec![999]);
+    }
+
+    #[test]
+    fn test_record_feature_entries_empty() {
+        let db = TestDb::new();
+        db.store().record_feature_entries("crt-001", &[]).unwrap();
     }
 }
