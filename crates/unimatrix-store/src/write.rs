@@ -305,15 +305,8 @@ impl Store {
 
     /// Record usage for a batch of entries in a single write transaction.
     ///
-    /// For each entry_id in `all_ids`, updates `last_accessed_at` to `now`.
-    /// For each entry_id in `access_ids`, increments `access_count`.
-    /// For each entry_id in `helpful_ids`, increments `helpful_count`.
-    /// For each entry_id in `unhelpful_ids`, increments `unhelpful_count`.
-    /// For each entry_id in `decrement_helpful_ids`, decrements `helpful_count` (saturating at 0).
-    /// For each entry_id in `decrement_unhelpful_ids`, decrements `unhelpful_count` (saturating at 0).
-    ///
-    /// The caller (server layer) determines which IDs appear in which set
-    /// based on deduplication and vote correction. The store applies updates unconditionally.
+    /// Delegates to `record_usage_with_confidence` with no confidence function.
+    /// Preserved for backward compatibility (`EntryStore::record_access` trait).
     pub fn record_usage(
         &self,
         all_ids: &[u64],
@@ -322,6 +315,40 @@ impl Store {
         unhelpful_ids: &[u64],
         decrement_helpful_ids: &[u64],
         decrement_unhelpful_ids: &[u64],
+    ) -> Result<()> {
+        self.record_usage_with_confidence(
+            all_ids,
+            access_ids,
+            helpful_ids,
+            unhelpful_ids,
+            decrement_helpful_ids,
+            decrement_unhelpful_ids,
+            None,
+        )
+    }
+
+    /// Record usage for a batch of entries with optional inline confidence computation.
+    ///
+    /// For each entry_id in `all_ids`, updates `last_accessed_at` to `now`.
+    /// For each entry_id in `access_ids`, increments `access_count`.
+    /// For each entry_id in `helpful_ids`, increments `helpful_count`.
+    /// For each entry_id in `unhelpful_ids`, increments `unhelpful_count`.
+    /// For each entry_id in `decrement_helpful_ids`, decrements `helpful_count` (saturating at 0).
+    /// For each entry_id in `decrement_unhelpful_ids`, decrements `unhelpful_count` (saturating at 0).
+    ///
+    /// If `confidence_fn` is `Some`, recomputes and updates confidence for each entry
+    /// after applying counter updates. This merges confidence into the existing usage
+    /// write transaction, avoiding a separate read-modify-write cycle (ADR-001).
+    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
+    pub fn record_usage_with_confidence(
+        &self,
+        all_ids: &[u64],
+        access_ids: &[u64],
+        helpful_ids: &[u64],
+        unhelpful_ids: &[u64],
+        decrement_helpful_ids: &[u64],
+        decrement_unhelpful_ids: &[u64],
+        confidence_fn: Option<&dyn Fn(&EntryRecord, u64) -> f32>,
     ) -> Result<()> {
         if all_ids.is_empty() {
             return Ok(());
@@ -375,11 +402,49 @@ impl Store {
                 record.unhelpful_count = record.unhelpful_count.saturating_sub(1);
             }
 
+            // Compute and update confidence inline (crt-002)
+            if let Some(f) = &confidence_fn {
+                record.confidence = f(&record, now);
+            }
+
             let new_bytes = serialize_entry(&record)?;
             {
                 let mut table = txn.open_table(ENTRIES)?;
                 table.insert(id, new_bytes.as_slice())?;
             }
+        }
+
+        txn.commit()?;
+        Ok(())
+    }
+
+    /// Update only the confidence field of an entry.
+    ///
+    /// Reads the entry from ENTRIES, sets the confidence value, and writes back.
+    /// No index table operations (no TOPIC_INDEX, CATEGORY_INDEX, TAG_INDEX,
+    /// TIME_INDEX, STATUS_INDEX, or VECTOR_MAP). This is the critical difference
+    /// from `Store::update()` which performs full index diffs.
+    ///
+    /// Used for mutation paths (insert, correct, deprecate) where `record_usage`
+    /// is not called.
+    pub fn update_confidence(&self, entry_id: u64, confidence: f32) -> Result<()> {
+        let txn = self.db.begin_write()?;
+
+        let old_bytes = {
+            let table = txn.open_table(ENTRIES)?;
+            match table.get(entry_id)? {
+                Some(guard) => guard.value().to_vec(),
+                None => return Err(StoreError::EntryNotFound(entry_id)),
+            }
+        };
+
+        let mut record = deserialize_entry(&old_bytes)?;
+        record.confidence = confidence;
+        let new_bytes = serialize_entry(&record)?;
+
+        {
+            let mut table = txn.open_table(ENTRIES)?;
+            table.insert(entry_id, new_bytes.as_slice())?;
         }
 
         txn.commit()?;
@@ -1378,5 +1443,167 @@ mod tests {
     fn test_record_feature_entries_empty() {
         let db = TestDb::new();
         db.store().record_feature_entries("crt-001", &[]).unwrap();
+    }
+
+    // -- crt-002: update_confidence tests (T-12 through T-14) --
+
+    #[test]
+    fn test_update_confidence_basic() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        db.store().update_confidence(id, 0.75).unwrap();
+
+        let entry = db.store().get(id).unwrap();
+        assert_eq!(entry.confidence, 0.75);
+
+        // Verify other fields unchanged
+        assert_eq!(entry.title, "Test: test/convention");
+        assert_eq!(entry.access_count, 0);
+        assert!(entry.tags.is_empty());
+    }
+
+    #[test]
+    fn test_update_confidence_idempotent() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        db.store().update_confidence(id, 0.5).unwrap();
+        db.store().update_confidence(id, 0.5).unwrap();
+
+        let entry = db.store().get(id).unwrap();
+        assert_eq!(entry.confidence, 0.5);
+    }
+
+    #[test]
+    fn test_update_confidence_not_found() {
+        let db = TestDb::new();
+        let result = db.store().update_confidence(999999, 0.5);
+        assert!(matches!(result, Err(crate::StoreError::EntryNotFound(999999))));
+    }
+
+    // -- crt-002: record_usage_with_confidence tests (T-15 through T-19) --
+
+    #[test]
+    fn test_record_usage_with_confidence_none() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        db.store()
+            .record_usage_with_confidence(&[id], &[id], &[], &[], &[], &[], None)
+            .unwrap();
+
+        let entry = db.store().get(id).unwrap();
+        assert_eq!(entry.access_count, 1);
+        assert!(entry.last_accessed_at > 0);
+        assert_eq!(entry.confidence, 0.0); // unchanged, no confidence function
+    }
+
+    #[test]
+    fn test_record_usage_with_confidence_function() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f32 {
+            0.42
+        }
+
+        db.store()
+            .record_usage_with_confidence(
+                &[id],
+                &[id],
+                &[],
+                &[],
+                &[],
+                &[],
+                Some(&test_confidence_fn),
+            )
+            .unwrap();
+
+        let entry = db.store().get(id).unwrap();
+        assert_eq!(entry.access_count, 1);
+        assert_eq!(entry.confidence, 0.42);
+    }
+
+    #[test]
+    fn test_record_usage_with_confidence_batch() {
+        let db = TestDb::new();
+        let mut ids = Vec::new();
+        for _ in 0..5 {
+            let e = TestEntry::new("test", "convention").build();
+            ids.push(db.store().insert(e).unwrap());
+        }
+
+        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f32 {
+            0.42
+        }
+
+        db.store()
+            .record_usage_with_confidence(
+                &ids,
+                &ids,
+                &[],
+                &[],
+                &[],
+                &[],
+                Some(&test_confidence_fn),
+            )
+            .unwrap();
+
+        for &id in &ids {
+            let entry = db.store().get(id).unwrap();
+            assert_eq!(entry.access_count, 1);
+            assert_eq!(entry.confidence, 0.42);
+        }
+    }
+
+    #[test]
+    fn test_record_usage_with_confidence_deleted_entry() {
+        let db = TestDb::new();
+        let e1 = TestEntry::new("test", "convention").build();
+        let id1 = db.store().insert(e1).unwrap();
+        let e2 = TestEntry::new("test", "convention").build();
+        let id2 = db.store().insert(e2).unwrap();
+        db.store().delete(id2).unwrap();
+
+        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f32 {
+            0.42
+        }
+
+        db.store()
+            .record_usage_with_confidence(
+                &[id1, id2],
+                &[id1, id2],
+                &[],
+                &[],
+                &[],
+                &[],
+                Some(&test_confidence_fn),
+            )
+            .unwrap();
+
+        let entry1 = db.store().get(id1).unwrap();
+        assert_eq!(entry1.confidence, 0.42);
+        assert!(db.store().get(id2).is_err());
+    }
+
+    #[test]
+    fn test_record_usage_delegates_to_with_confidence() {
+        let db = TestDb::new();
+        let e = TestEntry::new("test", "convention").build();
+        let id = db.store().insert(e).unwrap();
+
+        // Use original record_usage (should pass None for confidence)
+        db.store()
+            .record_usage(&[id], &[id], &[], &[], &[], &[])
+            .unwrap();
+
+        let entry = db.store().get(id).unwrap();
+        assert_eq!(entry.access_count, 1);
+        assert_eq!(entry.confidence, 0.0); // no confidence function via old method
     }
 }
