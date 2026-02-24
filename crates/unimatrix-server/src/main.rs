@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use clap::Parser;
 use rmcp::ServiceExt;
@@ -13,10 +14,20 @@ use unimatrix_server::audit::AuditLog;
 use unimatrix_server::categories::CategoryAllowlist;
 use unimatrix_server::embed_handle::EmbedServiceHandle;
 use unimatrix_server::error::ServerError;
+use unimatrix_server::pidfile;
 use unimatrix_server::project;
 use unimatrix_server::registry::AgentRegistry;
 use unimatrix_server::server::UnimatrixServer;
 use unimatrix_server::shutdown::{self, LifecycleHandles};
+
+/// Maximum number of attempts to open the database when the lock is held.
+const DB_OPEN_MAX_ATTEMPTS: u32 = 3;
+
+/// Delay between database open retry attempts.
+const DB_OPEN_RETRY_DELAY: Duration = Duration::from_secs(1);
+
+/// Timeout for waiting on a stale process to exit after SIGTERM.
+const STALE_PROCESS_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Unimatrix MCP knowledge server.
 #[derive(Parser)]
@@ -55,20 +66,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "project initialized"
     );
 
-    // Open database
-    let store = match Store::open(&paths.db_path) {
-        Ok(s) => Arc::new(s),
-        Err(StoreError::Database(redb::DatabaseError::DatabaseAlreadyOpen)) => {
-            eprintln!("error: database is locked by another process");
-            eprintln!("  path: {}", paths.db_path.display());
-            eprintln!(
-                "  hint: kill the other unimatrix-server process, or run: lsof {}",
-                paths.db_path.display()
-            );
-            std::process::exit(1);
+    // Handle stale PID file before attempting to open the database
+    match pidfile::handle_stale_pid_file(&paths.pid_path, STALE_PROCESS_TIMEOUT) {
+        Ok(true) => {} // Resolved or no stale process.
+        Ok(false) => {
+            tracing::warn!("stale process did not exit; will attempt database open anyway");
         }
-        Err(e) => return Err(ServerError::Core(CoreError::Store(e)).into()),
-    };
+        Err(e) => {
+            tracing::warn!(error = %e, "PID file handling failed; continuing startup");
+        }
+    }
+
+    // Open database with retry loop for lock contention
+    let store = open_store_with_retry(&paths.db_path)?;
+
+    // Write PID file now that we hold the database lock
+    if let Err(e) = pidfile::write_pid_file(&paths.pid_path) {
+        tracing::warn!(error = %e, "failed to write PID file; continuing without it");
+    }
 
     // Initialize vector index
     let vector_config = VectorConfig::default();
@@ -128,6 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         vector_dir: paths.vector_dir.clone(),
         registry,
         audit,
+        pid_path: paths.pid_path.clone(),
     };
 
     // Serve over stdio
@@ -143,4 +159,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("unimatrix server exited cleanly");
     Ok(())
+}
+
+/// Attempt to open the database, retrying on `DatabaseAlreadyOpen`.
+///
+/// Makes up to [`DB_OPEN_MAX_ATTEMPTS`] attempts with [`DB_OPEN_RETRY_DELAY`]
+/// between each. This handles the race where a stale process received SIGTERM
+/// but has not yet released the database lock.
+fn open_store_with_retry(
+    db_path: &std::path::Path,
+) -> Result<Arc<Store>, Box<dyn std::error::Error>> {
+    for attempt in 1..=DB_OPEN_MAX_ATTEMPTS {
+        match Store::open(db_path) {
+            Ok(s) => return Ok(Arc::new(s)),
+            Err(StoreError::Database(redb::DatabaseError::DatabaseAlreadyOpen)) => {
+                if attempt < DB_OPEN_MAX_ATTEMPTS {
+                    tracing::warn!(
+                        attempt,
+                        max_attempts = DB_OPEN_MAX_ATTEMPTS,
+                        "database locked by another process, retrying in {}s",
+                        DB_OPEN_RETRY_DELAY.as_secs()
+                    );
+                    std::thread::sleep(DB_OPEN_RETRY_DELAY);
+                } else {
+                    eprintln!("error: database is locked by another process");
+                    eprintln!("  path: {}", db_path.display());
+                    eprintln!(
+                        "  hint: kill the other unimatrix-server process, or run: lsof {}",
+                        db_path.display()
+                    );
+                    std::process::exit(1);
+                }
+            }
+            Err(e) => return Err(ServerError::Core(CoreError::Store(e)).into()),
+        }
+    }
+
+    // Unreachable: the loop either returns Ok, exits the process, or returns Err.
+    unreachable!()
 }

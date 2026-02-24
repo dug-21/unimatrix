@@ -10,6 +10,7 @@ pub mod categories;
 pub mod embed_handle;
 pub mod error;
 pub mod identity;
+pub mod pidfile;
 pub mod project;
 pub mod registry;
 pub mod response;

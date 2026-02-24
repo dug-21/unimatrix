@@ -28,6 +28,8 @@ pub struct LifecycleHandles {
     pub registry: Arc<AgentRegistry>,
     /// Audit log (holds Arc<Store>; must drop before try_unwrap).
     pub audit: Arc<AuditLog>,
+    /// PID file path for cleanup on exit.
+    pub pid_path: PathBuf,
 }
 
 /// Run the graceful shutdown sequence.
@@ -36,6 +38,7 @@ pub struct LifecycleHandles {
 /// 1. Dumps the vector index
 /// 2. Drops all Arc<Store> clones
 /// 3. Attempts to compact the database
+/// 4. Removes the PID file
 pub async fn graceful_shutdown<S>(
     handles: LifecycleHandles,
     server: S,
@@ -81,6 +84,10 @@ where
             tracing::warn!("skipping compact: outstanding Store references");
         }
     }
+
+    // Step 4: Remove PID file
+    crate::pidfile::remove_pid_file(&handles.pid_path);
+    tracing::info!("PID file removed");
 
     Ok(())
 }
