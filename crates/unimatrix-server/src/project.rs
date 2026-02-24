@@ -19,6 +19,8 @@ pub struct ProjectPaths {
     pub db_path: PathBuf,
     /// Vector index directory: ~/.unimatrix/{hash}/vector/
     pub vector_dir: PathBuf,
+    /// PID file path: ~/.unimatrix/{hash}/unimatrix.pid
+    pub pid_path: PathBuf,
 }
 
 /// Detect the project root by walking up from cwd looking for `.git/`.
@@ -72,6 +74,7 @@ pub fn ensure_data_directory(override_dir: Option<&Path>) -> io::Result<ProjectP
     let data_dir = home.join(".unimatrix").join(&project_hash);
     let db_path = data_dir.join("unimatrix.redb");
     let vector_dir = data_dir.join("vector");
+    let pid_path = data_dir.join("unimatrix.pid");
 
     fs::create_dir_all(&data_dir)?;
     fs::create_dir_all(&vector_dir)?;
@@ -82,6 +85,7 @@ pub fn ensure_data_directory(override_dir: Option<&Path>) -> io::Result<ProjectP
         data_dir,
         db_path,
         vector_dir,
+        pid_path,
     })
 }
 
@@ -145,6 +149,7 @@ mod tests {
         assert!(paths.db_path.parent().unwrap().exists());
         assert!(paths.db_path.to_string_lossy().ends_with("unimatrix.redb"));
         assert!(paths.vector_dir.to_string_lossy().ends_with("vector"));
+        assert!(paths.pid_path.to_string_lossy().ends_with("unimatrix.pid"));
     }
 
     #[test]
