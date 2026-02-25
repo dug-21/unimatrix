@@ -1,0 +1,17 @@
+{
+  "description": "Near-maximum-size payload specifications. Actual content is generated at runtime by harness.generators.load_large_content() to avoid bloating this file.",
+  "entries": [
+    {
+      "label": "100KB content",
+      "size_bytes": 102400
+    },
+    {
+      "label": "500KB content",
+      "size_bytes": 512000
+    },
+    {
+      "label": "Near 1MB content",
+      "size_bytes": 1000000
+    }
+  ]
+}

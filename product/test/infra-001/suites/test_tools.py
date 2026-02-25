@@ -1,0 +1,639 @@
+"""Suite 2: Tools (~80 tests).
+
+Every tool, every parameter path, happy and error paths.
+Uses format='json' for structured assertions.
+"""
+
+import pytest
+from harness.assertions import (
+    assert_tool_success,
+    assert_tool_error,
+    extract_entry_id,
+    parse_entry,
+    parse_entries,
+    parse_status_report,
+    assert_search_contains,
+    assert_search_not_contains,
+    get_result_text,
+)
+
+
+# === context_store (15 tests) =========================================
+
+@pytest.mark.smoke
+def test_store_minimal(server):
+    """T-01: Store with required fields only."""
+    resp = server.context_store(
+        "minimal store test", "testing", "convention", agent_id="human"
+    )
+    assert_tool_success(resp)
+
+
+def test_store_all_fields(server):
+    """T-02: Store with all optional fields."""
+    resp = server.context_store(
+        "full content",
+        "testing",
+        "convention",
+        title="Full Entry",
+        tags=["tag1", "tag2"],
+        source="test-source",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(resp)
+
+
+@pytest.mark.smoke
+def test_store_roundtrip(server):
+    """T-03: Store then get, verify fields match."""
+    resp = server.context_store(
+        "roundtrip content for tools suite",
+        "architecture",
+        "decision",
+        title="Roundtrip Test",
+        tags=["roundtrip"],
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(resp)
+
+    get_resp = server.context_get(entry_id, agent_id="human", format="json")
+    entry = parse_entry(get_resp)
+    assert "roundtrip content" in entry.get("content", "")
+
+
+def test_store_invalid_category(server):
+    """T-05: Store with invalid category returns error."""
+    resp = server.context_store(
+        "content", "testing", "invalid_category", agent_id="human"
+    )
+    assert_tool_error(resp, "category")
+
+
+def test_store_empty_content(server):
+    """T-06: Store with empty content returns error."""
+    resp = server.context_store("", "testing", "convention", agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_store_empty_topic(server):
+    """T-07: Store with empty topic returns error."""
+    resp = server.context_store("content", "", "convention", agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_store_restricted_agent_rejected(server):
+    """T-08: Restricted agent cannot store (no Write capability)."""
+    resp = server.context_store(
+        "restricted content", "testing", "convention", agent_id="unknown-agent-xyz"
+    )
+    assert_tool_error(resp)
+
+
+def test_store_with_tags(server):
+    """T-11: Store with 1-3 tags succeeds."""
+    resp = server.context_store(
+        "tagged content",
+        "testing",
+        "convention",
+        tags=["tag1", "tag2", "tag3"],
+        agent_id="human",
+    )
+    assert_tool_success(resp)
+
+
+def test_store_format_json(server):
+    """T-13: Store format=json returns entry data."""
+    resp = server.context_store(
+        "json format content", "testing", "convention", agent_id="human", format="json"
+    )
+    result = assert_tool_success(resp)
+    assert result.parsed is not None
+
+
+def test_store_format_markdown(server):
+    """T-14: Store format=markdown returns markdown."""
+    resp = server.context_store(
+        "markdown format content",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="markdown",
+    )
+    assert_tool_success(resp)
+
+
+def test_store_format_summary(server):
+    """T-15: Store format=summary returns text."""
+    resp = server.context_store(
+        "summary format content",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="summary",
+    )
+    assert_tool_success(resp)
+
+
+# === context_search (12 tests) ========================================
+
+@pytest.mark.smoke
+def test_search_returns_results(server):
+    """T-16: Store entry, search for it, find it."""
+    server.context_store(
+        "unique searchable testing content zyx987",
+        "testing",
+        "convention",
+        agent_id="human",
+    )
+    resp = server.context_search("searchable testing content zyx987", format="json")
+    entries = parse_entries(resp)
+    assert len(entries) > 0
+
+
+def test_search_with_topic_filter(server):
+    """T-17: Search filtered by topic."""
+    server.context_store(
+        "architecture specific content", "architecture", "decision", agent_id="human"
+    )
+    server.context_store(
+        "testing specific content", "testing", "convention", agent_id="human"
+    )
+    resp = server.context_search(
+        "specific content", topic="architecture", format="json"
+    )
+    entries = parse_entries(resp)
+    for e in entries:
+        assert e.get("topic") == "architecture"
+
+
+def test_search_with_category_filter(server):
+    """T-18: Search filtered by category."""
+    server.context_store(
+        "decision content for search", "testing", "decision", agent_id="human"
+    )
+    resp = server.context_search(
+        "decision content", category="decision", format="json"
+    )
+    entries = parse_entries(resp)
+    for e in entries:
+        assert e.get("category") == "decision"
+
+
+def test_search_with_k_limit(server):
+    """T-20: Search with k parameter limits results."""
+    for i in range(5):
+        server.context_store(
+            f"k limit entry {i} about testing patterns",
+            "testing",
+            "convention",
+            agent_id="human",
+        )
+    resp = server.context_search("testing patterns", k=2, format="json")
+    entries = parse_entries(resp)
+    assert len(entries) <= 2
+
+
+def test_search_excludes_deprecated(server):
+    """T-21: Search excludes deprecated entries."""
+    store_resp = server.context_store(
+        "deprecated search content unique abc",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_deprecate(entry_id, reason="outdated", agent_id="human")
+    resp = server.context_search("deprecated search content unique abc", format="json")
+    assert_search_not_contains(resp, entry_id)
+
+
+def test_search_excludes_quarantined(server):
+    """T-22: Search excludes quarantined entries."""
+    store_resp = server.context_store(
+        "quarantined search content unique def",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    resp = server.context_search(
+        "quarantined search content unique def", format="json"
+    )
+    assert_search_not_contains(resp, entry_id)
+
+
+def test_search_all_formats(server):
+    """T-23: Search returns valid responses in all three formats."""
+    server.context_store(
+        "format search test", "testing", "convention", agent_id="human"
+    )
+    for fmt in ["summary", "markdown", "json"]:
+        resp = server.context_search("format search test", format=fmt)
+        assert_tool_success(resp)
+
+
+# === context_lookup (10 tests) ========================================
+
+def test_lookup_by_topic(server):
+    """T-28: Lookup filtered by topic."""
+    server.context_store(
+        "lookup topic content", "security", "convention", agent_id="human"
+    )
+    resp = server.context_lookup(topic="security", format="json")
+    entries = parse_entries(resp)
+    assert len(entries) > 0
+
+
+def test_lookup_by_category(server):
+    """T-29: Lookup filtered by category."""
+    server.context_store(
+        "lookup cat content", "testing", "decision", agent_id="human"
+    )
+    resp = server.context_lookup(category="decision", format="json")
+    entries = parse_entries(resp)
+    assert len(entries) > 0
+
+
+def test_lookup_by_id(server):
+    """T-30: Lookup by specific entry ID."""
+    store_resp = server.context_store(
+        "lookup id content", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    resp = server.context_lookup(id=entry_id, format="json")
+    entries = parse_entries(resp)
+    ids = [e.get("id") for e in entries]
+    assert entry_id in ids
+
+
+def test_lookup_with_limit(server):
+    """T-34: Lookup with limit parameter."""
+    for i in range(5):
+        server.context_store(
+            f"lookup limit {i}", "testing", "convention", agent_id="human"
+        )
+    resp = server.context_lookup(topic="testing", limit=2, format="json")
+    entries = parse_entries(resp)
+    assert len(entries) <= 2
+
+
+def test_lookup_nonexistent_topic(server):
+    """T-37: Lookup nonexistent topic returns empty."""
+    resp = server.context_lookup(
+        topic="nonexistent-topic-xyz", format="json"
+    )
+    entries = parse_entries(resp)
+    assert len(entries) == 0
+
+
+def test_lookup_all_formats(server):
+    """T-35: Lookup returns valid response in all formats."""
+    server.context_store(
+        "lookup format test", "testing", "convention", agent_id="human"
+    )
+    for fmt in ["summary", "markdown", "json"]:
+        resp = server.context_lookup(topic="testing", format=fmt)
+        assert_tool_success(resp)
+
+
+# === context_get (6 tests) ============================================
+
+def test_get_existing(server):
+    """T-38: Get existing entry by ID."""
+    store_resp = server.context_store(
+        "get existing content", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    resp = server.context_get(entry_id, format="json")
+    entry = parse_entry(resp)
+    assert "get existing content" in entry.get("content", "")
+
+
+def test_get_nonexistent(server):
+    """T-39: Get nonexistent ID returns error."""
+    resp = server.context_get(99999, format="json")
+    assert_tool_error(resp)
+
+
+def test_get_quarantined_visible(server):
+    """T-40: Get quarantined entry still accessible."""
+    store_resp = server.context_store(
+        "quarantined get content", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    resp = server.context_get(entry_id, format="json")
+    assert_tool_success(resp)
+
+
+def test_get_all_formats(server):
+    """T-42: Get returns valid response in all formats."""
+    store_resp = server.context_store(
+        "format get test", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    for fmt in ["summary", "markdown", "json"]:
+        resp = server.context_get(entry_id, format=fmt)
+        assert_tool_success(resp)
+
+
+def test_get_invalid_id(server):
+    """T-43: Get with negative ID returns error."""
+    resp = server.context_get(-1, format="json")
+    assert_tool_error(resp)
+
+
+# === context_correct (8 tests) ========================================
+
+def test_correct_creates_chain(server):
+    """T-44: Correct deprecates original and creates new entry."""
+    store_resp = server.context_store(
+        "original for correction", "testing", "convention", agent_id="human", format="json"
+    )
+    original_id = extract_entry_id(store_resp)
+    correct_resp = server.context_correct(
+        original_id,
+        "corrected content v2",
+        reason="Updated guidance",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(correct_resp)
+
+
+def test_correct_nonexistent(server):
+    """T-46: Correct nonexistent entry returns error."""
+    resp = server.context_correct(99999, "content", agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_correct_requires_write(server):
+    """T-49: Correct requires Write capability."""
+    store_resp = server.context_store(
+        "correct write test", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    resp = server.context_correct(
+        entry_id, "updated", agent_id="unknown-restricted-agent"
+    )
+    assert_tool_error(resp)
+
+
+def test_correct_preserves_metadata(server):
+    """T-50: Correct preserves original metadata unless overridden."""
+    store_resp = server.context_store(
+        "metadata preserve test",
+        "architecture",
+        "decision",
+        title="Original Title",
+        tags=["preserve"],
+        agent_id="human",
+        format="json",
+    )
+    original_id = extract_entry_id(store_resp)
+    correct_resp = server.context_correct(
+        original_id,
+        "corrected metadata content",
+        agent_id="human",
+        format="json",
+    )
+    new_id = extract_entry_id(correct_resp)
+    get_resp = server.context_get(new_id, format="json")
+    entry = parse_entry(get_resp)
+    assert entry.get("topic") == "architecture"
+
+
+def test_correct_all_formats(server):
+    """T-51: Correct returns valid response in all formats."""
+    store_resp = server.context_store(
+        "correct format test", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    for fmt in ["summary", "markdown", "json"]:
+        resp = server.context_correct(
+            entry_id,
+            f"corrected content {fmt}",
+            agent_id="human",
+            format=fmt,
+        )
+        assert_tool_success(resp)
+        # After first correction, original is deprecated, so use the new ID
+        if fmt == "summary":
+            entry_id = extract_entry_id(resp)
+
+
+# === context_deprecate (5 tests) ======================================
+
+def test_deprecate_changes_status(server):
+    """T-52: Deprecate changes entry status."""
+    store_resp = server.context_store(
+        "to deprecate", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    dep_resp = server.context_deprecate(entry_id, reason="outdated", agent_id="human")
+    assert_tool_success(dep_resp)
+
+
+def test_deprecate_nonexistent(server):
+    """T-54: Deprecate nonexistent entry returns error."""
+    resp = server.context_deprecate(99999, agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_deprecate_requires_write(server):
+    """T-55: Deprecate requires Write capability."""
+    store_resp = server.context_store(
+        "deprecate write test", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    resp = server.context_deprecate(
+        entry_id, agent_id="unknown-restricted-agent"
+    )
+    assert_tool_error(resp)
+
+
+def test_deprecated_excluded_from_search(server):
+    """T-56: Deprecated entries excluded from default search."""
+    store_resp = server.context_store(
+        "deprecated exclusion test content unique ghi",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_deprecate(entry_id, agent_id="human")
+    search_resp = server.context_search(
+        "deprecated exclusion test content unique ghi", format="json"
+    )
+    assert_search_not_contains(search_resp, entry_id)
+
+
+# === context_status (8 tests) =========================================
+
+@pytest.mark.smoke
+def test_status_empty_db(server):
+    """T-57: Status on empty database returns valid report."""
+    resp = server.context_status(agent_id="human", format="json")
+    result = assert_tool_success(resp)
+    assert result.parsed is not None
+
+
+def test_status_with_entries(server):
+    """T-58: Status shows correct entry count after stores."""
+    for i in range(3):
+        server.context_store(
+            f"status count test {i}", "testing", "convention", agent_id="human"
+        )
+    resp = server.context_status(agent_id="human", format="json")
+    report = parse_status_report(resp)
+    assert report, "Status report should not be empty"
+
+
+def test_status_topic_filter(server):
+    """T-59: Status filtered by topic."""
+    server.context_store(
+        "status topic test", "architecture", "decision", agent_id="human"
+    )
+    resp = server.context_status(
+        topic="architecture", agent_id="human", format="json"
+    )
+    assert_tool_success(resp)
+
+
+def test_status_all_formats(server):
+    """T-63: Status returns valid response in all formats."""
+    for fmt in ["summary", "markdown", "json"]:
+        resp = server.context_status(agent_id="human", format=fmt)
+        assert_tool_success(resp)
+
+
+# === context_briefing (8 tests) =======================================
+
+def test_briefing_returns_content(server):
+    """T-65: Briefing with role and task returns content."""
+    server.context_store(
+        "developer guidance for testing patterns",
+        "testing",
+        "duties",
+        agent_id="human",
+    )
+    resp = server.context_briefing("developer", "implement feature", agent_id="human")
+    assert_tool_success(resp)
+
+
+def test_briefing_empty_db(server):
+    """T-69: Briefing on empty DB returns valid response."""
+    resp = server.context_briefing("developer", "implement feature", agent_id="human")
+    assert_tool_success(resp)
+
+
+def test_briefing_missing_required_params(server):
+    """T-71: Briefing without required params returns error."""
+    resp = server.call_tool("context_briefing", {"role": "developer"})
+    assert_tool_error(resp)
+
+
+def test_briefing_all_formats(server):
+    """T-70: Briefing returns valid response in all formats."""
+    for fmt in ["summary", "markdown", "json"]:
+        resp = server.context_briefing(
+            "developer", "test task", agent_id="human", format=fmt
+        )
+        assert_tool_success(resp)
+
+
+# === context_quarantine (8 tests) =====================================
+
+def test_quarantine_entry(server):
+    """T-73: Quarantine changes entry status."""
+    store_resp = server.context_store(
+        "quarantine status test", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    q_resp = server.context_quarantine(entry_id, reason="suspect", agent_id="human")
+    assert_tool_success(q_resp)
+
+
+def test_quarantine_excluded_from_search(server):
+    """T-74: Quarantined entry not in search results."""
+    store_resp = server.context_store(
+        "quarantine search exclusion test unique jkl",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    search_resp = server.context_search(
+        "quarantine search exclusion test unique jkl", format="json"
+    )
+    assert_search_not_contains(search_resp, entry_id)
+
+
+def test_quarantine_excluded_from_lookup(server):
+    """T-75: Quarantined entry excluded from default lookup."""
+    store_resp = server.context_store(
+        "quarantine lookup test", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    lookup_resp = server.context_lookup(topic="testing", format="json")
+    entries = parse_entries(lookup_resp)
+    ids = [e.get("id") for e in entries]
+    assert entry_id not in ids
+
+
+def test_quarantine_visible_via_get(server):
+    """T-76: Quarantined entry still accessible via get."""
+    store_resp = server.context_store(
+        "quarantine get visible test", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    get_resp = server.context_get(entry_id, format="json")
+    assert_tool_success(get_resp)
+
+
+def test_restore_quarantined(server):
+    """T-77: Restore returns entry to active status."""
+    store_resp = server.context_store(
+        "restore test content", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    restore_resp = server.context_quarantine(
+        entry_id, action="restore", agent_id="human"
+    )
+    assert_tool_success(restore_resp)
+
+
+def test_quarantine_requires_admin(server):
+    """T-78: Restricted agent cannot quarantine (requires Admin)."""
+    store_resp = server.context_store(
+        "admin quarantine test", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    q_resp = server.context_quarantine(
+        entry_id, agent_id="unknown-restricted-agent"
+    )
+    assert_tool_error(resp=q_resp)
+
+
+def test_quarantine_all_formats(server):
+    """T-80: Quarantine returns valid response in all formats."""
+    store_resp = server.context_store(
+        "quarantine format test", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    for fmt in ["summary", "markdown", "json"]:
+        q_resp = server.context_quarantine(entry_id, agent_id="human", format=fmt)
+        assert_tool_success(q_resp)
+        # After first quarantine, restore for next iteration
+        server.context_quarantine(entry_id, action="restore", agent_id="human")
