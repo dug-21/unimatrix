@@ -62,6 +62,7 @@ fn status_str(status: Status) -> &'static str {
         Status::Active => "active",
         Status::Deprecated => "deprecated",
         Status::Proposed => "proposed",
+        Status::Quarantined => "quarantined",
     }
 }
 
@@ -324,6 +325,8 @@ pub struct StatusReport {
     pub total_deprecated: u64,
     /// Count of proposed entries.
     pub total_proposed: u64,
+    /// Count of quarantined entries.
+    pub total_quarantined: u64,
     /// Category name to entry count.
     pub category_distribution: Vec<(String, u64)>,
     /// Topic name to entry count.
@@ -338,6 +341,16 @@ pub struct StatusReport {
     pub trust_source_distribution: Vec<(String, u64)>,
     /// Entries with empty created_by field.
     pub entries_without_attribution: u64,
+    /// Detected contradictions between entries.
+    pub contradictions: Vec<crate::contradiction::ContradictionPair>,
+    /// Number of contradictions detected.
+    pub contradiction_count: usize,
+    /// Entries with inconsistent embeddings.
+    pub embedding_inconsistencies: Vec<crate::contradiction::EmbeddingInconsistency>,
+    /// Whether contradiction scanning was performed.
+    pub contradiction_scan_performed: bool,
+    /// Whether embedding consistency check was performed.
+    pub embedding_check_performed: bool,
 }
 
 /// Assembled briefing for format_briefing.
@@ -432,17 +445,91 @@ pub fn format_deprecate_success(
     }
 }
 
+/// Format a quarantine success response.
+pub fn format_quarantine_success(
+    entry: &EntryRecord,
+    reason: Option<&str>,
+    format: ResponseFormat,
+) -> CallToolResult {
+    match format {
+        ResponseFormat::Summary => {
+            let text = format!("Quarantined #{} | {}", entry.id, entry.title);
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Markdown => {
+            let mut text = String::from("## Entry Quarantined\n\n");
+            text.push_str(&format!(
+                "**Entry:** #{} - {}\n**Status:** quarantined\n",
+                entry.id, entry.title
+            ));
+            if let Some(r) = reason {
+                text.push_str(&format!("**Reason:** {r}\n"));
+            }
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Json => {
+            let obj = serde_json::json!({
+                "quarantined": true,
+                "entry": entry_to_json(entry),
+                "reason": reason,
+            });
+            CallToolResult::success(vec![Content::text(
+                serde_json::to_string_pretty(&obj).unwrap_or_default(),
+            )])
+        }
+    }
+}
+
+/// Format a restore success response.
+pub fn format_restore_success(
+    entry: &EntryRecord,
+    reason: Option<&str>,
+    format: ResponseFormat,
+) -> CallToolResult {
+    match format {
+        ResponseFormat::Summary => {
+            let text = format!("Restored #{} | {}", entry.id, entry.title);
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Markdown => {
+            let mut text = String::from("## Entry Restored\n\n");
+            text.push_str(&format!(
+                "**Entry:** #{} - {}\n**Status:** active\n",
+                entry.id, entry.title
+            ));
+            if let Some(r) = reason {
+                text.push_str(&format!("**Reason:** {r}\n"));
+            }
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Json => {
+            let obj = serde_json::json!({
+                "restored": true,
+                "entry": entry_to_json(entry),
+                "reason": reason,
+            });
+            CallToolResult::success(vec![Content::text(
+                serde_json::to_string_pretty(&obj).unwrap_or_default(),
+            )])
+        }
+    }
+}
+
 /// Format a status report response with health metrics.
 pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> CallToolResult {
     match format {
         ResponseFormat::Summary => {
-            let text = format!(
-                "Active: {} | Deprecated: {} | Proposed: {} | Corrections: {}",
+            let mut text = format!(
+                "Active: {} | Deprecated: {} | Proposed: {} | Quarantined: {} | Corrections: {}",
                 report.total_active,
                 report.total_deprecated,
                 report.total_proposed,
+                report.total_quarantined,
                 report.total_correction_count
             );
+            if report.contradiction_scan_performed {
+                text.push_str(&format!(" | Contradictions: {}", report.contradiction_count));
+            }
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Markdown => {
@@ -451,7 +538,8 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             text.push_str("| Status | Count |\n|--------|-------|\n");
             text.push_str(&format!("| Active | {} |\n", report.total_active));
             text.push_str(&format!("| Deprecated | {} |\n", report.total_deprecated));
-            text.push_str(&format!("| Proposed | {} |\n\n", report.total_proposed));
+            text.push_str(&format!("| Proposed | {} |\n", report.total_proposed));
+            text.push_str(&format!("| Quarantined | {} |\n\n", report.total_quarantined));
 
             text.push_str("### Category Distribution\n");
             text.push_str("| Category | Count |\n|----------|-------|\n");
@@ -489,6 +577,49 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 report.entries_without_attribution
             ));
 
+            if report.contradiction_scan_performed {
+                text.push_str("\n### Contradictions\n\n");
+                if report.contradictions.is_empty() {
+                    text.push_str("No contradictions detected.\n");
+                } else {
+                    text.push_str(&format!(
+                        "{} contradiction(s) found:\n\n",
+                        report.contradiction_count
+                    ));
+                    text.push_str("| Entry A | Entry B | Similarity | Conflict Score | Explanation |\n");
+                    text.push_str("|---------|---------|-----------|---------------|-------------|\n");
+                    for pair in &report.contradictions {
+                        text.push_str(&format!(
+                            "| #{} {} | #{} {} | {:.2} | {:.2} | {} |\n",
+                            pair.entry_id_a, pair.title_a,
+                            pair.entry_id_b, pair.title_b,
+                            pair.similarity, pair.conflict_score,
+                            pair.explanation,
+                        ));
+                    }
+                }
+            }
+
+            if report.embedding_check_performed {
+                text.push_str("\n### Embedding Integrity\n\n");
+                if report.embedding_inconsistencies.is_empty() {
+                    text.push_str("All embeddings consistent.\n");
+                } else {
+                    text.push_str(&format!(
+                        "{} inconsistency(ies) found:\n\n",
+                        report.embedding_inconsistencies.len()
+                    ));
+                    text.push_str("| Entry | Title | Self-Match Similarity |\n");
+                    text.push_str("|-------|-------|----------------------|\n");
+                    for inc in &report.embedding_inconsistencies {
+                        text.push_str(&format!(
+                            "| #{} | {} | {:.4} |\n",
+                            inc.entry_id, inc.title, inc.expected_similarity,
+                        ));
+                    }
+                }
+            }
+
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Json => {
@@ -511,10 +642,11 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 .collect::<serde_json::Map<String, serde_json::Value>>()
                 .into();
 
-            let obj = serde_json::json!({
+            let mut obj = serde_json::json!({
                 "total_active": report.total_active,
                 "total_deprecated": report.total_deprecated,
                 "total_proposed": report.total_proposed,
+                "total_quarantined": report.total_quarantined,
                 "category_distribution": cat_dist,
                 "topic_distribution": topic_dist,
                 "correction_chains": {
@@ -527,6 +659,33 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                     "entries_without_attribution": report.entries_without_attribution,
                 },
             });
+
+            if report.contradiction_scan_performed {
+                let contradictions: Vec<serde_json::Value> = report.contradictions.iter().map(|p| {
+                    serde_json::json!({
+                        "entry_id_a": p.entry_id_a,
+                        "entry_id_b": p.entry_id_b,
+                        "title_a": p.title_a,
+                        "title_b": p.title_b,
+                        "similarity": p.similarity,
+                        "conflict_score": p.conflict_score,
+                        "explanation": p.explanation,
+                    })
+                }).collect();
+                obj["contradictions"] = serde_json::json!(contradictions);
+                obj["contradiction_count"] = serde_json::json!(report.contradiction_count);
+            }
+
+            if report.embedding_check_performed {
+                let inconsistencies: Vec<serde_json::Value> = report.embedding_inconsistencies.iter().map(|i| {
+                    serde_json::json!({
+                        "entry_id": i.entry_id,
+                        "title": i.title,
+                        "self_match_similarity": i.expected_similarity,
+                    })
+                }).collect();
+                obj["embedding_inconsistencies"] = serde_json::json!(inconsistencies);
+            }
             CallToolResult::success(vec![Content::text(
                 serde_json::to_string_pretty(&obj).unwrap_or_default(),
             )])
@@ -1027,6 +1186,7 @@ mod tests {
             total_active: 10,
             total_deprecated: 3,
             total_proposed: 1,
+            total_quarantined: 0,
             category_distribution: vec![
                 ("convention".to_string(), 5),
                 ("decision".to_string(), 4),
@@ -1037,6 +1197,11 @@ mod tests {
             total_correction_count: 3,
             trust_source_distribution: vec![("agent".to_string(), 12)],
             entries_without_attribution: 1,
+            contradictions: Vec::new(),
+            contradiction_count: 0,
+            embedding_inconsistencies: Vec::new(),
+            contradiction_scan_performed: false,
+            embedding_check_performed: false,
         }
     }
 
@@ -1081,6 +1246,7 @@ mod tests {
             total_active: 0,
             total_deprecated: 0,
             total_proposed: 0,
+            total_quarantined: 0,
             category_distribution: vec![],
             topic_distribution: vec![],
             entries_with_supersedes: 0,
@@ -1088,10 +1254,165 @@ mod tests {
             total_correction_count: 0,
             trust_source_distribution: vec![],
             entries_without_attribution: 0,
+            contradictions: Vec::new(),
+            contradiction_count: 0,
+            embedding_inconsistencies: Vec::new(),
+            contradiction_scan_performed: false,
+            embedding_check_performed: false,
         };
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
         assert!(text.contains("Active: 0"));
+    }
+
+    // -- crt-003: StatusReport with contradictions --
+
+    #[test]
+    fn test_status_report_with_contradictions_summary() {
+        let pair = crate::contradiction::ContradictionPair {
+            entry_id_a: 1,
+            entry_id_b: 5,
+            title_a: "Entry A".to_string(),
+            title_b: "Entry B".to_string(),
+            similarity: 0.92,
+            conflict_score: 0.6,
+            explanation: "negation opposition (1.00)".to_string(),
+        };
+        let report = StatusReport {
+            total_active: 10,
+            total_deprecated: 2,
+            total_proposed: 1,
+            total_quarantined: 3,
+            category_distribution: vec![],
+            topic_distribution: vec![],
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: vec![],
+            entries_without_attribution: 0,
+            contradictions: vec![pair],
+            contradiction_count: 1,
+            embedding_inconsistencies: Vec::new(),
+            contradiction_scan_performed: true,
+            embedding_check_performed: false,
+        };
+
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Quarantined: 3"), "summary should include quarantined count");
+        assert!(text.contains("Contradictions: 1"), "summary should include contradiction count");
+    }
+
+    #[test]
+    fn test_status_report_with_contradictions_markdown() {
+        let pair = crate::contradiction::ContradictionPair {
+            entry_id_a: 1,
+            entry_id_b: 5,
+            title_a: "Entry A".to_string(),
+            title_b: "Entry B".to_string(),
+            similarity: 0.92,
+            conflict_score: 0.6,
+            explanation: "negation opposition".to_string(),
+        };
+        let report = StatusReport {
+            total_active: 10,
+            total_deprecated: 2,
+            total_proposed: 1,
+            total_quarantined: 3,
+            category_distribution: vec![],
+            topic_distribution: vec![],
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: vec![],
+            entries_without_attribution: 0,
+            contradictions: vec![pair],
+            contradiction_count: 1,
+            embedding_inconsistencies: Vec::new(),
+            contradiction_scan_performed: true,
+            embedding_check_performed: false,
+        };
+
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("Quarantined | 3"), "markdown should have quarantined row");
+        assert!(text.contains("### Contradictions"), "markdown should have contradictions section");
+        assert!(text.contains("1 contradiction(s)"), "should show count");
+        assert!(text.contains("Entry A"), "should show entry titles");
+    }
+
+    #[test]
+    fn test_status_report_with_contradictions_json() {
+        let pair = crate::contradiction::ContradictionPair {
+            entry_id_a: 1,
+            entry_id_b: 5,
+            title_a: "Entry A".to_string(),
+            title_b: "Entry B".to_string(),
+            similarity: 0.92,
+            conflict_score: 0.6,
+            explanation: "negation opposition".to_string(),
+        };
+        let report = StatusReport {
+            total_active: 10,
+            total_deprecated: 2,
+            total_proposed: 1,
+            total_quarantined: 3,
+            category_distribution: vec![],
+            topic_distribution: vec![],
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: vec![],
+            entries_without_attribution: 0,
+            contradictions: vec![pair],
+            contradiction_count: 1,
+            embedding_inconsistencies: Vec::new(),
+            contradiction_scan_performed: true,
+            embedding_check_performed: false,
+        };
+
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["total_quarantined"], 3);
+        assert_eq!(parsed["contradiction_count"], 1);
+        assert!(parsed["contradictions"].is_array());
+        assert_eq!(parsed["contradictions"][0]["entry_id_a"], 1);
+        assert_eq!(parsed["contradictions"][0]["entry_id_b"], 5);
+    }
+
+    #[test]
+    fn test_status_report_embedding_integrity_markdown() {
+        let inc = crate::contradiction::EmbeddingInconsistency {
+            entry_id: 42,
+            title: "Suspicious Entry".to_string(),
+            expected_similarity: 0.75,
+        };
+        let report = StatusReport {
+            total_active: 5,
+            total_deprecated: 0,
+            total_proposed: 0,
+            total_quarantined: 0,
+            category_distribution: vec![],
+            topic_distribution: vec![],
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: vec![],
+            entries_without_attribution: 0,
+            contradictions: Vec::new(),
+            contradiction_count: 0,
+            embedding_inconsistencies: vec![inc],
+            contradiction_scan_performed: false,
+            embedding_check_performed: true,
+        };
+
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("### Embedding Integrity"), "should have embedding section");
+        assert!(text.contains("1 inconsistency"), "should show count");
+        assert!(text.contains("Suspicious Entry"), "should show entry title");
+        assert!(text.contains("0.7500"), "should show similarity");
     }
 
     // -- vnc-003: format_briefing --

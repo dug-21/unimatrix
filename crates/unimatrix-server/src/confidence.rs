@@ -39,13 +39,14 @@ pub const SEARCH_SIMILARITY_WEIGHT: f32 = 0.85;
 
 /// Base quality proxy from entry lifecycle status.
 ///
-/// Active entries = 0.5, Proposed = 0.5, Deprecated = 0.2.
+/// Active entries = 0.5, Proposed = 0.5, Deprecated = 0.2, Quarantined = 0.1.
 /// Uses exhaustive match so new Status variants cause a compile error.
 pub fn base_score(status: Status) -> f64 {
     match status {
         Status::Active => 0.5,
         Status::Proposed => 0.5,
         Status::Deprecated => 0.2,
+        Status::Quarantined => 0.1,
     }
 }
 
@@ -198,6 +199,11 @@ mod tests {
     #[test]
     fn base_score_deprecated() {
         assert_eq!(base_score(Status::Deprecated), 0.2);
+    }
+
+    #[test]
+    fn base_score_quarantined() {
+        assert_eq!(base_score(Status::Quarantined), 0.1);
     }
 
     // -- T-03: usage_score values (R-08, AC-03) --

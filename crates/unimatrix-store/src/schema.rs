@@ -52,6 +52,7 @@ pub enum Status {
     Active = 0,
     Deprecated = 1,
     Proposed = 2,
+    Quarantined = 3,
 }
 
 impl TryFrom<u8> for Status {
@@ -62,6 +63,7 @@ impl TryFrom<u8> for Status {
             0 => Ok(Status::Active),
             1 => Ok(Status::Deprecated),
             2 => Ok(Status::Proposed),
+            3 => Ok(Status::Quarantined),
             other => Err(StoreError::InvalidStatus(other)),
         }
     }
@@ -73,6 +75,7 @@ impl std::fmt::Display for Status {
             Status::Active => write!(f, "Active"),
             Status::Deprecated => write!(f, "Deprecated"),
             Status::Proposed => write!(f, "Proposed"),
+            Status::Quarantined => write!(f, "Quarantined"),
         }
     }
 }
@@ -226,6 +229,7 @@ pub fn status_counter_key(status: Status) -> &'static str {
         Status::Active => "total_active",
         Status::Deprecated => "total_deprecated",
         Status::Proposed => "total_proposed",
+        Status::Quarantined => "total_quarantined",
     }
 }
 
@@ -444,7 +448,7 @@ mod tests {
 
     #[test]
     fn test_roundtrip_all_status_variants() {
-        for status in [Status::Active, Status::Deprecated, Status::Proposed] {
+        for status in [Status::Active, Status::Deprecated, Status::Proposed, Status::Quarantined] {
             let mut record = make_test_record();
             record.status = status;
             let bytes = serialize_entry(&record).expect("serialize");
@@ -484,8 +488,23 @@ mod tests {
     }
 
     #[test]
+    fn test_status_quarantined_try_from() {
+        assert_eq!(Status::try_from(3u8).unwrap(), Status::Quarantined);
+    }
+
+    #[test]
+    fn test_status_quarantined_display() {
+        assert_eq!(format!("{}", Status::Quarantined), "Quarantined");
+    }
+
+    #[test]
+    fn test_status_quarantined_counter_key() {
+        assert_eq!(status_counter_key(Status::Quarantined), "total_quarantined");
+    }
+
+    #[test]
     fn test_status_try_from_invalid() {
-        assert!(matches!(Status::try_from(3u8), Err(StoreError::InvalidStatus(3))));
+        assert!(matches!(Status::try_from(4u8), Err(StoreError::InvalidStatus(4))));
         assert!(matches!(Status::try_from(255u8), Err(StoreError::InvalidStatus(255))));
     }
 

@@ -289,11 +289,17 @@ impl UnimatrixServer {
             let mut original = deserialize_entry(&original_bytes)
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // 2. Verify original is not already deprecated
+            // 2. Verify original is not already deprecated or quarantined
             if original.status == unimatrix_store::Status::Deprecated {
                 return Err(ServerError::InvalidInput {
                     field: "original_id".to_string(),
                     reason: "cannot correct a deprecated entry".to_string(),
+                });
+            }
+            if original.status == unimatrix_store::Status::Quarantined {
+                return Err(ServerError::InvalidInput {
+                    field: "original_id".to_string(),
+                    reason: "cannot correct quarantined entry; restore first".to_string(),
                 });
             }
 
@@ -635,6 +641,170 @@ impl UnimatrixServer {
             audit_log.write_in_txn(&txn, audit_with_detail)?;
 
             // 8. Commit
+            txn.commit()
+                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            Ok(record)
+        }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
+
+        Ok(record)
+    }
+
+    /// Quarantine an entry: set status to Quarantined, update indexes and counters, write audit.
+    pub(crate) async fn quarantine_with_audit(
+        &self,
+        entry_id: u64,
+        reason: Option<String>,
+        audit_event: AuditEvent,
+    ) -> Result<EntryRecord, ServerError> {
+        let store = Arc::clone(&self.store);
+        let audit_log = Arc::clone(&self.audit);
+
+        let record = tokio::task::spawn_blocking(move || -> Result<EntryRecord, ServerError> {
+            let txn = store.begin_write()
+                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+
+            // 1. Read existing entry
+            let entry_bytes = {
+                let table = txn.open_table(ENTRIES)
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?;
+                let guard = table.get(entry_id)
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?
+                    .ok_or(ServerError::Core(CoreError::Store(StoreError::EntryNotFound(entry_id))))?;
+                guard.value().to_vec()
+            };
+            let mut record = deserialize_entry(&entry_bytes)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+            // 2. Update status
+            let old_status = record.status;
+            record.status = unimatrix_store::Status::Quarantined;
+            record.modified_by = audit_event.agent_id.clone();
+            record.updated_at = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+
+            // 3. Serialize and overwrite in ENTRIES
+            let bytes = serialize_entry(&record)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+            {
+                let mut table = txn.open_table(ENTRIES)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.insert(entry_id, bytes.as_slice())
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            }
+
+            // 4. Update STATUS_INDEX
+            {
+                let mut table = txn.open_table(STATUS_INDEX)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.remove((old_status as u8, entry_id))
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.insert((unimatrix_store::Status::Quarantined as u8, entry_id), ())
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            }
+
+            // 5. Update status counters
+            decrement_counter(&txn, status_counter_key(old_status), 1)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+            increment_counter(&txn, status_counter_key(unimatrix_store::Status::Quarantined), 1)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+            // 6. Write audit event
+            let detail = match &reason {
+                Some(r) => format!("quarantined entry #{entry_id}: {r}"),
+                None => format!("quarantined entry #{entry_id}"),
+            };
+            let audit_with_detail = AuditEvent {
+                target_ids: vec![entry_id],
+                detail,
+                ..audit_event
+            };
+            audit_log.write_in_txn(&txn, audit_with_detail)?;
+
+            // 7. Commit
+            txn.commit()
+                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            Ok(record)
+        }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
+
+        Ok(record)
+    }
+
+    /// Restore a quarantined entry: set status to Active, update indexes and counters, write audit.
+    pub(crate) async fn restore_with_audit(
+        &self,
+        entry_id: u64,
+        reason: Option<String>,
+        audit_event: AuditEvent,
+    ) -> Result<EntryRecord, ServerError> {
+        let store = Arc::clone(&self.store);
+        let audit_log = Arc::clone(&self.audit);
+
+        let record = tokio::task::spawn_blocking(move || -> Result<EntryRecord, ServerError> {
+            let txn = store.begin_write()
+                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+
+            // 1. Read existing entry
+            let entry_bytes = {
+                let table = txn.open_table(ENTRIES)
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?;
+                let guard = table.get(entry_id)
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?
+                    .ok_or(ServerError::Core(CoreError::Store(StoreError::EntryNotFound(entry_id))))?;
+                guard.value().to_vec()
+            };
+            let mut record = deserialize_entry(&entry_bytes)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+            // 2. Update status
+            let old_status = record.status;
+            record.status = unimatrix_store::Status::Active;
+            record.modified_by = audit_event.agent_id.clone();
+            record.updated_at = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+
+            // 3. Serialize and overwrite in ENTRIES
+            let bytes = serialize_entry(&record)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+            {
+                let mut table = txn.open_table(ENTRIES)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.insert(entry_id, bytes.as_slice())
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            }
+
+            // 4. Update STATUS_INDEX
+            {
+                let mut table = txn.open_table(STATUS_INDEX)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.remove((old_status as u8, entry_id))
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.insert((unimatrix_store::Status::Active as u8, entry_id), ())
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            }
+
+            // 5. Update status counters
+            decrement_counter(&txn, status_counter_key(old_status), 1)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+            increment_counter(&txn, status_counter_key(unimatrix_store::Status::Active), 1)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+            // 6. Write audit event
+            let detail = match &reason {
+                Some(r) => format!("restored entry #{entry_id}: {r}"),
+                None => format!("restored entry #{entry_id}"),
+            };
+            let audit_with_detail = AuditEvent {
+                target_ids: vec![entry_id],
+                detail,
+                ..audit_event
+            };
+            audit_log.write_in_txn(&txn, audit_with_detail)?;
+
+            // 7. Commit
             txn.commit()
                 .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
             Ok(record)
@@ -1248,5 +1418,313 @@ mod tests {
             after_deprecation < before_deprecation,
             "confidence should decrease after deprecation (base_score 0.5 -> 0.2)"
         );
+    }
+
+    // -- crt-003: Quarantine / Restore integration tests --
+
+    fn make_audit_event(agent_id: &str) -> crate::audit::AuditEvent {
+        crate::audit::AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: agent_id.to_string(),
+            operation: "context_quarantine".to_string(),
+            target_ids: vec![],
+            outcome: crate::audit::Outcome::Success,
+            detail: String::new(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_active_entry() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        let updated = server
+            .quarantine_with_audit(id, Some("test reason".into()), make_audit_event("system"))
+            .await
+            .unwrap();
+
+        assert_eq!(updated.status, unimatrix_store::Status::Quarantined);
+        assert_eq!(updated.modified_by, "system");
+
+        let fetched = server.store.get(id).unwrap();
+        assert_eq!(fetched.status, unimatrix_store::Status::Quarantined);
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_updates_status_index() {
+        use redb::ReadableTable;
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        let txn = server.store.begin_read().unwrap();
+        let status_table = txn.open_table(STATUS_INDEX).unwrap();
+
+        // Active entry should NOT exist
+        let active_entry = status_table
+            .get((unimatrix_store::Status::Active as u8, id))
+            .unwrap();
+        assert!(active_entry.is_none(), "Active STATUS_INDEX entry should be removed");
+
+        // Quarantined entry SHOULD exist
+        let quarantined_entry = status_table
+            .get((unimatrix_store::Status::Quarantined as u8, id))
+            .unwrap();
+        assert!(quarantined_entry.is_some(), "Quarantined STATUS_INDEX entry should exist");
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_updates_counters() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        let before_active = server.store.read_counter("total_active").unwrap();
+        let before_quarantined = server.store.read_counter("total_quarantined").unwrap();
+
+        server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        let after_active = server.store.read_counter("total_active").unwrap();
+        let after_quarantined = server.store.read_counter("total_quarantined").unwrap();
+
+        assert_eq!(after_active, before_active - 1, "active counter should decrement");
+        assert_eq!(
+            after_quarantined,
+            before_quarantined + 1,
+            "quarantined counter should increment"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_restore_quarantined_entry() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // Quarantine first
+        server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+        assert_eq!(
+            server.store.get(id).unwrap().status,
+            unimatrix_store::Status::Quarantined
+        );
+
+        // Restore
+        let updated = server
+            .restore_with_audit(id, Some("false alarm".into()), make_audit_event("system"))
+            .await
+            .unwrap();
+
+        assert_eq!(updated.status, unimatrix_store::Status::Active);
+        assert_eq!(server.store.get(id).unwrap().status, unimatrix_store::Status::Active);
+    }
+
+    #[tokio::test]
+    async fn test_restore_updates_counters() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        let initial_active = server.store.read_counter("total_active").unwrap();
+
+        // Quarantine
+        server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        // Restore
+        server
+            .restore_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        // Counters should return to original values
+        let final_active = server.store.read_counter("total_active").unwrap();
+        let final_quarantined = server.store.read_counter("total_quarantined").unwrap();
+
+        assert_eq!(final_active, initial_active, "active counter should return to initial");
+        assert_eq!(final_quarantined, 0, "quarantined counter should return to 0");
+    }
+
+    #[tokio::test]
+    async fn test_restore_updates_status_index() {
+        use redb::ReadableTable;
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // Quarantine then restore
+        server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+        server
+            .restore_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        let txn = server.store.begin_read().unwrap();
+        let status_table = txn.open_table(STATUS_INDEX).unwrap();
+
+        // Should be back in Active index
+        let active_entry = status_table
+            .get((unimatrix_store::Status::Active as u8, id))
+            .unwrap();
+        assert!(active_entry.is_some(), "entry should be back in Active STATUS_INDEX");
+
+        // Should NOT be in Quarantined index
+        let quarantined_entry = status_table
+            .get((unimatrix_store::Status::Quarantined as u8, id))
+            .unwrap();
+        assert!(quarantined_entry.is_none(), "entry should not be in Quarantined STATUS_INDEX");
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_writes_audit_event() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        server
+            .quarantine_with_audit(
+                id,
+                Some("suspicious content".into()),
+                make_audit_event("system"),
+            )
+            .await
+            .unwrap();
+
+        // Verify audit log has an entry
+        let txn = server.store.begin_read().unwrap();
+        let audit_table = txn.open_table(unimatrix_store::AUDIT_LOG).unwrap();
+        let mut found = false;
+        for item in audit_table.iter().unwrap() {
+            let (_key, value) = item.unwrap();
+            let event: crate::audit::AuditEvent =
+                bincode::serde::decode_from_slice(value.value(), bincode::config::standard())
+                    .unwrap()
+                    .0;
+            if event.operation == "context_quarantine" && event.target_ids.contains(&id) {
+                assert!(event.detail.contains("quarantined"));
+                assert!(event.detail.contains("suspicious content"));
+                found = true;
+            }
+        }
+        assert!(found, "audit event for quarantine should exist");
+    }
+
+    #[tokio::test]
+    async fn test_correct_rejects_quarantined() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // Quarantine the entry
+        server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        // Attempt to correct -- should fail
+        let audit_event = crate::audit::AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: "system".to_string(),
+            operation: "context_correct".to_string(),
+            target_ids: vec![],
+            outcome: crate::audit::Outcome::Success,
+            detail: String::new(),
+        };
+
+        let result = server
+            .correct_with_audit(
+                id,
+                unimatrix_core::NewEntry {
+                    title: "Corrected".to_string(),
+                    content: "Corrected content".to_string(),
+                    topic: "test".to_string(),
+                    category: "convention".to_string(),
+                    tags: vec![],
+                    source: "test".to_string(),
+                    status: unimatrix_core::Status::Active,
+                    created_by: "system".to_string(),
+                    feature_cycle: String::new(),
+                    trust_source: String::new(),
+                },
+                vec![],
+                audit_event,
+            )
+            .await;
+
+        assert!(result.is_err(), "correct should fail for quarantined entry");
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(
+            err_msg.contains("quarantined"),
+            "error should mention quarantine: {err_msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_confidence_decreases() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // Compute initial confidence
+        let entry = server.store.get(id).unwrap();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let before = crate::confidence::compute_confidence(&entry, now);
+        server.store.update_confidence(id, before).unwrap();
+
+        // Quarantine
+        server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        // Recompute confidence for quarantined entry
+        let entry = server.store.get(id).unwrap();
+        let after = crate::confidence::compute_confidence(&entry, now);
+        server.store.update_confidence(id, after).unwrap();
+
+        assert!(
+            after < before,
+            "confidence should decrease after quarantine: before={before}, after={after}"
+        );
+
+        // Restore
+        server
+            .restore_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        // Recompute confidence for restored entry
+        let entry = server.store.get(id).unwrap();
+        let restored = crate::confidence::compute_confidence(&entry, now);
+
+        assert!(
+            restored > after,
+            "confidence should increase after restore: after_quarantine={after}, restored={restored}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_nonexistent_entry_fails() {
+        let server = make_server();
+
+        let result = server
+            .quarantine_with_audit(99999, None, make_audit_event("system"))
+            .await;
+
+        assert!(result.is_err(), "quarantining nonexistent entry should fail");
     }
 }

@@ -23,16 +23,17 @@ use crate::registry::Capability;
 use crate::response::{
     format_duplicate_found, format_lookup_results, format_search_results, format_single_entry,
     format_store_success, format_correct_success, format_deprecate_success,
+    format_quarantine_success, format_restore_success,
     format_status_report, format_briefing, StatusReport, Briefing, parse_format,
 };
 use crate::scanning::ContentScanner;
 use crate::server::UnimatrixServer;
 use crate::validation::{
     validate_get_params, validate_lookup_params, validate_search_params, validate_store_params,
-    validate_correct_params, validate_deprecate_params, validate_status_params,
-    validate_briefing_params, validated_max_tokens,
-    validated_id, validated_k, validated_limit, parse_status,
-    validate_feature, validate_helpful,
+    validate_correct_params, validate_deprecate_params, validate_quarantine_params,
+    validate_status_params, validate_briefing_params, validated_max_tokens,
+    validated_id, validated_k, validated_limit, parse_status, parse_quarantine_action,
+    QuarantineAction, validate_feature, validate_helpful,
 };
 
 /// HNSW search expansion factor.
@@ -161,6 +162,21 @@ pub struct DeprecateParams {
     pub format: Option<String>,
 }
 
+/// Parameters for quarantining or restoring an entry.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct QuarantineParams {
+    /// Entry ID to quarantine or restore.
+    pub id: i64,
+    /// Reason for the action.
+    pub reason: Option<String>,
+    /// Action: "quarantine" (default) or "restore".
+    pub action: Option<String>,
+    /// Agent making the request.
+    pub agent_id: Option<String>,
+    /// Response format: summary, markdown, or json.
+    pub format: Option<String>,
+}
+
 /// Parameters for getting knowledge base status.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct StatusParams {
@@ -172,6 +188,8 @@ pub struct StatusParams {
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
     pub format: Option<String>,
+    /// Opt-in embedding consistency check (default: false).
+    pub check_embeddings: Option<bool>,
 }
 
 /// Parameters for getting an orientation briefing.
@@ -279,11 +297,16 @@ impl UnimatrixServer {
                 .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?
         };
 
-        // 9. Fetch full entries for results
+        // 9. Fetch full entries for results, excluding quarantined (crt-003)
         let mut results_with_scores = Vec::new();
         for sr in &search_results {
             match self.entry_store.get(sr.entry_id).await {
-                Ok(entry) => results_with_scores.push((entry, sr.similarity)),
+                Ok(entry) => {
+                    if entry.status == Status::Quarantined {
+                        continue; // exclude quarantined entries from search results
+                    }
+                    results_with_scores.push((entry, sr.similarity));
+                }
                 Err(_) => continue, // silently skip deleted entries (FR-01g)
             }
         }
@@ -935,6 +958,9 @@ impl UnimatrixServer {
             let total_proposed = counters.get("total_proposed")
                 .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
                 .map(|g| g.value()).unwrap_or(0);
+            let total_quarantined = counters.get("total_quarantined")
+                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
+                .map(|g| g.value()).unwrap_or(0);
 
             // 5b. Category distribution from CATEGORY_INDEX
             let cat_table = read_txn.open_table(CATEGORY_INDEX)
@@ -1016,6 +1042,7 @@ impl UnimatrixServer {
                 total_active,
                 total_deprecated,
                 total_proposed,
+                total_quarantined,
                 category_distribution: category_distribution.into_iter().collect(),
                 topic_distribution: topic_distribution.into_iter().collect(),
                 entries_with_supersedes,
@@ -1023,10 +1050,73 @@ impl UnimatrixServer {
                 total_correction_count,
                 trust_source_distribution: trust_source_dist.into_iter().collect(),
                 entries_without_attribution,
+                contradictions: Vec::new(),
+                contradiction_count: 0,
+                embedding_inconsistencies: Vec::new(),
+                contradiction_scan_performed: false,
+                embedding_check_performed: false,
             })
         }).await
         .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::JoinError(e.to_string()))))?
         .map_err(rmcp::ErrorData::from)?;
+
+        // 5f. Contradiction scanning + embedding consistency (outside read txn)
+        let check_embeddings = params.check_embeddings.unwrap_or(false);
+        let mut report = report;
+
+        if let Ok(adapter) = self.embed_service.get_adapter().await {
+            // Contradiction scan (default ON)
+            let scan_config = crate::contradiction::ContradictionConfig::default();
+            let store_for_scan = Arc::clone(&self.store);
+            let vi_for_scan = Arc::clone(&self.vector_index);
+            let adapter_for_scan = Arc::clone(&adapter);
+            let config_for_scan = scan_config.clone();
+
+            match tokio::task::spawn_blocking(move || {
+                let vs = unimatrix_core::VectorAdapter::new(vi_for_scan);
+                crate::contradiction::scan_contradictions(
+                    &store_for_scan,
+                    &vs,
+                    &*adapter_for_scan,
+                    &config_for_scan,
+                )
+            }).await {
+                Ok(Ok(contradictions)) => {
+                    report.contradiction_count = contradictions.len();
+                    report.contradictions = contradictions;
+                    report.contradiction_scan_performed = true;
+                }
+                _ => {
+                    // Scan failed -- graceful degradation
+                }
+            }
+
+            // Embedding consistency check (opt-in)
+            if check_embeddings {
+                let store_for_embed = Arc::clone(&self.store);
+                let vi_for_embed = Arc::clone(&self.vector_index);
+                let adapter_for_embed = Arc::clone(&adapter);
+                let config_for_embed = scan_config;
+
+                match tokio::task::spawn_blocking(move || {
+                    let vs = unimatrix_core::VectorAdapter::new(vi_for_embed);
+                    crate::contradiction::check_embedding_consistency(
+                        &store_for_embed,
+                        &vs,
+                        &*adapter_for_embed,
+                        &config_for_embed,
+                    )
+                }).await {
+                    Ok(Ok(inconsistencies)) => {
+                        report.embedding_inconsistencies = inconsistencies;
+                        report.embedding_check_performed = true;
+                    }
+                    _ => {
+                        // Check failed -- graceful degradation
+                    }
+                }
+            }
+        }
 
         // 6. Audit (standalone, best-effort)
         let _ = self.audit.log_event(AuditEvent {
@@ -1126,6 +1216,9 @@ impl UnimatrixServer {
                 let mut results = Vec::new();
                 for sr in &search_results {
                     if let Ok(entry) = self.entry_store.get(sr.entry_id).await {
+                        if entry.status == Status::Quarantined {
+                            continue; // exclude quarantined entries from briefing search
+                        }
                         results.push((entry, sr.similarity));
                     }
                 }
@@ -1228,6 +1321,157 @@ impl UnimatrixServer {
 
         // 14. Format response
         Ok(format_briefing(&briefing, format))
+    }
+
+    #[tool(
+        name = "context_quarantine",
+        description = "Quarantine or restore a knowledge entry. Quarantined entries are excluded from search and lookup results but remain accessible via context_get. Requires Admin capability."
+    )]
+    async fn context_quarantine(
+        &self,
+        Parameters(params): Parameters<QuarantineParams>,
+    ) -> Result<CallToolResult, rmcp::ErrorData> {
+        // 1. Identity
+        let identity = self
+            .resolve_agent(&params.agent_id)
+            .map_err(rmcp::ErrorData::from)?;
+
+        // 2. Capability check (Admin required)
+        self.registry
+            .require_capability(&identity.agent_id, Capability::Admin)
+            .map_err(rmcp::ErrorData::from)?;
+
+        // 3. Validation
+        validate_quarantine_params(&params).map_err(rmcp::ErrorData::from)?;
+
+        // 4. Parse format
+        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
+
+        // 5. Parse action
+        let action = parse_quarantine_action(&params.action).map_err(rmcp::ErrorData::from)?;
+
+        // 6. Fetch entry (verify exists)
+        let entry_id = validated_id(params.id).map_err(rmcp::ErrorData::from)?;
+        let entry = self
+            .entry_store
+            .get(entry_id)
+            .await
+            .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+
+        // 7. Action dispatch
+        match action {
+            QuarantineAction::Quarantine => {
+                // Idempotent: already quarantined
+                if entry.status == Status::Quarantined {
+                    return Ok(format_quarantine_success(
+                        &entry,
+                        Some("already quarantined"),
+                        format,
+                    ));
+                }
+
+                // Only active entries can be quarantined
+                if entry.status != Status::Active {
+                    return Err(rmcp::ErrorData::from(
+                        crate::error::ServerError::InvalidInput {
+                            field: "id".to_string(),
+                            reason: "only active entries can be quarantined".to_string(),
+                        },
+                    ));
+                }
+
+                // Atomic quarantine + audit
+                let audit_event = AuditEvent {
+                    event_id: 0,
+                    timestamp: 0,
+                    session_id: String::new(),
+                    agent_id: identity.agent_id.clone(),
+                    operation: "context_quarantine".to_string(),
+                    target_ids: vec![],
+                    outcome: Outcome::Success,
+                    detail: String::new(),
+                };
+                let updated = self
+                    .quarantine_with_audit(entry_id, params.reason.clone(), audit_event)
+                    .await
+                    .map_err(rmcp::ErrorData::from)?;
+
+                // Recompute confidence (fire-and-forget)
+                {
+                    let store_for_conf = Arc::clone(&self.store);
+                    let _ = tokio::task::spawn_blocking(move || {
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+                        match store_for_conf.get(entry_id) {
+                            Ok(e) => {
+                                let conf = crate::confidence::compute_confidence(&e, now);
+                                let _ = store_for_conf.update_confidence(entry_id, conf);
+                            }
+                            Err(_) => {}
+                        }
+                    })
+                    .await;
+                }
+
+                Ok(format_quarantine_success(
+                    &updated,
+                    params.reason.as_deref(),
+                    format,
+                ))
+            }
+            QuarantineAction::Restore => {
+                if entry.status != Status::Quarantined {
+                    return Err(rmcp::ErrorData::from(
+                        crate::error::ServerError::InvalidInput {
+                            field: "id".to_string(),
+                            reason: "entry is not quarantined".to_string(),
+                        },
+                    ));
+                }
+
+                let audit_event = AuditEvent {
+                    event_id: 0,
+                    timestamp: 0,
+                    session_id: String::new(),
+                    agent_id: identity.agent_id.clone(),
+                    operation: "context_quarantine".to_string(),
+                    target_ids: vec![],
+                    outcome: Outcome::Success,
+                    detail: String::new(),
+                };
+                let updated = self
+                    .restore_with_audit(entry_id, params.reason.clone(), audit_event)
+                    .await
+                    .map_err(rmcp::ErrorData::from)?;
+
+                // Recompute confidence (fire-and-forget)
+                {
+                    let store_for_conf = Arc::clone(&self.store);
+                    let _ = tokio::task::spawn_blocking(move || {
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+                        match store_for_conf.get(entry_id) {
+                            Ok(e) => {
+                                let conf = crate::confidence::compute_confidence(&e, now);
+                                let _ = store_for_conf.update_confidence(entry_id, conf);
+                            }
+                            Err(_) => {}
+                        }
+                    })
+                    .await;
+                }
+
+                Ok(format_restore_success(
+                    &updated,
+                    params.reason.as_deref(),
+                    format,
+                ))
+            }
+        }
     }
 }
 
@@ -1447,5 +1691,56 @@ mod tests {
     fn test_briefing_params_missing_task() {
         let json = r#"{"role": "architect"}"#;
         assert!(serde_json::from_str::<BriefingParams>(json).is_err());
+    }
+
+    // -- crt-003: QuarantineParams --
+
+    #[test]
+    fn test_quarantine_params_required_id() {
+        let json = r#"{"id": 42}"#;
+        let params: QuarantineParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.id, 42);
+        assert!(params.reason.is_none());
+        assert!(params.action.is_none());
+    }
+
+    #[test]
+    fn test_quarantine_params_all_fields() {
+        let json = r#"{
+            "id": 42,
+            "reason": "suspicious content",
+            "action": "quarantine",
+            "agent_id": "system",
+            "format": "json"
+        }"#;
+        let params: QuarantineParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.id, 42);
+        assert_eq!(params.reason.unwrap(), "suspicious content");
+        assert_eq!(params.action.unwrap(), "quarantine");
+        assert_eq!(params.agent_id.unwrap(), "system");
+        assert_eq!(params.format.unwrap(), "json");
+    }
+
+    #[test]
+    fn test_quarantine_params_restore_action() {
+        let json = r#"{"id": 42, "action": "restore"}"#;
+        let params: QuarantineParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.action.unwrap(), "restore");
+    }
+
+    // -- crt-003: StatusParams check_embeddings --
+
+    #[test]
+    fn test_status_params_check_embeddings_field() {
+        let json = r#"{"check_embeddings": true}"#;
+        let params: StatusParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.check_embeddings.unwrap(), true);
+    }
+
+    #[test]
+    fn test_status_params_check_embeddings_default() {
+        let json = r#"{}"#;
+        let params: StatusParams = serde_json::from_str(json).unwrap();
+        assert!(params.check_embeddings.is_none());
     }
 }

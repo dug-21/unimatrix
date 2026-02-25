@@ -8,6 +8,7 @@
 pub mod audit;
 pub mod categories;
 pub mod confidence;
+pub mod contradiction;
 pub mod embed_handle;
 pub mod error;
 pub mod identity;
