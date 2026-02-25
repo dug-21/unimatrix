@@ -1677,4 +1677,115 @@ mod tests {
         assert_eq!(entry.access_count, 1);
         assert_eq!(entry.confidence, 0.0); // no confidence function via old method
     }
+
+    // -- crt-004: Co-access write tests --
+
+    #[test]
+    fn test_record_co_access_pairs_basic() {
+        let db = TestDb::new();
+        db.store().record_co_access_pairs(&[(1, 2), (3, 4)]).unwrap();
+
+        let partners = db.store().get_co_access_partners(1, 0).unwrap();
+        assert_eq!(partners.len(), 1);
+        assert_eq!(partners[0].0, 2);
+        assert_eq!(partners[0].1.count, 1);
+    }
+
+    #[test]
+    fn test_record_co_access_pairs_empty_input() {
+        let db = TestDb::new();
+        db.store().record_co_access_pairs(&[]).unwrap();
+        let (total, _active) = db.store().co_access_stats(0).unwrap();
+        assert_eq!(total, 0);
+    }
+
+    #[test]
+    fn test_record_co_access_pairs_increment_existing() {
+        let db = TestDb::new();
+        db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
+        db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
+        db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
+
+        let partners = db.store().get_co_access_partners(1, 0).unwrap();
+        assert_eq!(partners.len(), 1);
+        assert_eq!(partners[0].1.count, 3);
+    }
+
+    #[test]
+    fn test_record_co_access_pairs_saturating_add() {
+        use crate::schema::{CO_ACCESS, CoAccessRecord, co_access_key, serialize_co_access, deserialize_co_access};
+        use redb::ReadableDatabase;
+
+        let db = TestDb::new();
+        // Manually insert a record at u32::MAX
+        {
+            let txn = db.store().db.begin_write().unwrap();
+            {
+                let mut table = txn.open_table(CO_ACCESS).unwrap();
+                let record = CoAccessRecord { count: u32::MAX, last_updated: 1000 };
+                let bytes = serialize_co_access(&record).unwrap();
+                table.insert(co_access_key(1, 2), bytes.as_slice()).unwrap();
+            }
+            txn.commit().unwrap();
+        }
+
+        // Record again -- should saturate at u32::MAX
+        db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
+
+        let txn = db.store().db.begin_read().unwrap();
+        let table = txn.open_table(CO_ACCESS).unwrap();
+        let val = table.get(co_access_key(1, 2)).unwrap().unwrap();
+        let record = deserialize_co_access(val.value()).unwrap();
+        assert_eq!(record.count, u32::MAX);
+    }
+
+    #[test]
+    fn test_cleanup_stale_co_access_removes_stale() {
+        use crate::schema::{CO_ACCESS, CoAccessRecord, co_access_key, serialize_co_access};
+
+        let db = TestDb::new();
+        // Insert pairs with different timestamps
+        {
+            let txn = db.store().db.begin_write().unwrap();
+            {
+                let mut table = txn.open_table(CO_ACCESS).unwrap();
+                let stale = CoAccessRecord { count: 3, last_updated: 1000 };
+                let fresh = CoAccessRecord { count: 5, last_updated: 5000 };
+                table.insert(co_access_key(1, 2), serialize_co_access(&stale).unwrap().as_slice()).unwrap();
+                table.insert(co_access_key(3, 4), serialize_co_access(&fresh).unwrap().as_slice()).unwrap();
+            }
+            txn.commit().unwrap();
+        }
+
+        let removed = db.store().cleanup_stale_co_access(3000).unwrap();
+        assert_eq!(removed, 1);
+
+        // Verify pair (1,2) removed, (3,4) preserved
+        let (total, _) = db.store().co_access_stats(0).unwrap();
+        assert_eq!(total, 1);
+    }
+
+    #[test]
+    fn test_cleanup_stale_co_access_boundary_at_cutoff() {
+        use crate::schema::{CO_ACCESS, CoAccessRecord, co_access_key, serialize_co_access};
+
+        let db = TestDb::new();
+        {
+            let txn = db.store().db.begin_write().unwrap();
+            {
+                let mut table = txn.open_table(CO_ACCESS).unwrap();
+                let record = CoAccessRecord { count: 1, last_updated: 3000 };
+                table.insert(co_access_key(1, 2), serialize_co_access(&record).unwrap().as_slice()).unwrap();
+            }
+            txn.commit().unwrap();
+        }
+
+        // cutoff = 3000, record.last_updated = 3000 -> 3000 < 3000 is false -> NOT stale
+        let removed = db.store().cleanup_stale_co_access(3000).unwrap();
+        assert_eq!(removed, 0);
+
+        // cutoff = 3001 -> 3000 < 3001 is true -> stale
+        let removed = db.store().cleanup_stale_co_access(3001).unwrap();
+        assert_eq!(removed, 1);
+    }
 }

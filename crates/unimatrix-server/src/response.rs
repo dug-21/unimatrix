@@ -1613,4 +1613,98 @@ mod tests {
         assert!(text.contains("2023-11-14"), "should contain ISO date, got: {text}");
         assert!(!text.contains("1700000000"), "should not contain raw unix timestamp");
     }
+
+    // -- crt-004: Co-access fields in StatusReport --
+
+    fn make_status_report_with_co_access() -> StatusReport {
+        StatusReport {
+            total_active: 10,
+            total_deprecated: 0,
+            total_proposed: 0,
+            total_quarantined: 0,
+            category_distribution: vec![],
+            topic_distribution: vec![],
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: vec![],
+            entries_without_attribution: 0,
+            contradictions: Vec::new(),
+            contradiction_count: 0,
+            embedding_inconsistencies: Vec::new(),
+            contradiction_scan_performed: false,
+            embedding_check_performed: false,
+            total_co_access_pairs: 15,
+            active_co_access_pairs: 12,
+            top_co_access_pairs: vec![
+                CoAccessClusterEntry {
+                    entry_id_a: 1,
+                    entry_id_b: 5,
+                    title_a: "Entry Alpha".to_string(),
+                    title_b: "Entry Beta".to_string(),
+                    count: 8,
+                    last_updated: 1700000000,
+                },
+            ],
+            stale_pairs_cleaned: 3,
+        }
+    }
+
+    #[test]
+    fn test_status_report_co_access_summary() {
+        let report = make_status_report_with_co_access();
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Co-access: 12 active pairs (15 total)"), "summary should show co-access stats, got: {text}");
+        assert!(text.contains("3 stale pairs cleaned"), "should show cleaned count");
+    }
+
+    #[test]
+    fn test_status_report_co_access_markdown() {
+        let report = make_status_report_with_co_access();
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("### Co-Access Patterns"), "markdown should have co-access section");
+        assert!(text.contains("Active pairs: 12 of 15"), "should show active/total");
+        assert!(text.contains("Stale pairs cleaned: 3"), "should show cleaned");
+        assert!(text.contains("Top Co-Access Clusters"), "should have clusters table");
+        assert!(text.contains("Entry Alpha"), "should show title_a");
+        assert!(text.contains("Entry Beta"), "should show title_b");
+    }
+
+    #[test]
+    fn test_status_report_co_access_json() {
+        let report = make_status_report_with_co_access();
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["co_access"]["total_pairs"], 15);
+        assert_eq!(parsed["co_access"]["active_pairs"], 12);
+        assert_eq!(parsed["co_access"]["stale_pairs_cleaned"], 3);
+        assert!(parsed["co_access"]["top_clusters"].is_array());
+        assert_eq!(parsed["co_access"]["top_clusters"][0]["entry_a"]["id"], 1);
+        assert_eq!(parsed["co_access"]["top_clusters"][0]["entry_b"]["id"], 5);
+        assert_eq!(parsed["co_access"]["top_clusters"][0]["count"], 8);
+    }
+
+    #[test]
+    fn test_status_report_co_access_empty() {
+        let report = make_status_report();
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["co_access"]["total_pairs"], 0);
+        assert_eq!(parsed["co_access"]["active_pairs"], 0);
+        assert_eq!(parsed["co_access"]["stale_pairs_cleaned"], 0);
+        assert!(parsed["co_access"]["top_clusters"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_status_report_defaults_have_co_access_zero() {
+        let report = make_status_report();
+        assert_eq!(report.total_co_access_pairs, 0);
+        assert_eq!(report.active_co_access_pairs, 0);
+        assert!(report.top_co_access_pairs.is_empty());
+        assert_eq!(report.stale_pairs_cleaned, 0);
+    }
 }

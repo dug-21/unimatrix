@@ -707,4 +707,139 @@ mod tests {
         let total = db.store().read_counter("total_active").unwrap();
         assert_eq!(total, 5);
     }
+
+    // -- crt-004: Co-access read tests --
+
+    #[test]
+    fn test_get_co_access_partners_as_min() {
+        use crate::schema::{CO_ACCESS, CoAccessRecord, co_access_key, serialize_co_access};
+        let db = TestDb::new();
+        // Insert pairs where entry 5 is the min
+        {
+            let txn = db.store().db.begin_write().unwrap();
+            {
+                let mut table = txn.open_table(CO_ACCESS).unwrap();
+                let r1 = CoAccessRecord { count: 3, last_updated: 5000 };
+                let r2 = CoAccessRecord { count: 1, last_updated: 5000 };
+                table.insert(co_access_key(5, 10), serialize_co_access(&r1).unwrap().as_slice()).unwrap();
+                table.insert(co_access_key(5, 20), serialize_co_access(&r2).unwrap().as_slice()).unwrap();
+            }
+            txn.commit().unwrap();
+        }
+
+        let partners = db.store().get_co_access_partners(5, 0).unwrap();
+        assert_eq!(partners.len(), 2);
+        let ids: Vec<u64> = partners.iter().map(|(id, _)| *id).collect();
+        assert!(ids.contains(&10));
+        assert!(ids.contains(&20));
+    }
+
+    #[test]
+    fn test_get_co_access_partners_as_max() {
+        use crate::schema::{CO_ACCESS, CoAccessRecord, co_access_key, serialize_co_access};
+        let db = TestDb::new();
+        // Insert pairs where entry 10 is the max
+        {
+            let txn = db.store().db.begin_write().unwrap();
+            {
+                let mut table = txn.open_table(CO_ACCESS).unwrap();
+                let r1 = CoAccessRecord { count: 2, last_updated: 5000 };
+                let r2 = CoAccessRecord { count: 3, last_updated: 5000 };
+                table.insert(co_access_key(1, 10), serialize_co_access(&r1).unwrap().as_slice()).unwrap();
+                table.insert(co_access_key(5, 10), serialize_co_access(&r2).unwrap().as_slice()).unwrap();
+            }
+            txn.commit().unwrap();
+        }
+
+        let partners = db.store().get_co_access_partners(10, 0).unwrap();
+        assert_eq!(partners.len(), 2);
+        let ids: Vec<u64> = partners.iter().map(|(id, _)| *id).collect();
+        assert!(ids.contains(&1));
+        assert!(ids.contains(&5));
+    }
+
+    #[test]
+    fn test_get_co_access_partners_staleness_filter() {
+        use crate::schema::{CO_ACCESS, CoAccessRecord, co_access_key, serialize_co_access};
+        let db = TestDb::new();
+        {
+            let txn = db.store().db.begin_write().unwrap();
+            {
+                let mut table = txn.open_table(CO_ACCESS).unwrap();
+                let stale = CoAccessRecord { count: 5, last_updated: 1000 };
+                table.insert(co_access_key(1, 2), serialize_co_access(&stale).unwrap().as_slice()).unwrap();
+            }
+            txn.commit().unwrap();
+        }
+
+        // staleness_cutoff=2000 means only records with last_updated >= 2000 pass
+        let partners = db.store().get_co_access_partners(1, 2000).unwrap();
+        assert!(partners.is_empty(), "stale pair should be filtered out");
+    }
+
+    #[test]
+    fn test_get_co_access_partners_no_partners() {
+        let db = TestDb::new();
+        let partners = db.store().get_co_access_partners(999, 0).unwrap();
+        assert!(partners.is_empty());
+    }
+
+    #[test]
+    fn test_co_access_stats() {
+        use crate::schema::{CO_ACCESS, CoAccessRecord, co_access_key, serialize_co_access};
+        let db = TestDb::new();
+        {
+            let txn = db.store().db.begin_write().unwrap();
+            {
+                let mut table = txn.open_table(CO_ACCESS).unwrap();
+                let fresh = CoAccessRecord { count: 1, last_updated: 5000 };
+                let fresh2 = CoAccessRecord { count: 2, last_updated: 5000 };
+                let stale = CoAccessRecord { count: 3, last_updated: 1000 };
+                table.insert(co_access_key(1, 2), serialize_co_access(&fresh).unwrap().as_slice()).unwrap();
+                table.insert(co_access_key(3, 4), serialize_co_access(&fresh2).unwrap().as_slice()).unwrap();
+                table.insert(co_access_key(5, 6), serialize_co_access(&stale).unwrap().as_slice()).unwrap();
+            }
+            txn.commit().unwrap();
+        }
+
+        let (total, active) = db.store().co_access_stats(3000).unwrap();
+        assert_eq!(total, 3);
+        assert_eq!(active, 2);
+    }
+
+    #[test]
+    fn test_top_co_access_pairs_ordering_and_limit() {
+        use crate::schema::{CO_ACCESS, CoAccessRecord, co_access_key, serialize_co_access};
+        let db = TestDb::new();
+        {
+            let txn = db.store().db.begin_write().unwrap();
+            {
+                let mut table = txn.open_table(CO_ACCESS).unwrap();
+                for i in 1..=5 {
+                    let record = CoAccessRecord { count: i * 10, last_updated: 5000 };
+                    table.insert(co_access_key(i as u64, (i + 10) as u64), serialize_co_access(&record).unwrap().as_slice()).unwrap();
+                }
+                // Add a stale pair with highest count
+                let stale = CoAccessRecord { count: 100, last_updated: 1000 };
+                table.insert(co_access_key(99, 100), serialize_co_access(&stale).unwrap().as_slice()).unwrap();
+            }
+            txn.commit().unwrap();
+        }
+
+        let top = db.store().top_co_access_pairs(3, 3000).unwrap();
+        assert_eq!(top.len(), 3);
+        // Should be ordered by count descending
+        assert_eq!(top[0].1.count, 50); // pair (5, 15)
+        assert_eq!(top[1].1.count, 40); // pair (4, 14)
+        assert_eq!(top[2].1.count, 30); // pair (3, 13)
+        // Stale pair with count=100 should be excluded
+    }
+
+    #[test]
+    fn test_co_access_stats_empty_table() {
+        let db = TestDb::new();
+        let (total, active) = db.store().co_access_stats(0).unwrap();
+        assert_eq!(total, 0);
+        assert_eq!(active, 0);
+    }
 }
