@@ -1,0 +1,65 @@
+{
+  "description": "PII detection test cases. Each should_detect=true sample should be detected by the server's PII scanner.",
+  "samples": [
+    {
+      "content": "Contact John at john.doe@example.com for details",
+      "type": "EmailAddress",
+      "should_detect": true
+    },
+    {
+      "content": "Send updates to admin@company.org regarding the project",
+      "type": "EmailAddress",
+      "should_detect": true
+    },
+    {
+      "content": "Reach out to user+tag@subdomain.example.co.uk for info",
+      "type": "EmailAddress",
+      "should_detect": true
+    },
+    {
+      "content": "Call the support line at 555-123-4567 for assistance",
+      "type": "PhoneNumber",
+      "should_detect": true
+    },
+    {
+      "content": "Reach us at (800) 555-0199 during business hours",
+      "type": "PhoneNumber",
+      "should_detect": true
+    },
+    {
+      "content": "Direct line: +1-555-867-5309 for urgent issues",
+      "type": "PhoneNumber",
+      "should_detect": true
+    },
+    {
+      "content": "Employee SSN: 123-45-6789 for payroll processing",
+      "type": "SocialSecurityNumber",
+      "should_detect": true
+    },
+    {
+      "content": "SSN on file: 987-65-4321 verified",
+      "type": "SocialSecurityNumber",
+      "should_detect": true
+    },
+    {
+      "content": "API key: sk-1234567890abcdef1234567890abcdef for access",
+      "type": "ApiKey",
+      "should_detect": true
+    },
+    {
+      "content": "Use token AKIA1234567890ABCDEF for AWS access",
+      "type": "ApiKey",
+      "should_detect": true
+    },
+    {
+      "content": "Normal technical content without PII about database patterns",
+      "type": "SafeContent",
+      "should_detect": false
+    },
+    {
+      "content": "The configuration uses port 8080 and connects to localhost",
+      "type": "SafeContent",
+      "should_detect": false
+    }
+  ]
+}
