@@ -178,12 +178,22 @@ def assert_search_not_contains(response: MCPResponse, entry_id: int):
 
 
 def extract_entry_id(response: MCPResponse) -> int:
-    """Extract the entry ID from a store or correct response."""
+    """Extract the entry ID from a store or correct response.
+
+    Handles multiple response formats:
+    - store: {entry: {id: N}, stored: true}
+    - correct: {correction: {id: N}, corrected: true}
+    - duplicate: {existing_entry: {id: N}, duplicate: true}
+    """
     result = assert_tool_success(response)
     if result.parsed and isinstance(result.parsed, dict):
         eid = result.parsed.get("id")
         if eid is None:
             eid = result.parsed.get("entry", {}).get("id")
+        if eid is None:
+            eid = result.parsed.get("correction", {}).get("id")
+        if eid is None:
+            eid = result.parsed.get("existing_entry", {}).get("id")
         if eid is not None:
             return int(eid)
     return _extract_id_from_text(result.text)
