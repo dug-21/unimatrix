@@ -25,6 +25,8 @@ struct DedupState {
     /// (agent_id, entry_id) -> last vote value (true=helpful, false=unhelpful).
     /// Tracks the most recent vote per agent per entry. Enables last-vote-wins correction.
     vote_recorded: HashMap<(String, u64), bool>,
+    /// Ordered co-access pairs recorded this session (agent-independent).
+    co_access_recorded: HashSet<(u64, u64)>,
 }
 
 /// Session-scoped deduplication for usage tracking.
@@ -46,6 +48,7 @@ impl UsageDedup {
             inner: Mutex::new(DedupState {
                 access_counted: HashSet::new(),
                 vote_recorded: HashMap::new(),
+                co_access_recorded: HashSet::new(),
             }),
         }
     }
@@ -61,6 +64,22 @@ impl UsageDedup {
             if state.access_counted.insert(key) {
                 // insert returns true if the value was NOT already present
                 result.push(id);
+            }
+        }
+        result
+    }
+
+    /// Filter co-access pairs to only those not yet recorded this session.
+    /// Agent-independent: co-access is global, not per-agent.
+    /// Input pairs must already be ordered (min, max).
+    /// Returns subset not yet seen. Marks returned pairs as recorded.
+    pub fn filter_co_access_pairs(&self, pairs: &[(u64, u64)]) -> Vec<(u64, u64)> {
+        let mut state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let mut result = Vec::new();
+        for &pair in pairs {
+            if state.co_access_recorded.insert(pair) {
+                // insert returns true if the value was NOT already present
+                result.push(pair);
             }
         }
         result
@@ -215,6 +234,74 @@ mod tests {
         for (_, action) in &result {
             assert_eq!(*action, VoteAction::CorrectedVote);
         }
+    }
+
+    // -- Co-access dedup (R-05, crt-004) --
+
+    #[test]
+    fn test_filter_co_access_first_call() {
+        let dedup = UsageDedup::new();
+        let result = dedup.filter_co_access_pairs(&[(1, 2), (3, 4)]);
+        assert_eq!(result, vec![(1, 2), (3, 4)]);
+    }
+
+    #[test]
+    fn test_filter_co_access_second_call_filters() {
+        let dedup = UsageDedup::new();
+        dedup.filter_co_access_pairs(&[(1, 2), (3, 4)]);
+        let result = dedup.filter_co_access_pairs(&[(1, 2), (5, 6)]);
+        assert_eq!(result, vec![(5, 6)]);
+    }
+
+    #[test]
+    fn test_filter_co_access_empty_input() {
+        let dedup = UsageDedup::new();
+        let result = dedup.filter_co_access_pairs(&[]);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_filter_co_access_agent_independent() {
+        let dedup = UsageDedup::new();
+        // Agent A accesses entries -- recorded via filter_access (per-agent)
+        dedup.filter_access("agent-a", &[1, 2]);
+        // Co-access pairs recorded
+        dedup.filter_co_access_pairs(&[(1, 2)]);
+        // Agent B tries the same co-access pair -- should be filtered (agent-independent)
+        let result = dedup.filter_co_access_pairs(&[(1, 2)]);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_filter_co_access_independent_of_access_dedup() {
+        let dedup = UsageDedup::new();
+        // Access dedup for agent-a
+        dedup.filter_access("agent-a", &[1, 2]);
+        // Co-access dedup is independent
+        let result = dedup.filter_co_access_pairs(&[(1, 2)]);
+        assert_eq!(result, vec![(1, 2)]);
+        // And access dedup still works
+        let access = dedup.filter_access("agent-a", &[1, 2]);
+        assert!(access.is_empty());
+    }
+
+    #[test]
+    fn test_filter_co_access_concurrent() {
+        use std::sync::Arc;
+
+        let dedup = Arc::new(UsageDedup::new());
+        let dedup1 = Arc::clone(&dedup);
+        let dedup2 = Arc::clone(&dedup);
+
+        let h1 = std::thread::spawn(move || dedup1.filter_co_access_pairs(&[(1, 2)]));
+        let h2 = std::thread::spawn(move || dedup2.filter_co_access_pairs(&[(1, 2)]));
+
+        let r1 = h1.join().unwrap();
+        let r2 = h2.join().unwrap();
+
+        // Exactly one thread should get the pair, the other gets empty
+        let total_pairs = r1.len() + r2.len();
+        assert_eq!(total_pairs, 1);
     }
 
     #[test]

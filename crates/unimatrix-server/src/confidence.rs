@@ -7,20 +7,25 @@
 
 use unimatrix_core::{EntryRecord, Status};
 
-// -- Weight constants (must sum to exactly 1.0) --
+// -- Weight constants (stored factors must sum to exactly 0.92) --
+//
+// crt-004: six stored weights reduced proportionally to make room for co-access
+// affinity (W_COAC = 0.08), which is applied at query time. See ADR-003.
 
 /// Weight for base quality (status-dependent).
-pub const W_BASE: f32 = 0.20;
+pub const W_BASE: f32 = 0.18;
 /// Weight for usage frequency.
-pub const W_USAGE: f32 = 0.15;
+pub const W_USAGE: f32 = 0.14;
 /// Weight for freshness (recency of access).
-pub const W_FRESH: f32 = 0.20;
+pub const W_FRESH: f32 = 0.18;
 /// Weight for helpfulness (Wilson score).
-pub const W_HELP: f32 = 0.15;
+pub const W_HELP: f32 = 0.14;
 /// Weight for correction chain quality.
-pub const W_CORR: f32 = 0.15;
+pub const W_CORR: f32 = 0.14;
 /// Weight for creator trust level.
-pub const W_TRUST: f32 = 0.15;
+pub const W_TRUST: f32 = 0.14;
+/// Weight for co-access affinity (applied at query time, NOT in compute_confidence).
+pub const W_COAC: f32 = 0.08;
 
 /// Access counts beyond this contribute negligible signal.
 pub const MAX_MEANINGFUL_ACCESS: f64 = 50.0;
@@ -173,15 +178,51 @@ pub fn rerank_score(similarity: f32, confidence: f32) -> f32 {
     SEARCH_SIMILARITY_WEIGHT * similarity + (1.0 - SEARCH_SIMILARITY_WEIGHT) * confidence
 }
 
+/// Compute the co-access affinity component for an entry.
+///
+/// This is computed at query time and added to the stored confidence value.
+/// The result is in `[0.0, W_COAC]` (i.e., `[0.0, 0.08]`).
+///
+/// Formula (ADR-003):
+///   `partner_score = min(ln(1 + partner_count) / ln(1 + MAX_MEANINGFUL_PARTNERS), 1.0)`
+///   `affinity = W_COAC * partner_score * avg_partner_confidence`
+///
+/// Returns 0.0 when `partner_count` is 0 or `avg_partner_confidence` <= 0.
+pub fn co_access_affinity(partner_count: usize, avg_partner_confidence: f32) -> f32 {
+    if partner_count == 0 || avg_partner_confidence <= 0.0 {
+        return 0.0;
+    }
+
+    let partner_score =
+        (1.0 + partner_count as f64).ln() / (1.0 + crate::coaccess::MAX_MEANINGFUL_PARTNERS).ln();
+    let capped = partner_score.min(1.0);
+    let affinity = W_COAC as f64 * capped * avg_partner_confidence.clamp(0.0, 1.0) as f64;
+
+    affinity.clamp(0.0, W_COAC as f64) as f32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // -- T-01: Weight sum invariant (R-05, AC-02) --
+    // -- T-01: Weight sum invariant (R-05, AC-02, updated for crt-004 ADR-003) --
 
     #[test]
-    fn weight_sum_invariant() {
-        assert_eq!(W_BASE + W_USAGE + W_FRESH + W_HELP + W_CORR + W_TRUST, 1.0);
+    fn weight_sum_stored_invariant() {
+        let stored_sum = W_BASE + W_USAGE + W_FRESH + W_HELP + W_CORR + W_TRUST;
+        assert!(
+            (stored_sum - 0.92).abs() < 0.001,
+            "stored weight sum = {stored_sum}, expected 0.92"
+        );
+    }
+
+    #[test]
+    fn weight_sum_effective_invariant() {
+        let effective_sum = W_BASE + W_USAGE + W_FRESH + W_HELP + W_CORR + W_TRUST + W_COAC;
+        assert!(
+            (effective_sum - 1.0).abs() < 0.001,
+            "effective weight sum = {effective_sum}, expected 1.0"
+        );
     }
 
     // -- T-02: base_score values (AC-08) --
@@ -420,9 +461,13 @@ mod tests {
         let entry = make_test_entry(Status::Active, 0, 0, 0, 0, 0, 0, "");
         let result = compute_confidence(&entry, 1_000_000);
         // base=0.5, usage=0.0, fresh=0.0, help=0.5, corr=0.5, trust=0.3
+        // crt-004 updated weights: 0.18*0.5 + 0.14*0.0 + 0.18*0.0 + 0.14*0.5 + 0.14*0.5 + 0.14*0.3
         let expected =
-            0.20 * 0.5 + 0.15 * 0.0 + 0.20 * 0.0 + 0.15 * 0.5 + 0.15 * 0.5 + 0.15 * 0.3;
-        assert!((result as f64 - expected).abs() < 0.001);
+            0.18 * 0.5 + 0.14 * 0.0 + 0.18 * 0.0 + 0.14 * 0.5 + 0.14 * 0.5 + 0.14 * 0.3;
+        assert!(
+            (result as f64 - expected).abs() < 0.001,
+            "expected ~{expected}, got {result}"
+        );
     }
 
     #[test]
@@ -430,8 +475,9 @@ mod tests {
         let now = 1_000_000u64;
         let entry = make_test_entry(Status::Active, 1000, now, now, 100, 0, 1, "human");
         let result = compute_confidence(&entry, now);
-        assert!(result > 0.8);
-        assert!(result <= 1.0);
+        // crt-004: max stored confidence is now 0.92 (six weights sum to 0.92)
+        assert!(result > 0.7, "expected > 0.7, got {result}");
+        assert!(result <= 0.92, "expected <= 0.92, got {result}");
     }
 
     // -- T-10: compute_confidence range (AC-01, R-12) --
@@ -502,5 +548,59 @@ mod tests {
     #[test]
     fn rerank_score_similarity_dominant() {
         assert!(rerank_score(0.95, 0.0) > rerank_score(0.70, 1.0));
+    }
+
+    // -- T-12: co_access_affinity (R-10, crt-004) --
+
+    #[test]
+    fn co_access_affinity_zero_partners() {
+        assert_eq!(co_access_affinity(0, 0.8), 0.0);
+    }
+
+    #[test]
+    fn co_access_affinity_max_partners_max_confidence() {
+        let a = co_access_affinity(10, 1.0);
+        // ln(11)/ln(11) = 1.0, W_COAC * 1.0 * 1.0 = 0.08
+        assert!(
+            (a - W_COAC).abs() < 0.001,
+            "expected ~{W_COAC}, got {a}"
+        );
+    }
+
+    #[test]
+    fn co_access_affinity_large_partner_count_saturated() {
+        let a = co_access_affinity(100, 1.0);
+        assert!(
+            (a - W_COAC).abs() < 0.001,
+            "expected ~{W_COAC}, got {a}"
+        );
+    }
+
+    #[test]
+    fn co_access_affinity_zero_confidence() {
+        assert_eq!(co_access_affinity(5, 0.0), 0.0);
+    }
+
+    #[test]
+    fn co_access_affinity_negative_confidence() {
+        assert_eq!(co_access_affinity(5, -0.5), 0.0);
+    }
+
+    #[test]
+    fn co_access_affinity_effective_sum_clamped() {
+        let now = 1_000_000u64;
+        let entry = make_test_entry(Status::Active, 1000, now, now, 100, 0, 1, "human");
+        let stored = compute_confidence(&entry, now);
+        let affinity = co_access_affinity(10, 1.0);
+        let effective = (stored + affinity).clamp(0.0, 1.0);
+        assert!(effective <= 1.0, "effective {effective} > 1.0");
+        assert!(effective >= 0.0, "effective {effective} < 0.0");
+    }
+
+    #[test]
+    fn co_access_affinity_partial_partners() {
+        let a = co_access_affinity(3, 0.5);
+        assert!(a > 0.0, "expected > 0, got {a}");
+        assert!(a < W_COAC, "expected < {W_COAC}, got {a}");
     }
 }
