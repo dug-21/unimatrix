@@ -7,8 +7,8 @@ use unimatrix_store::Status;
 
 use crate::error::ServerError;
 use crate::tools::{
-    BriefingParams, CorrectParams, DeprecateParams, GetParams, LookupParams, SearchParams,
-    StatusParams, StoreParams,
+    BriefingParams, CorrectParams, DeprecateParams, GetParams, LookupParams, QuarantineParams,
+    SearchParams, StatusParams, StoreParams,
 };
 
 const MAX_TITLE_LEN: usize = 200;
@@ -121,9 +121,10 @@ pub fn parse_status(s: &str) -> Result<Status, ServerError> {
         "active" => Ok(Status::Active),
         "deprecated" => Ok(Status::Deprecated),
         "proposed" => Ok(Status::Proposed),
+        "quarantined" => Ok(Status::Quarantined),
         _ => Err(ServerError::InvalidInput {
             field: "status".to_string(),
-            reason: "must be active, deprecated, or proposed".to_string(),
+            reason: "must be active, deprecated, proposed, or quarantined".to_string(),
         }),
     }
 }
@@ -221,6 +222,38 @@ pub fn validate_deprecate_params(params: &DeprecateParams) -> Result<(), ServerE
     if let Some(reason) = &params.reason {
         validate_string_field("reason", reason, MAX_REASON_LEN, true)?;
     }
+    Ok(())
+}
+
+/// Quarantine action enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuarantineAction {
+    Quarantine,
+    Restore,
+}
+
+/// Parse quarantine action string (default: "quarantine").
+pub fn parse_quarantine_action(action: &Option<String>) -> Result<QuarantineAction, ServerError> {
+    match action {
+        None => Ok(QuarantineAction::Quarantine),
+        Some(s) => match s.to_lowercase().as_str() {
+            "quarantine" => Ok(QuarantineAction::Quarantine),
+            "restore" => Ok(QuarantineAction::Restore),
+            _ => Err(ServerError::InvalidInput {
+                field: "action".to_string(),
+                reason: "must be 'quarantine' or 'restore'".to_string(),
+            }),
+        },
+    }
+}
+
+/// Validate context_quarantine parameters.
+pub fn validate_quarantine_params(params: &QuarantineParams) -> Result<(), ServerError> {
+    validated_id(params.id)?;
+    if let Some(reason) = &params.reason {
+        validate_string_field("reason", reason, MAX_REASON_LEN, true)?;
+    }
+    parse_quarantine_action(&params.action)?;
     Ok(())
 }
 
@@ -464,6 +497,13 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_status_quarantined() {
+        assert_eq!(parse_status("quarantined").unwrap(), Status::Quarantined);
+        assert_eq!(parse_status("Quarantined").unwrap(), Status::Quarantined);
+        assert_eq!(parse_status("QUARANTINED").unwrap(), Status::Quarantined);
+    }
+
+    #[test]
     fn test_parse_status_case_insensitive() {
         assert_eq!(parse_status("Active").unwrap(), Status::Active);
         assert_eq!(parse_status("DEPRECATED").unwrap(), Status::Deprecated);
@@ -685,6 +725,7 @@ mod tests {
             category: None,
             agent_id: None,
             format: None,
+            check_embeddings: None,
         };
         assert!(validate_status_params(&params).is_ok());
     }
@@ -696,6 +737,7 @@ mod tests {
             category: None,
             agent_id: None,
             format: None,
+            check_embeddings: None,
         };
         assert!(validate_status_params(&params).is_err());
     }
@@ -707,6 +749,7 @@ mod tests {
             category: Some("bad\x00cat".to_string()),
             agent_id: None,
             format: None,
+            check_embeddings: None,
         };
         assert!(validate_status_params(&params).is_err());
     }

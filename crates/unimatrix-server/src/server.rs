@@ -289,11 +289,17 @@ impl UnimatrixServer {
             let mut original = deserialize_entry(&original_bytes)
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // 2. Verify original is not already deprecated
+            // 2. Verify original is not already deprecated or quarantined
             if original.status == unimatrix_store::Status::Deprecated {
                 return Err(ServerError::InvalidInput {
                     field: "original_id".to_string(),
                     reason: "cannot correct a deprecated entry".to_string(),
+                });
+            }
+            if original.status == unimatrix_store::Status::Quarantined {
+                return Err(ServerError::InvalidInput {
+                    field: "original_id".to_string(),
+                    reason: "cannot correct quarantined entry; restore first".to_string(),
                 });
             }
 
@@ -635,6 +641,170 @@ impl UnimatrixServer {
             audit_log.write_in_txn(&txn, audit_with_detail)?;
 
             // 8. Commit
+            txn.commit()
+                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            Ok(record)
+        }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
+
+        Ok(record)
+    }
+
+    /// Quarantine an entry: set status to Quarantined, update indexes and counters, write audit.
+    pub(crate) async fn quarantine_with_audit(
+        &self,
+        entry_id: u64,
+        reason: Option<String>,
+        audit_event: AuditEvent,
+    ) -> Result<EntryRecord, ServerError> {
+        let store = Arc::clone(&self.store);
+        let audit_log = Arc::clone(&self.audit);
+
+        let record = tokio::task::spawn_blocking(move || -> Result<EntryRecord, ServerError> {
+            let txn = store.begin_write()
+                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+
+            // 1. Read existing entry
+            let entry_bytes = {
+                let table = txn.open_table(ENTRIES)
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?;
+                let guard = table.get(entry_id)
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?
+                    .ok_or(ServerError::Core(CoreError::Store(StoreError::EntryNotFound(entry_id))))?;
+                guard.value().to_vec()
+            };
+            let mut record = deserialize_entry(&entry_bytes)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+            // 2. Update status
+            let old_status = record.status;
+            record.status = unimatrix_store::Status::Quarantined;
+            record.modified_by = audit_event.agent_id.clone();
+            record.updated_at = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+
+            // 3. Serialize and overwrite in ENTRIES
+            let bytes = serialize_entry(&record)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+            {
+                let mut table = txn.open_table(ENTRIES)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.insert(entry_id, bytes.as_slice())
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            }
+
+            // 4. Update STATUS_INDEX
+            {
+                let mut table = txn.open_table(STATUS_INDEX)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.remove((old_status as u8, entry_id))
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.insert((unimatrix_store::Status::Quarantined as u8, entry_id), ())
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            }
+
+            // 5. Update status counters
+            decrement_counter(&txn, status_counter_key(old_status), 1)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+            increment_counter(&txn, status_counter_key(unimatrix_store::Status::Quarantined), 1)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+            // 6. Write audit event
+            let detail = match &reason {
+                Some(r) => format!("quarantined entry #{entry_id}: {r}"),
+                None => format!("quarantined entry #{entry_id}"),
+            };
+            let audit_with_detail = AuditEvent {
+                target_ids: vec![entry_id],
+                detail,
+                ..audit_event
+            };
+            audit_log.write_in_txn(&txn, audit_with_detail)?;
+
+            // 7. Commit
+            txn.commit()
+                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            Ok(record)
+        }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
+
+        Ok(record)
+    }
+
+    /// Restore a quarantined entry: set status to Active, update indexes and counters, write audit.
+    pub(crate) async fn restore_with_audit(
+        &self,
+        entry_id: u64,
+        reason: Option<String>,
+        audit_event: AuditEvent,
+    ) -> Result<EntryRecord, ServerError> {
+        let store = Arc::clone(&self.store);
+        let audit_log = Arc::clone(&self.audit);
+
+        let record = tokio::task::spawn_blocking(move || -> Result<EntryRecord, ServerError> {
+            let txn = store.begin_write()
+                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+
+            // 1. Read existing entry
+            let entry_bytes = {
+                let table = txn.open_table(ENTRIES)
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?;
+                let guard = table.get(entry_id)
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?
+                    .ok_or(ServerError::Core(CoreError::Store(StoreError::EntryNotFound(entry_id))))?;
+                guard.value().to_vec()
+            };
+            let mut record = deserialize_entry(&entry_bytes)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+            // 2. Update status
+            let old_status = record.status;
+            record.status = unimatrix_store::Status::Active;
+            record.modified_by = audit_event.agent_id.clone();
+            record.updated_at = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+
+            // 3. Serialize and overwrite in ENTRIES
+            let bytes = serialize_entry(&record)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+            {
+                let mut table = txn.open_table(ENTRIES)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.insert(entry_id, bytes.as_slice())
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            }
+
+            // 4. Update STATUS_INDEX
+            {
+                let mut table = txn.open_table(STATUS_INDEX)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.remove((old_status as u8, entry_id))
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                table.insert((unimatrix_store::Status::Active as u8, entry_id), ())
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            }
+
+            // 5. Update status counters
+            decrement_counter(&txn, status_counter_key(old_status), 1)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+            increment_counter(&txn, status_counter_key(unimatrix_store::Status::Active), 1)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+            // 6. Write audit event
+            let detail = match &reason {
+                Some(r) => format!("restored entry #{entry_id}: {r}"),
+                None => format!("restored entry #{entry_id}"),
+            };
+            let audit_with_detail = AuditEvent {
+                target_ids: vec![entry_id],
+                detail,
+                ..audit_event
+            };
+            audit_log.write_in_txn(&txn, audit_with_detail)?;
+
+            // 7. Commit
             txn.commit()
                 .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
             Ok(record)
