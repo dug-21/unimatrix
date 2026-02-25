@@ -288,6 +288,13 @@ impl UnimatrixServer {
             }
         }
 
+        // 9b. Re-rank by blended score: similarity * 0.85 + confidence * 0.15 (crt-002)
+        results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
+            let score_a = crate::confidence::rerank_score(*sim_a, entry_a.confidence);
+            let score_b = crate::confidence::rerank_score(*sim_b, entry_b.confidence);
+            score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+        });
+
         // 10. Format response
         let result = format_search_results(&results_with_scores, format);
 
@@ -534,12 +541,34 @@ impl UnimatrixServer {
             outcome: Outcome::Success,
             detail: format!("stored entry: {}", title),
         };
-        let (_entry_id, record) = self
+        let (entry_id, record) = self
             .insert_with_audit(new_entry, embedding, audit_event)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 11. Format response
+        // 11. Seed initial confidence (fire-and-forget)
+        {
+            let store_for_conf = Arc::clone(&self.store);
+            let _ = tokio::task::spawn_blocking(move || {
+                match store_for_conf.get(entry_id) {
+                    Ok(entry) => {
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+                        let conf = crate::confidence::compute_confidence(&entry, now);
+                        if let Err(e) = store_for_conf.update_confidence(entry_id, conf) {
+                            tracing::warn!("confidence seed failed for entry {entry_id}: {e}");
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("confidence seed: failed to read entry {entry_id}: {e}");
+                    }
+                }
+            }).await;
+        }
+
+        // 12. Format response
         Ok(format_store_success(&record, format))
     }
 
@@ -728,7 +757,42 @@ impl UnimatrixServer {
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 15. Format response
+        // 15. Confidence for new correction + recompute for deprecated original (fire-and-forget)
+        {
+            let store_for_conf = Arc::clone(&self.store);
+            let new_correction_id = new_correction.id;
+            let dep_original_id = deprecated_original.id;
+            let _ = tokio::task::spawn_blocking(move || {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+
+                // Confidence for new correction entry
+                match store_for_conf.get(new_correction_id) {
+                    Ok(entry) => {
+                        let conf = crate::confidence::compute_confidence(&entry, now);
+                        if let Err(e) = store_for_conf.update_confidence(new_correction_id, conf) {
+                            tracing::warn!("confidence for correction {new_correction_id}: {e}");
+                        }
+                    }
+                    Err(e) => tracing::warn!("confidence: read correction {new_correction_id}: {e}"),
+                }
+
+                // Recompute confidence for deprecated original (base_score now 0.2)
+                match store_for_conf.get(dep_original_id) {
+                    Ok(entry) => {
+                        let conf = crate::confidence::compute_confidence(&entry, now);
+                        if let Err(e) = store_for_conf.update_confidence(dep_original_id, conf) {
+                            tracing::warn!("confidence for deprecated {dep_original_id}: {e}");
+                        }
+                    }
+                    Err(e) => tracing::warn!("confidence: read deprecated {dep_original_id}: {e}"),
+                }
+            }).await;
+        }
+
+        // 16. Format response
         Ok(format_correct_success(
             &deprecated_original,
             &new_correction,
@@ -795,7 +859,28 @@ impl UnimatrixServer {
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 9. Format response
+        // 9. Recompute confidence for deprecated entry (fire-and-forget)
+        {
+            let store_for_conf = Arc::clone(&self.store);
+            let dep_id = deprecated.id;
+            let _ = tokio::task::spawn_blocking(move || {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                match store_for_conf.get(dep_id) {
+                    Ok(entry) => {
+                        let conf = crate::confidence::compute_confidence(&entry, now);
+                        if let Err(e) = store_for_conf.update_confidence(dep_id, conf) {
+                            tracing::warn!("confidence for deprecated {dep_id}: {e}");
+                        }
+                    }
+                    Err(e) => tracing::warn!("confidence: read deprecated {dep_id}: {e}"),
+                }
+            }).await;
+        }
+
+        // 10. Format response
         Ok(format_deprecate_success(
             &deprecated,
             params.reason.as_deref(),

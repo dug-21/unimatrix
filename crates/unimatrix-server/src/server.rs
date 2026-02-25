@@ -500,7 +500,7 @@ impl UnimatrixServer {
             }
         }
 
-        // Step 3: Record usage via Store (spawn_blocking)
+        // Step 3: Record usage WITH confidence computation (spawn_blocking)
         let store = Arc::clone(&self.store);
         let all_ids = entry_ids.to_vec();
         let access_ids_owned = access_ids;
@@ -510,13 +510,14 @@ impl UnimatrixServer {
         let dec_unhelpful_owned = decrement_unhelpful_ids;
 
         let usage_result = tokio::task::spawn_blocking(move || {
-            store.record_usage(
+            store.record_usage_with_confidence(
                 &all_ids,
                 &access_ids_owned,
                 &helpful_owned,
                 &unhelpful_owned,
                 &dec_helpful_owned,
                 &dec_unhelpful_owned,
+                Some(&crate::confidence::compute_confidence),
             )
         }).await;
 
@@ -1057,5 +1058,195 @@ mod tests {
         let r = server.store.get(id).unwrap();
         assert_eq!(r.access_count, 1, "access deduped");
         assert_eq!(r.helpful_count, 1, "vote recorded");
+    }
+
+    // -- crt-002: Confidence on retrieval path (T-20 through T-23) --
+
+    #[tokio::test]
+    async fn test_confidence_updated_on_retrieval() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // Before retrieval: confidence is 0.0
+        assert_eq!(server.store.get(id).unwrap().confidence, 0.0);
+
+        // Trigger retrieval
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                None,
+            )
+            .await;
+
+        // After retrieval: confidence > 0.0
+        let r = server.store.get(id).unwrap();
+        assert!(r.confidence > 0.0, "confidence should be updated after retrieval");
+    }
+
+    #[tokio::test]
+    async fn test_confidence_matches_formula() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                None,
+            )
+            .await;
+
+        let entry = server.store.get(id).unwrap();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let expected = crate::confidence::compute_confidence(&entry, now);
+        // Allow small tolerance for timestamp difference
+        assert!((entry.confidence - expected).abs() < 0.01);
+    }
+
+    #[tokio::test]
+    async fn test_confidence_evolves_with_multiple_retrievals() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // First retrieval
+        server
+            .record_usage_for_entries(
+                "agent-a",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                None,
+            )
+            .await;
+        let after_first = server.store.get(id).unwrap().confidence;
+
+        // Second retrieval (different agent to avoid access dedup)
+        server
+            .record_usage_for_entries(
+                "agent-b",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                None,
+            )
+            .await;
+        let after_second = server.store.get(id).unwrap().confidence;
+
+        // Confidence should change (access_count went from 1 to 2)
+        assert_ne!(after_first, after_second, "confidence should evolve with retrievals");
+    }
+
+    // -- crt-002: Confidence on mutation paths (T-24 through T-28) --
+
+    #[tokio::test]
+    async fn test_confidence_seeded_on_insert() {
+        let server = make_server();
+
+        let entry = unimatrix_core::NewEntry {
+            title: "Test".to_string(),
+            content: "Content".to_string(),
+            topic: "test".to_string(),
+            category: "convention".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: unimatrix_core::Status::Active,
+            created_by: String::new(),
+            feature_cycle: String::new(),
+            trust_source: "agent".to_string(),
+        };
+
+        let audit_event = crate::audit::AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: "test".to_string(),
+            operation: "context_store".to_string(),
+            target_ids: vec![],
+            outcome: crate::audit::Outcome::Success,
+            detail: "test insert".to_string(),
+        };
+
+        let embedding = vec![0.1; 384];
+        let (entry_id, _record) = server
+            .insert_with_audit(entry, embedding, audit_event)
+            .await
+            .unwrap();
+
+        // Seed confidence (simulating what context_store does)
+        {
+            let entry = server.store.get(entry_id).unwrap();
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let conf = crate::confidence::compute_confidence(&entry, now);
+            server.store.update_confidence(entry_id, conf).unwrap();
+        }
+
+        let r = server.store.get(entry_id).unwrap();
+        assert!(r.confidence > 0.0, "confidence should be seeded on insert");
+        // Agent-authored entry: expected ~0.525
+        assert!((r.confidence - 0.525).abs() < 0.05);
+    }
+
+    #[tokio::test]
+    async fn test_confidence_recomputed_on_deprecation() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // First retrieval to give it some confidence
+        server
+            .record_usage_for_entries(
+                "test-agent",
+                TrustLevel::Internal,
+                &[id],
+                None,
+                None,
+            )
+            .await;
+
+        let before_deprecation = server.store.get(id).unwrap().confidence;
+        assert!(before_deprecation > 0.0);
+
+        // Deprecate
+        let audit_event = crate::audit::AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: "test".to_string(),
+            operation: "context_deprecate".to_string(),
+            target_ids: vec![],
+            outcome: crate::audit::Outcome::Success,
+            detail: String::new(),
+        };
+        server
+            .deprecate_with_audit(id, None, audit_event)
+            .await
+            .unwrap();
+
+        // Recompute confidence for deprecated entry
+        {
+            let entry = server.store.get(id).unwrap();
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let conf = crate::confidence::compute_confidence(&entry, now);
+            server.store.update_confidence(id, conf).unwrap();
+        }
+
+        let after_deprecation = server.store.get(id).unwrap().confidence;
+        assert!(
+            after_deprecation < before_deprecation,
+            "confidence should decrease after deprecation (base_score 0.5 -> 0.2)"
+        );
     }
 }
