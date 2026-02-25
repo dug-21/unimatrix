@@ -59,6 +59,7 @@ def server(tmp_path):
 
     try:
         client.initialize()
+        client.wait_until_ready()
     except Exception as e:
         client.shutdown()
         pytest.fail(f"Server initialization failed: {e}")
@@ -79,14 +80,16 @@ def server(tmp_path):
 def shared_server(tmp_path_factory):
     """One server per test module (for volume/lifecycle suites).
 
-    State accumulates across tests in the module.
+    State accumulates across tests in the module. Uses a higher default
+    timeout (60s) since operations slow down with accumulated data.
     """
     binary = get_binary_path()
     tmp_dir = tmp_path_factory.mktemp("shared-server")
-    client = UnimatrixClient(binary, project_dir=str(tmp_dir))
+    client = UnimatrixClient(binary, project_dir=str(tmp_dir), timeout=60.0)
 
     try:
         client.initialize()
+        client.wait_until_ready()
     except Exception as e:
         client.shutdown()
         pytest.fail(f"Shared server initialization failed: {e}")

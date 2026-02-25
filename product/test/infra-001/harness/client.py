@@ -302,6 +302,24 @@ class UnimatrixClient:
         """Whether the server process is still running."""
         return self._process.poll() is None
 
+    def wait_until_ready(self, timeout: float = 30.0):
+        """Wait until the embedding model is loaded and tools are ready.
+
+        Polls stderr for the 'embedding model loaded' message. This avoids
+        the -32004 error that occurs when context_store is called before the
+        model finishes initializing.
+        """
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with self._stderr_lock:
+                for line in self._stderr_lines:
+                    if "embedding model loaded" in line:
+                        return
+            if self._process.poll() is not None:
+                raise ServerDied(self._process.returncode, self.get_stderr())
+            time.sleep(0.2)
+        raise TimeoutError("wait_until_ready", timeout)
+
     # -- Context Manager -----------------------------------------------
 
     def __enter__(self):
@@ -359,6 +377,7 @@ class UnimatrixClient:
         source: str | None = None,
         agent_id: str | None = None,
         format: str | None = None,
+        timeout: float | None = None,
     ) -> MCPResponse:
         args: dict[str, Any] = {
             "content": content,
@@ -375,7 +394,7 @@ class UnimatrixClient:
             args["agent_id"] = agent_id
         if format is not None:
             args["format"] = format
-        return self.call_tool("context_store", args)
+        return self.call_tool("context_store", args, timeout=timeout)
 
     def context_search(
         self,
@@ -389,6 +408,7 @@ class UnimatrixClient:
         format: str | None = None,
         feature: str | None = None,
         helpful: bool | None = None,
+        timeout: float | None = None,
     ) -> MCPResponse:
         args: dict[str, Any] = {"query": query}
         if topic is not None:
@@ -407,7 +427,7 @@ class UnimatrixClient:
             args["feature"] = feature
         if helpful is not None:
             args["helpful"] = helpful
-        return self.call_tool("context_search", args)
+        return self.call_tool("context_search", args, timeout=timeout)
 
     def context_lookup(
         self,
@@ -521,6 +541,7 @@ class UnimatrixClient:
         agent_id: str | None = None,
         format: str | None = None,
         check_embeddings: bool | None = None,
+        timeout: float | None = None,
     ) -> MCPResponse:
         args: dict[str, Any] = {}
         if topic is not None:
@@ -533,7 +554,7 @@ class UnimatrixClient:
             args["format"] = format
         if check_embeddings is not None:
             args["check_embeddings"] = check_embeddings
-        return self.call_tool("context_status", args)
+        return self.call_tool("context_status", args, timeout=timeout)
 
     def context_briefing(
         self,
@@ -545,6 +566,7 @@ class UnimatrixClient:
         agent_id: str | None = None,
         format: str | None = None,
         helpful: bool | None = None,
+        timeout: float | None = None,
     ) -> MCPResponse:
         args: dict[str, Any] = {"role": role, "task": task}
         if feature is not None:
@@ -557,7 +579,7 @@ class UnimatrixClient:
             args["format"] = format
         if helpful is not None:
             args["helpful"] = helpful
-        return self.call_tool("context_briefing", args)
+        return self.call_tool("context_briefing", args, timeout=timeout)
 
     def context_quarantine(
         self,

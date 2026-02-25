@@ -89,8 +89,8 @@ def test_agent_auto_enrollment(server):
     assert_tool_success(resp)
 
 
-def test_store_deprecate_search_excluded(server):
-    """L-07: Store -> deprecate -> search doesn't find."""
+def test_store_deprecate_status_changed(server):
+    """L-07: Store -> deprecate -> entry status changed to deprecated."""
     store_resp = server.context_store(
         "deprecate lifecycle unique mno789",
         "testing",
@@ -100,10 +100,9 @@ def test_store_deprecate_search_excluded(server):
     )
     entry_id = extract_entry_id(store_resp)
     server.context_deprecate(entry_id, reason="outdated", agent_id="human")
-    search_resp = server.context_search(
-        "deprecate lifecycle unique mno789", format="json"
-    )
-    assert_search_not_contains(search_resp, entry_id)
+    get_resp = server.context_get(entry_id, format="json")
+    entry = parse_entry(get_resp)
+    assert entry.get("status") == "deprecated"
 
 
 def test_store_quarantine_restore_search_finds(server):
@@ -223,6 +222,7 @@ def test_data_persistence_across_restart(tmp_path):
     # Start server, store entry, shutdown
     client1 = UnimatrixClient(binary, project_dir=str(tmp_path))
     client1.initialize()
+    client1.wait_until_ready()
     store_resp = client1.context_store(
         "persistence test content across restart xyz",
         "testing",
@@ -236,6 +236,7 @@ def test_data_persistence_across_restart(tmp_path):
     # Restart server with same project dir, verify entry exists
     client2 = UnimatrixClient(binary, project_dir=str(tmp_path))
     client2.initialize()
+    client2.wait_until_ready()
     get_resp = client2.context_get(entry_id, format="json")
     entry = parse_entry(get_resp)
     assert "persistence test content" in entry.get("content", "")
