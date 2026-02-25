@@ -707,4 +707,114 @@ mod tests {
         assert!(re.is_match("avoid global state"));
         assert!(re.is_match("Do not use unsafe code"));
     }
+
+    #[test]
+    fn test_dedup_canonical_pair_order() {
+        let pair_key_ab = (5u64.min(10), 5u64.max(10));
+        let pair_key_ba = (10u64.min(5), 10u64.max(5));
+        assert_eq!(pair_key_ab, pair_key_ba);
+        assert_eq!(pair_key_ab, (5, 10));
+    }
+
+    #[test]
+    fn test_sensitivity_high_flags_more() {
+        // Weak conflict: only opposing sentiment
+        let a = "This approach is recommended and considered best practice.";
+        let b = "This approach is problematic and discouraged.";
+
+        // At default sensitivity (0.5): threshold = 0.5, sentiment alone (0.1) may not pass
+        let (score_default, _) = conflict_heuristic(a, b, 0.5);
+
+        // At high sensitivity (0.95): threshold = 0.05, sentiment signal (0.1) should pass
+        let (score_sensitive, _) = conflict_heuristic(a, b, 0.95);
+
+        assert!(
+            score_sensitive >= score_default,
+            "higher sensitivity should flag more: default={score_default}, sensitive={score_sensitive}"
+        );
+        assert!(
+            score_sensitive > 0.0,
+            "high sensitivity should flag opposing sentiment: {score_sensitive}"
+        );
+    }
+
+    #[test]
+    fn test_no_conflict_complementary_entries() {
+        let a = "Use tokio for async runtime management.";
+        let b = "Use tokio with multi-threaded runtime for best performance.";
+
+        // Same subject, same polarity -- not a contradiction
+        let (score, _) = conflict_heuristic(a, b, 0.5);
+        assert_eq!(
+            score, 0.0,
+            "complementary entries should not conflict, got {score}"
+        );
+    }
+
+    #[test]
+    fn test_no_conflict_agreement() {
+        let a = "Use serde for serialization.";
+        let b = "Serde is a recommended choice for serialization.";
+
+        let (score, _) = conflict_heuristic(a, b, 0.5);
+        assert_eq!(score, 0.0, "agreement should not conflict, got {score}");
+    }
+
+    #[test]
+    fn test_negation_always_vs_never() {
+        let a = "Always enable strict mode.";
+        let b = "Never enable strict mode.";
+
+        let score = check_negation_opposition(a, b);
+        assert!(
+            score > 0.0,
+            "always vs never should detect opposition, got {score}"
+        );
+    }
+
+    #[test]
+    fn test_incompatible_directives_reqwest_vs_ureq() {
+        let a = "Use reqwest for HTTP clients.";
+        let b = "Use ureq for HTTP clients.";
+
+        let score = check_incompatible_directives(a, b);
+        assert!(
+            score > 0.0,
+            "different HTTP clients should be incompatible, got {score}"
+        );
+    }
+
+    #[test]
+    fn test_contradiction_pair_clone() {
+        let pair = ContradictionPair {
+            entry_id_a: 1,
+            entry_id_b: 2,
+            title_a: "A".to_string(),
+            title_b: "B".to_string(),
+            similarity: 0.9,
+            conflict_score: 0.5,
+            explanation: "test".to_string(),
+        };
+        let cloned = pair.clone();
+        assert_eq!(cloned.entry_id_a, 1);
+        assert_eq!(cloned.conflict_score, 0.5);
+    }
+
+    #[test]
+    fn test_embedding_inconsistency_clone() {
+        let inc = EmbeddingInconsistency {
+            entry_id: 42,
+            title: "Test".to_string(),
+            expected_similarity: 0.95,
+        };
+        let cloned = inc.clone();
+        assert_eq!(cloned.entry_id, 42);
+    }
+
+    #[test]
+    fn test_contradiction_config_clone() {
+        let config = ContradictionConfig::default();
+        let cloned = config.clone();
+        assert!((cloned.similarity_threshold - config.similarity_threshold).abs() < f32::EPSILON);
+    }
 }

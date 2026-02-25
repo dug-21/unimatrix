@@ -1692,4 +1692,55 @@ mod tests {
         let json = r#"{"role": "architect"}"#;
         assert!(serde_json::from_str::<BriefingParams>(json).is_err());
     }
+
+    // -- crt-003: QuarantineParams --
+
+    #[test]
+    fn test_quarantine_params_required_id() {
+        let json = r#"{"id": 42}"#;
+        let params: QuarantineParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.id, 42);
+        assert!(params.reason.is_none());
+        assert!(params.action.is_none());
+    }
+
+    #[test]
+    fn test_quarantine_params_all_fields() {
+        let json = r#"{
+            "id": 42,
+            "reason": "suspicious content",
+            "action": "quarantine",
+            "agent_id": "system",
+            "format": "json"
+        }"#;
+        let params: QuarantineParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.id, 42);
+        assert_eq!(params.reason.unwrap(), "suspicious content");
+        assert_eq!(params.action.unwrap(), "quarantine");
+        assert_eq!(params.agent_id.unwrap(), "system");
+        assert_eq!(params.format.unwrap(), "json");
+    }
+
+    #[test]
+    fn test_quarantine_params_restore_action() {
+        let json = r#"{"id": 42, "action": "restore"}"#;
+        let params: QuarantineParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.action.unwrap(), "restore");
+    }
+
+    // -- crt-003: StatusParams check_embeddings --
+
+    #[test]
+    fn test_status_params_check_embeddings_field() {
+        let json = r#"{"check_embeddings": true}"#;
+        let params: StatusParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.check_embeddings.unwrap(), true);
+    }
+
+    #[test]
+    fn test_status_params_check_embeddings_default() {
+        let json = r#"{}"#;
+        let params: StatusParams = serde_json::from_str(json).unwrap();
+        assert!(params.check_embeddings.is_none());
+    }
 }

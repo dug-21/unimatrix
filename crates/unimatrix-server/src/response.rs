@@ -1265,6 +1265,156 @@ mod tests {
         assert!(text.contains("Active: 0"));
     }
 
+    // -- crt-003: StatusReport with contradictions --
+
+    #[test]
+    fn test_status_report_with_contradictions_summary() {
+        let pair = crate::contradiction::ContradictionPair {
+            entry_id_a: 1,
+            entry_id_b: 5,
+            title_a: "Entry A".to_string(),
+            title_b: "Entry B".to_string(),
+            similarity: 0.92,
+            conflict_score: 0.6,
+            explanation: "negation opposition (1.00)".to_string(),
+        };
+        let report = StatusReport {
+            total_active: 10,
+            total_deprecated: 2,
+            total_proposed: 1,
+            total_quarantined: 3,
+            category_distribution: vec![],
+            topic_distribution: vec![],
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: vec![],
+            entries_without_attribution: 0,
+            contradictions: vec![pair],
+            contradiction_count: 1,
+            embedding_inconsistencies: Vec::new(),
+            contradiction_scan_performed: true,
+            embedding_check_performed: false,
+        };
+
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Quarantined: 3"), "summary should include quarantined count");
+        assert!(text.contains("Contradictions: 1"), "summary should include contradiction count");
+    }
+
+    #[test]
+    fn test_status_report_with_contradictions_markdown() {
+        let pair = crate::contradiction::ContradictionPair {
+            entry_id_a: 1,
+            entry_id_b: 5,
+            title_a: "Entry A".to_string(),
+            title_b: "Entry B".to_string(),
+            similarity: 0.92,
+            conflict_score: 0.6,
+            explanation: "negation opposition".to_string(),
+        };
+        let report = StatusReport {
+            total_active: 10,
+            total_deprecated: 2,
+            total_proposed: 1,
+            total_quarantined: 3,
+            category_distribution: vec![],
+            topic_distribution: vec![],
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: vec![],
+            entries_without_attribution: 0,
+            contradictions: vec![pair],
+            contradiction_count: 1,
+            embedding_inconsistencies: Vec::new(),
+            contradiction_scan_performed: true,
+            embedding_check_performed: false,
+        };
+
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("Quarantined | 3"), "markdown should have quarantined row");
+        assert!(text.contains("### Contradictions"), "markdown should have contradictions section");
+        assert!(text.contains("1 contradiction(s)"), "should show count");
+        assert!(text.contains("Entry A"), "should show entry titles");
+    }
+
+    #[test]
+    fn test_status_report_with_contradictions_json() {
+        let pair = crate::contradiction::ContradictionPair {
+            entry_id_a: 1,
+            entry_id_b: 5,
+            title_a: "Entry A".to_string(),
+            title_b: "Entry B".to_string(),
+            similarity: 0.92,
+            conflict_score: 0.6,
+            explanation: "negation opposition".to_string(),
+        };
+        let report = StatusReport {
+            total_active: 10,
+            total_deprecated: 2,
+            total_proposed: 1,
+            total_quarantined: 3,
+            category_distribution: vec![],
+            topic_distribution: vec![],
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: vec![],
+            entries_without_attribution: 0,
+            contradictions: vec![pair],
+            contradiction_count: 1,
+            embedding_inconsistencies: Vec::new(),
+            contradiction_scan_performed: true,
+            embedding_check_performed: false,
+        };
+
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["total_quarantined"], 3);
+        assert_eq!(parsed["contradiction_count"], 1);
+        assert!(parsed["contradictions"].is_array());
+        assert_eq!(parsed["contradictions"][0]["entry_id_a"], 1);
+        assert_eq!(parsed["contradictions"][0]["entry_id_b"], 5);
+    }
+
+    #[test]
+    fn test_status_report_embedding_integrity_markdown() {
+        let inc = crate::contradiction::EmbeddingInconsistency {
+            entry_id: 42,
+            title: "Suspicious Entry".to_string(),
+            expected_similarity: 0.75,
+        };
+        let report = StatusReport {
+            total_active: 5,
+            total_deprecated: 0,
+            total_proposed: 0,
+            total_quarantined: 0,
+            category_distribution: vec![],
+            topic_distribution: vec![],
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: vec![],
+            entries_without_attribution: 0,
+            contradictions: Vec::new(),
+            contradiction_count: 0,
+            embedding_inconsistencies: vec![inc],
+            contradiction_scan_performed: false,
+            embedding_check_performed: true,
+        };
+
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("### Embedding Integrity"), "should have embedding section");
+        assert!(text.contains("1 inconsistency"), "should show count");
+        assert!(text.contains("Suspicious Entry"), "should show entry title");
+        assert!(text.contains("0.7500"), "should show similarity");
+    }
+
     // -- vnc-003: format_briefing --
 
     fn make_briefing(search_available: bool) -> Briefing {
