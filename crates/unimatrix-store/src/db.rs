@@ -4,8 +4,8 @@ use redb::ReadableDatabase;
 
 use crate::error::{Result, StoreError};
 use crate::schema::{
-    AGENT_REGISTRY, AUDIT_LOG, CATEGORY_INDEX, COUNTERS, DatabaseConfig, ENTRIES, FEATURE_ENTRIES,
-    STATUS_INDEX, TAG_INDEX, TIME_INDEX, TOPIC_INDEX, VECTOR_MAP,
+    AGENT_REGISTRY, AUDIT_LOG, CATEGORY_INDEX, CO_ACCESS, COUNTERS, DatabaseConfig, ENTRIES,
+    FEATURE_ENTRIES, STATUS_INDEX, TAG_INDEX, TIME_INDEX, TOPIC_INDEX, VECTOR_MAP,
 };
 
 /// The storage engine handle. Wraps a redb::Database.
@@ -36,7 +36,7 @@ impl Store {
             .create(path.as_ref())
             .map_err(StoreError::Database)?;
 
-        // Ensure all 11 tables exist by opening them in a write transaction.
+        // Ensure all 12 tables exist by opening them in a write transaction.
         let txn = db.begin_write().map_err(StoreError::Transaction)?;
         {
             txn.open_table(ENTRIES).map_err(StoreError::Table)?;
@@ -50,6 +50,7 @@ impl Store {
             txn.open_table(AGENT_REGISTRY).map_err(StoreError::Table)?;
             txn.open_table(AUDIT_LOG).map_err(StoreError::Table)?;
             txn.open_multimap_table(FEATURE_ENTRIES).map_err(StoreError::Table)?;
+            txn.open_table(CO_ACCESS).map_err(StoreError::Table)?;
         }
         txn.commit().map_err(StoreError::Commit)?;
 
@@ -96,7 +97,7 @@ mod tests {
         let path = dir.path().join("test.redb");
         let store = Store::open(&path).unwrap();
 
-        // Verify all 11 tables exist by opening each in a read transaction
+        // Verify all 12 tables exist by opening each in a read transaction
         let txn = store.db.begin_read().unwrap();
         txn.open_table(ENTRIES).unwrap();
         txn.open_table(TOPIC_INDEX).unwrap();
@@ -109,6 +110,7 @@ mod tests {
         txn.open_table(AGENT_REGISTRY).unwrap();
         txn.open_table(AUDIT_LOG).unwrap();
         txn.open_multimap_table(FEATURE_ENTRIES).unwrap();
+        txn.open_table(CO_ACCESS).unwrap();
     }
 
     #[test]

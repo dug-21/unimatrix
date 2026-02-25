@@ -351,6 +351,30 @@ pub struct StatusReport {
     pub contradiction_scan_performed: bool,
     /// Whether embedding consistency check was performed.
     pub embedding_check_performed: bool,
+    /// Total co-access pairs in CO_ACCESS table.
+    pub total_co_access_pairs: u64,
+    /// Active (non-stale) co-access pairs.
+    pub active_co_access_pairs: u64,
+    /// Top co-access pairs by count.
+    pub top_co_access_pairs: Vec<CoAccessClusterEntry>,
+    /// Number of stale pairs cleaned during this status call.
+    pub stale_pairs_cleaned: u64,
+}
+
+/// A co-access cluster entry for status reporting.
+pub struct CoAccessClusterEntry {
+    /// First entry ID in the pair.
+    pub entry_id_a: u64,
+    /// Second entry ID in the pair.
+    pub entry_id_b: u64,
+    /// Title of the first entry.
+    pub title_a: String,
+    /// Title of the second entry.
+    pub title_b: String,
+    /// Number of times the pair was co-retrieved.
+    pub count: u32,
+    /// Unix timestamp of most recent co-retrieval.
+    pub last_updated: u64,
 }
 
 /// Assembled briefing for format_briefing.
@@ -530,6 +554,12 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             if report.contradiction_scan_performed {
                 text.push_str(&format!(" | Contradictions: {}", report.contradiction_count));
             }
+            text.push_str(&format!(
+                "\nCo-access: {} active pairs ({} total), {} stale pairs cleaned",
+                report.active_co_access_pairs,
+                report.total_co_access_pairs,
+                report.stale_pairs_cleaned,
+            ));
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Markdown => {
@@ -620,6 +650,30 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 }
             }
 
+            text.push_str("\n### Co-Access Patterns\n\n");
+            text.push_str(&format!(
+                "- Active pairs: {} of {} total\n",
+                report.active_co_access_pairs, report.total_co_access_pairs
+            ));
+            text.push_str(&format!(
+                "- Stale pairs cleaned: {}\n",
+                report.stale_pairs_cleaned
+            ));
+            if !report.top_co_access_pairs.is_empty() {
+                text.push_str("\n#### Top Co-Access Clusters\n");
+                text.push_str("| Entry A | Entry B | Count | Last Updated |\n");
+                text.push_str("|---------|---------|-------|-------------|\n");
+                for cluster in &report.top_co_access_pairs {
+                    text.push_str(&format!(
+                        "| {} (#{}) | {} (#{}) | {} | {} |\n",
+                        cluster.title_a, cluster.entry_id_a,
+                        cluster.title_b, cluster.entry_id_b,
+                        cluster.count,
+                        format_timestamp(cluster.last_updated),
+                    ));
+                }
+            }
+
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Json => {
@@ -686,6 +740,22 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 }).collect();
                 obj["embedding_inconsistencies"] = serde_json::json!(inconsistencies);
             }
+
+            let top_clusters: Vec<serde_json::Value> = report.top_co_access_pairs.iter().map(|c| {
+                serde_json::json!({
+                    "entry_a": { "id": c.entry_id_a, "title": c.title_a },
+                    "entry_b": { "id": c.entry_id_b, "title": c.title_b },
+                    "count": c.count,
+                    "last_updated": c.last_updated,
+                })
+            }).collect();
+            obj["co_access"] = serde_json::json!({
+                "total_pairs": report.total_co_access_pairs,
+                "active_pairs": report.active_co_access_pairs,
+                "stale_pairs_cleaned": report.stale_pairs_cleaned,
+                "top_clusters": top_clusters,
+            });
+
             CallToolResult::success(vec![Content::text(
                 serde_json::to_string_pretty(&obj).unwrap_or_default(),
             )])
@@ -1202,6 +1272,10 @@ mod tests {
             embedding_inconsistencies: Vec::new(),
             contradiction_scan_performed: false,
             embedding_check_performed: false,
+            total_co_access_pairs: 0,
+            active_co_access_pairs: 0,
+            top_co_access_pairs: Vec::new(),
+            stale_pairs_cleaned: 0,
         }
     }
 
@@ -1259,6 +1333,10 @@ mod tests {
             embedding_inconsistencies: Vec::new(),
             contradiction_scan_performed: false,
             embedding_check_performed: false,
+            total_co_access_pairs: 0,
+            active_co_access_pairs: 0,
+            top_co_access_pairs: Vec::new(),
+            stale_pairs_cleaned: 0,
         };
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
@@ -1295,6 +1373,10 @@ mod tests {
             embedding_inconsistencies: Vec::new(),
             contradiction_scan_performed: true,
             embedding_check_performed: false,
+            total_co_access_pairs: 0,
+            active_co_access_pairs: 0,
+            top_co_access_pairs: Vec::new(),
+            stale_pairs_cleaned: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Summary);
@@ -1331,6 +1413,10 @@ mod tests {
             embedding_inconsistencies: Vec::new(),
             contradiction_scan_performed: true,
             embedding_check_performed: false,
+            total_co_access_pairs: 0,
+            active_co_access_pairs: 0,
+            top_co_access_pairs: Vec::new(),
+            stale_pairs_cleaned: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1369,6 +1455,10 @@ mod tests {
             embedding_inconsistencies: Vec::new(),
             contradiction_scan_performed: true,
             embedding_check_performed: false,
+            total_co_access_pairs: 0,
+            active_co_access_pairs: 0,
+            top_co_access_pairs: Vec::new(),
+            stale_pairs_cleaned: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Json);
@@ -1405,6 +1495,10 @@ mod tests {
             embedding_inconsistencies: vec![inc],
             contradiction_scan_performed: false,
             embedding_check_performed: true,
+            total_co_access_pairs: 0,
+            active_co_access_pairs: 0,
+            top_co_access_pairs: Vec::new(),
+            stale_pairs_cleaned: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);

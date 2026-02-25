@@ -211,6 +211,96 @@ impl Store {
             None => Ok(0),
         }
     }
+
+    /// Get all co-access partners for an entry, filtering by staleness.
+    ///
+    /// Per ADR-001: prefix scan for (entry, *) + full scan for (*, entry).
+    /// Returns partners as (partner_entry_id, CoAccessRecord).
+    pub fn get_co_access_partners(
+        &self,
+        entry_id: u64,
+        staleness_cutoff: u64,
+    ) -> Result<Vec<(u64, crate::schema::CoAccessRecord)>> {
+        use crate::schema::{CO_ACCESS, deserialize_co_access};
+
+        let txn = self.db.begin_read()?;
+        let table = txn.open_table(CO_ACCESS)?;
+        let mut partners = Vec::new();
+
+        // Scan 1: pairs where entry_id is the min (prefix scan)
+        for result in table.range((entry_id, 0u64)..=(entry_id, u64::MAX))? {
+            let (key, value) = result?;
+            let (_, partner_id) = key.value();
+            if partner_id == entry_id {
+                continue; // skip self-pair (shouldn't exist, but defensive)
+            }
+            let record = deserialize_co_access(value.value())?;
+            if record.last_updated >= staleness_cutoff {
+                partners.push((partner_id, record));
+            }
+        }
+
+        // Scan 2: pairs where entry_id is the max (full table scan)
+        for result in table.iter()? {
+            let (key, value) = result?;
+            let (min_id, max_id) = key.value();
+            if max_id == entry_id && min_id != entry_id {
+                let record = deserialize_co_access(value.value())?;
+                if record.last_updated >= staleness_cutoff {
+                    partners.push((min_id, record));
+                }
+            }
+        }
+
+        Ok(partners)
+    }
+
+    /// Get co-access statistics.
+    /// Returns (total_pairs, active_pairs_after_staleness).
+    pub fn co_access_stats(&self, staleness_cutoff: u64) -> Result<(u64, u64)> {
+        use crate::schema::{CO_ACCESS, deserialize_co_access};
+
+        let txn = self.db.begin_read()?;
+        let table = txn.open_table(CO_ACCESS)?;
+        let mut total = 0u64;
+        let mut active = 0u64;
+
+        for result in table.iter()? {
+            let (_, value) = result?;
+            total += 1;
+            let record = deserialize_co_access(value.value())?;
+            if record.last_updated >= staleness_cutoff {
+                active += 1;
+            }
+        }
+
+        Ok((total, active))
+    }
+
+    /// Get top N co-access pairs by count (non-stale only).
+    pub fn top_co_access_pairs(
+        &self,
+        n: usize,
+        staleness_cutoff: u64,
+    ) -> Result<Vec<((u64, u64), crate::schema::CoAccessRecord)>> {
+        use crate::schema::{CO_ACCESS, deserialize_co_access};
+
+        let txn = self.db.begin_read()?;
+        let table = txn.open_table(CO_ACCESS)?;
+        let mut pairs = Vec::new();
+
+        for result in table.iter()? {
+            let (key, value) = result?;
+            let record = deserialize_co_access(value.value())?;
+            if record.last_updated >= staleness_cutoff {
+                pairs.push((key.value(), record));
+            }
+        }
+
+        pairs.sort_by(|a, b| b.1.count.cmp(&a.1.count));
+        pairs.truncate(n);
+        Ok(pairs)
+    }
 }
 
 #[cfg(test)]

@@ -481,6 +481,77 @@ impl Store {
         txn.commit()?;
         Ok(())
     }
+
+    /// Record co-access for pre-computed pairs (after dedup).
+    ///
+    /// For each pair: increments count (saturating) and updates last_updated.
+    /// All pairs written in a single transaction.
+    pub fn record_co_access_pairs(&self, pairs: &[(u64, u64)]) -> Result<()> {
+        use crate::schema::{
+            CO_ACCESS, co_access_key, deserialize_co_access, serialize_co_access, CoAccessRecord,
+        };
+
+        if pairs.is_empty() {
+            return Ok(());
+        }
+
+        let now = current_unix_timestamp_secs();
+        let txn = self.db.begin_write()?;
+        {
+            let mut table = txn.open_table(CO_ACCESS)?;
+            for &(a, b) in pairs {
+                let key = co_access_key(a, b);
+                let record = match table.get(key)? {
+                    Some(existing) => {
+                        let mut rec = deserialize_co_access(existing.value())?;
+                        rec.count = rec.count.saturating_add(1);
+                        rec.last_updated = now;
+                        rec
+                    }
+                    None => CoAccessRecord {
+                        count: 1,
+                        last_updated: now,
+                    },
+                };
+                let bytes = serialize_co_access(&record)?;
+                table.insert(key, bytes.as_slice())?;
+            }
+        }
+        txn.commit()?;
+        Ok(())
+    }
+
+    /// Remove co-access pairs with last_updated < cutoff.
+    /// Returns count of removed pairs.
+    pub fn cleanup_stale_co_access(&self, cutoff_timestamp: u64) -> Result<u64> {
+        use crate::schema::{CO_ACCESS, deserialize_co_access};
+
+        let txn = self.db.begin_write()?;
+        let mut removed = 0u64;
+        {
+            // Collect stale keys first (cannot modify while iterating)
+            let stale_keys: Vec<(u64, u64)> = {
+                let table = txn.open_table(CO_ACCESS)?;
+                let mut keys = Vec::new();
+                for result in table.iter()? {
+                    let (key, value) = result?;
+                    let record = deserialize_co_access(value.value())?;
+                    if record.last_updated < cutoff_timestamp {
+                        keys.push(key.value());
+                    }
+                }
+                keys
+            };
+
+            let mut table = txn.open_table(CO_ACCESS)?;
+            for key in &stale_keys {
+                table.remove(*key)?;
+                removed += 1;
+            }
+        }
+        txn.commit()?;
+        Ok(removed)
+    }
 }
 
 #[cfg(test)]

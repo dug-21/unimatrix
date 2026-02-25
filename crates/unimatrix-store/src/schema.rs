@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::StoreError;
 
-// -- Table Definitions (11 total) --
+// -- Table Definitions (12 total) --
 
 /// Primary entry storage: entry_id -> bincode bytes.
 pub const ENTRIES: TableDefinition<u64, &[u8]> = TableDefinition::new("entries");
@@ -42,6 +42,10 @@ pub const AUDIT_LOG: TableDefinition<u64, &[u8]> = TableDefinition::new("audit_l
 /// Populated when retrieval tools include a `feature` parameter AND agent trust >= Internal.
 pub const FEATURE_ENTRIES: MultimapTableDefinition<&str, u64> =
     MultimapTableDefinition::new("feature_entries");
+
+/// Co-access pair tracking: (min_entry_id, max_entry_id) -> bincode bytes.
+/// Keys are ordered (smaller ID first) to deduplicate symmetric pairs.
+pub const CO_ACCESS: TableDefinition<(u64, u64), &[u8]> = TableDefinition::new("co_access");
 
 // -- Status Enum --
 
@@ -220,6 +224,41 @@ pub fn serialize_entry(record: &EntryRecord) -> crate::error::Result<Vec<u8>> {
 pub fn deserialize_entry(bytes: &[u8]) -> crate::error::Result<EntryRecord> {
     let (record, _) =
         bincode::serde::decode_from_slice::<EntryRecord, _>(bytes, bincode::config::standard())?;
+    Ok(record)
+}
+
+// -- Co-Access Record --
+
+/// Co-access pair metadata stored in the CO_ACCESS table.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CoAccessRecord {
+    /// Number of times this pair was co-retrieved.
+    pub count: u32,
+    /// Unix timestamp of most recent co-retrieval.
+    pub last_updated: u64,
+}
+
+/// Create an ordered pair key: (min, max).
+pub fn co_access_key(a: u64, b: u64) -> (u64, u64) {
+    if a <= b {
+        (a, b)
+    } else {
+        (b, a)
+    }
+}
+
+/// Serialize a CoAccessRecord to bincode bytes using the serde-compatible path.
+pub fn serialize_co_access(record: &CoAccessRecord) -> crate::error::Result<Vec<u8>> {
+    let bytes = bincode::serde::encode_to_vec(record, bincode::config::standard())?;
+    Ok(bytes)
+}
+
+/// Deserialize a CoAccessRecord from bincode bytes using the serde-compatible path.
+pub fn deserialize_co_access(bytes: &[u8]) -> crate::error::Result<CoAccessRecord> {
+    let (record, _) = bincode::serde::decode_from_slice::<CoAccessRecord, _>(
+        bytes,
+        bincode::config::standard(),
+    )?;
     Ok(record)
 }
 
@@ -513,6 +552,51 @@ mod tests {
         assert_eq!(Status::Active.to_string(), "Active");
         assert_eq!(Status::Deprecated.to_string(), "Deprecated");
         assert_eq!(Status::Proposed.to_string(), "Proposed");
+    }
+
+    // -- CoAccessRecord serialization (R-09, AC-02) --
+
+    #[test]
+    fn test_co_access_record_roundtrip() {
+        let record = CoAccessRecord {
+            count: 5,
+            last_updated: 1000,
+        };
+        let bytes = serialize_co_access(&record).unwrap();
+        let deserialized = deserialize_co_access(&bytes).unwrap();
+        assert_eq!(record, deserialized);
+    }
+
+    #[test]
+    fn test_co_access_record_roundtrip_zeros() {
+        let record = CoAccessRecord {
+            count: 0,
+            last_updated: 0,
+        };
+        let bytes = serialize_co_access(&record).unwrap();
+        let deserialized = deserialize_co_access(&bytes).unwrap();
+        assert_eq!(record, deserialized);
+    }
+
+    #[test]
+    fn test_co_access_record_roundtrip_max_values() {
+        let record = CoAccessRecord {
+            count: u32::MAX,
+            last_updated: u64::MAX,
+        };
+        let bytes = serialize_co_access(&record).unwrap();
+        let deserialized = deserialize_co_access(&bytes).unwrap();
+        assert_eq!(record, deserialized);
+    }
+
+    // -- co_access_key ordering (AC-05) --
+
+    #[test]
+    fn test_co_access_key_ordering() {
+        assert_eq!(co_access_key(10, 5), (5, 10));
+        assert_eq!(co_access_key(5, 10), (5, 10));
+        assert_eq!(co_access_key(5, 5), (5, 5));
+        assert_eq!(co_access_key(0, u64::MAX), (0, u64::MAX));
     }
 
     // -- Helper --

@@ -24,7 +24,7 @@ use crate::response::{
     format_duplicate_found, format_lookup_results, format_search_results, format_single_entry,
     format_store_success, format_correct_success, format_deprecate_success,
     format_quarantine_success, format_restore_success,
-    format_status_report, format_briefing, StatusReport, Briefing, parse_format,
+    format_status_report, format_briefing, StatusReport, CoAccessClusterEntry, Briefing, parse_format,
 };
 use crate::scanning::ContentScanner;
 use crate::server::UnimatrixServer;
@@ -318,10 +318,52 @@ impl UnimatrixServer {
             score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        // 10. Format response
+        // 9c. Co-access boost (crt-004)
+        if results_with_scores.len() > 1 {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let staleness_cutoff = now.saturating_sub(crate::coaccess::CO_ACCESS_STALENESS_SECONDS);
+
+            // Anchor IDs: top min(3, result_count) entries
+            let anchor_count = results_with_scores.len().min(3);
+            let anchor_ids: Vec<u64> = results_with_scores.iter()
+                .take(anchor_count)
+                .map(|(e, _)| e.id)
+                .collect();
+            let result_ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
+
+            let store = Arc::clone(&self.store);
+            let boost_map = tokio::task::spawn_blocking(move || {
+                crate::coaccess::compute_search_boost(&anchor_ids, &result_ids, &store, staleness_cutoff)
+            }).await
+            .unwrap_or_else(|e| {
+                tracing::warn!("co-access boost task failed: {e}");
+                std::collections::HashMap::new()
+            });
+
+            if !boost_map.is_empty() {
+                // Re-sort with boost applied
+                results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
+                    let base_a = crate::confidence::rerank_score(*sim_a, entry_a.confidence);
+                    let base_b = crate::confidence::rerank_score(*sim_b, entry_b.confidence);
+                    let boost_a = boost_map.get(&entry_a.id).copied().unwrap_or(0.0);
+                    let boost_b = boost_map.get(&entry_b.id).copied().unwrap_or(0.0);
+                    let final_a = base_a + boost_a;
+                    let final_b = base_b + boost_b;
+                    final_b.partial_cmp(&final_a).unwrap_or(std::cmp::Ordering::Equal)
+                });
+            }
+        }
+
+        // 10. Trim to k results (boost may have changed order)
+        results_with_scores.truncate(k);
+
+        // 11. Format response
         let result = format_search_results(&results_with_scores, format);
 
-        // 11. Audit (standalone, best-effort)
+        // 12. Audit (standalone, best-effort)
         let target_ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
         let _ = self.audit.log_event(AuditEvent {
             event_id: 0,
@@ -334,7 +376,7 @@ impl UnimatrixServer {
             detail: format!("returned {} results", results_with_scores.len()),
         });
 
-        // 12. Usage recording (fire-and-forget)
+        // 13. Usage recording (fire-and-forget)
         self.record_usage_for_entries(
             &identity.agent_id,
             identity.trust_level,
@@ -1055,6 +1097,10 @@ impl UnimatrixServer {
                 embedding_inconsistencies: Vec::new(),
                 contradiction_scan_performed: false,
                 embedding_check_performed: false,
+                total_co_access_pairs: 0,
+                active_co_access_pairs: 0,
+                top_co_access_pairs: Vec::new(),
+                stale_pairs_cleaned: 0,
             })
         }).await
         .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::JoinError(e.to_string()))))?
@@ -1114,6 +1160,64 @@ impl UnimatrixServer {
                     _ => {
                         // Check failed -- graceful degradation
                     }
+                }
+            }
+        }
+
+        // 5g. Co-access stats and cleanup (crt-004)
+        {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let staleness_cutoff = now.saturating_sub(crate::coaccess::CO_ACCESS_STALENESS_SECONDS);
+
+            let store_for_coaccess = Arc::clone(&self.store);
+            let co_access_result = tokio::task::spawn_blocking(move || {
+                // Stats
+                let (total, active) = store_for_coaccess.co_access_stats(staleness_cutoff)?;
+
+                // Top clusters
+                let top_pairs = store_for_coaccess.top_co_access_pairs(5, staleness_cutoff)?;
+
+                // Resolve titles for top pairs
+                let mut clusters = Vec::new();
+                for ((id_a, id_b), record) in &top_pairs {
+                    let title_a = store_for_coaccess.get(*id_a)
+                        .map(|e| e.title.clone())
+                        .unwrap_or_else(|_| format!("#{id_a}"));
+                    let title_b = store_for_coaccess.get(*id_b)
+                        .map(|e| e.title.clone())
+                        .unwrap_or_else(|_| format!("#{id_b}"));
+                    clusters.push(CoAccessClusterEntry {
+                        entry_id_a: *id_a,
+                        entry_id_b: *id_b,
+                        title_a,
+                        title_b,
+                        count: record.count,
+                        last_updated: record.last_updated,
+                    });
+                }
+
+                // Cleanup stale pairs (piggybacked maintenance)
+                let cleaned = store_for_coaccess.cleanup_stale_co_access(staleness_cutoff)?;
+
+                Ok::<_, unimatrix_store::StoreError>((total, active, clusters, cleaned))
+            }).await;
+
+            match co_access_result {
+                Ok(Ok((total, active, clusters, cleaned))) => {
+                    report.total_co_access_pairs = total;
+                    report.active_co_access_pairs = active;
+                    report.top_co_access_pairs = clusters;
+                    report.stale_pairs_cleaned = cleaned;
+                }
+                Ok(Err(e)) => {
+                    tracing::warn!("co-access stats failed: {e}");
+                    // Fields remain at default (0, 0, vec![], 0)
+                }
+                Err(e) => {
+                    tracing::warn!("co-access stats task failed: {e}");
                 }
             }
         }
@@ -1234,6 +1338,41 @@ impl UnimatrixServer {
                             _ => b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal),
                         }
                     });
+                }
+
+                // 8b. Co-access boost for briefing (crt-004)
+                if results.len() > 1 {
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs();
+                    let staleness_cutoff = now.saturating_sub(crate::coaccess::CO_ACCESS_STALENESS_SECONDS);
+
+                    let anchor_count = results.len().min(3);
+                    let anchor_ids: Vec<u64> = results.iter()
+                        .take(anchor_count)
+                        .map(|(e, _)| e.id)
+                        .collect();
+                    let result_ids: Vec<u64> = results.iter().map(|(e, _)| e.id).collect();
+
+                    let store = Arc::clone(&self.store);
+                    let boost_map = tokio::task::spawn_blocking(move || {
+                        crate::coaccess::compute_briefing_boost(&anchor_ids, &result_ids, &store, staleness_cutoff)
+                    }).await
+                    .unwrap_or_else(|e| {
+                        tracing::warn!("co-access briefing boost task failed: {e}");
+                        std::collections::HashMap::new()
+                    });
+
+                    if !boost_map.is_empty() {
+                        results.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
+                            let boost_a = boost_map.get(&entry_a.id).copied().unwrap_or(0.0);
+                            let boost_b = boost_map.get(&entry_b.id).copied().unwrap_or(0.0);
+                            let score_a = *sim_a + boost_a;
+                            let score_b = *sim_b + boost_b;
+                            score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                        });
+                    }
                 }
 
                 (results, true)

@@ -560,6 +560,31 @@ impl UnimatrixServer {
             }
             // Restricted agents' feature params silently ignored (AC-17)
         }
+
+        // Step 5: Co-access recording (fire-and-forget, crt-004)
+        if entry_ids.len() >= 2 {
+            let pairs =
+                crate::coaccess::generate_pairs(entry_ids, crate::coaccess::MAX_CO_ACCESS_ENTRIES);
+            let new_pairs = self.usage_dedup.filter_co_access_pairs(&pairs);
+
+            if !new_pairs.is_empty() {
+                let store = Arc::clone(&self.store);
+                let co_access_result = tokio::task::spawn_blocking(move || {
+                    store.record_co_access_pairs(&new_pairs)
+                })
+                .await;
+
+                match co_access_result {
+                    Ok(Ok(())) => {}
+                    Ok(Err(e)) => {
+                        tracing::warn!("co-access recording failed: {e}");
+                    }
+                    Err(e) => {
+                        tracing::warn!("co-access recording task failed: {e}");
+                    }
+                }
+            }
+        }
     }
 
     /// Deprecate an entry: set status to Deprecated in a single write transaction
