@@ -13,6 +13,7 @@ pub mod contradiction;
 pub mod embed_handle;
 pub mod error;
 pub mod identity;
+pub mod outcome_tags;
 pub mod pidfile;
 pub mod project;
 pub mod registry;

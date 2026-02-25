@@ -5,7 +5,7 @@ use redb::ReadableDatabase;
 use crate::error::{Result, StoreError};
 use crate::schema::{
     AGENT_REGISTRY, AUDIT_LOG, CATEGORY_INDEX, CO_ACCESS, COUNTERS, DatabaseConfig, ENTRIES,
-    FEATURE_ENTRIES, STATUS_INDEX, TAG_INDEX, TIME_INDEX, TOPIC_INDEX, VECTOR_MAP,
+    FEATURE_ENTRIES, OUTCOME_INDEX, STATUS_INDEX, TAG_INDEX, TIME_INDEX, TOPIC_INDEX, VECTOR_MAP,
 };
 
 /// The storage engine handle. Wraps a redb::Database.
@@ -19,14 +19,14 @@ pub struct Store {
 impl Store {
     /// Open or create a database at the given path with default configuration.
     ///
-    /// All 10 tables are created if they don't already exist.
+    /// All 13 tables are created if they don't already exist.
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         Self::open_with_config(path, DatabaseConfig::default())
     }
 
     /// Open or create a database at the given path with custom configuration.
     ///
-    /// All 10 tables are created if they don't already exist.
+    /// All 13 tables are created if they don't already exist.
     pub fn open_with_config(path: impl AsRef<Path>, config: DatabaseConfig) -> Result<Self> {
         let builder = redb::Builder::new();
         // Note: redb v3.1 Builder cache_size is managed internally.
@@ -36,7 +36,7 @@ impl Store {
             .create(path.as_ref())
             .map_err(StoreError::Database)?;
 
-        // Ensure all 12 tables exist by opening them in a write transaction.
+        // Ensure all 13 tables exist by opening them in a write transaction.
         let txn = db.begin_write().map_err(StoreError::Transaction)?;
         {
             txn.open_table(ENTRIES).map_err(StoreError::Table)?;
@@ -51,6 +51,7 @@ impl Store {
             txn.open_table(AUDIT_LOG).map_err(StoreError::Table)?;
             txn.open_multimap_table(FEATURE_ENTRIES).map_err(StoreError::Table)?;
             txn.open_table(CO_ACCESS).map_err(StoreError::Table)?;
+            txn.open_table(OUTCOME_INDEX).map_err(StoreError::Table)?;
         }
         txn.commit().map_err(StoreError::Commit)?;
 
@@ -89,7 +90,7 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use redb::ReadableDatabase;
+    use redb::{ReadableDatabase, ReadableTable};
 
     #[test]
     fn test_open_creates_all_tables() {
@@ -97,7 +98,7 @@ mod tests {
         let path = dir.path().join("test.redb");
         let store = Store::open(&path).unwrap();
 
-        // Verify all 12 tables exist by opening each in a read transaction
+        // Verify all 13 tables exist by opening each in a read transaction
         let txn = store.db.begin_read().unwrap();
         txn.open_table(ENTRIES).unwrap();
         txn.open_table(TOPIC_INDEX).unwrap();
@@ -111,6 +112,44 @@ mod tests {
         txn.open_table(AUDIT_LOG).unwrap();
         txn.open_multimap_table(FEATURE_ENTRIES).unwrap();
         txn.open_table(CO_ACCESS).unwrap();
+        txn.open_table(OUTCOME_INDEX).unwrap();
+    }
+
+    #[test]
+    fn test_outcome_index_accessible_after_open() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.redb");
+        let store = Store::open(&path).unwrap();
+
+        let txn = store.db.begin_read().unwrap();
+        let table = txn.open_table(OUTCOME_INDEX).unwrap();
+        assert_eq!(table.iter().unwrap().count(), 0);
+    }
+
+    #[test]
+    fn test_outcome_index_insert_and_read() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.redb");
+        let store = Store::open(&path).unwrap();
+
+        // Write
+        let txn = store.db.begin_write().unwrap();
+        {
+            let mut table = txn.open_table(OUTCOME_INDEX).unwrap();
+            table.insert(("col-001", 42u64), ()).unwrap();
+        }
+        txn.commit().unwrap();
+
+        // Read
+        let txn = store.db.begin_read().unwrap();
+        let table = txn.open_table(OUTCOME_INDEX).unwrap();
+        assert!(table.get(("col-001", 42u64)).unwrap().is_some());
+
+        // Range scan
+        let range = table
+            .range::<(&str, u64)>(("col-001", 0u64)..=("col-001", u64::MAX))
+            .unwrap();
+        assert_eq!(range.count(), 1);
     }
 
     #[test]

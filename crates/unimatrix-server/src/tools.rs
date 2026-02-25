@@ -22,7 +22,8 @@ use crate::audit::{AuditEvent, Outcome};
 use crate::registry::Capability;
 use crate::response::{
     format_duplicate_found, format_lookup_results, format_search_results, format_single_entry,
-    format_store_success, format_correct_success, format_deprecate_success,
+    format_store_success, format_store_success_with_note,
+    format_correct_success, format_deprecate_success,
     format_quarantine_success, format_restore_success,
     format_status_report, format_briefing, StatusReport, CoAccessClusterEntry, Briefing, parse_format,
 };
@@ -109,6 +110,8 @@ pub struct StoreParams {
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
     pub format: Option<String>,
+    /// Feature cycle or workflow identifier (e.g., "col-001", "bug-42").
+    pub feature_cycle: Option<String>,
 }
 
 /// Parameters for getting an entry by ID.
@@ -505,6 +508,13 @@ impl UnimatrixServer {
             .validate(&params.category)
             .map_err(rmcp::ErrorData::from)?;
 
+        // 5a. Outcome tag validation (only for outcome entries)
+        if params.category == "outcome" {
+            let tags = params.tags.as_deref().unwrap_or(&[]);
+            crate::outcome_tags::validate_outcome_tags(tags)
+                .map_err(rmcp::ErrorData::from)?;
+        }
+
         // 6. Content scanning
         if let Err(scan_result) = ContentScanner::global().scan(&params.content) {
             return Err(rmcp::ErrorData::from(
@@ -582,6 +592,8 @@ impl UnimatrixServer {
         }
 
         // 9. Build NewEntry
+        let feature_cycle = params.feature_cycle.clone().unwrap_or_default();
+        let is_outcome = params.category == "outcome";
         let new_entry = NewEntry {
             title: title.clone(),
             content: params.content,
@@ -591,7 +603,7 @@ impl UnimatrixServer {
             source: params.source.unwrap_or_default(),
             status: Status::Active,
             created_by: identity.agent_id.clone(),
-            feature_cycle: String::new(),
+            feature_cycle,
             trust_source: "agent".to_string(),
         };
 
@@ -634,7 +646,13 @@ impl UnimatrixServer {
         }
 
         // 12. Format response
-        Ok(format_store_success(&record, format))
+        if is_outcome && record.feature_cycle.is_empty() {
+            // Append orphan outcome warning to the formatted response
+            let warning = "\nNote: outcome not linked to a workflow (no feature_cycle provided)";
+            Ok(format_store_success_with_note(&record, format, warning))
+        } else {
+            Ok(format_store_success(&record, format))
+        }
     }
 
     #[tool(
@@ -1079,6 +1097,65 @@ impl UnimatrixServer {
                 }
             }
 
+            // 5d2. Outcome statistics
+            let mut total_outcomes = 0u64;
+            let mut outcomes_by_type: BTreeMap<String, u64> = BTreeMap::new();
+            let mut outcomes_by_result: BTreeMap<String, u64> = BTreeMap::new();
+            let mut outcomes_by_feature_cycle: BTreeMap<String, u64> = BTreeMap::new();
+
+            // Scan CATEGORY_INDEX for "outcome" entries
+            let outcome_range = cat_table
+                .range::<(&str, u64)>(("outcome", 0u64)..=("outcome", u64::MAX))
+                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
+
+            for item in outcome_range {
+                let (key, _) = item
+                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
+                let (_cat, entry_id) = key.value();
+                total_outcomes += 1;
+
+                // Read the entry record to extract tags
+                if let Some(entry_guard) = entries_table
+                    .get(entry_id)
+                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
+                {
+                    let record = deserialize_entry(entry_guard.value())
+                        .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
+
+                    // Extract type: and result: tags
+                    for tag in &record.tags {
+                        if let Some((tag_key, tag_value)) = tag.split_once(':') {
+                            match tag_key {
+                                "type" => {
+                                    *outcomes_by_type
+                                        .entry(tag_value.to_string())
+                                        .or_insert(0) += 1;
+                                }
+                                "result" => {
+                                    *outcomes_by_result
+                                        .entry(tag_value.to_string())
+                                        .or_insert(0) += 1;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    // Track feature_cycle
+                    if !record.feature_cycle.is_empty() {
+                        *outcomes_by_feature_cycle
+                            .entry(record.feature_cycle.clone())
+                            .or_insert(0) += 1;
+                    }
+                }
+            }
+
+            // Sort feature cycles by count descending, take top 10
+            let mut fc_sorted: Vec<(String, u64)> =
+                outcomes_by_feature_cycle.into_iter().collect();
+            fc_sorted.sort_by(|a, b| b.1.cmp(&a.1));
+            fc_sorted.truncate(10);
+
             // 5e. Build StatusReport
             Ok(StatusReport {
                 total_active,
@@ -1101,6 +1178,10 @@ impl UnimatrixServer {
                 active_co_access_pairs: 0,
                 top_co_access_pairs: Vec::new(),
                 stale_pairs_cleaned: 0,
+                total_outcomes,
+                outcomes_by_type: outcomes_by_type.into_iter().collect(),
+                outcomes_by_result: outcomes_by_result.into_iter().collect(),
+                outcomes_by_feature_cycle: fc_sorted,
             })
         }).await
         .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::JoinError(e.to_string()))))?
