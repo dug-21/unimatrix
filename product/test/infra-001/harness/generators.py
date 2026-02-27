@@ -104,9 +104,18 @@ def make_entry(seed: int | None = None, **overrides: Any) -> dict:
     if rng.random() > 0.5:
         entry["title"] = f"{topic.title()} {category.title()} #{rng.randint(1, 999)}"
 
+    tags: list[str] = []
     if rng.random() > 0.6:
         n_tags = rng.randint(1, 3)
-        entry["tags"] = rng.sample(TOPICS, min(n_tags, len(TOPICS)))
+        tags = rng.sample(TOPICS, min(n_tags, len(TOPICS)))
+
+    # outcome category requires a type: tag (col-001 validation)
+    if category == "outcome" and not any(t.startswith("type:") for t in tags):
+        type_tags = ["type:feature", "type:bugfix", "type:incident", "type:process"]
+        tags.append(rng.choice(type_tags))
+
+    if tags:
+        entry["tags"] = tags
 
     if rng.random() > 0.7:
         entry["source"] = f"test-source-{rng.randint(1, 100)}"
@@ -154,8 +163,17 @@ def make_entries(
 
         if rng.random() > 0.5:
             entry["title"] = f"Entry {i + 1}: {topic}"
+        tags = []
         if rng.random() > 0.7:
-            entry["tags"] = [rng.choice(TOPICS) for _ in range(rng.randint(1, 3))]
+            tags = [rng.choice(TOPICS) for _ in range(rng.randint(1, 3))]
+
+        # outcome category requires a type: tag (col-001 validation)
+        if category == "outcome" and not any(t.startswith("type:") for t in tags):
+            type_tags = ["type:feature", "type:bugfix", "type:incident", "type:process"]
+            tags.append(rng.choice(type_tags))
+
+        if tags:
+            entry["tags"] = tags
 
         entries.append(entry)
 
@@ -352,12 +370,19 @@ def make_bulk_dataset(n: int, seed: int | None = None) -> list[dict]:
         category = CATEGORIES[i % len(CATEGORIES)]
         content = _generate_content(rng, topic)
 
+        tags = [TOPICS[(i + 1) % len(TOPICS)]]
+
+        # outcome category requires a type: tag (col-001 validation)
+        if category == "outcome" and not any(t.startswith("type:") for t in tags):
+            type_tags = ["type:feature", "type:bugfix", "type:incident", "type:process"]
+            tags.append(rng.choice(type_tags))
+
         entry: dict[str, Any] = {
             "content": content,
             "topic": topic,
             "category": category,
             "title": f"Bulk entry {i + 1}",
-            "tags": [TOPICS[(i + 1) % len(TOPICS)]],
+            "tags": tags,
         }
         entries.append(entry)
 
