@@ -459,4 +459,123 @@ mod tests {
         let recs = generate_recommendations(0.3, 0.8, 5, 86400, 0.15, 3, 2);
         assert_eq!(recs.len(), 4);
     }
+
+    // -- crt-005 Stage 3c: Additional tests from test plan --
+
+    // UT-C4-06: recently accessed not stale
+    #[test]
+    fn freshness_recently_accessed_not_stale() {
+        let now = 100_000u64;
+        let threshold = 86400u64; // 24 hours
+        // last_accessed_at = now - 1 hour (3600 secs), well within 24h threshold
+        let entries = vec![make_entry_with_timestamps(0, now - 3600)];
+        let (score, stale) = confidence_freshness_score(&entries, now, threshold);
+        assert_eq!(score, 1.0, "recently accessed entry should not be stale");
+        assert_eq!(stale, 0);
+    }
+
+    // UT-C4-07: both timestamps older than threshold
+    #[test]
+    fn freshness_both_timestamps_older_than_threshold() {
+        let now = 300_000u64;
+        let threshold = 86400u64;
+        // updated_at = now - 48h, last_accessed_at = now - 36h
+        let entries = vec![make_entry_with_timestamps(
+            now - 48 * 3600,    // updated 48h ago
+            now - 36 * 3600,    // accessed 36h ago
+        )];
+        let (score, stale) = confidence_freshness_score(&entries, now, threshold);
+        assert_eq!(score, 0.0, "both timestamps older than threshold -> stale");
+        assert_eq!(stale, 1);
+    }
+
+    // UT-C4-14: embedding consistency single entry
+    #[test]
+    fn embedding_consistency_single_entry_consistent() {
+        assert_eq!(embedding_consistency_score(0, 1), 1.0);
+    }
+
+    #[test]
+    fn embedding_consistency_single_entry_inconsistent() {
+        assert_eq!(embedding_consistency_score(1, 1), 0.0);
+    }
+
+    // UT-C4-17: lambda with specific four dimensions
+    #[test]
+    fn lambda_specific_four_dimensions() {
+        let lambda = compute_lambda(0.9, 0.8, Some(1.0), 0.7, &DEFAULT_WEIGHTS);
+        // 0.35*0.9 + 0.30*0.8 + 0.15*1.0 + 0.20*0.7 = 0.315 + 0.24 + 0.15 + 0.14 = 0.845
+        assert!((lambda - 0.845).abs() < 0.001, "expected 0.845, got {lambda}");
+    }
+
+    // UT-C4-18: lambda with embedding excluded (specific value)
+    #[test]
+    fn lambda_embedding_excluded_specific() {
+        let lambda = compute_lambda(0.9, 0.8, None, 0.7, &DEFAULT_WEIGHTS);
+        // remaining = 0.35 + 0.30 + 0.20 = 0.85
+        // weighted_sum = 0.35*0.9 + 0.30*0.8 + 0.20*0.7 = 0.315 + 0.24 + 0.14 = 0.695
+        // lambda = 0.695 / 0.85 = 0.81765...
+        assert!((lambda - 0.81765).abs() < 0.001, "expected ~0.81765, got {lambda}");
+    }
+
+    // UT-C4-19: re-normalized effective weights sum to 1.0
+    #[test]
+    fn lambda_renormalized_weights_sum_to_one() {
+        let remaining = DEFAULT_WEIGHTS.confidence_freshness
+            + DEFAULT_WEIGHTS.graph_quality
+            + DEFAULT_WEIGHTS.contradiction_density;
+        let w_freshness = DEFAULT_WEIGHTS.confidence_freshness / remaining;
+        let w_graph = DEFAULT_WEIGHTS.graph_quality / remaining;
+        let w_contradiction = DEFAULT_WEIGHTS.contradiction_density / remaining;
+        let sum = w_freshness + w_graph + w_contradiction;
+        assert!(
+            (sum - 1.0).abs() < f64::EPSILON * 10.0,
+            "re-normalized weights should sum to 1.0, got {sum}"
+        );
+    }
+
+    // UT-C4-22: lambda single dimension deviation
+    #[test]
+    fn lambda_single_dimension_deviation() {
+        let lambda = compute_lambda(0.5, 1.0, Some(1.0), 1.0, &DEFAULT_WEIGHTS);
+        // 0.35*0.5 + 0.30*1.0 + 0.15*1.0 + 0.20*1.0 = 0.175 + 0.30 + 0.15 + 0.20 = 0.825
+        assert!((lambda - 0.825).abs() < 0.001, "expected 0.825, got {lambda}");
+    }
+
+    // UT-C4-23: custom weights with zero embedding weight
+    #[test]
+    fn lambda_custom_weights_zero_embedding() {
+        let weights = CoherenceWeights {
+            confidence_freshness: 0.5,
+            graph_quality: 0.3,
+            embedding_consistency: 0.0,
+            contradiction_density: 0.2,
+        };
+        // embed=None, remaining = 0.5 + 0.3 + 0.2 = 1.0
+        let lambda = compute_lambda(0.8, 0.6, None, 0.4, &weights);
+        // (0.5*0.8 + 0.3*0.6 + 0.2*0.4) / 1.0 = 0.4 + 0.18 + 0.08 = 0.66
+        assert!((lambda - 0.66).abs() < 0.001, "expected 0.66, got {lambda}");
+    }
+
+    // UT-C4-30: recommendations with embedding inconsistencies
+    #[test]
+    fn recommendations_below_threshold_embedding_inconsistencies() {
+        let recs = generate_recommendations(0.5, 0.8, 0, 0, 0.05, 3, 0);
+        assert_eq!(recs.len(), 1);
+        assert!(recs[0].contains("3 embedding inconsistencies"));
+    }
+
+    // UT-C4-31: recommendations with quarantined entries
+    #[test]
+    fn recommendations_below_threshold_quarantined() {
+        let recs = generate_recommendations(0.5, 0.8, 0, 0, 0.05, 0, 5);
+        assert_eq!(recs.len(), 1);
+        assert!(recs[0].contains("5 entries quarantined"));
+    }
+
+    // UT-C4-35: staleness threshold is named constant
+    #[test]
+    fn staleness_threshold_constant_value() {
+        assert_eq!(DEFAULT_STALENESS_THRESHOLD_SECS, 86400, "staleness threshold should be 24 hours");
+    }
 }

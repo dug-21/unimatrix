@@ -258,4 +258,15 @@ mod tests {
         let with_boost = base + 0.02;
         assert!(with_boost > base);
     }
+
+    // -- crt-005: f64 type verification --
+
+    // UT-C2-07: MAX_CO_ACCESS_BOOST constants are f64
+    #[test]
+    fn co_access_boost_constants_f64() {
+        assert_eq!(MAX_CO_ACCESS_BOOST, 0.03_f64);
+        assert_eq!(MAX_BRIEFING_CO_ACCESS_BOOST, 0.01_f64);
+        let _: f64 = MAX_CO_ACCESS_BOOST; // compile-time type check
+        let _: f64 = MAX_BRIEFING_CO_ACCESS_BOOST;
+    }
 }

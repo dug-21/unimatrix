@@ -1105,4 +1105,279 @@ mod tests {
         seed_vectors(tvi.vi(), tvi.store(), 10);
         assert_eq!(tvi.vi().point_count(), 11);
     }
+
+    // -- crt-005: Vector Compaction Tests --
+
+    // IT-C3-01: Compact eliminates stale nodes
+    #[test]
+    fn test_compact_eliminates_stale_nodes() {
+        let tvi = TestVectorIndex::new();
+        let dim = 384;
+
+        // Insert 10 entries via normal path (creates store entries + vectors)
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 10);
+
+        // Create stale nodes: re-embed 3 entries (old data_ids become stale)
+        for &id in &ids[0..3] {
+            let new_emb = random_normalized_embedding(dim);
+            tvi.vi().insert(id, &new_emb).unwrap();
+        }
+        assert!(tvi.vi().stale_count() > 0, "should have stale nodes after reembedding");
+
+        // Collect current embeddings for all 10 entries
+        let embeddings: Vec<(u64, Vec<f32>)> = ids
+            .iter()
+            .map(|&id| (id, random_normalized_embedding(dim)))
+            .collect();
+
+        // Compact
+        tvi.vi().compact(embeddings).unwrap();
+
+        assert_eq!(tvi.vi().stale_count(), 0, "stale_count should be 0 after compact");
+        assert_eq!(tvi.vi().point_count(), 10, "point_count should equal active entries");
+    }
+
+    // IT-C3-02: Search results consistent before and after compaction
+    #[test]
+    fn test_compact_search_consistency() {
+        let tvi = TestVectorIndex::new();
+        let dim = 384;
+
+        // Insert entries with known embeddings
+        let mut embeddings: Vec<(u64, Vec<f32>)> = Vec::new();
+        for i in 0..5 {
+            let entry = unimatrix_store::NewEntry {
+                title: format!("Entry {i}"),
+                content: format!("Content {i}"),
+                topic: "test".to_string(),
+                category: "vector".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: unimatrix_store::Status::Active,
+                created_by: String::new(),
+                feature_cycle: String::new(),
+                trust_source: String::new(),
+            };
+            let entry_id = tvi.store().insert(entry).unwrap();
+            let emb = random_normalized_embedding(dim);
+            tvi.vi().insert(entry_id, &emb).unwrap();
+            embeddings.push((entry_id, emb));
+        }
+
+        // Search before compaction
+        let query = embeddings[0].1.clone();
+        let results_before = tvi.vi().search(&query, 5, 32).unwrap();
+        let ids_before: HashSet<u64> = results_before.iter().map(|r| r.entry_id).collect();
+
+        // Compact with same embeddings
+        tvi.vi().compact(embeddings.clone()).unwrap();
+
+        // Search after compaction
+        let results_after = tvi.vi().search(&query, 5, 32).unwrap();
+        let ids_after: HashSet<u64> = results_after.iter().map(|r| r.entry_id).collect();
+
+        assert_eq!(ids_before, ids_after, "search results should return same entry_ids after compaction");
+    }
+
+    // IT-C3-03: VECTOR_MAP updated after compaction
+    #[test]
+    fn test_compact_vector_map_updated() {
+        let tvi = TestVectorIndex::new();
+        let dim = 384;
+
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 5);
+
+        // Compact
+        let embeddings: Vec<(u64, Vec<f32>)> = ids
+            .iter()
+            .map(|&id| (id, random_normalized_embedding(dim)))
+            .collect();
+        tvi.vi().compact(embeddings).unwrap();
+
+        // Verify VECTOR_MAP has sequential data_ids
+        for (idx, &entry_id) in ids.iter().enumerate() {
+            let data_id = tvi.store().get_vector_mapping(entry_id).unwrap();
+            assert_eq!(data_id, Some(idx as u64), "data_id should be sequential starting from 0");
+        }
+    }
+
+    // IT-C3-04: point_count equals active entries after compaction
+    #[test]
+    fn test_compact_point_count() {
+        let tvi = TestVectorIndex::new();
+        let dim = 384;
+
+        // Insert 10, create 5 stale
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 10);
+        for &id in &ids[0..5] {
+            tvi.vi().insert(id, &random_normalized_embedding(dim)).unwrap();
+        }
+        // point_count includes stale nodes
+        assert!(tvi.vi().point_count() > 10);
+
+        // Compact with 10 active entries
+        let embeddings: Vec<(u64, Vec<f32>)> = ids
+            .iter()
+            .map(|&id| (id, random_normalized_embedding(dim)))
+            .collect();
+        tvi.vi().compact(embeddings).unwrap();
+
+        assert_eq!(tvi.vi().point_count(), 10);
+    }
+
+    // IT-C3-05: Compact failure leaves old index intact
+    #[test]
+    fn test_compact_failure_preserves_old_index() {
+        let tvi = TestVectorIndex::new();
+        let dim = 384;
+
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 5);
+        let old_stale = tvi.vi().stale_count();
+
+        // Attempt compact with wrong dimension -- should fail
+        let bad_embeddings: Vec<(u64, Vec<f32>)> = ids
+            .iter()
+            .map(|&id| (id, vec![0.0f32; 128])) // wrong dimension
+            .collect();
+        let result = tvi.vi().compact(bad_embeddings);
+        assert!(result.is_err(), "compact with wrong dimension should fail");
+
+        // Old index should still work
+        assert_eq!(tvi.vi().stale_count(), old_stale, "stale_count unchanged after failed compact");
+        let query = random_normalized_embedding(dim);
+        let results = tvi.vi().search(&query, 5, 32).unwrap();
+        assert!(!results.is_empty(), "search should still work after failed compact");
+    }
+
+    // IT-C3-06: Insert after compact works correctly
+    #[test]
+    fn test_insert_after_compact() {
+        let tvi = TestVectorIndex::new();
+        let dim = 384;
+
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 5);
+
+        // Compact
+        let embeddings: Vec<(u64, Vec<f32>)> = ids
+            .iter()
+            .map(|&id| (id, random_normalized_embedding(dim)))
+            .collect();
+        tvi.vi().compact(embeddings).unwrap();
+
+        // Insert 3 new entries
+        let new_ids = seed_vectors(tvi.vi(), tvi.store(), 3);
+
+        assert_eq!(tvi.vi().point_count(), 8, "should have 5 + 3 = 8 after compact then insert");
+
+        // All entries findable
+        for &id in &ids {
+            assert!(tvi.vi().contains(id), "original entry {id} should still be present");
+        }
+        for &id in &new_ids {
+            assert!(tvi.vi().contains(id), "new entry {id} should be present");
+        }
+    }
+
+    // IT-C3-07: Compact with empty embeddings
+    #[test]
+    fn test_compact_empty_embeddings() {
+        let tvi = TestVectorIndex::new();
+
+        seed_vectors(tvi.vi(), tvi.store(), 5);
+
+        // Compact with empty vec
+        tvi.vi().compact(Vec::new()).unwrap();
+
+        assert_eq!(tvi.vi().stale_count(), 0);
+        assert_eq!(tvi.vi().point_count(), 0);
+    }
+
+    // IT-C3-08: Compact with zero stale nodes (harmless rebuild)
+    #[test]
+    fn test_compact_no_stale_nodes() {
+        let tvi = TestVectorIndex::new();
+        let dim = 384;
+
+        // Insert entries with known embeddings
+        let mut embeddings: Vec<(u64, Vec<f32>)> = Vec::new();
+        for i in 0..5 {
+            let entry = unimatrix_store::NewEntry {
+                title: format!("Entry {i}"),
+                content: format!("Content {i}"),
+                topic: "test".to_string(),
+                category: "vector".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: unimatrix_store::Status::Active,
+                created_by: String::new(),
+                feature_cycle: String::new(),
+                trust_source: String::new(),
+            };
+            let entry_id = tvi.store().insert(entry).unwrap();
+            let emb = random_normalized_embedding(dim);
+            tvi.vi().insert(entry_id, &emb).unwrap();
+            embeddings.push((entry_id, emb.clone()));
+        }
+
+        assert_eq!(tvi.vi().stale_count(), 0, "no stale nodes before compact");
+
+        // Compact with same embeddings
+        tvi.vi().compact(embeddings.clone()).unwrap();
+
+        assert_eq!(tvi.vi().stale_count(), 0);
+        assert_eq!(tvi.vi().point_count(), 5);
+
+        // Search still works
+        let results = tvi.vi().search(&embeddings[0].1, 5, 32).unwrap();
+        assert!(!results.is_empty());
+    }
+
+    // IT-C3-12: Similarity scores within epsilon after compaction
+    #[test]
+    fn test_compact_similarity_scores_stable() {
+        let tvi = TestVectorIndex::new();
+        let dim = 384;
+
+        // Insert entries with known embeddings
+        let mut embeddings: Vec<(u64, Vec<f32>)> = Vec::new();
+        for i in 0..5 {
+            let entry = unimatrix_store::NewEntry {
+                title: format!("Sim entry {i}"),
+                content: format!("Sim content {i}"),
+                topic: "test".to_string(),
+                category: "vector".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: unimatrix_store::Status::Active,
+                created_by: String::new(),
+                feature_cycle: String::new(),
+                trust_source: String::new(),
+            };
+            let entry_id = tvi.store().insert(entry).unwrap();
+            let emb = random_normalized_embedding(dim);
+            tvi.vi().insert(entry_id, &emb).unwrap();
+            embeddings.push((entry_id, emb));
+        }
+
+        // Search before
+        let query = embeddings[0].1.clone();
+        let results_before = tvi.vi().search(&query, 5, 32).unwrap();
+
+        // Compact with same embeddings
+        tvi.vi().compact(embeddings.clone()).unwrap();
+
+        // Search after
+        let results_after = tvi.vi().search(&query, 5, 32).unwrap();
+
+        // Similarity scores should be very close (HNSW is approximate)
+        // Compare top result similarity -- with same embeddings, should be nearly identical
+        if !results_before.is_empty() && !results_after.is_empty() {
+            let top_before = results_before[0].similarity;
+            let top_after = results_after[0].similarity;
+            assert!(
+                (top_before - top_after).abs() < 0.01,
+                "top similarity should be stable: before={top_before}, after={top_after}"
+            );
+        }
+    }
 }

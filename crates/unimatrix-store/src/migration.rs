@@ -896,4 +896,367 @@ mod tests {
         assert_eq!(deserialized.created_by, "agent-1");
         assert_eq!(deserialized.trust_source, "agent");
     }
+
+    // -- crt-005: V2->V3 Migration Tests --
+
+    /// Create a v2 database (26-field entries, confidence: f32) with schema_version=2.
+    fn create_v2_database(
+        entries: &[V2EntryRecord],
+    ) -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("v2.redb");
+
+        let db = redb::Builder::new().create(&path).unwrap();
+        let txn = db.begin_write().unwrap();
+        {
+            txn.open_table(ENTRIES).unwrap();
+            txn.open_table(crate::schema::TOPIC_INDEX).unwrap();
+            txn.open_table(crate::schema::CATEGORY_INDEX).unwrap();
+            txn.open_multimap_table(crate::schema::TAG_INDEX).unwrap();
+            txn.open_table(crate::schema::TIME_INDEX).unwrap();
+            txn.open_table(crate::schema::STATUS_INDEX).unwrap();
+            txn.open_table(crate::schema::VECTOR_MAP).unwrap();
+            txn.open_table(COUNTERS).unwrap();
+            txn.open_table(crate::schema::AGENT_REGISTRY).unwrap();
+            txn.open_table(crate::schema::AUDIT_LOG).unwrap();
+            txn.open_multimap_table(crate::schema::FEATURE_ENTRIES).unwrap();
+            txn.open_table(crate::schema::CO_ACCESS).unwrap();
+            txn.open_table(crate::schema::OUTCOME_INDEX).unwrap();
+        }
+        txn.commit().unwrap();
+
+        if !entries.is_empty() {
+            let txn = db.begin_write().unwrap();
+            {
+                let mut table = txn.open_table(ENTRIES).unwrap();
+                for entry in entries {
+                    let bytes = bincode::serde::encode_to_vec(entry, bincode::config::standard())
+                        .unwrap();
+                    table.insert(entry.id, bytes.as_slice()).unwrap();
+                }
+            }
+            {
+                let mut counters = txn.open_table(COUNTERS).unwrap();
+                let next_id = entries.iter().map(|e| e.id).max().unwrap_or(0) + 1;
+                counters.insert("next_entry_id", next_id).unwrap();
+                let active = entries.iter().filter(|e| e.status == Status::Active).count() as u64;
+                let deprecated = entries.iter().filter(|e| e.status == Status::Deprecated).count() as u64;
+                let proposed = entries.iter().filter(|e| e.status == Status::Proposed).count() as u64;
+                counters.insert("total_active", active).unwrap();
+                counters.insert("total_deprecated", deprecated).unwrap();
+                counters.insert("total_proposed", proposed).unwrap();
+                counters.insert("schema_version", 2u64).unwrap();
+            }
+            txn.commit().unwrap();
+        } else {
+            let txn = db.begin_write().unwrap();
+            {
+                let mut counters = txn.open_table(COUNTERS).unwrap();
+                counters.insert("schema_version", 2u64).unwrap();
+            }
+            txn.commit().unwrap();
+        }
+
+        drop(db);
+        (dir, path)
+    }
+
+    fn make_v2_entry(id: u64, title: &str, content: &str, status: Status, confidence: f32) -> V2EntryRecord {
+        let content_hash = compute_content_hash(title, content);
+        V2EntryRecord {
+            id,
+            title: title.to_string(),
+            content: content.to_string(),
+            topic: "topic".to_string(),
+            category: "category".to_string(),
+            tags: vec!["tag1".to_string()],
+            source: "test".to_string(),
+            status,
+            confidence,
+            created_at: 1000,
+            updated_at: 2000,
+            last_accessed_at: 500,
+            access_count: 5,
+            supersedes: None,
+            superseded_by: None,
+            correction_count: 0,
+            embedding_dim: 384,
+            created_by: "agent-1".to_string(),
+            modified_by: "agent-2".to_string(),
+            content_hash,
+            previous_hash: String::new(),
+            version: 1,
+            feature_cycle: "crt-004".to_string(),
+            trust_source: "agent".to_string(),
+            helpful_count: 3,
+            unhelpful_count: 1,
+        }
+    }
+
+    // UT-C1-01: V2EntryRecord roundtrip deserialization
+    #[test]
+    fn test_v2_entry_record_roundtrip() {
+        let entry = make_v2_entry(1, "Test", "Content", Status::Active, 0.85);
+        let bytes = bincode::serde::encode_to_vec(&entry, bincode::config::standard()).unwrap();
+        let deserialized = deserialize_v2_entry(&bytes).unwrap();
+
+        assert_eq!(deserialized.id, 1);
+        assert_eq!(deserialized.title, "Test");
+        assert_eq!(deserialized.content, "Content");
+        assert_eq!(deserialized.topic, "topic");
+        assert_eq!(deserialized.category, "category");
+        assert_eq!(deserialized.tags, vec!["tag1".to_string()]);
+        assert_eq!(deserialized.source, "test");
+        assert_eq!(deserialized.status, Status::Active);
+        assert_eq!(deserialized.confidence, 0.85_f32);
+        assert_eq!(deserialized.created_at, 1000);
+        assert_eq!(deserialized.updated_at, 2000);
+        assert_eq!(deserialized.last_accessed_at, 500);
+        assert_eq!(deserialized.access_count, 5);
+        assert_eq!(deserialized.supersedes, None);
+        assert_eq!(deserialized.superseded_by, None);
+        assert_eq!(deserialized.correction_count, 0);
+        assert_eq!(deserialized.embedding_dim, 384);
+        assert_eq!(deserialized.created_by, "agent-1");
+        assert_eq!(deserialized.modified_by, "agent-2");
+        assert!(!deserialized.content_hash.is_empty());
+        assert_eq!(deserialized.previous_hash, "");
+        assert_eq!(deserialized.version, 1);
+        assert_eq!(deserialized.feature_cycle, "crt-004");
+        assert_eq!(deserialized.trust_source, "agent");
+        assert_eq!(deserialized.helpful_count, 3);
+        assert_eq!(deserialized.unhelpful_count, 1);
+    }
+
+    // UT-C1-02: V2EntryRecord field order matches bincode positional encoding
+    #[test]
+    fn test_v2_entry_record_field_order() {
+        let entry = make_v2_entry(42, "Title42", "Content42", Status::Deprecated, 0.77);
+        let bytes = bincode::serde::encode_to_vec(&entry, bincode::config::standard()).unwrap();
+        let deserialized = deserialize_v2_entry(&bytes).unwrap();
+
+        // Every field must have the value we set -- if field order were wrong,
+        // bincode positional encoding would shift values to wrong fields
+        assert_eq!(deserialized.id, 42);
+        assert_eq!(deserialized.title, "Title42");
+        assert_eq!(deserialized.content, "Content42");
+        assert_eq!(deserialized.status, Status::Deprecated);
+        assert_eq!(deserialized.confidence, 0.77_f32);
+        assert_eq!(deserialized.helpful_count, 3);
+        assert_eq!(deserialized.unhelpful_count, 1);
+    }
+
+    // UT-C1-03: V2EntryRecord with default/zero fields
+    #[test]
+    fn test_v2_entry_record_zero_fields() {
+        let entry = V2EntryRecord {
+            id: 1,
+            title: String::new(),
+            content: String::new(),
+            topic: String::new(),
+            category: String::new(),
+            tags: vec![],
+            source: String::new(),
+            status: Status::Active,
+            confidence: 0.0_f32,
+            created_at: 0,
+            updated_at: 0,
+            last_accessed_at: 0,
+            access_count: 0,
+            supersedes: None,
+            superseded_by: None,
+            correction_count: 0,
+            embedding_dim: 0,
+            created_by: String::new(),
+            modified_by: String::new(),
+            content_hash: String::new(),
+            previous_hash: String::new(),
+            version: 0,
+            feature_cycle: String::new(),
+            trust_source: String::new(),
+            helpful_count: 0,
+            unhelpful_count: 0,
+        };
+        let bytes = bincode::serde::encode_to_vec(&entry, bincode::config::standard()).unwrap();
+        let deserialized = deserialize_v2_entry(&bytes).unwrap();
+
+        assert_eq!(deserialized.confidence, 0.0_f32);
+        assert_eq!(deserialized.helpful_count, 0);
+        assert_eq!(deserialized.unhelpful_count, 0);
+        assert_eq!(deserialized.access_count, 0);
+    }
+
+    // IT-C1-01: Migration with known f32 confidence values
+    #[test]
+    fn test_v2_to_v3_migration_known_confidence() {
+        let entries = vec![
+            make_v2_entry(1, "A", "A", Status::Active, 0.5),
+            make_v2_entry(2, "B", "B", Status::Active, 0.85),
+            make_v2_entry(3, "C", "C", Status::Active, 0.99),
+            make_v2_entry(4, "D", "D", Status::Active, 0.0),
+        ];
+        let (_dir, path) = create_v2_database(&entries);
+        let store = crate::Store::open(&path).unwrap();
+
+        assert_eq!(store.read_counter("schema_version").unwrap(), 3);
+
+        // f32 as f64 is lossless (IEEE 754)
+        let r1 = store.get(1).unwrap();
+        assert_eq!(r1.confidence, 0.5_f32 as f64);
+        let r2 = store.get(2).unwrap();
+        assert_eq!(r2.confidence, 0.85_f32 as f64);
+        let r3 = store.get(3).unwrap();
+        assert_eq!(r3.confidence, 0.99_f32 as f64);
+        let r4 = store.get(4).unwrap();
+        assert_eq!(r4.confidence, 0.0_f64);
+    }
+
+    // IT-C1-02: Migration with f32 boundary confidence values
+    #[test]
+    fn test_v2_to_v3_migration_f32_boundary() {
+        let entries = vec![
+            make_v2_entry(1, "zero", "zero", Status::Active, 0.0_f32),
+            make_v2_entry(2, "min", "min", Status::Active, f32::MIN_POSITIVE),
+            make_v2_entry(3, "near_one", "near_one", Status::Active, 1.0_f32 - f32::EPSILON),
+            make_v2_entry(4, "epsilon", "epsilon", Status::Active, f32::EPSILON),
+        ];
+        let (_dir, path) = create_v2_database(&entries);
+        let store = crate::Store::open(&path).unwrap();
+
+        let r1 = store.get(1).unwrap();
+        assert_eq!(r1.confidence, 0.0_f32 as f64);
+        let r2 = store.get(2).unwrap();
+        assert_eq!(r2.confidence, f32::MIN_POSITIVE as f64);
+        let r3 = store.get(3).unwrap();
+        assert_eq!(r3.confidence, (1.0_f32 - f32::EPSILON) as f64);
+        let r4 = store.get(4).unwrap();
+        assert_eq!(r4.confidence, f32::EPSILON as f64);
+    }
+
+    // IT-C1-03: Migration of empty v2 database
+    #[test]
+    fn test_v2_to_v3_migration_empty() {
+        let (_dir, path) = create_v2_database(&[]);
+        let store = crate::Store::open(&path).unwrap();
+        assert_eq!(store.read_counter("schema_version").unwrap(), 3);
+    }
+
+    // IT-C1-04: Migration idempotency from v2
+    #[test]
+    fn test_v2_to_v3_migration_idempotent() {
+        let entries = vec![
+            make_v2_entry(1, "A", "B", Status::Active, 0.75),
+        ];
+        let (_dir, path) = create_v2_database(&entries);
+
+        // First open: v2->v3 migration runs
+        {
+            let store = crate::Store::open(&path).unwrap();
+            assert_eq!(store.read_counter("schema_version").unwrap(), 3);
+            let r = store.get(1).unwrap();
+            assert_eq!(r.confidence, 0.75_f32 as f64);
+            assert_eq!(r.helpful_count, 3); // preserved from v2
+        }
+
+        // Second open: migration should be a no-op
+        {
+            let store = crate::Store::open(&path).unwrap();
+            assert_eq!(store.read_counter("schema_version").unwrap(), 3);
+            let r = store.get(1).unwrap();
+            assert_eq!(r.confidence, 0.75_f32 as f64);
+            assert_eq!(r.helpful_count, 3);
+        }
+    }
+
+    // IT-C1-05: Full migration chain v0 -> v1 -> v2 -> v3
+    #[test]
+    fn test_v0_to_v3_chain_migration() {
+        let entries = vec![
+            make_legacy_entry(1, "Legacy", "Content", Status::Active),
+        ];
+        let (_dir, path) = create_legacy_database(&entries);
+
+        let store = crate::Store::open(&path).unwrap();
+        let record = store.get(1).unwrap();
+
+        // v0->v1 added security fields
+        assert_eq!(record.version, 1);
+        assert_eq!(record.trust_source, "system");
+        assert!(!record.content_hash.is_empty());
+
+        // v1->v2 added usage fields
+        assert_eq!(record.helpful_count, 0);
+        assert_eq!(record.unhelpful_count, 0);
+
+        // v2->v3 promoted confidence to f64
+        // Original legacy entry had confidence: 0.8 (f32)
+        assert_eq!(record.confidence, 0.8_f32 as f64);
+
+        assert_eq!(store.read_counter("schema_version").unwrap(), 3);
+    }
+
+    // IT-C1-01 supplement: v2->v3 preserves all non-confidence fields
+    #[test]
+    fn test_v2_to_v3_preserves_all_fields() {
+        let mut entry = make_v2_entry(1, "Test", "Content", Status::Active, 0.92);
+        entry.access_count = 42;
+        entry.correction_count = 7;
+        entry.supersedes = Some(10);
+        entry.helpful_count = 15;
+        entry.unhelpful_count = 3;
+
+        let (_dir, path) = create_v2_database(&[entry]);
+        let store = crate::Store::open(&path).unwrap();
+        let record = store.get(1).unwrap();
+
+        assert_eq!(record.title, "Test");
+        assert_eq!(record.content, "Content");
+        assert_eq!(record.topic, "topic");
+        assert_eq!(record.category, "category");
+        assert_eq!(record.access_count, 42);
+        assert_eq!(record.correction_count, 7);
+        assert_eq!(record.supersedes, Some(10));
+        assert_eq!(record.created_by, "agent-1");
+        assert_eq!(record.modified_by, "agent-2");
+        assert_eq!(record.feature_cycle, "crt-004");
+        assert_eq!(record.trust_source, "agent");
+        assert_eq!(record.helpful_count, 15);
+        assert_eq!(record.unhelpful_count, 3);
+        assert_eq!(record.confidence, 0.92_f32 as f64);
+    }
+
+    // EC-C1-01: Entry with confidence 0.0 (pre-crt-002 entries)
+    #[test]
+    fn test_v2_to_v3_zero_confidence() {
+        let entries = vec![
+            make_v2_entry(1, "Old", "Entry", Status::Active, 0.0_f32),
+        ];
+        let (_dir, path) = create_v2_database(&entries);
+        let store = crate::Store::open(&path).unwrap();
+        let r = store.get(1).unwrap();
+        assert_eq!(r.confidence, 0.0_f64);
+    }
+
+    // EC-C1-02: Migration handles 100 entries
+    #[test]
+    fn test_v2_to_v3_migration_100_entries() {
+        let entries: Vec<V2EntryRecord> = (1..=100)
+            .map(|i| make_v2_entry(
+                i,
+                &format!("Title {i}"),
+                &format!("Content {i}"),
+                Status::Active,
+                (i as f32) / 100.0,
+            ))
+            .collect();
+        let (_dir, path) = create_v2_database(&entries);
+        let store = crate::Store::open(&path).unwrap();
+
+        for i in 1..=100u64 {
+            let r = store.get(i).unwrap();
+            let expected = (i as f32) / 100.0;
+            assert_eq!(r.confidence, expected as f64);
+        }
+        assert_eq!(store.read_counter("schema_version").unwrap(), 3);
+    }
 }
