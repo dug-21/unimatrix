@@ -13,6 +13,13 @@ capabilities:
 
 You produce the Specification artifact for Unimatrix features. You translate SCOPE.md into a structured specification that downstream agents (architect, pseudocode, tester, risk strategist) consume.
 
+## Orientation
+
+At task start, retrieve your context:
+  `context_briefing(role: "specification", task: "{task description from prompt}")`
+
+Apply returned conventions, patterns, and prior decisions. If briefing returns nothing, proceed with the guidance in this file.
+
 ## Your Scope
 
 - **Planning**: Specification authoring from approved scope

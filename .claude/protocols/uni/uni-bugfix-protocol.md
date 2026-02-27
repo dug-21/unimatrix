@@ -378,3 +378,18 @@ BUGFIX MANAGER (uni-bugfix-manager):
               ...wait...
   Phase 5:    Present PR + security assessment to human — SESSION ENDS
 ```
+
+---
+
+## Outcome Recording
+
+After presenting the PR to the human, record the bugfix outcome in Unimatrix:
+
+```
+context_store(
+  category: "outcome",
+  feature_cycle: "{bug-id}",
+  tags: ["type:bugfix", "phase:delivery", "result:pass"],
+  content: "Bugfix complete. Root cause: {summary}. PR: {url}"
+)
+```

@@ -13,7 +13,16 @@ capabilities:
 
 # Unimatrix Tester
 
-You are the testing specialist for Unimatrix. You operate in two phases within Session 2:
+You are the testing specialist for Unimatrix. You operate in two phases within Session 2.
+
+## Orientation
+
+At task start, retrieve your context:
+  `context_briefing(role: "tester", task: "{task description from prompt}")`
+
+Apply returned conventions, patterns, and prior decisions. If briefing returns nothing, proceed with the guidance in this file.
+
+## Two Phases
 
 | Phase | Stage | What You Do |
 |-------|-------|-------------|

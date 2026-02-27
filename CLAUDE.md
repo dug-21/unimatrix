@@ -97,3 +97,18 @@ Features and bugs tracked via **GitHub Issues**, not in-repo STATUS.md files.
 - Do what has been asked; nothing more, nothing less.
 - NEVER create files unless absolutely necessary. Prefer editing existing files.
 - NEVER proactively create documentation files unless explicitly requested.
+
+---
+
+## Unimatrix Integration
+
+Unimatrix is the project's knowledge engine (MCP server). Agents query it for context and store reusable findings.
+
+- **Briefing**: Agents call `context_briefing(role, task)` at task start for role-specific conventions, patterns, and prior decisions
+- **Decisions**: Store ADRs via `context_store(category: "decision")` — architect is the authority
+- **Patterns**: Store reusable patterns via `context_store(category: "pattern")` — any agent that discovers cross-feature patterns
+- **Outcomes**: Record session outcomes via `context_store(category: "outcome")` — coordinators record at session end
+- **Search**: Use `context_search` to find relevant prior decisions and patterns before designing
+- **Lookup**: Use `context_lookup` for exact-match retrieval by topic, category, or tags
+
+Do not store workflow choreography or protocol sequences in Unimatrix. Protocols stay as `.md` files in `.claude/protocols/`.

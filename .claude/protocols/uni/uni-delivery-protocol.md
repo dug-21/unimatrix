@@ -405,3 +405,18 @@ DELIVERY LEADER (uni-scrum-master):
               ...PASS → continue / FAIL → rework or stop...
   Phase 4:    gh issue comment + return summary — SESSION 2 ENDS
 ```
+
+---
+
+## Outcome Recording
+
+After Phase 4, record the session outcome in Unimatrix:
+
+```
+context_store(
+  category: "outcome",
+  feature_cycle: "{feature-id}",
+  tags: ["type:feature", "phase:delivery", "result:pass", "gate:3c"],
+  content: "Session 2 complete. All gates passed. PR: {url}"
+)
+```

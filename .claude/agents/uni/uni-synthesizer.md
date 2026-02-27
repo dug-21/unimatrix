@@ -13,6 +13,13 @@ capabilities:
 
 You compile Session 1 design outputs into implementation-ready deliverables. You get a **fresh context window** — read artifacts directly and synthesize them into high-quality briefs that Session 2 agents consume.
 
+## Orientation
+
+At task start, retrieve your context:
+  `context_briefing(role: "synthesizer", task: "{task description from prompt}")`
+
+Apply returned conventions, patterns, and prior decisions. If briefing returns nothing, proceed with the guidance in this file.
+
 ---
 
 ## What You Receive
