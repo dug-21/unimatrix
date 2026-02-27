@@ -141,10 +141,12 @@ Security is a cross-cutting concern woven into existing features, not a separate
 
 | Feature | Prefix | Summary |
 |---------|--------|---------|
-| Thin-Shell Agent Pattern | `alc-010` | Agent files shrink to ~45 lines: identity (name, type, scope), design principles (stable philosophy), orientation directive (`context_briefing`), self-check gates, outcome reporting. All dynamic content (conventions, duties, process knowledge) served by Unimatrix at runtime. |
+| Thin-Shell Agent Pattern | `alc-010` | Agent files slim their **knowledge content** (conventions, duties, standards) to Unimatrix — retrieved via `context_briefing` at runtime. **Workflow structure** (phase sequencing, gate transitions, conditional branching) stays in agent files — briefing returns an unordered bag of entries, not a choreography. Agent files become ~80-100 lines: identity, workflow choreography, orientation directive (`context_briefing`), self-check gates, outcome reporting. |
 | Migration Assistant | `alc-011` | Analyze existing agent files. Identify content that duplicates or contradicts Unimatrix entries. Suggest what can be extracted. Preview thin-shell version. Track migration status per agent. Accessible via `mtx-006` (Control Manager) or CLI. |
 
-**Ships**: Agent maintenance burden drops. Knowledge lives in one place. Agent files become stable identity documents that rarely change.
+**On hold (2026-02-27):** Workflow sequencing cannot be served from Unimatrix — `context_briefing` returns knowledge as an unordered set, not as ordered steps. Agent definitions must retain their workflow choreography (phase ordering, gate logic, conditional transitions). Thin-shell migration is limited to extracting **knowledge content** (conventions, duties, cross-cutting standards), not workflow structure. A future capability (workflow-aware retrieval or procedure sequencing in briefing) would be needed to go thinner. See alc-001 (Knowledge Bootstrap) for the current integration approach.
+
+**Ships**: Agent maintenance burden drops for knowledge content. Workflow structure remains author-maintained in agent files.
 
 ---
 
