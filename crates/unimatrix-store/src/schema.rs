@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::StoreError;
 
-// -- Table Definitions (12 total) --
+// -- Table Definitions (13 total) --
 
 /// Primary entry storage: entry_id -> bincode bytes.
 pub const ENTRIES: TableDefinition<u64, &[u8]> = TableDefinition::new("entries");
@@ -46,6 +46,11 @@ pub const FEATURE_ENTRIES: MultimapTableDefinition<&str, u64> =
 /// Co-access pair tracking: (min_entry_id, max_entry_id) -> bincode bytes.
 /// Keys are ordered (smaller ID first) to deduplicate symmetric pairs.
 pub const CO_ACCESS: TableDefinition<(u64, u64), &[u8]> = TableDefinition::new("co_access");
+
+/// Outcome-to-feature-cycle index: (feature_cycle, entry_id) -> ().
+/// Populated when context_store creates an outcome entry with non-empty feature_cycle.
+pub const OUTCOME_INDEX: TableDefinition<(&str, u64), ()> =
+    TableDefinition::new("outcome_index");
 
 // -- Status Enum --
 

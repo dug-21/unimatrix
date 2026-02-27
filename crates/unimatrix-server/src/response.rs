@@ -281,6 +281,45 @@ pub fn format_store_success(entry: &EntryRecord, format: ResponseFormat) -> Call
     }
 }
 
+/// Format a store success response with an appended note.
+pub fn format_store_success_with_note(
+    entry: &EntryRecord,
+    format: ResponseFormat,
+    note: &str,
+) -> CallToolResult {
+    match format {
+        ResponseFormat::Summary => {
+            let text = format!("Stored #{} | {} | {}{}", entry.id, entry.title, entry.category, note);
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Markdown => {
+            let mut text = format!("## Stored: {}\n\n", entry.title);
+            text.push_str(&format!(
+                "**Topic:** {} | **Category:** {} | **Tags:** {}\n\n",
+                entry.topic,
+                entry.category,
+                tags_str(&entry.tags)
+            ));
+            text.push_str("[KNOWLEDGE DATA]\n");
+            text.push_str(&entry.content);
+            text.push_str("\n[/KNOWLEDGE DATA]\n\n");
+            text.push_str(&format!("*Entry #{} | Version {}*\n\n", entry.id, entry.version));
+            text.push_str(&format!("> {}", note.trim_start_matches('\n')));
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Json => {
+            let obj = serde_json::json!({
+                "stored": true,
+                "entry": entry_to_json(entry),
+                "note": note.trim_start_matches('\n'),
+            });
+            CallToolResult::success(vec![Content::text(
+                serde_json::to_string_pretty(&obj).unwrap_or_default(),
+            )])
+        }
+    }
+}
+
 /// Format a near-duplicate detection response.
 pub fn format_duplicate_found(
     existing: &EntryRecord,
@@ -359,6 +398,14 @@ pub struct StatusReport {
     pub top_co_access_pairs: Vec<CoAccessClusterEntry>,
     /// Number of stale pairs cleaned during this status call.
     pub stale_pairs_cleaned: u64,
+    /// Total outcome entries.
+    pub total_outcomes: u64,
+    /// Outcome count by workflow type (from type: tag).
+    pub outcomes_by_type: Vec<(String, u64)>,
+    /// Outcome count by result (from result: tag).
+    pub outcomes_by_result: Vec<(String, u64)>,
+    /// Top feature cycles by outcome count.
+    pub outcomes_by_feature_cycle: Vec<(String, u64)>,
 }
 
 /// A co-access cluster entry for status reporting.
@@ -560,6 +607,9 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 report.total_co_access_pairs,
                 report.stale_pairs_cleaned,
             ));
+            if report.total_outcomes > 0 {
+                text.push_str(&format!("\nOutcomes: {} total", report.total_outcomes));
+            }
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Markdown => {
@@ -674,6 +724,35 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 }
             }
 
+            if report.total_outcomes > 0 || !report.outcomes_by_type.is_empty() {
+                text.push_str("\n### Outcome Statistics\n\n");
+                text.push_str(&format!("- Total outcomes: {}\n", report.total_outcomes));
+
+                if !report.outcomes_by_type.is_empty() {
+                    text.push_str("\n#### By Workflow Type\n");
+                    text.push_str("| Type | Count |\n|------|-------|\n");
+                    for (type_name, count) in &report.outcomes_by_type {
+                        text.push_str(&format!("| {} | {} |\n", type_name, count));
+                    }
+                }
+
+                if !report.outcomes_by_result.is_empty() {
+                    text.push_str("\n#### By Result\n");
+                    text.push_str("| Result | Count |\n|--------|-------|\n");
+                    for (result_name, count) in &report.outcomes_by_result {
+                        text.push_str(&format!("| {} | {} |\n", result_name, count));
+                    }
+                }
+
+                if !report.outcomes_by_feature_cycle.is_empty() {
+                    text.push_str("\n#### Top Feature Cycles\n");
+                    text.push_str("| Feature Cycle | Outcomes |\n|--------------|----------|\n");
+                    for (fc, count) in &report.outcomes_by_feature_cycle {
+                        text.push_str(&format!("| {} | {} |\n", fc, count));
+                    }
+                }
+            }
+
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Json => {
@@ -755,6 +834,35 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 "stale_pairs_cleaned": report.stale_pairs_cleaned,
                 "top_clusters": top_clusters,
             });
+
+            if report.total_outcomes > 0 || !report.outcomes_by_type.is_empty() {
+                let type_dist: serde_json::Value = report
+                    .outcomes_by_type
+                    .iter()
+                    .map(|(k, v)| (k.clone(), serde_json::json!(v)))
+                    .collect::<serde_json::Map<String, serde_json::Value>>()
+                    .into();
+                let result_dist: serde_json::Value = report
+                    .outcomes_by_result
+                    .iter()
+                    .map(|(k, v)| (k.clone(), serde_json::json!(v)))
+                    .collect::<serde_json::Map<String, serde_json::Value>>()
+                    .into();
+                let fc_list: Vec<serde_json::Value> = report
+                    .outcomes_by_feature_cycle
+                    .iter()
+                    .map(|(fc, count)| {
+                        serde_json::json!({"feature_cycle": fc, "count": count})
+                    })
+                    .collect();
+
+                obj["outcomes"] = serde_json::json!({
+                    "total": report.total_outcomes,
+                    "by_type": type_dist,
+                    "by_result": result_dist,
+                    "top_feature_cycles": fc_list,
+                });
+            }
 
             CallToolResult::success(vec![Content::text(
                 serde_json::to_string_pretty(&obj).unwrap_or_default(),
@@ -1276,6 +1384,10 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            total_outcomes: 0,
+            outcomes_by_type: Vec::new(),
+            outcomes_by_result: Vec::new(),
+            outcomes_by_feature_cycle: Vec::new(),
         }
     }
 
@@ -1337,6 +1449,10 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            total_outcomes: 0,
+            outcomes_by_type: Vec::new(),
+            outcomes_by_result: Vec::new(),
+            outcomes_by_feature_cycle: Vec::new(),
         };
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
@@ -1377,6 +1493,10 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            total_outcomes: 0,
+            outcomes_by_type: Vec::new(),
+            outcomes_by_result: Vec::new(),
+            outcomes_by_feature_cycle: Vec::new(),
         };
 
         let result = format_status_report(&report, ResponseFormat::Summary);
@@ -1417,6 +1537,10 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            total_outcomes: 0,
+            outcomes_by_type: Vec::new(),
+            outcomes_by_result: Vec::new(),
+            outcomes_by_feature_cycle: Vec::new(),
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1459,6 +1583,10 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            total_outcomes: 0,
+            outcomes_by_type: Vec::new(),
+            outcomes_by_result: Vec::new(),
+            outcomes_by_feature_cycle: Vec::new(),
         };
 
         let result = format_status_report(&report, ResponseFormat::Json);
@@ -1499,6 +1627,10 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            total_outcomes: 0,
+            outcomes_by_type: Vec::new(),
+            outcomes_by_result: Vec::new(),
+            outcomes_by_feature_cycle: Vec::new(),
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1647,6 +1779,10 @@ mod tests {
                 },
             ],
             stale_pairs_cleaned: 3,
+            total_outcomes: 0,
+            outcomes_by_type: Vec::new(),
+            outcomes_by_result: Vec::new(),
+            outcomes_by_feature_cycle: Vec::new(),
         }
     }
 

@@ -21,6 +21,7 @@ const MAX_QUERY_LEN: usize = 1_000;
 const MAX_SOURCE_LEN: usize = 200;
 const MAX_REASON_LEN: usize = 1_000;
 const MAX_FEATURE_LEN: usize = 100;
+const MAX_FEATURE_CYCLE_LEN: usize = 128;
 const MAX_ROLE_LEN: usize = 100;
 const MAX_TASK_LEN: usize = 1_000;
 const DEFAULT_MAX_TOKENS: usize = 3_000;
@@ -186,6 +187,9 @@ pub fn validate_store_params(params: &StoreParams) -> Result<(), ServerError> {
     validate_optional_tags(&params.tags)?;
     if let Some(source) = &params.source {
         validate_string_field("source", source, MAX_SOURCE_LEN, false)?;
+    }
+    if let Some(fc) = &params.feature_cycle {
+        validate_string_field("feature_cycle", fc, MAX_FEATURE_CYCLE_LEN, false)?;
     }
     Ok(())
 }
@@ -541,6 +545,7 @@ mod tests {
             source: None,
             agent_id: None,
             format: None,
+            feature_cycle: None,
         };
         assert!(validate_store_params(&params).is_ok());
     }
@@ -556,6 +561,39 @@ mod tests {
             source: Some("test-source".to_string()),
             agent_id: Some("agent".to_string()),
             format: Some("json".to_string()),
+            feature_cycle: Some("col-001".to_string()),
+        };
+        assert!(validate_store_params(&params).is_ok());
+    }
+
+    #[test]
+    fn test_validate_store_params_feature_cycle_too_long() {
+        let params = StoreParams {
+            content: "test".to_string(),
+            topic: "t".to_string(),
+            category: "outcome".to_string(),
+            tags: Some(vec!["type:feature".to_string()]),
+            title: None,
+            source: None,
+            agent_id: None,
+            format: None,
+            feature_cycle: Some("a".repeat(129)),
+        };
+        assert!(validate_store_params(&params).is_err());
+    }
+
+    #[test]
+    fn test_validate_store_params_feature_cycle_at_max() {
+        let params = StoreParams {
+            content: "test".to_string(),
+            topic: "t".to_string(),
+            category: "outcome".to_string(),
+            tags: Some(vec!["type:feature".to_string()]),
+            title: None,
+            source: None,
+            agent_id: None,
+            format: None,
+            feature_cycle: Some("a".repeat(128)),
         };
         assert!(validate_store_params(&params).is_ok());
     }

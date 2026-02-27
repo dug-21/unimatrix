@@ -11,6 +11,7 @@ use unimatrix_core::{
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 use unimatrix_store::{
     ENTRIES, TOPIC_INDEX, CATEGORY_INDEX, TAG_INDEX, TIME_INDEX, STATUS_INDEX, VECTOR_MAP, COUNTERS,
+    OUTCOME_INDEX,
     compute_content_hash, deserialize_entry, increment_counter, next_entry_id, serialize_entry,
     status_counter_key, StoreError,
 };
@@ -231,6 +232,14 @@ impl UnimatrixServer {
                 let mut table = txn.open_table(VECTOR_MAP)
                     .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
                 table.insert(id, data_id)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            }
+
+            // Write OUTCOME_INDEX (if outcome with non-empty feature_cycle)
+            if record.category == "outcome" && !record.feature_cycle.is_empty() {
+                let mut outcome_table = txn.open_table(OUTCOME_INDEX)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                outcome_table.insert((record.feature_cycle.as_str(), id), ())
                     .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
             }
 
