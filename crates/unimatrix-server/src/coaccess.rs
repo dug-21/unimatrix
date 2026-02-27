@@ -15,10 +15,10 @@ pub const MAX_CO_ACCESS_ENTRIES: usize = 10;
 pub const CO_ACCESS_STALENESS_SECONDS: u64 = 30 * 24 * 3600; // 2_592_000
 
 /// Maximum additive boost for search results from co-access signal.
-pub const MAX_CO_ACCESS_BOOST: f32 = 0.03;
+pub const MAX_CO_ACCESS_BOOST: f64 = 0.03;
 
 /// Maximum additive boost for briefing results from co-access signal.
-pub const MAX_BRIEFING_CO_ACCESS_BOOST: f32 = 0.01;
+pub const MAX_BRIEFING_CO_ACCESS_BOOST: f64 = 0.01;
 
 /// Co-access count beyond which boost is fully saturated (log-transform denominator).
 pub const MAX_MEANINGFUL_CO_ACCESS: f64 = 20.0;
@@ -56,13 +56,13 @@ pub fn generate_pairs(entry_ids: &[u64], max_entries: usize) -> Vec<(u64, u64)> 
 ///   `boost = min(raw, 1.0) * max_boost`
 ///
 /// Returns a value in `[0.0, max_boost]`.
-fn co_access_boost(count: u32, max_boost: f32) -> f32 {
+fn co_access_boost(count: u32, max_boost: f64) -> f64 {
     if count == 0 {
         return 0.0;
     }
     let raw = (1.0 + count as f64).ln() / (1.0 + MAX_MEANINGFUL_CO_ACCESS).ln();
     let capped = raw.min(1.0);
-    (capped * max_boost as f64) as f32
+    capped * max_boost
 }
 
 /// Compute co-access boost scores for search results.
@@ -79,7 +79,7 @@ pub fn compute_search_boost(
     result_ids: &[u64],
     store: &Store,
     staleness_cutoff: u64,
-) -> HashMap<u64, f32> {
+) -> HashMap<u64, f64> {
     compute_boost_internal(anchor_ids, result_ids, store, staleness_cutoff, MAX_CO_ACCESS_BOOST)
 }
 
@@ -90,7 +90,7 @@ pub fn compute_briefing_boost(
     result_ids: &[u64],
     store: &Store,
     staleness_cutoff: u64,
-) -> HashMap<u64, f32> {
+) -> HashMap<u64, f64> {
     compute_boost_internal(
         anchor_ids,
         result_ids,
@@ -106,9 +106,9 @@ fn compute_boost_internal(
     result_ids: &[u64],
     store: &Store,
     staleness_cutoff: u64,
-    max_boost: f32,
-) -> HashMap<u64, f32> {
-    let mut boost_map: HashMap<u64, f32> = HashMap::new();
+    max_boost: f64,
+) -> HashMap<u64, f64> {
+    let mut boost_map: HashMap<u64, f64> = HashMap::new();
     let result_set: HashSet<u64> = result_ids.iter().copied().collect();
 
     for &anchor_id in anchor_ids {

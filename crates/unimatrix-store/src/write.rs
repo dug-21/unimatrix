@@ -348,7 +348,7 @@ impl Store {
         unhelpful_ids: &[u64],
         decrement_helpful_ids: &[u64],
         decrement_unhelpful_ids: &[u64],
-        confidence_fn: Option<&dyn Fn(&EntryRecord, u64) -> f32>,
+        confidence_fn: Option<&dyn Fn(&EntryRecord, u64) -> f64>,
     ) -> Result<()> {
         if all_ids.is_empty() {
             return Ok(());
@@ -427,7 +427,7 @@ impl Store {
     ///
     /// Used for mutation paths (insert, correct, deprecate) where `record_usage`
     /// is not called.
-    pub fn update_confidence(&self, entry_id: u64, confidence: f32) -> Result<()> {
+    pub fn update_confidence(&self, entry_id: u64, confidence: f64) -> Result<()> {
         let txn = self.db.begin_write()?;
 
         let old_bytes = {
@@ -445,6 +445,41 @@ impl Store {
         {
             let mut table = txn.open_table(ENTRIES)?;
             table.insert(entry_id, new_bytes.as_slice())?;
+        }
+
+        txn.commit()?;
+        Ok(())
+    }
+
+    /// Replace all VECTOR_MAP entries atomically in a single write transaction.
+    ///
+    /// Clears the existing VECTOR_MAP and inserts all provided (entry_id, data_id)
+    /// mappings. Used by VectorIndex::compact (ADR-004: VECTOR_MAP-first ordering).
+    ///
+    /// If any step fails, the transaction rolls back and old mappings remain intact.
+    pub fn rewrite_vector_map(&self, mappings: &[(u64, u64)]) -> Result<()> {
+        let txn = self.db.begin_write()?;
+
+        {
+            let mut table = txn.open_table(VECTOR_MAP)?;
+
+            // Collect existing keys to remove (avoid borrow conflict)
+            let existing_keys: Vec<u64> = table
+                .iter()?
+                .map(|r| {
+                    let (key, _) = r.map_err(StoreError::Storage)?;
+                    Ok(key.value())
+                })
+                .collect::<Result<Vec<u64>>>()?;
+
+            for key in existing_keys {
+                table.remove(key)?;
+            }
+
+            // Insert new mappings
+            for &(entry_id, data_id) in mappings {
+                table.insert(entry_id, data_id)?;
+            }
         }
 
         txn.commit()?;
@@ -1579,7 +1614,7 @@ mod tests {
         let e = TestEntry::new("test", "convention").build();
         let id = db.store().insert(e).unwrap();
 
-        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f32 {
+        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f64 {
             0.42
         }
 
@@ -1609,7 +1644,7 @@ mod tests {
             ids.push(db.store().insert(e).unwrap());
         }
 
-        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f32 {
+        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f64 {
             0.42
         }
 
@@ -1641,7 +1676,7 @@ mod tests {
         let id2 = db.store().insert(e2).unwrap();
         db.store().delete(id2).unwrap();
 
-        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f32 {
+        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f64 {
             0.42
         }
 

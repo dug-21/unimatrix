@@ -6,7 +6,7 @@ use crate::hash::compute_content_hash;
 use crate::schema::{COUNTERS, ENTRIES, EntryRecord, Status, serialize_entry};
 
 /// Current schema version. Bumped when EntryRecord fields change.
-pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 2;
+pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 3;
 
 /// Run migration if schema_version is behind CURRENT_SCHEMA_VERSION.
 /// Called from Store::open() after table creation.
@@ -20,11 +20,17 @@ pub(crate) fn migrate_if_needed(db: &redb::Database) -> Result<()> {
     // Run migration in a single write transaction
     let txn = db.begin_write()?;
 
-    if current_version < 1 {
+    // Each migration step reads entries in the format of its source version and
+    // rewrites them using the current EntryRecord (which now has f64 confidence).
+    // Therefore, only the step matching the exact starting version should run.
+    // Running subsequent steps would try to deserialize already-upgraded entries
+    // using older intermediate structs, causing deserialization failures.
+    if current_version == 0 {
         migrate_v0_to_v1(&txn)?;
-    }
-    if current_version < 2 {
+    } else if current_version == 1 {
         migrate_v1_to_v2(&txn)?;
+    } else if current_version == 2 {
+        migrate_v2_to_v3(&txn)?;
     }
 
     // Update schema version
@@ -117,7 +123,7 @@ fn migrate_v0_to_v1(txn: &redb::WriteTransaction) -> Result<()> {
             tags: legacy.tags,
             source: legacy.source,
             status: legacy.status,
-            confidence: legacy.confidence,
+            confidence: legacy.confidence as f64,
             created_at: legacy.created_at,
             updated_at: legacy.updated_at,
             last_accessed_at: legacy.last_accessed_at,
@@ -221,7 +227,7 @@ fn migrate_v1_to_v2(txn: &redb::WriteTransaction) -> Result<()> {
             tags: v1.tags,
             source: v1.source,
             status: v1.status,
-            confidence: v1.confidence,
+            confidence: v1.confidence as f64,
             created_at: v1.created_at,
             updated_at: v1.updated_at,
             last_accessed_at: v1.last_accessed_at,
@@ -239,6 +245,113 @@ fn migrate_v1_to_v2(txn: &redb::WriteTransaction) -> Result<()> {
             trust_source: v1.trust_source,
             helpful_count: 0,
             unhelpful_count: 0,
+        };
+
+        let new_bytes = serialize_entry(&record)?;
+        {
+            let mut table = txn.open_table(ENTRIES)?;
+            table.insert(id, new_bytes.as_slice())?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Schema v2 (26 fields, confidence: f32). Used only for v2->v3 migration deserialization.
+/// Field order MUST match the v2 EntryRecord exactly (bincode positional encoding).
+#[derive(Deserialize, serde::Serialize)]
+struct V2EntryRecord {
+    id: u64,
+    title: String,
+    content: String,
+    topic: String,
+    category: String,
+    tags: Vec<String>,
+    source: String,
+    status: Status,
+    confidence: f32, // <-- f32 in v2, f64 in v3
+    created_at: u64,
+    updated_at: u64,
+    last_accessed_at: u64,
+    access_count: u32,
+    supersedes: Option<u64>,
+    superseded_by: Option<u64>,
+    correction_count: u32,
+    embedding_dim: u16,
+    created_by: String,
+    modified_by: String,
+    content_hash: String,
+    previous_hash: String,
+    version: u32,
+    feature_cycle: String,
+    trust_source: String,
+    helpful_count: u32,
+    unhelpful_count: u32,
+}
+
+fn deserialize_v2_entry(bytes: &[u8]) -> Result<V2EntryRecord> {
+    let (record, _) = bincode::serde::decode_from_slice::<V2EntryRecord, _>(
+        bytes,
+        bincode::config::standard(),
+    )?;
+    Ok(record)
+}
+
+/// Migrate from schema v2 (26 fields, confidence: f32) to v3 (confidence: f64).
+fn migrate_v2_to_v3(txn: &redb::WriteTransaction) -> Result<()> {
+    let entry_ids: Vec<u64> = {
+        let table = txn.open_table(ENTRIES)?;
+        table
+            .iter()?
+            .map(|r| {
+                let (key, _) = r.map_err(StoreError::Storage)?;
+                Ok(key.value())
+            })
+            .collect::<Result<Vec<u64>>>()?
+    };
+
+    if entry_ids.is_empty() {
+        return Ok(());
+    }
+
+    for id in entry_ids {
+        let old_bytes: Vec<u8> = {
+            let table = txn.open_table(ENTRIES)?;
+            match table.get(id)? {
+                Some(guard) => guard.value().to_vec(),
+                None => continue,
+            }
+        };
+
+        let v2 = deserialize_v2_entry(&old_bytes)?;
+
+        let record = EntryRecord {
+            id: v2.id,
+            title: v2.title,
+            content: v2.content,
+            topic: v2.topic,
+            category: v2.category,
+            tags: v2.tags,
+            source: v2.source,
+            status: v2.status,
+            confidence: v2.confidence as f64, // IEEE 754 lossless promotion
+            created_at: v2.created_at,
+            updated_at: v2.updated_at,
+            last_accessed_at: v2.last_accessed_at,
+            access_count: v2.access_count,
+            supersedes: v2.supersedes,
+            superseded_by: v2.superseded_by,
+            correction_count: v2.correction_count,
+            embedding_dim: v2.embedding_dim,
+            created_by: v2.created_by,
+            modified_by: v2.modified_by,
+            content_hash: v2.content_hash,
+            previous_hash: v2.previous_hash,
+            version: v2.version,
+            feature_cycle: v2.feature_cycle,
+            trust_source: v2.trust_source,
+            helpful_count: v2.helpful_count,
+            unhelpful_count: v2.unhelpful_count,
         };
 
         let new_bytes = serialize_entry(&record)?;
@@ -420,7 +533,8 @@ mod tests {
             assert_eq!(record.category, "category");
             assert_eq!(record.tags, vec!["tag1".to_string()]);
             assert_eq!(record.status, Status::Active);
-            assert_eq!(record.confidence, 0.8);
+            // v0 stored 0.8_f32, promoted to f64 via `as f64`
+            assert!((record.confidence - 0.8).abs() < 0.001, "confidence should be ~0.8, got {}", record.confidence);
             assert_eq!(record.embedding_dim, 384);
         }
     }
@@ -433,7 +547,7 @@ mod tests {
 
         let store = crate::Store::open(&path).unwrap();
         let version = store.read_counter("schema_version").unwrap();
-        assert_eq!(version, 2);
+        assert_eq!(version, 3);
     }
 
     // -- R-01/R-04: Migration Populates Security Fields --
@@ -492,7 +606,7 @@ mod tests {
             assert_eq!(r1.version, 1);
             assert_eq!(r1.helpful_count, 0);
             assert_eq!(r1.unhelpful_count, 0);
-            assert_eq!(store.read_counter("schema_version").unwrap(), 2);
+            assert_eq!(store.read_counter("schema_version").unwrap(), 3);
         }
 
         // Second open: migration should be a no-op
@@ -501,7 +615,7 @@ mod tests {
             let r1 = store.get(1).unwrap();
             assert_eq!(r1.version, 1); // Still 1, not re-migrated
             assert_eq!(r1.helpful_count, 0);
-            assert_eq!(store.read_counter("schema_version").unwrap(), 2);
+            assert_eq!(store.read_counter("schema_version").unwrap(), 3);
         }
     }
 
@@ -523,7 +637,7 @@ mod tests {
         assert_eq!(store.read_counter("total_active").unwrap(), 3);
         assert_eq!(store.read_counter("total_deprecated").unwrap(), 1);
         assert_eq!(store.read_counter("total_proposed").unwrap(), 1);
-        assert_eq!(store.read_counter("schema_version").unwrap(), 2);
+        assert_eq!(store.read_counter("schema_version").unwrap(), 3);
     }
 
     // -- EC-06: Migration Unicode Content --
@@ -703,7 +817,7 @@ mod tests {
             assert_eq!(record.created_by, "agent-1");
             assert_eq!(record.version, 1);
         }
-        assert_eq!(store.read_counter("schema_version").unwrap(), 2);
+        assert_eq!(store.read_counter("schema_version").unwrap(), 3);
     }
 
     #[test]
@@ -721,7 +835,8 @@ mod tests {
         assert_eq!(record.access_count, 42);
         assert_eq!(record.correction_count, 3);
         assert_eq!(record.supersedes, Some(10));
-        assert_eq!(record.confidence, 0.95);
+        // v1 stored 0.95_f32, promoted to f64 via `as f64`, so test approximate equality
+        assert!((record.confidence - 0.95).abs() < 0.001, "confidence should be ~0.95, got {}", record.confidence);
         assert_eq!(record.helpful_count, 0);
         assert_eq!(record.unhelpful_count, 0);
     }
@@ -734,7 +849,7 @@ mod tests {
         // First open: v1->v2 migration runs
         {
             let store = crate::Store::open(&path).unwrap();
-            assert_eq!(store.read_counter("schema_version").unwrap(), 2);
+            assert_eq!(store.read_counter("schema_version").unwrap(), 3);
             let r = store.get(1).unwrap();
             assert_eq!(r.helpful_count, 0);
         }
@@ -742,7 +857,7 @@ mod tests {
         // Second open: migration should be a no-op
         {
             let store = crate::Store::open(&path).unwrap();
-            assert_eq!(store.read_counter("schema_version").unwrap(), 2);
+            assert_eq!(store.read_counter("schema_version").unwrap(), 3);
             let r = store.get(1).unwrap();
             assert_eq!(r.helpful_count, 0);
         }
@@ -768,7 +883,7 @@ mod tests {
         assert_eq!(record.helpful_count, 0);
         assert_eq!(record.unhelpful_count, 0);
 
-        assert_eq!(store.read_counter("schema_version").unwrap(), 2);
+        assert_eq!(store.read_counter("schema_version").unwrap(), 3);
     }
 
     #[test]

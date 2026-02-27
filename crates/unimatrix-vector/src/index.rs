@@ -17,7 +17,8 @@ pub struct SearchResult {
     pub entry_id: u64,
     /// Similarity score: `1.0 - distance`. Higher means more similar.
     /// Range is typically [0.0, 1.0] for L2-normalized vectors.
-    pub similarity: f32,
+    /// Promoted from f32 to f64 in crt-005 for scoring pipeline precision.
+    pub similarity: f64,
 }
 
 /// Internal bidirectional map between entry IDs and hnsw data IDs.
@@ -270,7 +271,9 @@ impl VectorIndex {
                 if seen.insert(entry_id) {
                     results.push(SearchResult {
                         entry_id,
-                        similarity: 1.0 - n.distance,
+                        // Cast order matters (R-04): promote f32 distance to f64 first,
+                        // then subtract from f64 1.0. NOT (1.0_f32 - distance) as f64.
+                        similarity: 1.0_f64 - n.distance as f64,
                     });
                 }
             }
@@ -336,6 +339,63 @@ impl VectorIndex {
     /// The returned data_id is unique and monotonically increasing.
     pub fn allocate_data_id(&self) -> u64 {
         self.next_data_id.fetch_add(1, Ordering::Relaxed)
+    }
+
+    /// Rebuild the HNSW graph from the provided active entry embeddings,
+    /// eliminating stale routing nodes. Uses build-new-then-swap (ADR-004).
+    ///
+    /// Steps:
+    /// 1. Build a new HNSW graph with sequential data_ids starting from 0
+    /// 2. Write VECTOR_MAP first (single transaction) -- if this fails, old graph untouched
+    /// 3. Atomically swap in-memory graph and IdMap
+    /// 4. Reset next_data_id
+    ///
+    /// Embeddings remain f32 (HNSW domain). The caller obtains embeddings
+    /// via the embed service and passes pre-computed pairs.
+    pub fn compact(&self, embeddings: Vec<(u64, Vec<f32>)>) -> Result<()> {
+        // Step 1: Build new HNSW graph
+        let new_hnsw = Hnsw::<f32, DistDot>::new(
+            self.config.max_nb_connection,
+            self.config.max_elements,
+            self.config.max_layer,
+            self.config.ef_construction,
+            DistDot,
+        );
+
+        let mut new_data_to_entry = HashMap::with_capacity(embeddings.len());
+        let mut new_entry_to_data = HashMap::with_capacity(embeddings.len());
+        let mut vector_map_entries = Vec::with_capacity(embeddings.len());
+
+        for (idx, (entry_id, embedding)) in embeddings.iter().enumerate() {
+            let data_id = idx as u64;
+            self.validate_dimension(embedding)?;
+            self.validate_embedding(embedding)?;
+            new_hnsw.insert_slice((embedding, data_id as usize));
+            new_data_to_entry.insert(data_id, *entry_id);
+            new_entry_to_data.insert(*entry_id, data_id);
+            vector_map_entries.push((*entry_id, data_id));
+        }
+
+        // Step 2: Write VECTOR_MAP first (ADR-004: VECTOR_MAP-first ordering)
+        // If this fails, return error -- old graph untouched
+        self.store.rewrite_vector_map(&vector_map_entries)?;
+
+        // Step 3: Atomic in-memory swap
+        {
+            let mut hnsw = self.hnsw.write().unwrap_or_else(|e| e.into_inner());
+            let mut id_map = self.id_map.write().unwrap_or_else(|e| e.into_inner());
+            *hnsw = new_hnsw;
+            *id_map = IdMap {
+                data_to_entry: new_data_to_entry,
+                entry_to_data: new_entry_to_data,
+            };
+        }
+
+        // Step 4: Reset next_data_id
+        self.next_data_id
+            .store(embeddings.len() as u64, Ordering::Relaxed);
+
+        Ok(())
     }
 
     /// Insert into HNSW index and update IdMap only.

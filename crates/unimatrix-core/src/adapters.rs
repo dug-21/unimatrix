@@ -137,6 +137,10 @@ impl VectorStore for VectorAdapter {
     fn stale_count(&self) -> usize {
         self.inner.stale_count()
     }
+
+    fn compact(&self, embeddings: Vec<(u64, Vec<f32>)>) -> Result<(), CoreError> {
+        Ok(self.inner.compact(embeddings)?)
+    }
 }
 
 /// Adapter bridging `EmbeddingProvider` to the `EmbedService` trait.
