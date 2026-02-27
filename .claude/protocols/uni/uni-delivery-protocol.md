@@ -197,6 +197,8 @@ Task(subagent_type: "uni-rust-dev",
 
 **Key**: Each agent gets its OWN component's `pseudocode/{component}.md` and `test-plan/{component}.md`. Do NOT dump all pseudocode files into every agent.
 
+**Integration test rule**: Stage 3b agents (uni-rust-dev) do NOT run or modify integration tests (`product/test/infra-001/`). Integration testing happens in Stage 3c. If a code change breaks an integration test, the uni-tester in Stage 3c will report it for rework.
+
 ### Gate 3b: Code Review
 
 Spawn `uni-validator` in Gate 3b mode:
@@ -245,19 +247,48 @@ Task(subagent_type: "uni-tester",
     - product/features/{id}/RISK-TEST-STRATEGY.md
     - product/features/{id}/test-plan/ (all files)
     - product/features/{id}/ACCEPTANCE-MAP.md
+    - product/test/infra-001/USAGE-PROTOCOL.md
 
     Execute:
-    1. All component-level tests
-    2. Integration tests across components
-    3. Feature-level tests mapped to Risk Strategy
-    4. Verify every identified risk has test coverage
+    1. Unit tests: cargo test --workspace 2>&1 | tail -30
+    2. Integration smoke tests (MANDATORY GATE):
+       cd product/test/infra-001 && python -m pytest suites/ -v -m smoke --timeout=60
+    3. Integration suites relevant to this feature (see suite selection table below)
+    4. Feature-level tests mapped to Risk Strategy
+    5. Verify every identified risk has test coverage
+
+    INTEGRATION TEST FAILURE TRIAGE (CRITICAL):
+    When an integration test fails, determine causation:
+    - CAUSED BY THIS FEATURE → Fix the code. Re-run. Document in report.
+    - PRE-EXISTING / UNRELATED → Do NOT fix. File a GH Issue and mark the
+      test @pytest.mark.xfail(reason='Pre-existing: GH#NNN — description').
+      Continue with the feature. See USAGE-PROTOCOL.md for GH Issue template.
+    - BAD TEST ASSERTION → Fix the test. Document in report.
+
+    Agents must NEVER fix integration test failures unrelated to the feature
+    under development. Unrelated fixes create scope creep, blame diffusion,
+    and skip the proper risk assessment lifecycle.
+
+    SUITE SELECTION (run based on what the feature touches):
+    | Feature touches...              | Run these suites                        |
+    |---------------------------------|-----------------------------------------|
+    | Any server tool logic           | tools, protocol                         |
+    | Store/retrieval behavior        | tools, lifecycle, edge_cases            |
+    | Confidence system               | confidence, lifecycle                   |
+    | Contradiction detection         | contradiction                           |
+    | Security (scanning, caps)       | security                                |
+    | Schema or storage changes       | lifecycle (persistence), volume         |
+    | Any change at all               | smoke (minimum gate)                    |
 
     Output:
     - testing/RISK-COVERAGE-REPORT.md (maps test results to identified risks)
-    - All tests pass
+      Must include: unit test counts, integration test counts (per suite),
+      any xfail markers added with GH Issue references
+    - All unit tests pass
+    - Integration smoke tests pass (xfail markers acceptable with GH Issues)
 
-    Return: test results summary, risk coverage gaps (if any), report path.")
-```
+    Return: test results summary, risk coverage gaps (if any), report path,
+            any GH Issues filed for pre-existing failures.")
 
 ### Gate 3c: Final Risk-Based Validation
 
@@ -276,6 +307,15 @@ Task(subagent_type: "uni-validator",
     - Are there risks from Phase 2 lacking test coverage?
     - Does delivered code match approved Specification?
     - Does system architecture match approved Architecture?
+
+    INTEGRATION TEST VALIDATION (MANDATORY):
+    - Verify integration smoke tests (pytest -m smoke) passed
+    - Verify relevant integration suites were run for this feature
+    - Verify any @pytest.mark.xfail markers have corresponding GH Issues
+    - Verify no integration tests were deleted or commented out
+    - Verify RISK-COVERAGE-REPORT.md includes integration test counts
+    - If integration failures were marked xfail, confirm the failures are
+      genuinely unrelated to the feature (not masking feature bugs)
 
     Source documents:
     - product/features/{id}/architecture/ARCHITECTURE.md
@@ -405,6 +445,65 @@ DELIVERY LEADER (uni-scrum-master):
               ...PASS → continue / FAIL → rework or stop...
   Phase 4:    gh issue comment + return summary — SESSION 2 ENDS
 ```
+
+---
+
+## Integration Test Harness
+
+The project includes a comprehensive integration test harness at `product/test/infra-001/` that exercises the compiled `unimatrix-server` binary through the MCP JSON-RPC protocol — the exact interface agents use. Full details: `product/test/infra-001/USAGE-PROTOCOL.md`.
+
+**157 tests across 8 suites:** protocol, tools, lifecycle, volume, security, confidence, contradiction, edge_cases.
+
+### Commands
+
+```bash
+# From product/test/infra-001/ (binary must be built first)
+
+# Smoke tests — MANDATORY minimum gate for Stage 3c
+python -m pytest suites/ -v -m smoke --timeout=60
+
+# Full suite
+python -m pytest suites/ -v --timeout=60
+
+# Specific suite
+python -m pytest suites/test_security.py -v --timeout=60
+
+# Specific test
+python -m pytest suites/test_tools.py::test_store_roundtrip -v
+```
+
+### Non-Negotiable Failure Triage Rule
+
+**Agents ONLY fix integration test failures caused by the feature under development.** All other failures follow this protocol:
+
+1. **Caused by this feature** → Fix the code. Re-run. Document fix in gate report.
+2. **Pre-existing / unrelated** → Do NOT fix. File a GH Issue:
+   ```bash
+   gh issue create \
+     --title "[infra-001] test_<name>: <brief description>" \
+     --label "bug" \
+     --body "Discovered by: suites/test_<suite>.py::test_<name>
+   Expected: <what test expected>
+   Actual: <what happened>
+   Not caused by the current feature under development."
+   ```
+   Then mark the test:
+   ```python
+   @pytest.mark.xfail(reason="Pre-existing: GH#NNN — description")
+   def test_the_failing_test(server):
+       ...
+   ```
+3. **Bad test assertion** → Fix the test. Document in gate report.
+
+**Why**: Fixing unrelated issues in a feature PR creates scope creep, blame diffusion, no audit trail, and skips proper risk assessment. The issue deserves its own lifecycle.
+
+### Agent Rules
+
+| Agent | Integration Test Rule |
+|-------|----------------------|
+| **uni-rust-dev** (3b) | Do NOT run or modify integration tests. Stage 3c handles this. |
+| **uni-tester** (3c) | Run smoke (mandatory) + relevant suites. Triage failures per rule above. Report results + any GH Issues filed in RISK-COVERAGE-REPORT.md. |
+| **uni-validator** (Gate 3c) | Verify smoke passed, xfail markers have GH Issues, no tests deleted/commented, RISK-COVERAGE-REPORT includes integration counts. |
 
 ---
 
