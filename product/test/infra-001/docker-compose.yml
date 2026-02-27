@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  test-runner:
+    build:
+      context: ../..
+      dockerfile: product/test/infra-001/Dockerfile
+      target: test-runtime
+    environment:
+      - TEST_SUITE=${TEST_SUITE:-all}
+      - TEST_WORKERS=${TEST_WORKERS:-1}
+      - PYTEST_ARGS=${PYTEST_ARGS:-}
+      - RUST_LOG=${RUST_LOG:-info}
+      - UNIMATRIX_BINARY=/usr/local/bin/unimatrix-server
+    volumes:
+      - test-results:/results
+    tmpfs:
+      - /tmp:size=512M
+
+volumes:
+  test-results:
