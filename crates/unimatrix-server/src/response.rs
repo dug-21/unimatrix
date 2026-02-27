@@ -89,7 +89,7 @@ fn entry_to_json(entry: &EntryRecord) -> serde_json::Value {
     })
 }
 
-fn entry_to_json_with_similarity(entry: &EntryRecord, similarity: f32) -> serde_json::Value {
+fn entry_to_json_with_similarity(entry: &EntryRecord, similarity: f64) -> serde_json::Value {
     serde_json::json!({
         "id": entry.id,
         "title": entry.title,
@@ -109,7 +109,7 @@ fn entry_to_json_with_similarity(entry: &EntryRecord, similarity: f32) -> serde_
 fn format_entry_markdown_section(
     num: usize,
     entry: &EntryRecord,
-    similarity: Option<f32>,
+    similarity: Option<f64>,
 ) -> String {
     let mut text = format!("## {}. {}", num, entry.title);
     if let Some(sim) = similarity {
@@ -167,7 +167,7 @@ pub fn format_single_entry(entry: &EntryRecord, format: ResponseFormat) -> CallT
 
 /// Format search results with similarity scores.
 pub fn format_search_results(
-    results: &[(EntryRecord, f32)],
+    results: &[(EntryRecord, f64)],
     format: ResponseFormat,
 ) -> CallToolResult {
     if results.is_empty() {
@@ -323,7 +323,7 @@ pub fn format_store_success_with_note(
 /// Format a near-duplicate detection response.
 pub fn format_duplicate_found(
     existing: &EntryRecord,
-    similarity: f32,
+    similarity: f64,
     format: ResponseFormat,
 ) -> CallToolResult {
     match format {
@@ -398,6 +398,26 @@ pub struct StatusReport {
     pub top_co_access_pairs: Vec<CoAccessClusterEntry>,
     /// Number of stale pairs cleaned during this status call.
     pub stale_pairs_cleaned: u64,
+    /// Composite lambda coherence score [0.0, 1.0].
+    pub coherence: f64,
+    /// Confidence freshness dimension score.
+    pub confidence_freshness_score: f64,
+    /// Graph quality dimension score.
+    pub graph_quality_score: f64,
+    /// Embedding consistency dimension score (1.0 if not checked).
+    pub embedding_consistency_score: f64,
+    /// Contradiction density dimension score.
+    pub contradiction_density_score: f64,
+    /// Number of entries with stale confidence.
+    pub stale_confidence_count: u64,
+    /// Number of entries whose confidence was refreshed this call.
+    pub confidence_refreshed_count: u64,
+    /// Stale node ratio in HNSW graph.
+    pub graph_stale_ratio: f64,
+    /// Whether graph compaction was performed this call.
+    pub graph_compacted: bool,
+    /// Actionable maintenance recommendations.
+    pub maintenance_recommendations: Vec<String>,
     /// Total outcome entries.
     pub total_outcomes: u64,
     /// Outcome count by workflow type (from type: tag).
@@ -435,7 +455,7 @@ pub struct Briefing {
     /// Role duties.
     pub duties: Vec<EntryRecord>,
     /// Semantically relevant context with similarity scores.
-    pub relevant_context: Vec<(EntryRecord, f32)>,
+    pub relevant_context: Vec<(EntryRecord, f64)>,
     /// Whether semantic search was available.
     pub search_available: bool,
 }
@@ -602,6 +622,38 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 text.push_str(&format!(" | Contradictions: {}", report.contradiction_count));
             }
             text.push_str(&format!(
+                "\nCoherence: {:.4} (confidence_freshness: {:.4}, graph_quality: {:.4}, embedding_consistency: {:.4}, contradiction_density: {:.4})",
+                report.coherence,
+                report.confidence_freshness_score,
+                report.graph_quality_score,
+                report.embedding_consistency_score,
+                report.contradiction_density_score,
+            ));
+            if report.stale_confidence_count > 0 {
+                text.push_str(&format!(
+                    "\nStale confidence: {} entries",
+                    report.stale_confidence_count
+                ));
+            }
+            if report.confidence_refreshed_count > 0 {
+                text.push_str(&format!(
+                    "\nConfidence refreshed: {} entries",
+                    report.confidence_refreshed_count
+                ));
+            }
+            if report.graph_stale_ratio > 0.0 {
+                text.push_str(&format!(
+                    "\nGraph stale ratio: {:.2}%",
+                    report.graph_stale_ratio * 100.0
+                ));
+            }
+            if report.graph_compacted {
+                text.push_str("\nGraph compacted: yes");
+            }
+            for rec in &report.maintenance_recommendations {
+                text.push_str(&format!("\nRecommendation: {rec}"));
+            }
+            text.push_str(&format!(
                 "\nCo-access: {} active pairs ({} total), {} stale pairs cleaned",
                 report.active_co_access_pairs,
                 report.total_co_access_pairs,
@@ -700,6 +752,47 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 }
             }
 
+            text.push_str("\n### Coherence\n\n");
+            text.push_str(&format!("- **Lambda**: {:.4}\n", report.coherence));
+            text.push_str(&format!(
+                "- **Confidence Freshness**: {:.4}\n",
+                report.confidence_freshness_score
+            ));
+            text.push_str(&format!(
+                "- **Graph Quality**: {:.4}\n",
+                report.graph_quality_score
+            ));
+            text.push_str(&format!(
+                "- **Embedding Consistency**: {:.4}\n",
+                report.embedding_consistency_score
+            ));
+            text.push_str(&format!(
+                "- **Contradiction Density**: {:.4}\n\n",
+                report.contradiction_density_score
+            ));
+            text.push_str(&format!(
+                "Stale confidence entries: {}\n",
+                report.stale_confidence_count
+            ));
+            text.push_str(&format!(
+                "Confidence refreshed: {}\n",
+                report.confidence_refreshed_count
+            ));
+            text.push_str(&format!(
+                "Graph stale ratio: {:.2}%\n",
+                report.graph_stale_ratio * 100.0
+            ));
+            text.push_str(&format!(
+                "Graph compacted: {}\n",
+                if report.graph_compacted { "yes" } else { "no" }
+            ));
+            if !report.maintenance_recommendations.is_empty() {
+                text.push_str("\n#### Maintenance Recommendations\n\n");
+                for rec in &report.maintenance_recommendations {
+                    text.push_str(&format!("- {rec}\n"));
+                }
+            }
+
             text.push_str("\n### Co-Access Patterns\n\n");
             text.push_str(&format!(
                 "- Active pairs: {} of {} total\n",
@@ -792,6 +885,17 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                     "entries_without_attribution": report.entries_without_attribution,
                 },
             });
+
+            obj["coherence"] = serde_json::json!(report.coherence);
+            obj["confidence_freshness_score"] = serde_json::json!(report.confidence_freshness_score);
+            obj["graph_quality_score"] = serde_json::json!(report.graph_quality_score);
+            obj["embedding_consistency_score"] = serde_json::json!(report.embedding_consistency_score);
+            obj["contradiction_density_score"] = serde_json::json!(report.contradiction_density_score);
+            obj["stale_confidence_count"] = serde_json::json!(report.stale_confidence_count);
+            obj["confidence_refreshed_count"] = serde_json::json!(report.confidence_refreshed_count);
+            obj["graph_stale_ratio"] = serde_json::json!(report.graph_stale_ratio);
+            obj["graph_compacted"] = serde_json::json!(report.graph_compacted);
+            obj["maintenance_recommendations"] = serde_json::json!(report.maintenance_recommendations);
 
             if report.contradiction_scan_performed {
                 let contradictions: Vec<serde_json::Value> = report.contradictions.iter().map(|p| {
@@ -1091,7 +1195,7 @@ mod tests {
     #[test]
     fn test_format_search_results_summary() {
         let results = vec![
-            (make_entry(1, "Entry 1", "c1"), 0.95_f32),
+            (make_entry(1, "Entry 1", "c1"), 0.95_f64),
             (make_entry(2, "Entry 2", "c2"), 0.88),
             (make_entry(3, "Entry 3", "c3"), 0.75),
         ];
@@ -1105,8 +1209,8 @@ mod tests {
     #[test]
     fn test_format_search_results_markdown() {
         let results = vec![
-            (make_entry(1, "Entry 1", "content 1"), 0.95_f32),
-            (make_entry(2, "Entry 2", "content 2"), 0.88),
+            (make_entry(1, "Entry 1", "content 1"), 0.95_f64),
+            (make_entry(2, "Entry 2", "content 2"), 0.88_f64),
         ];
         let result = format_search_results(&results, ResponseFormat::Markdown);
         let text = result_text(&result);
@@ -1117,8 +1221,8 @@ mod tests {
     #[test]
     fn test_format_search_results_json() {
         let results = vec![
-            (make_entry(1, "E1", "c1"), 0.95_f32),
-            (make_entry(2, "E2", "c2"), 0.88),
+            (make_entry(1, "E1", "c1"), 0.95_f64),
+            (make_entry(2, "E2", "c2"), 0.88_f64),
         ];
         let result = format_search_results(&results, ResponseFormat::Json);
         let text = result_text(&result);
@@ -1384,6 +1488,16 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            coherence: 1.0,
+            confidence_freshness_score: 1.0,
+            graph_quality_score: 1.0,
+            embedding_consistency_score: 1.0,
+            contradiction_density_score: 1.0,
+            stale_confidence_count: 0,
+            confidence_refreshed_count: 0,
+            graph_stale_ratio: 0.0,
+            graph_compacted: false,
+            maintenance_recommendations: Vec::new(),
             total_outcomes: 0,
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
@@ -1449,6 +1563,16 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            coherence: 1.0,
+            confidence_freshness_score: 1.0,
+            graph_quality_score: 1.0,
+            embedding_consistency_score: 1.0,
+            contradiction_density_score: 1.0,
+            stale_confidence_count: 0,
+            confidence_refreshed_count: 0,
+            graph_stale_ratio: 0.0,
+            graph_compacted: false,
+            maintenance_recommendations: Vec::new(),
             total_outcomes: 0,
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
@@ -1493,6 +1617,16 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            coherence: 1.0,
+            confidence_freshness_score: 1.0,
+            graph_quality_score: 1.0,
+            embedding_consistency_score: 1.0,
+            contradiction_density_score: 1.0,
+            stale_confidence_count: 0,
+            confidence_refreshed_count: 0,
+            graph_stale_ratio: 0.0,
+            graph_compacted: false,
+            maintenance_recommendations: Vec::new(),
             total_outcomes: 0,
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
@@ -1537,6 +1671,16 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            coherence: 1.0,
+            confidence_freshness_score: 1.0,
+            graph_quality_score: 1.0,
+            embedding_consistency_score: 1.0,
+            contradiction_density_score: 1.0,
+            stale_confidence_count: 0,
+            confidence_refreshed_count: 0,
+            graph_stale_ratio: 0.0,
+            graph_compacted: false,
+            maintenance_recommendations: Vec::new(),
             total_outcomes: 0,
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
@@ -1583,6 +1727,16 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            coherence: 1.0,
+            confidence_freshness_score: 1.0,
+            graph_quality_score: 1.0,
+            embedding_consistency_score: 1.0,
+            contradiction_density_score: 1.0,
+            stale_confidence_count: 0,
+            confidence_refreshed_count: 0,
+            graph_stale_ratio: 0.0,
+            graph_compacted: false,
+            maintenance_recommendations: Vec::new(),
             total_outcomes: 0,
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
@@ -1627,6 +1781,16 @@ mod tests {
             active_co_access_pairs: 0,
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
+            coherence: 1.0,
+            confidence_freshness_score: 1.0,
+            graph_quality_score: 1.0,
+            embedding_consistency_score: 1.0,
+            contradiction_density_score: 1.0,
+            stale_confidence_count: 0,
+            confidence_refreshed_count: 0,
+            graph_stale_ratio: 0.0,
+            graph_compacted: false,
+            maintenance_recommendations: Vec::new(),
             total_outcomes: 0,
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
@@ -1779,6 +1943,16 @@ mod tests {
                 },
             ],
             stale_pairs_cleaned: 3,
+            coherence: 1.0,
+            confidence_freshness_score: 1.0,
+            graph_quality_score: 1.0,
+            embedding_consistency_score: 1.0,
+            contradiction_density_score: 1.0,
+            stale_confidence_count: 0,
+            confidence_refreshed_count: 0,
+            graph_stale_ratio: 0.0,
+            graph_compacted: false,
+            maintenance_recommendations: Vec::new(),
             total_outcomes: 0,
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
@@ -1842,5 +2016,262 @@ mod tests {
         assert_eq!(report.active_co_access_pairs, 0);
         assert!(report.top_co_access_pairs.is_empty());
         assert_eq!(report.stale_pairs_cleaned, 0);
+    }
+
+    // -- crt-005: StatusReport Coherence Format Tests --
+
+    fn make_coherence_status_report() -> StatusReport {
+        StatusReport {
+            total_active: 50,
+            total_deprecated: 5,
+            total_proposed: 2,
+            total_quarantined: 3,
+            category_distribution: vec![("decision".to_string(), 30)],
+            topic_distribution: vec![("architecture".to_string(), 20)],
+            entries_with_supersedes: 4,
+            entries_with_superseded_by: 4,
+            total_correction_count: 8,
+            trust_source_distribution: vec![("agent".to_string(), 50)],
+            entries_without_attribution: 2,
+            contradictions: Vec::new(),
+            contradiction_count: 0,
+            embedding_inconsistencies: Vec::new(),
+            contradiction_scan_performed: false,
+            embedding_check_performed: false,
+            total_co_access_pairs: 10,
+            active_co_access_pairs: 8,
+            top_co_access_pairs: Vec::new(),
+            stale_pairs_cleaned: 0,
+            coherence: 0.7450,
+            confidence_freshness_score: 0.8200,
+            graph_quality_score: 0.6500,
+            embedding_consistency_score: 0.9000,
+            contradiction_density_score: 0.7000,
+            stale_confidence_count: 15,
+            confidence_refreshed_count: 10,
+            graph_stale_ratio: 0.15,
+            graph_compacted: true,
+            maintenance_recommendations: vec![
+                "15 entries have stale confidence (oldest: 2 days) -- run with maintain: true to refresh".to_string(),
+                "HNSW graph has 15% stale nodes -- run with maintain: true to compact".to_string(),
+            ],
+            total_outcomes: 0,
+            outcomes_by_type: Vec::new(),
+            outcomes_by_result: Vec::new(),
+            outcomes_by_feature_cycle: Vec::new(),
+        }
+    }
+
+    // UT-C6-01: JSON format includes all 10 coherence fields
+    #[test]
+    fn test_coherence_json_all_fields() {
+        let report = make_coherence_status_report();
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+
+        assert!(parsed["coherence"].is_number(), "coherence field missing");
+        assert!(parsed["confidence_freshness_score"].is_number(), "confidence_freshness_score missing");
+        assert!(parsed["graph_quality_score"].is_number(), "graph_quality_score missing");
+        assert!(parsed["embedding_consistency_score"].is_number(), "embedding_consistency_score missing");
+        assert!(parsed["contradiction_density_score"].is_number(), "contradiction_density_score missing");
+        assert!(parsed["stale_confidence_count"].is_number(), "stale_confidence_count missing");
+        assert!(parsed["confidence_refreshed_count"].is_number(), "confidence_refreshed_count missing");
+        assert!(parsed["graph_stale_ratio"].is_number(), "graph_stale_ratio missing");
+        assert!(parsed["graph_compacted"].is_boolean(), "graph_compacted missing");
+        assert!(parsed["maintenance_recommendations"].is_array(), "maintenance_recommendations missing");
+
+        // Verify f64 values
+        assert_eq!(parsed["coherence"].as_f64().unwrap(), 0.745);
+        assert_eq!(parsed["confidence_freshness_score"].as_f64().unwrap(), 0.82);
+        assert_eq!(parsed["graph_quality_score"].as_f64().unwrap(), 0.65);
+        assert_eq!(parsed["stale_confidence_count"].as_u64().unwrap(), 15);
+        assert_eq!(parsed["confidence_refreshed_count"].as_u64().unwrap(), 10);
+        assert_eq!(parsed["graph_compacted"].as_bool().unwrap(), true);
+        assert_eq!(parsed["maintenance_recommendations"].as_array().unwrap().len(), 2);
+    }
+
+    // UT-C6-02: JSON f64 precision verification
+    #[test]
+    fn test_coherence_json_f64_precision() {
+        let mut report = make_coherence_status_report();
+        report.coherence = 0.845;
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        // Should contain 0.845 not f32 artifact like 0.8450000286102295
+        assert!(text.contains("0.845"), "JSON should contain 0.845 without f32 artifacts, got: {text}");
+        assert!(!text.contains("0.8450000"), "JSON should not contain f32 precision artifact");
+    }
+
+    // UT-C6-03: Markdown format includes coherence section
+    #[test]
+    fn test_coherence_markdown_section() {
+        let report = make_coherence_status_report();
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+
+        assert!(text.contains("### Coherence"), "markdown should have Coherence section");
+        assert!(text.contains("**Lambda**"), "should show Lambda label");
+        assert!(text.contains("**Confidence Freshness**"), "should show Confidence Freshness label");
+        assert!(text.contains("**Graph Quality**"), "should show Graph Quality label");
+        assert!(text.contains("**Embedding Consistency**"), "should show Embedding Consistency label");
+        assert!(text.contains("**Contradiction Density**"), "should show Contradiction Density label");
+        // Check 4 decimal places
+        assert!(text.contains("0.7450"), "lambda should be formatted to 4 decimal places");
+        assert!(text.contains("0.8200"), "confidence freshness should be 4 decimal places");
+    }
+
+    // UT-C6-04: Summary format includes coherence line
+    #[test]
+    fn test_coherence_summary_line() {
+        let report = make_coherence_status_report();
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+
+        assert!(text.contains("Coherence:"), "summary should contain Coherence line");
+        assert!(text.contains("confidence_freshness:"), "should show dimension breakdowns");
+        assert!(text.contains("graph_quality:"), "should show graph_quality");
+        assert!(text.contains("embedding_consistency:"), "should show embedding_consistency");
+        assert!(text.contains("contradiction_density:"), "should show contradiction_density");
+    }
+
+    // UT-C6-05: Recommendations present in all formats
+    #[test]
+    fn test_coherence_recommendations_in_all_formats() {
+        let report = make_coherence_status_report();
+
+        // JSON
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["maintenance_recommendations"].as_array().unwrap().len(), 2);
+
+        // Markdown
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("Maintenance Recommendations"), "markdown should have recommendations section");
+
+        // Summary
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Recommendation:"), "summary should have Recommendation lines");
+    }
+
+    // UT-C6-06: No recommendations when empty
+    #[test]
+    fn test_coherence_no_recommendations() {
+        let mut report = make_coherence_status_report();
+        report.maintenance_recommendations = Vec::new();
+
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert!(parsed["maintenance_recommendations"].as_array().unwrap().is_empty());
+
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(!text.contains("Maintenance Recommendations"), "should not show section when empty");
+
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(!text.contains("Recommendation:"), "should not show recommendation lines when empty");
+    }
+
+    // UT-C6-07: graph_compacted renders correctly
+    #[test]
+    fn test_coherence_graph_compacted_rendering() {
+        let mut report = make_coherence_status_report();
+        report.graph_compacted = true;
+
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Graph compacted: yes"), "summary should show compacted=yes");
+
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("Graph compacted: yes"), "markdown should show compacted=yes");
+
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["graph_compacted"].as_bool().unwrap(), true);
+
+        // Test false
+        report.graph_compacted = false;
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("Graph compacted: no"), "markdown should show compacted=no");
+    }
+
+    // UT-C6-08: Stale confidence count rendering
+    #[test]
+    fn test_coherence_stale_confidence_rendering() {
+        let report = make_coherence_status_report();
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Stale confidence: 15 entries"), "should show stale count in summary");
+
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("Stale confidence entries: 15"), "should show stale count in markdown");
+
+        // Zero stale count: should not show in summary
+        let mut report2 = make_status_report();
+        report2.stale_confidence_count = 0;
+        let result = format_status_report(&report2, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(!text.contains("Stale confidence:"), "should not show stale line when count is 0");
+    }
+
+    // UT-C6-09: Confidence refreshed count rendering
+    #[test]
+    fn test_coherence_confidence_refreshed_rendering() {
+        let report = make_coherence_status_report();
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Confidence refreshed: 10 entries"), "should show refreshed count");
+
+        // Zero refreshed
+        let mut report2 = make_status_report();
+        report2.confidence_refreshed_count = 0;
+        let result = format_status_report(&report2, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(!text.contains("Confidence refreshed:"), "should not show refreshed line when 0");
+    }
+
+    // UT-C6-10: Graph stale ratio rendering
+    #[test]
+    fn test_coherence_graph_stale_ratio_rendering() {
+        let report = make_coherence_status_report();
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(text.contains("Graph stale ratio: 15.00%"), "should show stale ratio percentage");
+
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(text.contains("Graph stale ratio: 15.00%"), "markdown should show stale ratio");
+
+        // Zero ratio
+        let mut report2 = make_status_report();
+        report2.graph_stale_ratio = 0.0;
+        let result = format_status_report(&report2, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(!text.contains("Graph stale ratio:"), "should not show stale ratio when 0.0 in summary");
+    }
+
+    // UT-C6-11: Default coherence values
+    #[test]
+    fn test_coherence_default_values() {
+        let report = make_status_report();
+        assert_eq!(report.coherence, 1.0);
+        assert_eq!(report.confidence_freshness_score, 1.0);
+        assert_eq!(report.graph_quality_score, 1.0);
+        assert_eq!(report.embedding_consistency_score, 1.0);
+        assert_eq!(report.contradiction_density_score, 1.0);
+        assert_eq!(report.stale_confidence_count, 0);
+        assert_eq!(report.confidence_refreshed_count, 0);
+        assert_eq!(report.graph_stale_ratio, 0.0);
+        assert_eq!(report.graph_compacted, false);
+        assert!(report.maintenance_recommendations.is_empty());
     }
 }

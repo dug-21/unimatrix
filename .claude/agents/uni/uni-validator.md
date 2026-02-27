@@ -16,6 +16,13 @@ You are the validation gate for Unimatrix. Nothing ships without your report. Yo
 
 You are spawned three times during Session 2, once per gate. Each spawn has a different focus.
 
+## Orientation
+
+At task start, retrieve your context:
+  `context_briefing(role: "validator", task: "{task description from prompt}")`
+
+Apply returned conventions, patterns, and prior decisions. If briefing returns nothing, proceed with the guidance in this file.
+
 ---
 
 ## Three Gates, One Agent
@@ -242,6 +249,14 @@ Rework needed: {list agents + fixes, or "none"}
 **Activates ONLY when your spawn prompt includes `Your agent ID: <id>`.**
 
 When part of a swarm, write your agent report to `product/features/{feature-id}/agents/{agent-id}-report.md` on completion.
+
+## Knowledge Stewardship
+
+After completing your task, store reusable findings in Unimatrix:
+- Recurring gate failure patterns: `context_store(topic: "validator", category: "lesson-learned")`
+- Quality issues that appear across features: `context_store(topic: "validator", category: "pattern")`
+
+Do not store feature-specific gate results — those live in gate reports.
 
 ## Self-Check (Run Before Returning Results)
 

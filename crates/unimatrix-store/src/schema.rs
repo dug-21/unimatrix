@@ -106,7 +106,7 @@ pub struct EntryRecord {
     pub source: String,
     pub status: Status,
     #[serde(default)]
-    pub confidence: f32,
+    pub confidence: f64,
     pub created_at: u64,
     pub updated_at: u64,
     #[serde(default)]
@@ -447,13 +447,13 @@ mod tests {
     }
 
     #[test]
-    fn test_roundtrip_f32_edge_values() {
-        for confidence in [0.0_f32, 1.0, f32::MIN_POSITIVE, 0.999999] {
+    fn test_roundtrip_f64_edge_values() {
+        for confidence in [0.0_f64, 1.0, f64::MIN_POSITIVE, 0.999999999999] {
             let mut record = make_test_record();
             record.confidence = confidence;
             let bytes = serialize_entry(&record).expect("serialize");
             let deserialized = deserialize_entry(&bytes).expect("deserialize");
-            assert_eq!(deserialized.confidence, confidence, "f32 {confidence} failed roundtrip");
+            assert_eq!(deserialized.confidence, confidence, "f64 {confidence} failed roundtrip");
         }
     }
 

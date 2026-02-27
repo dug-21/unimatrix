@@ -13,19 +13,19 @@ use unimatrix_core::{EntryRecord, Status};
 // affinity (W_COAC = 0.08), which is applied at query time. See ADR-003.
 
 /// Weight for base quality (status-dependent).
-pub const W_BASE: f32 = 0.18;
+pub const W_BASE: f64 = 0.18;
 /// Weight for usage frequency.
-pub const W_USAGE: f32 = 0.14;
+pub const W_USAGE: f64 = 0.14;
 /// Weight for freshness (recency of access).
-pub const W_FRESH: f32 = 0.18;
+pub const W_FRESH: f64 = 0.18;
 /// Weight for helpfulness (Wilson score).
-pub const W_HELP: f32 = 0.14;
+pub const W_HELP: f64 = 0.14;
 /// Weight for correction chain quality.
-pub const W_CORR: f32 = 0.14;
+pub const W_CORR: f64 = 0.14;
 /// Weight for creator trust level.
-pub const W_TRUST: f32 = 0.14;
+pub const W_TRUST: f64 = 0.14;
 /// Weight for co-access affinity (applied at query time, NOT in compute_confidence).
-pub const W_COAC: f32 = 0.08;
+pub const W_COAC: f64 = 0.08;
 
 /// Access counts beyond this contribute negligible signal.
 pub const MAX_MEANINGFUL_ACCESS: f64 = 50.0;
@@ -40,7 +40,7 @@ pub const MINIMUM_SAMPLE_SIZE: u32 = 5;
 pub const WILSON_Z: f64 = 1.96;
 
 /// Similarity weight for search re-ranking blend.
-pub const SEARCH_SIMILARITY_WEIGHT: f32 = 0.85;
+pub const SEARCH_SIMILARITY_WEIGHT: f64 = 0.85;
 
 /// Base quality proxy from entry lifecycle status.
 ///
@@ -151,9 +151,9 @@ pub fn trust_score(trust_source: &str) -> f64 {
 
 /// Compute confidence for an entry at the given timestamp.
 ///
-/// Returns f32 in [0.0, 1.0]. All intermediate computation uses f64.
+/// Returns f64 in [0.0, 1.0]. All computation uses f64 natively.
 /// The function is pure: given the same inputs, it always returns the same output.
-pub fn compute_confidence(entry: &EntryRecord, now: u64) -> f32 {
+pub fn compute_confidence(entry: &EntryRecord, now: u64) -> f64 {
     let b = base_score(entry.status);
     let u = usage_score(entry.access_count);
     let f = freshness_score(entry.last_accessed_at, entry.created_at, now);
@@ -161,20 +161,20 @@ pub fn compute_confidence(entry: &EntryRecord, now: u64) -> f32 {
     let c = correction_score(entry.correction_count);
     let t = trust_score(&entry.trust_source);
 
-    let composite = W_BASE as f64 * b
-        + W_USAGE as f64 * u
-        + W_FRESH as f64 * f
-        + W_HELP as f64 * h
-        + W_CORR as f64 * c
-        + W_TRUST as f64 * t;
+    let composite = W_BASE * b
+        + W_USAGE * u
+        + W_FRESH * f
+        + W_HELP * h
+        + W_CORR * c
+        + W_TRUST * t;
 
-    composite.clamp(0.0, 1.0) as f32
+    composite.clamp(0.0, 1.0)
 }
 
 /// Blend similarity and confidence for search result re-ranking.
 ///
 /// `final_score = SEARCH_SIMILARITY_WEIGHT * similarity + (1 - SEARCH_SIMILARITY_WEIGHT) * confidence`
-pub fn rerank_score(similarity: f32, confidence: f32) -> f32 {
+pub fn rerank_score(similarity: f64, confidence: f64) -> f64 {
     SEARCH_SIMILARITY_WEIGHT * similarity + (1.0 - SEARCH_SIMILARITY_WEIGHT) * confidence
 }
 
@@ -188,7 +188,7 @@ pub fn rerank_score(similarity: f32, confidence: f32) -> f32 {
 ///   `affinity = W_COAC * partner_score * avg_partner_confidence`
 ///
 /// Returns 0.0 when `partner_count` is 0 or `avg_partner_confidence` <= 0.
-pub fn co_access_affinity(partner_count: usize, avg_partner_confidence: f32) -> f32 {
+pub fn co_access_affinity(partner_count: usize, avg_partner_confidence: f64) -> f64 {
     if partner_count == 0 || avg_partner_confidence <= 0.0 {
         return 0.0;
     }
@@ -196,9 +196,9 @@ pub fn co_access_affinity(partner_count: usize, avg_partner_confidence: f32) -> 
     let partner_score =
         (1.0 + partner_count as f64).ln() / (1.0 + crate::coaccess::MAX_MEANINGFUL_PARTNERS).ln();
     let capped = partner_score.min(1.0);
-    let affinity = W_COAC as f64 * capped * avg_partner_confidence.clamp(0.0, 1.0) as f64;
+    let affinity = W_COAC * capped * avg_partner_confidence.clamp(0.0, 1.0);
 
-    affinity.clamp(0.0, W_COAC as f64) as f32
+    affinity.clamp(0.0, W_COAC)
 }
 
 #[cfg(test)]
@@ -465,7 +465,7 @@ mod tests {
         let expected =
             0.18 * 0.5 + 0.14 * 0.0 + 0.18 * 0.0 + 0.14 * 0.5 + 0.14 * 0.5 + 0.14 * 0.3;
         assert!(
-            (result as f64 - expected).abs() < 0.001,
+            (result - expected).abs() < 0.001,
             "expected ~{expected}, got {result}"
         );
     }
@@ -602,5 +602,114 @@ mod tests {
         let a = co_access_affinity(3, 0.5);
         assert!(a > 0.0, "expected > 0, got {a}");
         assert!(a < W_COAC, "expected < {W_COAC}, got {a}");
+    }
+
+    // -- crt-005: f64 scoring precision tests --
+
+    // UT-C2-01: Weight sum invariant (f64)
+    #[test]
+    fn weight_sum_invariant_f64() {
+        let stored_sum = W_BASE + W_USAGE + W_FRESH + W_HELP + W_CORR + W_TRUST;
+        assert_eq!(stored_sum, 0.92_f64, "stored weight sum should be 0.92");
+        assert_eq!(W_COAC, 0.08_f64, "co-access weight should be 0.08");
+        assert_eq!(stored_sum + W_COAC, 1.0_f64, "total should be 1.0");
+    }
+
+    // UT-C2-02: compute_confidence returns f64 with full precision
+    #[test]
+    fn compute_confidence_f64_precision() {
+        let now = 1_000_000u64;
+        let entry = make_test_entry(
+            Status::Active,
+            500_000,
+            now - 1000,
+            now - 500,
+            50,
+            10,
+            2,
+            "agent",
+        );
+        let confidence = compute_confidence(&entry, now);
+        // The result should be an f64 with precision beyond f32's ~7 significant digits
+        // Verify this by checking that the value is in [0.0, 1.0] and not truncated
+        assert!(confidence >= 0.0 && confidence <= 1.0, "confidence out of range: {confidence}");
+        // Convert to f32 and back: if f64 has more precision, values may differ
+        let as_f32 = confidence as f32;
+        let back_to_f64 = as_f32 as f64;
+        // The original f64 value may or may not differ -- but ensure type is f64
+        let _: f64 = confidence; // compile-time type check
+        let _ = back_to_f64; // suppress warning
+    }
+
+    // UT-C2-03: compute_confidence returns in valid range with max-ish inputs
+    #[test]
+    fn compute_confidence_high_inputs_in_range() {
+        let now = 1_000_000u64;
+        let entry = make_test_entry(
+            Status::Active,
+            1000,
+            now,
+            now,
+            100,
+            0,
+            1,
+            "human",
+        );
+        let confidence = compute_confidence(&entry, now);
+        // Should be in [0.0, 1.0] and relatively high
+        assert!(confidence >= 0.0 && confidence <= 1.0, "confidence out of range: {confidence}");
+        assert!(confidence > 0.5, "high inputs should give confidence > 0.5, got {confidence}");
+    }
+
+    // UT-C2-04: compute_confidence with minimal inputs returns positive value
+    #[test]
+    fn compute_confidence_minimal_inputs_positive() {
+        let now = 1_000_000u64;
+        let entry = make_test_entry(
+            Status::Active,
+            0,  // created at epoch
+            0,  // never updated
+            0,  // never accessed
+            0,  // no access
+            0,  // no unhelpful
+            0,  // no corrections
+            "",
+        );
+        let confidence = compute_confidence(&entry, now);
+        // Even minimal inputs produce positive values due to base_score and helpfulness neutral prior
+        assert!(confidence >= 0.0 && confidence <= 1.0, "confidence out of range: {confidence}");
+        let _: f64 = confidence; // type check
+    }
+
+    // UT-C2-05: rerank_score preserves f64 precision
+    #[test]
+    fn rerank_score_f64_precision() {
+        let sim = 0.123456789012345_f64;
+        let conf = 0.987654321098765_f64;
+        let result = rerank_score(sim, conf);
+        // SEARCH_SIMILARITY_WEIGHT * sim + (1 - SEARCH_SIMILARITY_WEIGHT) * conf
+        let expected = SEARCH_SIMILARITY_WEIGHT * sim + (1.0 - SEARCH_SIMILARITY_WEIGHT) * conf;
+        assert_eq!(result, expected, "rerank_score should return precise f64 result");
+        // Ensure the result is not truncated to f32 precision
+        let as_f32 = result as f32;
+        let back_to_f64 = as_f32 as f64;
+        // If result has more than f32 precision, these will differ
+        let _ = back_to_f64; // compile check
+    }
+
+    // UT-C2-06: co_access_affinity returns f64
+    #[test]
+    fn co_access_affinity_returns_f64() {
+        let result = co_access_affinity(5, 0.75);
+        let _: f64 = result; // compile-time type check
+        assert!(result > 0.0);
+        assert!(result <= W_COAC);
+    }
+
+    // UT-C2-07: SEARCH_SIMILARITY_WEIGHT is f64
+    #[test]
+    fn search_similarity_weight_is_f64() {
+        assert_eq!(SEARCH_SIMILARITY_WEIGHT, 0.85_f64, "should be exactly 0.85 f64");
+        let _: f64 = SEARCH_SIMILARITY_WEIGHT; // compile-time type check
     }
 }

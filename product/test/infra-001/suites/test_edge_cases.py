@@ -171,14 +171,18 @@ def test_concurrent_store_operations(server):
     categories = ["convention", "pattern", "decision", "outcome"]
     ids = []
     for i in range(20):
+        category = categories[i % len(categories)]
+        kwargs = {"agent_id": "human", "format": "json"}
+        # outcome category requires a type: tag (col-001 validation)
+        if category == "outcome":
+            kwargs["tags"] = ["type:feature"]
         resp = server.context_store(
             f"Sequential store operation number {i}: This entry covers {topics[i % len(topics)]} "
-            f"with a completely distinct perspective on {categories[i % len(categories)]} "
+            f"with a completely distinct perspective on {category} "
             f"including unique identifier {i * 1000 + 42}",
             topics[i % len(topics)],
-            categories[i % len(categories)],
-            agent_id="human",
-            format="json",
+            category,
+            **kwargs,
         )
         ids.append(extract_entry_id(resp))
     assert len(ids) == 20

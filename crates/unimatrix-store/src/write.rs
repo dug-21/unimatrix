@@ -348,7 +348,7 @@ impl Store {
         unhelpful_ids: &[u64],
         decrement_helpful_ids: &[u64],
         decrement_unhelpful_ids: &[u64],
-        confidence_fn: Option<&dyn Fn(&EntryRecord, u64) -> f32>,
+        confidence_fn: Option<&dyn Fn(&EntryRecord, u64) -> f64>,
     ) -> Result<()> {
         if all_ids.is_empty() {
             return Ok(());
@@ -427,7 +427,7 @@ impl Store {
     ///
     /// Used for mutation paths (insert, correct, deprecate) where `record_usage`
     /// is not called.
-    pub fn update_confidence(&self, entry_id: u64, confidence: f32) -> Result<()> {
+    pub fn update_confidence(&self, entry_id: u64, confidence: f64) -> Result<()> {
         let txn = self.db.begin_write()?;
 
         let old_bytes = {
@@ -445,6 +445,41 @@ impl Store {
         {
             let mut table = txn.open_table(ENTRIES)?;
             table.insert(entry_id, new_bytes.as_slice())?;
+        }
+
+        txn.commit()?;
+        Ok(())
+    }
+
+    /// Replace all VECTOR_MAP entries atomically in a single write transaction.
+    ///
+    /// Clears the existing VECTOR_MAP and inserts all provided (entry_id, data_id)
+    /// mappings. Used by VectorIndex::compact (ADR-004: VECTOR_MAP-first ordering).
+    ///
+    /// If any step fails, the transaction rolls back and old mappings remain intact.
+    pub fn rewrite_vector_map(&self, mappings: &[(u64, u64)]) -> Result<()> {
+        let txn = self.db.begin_write()?;
+
+        {
+            let mut table = txn.open_table(VECTOR_MAP)?;
+
+            // Collect existing keys to remove (avoid borrow conflict)
+            let existing_keys: Vec<u64> = table
+                .iter()?
+                .map(|r| {
+                    let (key, _) = r.map_err(StoreError::Storage)?;
+                    Ok(key.value())
+                })
+                .collect::<Result<Vec<u64>>>()?;
+
+            for key in existing_keys {
+                table.remove(key)?;
+            }
+
+            // Insert new mappings
+            for &(entry_id, data_id) in mappings {
+                table.insert(entry_id, data_id)?;
+            }
         }
 
         txn.commit()?;
@@ -1579,7 +1614,7 @@ mod tests {
         let e = TestEntry::new("test", "convention").build();
         let id = db.store().insert(e).unwrap();
 
-        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f32 {
+        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f64 {
             0.42
         }
 
@@ -1609,7 +1644,7 @@ mod tests {
             ids.push(db.store().insert(e).unwrap());
         }
 
-        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f32 {
+        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f64 {
             0.42
         }
 
@@ -1641,7 +1676,7 @@ mod tests {
         let id2 = db.store().insert(e2).unwrap();
         db.store().delete(id2).unwrap();
 
-        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f32 {
+        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f64 {
             0.42
         }
 
@@ -1787,5 +1822,104 @@ mod tests {
         // cutoff = 3001 -> 3000 < 3001 is true -> stale
         let removed = db.store().cleanup_stale_co_access(3001).unwrap();
         assert_eq!(removed, 1);
+    }
+
+    // -- crt-005: rewrite_vector_map tests --
+
+    // IT-C3-09: rewrite_vector_map single transaction
+    #[test]
+    fn test_rewrite_vector_map_replaces_entries() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        // Write 5 initial mappings
+        let mappings1: Vec<(u64, u64)> = (1..=5).map(|i| (i, i * 10)).collect();
+        store.rewrite_vector_map(&mappings1).unwrap();
+
+        // Verify all 5 present
+        for i in 1..=5u64 {
+            assert_eq!(store.get_vector_mapping(i).unwrap(), Some(i * 10));
+        }
+
+        // Rewrite with 3 different mappings
+        let mappings2: Vec<(u64, u64)> = vec![(100, 0), (200, 1), (300, 2)];
+        store.rewrite_vector_map(&mappings2).unwrap();
+
+        // Old mappings should be gone
+        for i in 1..=5u64 {
+            assert_eq!(store.get_vector_mapping(i).unwrap(), None, "old entry {i} should be cleared");
+        }
+
+        // New mappings should be present
+        assert_eq!(store.get_vector_mapping(100).unwrap(), Some(0));
+        assert_eq!(store.get_vector_mapping(200).unwrap(), Some(1));
+        assert_eq!(store.get_vector_mapping(300).unwrap(), Some(2));
+    }
+
+    // IT-C3-10: rewrite_vector_map with empty mappings
+    #[test]
+    fn test_rewrite_vector_map_empty() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        // Write some initial data
+        store.put_vector_mapping(1, 100).unwrap();
+        store.put_vector_mapping(2, 200).unwrap();
+        assert_eq!(store.get_vector_mapping(1).unwrap(), Some(100));
+
+        // Rewrite with empty
+        store.rewrite_vector_map(&[]).unwrap();
+
+        assert_eq!(store.get_vector_mapping(1).unwrap(), None);
+        assert_eq!(store.get_vector_mapping(2).unwrap(), None);
+    }
+
+    // UT-C2-13: update_confidence roundtrip f64
+    #[test]
+    fn test_update_confidence_f64_roundtrip() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let entry = TestEntry::new("test", "confidence")
+            .with_title("f64 confidence test")
+            .build();
+        let id = store.insert(entry).unwrap();
+
+        // Store a precise f64 value
+        let precise_value = 0.123456789012345_f64;
+        store.update_confidence(id, precise_value).unwrap();
+
+        // Read it back
+        let record = store.get(id).unwrap();
+        assert_eq!(record.confidence, precise_value, "f64 confidence should survive roundtrip exactly");
+    }
+
+    // UT-C2-13 supplement: update_confidence boundary values
+    #[test]
+    fn test_update_confidence_f64_boundaries() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let entry = TestEntry::new("test", "confidence")
+            .with_title("f64 boundary test")
+            .build();
+        let id = store.insert(entry).unwrap();
+
+        // Test 0.0
+        store.update_confidence(id, 0.0_f64).unwrap();
+        assert_eq!(store.get(id).unwrap().confidence, 0.0_f64);
+
+        // Test 1.0
+        store.update_confidence(id, 1.0_f64).unwrap();
+        assert_eq!(store.get(id).unwrap().confidence, 1.0_f64);
+
+        // Test f64::MIN_POSITIVE
+        store.update_confidence(id, f64::MIN_POSITIVE).unwrap();
+        assert_eq!(store.get(id).unwrap().confidence, f64::MIN_POSITIVE);
+
+        // Test value with more than f32 precision
+        let val = 0.999999999999_f64;
+        store.update_confidence(id, val).unwrap();
+        assert_eq!(store.get(id).unwrap().confidence, val);
     }
 }

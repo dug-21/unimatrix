@@ -82,8 +82,9 @@ Security is a cross-cutting concern woven into existing features, not a separate
 | Confidence Evolution | `crt-002` | Helpfulness factor added to confidence formula: `confidence = base * usage * freshness * correction * helpfulness`. Before usage data, factor = 1.0 (neutral). Confidence boost (+0.03/access), time decay (-0.005/hr), floor at 0.1. **Gaming resistance note (from crt-001 design):** The multiplicative formula should be replaced with an additive weighted composite of independent signals, each clamped to [0,1], to bound the impact of gaming any single factor. Usage factor must use log-transform (not linear access_count). Helpfulness factor must use Wilson score lower bound (not naive ratio) with a **minimum sample size** (e.g., n >= 5 votes) before deviating from the neutral prior (0.5) — this defends against both boosting (helpful-flag stuffing) and active suppression (systematic unhelpful voting to degrade entry quality). See `product/research/ass-008/USAGE-TRACKING-RESEARCH.md` for full analysis and recommended formula. |
 | Contradiction Detection | `crt-003` | Flag entries with high embedding similarity (>0.85) but conflicting content. Surface during `context_status`. Similar to ReasoningBank's contradiction pipeline — cheap, high value. **Security alignment**: This is also the primary defense against semantic poisoning — the highest-severity knowledge integrity risk (see `product/research/mcp-security/`). Extend with embedding consistency checks (re-embed and compare to detect relevance hijacking) and entry quarantine status in StatusIndex. |
 | Co-Access Boosting | `crt-004` | Track entries frequently retrieved together. Boost co-accessed entries in search results. Lightweight version of PageRank on access graph — 80% of value, 20% of complexity. |
+| Coherence Gate | `crt-005` | Unified structural health metric (λ) monitoring knowledge base coherence across four dimensions and gating autonomous self-maintenance. **Dimension 1 — Confidence staleness**: `EntryRecord.confidence` is computed at mutation time and stored as f32, but the freshness component (`e^(-age/168h)`) decays with real time. Entries that haven't been touched become increasingly overconfident. crt-005 introduces lazy confidence refresh — on `context_status` or `context_search`, entries whose stored confidence age exceeds a staleness threshold (configurable, default 24h) are recomputed. No schema change — reuses existing `confidence` field. **Dimension 2 — HNSW graph degradation**: Re-embeds (from `context_correct` and embedding consistency checks) add new points to the hnsw_rs graph but leave old points as stale routing nodes. `stale_count()` is tracked (nxs-002) but never triggers cleanup. crt-005 adds graph compaction — when stale ratio exceeds a threshold (default 10%), rebuild affected graph regions. Piggybacked on `context_status` calls (same pattern as crt-004 co-access staleness cleanup). **Dimension 3 — Embedding consistency**: Extends the opt-in `check_embedding_consistency` from crt-003 into a coherence signal. Track the ratio of entries failing the 0.99 self-similarity threshold. A rising inconsistency ratio indicates model drift or content corruption. **Dimension 4 — Contradiction density**: Track the ratio of quarantined entries to active entries. A rising ratio signals knowledge base quality degradation. **Coherence metric**: Composite λ score (0.0–1.0) combining all four dimensions, exposed as `coherence` field in `StatusReport`. Individual dimension scores also exposed for diagnostics. **Maintenance gating**: When λ drops below configurable threshold (default 0.8), `context_status` response includes maintenance recommendations. Maintenance operations execute inline during `context_status` calls — no background threads, no timers, no new async patterns. **Ordering note**: Should complete before col-002 (Retrospective Pipeline) — col-002 draws conclusions from knowledge quality signals; stale confidence and degraded HNSW graphs produce misleading retrospective insights. **Mathematical foundation**: Structural de-alignment via irrational constants (Weyl equidistribution theorem) informs the design of thresholds that avoid binary-aligned resonance in scoring — see `product/research/ass-012/` for full analysis. |
 
-**Ships**: Knowledge quality improves automatically. Unused entries fade. Helpful entries strengthen. Contradictions surface.
+**Ships**: Knowledge quality improves automatically. Unused entries fade. Helpful entries strengthen. Contradictions surface. Structural coherence is monitored and self-maintained.
 
 ---
 
@@ -140,10 +141,12 @@ Security is a cross-cutting concern woven into existing features, not a separate
 
 | Feature | Prefix | Summary |
 |---------|--------|---------|
-| Thin-Shell Agent Pattern | `alc-010` | Agent files shrink to ~45 lines: identity (name, type, scope), design principles (stable philosophy), orientation directive (`context_briefing`), self-check gates, outcome reporting. All dynamic content (conventions, duties, process knowledge) served by Unimatrix at runtime. |
+| Thin-Shell Agent Pattern | `alc-010` | Agent files slim their **knowledge content** (conventions, duties, standards) to Unimatrix — retrieved via `context_briefing` at runtime. **Workflow structure** (phase sequencing, gate transitions, conditional branching) stays in agent files — briefing returns an unordered bag of entries, not a choreography. Agent files become ~80-100 lines: identity, workflow choreography, orientation directive (`context_briefing`), self-check gates, outcome reporting. |
 | Migration Assistant | `alc-011` | Analyze existing agent files. Identify content that duplicates or contradicts Unimatrix entries. Suggest what can be extracted. Preview thin-shell version. Track migration status per agent. Accessible via `mtx-006` (Control Manager) or CLI. |
 
-**Ships**: Agent maintenance burden drops. Knowledge lives in one place. Agent files become stable identity documents that rarely change.
+**On hold (2026-02-27):** Workflow sequencing cannot be served from Unimatrix — `context_briefing` returns knowledge as an unordered set, not as ordered steps. Agent definitions must retain their workflow choreography (phase ordering, gate logic, conditional transitions). Thin-shell migration is limited to extracting **knowledge content** (conventions, duties, cross-cutting standards), not workflow structure. A future capability (workflow-aware retrieval or procedure sequencing in briefing) would be needed to go thinner. See alc-001 (Knowledge Bootstrap) for the current integration approach.
+
+**Ships**: Agent maintenance burden drops for knowledge content. Workflow structure remains author-maintained in agent files.
 
 ---
 
@@ -210,10 +213,14 @@ HTTPS (M6+):  OAuth 2.1 bearer token claims → same pipeline
 M1: Foundation (nxs)         ✅ COMPLETE
  └─► M2: MCP Server (vnc)   ✅ COMPLETE (vnc-001/002/003)
       ├─► vnc-004: Config Externalization  ← does not block M4, parallel track
-      ├─► M4: Learning & Drift (crt)
-      │    └─► M5: Orchestration Engine (col)
-      │         └─► M6: Real-Time Interface (mtx)
-      │              └─► M7: Multi-Project (dsn)
+      ├─► M4: Learning & Drift (crt)  ✅ COMPLETE (crt-001/002/003/004)
+      │    ├─► col-001: Outcome Tracking  ← ships first (data collection)
+      │    ├─► crt-005: Coherence Gate    ← ships after col-001 (data quality)
+      │    │    └─► col-002: Retrospective Pipeline  ← ships after crt-005 (data interpretation)
+      │    │         └─► col-003/004: Process Proposals + Feature Lifecycle
+      │    │              └─► M6: Real-Time Interface (mtx)
+      │    │                   └─► M7: Multi-Project (dsn)
+      │    └─► col-003: Process Proposal Workflow  ← parallel track (CLI plumbing)
       └─► M3: Agent Integration (alc)    ← deferred, see note
            └─► M8: Thin-Shell Migration (alc)
 

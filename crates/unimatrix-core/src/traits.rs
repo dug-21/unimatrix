@@ -51,6 +51,9 @@ pub trait VectorStore: Send + Sync {
     fn point_count(&self) -> usize;
     fn contains(&self, entry_id: u64) -> bool;
     fn stale_count(&self) -> usize;
+    /// Rebuild the HNSW graph from active entry embeddings, eliminating stale nodes.
+    /// Object-safe: `&self`, concrete types, no generics.
+    fn compact(&self, embeddings: Vec<(u64, Vec<f32>)>) -> Result<(), CoreError>;
 }
 
 /// Trait abstraction over embedding generation (unimatrix-embed).

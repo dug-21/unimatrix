@@ -307,3 +307,18 @@ DESIGN LEADER (uni-scrum-master):
   Phase 2c:   Task(uni-synthesizer) — brief + maps + GH Issue (fresh context)
   Phase 2d:   Return all artifacts to human — SESSION 1 ENDS
 ```
+
+---
+
+## Outcome Recording
+
+After returning artifacts to the human, record the session outcome in Unimatrix:
+
+```
+context_store(
+  category: "outcome",
+  feature_cycle: "{feature-id}",
+  tags: ["type:feature", "phase:design", "result:pass"],
+  content: "Session 1 complete. Artifacts: {list artifact paths}"
+)
+```

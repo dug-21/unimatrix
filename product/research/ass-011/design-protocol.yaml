@@ -1,0 +1,236 @@
+protocol:
+  name: Design Session
+  id: session-1
+  triggers:
+    - specification
+    - architecture
+    - design
+    - research
+    - scope
+    - risk strategy
+  next_session:
+    trigger_outcome:
+      phase: design
+      result: pass
+    target: session-2  # delivery protocol
+
+  rules:
+    output_dir: "product/features/{feature-id}/"
+    no_code_changes: true
+    no_edits_outside_feature_dir: true
+    forbidden_agents:
+      - uni-rust-dev
+      - uni-pseudocode
+      - uni-tester
+    agent_return_format: "artifact paths + key decisions + open questions (NOT file contents)"
+    concurrency: "batch all agents within each phase in ONE message"
+
+  phases:
+    - id: phase-1
+      name: Research & Scope Definition
+      participants:
+        - uni-researcher
+      human_checkpoint: true  # human must approve SCOPE.md before continuing
+      inputs:
+        - source: human
+          artifact: "high-level intent / problem description"
+      outputs:
+        - artifact: SCOPE.md
+          path: "product/features/{feature-id}/SCOPE.md"
+      spawn:
+        - agent: uni-researcher
+          agent_id: "{feature-id}-researcher"
+          prompt_includes:
+            - "high-level intent from human"
+          reads:
+            - "existing codebase patterns"
+            - "technical landscape"
+          returns:
+            - SCOPE.md path
+            - key findings
+            - open questions for human
+
+    - id: phase-1b
+      name: Scope Risk Assessment
+      depends_on: phase-1
+      participants:
+        - uni-risk-strategist
+      inputs:
+        - source: phase-1
+          artifact: SCOPE.md
+        - source: static
+          artifact: product/PRODUCT-VISION.md
+      outputs:
+        - artifact: SCOPE-RISK-ASSESSMENT.md
+          path: "product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md"
+      spawn:
+        - agent: uni-risk-strategist
+          agent_id: "{feature-id}-agent-0-scope-risk"
+          mode: scope-risk
+          reads:
+            - "product/features/{feature-id}/SCOPE.md"
+            - "product/PRODUCT-VISION.md"
+          returns:
+            - file path
+            - risk summary
+            - "top 3 risks for architect attention"
+
+    - id: phase-2a
+      name: Architecture + Specification
+      depends_on: phase-1b
+      parallel: true  # both agents spawn in ONE message
+      participants:
+        - uni-architect
+        - uni-specification
+      inputs:
+        - source: phase-1
+          artifact: SCOPE.md
+        - source: phase-1b
+          artifact: SCOPE-RISK-ASSESSMENT.md
+      outputs:
+        - artifact: ARCHITECTURE.md
+          path: "product/features/{feature-id}/architecture/ARCHITECTURE.md"
+        - artifact: "ADR-NNN-{name}.md"
+          path: "product/features/{feature-id}/architecture/ADR-*.md"
+        - artifact: SPECIFICATION.md
+          path: "product/features/{feature-id}/specification/SPECIFICATION.md"
+      spawn:
+        - agent: uni-architect
+          agent_id: "{feature-id}-agent-1-architect"
+          reads:
+            - "product/features/{feature-id}/SCOPE.md"
+            - "product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md"
+          instructions: "Address SR-XX risks in architecture decisions where applicable"
+          returns:
+            - ARCHITECTURE.md path
+            - ADR file paths
+            - key decisions
+        - agent: uni-specification
+          agent_id: "{feature-id}-agent-2-spec"
+          reads:
+            - "product/features/{feature-id}/SCOPE.md"
+            - "product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md"
+          instructions: "Consider SR-XX risks when defining constraints and acceptance criteria"
+          returns:
+            - SPECIFICATION.md path
+            - key decisions
+
+    - id: phase-2a-plus
+      name: Risk-Based Test Strategy
+      depends_on: phase-2a
+      participants:
+        - uni-risk-strategist
+      inputs:
+        - source: phase-1
+          artifact: SCOPE.md
+        - source: phase-1b
+          artifact: SCOPE-RISK-ASSESSMENT.md
+        - source: phase-2a
+          artifact: ARCHITECTURE.md
+        - source: phase-2a
+          artifact: "ADR files (paths from architect return)"
+        - source: phase-2a
+          artifact: SPECIFICATION.md
+      outputs:
+        - artifact: RISK-TEST-STRATEGY.md
+          path: "product/features/{feature-id}/RISK-TEST-STRATEGY.md"
+          sacred: true  # one of three sacred source documents
+      spawn:
+        - agent: uni-risk-strategist
+          agent_id: "{feature-id}-agent-3-risk"
+          mode: architecture-risk
+          reads:
+            - "product/features/{feature-id}/SCOPE.md"
+            - "product/features/{feature-id}/architecture/ARCHITECTURE.md"
+            - "product/features/{feature-id}/architecture/ADR-*.md"
+            - "product/features/{feature-id}/specification/SPECIFICATION.md"
+            - "product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md"
+          instructions: "Trace each SR-XX scope risk in the Scope Risk Traceability table"
+          returns:
+            - file path
+            - risk summary
+
+    - id: phase-2b
+      name: Vision Alignment Check
+      depends_on: phase-2a-plus
+      participants:
+        - uni-vision-guardian
+      inputs:
+        - source: static
+          artifact: product/PRODUCT-VISION.md
+        - source: phase-1
+          artifact: SCOPE.md
+        - source: phase-1b
+          artifact: SCOPE-RISK-ASSESSMENT.md
+        - source: phase-2a
+          artifact: ARCHITECTURE.md
+        - source: phase-2a
+          artifact: SPECIFICATION.md
+        - source: phase-2a-plus
+          artifact: RISK-TEST-STRATEGY.md
+      outputs:
+        - artifact: ALIGNMENT-REPORT.md
+          path: "product/features/{feature-id}/ALIGNMENT-REPORT.md"
+      spawn:
+        - agent: uni-vision-guardian
+          agent_id: "{feature-id}-vision-guardian"
+          reads:
+            - "product/PRODUCT-VISION.md"
+            - "product/features/{feature-id}/SCOPE.md"
+            - "product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md"
+            - "product/features/{feature-id}/architecture/ARCHITECTURE.md"
+            - "product/features/{feature-id}/specification/SPECIFICATION.md"
+            - "product/features/{feature-id}/RISK-TEST-STRATEGY.md"
+          returns:
+            - report path
+            - variance summary
+
+    - id: phase-2c
+      name: Synthesis
+      depends_on: phase-2b
+      participants:
+        - uni-synthesizer
+      fresh_context: true  # spawned with clean context window
+      inputs:
+        - source: all-prior-phases
+          artifacts: "all artifacts produced so far"
+        - source: phase-2a
+          artifact: "ADR file paths from architect return"
+        - source: phase-2b
+          artifact: "vision variances from guardian return"
+      outputs:
+        - artifact: IMPLEMENTATION-BRIEF.md
+          path: "product/features/{feature-id}/IMPLEMENTATION-BRIEF.md"
+        - artifact: ACCEPTANCE-MAP.md
+          path: "product/features/{feature-id}/ACCEPTANCE-MAP.md"
+        - artifact: GitHub Issue
+          type: external
+      spawn:
+        - agent: uni-synthesizer
+          agent_id: "{feature-id}-synthesizer"
+          reads:
+            - "product/features/{feature-id}/SCOPE.md"
+            - "product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md"
+            - "product/features/{feature-id}/specification/SPECIFICATION.md"
+            - "product/features/{feature-id}/architecture/ARCHITECTURE.md"
+            - "product/features/{feature-id}/architecture/ADR-*.md"
+            - "product/features/{feature-id}/RISK-TEST-STRATEGY.md"
+            - "product/features/{feature-id}/ALIGNMENT-REPORT.md"
+          returns:
+            - IMPLEMENTATION-BRIEF.md path
+            - ACCEPTANCE-MAP.md path
+            - GH Issue URL
+
+    - id: phase-2d
+      name: Return to Human
+      depends_on: phase-2c
+      type: handoff  # not an agent spawn — coordinator action
+      human_checkpoint: true
+      summary_includes:
+        - all artifact paths
+        - ADR file paths
+        - GH Issue URL
+        - "vision alignment summary (PASS/WARN/VARIANCE/FAIL counts)"
+        - "variances requiring approval"
+        - "open questions"
+      session_ends: true

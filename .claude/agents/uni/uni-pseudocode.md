@@ -14,6 +14,13 @@ capabilities:
 
 You produce per-component pseudocode files during Session 2 Stage 3a. Implementation agents translate your pseudocode directly into code.
 
+## Orientation
+
+At task start, retrieve your context:
+  `context_briefing(role: "pseudocode", task: "{task description from prompt}")`
+
+Apply returned conventions, patterns, and prior decisions. If briefing returns nothing, proceed with the guidance in this file.
+
 ## Your Scope
 
 - **Specialized**: Algorithm design and pseudocode for Unimatrix components

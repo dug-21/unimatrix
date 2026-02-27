@@ -8,6 +8,7 @@
 pub mod audit;
 pub mod categories;
 pub mod coaccess;
+pub mod coherence;
 pub mod confidence;
 pub mod contradiction;
 pub mod embed_handle;

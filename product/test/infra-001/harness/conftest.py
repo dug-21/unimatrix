@@ -25,7 +25,7 @@ def _resolve_binary() -> str:
     if env_path and os.path.isfile(env_path):
         return env_path
 
-    workspace_root = Path(__file__).resolve().parent.parent.parent.parent
+    workspace_root = Path(__file__).resolve().parent.parent.parent.parent.parent
     candidates = [
         workspace_root / "target" / "release" / "unimatrix-server",
         workspace_root / "target" / "debug" / "unimatrix-server",

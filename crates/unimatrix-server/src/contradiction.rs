@@ -114,8 +114,8 @@ pub fn scan_contradictions(
                 continue;
             }
 
-            // Skip below similarity threshold
-            if neighbor.similarity < config.similarity_threshold {
+            // Skip below similarity threshold (cast f64 similarity to f32 for contradiction-local comparison)
+            if (neighbor.similarity as f32) < config.similarity_threshold {
                 continue;
             }
 
@@ -159,7 +159,7 @@ pub fn scan_contradictions(
                     entry_id_b: pair_key.1,
                     title_a,
                     title_b,
-                    similarity: neighbor.similarity,
+                    similarity: neighbor.similarity as f32,
                     conflict_score,
                     explanation,
                 });
@@ -262,14 +262,14 @@ pub fn check_embedding_consistency(
             inconsistencies.push(EmbeddingInconsistency {
                 entry_id: entry.id,
                 title: entry.title.clone(),
-                expected_similarity: top_result.similarity,
+                expected_similarity: top_result.similarity as f32,
             });
-        } else if top_result.similarity < config.embedding_consistency_threshold {
+        } else if (top_result.similarity as f32) < config.embedding_consistency_threshold {
             // Self-match but similarity too low
             inconsistencies.push(EmbeddingInconsistency {
                 entry_id: entry.id,
                 title: entry.title.clone(),
-                expected_similarity: top_result.similarity,
+                expected_similarity: top_result.similarity as f32,
             });
         }
     }

@@ -41,7 +41,7 @@ use crate::validation::{
 const EF_SEARCH: usize = 32;
 
 /// Near-duplicate cosine similarity threshold.
-const DUPLICATE_THRESHOLD: f32 = 0.92;
+const DUPLICATE_THRESHOLD: f64 = 0.92;
 
 /// Parameters for semantic search.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -193,6 +193,8 @@ pub struct StatusParams {
     pub format: Option<String>,
     /// Opt-in embedding consistency check (default: false).
     pub check_embeddings: Option<bool>,
+    /// Set to true to run maintenance writes (confidence refresh, graph compaction). Default: false (read-only diagnostics).
+    pub maintain: Option<bool>,
 }
 
 /// Parameters for getting an orientation briefing.
@@ -997,12 +999,15 @@ impl UnimatrixServer {
         // 4. Parse format
         let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
 
+        // 4b. Resolve maintain flag (ADR-002: default false, opt-in)
+        let maintain_enabled = params.maintain.unwrap_or(false);
+
         // 5. Build report in a single read transaction (consistent snapshot)
         let store = Arc::clone(&self.store);
         let topic_filter = params.topic.clone();
         let category_filter = params.category.clone();
 
-        let report = tokio::task::spawn_blocking(move || -> Result<StatusReport, crate::error::ServerError> {
+        let report_result = tokio::task::spawn_blocking(move || -> Result<(StatusReport, Vec<unimatrix_store::EntryRecord>), crate::error::ServerError> {
             let read_txn = store.begin_read()
                 .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
 
@@ -1065,6 +1070,7 @@ impl UnimatrixServer {
             }
 
             // 5d. Correction chain metrics + security metrics from ENTRIES scan
+            //      Also collect active entries for coherence dimensions (crt-005)
             let entries_table = read_txn.open_table(ENTRIES)
                 .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
             let mut entries_with_supersedes = 0u64;
@@ -1072,6 +1078,7 @@ impl UnimatrixServer {
             let mut total_correction_count = 0u64;
             let mut trust_source_dist: BTreeMap<String, u64> = BTreeMap::new();
             let mut entries_without_attribution = 0u64;
+            let mut active_entries: Vec<unimatrix_store::EntryRecord> = Vec::new();
 
             for item in entries_table.iter()
                 .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))? {
@@ -1094,6 +1101,9 @@ impl UnimatrixServer {
                 *trust_source_dist.entry(ts).or_insert(0) += 1;
                 if record.created_by.is_empty() {
                     entries_without_attribution += 1;
+                }
+                if record.status == unimatrix_store::Status::Active {
+                    active_entries.push(record);
                 }
             }
 
@@ -1157,7 +1167,7 @@ impl UnimatrixServer {
             fc_sorted.truncate(10);
 
             // 5e. Build StatusReport
-            Ok(StatusReport {
+            let report = StatusReport {
                 total_active,
                 total_deprecated,
                 total_proposed,
@@ -1178,14 +1188,26 @@ impl UnimatrixServer {
                 active_co_access_pairs: 0,
                 top_co_access_pairs: Vec::new(),
                 stale_pairs_cleaned: 0,
+                coherence: 1.0,
+                confidence_freshness_score: 1.0,
+                graph_quality_score: 1.0,
+                embedding_consistency_score: 1.0,
+                contradiction_density_score: 1.0,
+                stale_confidence_count: 0,
+                confidence_refreshed_count: 0,
+                graph_stale_ratio: 0.0,
+                graph_compacted: false,
+                maintenance_recommendations: Vec::new(),
                 total_outcomes,
                 outcomes_by_type: outcomes_by_type.into_iter().collect(),
                 outcomes_by_result: outcomes_by_result.into_iter().collect(),
                 outcomes_by_feature_cycle: fc_sorted,
-            })
+            };
+            Ok((report, active_entries))
         }).await
         .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::JoinError(e.to_string()))))?
         .map_err(rmcp::ErrorData::from)?;
+        let (report, active_entries) = report_result;
 
         // 5f. Contradiction scanning + embedding consistency (outside read txn)
         let check_embeddings = params.check_embeddings.unwrap_or(false);
@@ -1245,7 +1267,7 @@ impl UnimatrixServer {
             }
         }
 
-        // 5g. Co-access stats and cleanup (crt-004)
+        // 5g. Co-access stats + cleanup (crt-004, gated by maintain in crt-005)
         {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -1254,11 +1276,12 @@ impl UnimatrixServer {
             let staleness_cutoff = now.saturating_sub(crate::coaccess::CO_ACCESS_STALENESS_SECONDS);
 
             let store_for_coaccess = Arc::clone(&self.store);
+            let maintain_for_coaccess = maintain_enabled;
             let co_access_result = tokio::task::spawn_blocking(move || {
-                // Stats
+                // Stats (always read)
                 let (total, active) = store_for_coaccess.co_access_stats(staleness_cutoff)?;
 
-                // Top clusters
+                // Top clusters (always read)
                 let top_pairs = store_for_coaccess.top_co_access_pairs(5, staleness_cutoff)?;
 
                 // Resolve titles for top pairs
@@ -1280,8 +1303,12 @@ impl UnimatrixServer {
                     });
                 }
 
-                // Cleanup stale pairs (piggybacked maintenance)
-                let cleaned = store_for_coaccess.cleanup_stale_co_access(staleness_cutoff)?;
+                // Cleanup stale pairs (only when maintain=true, ADR-002)
+                let cleaned = if maintain_for_coaccess {
+                    store_for_coaccess.cleanup_stale_co_access(staleness_cutoff)?
+                } else {
+                    0
+                };
 
                 Ok::<_, unimatrix_store::StoreError>((total, active, clusters, cleaned))
             }).await;
@@ -1302,6 +1329,164 @@ impl UnimatrixServer {
                 }
             }
         }
+
+        // 5h. Coherence dimensions (always computed, read-only) [crt-005]
+        let now_ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        // Confidence freshness dimension
+        let (freshness_dim, stale_conf_count) = crate::coherence::confidence_freshness_score(
+            &active_entries,
+            now_ts,
+            crate::coherence::DEFAULT_STALENESS_THRESHOLD_SECS,
+        );
+        report.confidence_freshness_score = freshness_dim;
+        report.stale_confidence_count = stale_conf_count;
+
+        // Graph quality dimension
+        let graph_point_count = self.vector_index.point_count();
+        let graph_stale_count = self.vector_index.stale_count();
+        let graph_stale_ratio = if graph_point_count == 0 {
+            0.0
+        } else {
+            graph_stale_count as f64 / graph_point_count as f64
+        };
+        report.graph_quality_score = crate::coherence::graph_quality_score(graph_stale_count, graph_point_count);
+        report.graph_stale_ratio = graph_stale_ratio;
+
+        // Embedding consistency dimension (uses check_embeddings result if available)
+        let embed_dim = if report.embedding_check_performed {
+            let total_checked = active_entries.len();
+            let inconsistent_count = report.embedding_inconsistencies.len();
+            Some(crate::coherence::embedding_consistency_score(inconsistent_count, total_checked))
+        } else {
+            None
+        };
+        report.embedding_consistency_score = embed_dim.unwrap_or(1.0);
+
+        // Contradiction density dimension
+        report.contradiction_density_score = crate::coherence::contradiction_density_score(
+            report.total_quarantined,
+            report.total_active,
+        );
+
+        // 5i. Confidence refresh (only when maintain=true) [C5]
+        if maintain_enabled {
+            let staleness_threshold = crate::coherence::DEFAULT_STALENESS_THRESHOLD_SECS;
+            let batch_cap = crate::coherence::MAX_CONFIDENCE_REFRESH_BATCH;
+
+            // Identify stale entries (same logic as confidence_freshness_score)
+            let mut stale_entries: Vec<&unimatrix_store::EntryRecord> = active_entries.iter()
+                .filter(|e| {
+                    let ref_ts = e.updated_at.max(e.last_accessed_at);
+                    if ref_ts == 0 {
+                        return true;
+                    }
+                    if now_ts > ref_ts {
+                        (now_ts - ref_ts) > staleness_threshold
+                    } else {
+                        false
+                    }
+                })
+                .collect();
+
+            // Sort oldest first (lowest reference timestamp)
+            stale_entries.sort_by_key(|e| e.updated_at.max(e.last_accessed_at));
+
+            // Cap at batch size
+            stale_entries.truncate(batch_cap);
+
+            if !stale_entries.is_empty() {
+                let ids_and_confs: Vec<(u64, f64)> = stale_entries.iter()
+                    .map(|e| (e.id, crate::confidence::compute_confidence(e, now_ts)))
+                    .collect();
+
+                let store_for_refresh = Arc::clone(&self.store);
+                let refresh_result = tokio::task::spawn_blocking(move || {
+                    let mut refreshed = 0u64;
+                    for (id, new_conf) in ids_and_confs {
+                        match store_for_refresh.update_confidence(id, new_conf) {
+                            Ok(()) => refreshed += 1,
+                            Err(e) => {
+                                tracing::warn!("confidence refresh failed for {id}: {e}");
+                            }
+                        }
+                    }
+                    refreshed
+                }).await;
+
+                match refresh_result {
+                    Ok(count) => {
+                        report.confidence_refreshed_count = count;
+                    }
+                    Err(e) => {
+                        tracing::warn!("confidence refresh task failed: {e}");
+                    }
+                }
+            }
+        }
+
+        // 5j. Graph compaction (only when maintain=true && stale ratio > trigger) [C8]
+        if maintain_enabled && graph_stale_ratio > crate::coherence::DEFAULT_STALE_RATIO_TRIGGER {
+            if let Ok(adapter) = self.embed_service.get_adapter().await {
+                // Re-embed all active entries
+                let pairs: Vec<(String, String)> = active_entries.iter()
+                    .map(|e| (e.title.clone(), e.content.clone()))
+                    .collect();
+
+                match adapter.embed_entries(&pairs) {
+                    Ok(embeddings) => {
+                        let compact_input: Vec<(u64, Vec<f32>)> = active_entries.iter()
+                            .zip(embeddings.into_iter())
+                            .map(|(entry, emb)| (entry.id, emb))
+                            .collect();
+
+                        let vi_for_compact = Arc::clone(&self.vector_index);
+                        match tokio::task::spawn_blocking(move || {
+                            vi_for_compact.compact(compact_input)
+                        }).await {
+                            Ok(Ok(())) => {
+                                report.graph_compacted = true;
+                            }
+                            Ok(Err(e)) => {
+                                tracing::warn!("graph compaction failed: {e}");
+                            }
+                            Err(e) => {
+                                tracing::warn!("graph compaction task failed: {e}");
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("re-embedding for compaction failed: {e}");
+                    }
+                }
+            }
+        }
+
+        // 5k. Lambda computation + recommendations (always) [C4 integration]
+        let oldest_stale = crate::coherence::oldest_stale_age(
+            &active_entries,
+            now_ts,
+            crate::coherence::DEFAULT_STALENESS_THRESHOLD_SECS,
+        );
+        report.coherence = crate::coherence::compute_lambda(
+            report.confidence_freshness_score,
+            report.graph_quality_score,
+            embed_dim,
+            report.contradiction_density_score,
+            &crate::coherence::DEFAULT_WEIGHTS,
+        );
+        report.maintenance_recommendations = crate::coherence::generate_recommendations(
+            report.coherence,
+            crate::coherence::DEFAULT_LAMBDA_THRESHOLD,
+            report.stale_confidence_count,
+            oldest_stale,
+            report.graph_stale_ratio,
+            report.embedding_inconsistencies.len(),
+            report.total_quarantined,
+        );
 
         // 6. Audit (standalone, best-effort)
         let _ = self.audit.log_event(AuditEvent {

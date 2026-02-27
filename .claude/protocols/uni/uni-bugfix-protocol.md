@@ -178,12 +178,29 @@ Task(subagent_type: "uni-tester",
 
     PHASE: Test Execution (Bug Fix Verification)
 
+    Read: product/test/infra-001/USAGE-PROTOCOL.md
+
     Execute:
     1. The new bug-specific tests written by the developer
     2. Full workspace test suite (cargo test --workspace)
     3. Clippy check (cargo clippy --workspace -- -D warnings)
+    4. Integration smoke tests (MANDATORY):
+       cd product/test/infra-001 && python -m pytest suites/ -v -m smoke --timeout=60
+    5. Integration suites relevant to the bug area (see USAGE-PROTOCOL.md suite table)
 
-    Return: test results summary, any failures, clippy warnings.")
+    INTEGRATION TEST FAILURE TRIAGE (CRITICAL):
+    - CAUSED BY THIS BUG FIX → Report back to bugfix-manager for rework.
+    - PRE-EXISTING / UNRELATED → Do NOT fix. File a GH Issue, mark the test
+      @pytest.mark.xfail(reason='Pre-existing: GH#NNN — description').
+    - BAD TEST ASSERTION → Fix the test. Document in results.
+    Agents must NEVER fix integration test failures unrelated to the bug fix.
+
+    If the bug was discovered by an integration test (GH Issue references
+    a specific test), verify that specific test now passes and remove its
+    @pytest.mark.xfail marker.
+
+    Return: test results summary, any failures, clippy warnings,
+            integration test counts, any GH Issues filed.")
 ```
 
 Wait for the tester to complete.
@@ -212,6 +229,9 @@ Task(subagent_type: "uni-validator",
     - No unsafe code introduced
     - Fix is minimal (no unrelated changes included)
     - New test(s) would have caught the original bug
+    - Integration smoke tests passed
+    - Any xfail markers added have corresponding GH Issues
+    - If bug was discovered by integration test, that test's xfail marker was removed
 
     Bug report: {bug description}
     Root cause diagnosis: {from approved diagnosis}
@@ -377,4 +397,19 @@ BUGFIX MANAGER (uni-bugfix-manager):
   Phase 4:    Task(uni-security-reviewer) — PR security review (fresh context)
               ...wait...
   Phase 5:    Present PR + security assessment to human — SESSION ENDS
+```
+
+---
+
+## Outcome Recording
+
+After presenting the PR to the human, record the bugfix outcome in Unimatrix:
+
+```
+context_store(
+  category: "outcome",
+  feature_cycle: "{bug-id}",
+  tags: ["type:bugfix", "phase:delivery", "result:pass"],
+  content: "Bugfix complete. Root cause: {summary}. PR: {url}"
+)
 ```
