@@ -7,6 +7,7 @@ use rmcp::model::{CallToolResult, Content};
 use unimatrix_store::{EntryRecord, Status};
 
 use crate::error::ServerError;
+use crate::registry::{Capability, EnrollResult, TrustLevel};
 
 /// Format a unix timestamp (seconds) as a human-readable UTC string.
 fn format_timestamp(ts: u64) -> String {
@@ -1073,6 +1074,84 @@ pub fn format_empty_results(_tool: &str, format: ResponseFormat) -> CallToolResu
             "No matching entries found. Try broadening your search filters or using different terms.",
         )]),
         ResponseFormat::Json => CallToolResult::success(vec![Content::text("[]")]),
+    }
+}
+
+// -- alc-002: enrollment response formatting --
+
+fn trust_level_str(tl: TrustLevel) -> &'static str {
+    match tl {
+        TrustLevel::System => "system",
+        TrustLevel::Privileged => "privileged",
+        TrustLevel::Internal => "internal",
+        TrustLevel::Restricted => "restricted",
+    }
+}
+
+fn capability_str(cap: &Capability) -> &'static str {
+    match cap {
+        Capability::Read => "read",
+        Capability::Write => "write",
+        Capability::Search => "search",
+        Capability::Admin => "admin",
+    }
+}
+
+fn capabilities_str(caps: &[Capability]) -> String {
+    caps.iter()
+        .map(|c| capability_str(c))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// Format a successful enrollment result for the given response format.
+pub fn format_enroll_success(result: &EnrollResult, format: ResponseFormat) -> CallToolResult {
+    let action = if result.created {
+        "Enrolled"
+    } else {
+        "Updated"
+    };
+    let agent = &result.agent;
+    let caps = capabilities_str(&agent.capabilities);
+    let trust = trust_level_str(agent.trust_level);
+
+    match format {
+        ResponseFormat::Summary => {
+            let text = format!(
+                "{action} agent '{}' as {trust} with capabilities: {caps}",
+                agent.agent_id
+            );
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Markdown => {
+            let text = format!(
+                "---BEGIN UNIMATRIX RESPONSE---\n\
+                 ## Agent {action}\n\n\
+                 | Field | Value |\n\
+                 |-------|-------|\n\
+                 | Agent ID | {} |\n\
+                 | Action | {action} |\n\
+                 | Trust Level | {trust} |\n\
+                 | Capabilities | {caps} |\n\
+                 ---END UNIMATRIX RESPONSE---",
+                agent.agent_id
+            );
+            CallToolResult::success(vec![Content::text(text)])
+        }
+        ResponseFormat::Json => {
+            let json = serde_json::json!({
+                "action": action.to_lowercase(),
+                "agent_id": agent.agent_id,
+                "trust_level": trust,
+                "capabilities": agent.capabilities
+                    .iter()
+                    .map(|c| capability_str(c))
+                    .collect::<Vec<_>>(),
+            });
+            CallToolResult::success(vec![Content::text(
+                serde_json::to_string_pretty(&json).unwrap_or_default(),
+            )])
+        }
     }
 }
 
@@ -2273,5 +2352,99 @@ mod tests {
         assert_eq!(report.graph_stale_ratio, 0.0);
         assert_eq!(report.graph_compacted, false);
         assert!(report.maintenance_recommendations.is_empty());
+    }
+
+    // -- alc-002: enrollment response formatting --
+
+    fn make_enroll_result(created: bool) -> EnrollResult {
+        use crate::registry::AgentRecord;
+        EnrollResult {
+            created,
+            agent: AgentRecord {
+                agent_id: "test-agent".to_string(),
+                trust_level: TrustLevel::Internal,
+                capabilities: vec![Capability::Read, Capability::Write, Capability::Search],
+                allowed_topics: None,
+                allowed_categories: None,
+                enrolled_at: 1000,
+                last_seen_at: 2000,
+                active: true,
+            },
+        }
+    }
+
+    #[test]
+    fn test_format_enroll_success_summary_created() {
+        let result = make_enroll_result(true);
+        let response = format_enroll_success(&result, ResponseFormat::Summary);
+        let text = result_text(&response);
+        assert!(text.contains("Enrolled"), "should say Enrolled: {text}");
+        assert!(text.contains("test-agent"), "should contain agent_id: {text}");
+        assert!(text.contains("internal"), "should contain trust level: {text}");
+        assert!(text.contains("read"), "should contain capabilities: {text}");
+    }
+
+    #[test]
+    fn test_format_enroll_success_summary_updated() {
+        let result = make_enroll_result(false);
+        let response = format_enroll_success(&result, ResponseFormat::Summary);
+        let text = result_text(&response);
+        assert!(text.contains("Updated"), "should say Updated: {text}");
+    }
+
+    #[test]
+    fn test_format_enroll_success_markdown() {
+        let result = make_enroll_result(true);
+        let response = format_enroll_success(&result, ResponseFormat::Markdown);
+        let text = result_text(&response);
+        assert!(
+            text.contains("---BEGIN UNIMATRIX RESPONSE---"),
+            "should have begin marker: {text}"
+        );
+        assert!(
+            text.contains("---END UNIMATRIX RESPONSE---"),
+            "should have end marker: {text}"
+        );
+        assert!(text.contains("test-agent"), "should contain agent_id: {text}");
+        assert!(text.contains("internal"), "should contain trust level: {text}");
+    }
+
+    #[test]
+    fn test_format_enroll_success_json() {
+        let result = make_enroll_result(true);
+        let response = format_enroll_success(&result, ResponseFormat::Json);
+        let text = result_text(&response);
+        let json: serde_json::Value =
+            serde_json::from_str(&text).expect("should be valid JSON");
+        assert_eq!(json["action"], "enrolled");
+        assert_eq!(json["agent_id"], "test-agent");
+        assert_eq!(json["trust_level"], "internal");
+        assert!(json["capabilities"].is_array());
+    }
+
+    #[test]
+    fn test_format_enroll_success_json_updated() {
+        let result = make_enroll_result(false);
+        let response = format_enroll_success(&result, ResponseFormat::Json);
+        let text = result_text(&response);
+        let json: serde_json::Value =
+            serde_json::from_str(&text).expect("should be valid JSON");
+        assert_eq!(json["action"], "updated");
+    }
+
+    #[test]
+    fn test_trust_level_str_all() {
+        assert_eq!(trust_level_str(TrustLevel::System), "system");
+        assert_eq!(trust_level_str(TrustLevel::Privileged), "privileged");
+        assert_eq!(trust_level_str(TrustLevel::Internal), "internal");
+        assert_eq!(trust_level_str(TrustLevel::Restricted), "restricted");
+    }
+
+    #[test]
+    fn test_capability_str_all() {
+        assert_eq!(capability_str(&Capability::Read), "read");
+        assert_eq!(capability_str(&Capability::Write), "write");
+        assert_eq!(capability_str(&Capability::Search), "search");
+        assert_eq!(capability_str(&Capability::Admin), "admin");
     }
 }
