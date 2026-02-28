@@ -30,10 +30,6 @@ const DB_OPEN_RETRY_DELAY: Duration = Duration::from_secs(1);
 /// Timeout for waiting on a stale process to exit after SIGTERM.
 const STALE_PROCESS_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Maximum idle time before the server shuts down.
-/// Prevents zombie servers when stdio connections break silently.
-const SESSION_IDLE_TIMEOUT: Duration = Duration::from_secs(30 * 60);
-
 /// Unimatrix MCP knowledge server.
 #[derive(Parser)]
 #[command(name = "unimatrix-server", about = "Unimatrix MCP knowledge server")]
@@ -168,7 +164,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         vector_dir: paths.vector_dir.clone(),
         registry,
         audit,
-        pid_path: paths.pid_path.clone(),
         adapt_service,
         data_dir: paths.data_dir.clone(),
     };
@@ -180,21 +175,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .map_err(|e| ServerError::Shutdown(e.to_string()))?;
 
-    // Wait for session close, timeout, or signal, then shutdown.
-    // The timeout prevents zombie servers when stdio connections break silently.
-    let waiting = async {
-        match tokio::time::timeout(SESSION_IDLE_TIMEOUT, running.waiting()).await {
-            Ok(_) => {
-                tracing::info!("session closed by client");
-            }
-            Err(_elapsed) => {
-                tracing::info!(
-                    timeout_secs = SESSION_IDLE_TIMEOUT.as_secs(),
-                    "session idle timeout reached, initiating shutdown"
-                );
-            }
-        }
-    };
+    // Wait for session close or signal, then shutdown.
+    // Flock-based PidGuard handles zombie cleanup at next startup.
+    let waiting = async { let _ = running.waiting().await; };
     shutdown::graceful_shutdown(lifecycle_handles, waiting).await?;
 
     tracing::info!("unimatrix server exited cleanly");
