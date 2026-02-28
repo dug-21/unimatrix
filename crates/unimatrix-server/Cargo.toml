@@ -18,6 +18,7 @@ unimatrix-core = { path = "../unimatrix-core", features = ["async"] }
 unimatrix-store = { path = "../unimatrix-store" }
 unimatrix-vector = { path = "../unimatrix-vector" }
 unimatrix-embed = { path = "../unimatrix-embed" }
+unimatrix-adapt = { path = "../unimatrix-adapt" }
 
 redb = { workspace = true }
 rmcp = { version = "=0.16.0", features = ["server", "transport-io", "macros"] }

@@ -90,6 +90,20 @@ impl EmbedServiceHandle {
         }
     }
 
+    /// Try to get the adapter synchronously (non-blocking).
+    ///
+    /// Returns `None` if the model is not ready or the lock is contended.
+    /// Used by adaptation training to get embeddings in a blocking context.
+    pub fn try_get_adapter_sync(&self) -> Option<Arc<EmbedAdapter>> {
+        match self.state.try_read() {
+            Ok(guard) => match &*guard {
+                EmbedState::Ready(adapter) => Some(Arc::clone(adapter)),
+                _ => None,
+            },
+            Err(_) => None,
+        }
+    }
+
     /// Set state directly for testing.
     #[cfg(test)]
     async fn set_failed_for_test(&self, msg: String) {

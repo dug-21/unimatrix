@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use unimatrix_adapt::AdaptationService;
 use unimatrix_store::Store;
 use unimatrix_vector::VectorIndex;
 
@@ -30,6 +31,10 @@ pub struct LifecycleHandles {
     pub audit: Arc<AuditLog>,
     /// PID file path for cleanup on exit.
     pub pid_path: PathBuf,
+    /// Adaptation service for state persistence on shutdown (crt-006).
+    pub adapt_service: Arc<AdaptationService>,
+    /// Data directory for adaptation state files.
+    pub data_dir: PathBuf,
 }
 
 /// Run the graceful shutdown sequence.
@@ -66,7 +71,15 @@ where
         Err(e) => tracing::warn!(error = %e, "vector dump failed, continuing shutdown"),
     }
 
+    // Step 1b: Save adaptation state (crt-006)
+    tracing::info!("saving adaptation state");
+    match handles.adapt_service.save_state(&handles.data_dir) {
+        Ok(()) => tracing::info!("adaptation state saved successfully"),
+        Err(e) => tracing::warn!(error = %e, "adaptation state save failed, continuing shutdown"),
+    }
+
     // Step 2: Drop all Arc<Store> holders before try_unwrap
+    drop(handles.adapt_service);
     drop(handles.registry);
     drop(handles.audit);
     drop(handles.vector_index);

@@ -257,7 +257,7 @@ impl UnimatrixServer {
         // 7. Embed query — uses embed_entry("", query) to match how context_briefing
         //    embeds tasks. All query-side embeddings MUST use this same pattern.
         let query = params.query.clone();
-        let embedding: Vec<f32> = tokio::task::spawn_blocking({
+        let raw_embedding: Vec<f32> = tokio::task::spawn_blocking({
             let adapter = Arc::clone(&adapter);
             move || adapter.embed_entry("", &query)
         })
@@ -268,6 +268,10 @@ impl UnimatrixServer {
             )))
         })?
         .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+
+        // 7b. Adapt embedding through MicroLoRA + prototype pull (crt-006)
+        let adapted = self.adapt_service.adapt_embedding(&raw_embedding, None, None);
+        let embedding = unimatrix_embed::l2_normalized(&adapted);
 
         // 8. Search (with optional metadata pre-filtering)
         let search_results = if params.topic.is_some()
@@ -546,7 +550,7 @@ impl UnimatrixServer {
             .get_adapter()
             .await
             .map_err(rmcp::ErrorData::from)?;
-        let embedding: Vec<f32> = tokio::task::spawn_blocking({
+        let raw_embedding: Vec<f32> = tokio::task::spawn_blocking({
             let adapter = Arc::clone(&adapter);
             let t = title.clone();
             let c = params.content.clone();
@@ -559,6 +563,14 @@ impl UnimatrixServer {
             )))
         })?
         .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+
+        // 7b. Adapt embedding through MicroLoRA + prototype pull (crt-006)
+        let adapted = self.adapt_service.adapt_embedding(
+            &raw_embedding,
+            Some(&params.category),
+            Some(&params.topic),
+        );
+        let embedding = unimatrix_embed::l2_normalized(&adapted);
 
         // 8. Near-duplicate detection
         let dup_results = self
@@ -624,6 +636,13 @@ impl UnimatrixServer {
             .insert_with_audit(new_entry, embedding, audit_event)
             .await
             .map_err(rmcp::ErrorData::from)?;
+
+        // 10b. Update adaptation prototypes with the adapted embedding (crt-006)
+        self.adapt_service.update_prototypes(
+            &adapted,
+            Some(&record.category),
+            Some(&record.topic),
+        );
 
         // 11. Seed initial confidence (fire-and-forget)
         {
@@ -795,7 +814,7 @@ impl UnimatrixServer {
             .unwrap_or_else(|| original.title.clone());
 
         // 12. Embed title+content
-        let embedding: Vec<f32> = tokio::task::spawn_blocking({
+        let raw_embedding: Vec<f32> = tokio::task::spawn_blocking({
             let adapter = Arc::clone(&adapter);
             let t = title.clone();
             let c = params.content.clone();
@@ -808,6 +827,16 @@ impl UnimatrixServer {
             )))
         })?
         .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+
+        // 12b. Adapt embedding through MicroLoRA + prototype pull (crt-006)
+        let correct_category = params.category.as_deref().unwrap_or(&original.category);
+        let correct_topic = params.topic.as_deref().unwrap_or(&original.topic);
+        let adapted = self.adapt_service.adapt_embedding(
+            &raw_embedding,
+            Some(correct_category),
+            Some(correct_topic),
+        );
+        let embedding = unimatrix_embed::l2_normalized(&adapted);
 
         // 13. Build NewEntry with inheritance
         let new_entry = NewEntry {
@@ -841,6 +870,13 @@ impl UnimatrixServer {
             .correct_with_audit(original_id, new_entry, embedding, audit_event)
             .await
             .map_err(rmcp::ErrorData::from)?;
+
+        // 14b. Update adaptation prototypes with the adapted embedding (crt-006)
+        self.adapt_service.update_prototypes(
+            &adapted,
+            Some(&new_correction.category),
+            Some(&new_correction.topic),
+        );
 
         // 15. Confidence for new correction + recompute for deprecated original (fire-and-forget)
         {
@@ -1438,9 +1474,17 @@ impl UnimatrixServer {
 
                 match adapter.embed_entries(&pairs) {
                     Ok(embeddings) => {
+                        // Adapt compacted embeddings through MicroLoRA (crt-006)
                         let compact_input: Vec<(u64, Vec<f32>)> = active_entries.iter()
                             .zip(embeddings.into_iter())
-                            .map(|(entry, emb)| (entry.id, emb))
+                            .map(|(entry, raw_emb)| {
+                                let adapted = self.adapt_service.adapt_embedding(
+                                    &raw_emb,
+                                    Some(&entry.category),
+                                    Some(&entry.topic),
+                                );
+                                (entry.id, unimatrix_embed::l2_normalized(&adapted))
+                            })
                             .collect();
 
                         let vi_for_compact = Arc::clone(&self.vector_index);
@@ -1565,7 +1609,7 @@ impl UnimatrixServer {
         let (relevant_context, search_available) = match self.embed_service.get_adapter().await {
             Ok(adapter) => {
                 let task = params.task.clone();
-                let embedding: Vec<f32> = tokio::task::spawn_blocking({
+                let raw_embedding: Vec<f32> = tokio::task::spawn_blocking({
                     let adapter = Arc::clone(&adapter);
                     move || adapter.embed_entry("", &task)
                 })
@@ -1576,6 +1620,10 @@ impl UnimatrixServer {
                     )))
                 })?
                 .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+
+                // 8b. Adapt briefing query embedding (crt-006)
+                let adapted = self.adapt_service.adapt_embedding(&raw_embedding, None, None);
+                let embedding = unimatrix_embed::l2_normalized(&adapted);
 
                 let search_results = self
                     .vector_store
