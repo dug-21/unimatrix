@@ -3,10 +3,59 @@
 //! Provides functions to write, read, and remove a PID file, detect stale
 //! processes, and terminate them so a new server instance can acquire the
 //! database lock.
+//!
+//! `PidGuard` provides RAII-based lifecycle management: advisory locking (flock),
+//! PID file write, and cleanup on drop.
 
-use std::fs;
-use std::io;
-use std::path::Path;
+use std::fs::{self, File};
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
+
+use fs2::FileExt;
+
+/// RAII guard for PID file lifecycle: flock + PID write + cleanup on drop.
+///
+/// Acquires an exclusive advisory lock on the PID file, writes the current
+/// process ID, and removes the file when dropped. The lock is released
+/// automatically when the file handle closes (on drop, process exit, or SIGKILL).
+pub struct PidGuard {
+    /// Open file handle holding the exclusive advisory lock.
+    _file: File,
+    /// Path to the PID file (for removal on drop).
+    path: PathBuf,
+}
+
+impl PidGuard {
+    /// Acquire an exclusive advisory lock on the PID file and write the current PID.
+    ///
+    /// Uses non-blocking `flock(LOCK_EX | LOCK_NB)` via the `fs2` crate.
+    /// Returns `Err` if the lock is held by another process or on I/O failure.
+    pub fn acquire(path: &Path) -> io::Result<Self> {
+        let mut file = File::create(path)?;
+        file.try_lock_exclusive()?;
+        write!(file, "{}\n", std::process::id())?;
+        file.flush()?;
+        Ok(PidGuard {
+            _file: file,
+            path: path.to_path_buf(),
+        })
+    }
+}
+
+impl Drop for PidGuard {
+    fn drop(&mut self) {
+        if let Err(e) = fs::remove_file(&self.path) {
+            if e.kind() != io::ErrorKind::NotFound {
+                tracing::warn!(
+                    error = %e,
+                    path = %self.path.display(),
+                    "failed to remove PID file on drop"
+                );
+            }
+        }
+        // Lock is released automatically when self._file is dropped (fd closes).
+    }
+}
 
 /// Write the current process ID to a PID file.
 ///
@@ -59,6 +108,53 @@ pub fn is_process_alive(pid: u32) -> bool {
 pub fn is_process_alive(_pid: u32) -> bool {
     // Cannot check process liveness portably; assume dead so the retry loop
     // handles the lock conflict if the process is actually alive.
+    false
+}
+
+/// Check whether a PID belongs to a unimatrix-server process.
+///
+/// On Linux: reads `/proc/{pid}/cmdline` and checks if any argument's
+/// filename is `unimatrix-server`.
+/// On non-Linux Unix: falls back to `kill -0` (existence check only).
+/// Returns `false` for non-existent processes.
+#[cfg(target_os = "linux")]
+pub fn is_unimatrix_process(pid: u32) -> bool {
+    let cmdline_path = format!("/proc/{pid}/cmdline");
+    let bytes = match fs::read(&cmdline_path) {
+        Ok(b) => b,
+        Err(_) => return false, // process exited or /proc not readable
+    };
+
+    if bytes.is_empty() {
+        return false; // kernel thread or zombie
+    }
+
+    // /proc/pid/cmdline is null-separated. Check each argument's filename.
+    let cmdline = String::from_utf8_lossy(&bytes);
+    for arg in cmdline.split('\0') {
+        if arg.is_empty() {
+            continue;
+        }
+        // Extract the filename component from the argument (handles full paths
+        // like /usr/bin/unimatrix-server).
+        if let Some(name) = Path::new(arg).file_name() {
+            if name == "unimatrix-server" {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+#[cfg(all(unix, not(target_os = "linux")))]
+pub fn is_unimatrix_process(pid: u32) -> bool {
+    // Fall back to existence check — no /proc on macOS/BSD.
+    is_process_alive(pid)
+}
+
+#[cfg(not(unix))]
+pub fn is_unimatrix_process(_pid: u32) -> bool {
     false
 }
 
@@ -127,7 +223,18 @@ pub fn handle_stale_pid_file(
         return Ok(true);
     }
 
-    tracing::info!(pid, "stale server process detected, sending SIGTERM");
+    // Process is alive — verify it is actually a unimatrix-server instance
+    // before sending SIGTERM. If it is not, treat the PID file as stale.
+    if !is_unimatrix_process(pid) {
+        tracing::info!(
+            pid,
+            "PID is alive but not unimatrix-server; removing stale PID file"
+        );
+        remove_pid_file(pid_path);
+        return Ok(true);
+    }
+
+    tracing::info!(pid, "stale unimatrix-server process detected, sending SIGTERM");
     if terminate_and_wait(pid, terminate_timeout) {
         tracing::info!(pid, "stale process exited after SIGTERM");
         remove_pid_file(pid_path);
@@ -251,5 +358,115 @@ mod tests {
         write_pid_file(&path).unwrap();
         let pid = read_pid_file(&path);
         assert_eq!(pid, Some(std::process::id()));
+    }
+
+    // --- PidGuard tests ---
+
+    #[test]
+    fn test_pid_guard_acquire_writes_pid() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.pid");
+
+        let _guard = PidGuard::acquire(&path).unwrap();
+
+        // File should exist and contain current PID.
+        let contents = fs::read_to_string(&path).unwrap();
+        let pid: u32 = contents.trim().parse().unwrap();
+        assert_eq!(pid, std::process::id());
+    }
+
+    #[test]
+    fn test_pid_guard_drop_removes_file() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.pid");
+
+        {
+            let _guard = PidGuard::acquire(&path).unwrap();
+            assert!(path.exists());
+        }
+        // Guard dropped — file should be removed.
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn test_pid_guard_drop_already_removed_no_panic() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.pid");
+
+        let guard = PidGuard::acquire(&path).unwrap();
+        // Manually remove the file before drop.
+        fs::remove_file(&path).unwrap();
+        // Drop should not panic (handles NotFound gracefully).
+        drop(guard);
+    }
+
+    #[test]
+    fn test_pid_guard_second_acquire_fails() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.pid");
+
+        let _first = PidGuard::acquire(&path).unwrap();
+        // Second acquire on the same path should fail immediately (non-blocking).
+        let result = PidGuard::acquire(&path);
+        assert!(result.is_err(), "second acquire should fail");
+    }
+
+    #[test]
+    fn test_pid_guard_acquire_error_on_bad_path() {
+        let path = Path::new("/nonexistent-dir-xyz/impossible/test.pid");
+        let result = PidGuard::acquire(path);
+        assert!(result.is_err(), "acquire on bad path should fail");
+    }
+
+    // --- is_unimatrix_process tests ---
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_is_unimatrix_process_dead_pid() {
+        // Very high PID unlikely to exist.
+        assert!(!is_unimatrix_process(4_000_000));
+    }
+
+    #[test]
+    fn test_is_unimatrix_process_pid_zero() {
+        // PID 0 is kernel — not unimatrix-server.
+        assert!(!is_unimatrix_process(0));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_is_unimatrix_process_pid_one() {
+        // PID 1 is init/systemd — definitely not unimatrix-server.
+        assert!(!is_unimatrix_process(1));
+    }
+
+    // --- handle_stale_pid_file identity check tests ---
+
+    #[cfg(unix)]
+    #[test]
+    fn test_handle_stale_not_unimatrix_removes_without_sigterm() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("stale.pid");
+        // PID 1 is init — alive but not unimatrix-server.
+        fs::write(&path, "1\n").unwrap();
+
+        let result =
+            handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
+        assert!(result, "should resolve stale PID for non-unimatrix process");
+        assert!(!path.exists(), "PID file should be removed");
+    }
+
+    #[test]
+    fn test_handle_stale_dead_process_still_works() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("stale.pid");
+        // Dead process — same as existing test but verifies no regression after
+        // adding identity check.
+        fs::write(&path, "4000000\n").unwrap();
+
+        let result =
+            handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
+        assert!(result);
+        assert!(!path.exists());
     }
 }

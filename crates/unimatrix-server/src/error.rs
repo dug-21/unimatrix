@@ -1,6 +1,7 @@
 //! Server-specific error types and mapping to rmcp's `ErrorData`.
 
 use std::fmt;
+use std::path::PathBuf;
 
 use rmcp::model::{ErrorCode, ErrorData};
 use unimatrix_core::CoreError;
@@ -72,6 +73,8 @@ pub enum ServerError {
         /// Human-readable description of the match.
         description: String,
     },
+    /// Database is locked by another process after exhausting retries.
+    DatabaseLocked(PathBuf),
     /// Category not in allowlist.
     InvalidCategory {
         /// The category that was rejected.
@@ -105,6 +108,9 @@ impl fmt::Display for ServerError {
                 category,
                 description,
             } => write!(f, "content rejected: {description} ({category} detected)"),
+            ServerError::DatabaseLocked(path) => {
+                write!(f, "database is locked by another process: {}", path.display())
+            }
             ServerError::InvalidCategory {
                 category,
                 valid_categories,
@@ -199,6 +205,15 @@ impl From<ServerError> for ErrorData {
                 ERROR_CONTENT_SCAN_REJECTED,
                 format!(
                     "Content rejected: {description} ({category} detected). Remove the flagged content and retry."
+                ),
+                None,
+            ),
+            ServerError::DatabaseLocked(path) => ErrorData::new(
+                ERROR_INTERNAL,
+                format!(
+                    "Database is locked by another process at {}. Kill the other unimatrix-server process, or run: lsof {}",
+                    path.display(),
+                    path.display()
                 ),
                 None,
             ),
@@ -382,5 +397,43 @@ mod tests {
         let msg = format!("{err}");
         assert!(msg.contains("bogus"));
         assert!(msg.contains("a, b"));
+    }
+
+    #[test]
+    fn test_database_locked_display() {
+        let err = ServerError::DatabaseLocked(PathBuf::from("/tmp/test.redb"));
+        let msg = format!("{err}");
+        assert!(msg.contains("locked"), "should mention locked: {msg}");
+        assert!(
+            msg.contains("/tmp/test.redb"),
+            "should contain path: {msg}"
+        );
+        assert!(
+            !msg.contains("ServerError"),
+            "should not leak Rust type: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_database_locked_error_data_code() {
+        let err = ServerError::DatabaseLocked(PathBuf::from("/data/unimatrix.redb"));
+        let data: ErrorData = err.into();
+        assert_eq!(data.code, ERROR_INTERNAL);
+    }
+
+    #[test]
+    fn test_database_locked_error_data_message() {
+        let err = ServerError::DatabaseLocked(PathBuf::from("/data/unimatrix.redb"));
+        let data: ErrorData = err.into();
+        assert!(
+            data.message.contains("/data/unimatrix.redb"),
+            "message should contain path: {}",
+            data.message
+        );
+        assert!(
+            data.message.contains("lsof"),
+            "message should contain lsof hint: {}",
+            data.message
+        );
     }
 }

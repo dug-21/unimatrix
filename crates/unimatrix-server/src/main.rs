@@ -81,10 +81,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Open database with retry loop for lock contention
     let store = open_store_with_retry(&paths.db_path)?;
 
-    // Write PID file now that we hold the database lock
-    if let Err(e) = pidfile::write_pid_file(&paths.pid_path) {
-        tracing::warn!(error = %e, "failed to write PID file; continuing without it");
-    }
+    // Acquire PID guard (flock + write PID) now that we hold the database lock.
+    // PidGuard::drop will remove the PID file and release the lock on exit.
+    let _pid_guard = match pidfile::PidGuard::acquire(&paths.pid_path) {
+        Ok(guard) => {
+            tracing::info!("PID guard acquired");
+            Some(guard)
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "failed to acquire PID guard; continuing without it");
+            None
+        }
+    };
 
     // Initialize vector index
     let vector_config = VectorConfig::default();
@@ -156,7 +164,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         vector_dir: paths.vector_dir.clone(),
         registry,
         audit,
-        pid_path: paths.pid_path.clone(),
         adapt_service,
         data_dir: paths.data_dir.clone(),
     };
@@ -168,7 +175,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .map_err(|e| ServerError::Shutdown(e.to_string()))?;
 
-    // Wait for session close or signal, then shutdown
+    // Wait for session close or signal, then shutdown.
+    // Flock-based PidGuard handles zombie cleanup at next startup.
     let waiting = async { let _ = running.waiting().await; };
     shutdown::graceful_shutdown(lifecycle_handles, waiting).await?;
 
@@ -197,13 +205,7 @@ fn open_store_with_retry(
                     );
                     std::thread::sleep(DB_OPEN_RETRY_DELAY);
                 } else {
-                    eprintln!("error: database is locked by another process");
-                    eprintln!("  path: {}", db_path.display());
-                    eprintln!(
-                        "  hint: kill the other unimatrix-server process, or run: lsof {}",
-                        db_path.display()
-                    );
-                    std::process::exit(1);
+                    return Err(ServerError::DatabaseLocked(db_path.to_path_buf()).into());
                 }
             }
             Err(e) => return Err(ServerError::Core(CoreError::Store(e)).into()),
