@@ -10,6 +10,7 @@ use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 use unimatrix_core::{CoreError, EmbedConfig, StoreAdapter, Store, VectorAdapter, VectorConfig, VectorIndex};
 use unimatrix_store::StoreError;
 
+use unimatrix_adapt::{AdaptConfig, AdaptationService};
 use unimatrix_server::audit::AuditLog;
 use unimatrix_server::categories::CategoryAllowlist;
 use unimatrix_server::embed_handle::EmbedServiceHandle;
@@ -124,6 +125,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize category allowlist
     let categories = Arc::new(CategoryAllowlist::new());
 
+    // Initialize adaptation service (crt-006)
+    let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
+    if let Err(e) = adapt_service.load_state(&paths.data_dir) {
+        tracing::warn!("adaptation state load failed: {e}, starting fresh");
+    } else {
+        let training_gen = adapt_service.training_generation();
+        if training_gen > 0 {
+            tracing::info!(generation = training_gen, "adaptation state restored");
+        }
+    }
+
     // Build server
     let server = UnimatrixServer::new(
         async_entry_store,
@@ -134,6 +146,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         categories,
         Arc::clone(&store),
         Arc::clone(&vector_index),
+        Arc::clone(&adapt_service),
     );
 
     // Prepare lifecycle handles for shutdown
@@ -144,6 +157,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         registry,
         audit,
         pid_path: paths.pid_path.clone(),
+        adapt_service,
+        data_dir: paths.data_dir.clone(),
     };
 
     // Serve over stdio

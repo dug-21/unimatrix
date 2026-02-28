@@ -1,0 +1,18 @@
+[package]
+name = "unimatrix-adapt"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Adaptive embedding pipeline for Unimatrix knowledge engine"
+
+[dependencies]
+ndarray = "0.16"
+rand = "0.9"
+rand_distr = "0.5"
+serde = { workspace = true }
+bincode = { workspace = true }
+tracing = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
