@@ -34,10 +34,10 @@
 | AC-30 | Scale tests for 10K+ simulated entries | test | parameter count + memory bound assertions | PENDING |
 | AC-31 | Existing tests pass (no regressions) | test | `cargo test` + full integration suite (157+ tests) | PENDING |
 | AC-32 | `#![forbid(unsafe_code)]` in all crates | grep | `grep -r 'forbid(unsafe_code)' crates/*/src/lib.rs` | PENDING |
-| AC-33 | New test_adaptation.py integration suite | file-check | `test -f product/test/infra-001/suites/test_adaptation.py` | PENDING |
-| AC-34 | Adaptation state persistence across restart | test | integration test A-02 | PENDING |
-| AC-35 | Embedding consistency with adaptation active | test | integration test A-04 | PENDING |
-| AC-36 | Adapted search quality verification | test | integration test A-03 | PENDING |
-| AC-37 | Cold-start near-identity behavior | test | integration test A-01 | PENDING |
-| AC-38 | Volume suite unchanged with adaptation | test | `pytest suites/test_volume.py` passes | PENDING |
-| AC-39 | Smoke test covers adaptation path | test | `pytest -m smoke` includes A-01 | PENDING |
+| AC-33 | New test_adaptation.py integration suite | file-check | `test -f product/test/infra-001/suites/test_adaptation.py` | PASS |
+| AC-34 | Adaptation state persistence across restart | test | integration test A-02 | PASS |
+| AC-35 | Embedding consistency with adaptation active | test | integration test A-04 | PASS |
+| AC-36 | Adapted search quality verification | test | integration test A-03 | PASS |
+| AC-37 | Cold-start near-identity behavior | test | integration test A-01 | PASS |
+| AC-38 | Volume suite unchanged with adaptation | test | `pytest suites/test_volume.py` passes | PASS |
+| AC-39 | Smoke test covers adaptation path | test | `pytest -m smoke` includes A-01 | PASS |

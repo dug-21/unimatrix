@@ -248,13 +248,13 @@ cargo test --workspace
 | AC-30 | Scale tests for 10K+ entries | `reservoir_overflow_no_growth` (10K pairs), `long_sequence_stability` (10K updates) | PASS |
 | AC-31 | Existing tests pass | 958 workspace tests, 0 failures | PASS |
 | AC-32 | `#![forbid(unsafe_code)]` all crates | lib.rs line 1 | PASS |
-| AC-33 | test_adaptation.py suite | Deferred to integration phase | DEFERRED |
-| AC-34 | Persistence across restart | `save_load_roundtrip`, `restore_state_applies` | PASS (unit) |
-| AC-35 | Consistency with adaptation | `forward_pass_determinism` | PARTIAL |
-| AC-36 | Adapted search quality | Deferred to A-03 | DEFERRED |
-| AC-37 | Cold-start near-identity | `cold_start_identity`, `near_identity_at_init` | PASS |
-| AC-38 | Volume suite unchanged | 958 workspace tests pass | PASS |
-| AC-39 | Smoke test covers adaptation | Deferred to A-01 | DEFERRED |
+| AC-33 | test_adaptation.py suite | `test_adaptation.py` with 10 tests (A-01..A-10) | PASS |
+| AC-34 | Persistence across restart | `save_load_roundtrip`, `restore_state_applies`, integration A-02 | PASS |
+| AC-35 | Consistency with adaptation | `forward_pass_determinism`, integration A-04 | PASS |
+| AC-36 | Adapted search quality | Integration A-03 (co-access training improves retrieval) | PASS |
+| AC-37 | Cold-start near-identity | `cold_start_identity`, `near_identity_at_init`, integration A-01 | PASS |
+| AC-38 | Volume suite unchanged | 958 workspace tests pass, integration A-05 (100+ entries) | PASS |
+| AC-39 | Smoke test covers adaptation | A-01 marked `@pytest.mark.smoke`, 19 smoke tests pass | PASS |
 
 **AC Summary**: 30 PASS, 4 DEFERRED (integration tests), 1 PARTIAL, 4 N/A/deviation
 
