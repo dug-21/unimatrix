@@ -20,6 +20,7 @@ unimatrix-vector = { path = "../unimatrix-vector" }
 unimatrix-embed = { path = "../unimatrix-embed" }
 unimatrix-adapt = { path = "../unimatrix-adapt" }
 
+fs2 = "0.4"
 redb = { workspace = true }
 rmcp = { version = "=0.16.0", features = ["server", "transport-io", "macros"] }
 tokio = { version = "1", features = ["full"] }

@@ -30,6 +30,10 @@ const DB_OPEN_RETRY_DELAY: Duration = Duration::from_secs(1);
 /// Timeout for waiting on a stale process to exit after SIGTERM.
 const STALE_PROCESS_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// Maximum idle time before the server shuts down.
+/// Prevents zombie servers when stdio connections break silently.
+const SESSION_IDLE_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+
 /// Unimatrix MCP knowledge server.
 #[derive(Parser)]
 #[command(name = "unimatrix-server", about = "Unimatrix MCP knowledge server")]
@@ -81,10 +85,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Open database with retry loop for lock contention
     let store = open_store_with_retry(&paths.db_path)?;
 
-    // Write PID file now that we hold the database lock
-    if let Err(e) = pidfile::write_pid_file(&paths.pid_path) {
-        tracing::warn!(error = %e, "failed to write PID file; continuing without it");
-    }
+    // Acquire PID guard (flock + write PID) now that we hold the database lock.
+    // PidGuard::drop will remove the PID file and release the lock on exit.
+    let _pid_guard = match pidfile::PidGuard::acquire(&paths.pid_path) {
+        Ok(guard) => {
+            tracing::info!("PID guard acquired");
+            Some(guard)
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "failed to acquire PID guard; continuing without it");
+            None
+        }
+    };
 
     // Initialize vector index
     let vector_config = VectorConfig::default();
@@ -168,8 +180,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .map_err(|e| ServerError::Shutdown(e.to_string()))?;
 
-    // Wait for session close or signal, then shutdown
-    let waiting = async { let _ = running.waiting().await; };
+    // Wait for session close, timeout, or signal, then shutdown.
+    // The timeout prevents zombie servers when stdio connections break silently.
+    let waiting = async {
+        match tokio::time::timeout(SESSION_IDLE_TIMEOUT, running.waiting()).await {
+            Ok(_) => {
+                tracing::info!("session closed by client");
+            }
+            Err(_elapsed) => {
+                tracing::info!(
+                    timeout_secs = SESSION_IDLE_TIMEOUT.as_secs(),
+                    "session idle timeout reached, initiating shutdown"
+                );
+            }
+        }
+    };
     shutdown::graceful_shutdown(lifecycle_handles, waiting).await?;
 
     tracing::info!("unimatrix server exited cleanly");
@@ -197,13 +222,7 @@ fn open_store_with_retry(
                     );
                     std::thread::sleep(DB_OPEN_RETRY_DELAY);
                 } else {
-                    eprintln!("error: database is locked by another process");
-                    eprintln!("  path: {}", db_path.display());
-                    eprintln!(
-                        "  hint: kill the other unimatrix-server process, or run: lsof {}",
-                        db_path.display()
-                    );
-                    std::process::exit(1);
+                    return Err(ServerError::DatabaseLocked(db_path.to_path_buf()).into());
                 }
             }
             Err(e) => return Err(ServerError::Core(CoreError::Store(e)).into()),
