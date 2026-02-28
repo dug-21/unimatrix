@@ -97,6 +97,7 @@ Features and bugs tracked via **GitHub Issues**, not in-repo STATUS.md files.
 - Do what has been asked; nothing more, nothing less.
 - NEVER create files unless absolutely necessary. Prefer editing existing files.
 - NEVER proactively create documentation files unless explicitly requested.
+- NEVER store keys/secrets in code. Always in .env
 
 ---
 
