@@ -159,11 +159,13 @@ Task(subagent_type: "uni-validator",
 
 ## Stage 3b: Code Implementation (Parallelized by Component)
 
-**Agents**: uni-rust-dev (one per component, + domain specialists as needed)
+**Agents**: uni-rust-dev (one per component)
 
 **Prerequisite**: Gate 3a PASSED. Component Map in IMPLEMENTATION-BRIEF.md is updated with actual pseudocode/test-plan file paths.
 
-The Delivery Leader reads the updated Component Map and spawns **one implementation agent per component** (or groups small components). Each agent receives ONLY its component's pseudocode and test plan — not every file.
+The Delivery Leader reads the updated Component Map and spawns **exactly one implementation agent per component**. Every component in the Component Map gets its own agent — no grouping, no exceptions. This is mandatory for both speed (parallel execution) and context window management (each agent only loads its own component's artifacts).
+
+Each agent receives ONLY its component's pseudocode and test plan — not every file.
 
 ```
 # For each component in the Component Map, spawn in ONE message:
@@ -195,7 +197,7 @@ Task(subagent_type: "uni-rust-dev",
     ...same structure, with {component-2}'s pseudocode and test plan...")
 ```
 
-**Key**: Each agent gets its OWN component's `pseudocode/{component}.md` and `test-plan/{component}.md`. Do NOT dump all pseudocode files into every agent.
+**Non-negotiable**: Each agent gets ONLY its own component's `pseudocode/{component}.md` and `test-plan/{component}.md`. Do NOT dump all pseudocode files into every agent. Do NOT combine multiple components into one agent.
 
 **Integration test rule**: Stage 3b agents (uni-rust-dev) do NOT run or modify integration tests (`product/test/infra-001/`). Integration testing happens in Stage 3c. If a code change breaks an integration test, the uni-tester in Stage 3c will report it for rework.
 
@@ -434,8 +436,9 @@ DELIVERY LEADER (uni-scrum-master):
               UPDATE Component Map in IMPLEMENTATION-BRIEF.md with actual file paths
               Task(uni-validator, Gate 3a) — MANDATORY BLOCK
               ...PASS → continue / FAIL → rework or stop...
-  Stage 3b:   Task(uni-rust-dev per component) — parallel by component, ONE message
+  Stage 3b:   Task(uni-rust-dev × N) — ONE agent per component, ALL in ONE message
               Each agent gets ONLY its component's pseudocode + test plan
+              No grouping — every component gets its own agent
               ...wait...
               Task(uni-validator, Gate 3b)
               ...PASS → continue / FAIL → rework or stop...

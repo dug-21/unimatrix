@@ -105,14 +105,16 @@ From the primary agent's spawn prompt:
 After Gate 3a passes, route context surgically to each implementation agent:
 
 1. Read the updated Component Map from `product/features/{id}/IMPLEMENTATION-BRIEF.md`
-2. **Spawn one agent per component** (or group small components)
-3. Each agent gets:
+2. **Spawn exactly one agent per component** — every component in the Component Map gets its own `uni-rust-dev` agent. No grouping, no exceptions. This is mandatory for parallel execution speed and context window management.
+3. **All agents MUST be spawned in a single message** (one Agent tool call per component, all in the same response)
+4. Each agent gets:
+   - `product/features/{id}/IMPLEMENTATION-BRIEF.md` (for context on where their component fits)
    - `product/features/{id}/architecture/ARCHITECTURE.md`
    - `product/features/{id}/pseudocode/OVERVIEW.md`
    - `product/features/{id}/pseudocode/{component}.md` — THIS agent's component only
    - `product/features/{id}/test-plan/{component}.md` — THIS agent's component only
 
-**Do NOT dump every pseudocode and test-plan file into every agent's prompt.** Each agent gets only its own component's files.
+**Do NOT dump every pseudocode and test-plan file into every agent's prompt.** Each agent gets only its own component's files. Do NOT combine multiple components into one agent.
 
 ---
 
