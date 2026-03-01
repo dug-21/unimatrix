@@ -1,0 +1,15 @@
+[package]
+name = "unimatrix-observe"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Observation pipeline: JSONL parsing, feature attribution, hotspot detection, metric computation"
+
+[dependencies]
+serde = { workspace = true }
+bincode = { workspace = true }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
