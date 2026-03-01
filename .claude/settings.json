@@ -1,20 +1,48 @@
 {
-  "hooks": [
-    {
-      "events": ["PreToolUse"],
-      "command": ["bash", ".claude/hooks/observe-pre-tool.sh"]
-    },
-    {
-      "events": ["PostToolUse"],
-      "command": ["bash", ".claude/hooks/observe-post-tool.sh"]
-    },
-    {
-      "events": ["SubagentStart"],
-      "command": ["bash", ".claude/hooks/observe-subagent-start.sh"]
-    },
-    {
-      "events": ["SubagentStop"],
-      "command": ["bash", ".claude/hooks/observe-subagent-stop.sh"]
-    }
-  ]
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/observe-pre-tool.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/observe-post-tool.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/observe-subagent-start.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/observe-subagent-stop.sh"
+          }
+        ]
+      }
+    ]
+  }
 }
