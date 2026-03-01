@@ -427,6 +427,16 @@ pub struct StatusReport {
     pub outcomes_by_result: Vec<(String, u64)>,
     /// Top feature cycles by outcome count.
     pub outcomes_by_feature_cycle: Vec<(String, u64)>,
+    /// Number of observation JSONL files.
+    pub observation_file_count: u64,
+    /// Total size of observation files in bytes.
+    pub observation_total_size_bytes: u64,
+    /// Age of oldest observation file in days.
+    pub observation_oldest_file_days: u64,
+    /// Session IDs approaching 60-day cleanup.
+    pub observation_approaching_cleanup: Vec<String>,
+    /// Number of feature cycles with stored metrics.
+    pub retrospected_feature_count: u64,
 }
 
 /// A co-access cluster entry for status reporting.
@@ -663,6 +673,19 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             if report.total_outcomes > 0 {
                 text.push_str(&format!("\nOutcomes: {} total", report.total_outcomes));
             }
+            text.push_str(&format!(
+                "\nObservation: {} files ({} bytes), oldest {} days, {} retrospected",
+                report.observation_file_count,
+                report.observation_total_size_bytes,
+                report.observation_oldest_file_days,
+                report.retrospected_feature_count,
+            ));
+            if !report.observation_approaching_cleanup.is_empty() {
+                text.push_str(&format!(
+                    "\nApproaching cleanup (>45 days): {}",
+                    report.observation_approaching_cleanup.join(", ")
+                ));
+            }
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Markdown => {
@@ -847,6 +870,27 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 }
             }
 
+            text.push_str("\n### Observation Pipeline\n\n");
+            text.push_str(&format!("- Files: {}\n", report.observation_file_count));
+            text.push_str(&format!(
+                "- Total size: {} bytes\n",
+                report.observation_total_size_bytes
+            ));
+            text.push_str(&format!(
+                "- Oldest file: {} days\n",
+                report.observation_oldest_file_days
+            ));
+            text.push_str(&format!(
+                "- Retrospected features: {}\n",
+                report.retrospected_feature_count
+            ));
+            if !report.observation_approaching_cleanup.is_empty() {
+                text.push_str(&format!(
+                    "- **Approaching cleanup**: {}\n",
+                    report.observation_approaching_cleanup.join(", ")
+                ));
+            }
+
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Json => {
@@ -969,11 +1013,27 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 });
             }
 
+            obj["observation"] = serde_json::json!({
+                "file_count": report.observation_file_count,
+                "total_size_bytes": report.observation_total_size_bytes,
+                "oldest_file_days": report.observation_oldest_file_days,
+                "approaching_cleanup": report.observation_approaching_cleanup,
+                "retrospected_feature_count": report.retrospected_feature_count,
+            });
+
             CallToolResult::success(vec![Content::text(
                 serde_json::to_string_pretty(&obj).unwrap_or_default(),
             )])
         }
     }
+}
+
+/// Format a RetrospectiveReport as a JSON CallToolResult.
+pub fn format_retrospective_report(
+    report: &unimatrix_observe::RetrospectiveReport,
+) -> CallToolResult {
+    let json = serde_json::to_string_pretty(report).unwrap_or_default();
+    CallToolResult::success(vec![Content::text(json)])
 }
 
 /// Format a briefing response with conventions, duties, and relevant context.
@@ -1581,6 +1641,11 @@ mod tests {
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
             outcomes_by_feature_cycle: Vec::new(),
+            observation_file_count: 0,
+            observation_total_size_bytes: 0,
+            observation_oldest_file_days: 0,
+            observation_approaching_cleanup: Vec::new(),
+            retrospected_feature_count: 0,
         }
     }
 
@@ -1656,6 +1721,11 @@ mod tests {
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
             outcomes_by_feature_cycle: Vec::new(),
+            observation_file_count: 0,
+            observation_total_size_bytes: 0,
+            observation_oldest_file_days: 0,
+            observation_approaching_cleanup: Vec::new(),
+            retrospected_feature_count: 0,
         };
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
@@ -1710,6 +1780,11 @@ mod tests {
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
             outcomes_by_feature_cycle: Vec::new(),
+            observation_file_count: 0,
+            observation_total_size_bytes: 0,
+            observation_oldest_file_days: 0,
+            observation_approaching_cleanup: Vec::new(),
+            retrospected_feature_count: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Summary);
@@ -1764,6 +1839,11 @@ mod tests {
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
             outcomes_by_feature_cycle: Vec::new(),
+            observation_file_count: 0,
+            observation_total_size_bytes: 0,
+            observation_oldest_file_days: 0,
+            observation_approaching_cleanup: Vec::new(),
+            retrospected_feature_count: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1820,6 +1900,11 @@ mod tests {
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
             outcomes_by_feature_cycle: Vec::new(),
+            observation_file_count: 0,
+            observation_total_size_bytes: 0,
+            observation_oldest_file_days: 0,
+            observation_approaching_cleanup: Vec::new(),
+            retrospected_feature_count: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Json);
@@ -1874,6 +1959,11 @@ mod tests {
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
             outcomes_by_feature_cycle: Vec::new(),
+            observation_file_count: 0,
+            observation_total_size_bytes: 0,
+            observation_oldest_file_days: 0,
+            observation_approaching_cleanup: Vec::new(),
+            retrospected_feature_count: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -2036,6 +2126,11 @@ mod tests {
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
             outcomes_by_feature_cycle: Vec::new(),
+            observation_file_count: 0,
+            observation_total_size_bytes: 0,
+            observation_oldest_file_days: 0,
+            observation_approaching_cleanup: Vec::new(),
+            retrospected_feature_count: 0,
         }
     }
 
@@ -2138,6 +2233,11 @@ mod tests {
             outcomes_by_type: Vec::new(),
             outcomes_by_result: Vec::new(),
             outcomes_by_feature_cycle: Vec::new(),
+            observation_file_count: 0,
+            observation_total_size_bytes: 0,
+            observation_oldest_file_days: 0,
+            observation_approaching_cleanup: Vec::new(),
+            retrospected_feature_count: 0,
         }
     }
 

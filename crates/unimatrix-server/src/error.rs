@@ -36,6 +36,9 @@ pub const ERROR_PROTECTED_AGENT: ErrorCode = ErrorCode(-32008);
 /// MCP error code: caller cannot remove own Admin capability.
 pub const ERROR_SELF_LOCKOUT: ErrorCode = ErrorCode(-32009);
 
+/// MCP error code: no observation data available.
+pub const ERROR_NO_OBSERVATION_DATA: ErrorCode = ErrorCode(-32010);
+
 /// MCP error code: internal server error (standard JSON-RPC).
 pub const ERROR_INTERNAL: ErrorCode = ErrorCode(-32603);
 
@@ -95,6 +98,8 @@ pub enum ServerError {
     },
     /// Caller attempted to remove own Admin capability.
     SelfLockout,
+    /// Observation analysis failed.
+    ObservationError(String),
 }
 
 impl fmt::Display for ServerError {
@@ -139,6 +144,9 @@ impl fmt::Display for ServerError {
             }
             ServerError::SelfLockout => {
                 write!(f, "cannot remove Admin capability from the calling agent")
+            }
+            ServerError::ObservationError(msg) => {
+                write!(f, "observation analysis error: {msg}")
             }
         }
     }
@@ -262,6 +270,11 @@ impl From<ServerError> for ErrorData {
             ServerError::SelfLockout => ErrorData::new(
                 ERROR_SELF_LOCKOUT,
                 "Cannot remove Admin capability from the calling agent. This would cause lockout.",
+                None,
+            ),
+            ServerError::ObservationError(msg) => ErrorData::new(
+                ERROR_NO_OBSERVATION_DATA,
+                format!("Observation analysis error: {msg}"),
                 None,
             ),
         }

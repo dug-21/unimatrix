@@ -11,7 +11,7 @@ use crate::error::ServerError;
 use crate::registry::{Capability, TrustLevel};
 use crate::tools::{
     BriefingParams, CorrectParams, DeprecateParams, EnrollParams, GetParams, LookupParams,
-    QuarantineParams, SearchParams, StatusParams, StoreParams,
+    QuarantineParams, RetrospectiveParams, SearchParams, StatusParams, StoreParams,
 };
 
 const MAX_AGENT_ID_LEN: usize = 100;
@@ -333,6 +333,17 @@ pub fn validate_enroll_params(params: &EnrollParams) -> Result<(), ServerError> 
         });
     }
     validate_string_field("target_agent_id", &params.target_agent_id, MAX_AGENT_ID_LEN, false)?;
+    Ok(())
+}
+
+/// Validate retrospective parameters.
+pub fn validate_retrospective_params(params: &RetrospectiveParams) -> Result<(), ServerError> {
+    if params.feature_cycle.trim().is_empty() {
+        return Err(ServerError::InvalidInput {
+            field: "feature_cycle".to_string(),
+            reason: "must not be empty".to_string(),
+        });
+    }
     Ok(())
 }
 
@@ -1162,5 +1173,34 @@ mod tests {
             format: None,
         };
         assert!(validate_enroll_params(&params_over).is_err());
+    }
+
+    // -- col-002: validate_retrospective_params --
+
+    #[test]
+    fn test_validate_retrospective_params_valid() {
+        let params = RetrospectiveParams {
+            feature_cycle: "col-002".to_string(),
+            agent_id: None,
+        };
+        assert!(validate_retrospective_params(&params).is_ok());
+    }
+
+    #[test]
+    fn test_validate_retrospective_params_empty() {
+        let params = RetrospectiveParams {
+            feature_cycle: "".to_string(),
+            agent_id: None,
+        };
+        assert!(validate_retrospective_params(&params).is_err());
+    }
+
+    #[test]
+    fn test_validate_retrospective_params_whitespace_only() {
+        let params = RetrospectiveParams {
+            feature_cycle: "   ".to_string(),
+            agent_id: None,
+        };
+        assert!(validate_retrospective_params(&params).is_err());
     }
 }

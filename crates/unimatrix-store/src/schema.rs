@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::StoreError;
 
-// -- Table Definitions (13 total) --
+// -- Table Definitions (14 total) --
 
 /// Primary entry storage: entry_id -> bincode bytes.
 pub const ENTRIES: TableDefinition<u64, &[u8]> = TableDefinition::new("entries");
@@ -51,6 +51,11 @@ pub const CO_ACCESS: TableDefinition<(u64, u64), &[u8]> = TableDefinition::new("
 /// Populated when context_store creates an outcome entry with non-empty feature_cycle.
 pub const OUTCOME_INDEX: TableDefinition<(&str, u64), ()> =
     TableDefinition::new("outcome_index");
+
+/// Observation metric storage: feature_cycle -> bincode-serialized MetricVector.
+/// Populated by context_retrospective tool.
+pub const OBSERVATION_METRICS: TableDefinition<&str, &[u8]> =
+    TableDefinition::new("observation_metrics");
 
 // -- Status Enum --
 
