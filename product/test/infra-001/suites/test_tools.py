@@ -758,3 +758,48 @@ def test_enrolled_agent_can_write(server):
         agent_id="writer-agent",
     )
     assert_tool_success(resp)
+
+
+# === context_retrospective (col-002) =====================================
+
+
+def test_retrospective_no_data_returns_error(server):
+    """T-R01: Retrospective with no observation data returns error."""
+    resp = server.context_retrospective("col-999", agent_id="human")
+    assert_tool_error(resp, "observation")
+
+
+def test_retrospective_empty_feature_cycle_returns_error(server):
+    """T-R02: Retrospective with empty feature_cycle returns validation error."""
+    resp = server.context_retrospective("", agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_retrospective_whitespace_feature_cycle_returns_error(server):
+    """T-R03: Retrospective with whitespace-only feature_cycle returns error."""
+    resp = server.context_retrospective("   ", agent_id="human")
+    assert_tool_error(resp)
+
+
+# === context_status observation extension (col-002) =======================
+
+
+def test_status_includes_observation_fields(server):
+    """T-S01: Status report includes observation health fields."""
+    resp = server.context_status(agent_id="human", format="json")
+    report = parse_status_report(resp)
+    assert "observation" in report, "Missing observation section"
+    obs = report["observation"]
+    assert "file_count" in obs, "Missing file_count in observation"
+    assert "total_size_bytes" in obs, "Missing total_size_bytes in observation"
+    assert "oldest_file_days" in obs, "Missing oldest_file_days in observation"
+    assert "retrospected_feature_count" in obs, "Missing retrospected_feature_count"
+    assert "approaching_cleanup" in obs, "Missing approaching_cleanup"
+
+
+def test_status_observation_retrospected_default(server):
+    """T-S02: Retrospected feature count is 0 on fresh server (no stored metrics)."""
+    resp = server.context_status(agent_id="human", format="json")
+    report = parse_status_report(resp)
+    obs = report.get("observation", {})
+    assert obs.get("retrospected_feature_count", -1) == 0

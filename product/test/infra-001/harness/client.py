@@ -620,3 +620,18 @@ class UnimatrixClient:
         if format is not None:
             args["format"] = format
         return self.call_tool("context_enroll", args)
+
+    def context_retrospective(
+        self,
+        feature_cycle: str,
+        *,
+        agent_id: str | None = None,
+        format: str | None = None,
+        timeout: float | None = None,
+    ) -> MCPResponse:
+        args: dict[str, Any] = {"feature_cycle": feature_cycle}
+        if agent_id is not None:
+            args["agent_id"] = agent_id
+        if format is not None:
+            args["format"] = format
+        return self.call_tool("context_retrospective", args, timeout=timeout)
