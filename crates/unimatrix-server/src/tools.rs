@@ -2161,6 +2161,7 @@ impl UnimatrixServer {
                         metrics: mv,
                         hotspots: vec![],
                         is_cached: true,
+                        baseline_comparison: None,
                     };
 
                     return Ok(format_retrospective_report(&report));
@@ -2179,8 +2180,33 @@ impl UnimatrixServer {
             }
         }
 
-        // 7. Run analysis pipeline
-        let rules = unimatrix_observe::default_rules();
+        // 7a. Load historical MetricVectors for baseline
+        let all_metrics = tokio::task::spawn_blocking({
+            let store = Arc::clone(&store);
+            move || store.list_all_metrics()
+        })
+        .await
+        .unwrap()
+        .map_err(|e| ServerError::Core(CoreError::Store(e)))
+        .map_err(rmcp::ErrorData::from)?;
+
+        // 7b. Deserialize historical vectors, excluding current feature
+        let mut history: Vec<unimatrix_observe::MetricVector> = Vec::new();
+        for (fc, bytes) in &all_metrics {
+            if fc != &feature_cycle {
+                if let Ok(mv) = unimatrix_observe::deserialize_metric_vector(bytes) {
+                    history.push(mv);
+                }
+            }
+        }
+
+        // 7c. Run detection with history for PhaseDurationOutlierRule
+        let history_slice = if history.is_empty() {
+            None
+        } else {
+            Some(history.as_slice())
+        };
+        let rules = unimatrix_observe::default_rules(history_slice);
         let hotspots = unimatrix_observe::detect_hotspots(&attributed, &rules);
 
         let now = std::time::SystemTime::now()
@@ -2218,12 +2244,17 @@ impl UnimatrixServer {
         .await
         .unwrap();
 
-        // 10. Build and return report
+        // 10a. Compute baseline comparison
+        let baseline = unimatrix_observe::compute_baselines(&history)
+            .map(|baselines| unimatrix_observe::compare_to_baseline(&metrics, &baselines));
+
+        // 10b. Build report with baseline
         let report = unimatrix_observe::build_report(
             &feature_cycle,
             &attributed,
             metrics,
             hotspots,
+            baseline,
         );
 
         // 11. Audit

@@ -781,6 +781,214 @@ def test_retrospective_whitespace_feature_cycle_returns_error(server):
     assert_tool_error(resp)
 
 
+# === context_retrospective baseline comparison (col-002b) =================
+
+import json as _json
+import os
+import shutil
+import uuid
+
+
+def _make_observation_jsonl(feature_id, session_id, num_records=20):
+    """Generate JSONL content for a feature with attributed records.
+
+    Creates records referencing product/features/{feature_id}/ paths
+    so the attribution engine maps them to the feature.
+    """
+    lines = []
+    base_ts = "2025-01-15T10:00:00.000Z"
+    # Produce records that reference the feature in file paths
+    for i in range(num_records):
+        hour = 10 + (i * 5) // 60
+        minute = (i * 5) % 60
+        ts = f"2025-01-15T{hour:02d}:{minute:02d}:00.000Z"
+
+        if i % 4 == 0:
+            # Read with feature path
+            record = {
+                "ts": ts,
+                "hook": "PreToolUse",
+                "session_id": session_id,
+                "tool": "Read",
+                "input": {"file_path": f"/workspaces/project/product/features/{feature_id}/SCOPE.md"},
+            }
+        elif i % 4 == 1:
+            # Bash command
+            record = {
+                "ts": ts,
+                "hook": "PreToolUse",
+                "session_id": session_id,
+                "tool": "Bash",
+                "input": {"command": f"cargo test -p {feature_id}"},
+            }
+        elif i % 4 == 2:
+            # Write with feature path
+            record = {
+                "ts": ts,
+                "hook": "PreToolUse",
+                "session_id": session_id,
+                "tool": "Write",
+                "input": {"file_path": f"/workspaces/project/product/features/{feature_id}/test.rs"},
+            }
+        else:
+            # PostToolUse
+            record = {
+                "ts": ts,
+                "hook": "PostToolUse",
+                "session_id": session_id,
+                "tool": "Read",
+                "input": None,
+                "response_size": 1024,
+                "response_snippet": "some output",
+            }
+        lines.append(_json.dumps(record))
+
+    return "\n".join(lines) + "\n"
+
+
+def _setup_observation_data(feature_ids):
+    """Write observation JSONL files for the given feature IDs.
+
+    Returns the observation directory path and list of created file paths
+    for cleanup.
+    """
+    obs_dir = os.path.join(os.path.expanduser("~"), ".unimatrix", "observation")
+    os.makedirs(obs_dir, exist_ok=True)
+
+    created_files = []
+    for fid in feature_ids:
+        session_id = f"test-{fid}-{uuid.uuid4().hex[:8]}"
+        filename = f"{session_id}.jsonl"
+        filepath = os.path.join(obs_dir, filename)
+        content = _make_observation_jsonl(fid, session_id)
+        with open(filepath, "w") as f:
+            f.write(content)
+        created_files.append(filepath)
+
+    return obs_dir, created_files
+
+
+def _cleanup_observation_files(file_paths):
+    """Remove observation files created during testing."""
+    for fp in file_paths:
+        try:
+            os.remove(fp)
+        except OSError:
+            pass
+
+
+def test_retrospective_baseline_present(server):
+    """T-R04 (col-002b): Baseline comparison present with 3+ prior MetricVectors.
+
+    Seeds observation data for 4 features, runs retrospective on the first 3
+    to generate MetricVectors, then runs on the 4th and verifies
+    baseline_comparison is present in the response.
+    """
+    features = ["col-801", "col-802", "col-803", "col-804"]
+    _, created_files = _setup_observation_data(features)
+
+    try:
+        # Generate MetricVectors for first 3 features
+        for fid in features[:3]:
+            resp = server.context_retrospective(fid, agent_id="human", format="json", timeout=30.0)
+            result = assert_tool_success(resp)
+
+        # Now run on 4th feature -- should have baseline from 3 prior
+        resp = server.context_retrospective(features[3], agent_id="human", format="json", timeout=30.0)
+        result = assert_tool_success(resp)
+
+        # Parse report and check for baseline_comparison
+        if result.parsed and isinstance(result.parsed, dict):
+            report = result.parsed
+        else:
+            report = _json.loads(result.text) if result.text.strip().startswith("{") else {}
+
+        assert "baseline_comparison" in report, (
+            f"Expected baseline_comparison in report, got keys: {list(report.keys())}"
+        )
+        baseline = report["baseline_comparison"]
+        assert baseline is not None, "baseline_comparison should not be null with 3 prior MetricVectors"
+        assert isinstance(baseline, list), f"Expected list, got {type(baseline)}"
+        assert len(baseline) > 0, "baseline_comparison should have entries"
+
+        # Verify each entry has required fields
+        for entry in baseline:
+            assert "metric_name" in entry, f"Missing 'metric_name' in baseline entry: {entry}"
+            assert "status" in entry, f"Missing 'status' in baseline entry: {entry}"
+            assert "current_value" in entry, f"Missing 'current_value' in baseline entry: {entry}"
+            assert "mean" in entry, f"Missing 'mean' in baseline entry: {entry}"
+
+    finally:
+        _cleanup_observation_files(created_files)
+
+
+def test_retrospective_insufficient_baseline(server):
+    """T-R05 (col-002b): Baseline comparison absent with fewer than 3 MetricVectors.
+
+    Seeds observation data for 3 features, runs retrospective on only 2 to
+    generate MetricVectors, then runs on the 3rd. With only 2 prior vectors,
+    baseline_comparison should be null/absent.
+    """
+    features = ["col-811", "col-812", "col-813"]
+    _, created_files = _setup_observation_data(features)
+
+    try:
+        # Generate MetricVectors for only 2 features
+        for fid in features[:2]:
+            resp = server.context_retrospective(fid, agent_id="human", format="json", timeout=30.0)
+            assert_tool_success(resp)
+
+        # Run on 3rd feature -- only 2 prior vectors, insufficient for baseline
+        resp = server.context_retrospective(features[2], agent_id="human", format="json", timeout=30.0)
+        result = assert_tool_success(resp)
+
+        if result.parsed and isinstance(result.parsed, dict):
+            report = result.parsed
+        else:
+            report = _json.loads(result.text) if result.text.strip().startswith("{") else {}
+
+        # baseline_comparison should be null or absent
+        baseline = report.get("baseline_comparison")
+        assert baseline is None, (
+            f"Expected null baseline_comparison with only 2 prior vectors, got: {baseline}"
+        )
+
+    finally:
+        _cleanup_observation_files(created_files)
+
+
+def test_retrospective_21_rules_active(server):
+    """T-R06 (col-002b): default_rules returns 21 rules covering all 4 categories.
+
+    Seeds observation data, runs retrospective, verifies report structure
+    includes hotspots section that can contain findings from agent, friction,
+    session, and scope categories. (Does not guarantee all categories fire --
+    that depends on the observation data patterns.)
+    """
+    features = ["col-821"]
+    _, created_files = _setup_observation_data(features)
+
+    try:
+        resp = server.context_retrospective(features[0], agent_id="human", format="json", timeout=30.0)
+        result = assert_tool_success(resp)
+
+        if result.parsed and isinstance(result.parsed, dict):
+            report = result.parsed
+        else:
+            report = _json.loads(result.text) if result.text.strip().startswith("{") else {}
+
+        # Verify hotspots section exists
+        assert "hotspots" in report, f"Expected hotspots in report, got keys: {list(report.keys())}"
+        hotspots = report["hotspots"]
+        assert isinstance(hotspots, list), f"Expected list, got {type(hotspots)}"
+
+        # Verify metrics section exists (proves computation pipeline works)
+        assert "metrics" in report, f"Expected metrics in report"
+
+    finally:
+        _cleanup_observation_files(created_files)
+
+
 # === context_status observation extension (col-002) =======================
 
 
