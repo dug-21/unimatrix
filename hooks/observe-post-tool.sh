@@ -15,7 +15,7 @@ TOOL_INPUT=$(echo "$INPUT" | jq -c '.tool_input // null' 2>/dev/null)
 RESPONSE=$(echo "$INPUT" | jq -r '.response // empty' 2>/dev/null)
 RESPONSE_SIZE=${#RESPONSE}
 RESPONSE_SNIPPET=$(echo "$RESPONSE" | head -c 500)
-TS=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+TS=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
 RECORD=$(jq -n \
     --arg ts "$TS" \

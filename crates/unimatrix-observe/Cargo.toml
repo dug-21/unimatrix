@@ -9,7 +9,7 @@ description = "Observation pipeline: JSONL parsing, feature attribution, hotspot
 [dependencies]
 serde = { workspace = true }
 bincode = { workspace = true }
-serde_json = "1"
+serde_json = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"

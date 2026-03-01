@@ -11,7 +11,7 @@ mkdir -p "$OBS_DIR"
 
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 TOOL_INPUT=$(echo "$INPUT" | jq -c '.tool_input // null' 2>/dev/null)
-TS=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+TS=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
 RECORD=$(jq -n \
     --arg ts "$TS" \

@@ -10,7 +10,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null | tr -cd '
 mkdir -p "$OBS_DIR"
 
 AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
-TS=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+TS=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
 RECORD=$(jq -n \
     --arg ts "$TS" \
