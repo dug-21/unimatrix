@@ -48,11 +48,20 @@ Write to `product/features/{feature-id}/IMPLEMENTATION-BRIEF.md`:
   ```
 - **Component Map** — maps components to pseudocode + test-plan files (populated in Session 2):
   ```
+  ## Component Map
+
   | Component | Pseudocode | Test Plan |
   |-----------|-----------|-----------|
   | {component} | pseudocode/{component}.md | test-plan/{component}.md |
+
+  ### Cross-Cutting Artifacts (populated during Stage 3a)
+
+  | Artifact | Path | Consumed By |
+  |----------|------|-------------|
+  | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+  | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
   ```
-  Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists expected components from the architecture — actual file paths are filled during delivery.
+  Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists expected components from the architecture — actual file paths are filled during delivery. The Cross-Cutting Artifacts section tracks files that don't belong to a single component but are consumed by specific stages.
 - **Goal** (2-3 sentences — full objective)
 - **Resolved Decisions Table**: `| Decision | Resolution | Source | ADR File |`
   Reference architect's ADR file paths (e.g., `architecture/ADR-001-storage-engine.md`)
@@ -118,7 +127,7 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 ## Self-Check (Run Before Returning Results)
 
 - [ ] IMPLEMENTATION-BRIEF.md contains Source Document Links table
-- [ ] IMPLEMENTATION-BRIEF.md contains Component Map
+- [ ] IMPLEMENTATION-BRIEF.md contains Component Map and Cross-Cutting Artifacts section
 - [ ] ACCEPTANCE-MAP.md covers every AC from SCOPE.md (every AC-ID present)
 - [ ] Resolved Decisions table references ADR file paths (not pattern IDs)
 - [ ] GH Issue created and SCOPE.md updated with tracking link

@@ -87,18 +87,25 @@ From the primary agent's spawn prompt:
 
 ## Component Map Update (Session 2 — after Stage 3a, before Gate 3a)
 
-**This is the critical handoff step.** The IMPLEMENTATION-BRIEF from Session 1 has placeholder components from architecture. After Stage 3a agents produce the actual pseudocode and test-plan files, you MUST update the Component Map:
+**This is the critical handoff step.** The IMPLEMENTATION-BRIEF from Session 1 has placeholder components from architecture. After Stage 3a agents produce the actual pseudocode and test-plan files, you MUST update both tables:
 
 1. Collect file paths and component lists from Stage 3a agent returns
-2. Edit `product/features/{id}/IMPLEMENTATION-BRIEF.md` — update the Component Map table with actual paths:
+2. Edit `product/features/{id}/IMPLEMENTATION-BRIEF.md` — update the **Component Map** with actual paths:
    ```
    | Component | Pseudocode | Test Plan |
    |-----------|-----------|-----------|
    | {component} | pseudocode/{component}.md | test-plan/{component}.md |
    ```
-3. This updated Component Map drives Gate 3a validation AND Stage 3b routing
+3. Update the **Cross-Cutting Artifacts** section with actual paths:
+   ```
+   | Artifact | Path | Consumed By |
+   |----------|------|-------------|
+   | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+   | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+   ```
+4. The Component Map drives Stage 3b per-component routing. The Cross-Cutting Artifacts drive Stage 3c — the integration harness plan in `test-plan/OVERVIEW.md` tells the tester which suites to run and what new tests to write.
 
-**Do NOT skip this step.** Do NOT proceed to Gate 3a until the Component Map reflects actual files on disk.
+**Do NOT skip this step.** Do NOT proceed to Gate 3a until both tables reflect actual files on disk.
 
 ## Component Routing (Session 2 — Stage 3b)
 
