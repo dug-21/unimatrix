@@ -58,6 +58,17 @@ pub enum Capability {
     Admin,
 }
 
+/// Result of an enrollment operation.
+pub struct EnrollResult {
+    /// Whether this was a create (true) or update (false).
+    pub created: bool,
+    /// The final agent record after enrollment.
+    pub agent: AgentRecord,
+}
+
+/// Agent IDs that cannot be modified via enrollment (ADR-002).
+const PROTECTED_AGENTS: &[&str] = &["system", "human"];
+
 /// Manages agent identity, trust levels, and capabilities.
 pub struct AgentRegistry {
     store: Arc<Store>,
@@ -285,6 +296,104 @@ impl AgentRegistry {
             .map_err(|e| ServerError::Registry(e.to_string()))?;
         Ok(())
     }
+
+    /// Enroll a new agent or update an existing agent's trust level and capabilities.
+    ///
+    /// Protected bootstrap agents ("system", "human") cannot be modified (ADR-002).
+    /// Self-lockout is prevented: if caller equals target, Admin must remain in capabilities.
+    pub fn enroll_agent(
+        &self,
+        caller_id: &str,
+        target_id: &str,
+        trust_level: TrustLevel,
+        capabilities: Vec<Capability>,
+    ) -> Result<EnrollResult, ServerError> {
+        // 1. Protected agent check (ADR-002)
+        if PROTECTED_AGENTS.contains(&target_id) {
+            return Err(ServerError::ProtectedAgent {
+                agent_id: target_id.to_string(),
+            });
+        }
+
+        // 2. Self-lockout prevention
+        if caller_id == target_id && !capabilities.contains(&Capability::Admin) {
+            return Err(ServerError::SelfLockout);
+        }
+
+        // 3. Read-first: check if target already exists
+        let existing: Option<AgentRecord> = {
+            let read_txn = self
+                .store
+                .begin_read()
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
+            let table = read_txn
+                .open_table(AGENT_REGISTRY)
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
+            match table
+                .get(target_id)
+                .map_err(|e| ServerError::Registry(e.to_string()))?
+            {
+                Some(guard) => Some(deserialize_agent(guard.value())?),
+                None => None,
+            }
+        };
+
+        let now = current_unix_seconds();
+
+        // 4. Build the agent record
+        let (created, record) = match existing {
+            Some(existing_record) => {
+                // UPDATE: preserve enrolled_at, active, allowed_topics, allowed_categories
+                let updated = AgentRecord {
+                    agent_id: target_id.to_string(),
+                    trust_level,
+                    capabilities,
+                    allowed_topics: existing_record.allowed_topics,
+                    allowed_categories: existing_record.allowed_categories,
+                    enrolled_at: existing_record.enrolled_at,
+                    last_seen_at: now,
+                    active: existing_record.active,
+                };
+                (false, updated)
+            }
+            None => {
+                // CREATE: new agent with defaults
+                let new_agent = AgentRecord {
+                    agent_id: target_id.to_string(),
+                    trust_level,
+                    capabilities,
+                    allowed_topics: None,
+                    allowed_categories: None,
+                    enrolled_at: now,
+                    last_seen_at: now,
+                    active: true,
+                };
+                (true, new_agent)
+            }
+        };
+
+        // 5. Write to AGENT_REGISTRY
+        let txn = self
+            .store
+            .begin_write()
+            .map_err(|e| ServerError::Registry(e.to_string()))?;
+        {
+            let mut table = txn
+                .open_table(AGENT_REGISTRY)
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
+            let bytes = serialize_agent(&record)?;
+            table
+                .insert(target_id, bytes.as_slice())
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
+        }
+        txn.commit()
+            .map_err(|e| ServerError::Registry(e.to_string()))?;
+
+        Ok(EnrollResult {
+            created,
+            agent: record,
+        })
+    }
 }
 
 /// Get the current time as unix seconds.
@@ -490,5 +599,313 @@ mod tests {
         let agent = registry.resolve_or_enroll("anonymous").unwrap();
         assert_eq!(agent.trust_level, TrustLevel::Restricted);
         assert_eq!(agent.capabilities, vec![Capability::Read, Capability::Search]);
+    }
+
+    // -- alc-002: enroll_agent --
+
+    #[test]
+    fn test_enroll_new_agent_created() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        let result = registry
+            .enroll_agent(
+                "human",
+                "new-agent",
+                TrustLevel::Internal,
+                vec![Capability::Read, Capability::Write, Capability::Search],
+            )
+            .unwrap();
+
+        assert!(result.created);
+        assert_eq!(result.agent.trust_level, TrustLevel::Internal);
+        assert_eq!(
+            result.agent.capabilities,
+            vec![Capability::Read, Capability::Write, Capability::Search]
+        );
+        assert!(result.agent.active);
+    }
+
+    #[test]
+    fn test_enroll_new_agent_enrolled_at_set() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        let result = registry
+            .enroll_agent(
+                "human",
+                "new-agent",
+                TrustLevel::Internal,
+                vec![Capability::Read],
+            )
+            .unwrap();
+
+        assert!(result.agent.enrolled_at > 0);
+    }
+
+    #[test]
+    fn test_enroll_update_existing_agent() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        // Auto-enroll as Restricted
+        let original = registry.resolve_or_enroll("worker").unwrap();
+        assert_eq!(original.trust_level, TrustLevel::Restricted);
+
+        // Update via enrollment
+        let result = registry
+            .enroll_agent(
+                "human",
+                "worker",
+                TrustLevel::Internal,
+                vec![Capability::Read, Capability::Write, Capability::Search],
+            )
+            .unwrap();
+
+        assert!(!result.created);
+        assert_eq!(result.agent.trust_level, TrustLevel::Internal);
+        assert_eq!(
+            result.agent.capabilities,
+            vec![Capability::Read, Capability::Write, Capability::Search]
+        );
+    }
+
+    #[test]
+    fn test_enroll_update_preserves_enrolled_at() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        let original = registry.resolve_or_enroll("worker").unwrap();
+        let original_enrolled_at = original.enrolled_at;
+
+        // Brief pause to ensure timestamps would differ
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        let result = registry
+            .enroll_agent(
+                "human",
+                "worker",
+                TrustLevel::Internal,
+                vec![Capability::Read, Capability::Write],
+            )
+            .unwrap();
+
+        assert_eq!(result.agent.enrolled_at, original_enrolled_at);
+    }
+
+    #[test]
+    fn test_enroll_update_preserves_active() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        let original = registry.resolve_or_enroll("worker").unwrap();
+        assert!(original.active);
+
+        let result = registry
+            .enroll_agent(
+                "human",
+                "worker",
+                TrustLevel::Internal,
+                vec![Capability::Read],
+            )
+            .unwrap();
+
+        assert!(result.agent.active);
+    }
+
+    #[test]
+    fn test_enroll_rejects_system() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        let result = registry.enroll_agent(
+            "human",
+            "system",
+            TrustLevel::Internal,
+            vec![Capability::Read],
+        );
+        assert!(matches!(
+            result,
+            Err(ServerError::ProtectedAgent { .. })
+        ));
+    }
+
+    #[test]
+    fn test_enroll_rejects_human() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        // Pre-enroll an admin agent
+        registry
+            .enroll_agent(
+                "human",
+                "admin-agent",
+                TrustLevel::Internal,
+                vec![Capability::Read, Capability::Admin],
+            )
+            .unwrap();
+
+        let result = registry.enroll_agent(
+            "admin-agent",
+            "human",
+            TrustLevel::Internal,
+            vec![Capability::Read],
+        );
+        assert!(matches!(
+            result,
+            Err(ServerError::ProtectedAgent { .. })
+        ));
+    }
+
+    #[test]
+    fn test_enroll_allows_case_different_system() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        // "SYSTEM" (uppercase) is NOT "system" -- case-sensitive IDs
+        let result = registry.enroll_agent(
+            "human",
+            "SYSTEM",
+            TrustLevel::Internal,
+            vec![Capability::Read],
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_enroll_protected_no_state_change() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        let before = registry.resolve_or_enroll("system").unwrap();
+
+        // Attempt to modify protected agent -- should fail
+        let _ = registry.enroll_agent(
+            "human",
+            "system",
+            TrustLevel::Restricted,
+            vec![Capability::Read],
+        );
+
+        let after = registry.resolve_or_enroll("system").unwrap();
+        assert_eq!(before.trust_level, after.trust_level);
+        assert_eq!(before.capabilities, after.capabilities);
+    }
+
+    #[test]
+    fn test_enroll_self_without_admin_rejected() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        // Pre-enroll admin-agent with Admin
+        registry
+            .enroll_agent(
+                "human",
+                "admin-agent",
+                TrustLevel::Internal,
+                vec![Capability::Read, Capability::Write, Capability::Admin],
+            )
+            .unwrap();
+
+        // Self-enrollment without Admin -> SelfLockout
+        let result = registry.enroll_agent(
+            "admin-agent",
+            "admin-agent",
+            TrustLevel::Internal,
+            vec![Capability::Read, Capability::Write, Capability::Search],
+        );
+        assert!(matches!(result, Err(ServerError::SelfLockout)));
+    }
+
+    #[test]
+    fn test_enroll_self_with_admin_allowed() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        // Pre-enroll admin-agent
+        registry
+            .enroll_agent(
+                "human",
+                "admin-agent",
+                TrustLevel::Internal,
+                vec![Capability::Read, Capability::Admin],
+            )
+            .unwrap();
+
+        // Self-enrollment retaining Admin -> OK
+        let result = registry
+            .enroll_agent(
+                "admin-agent",
+                "admin-agent",
+                TrustLevel::Internal,
+                vec![Capability::Read, Capability::Write, Capability::Admin],
+            )
+            .unwrap();
+
+        assert!(!result.created);
+        assert!(result.agent.capabilities.contains(&Capability::Admin));
+    }
+
+    #[test]
+    fn test_enroll_sequential_updates() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        // First enrollment
+        registry
+            .enroll_agent(
+                "human",
+                "agent-x",
+                TrustLevel::Internal,
+                vec![Capability::Read, Capability::Write],
+            )
+            .unwrap();
+
+        // Second enrollment with different trust level
+        let result = registry
+            .enroll_agent(
+                "human",
+                "agent-x",
+                TrustLevel::Restricted,
+                vec![Capability::Read],
+            )
+            .unwrap();
+
+        assert_eq!(result.agent.trust_level, TrustLevel::Restricted);
+        assert_eq!(result.agent.capabilities, vec![Capability::Read]);
+    }
+
+    #[test]
+    fn test_enroll_then_resolve() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        // Enroll with Write capability
+        registry
+            .enroll_agent(
+                "human",
+                "new-agent",
+                TrustLevel::Internal,
+                vec![Capability::Read, Capability::Write, Capability::Search],
+            )
+            .unwrap();
+
+        // Resolve should return the enrolled record, not re-enroll as Restricted
+        let resolved = registry.resolve_or_enroll("new-agent").unwrap();
+        assert_eq!(resolved.trust_level, TrustLevel::Internal);
+        assert!(resolved.capabilities.contains(&Capability::Write));
     }
 }

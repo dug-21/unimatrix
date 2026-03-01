@@ -1,7 +1,7 @@
 """MCP client library for unimatrix-server integration testing.
 
 Manages a server subprocess, handles MCP JSON-RPC protocol,
-and provides typed wrappers for all 9 context_* tools.
+and provides typed wrappers for all 10 context_* tools.
 """
 
 import json
@@ -600,3 +600,23 @@ class UnimatrixClient:
         if format is not None:
             args["format"] = format
         return self.call_tool("context_quarantine", args)
+
+    def context_enroll(
+        self,
+        target_agent_id: str,
+        trust_level: str,
+        capabilities: list[str],
+        *,
+        agent_id: str | None = None,
+        format: str | None = None,
+    ) -> MCPResponse:
+        args: dict[str, Any] = {
+            "target_agent_id": target_agent_id,
+            "trust_level": trust_level,
+            "capabilities": capabilities,
+        }
+        if agent_id is not None:
+            args["agent_id"] = agent_id
+        if format is not None:
+            args["format"] = format
+        return self.call_tool("context_enroll", args)

@@ -30,6 +30,12 @@ pub const ERROR_CONTENT_SCAN_REJECTED: ErrorCode = ErrorCode(-32006);
 /// MCP error code: invalid category.
 pub const ERROR_INVALID_CATEGORY: ErrorCode = ErrorCode(-32007);
 
+/// MCP error code: protected bootstrap agent cannot be modified.
+pub const ERROR_PROTECTED_AGENT: ErrorCode = ErrorCode(-32008);
+
+/// MCP error code: caller cannot remove own Admin capability.
+pub const ERROR_SELF_LOCKOUT: ErrorCode = ErrorCode(-32009);
+
 /// MCP error code: internal server error (standard JSON-RPC).
 pub const ERROR_INTERNAL: ErrorCode = ErrorCode(-32603);
 
@@ -82,6 +88,13 @@ pub enum ServerError {
         /// Valid categories for guidance.
         valid_categories: Vec<String>,
     },
+    /// Attempt to modify a protected bootstrap agent.
+    ProtectedAgent {
+        /// The agent ID that is protected.
+        agent_id: String,
+    },
+    /// Caller attempted to remove own Admin capability.
+    SelfLockout,
 }
 
 impl fmt::Display for ServerError {
@@ -117,6 +130,15 @@ impl fmt::Display for ServerError {
             } => {
                 let list = valid_categories.join(", ");
                 write!(f, "unknown category '{category}'. Valid: {list}")
+            }
+            ServerError::ProtectedAgent { agent_id } => {
+                write!(
+                    f,
+                    "agent '{agent_id}' is a protected bootstrap agent and cannot be modified via enrollment"
+                )
+            }
+            ServerError::SelfLockout => {
+                write!(f, "cannot remove Admin capability from the calling agent")
             }
         }
     }
@@ -230,6 +252,18 @@ impl From<ServerError> for ErrorData {
                     None,
                 )
             }
+            ServerError::ProtectedAgent { agent_id } => ErrorData::new(
+                ERROR_PROTECTED_AGENT,
+                format!(
+                    "Agent '{agent_id}' is a protected bootstrap agent and cannot be modified via enrollment."
+                ),
+                None,
+            ),
+            ServerError::SelfLockout => ErrorData::new(
+                ERROR_SELF_LOCKOUT,
+                "Cannot remove Admin capability from the calling agent. This would cause lockout.",
+                None,
+            ),
         }
     }
 }
@@ -433,6 +467,87 @@ mod tests {
         assert!(
             data.message.contains("lsof"),
             "message should contain lsof hint: {}",
+            data.message
+        );
+    }
+
+    // -- alc-002: ProtectedAgent and SelfLockout --
+
+    #[test]
+    fn test_protected_agent_display() {
+        let err = ServerError::ProtectedAgent {
+            agent_id: "system".to_string(),
+        };
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("system"),
+            "should contain agent_id: {msg}"
+        );
+        assert!(
+            msg.contains("protected bootstrap agent"),
+            "should describe protection: {msg}"
+        );
+        assert!(
+            !msg.contains("ServerError"),
+            "should not leak Rust type: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_self_lockout_display() {
+        let err = ServerError::SelfLockout;
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("Admin"),
+            "should mention Admin: {msg}"
+        );
+        assert!(
+            !msg.contains("ServerError"),
+            "should not leak Rust type: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_protected_agent_maps_to_32008() {
+        let err = ServerError::ProtectedAgent {
+            agent_id: "system".to_string(),
+        };
+        let data: ErrorData = err.into();
+        assert_eq!(data.code, ERROR_PROTECTED_AGENT);
+    }
+
+    #[test]
+    fn test_self_lockout_maps_to_32009() {
+        let err = ServerError::SelfLockout;
+        let data: ErrorData = err.into();
+        assert_eq!(data.code, ERROR_SELF_LOCKOUT);
+    }
+
+    #[test]
+    fn test_protected_agent_error_message_contains_agent_id() {
+        let err = ServerError::ProtectedAgent {
+            agent_id: "test-agent".to_string(),
+        };
+        let data: ErrorData = err.into();
+        assert!(
+            data.message.contains("test-agent"),
+            "message should contain agent_id: {}",
+            data.message
+        );
+    }
+
+    #[test]
+    fn test_self_lockout_error_message_actionable() {
+        let err = ServerError::SelfLockout;
+        let data: ErrorData = err.into();
+        assert!(
+            data.message.contains("Admin"),
+            "message should mention Admin: {}",
+            data.message
+        );
+        assert!(
+            data.message.contains("lockout"),
+            "message should mention lockout: {}",
             data.message
         );
     }

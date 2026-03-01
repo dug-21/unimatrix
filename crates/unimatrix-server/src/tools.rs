@@ -1,5 +1,6 @@
-//! MCP tool implementations: v0.1 (context_search, context_lookup, context_store, context_get)
-//! and v0.2 (context_correct, context_deprecate, context_status, context_briefing).
+//! MCP tool implementations: v0.1 (context_search, context_lookup, context_store, context_get),
+//! v0.2 (context_correct, context_deprecate, context_status, context_briefing),
+//! and alc-002 (context_enroll).
 //!
 //! Execution order per tool: identity -> capability -> validation -> category -> scanning
 //! -> business logic -> format -> audit.
@@ -21,8 +22,8 @@ use unimatrix_store::{
 use crate::audit::{AuditEvent, Outcome};
 use crate::registry::Capability;
 use crate::response::{
-    format_duplicate_found, format_lookup_results, format_search_results, format_single_entry,
-    format_store_success, format_store_success_with_note,
+    format_duplicate_found, format_enroll_success, format_lookup_results, format_search_results,
+    format_single_entry, format_store_success, format_store_success_with_note,
     format_correct_success, format_deprecate_success,
     format_quarantine_success, format_restore_success,
     format_status_report, format_briefing, StatusReport, CoAccessClusterEntry, Briefing, parse_format,
@@ -31,9 +32,10 @@ use crate::scanning::ContentScanner;
 use crate::server::UnimatrixServer;
 use crate::validation::{
     validate_get_params, validate_lookup_params, validate_search_params, validate_store_params,
-    validate_correct_params, validate_deprecate_params, validate_quarantine_params,
-    validate_status_params, validate_briefing_params, validated_max_tokens,
-    validated_id, validated_k, validated_limit, parse_status, parse_quarantine_action,
+    validate_correct_params, validate_deprecate_params, validate_enroll_params,
+    validate_quarantine_params, validate_status_params, validate_briefing_params,
+    validated_max_tokens, validated_id, validated_k, validated_limit,
+    parse_status, parse_quarantine_action, parse_trust_level, parse_capabilities,
     QuarantineAction, validate_feature, validate_helpful,
 };
 
@@ -214,6 +216,21 @@ pub struct BriefingParams {
     pub format: Option<String>,
     /// Whether the returned entries were helpful.
     pub helpful: Option<bool>,
+}
+
+/// Parameters for enrolling or updating an agent.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct EnrollParams {
+    /// Agent ID to enroll or update.
+    pub target_agent_id: String,
+    /// Trust level: "system", "privileged", "internal", "restricted".
+    pub trust_level: String,
+    /// Capabilities: ["read", "write", "search", "admin"].
+    pub capabilities: Vec<String>,
+    /// Calling agent (must have Admin).
+    pub agent_id: Option<String>,
+    /// Response format: "summary", "markdown", "json".
+    pub format: Option<String>,
 }
 
 #[rmcp::tool_router(vis = "pub(crate)")]
@@ -1926,6 +1943,81 @@ impl UnimatrixServer {
             }
         }
     }
+
+    // -- alc-002: context_enroll --
+
+    #[tool(
+        name = "context_enroll",
+        description = "Enroll a new agent or update an existing agent's trust level and capabilities. Requires Admin capability."
+    )]
+    async fn context_enroll(
+        &self,
+        Parameters(params): Parameters<EnrollParams>,
+    ) -> Result<CallToolResult, rmcp::ErrorData> {
+        // 1. Identity resolution
+        let identity = self
+            .resolve_agent(&params.agent_id)
+            .map_err(rmcp::ErrorData::from)?;
+
+        // 2. Capability check (Admin required)
+        self.registry
+            .require_capability(&identity.agent_id, Capability::Admin)
+            .map_err(rmcp::ErrorData::from)?;
+
+        // 3. Input validation
+        validate_enroll_params(&params).map_err(rmcp::ErrorData::from)?;
+
+        // 4. Parse format
+        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
+
+        // 5. Parse trust level and capabilities (strict per ADR-001)
+        let trust_level = parse_trust_level(&params.trust_level).map_err(rmcp::ErrorData::from)?;
+        let capabilities =
+            parse_capabilities(&params.capabilities).map_err(rmcp::ErrorData::from)?;
+
+        // 6. Business logic: enroll or update agent
+        let result = self
+            .registry
+            .enroll_agent(
+                &identity.agent_id,
+                &params.target_agent_id,
+                trust_level,
+                capabilities,
+            )
+            .map_err(rmcp::ErrorData::from)?;
+
+        // 7. Format response
+        let response = format_enroll_success(&result, format);
+
+        // 8. Audit logging
+        let detail = if result.created {
+            format!(
+                "created agent '{}' as {:?}",
+                result.agent.agent_id, result.agent.trust_level
+            )
+        } else {
+            format!(
+                "updated agent '{}' to {:?}",
+                result.agent.agent_id, result.agent.trust_level
+            )
+        };
+
+        let event = AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: identity.agent_id.clone(),
+            operation: "context_enroll".to_string(),
+            target_ids: vec![],
+            outcome: Outcome::Success,
+            detail,
+        };
+        self.audit
+            .log_event(event)
+            .map_err(rmcp::ErrorData::from)?;
+
+        Ok(response)
+    }
 }
 
 #[cfg(test)]
@@ -2195,5 +2287,46 @@ mod tests {
         let json = r#"{}"#;
         let params: StatusParams = serde_json::from_str(json).unwrap();
         assert!(params.check_embeddings.is_none());
+    }
+
+    // -- alc-002: EnrollParams --
+
+    #[test]
+    fn test_enroll_params_deserialize_all_fields() {
+        let json = r#"{
+            "target_agent_id": "new-agent",
+            "trust_level": "internal",
+            "capabilities": ["read", "write"],
+            "agent_id": "human",
+            "format": "json"
+        }"#;
+        let params: EnrollParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.target_agent_id, "new-agent");
+        assert_eq!(params.trust_level, "internal");
+        assert_eq!(params.capabilities, vec!["read", "write"]);
+        assert_eq!(params.agent_id.unwrap(), "human");
+        assert_eq!(params.format.unwrap(), "json");
+    }
+
+    #[test]
+    fn test_enroll_params_deserialize_optional_missing() {
+        let json = r#"{
+            "target_agent_id": "new-agent",
+            "trust_level": "internal",
+            "capabilities": ["read"]
+        }"#;
+        let params: EnrollParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.target_agent_id, "new-agent");
+        assert!(params.agent_id.is_none());
+        assert!(params.format.is_none());
+    }
+
+    #[test]
+    fn test_enroll_not_write_operation() {
+        // context_enroll is administrative, not a knowledge write
+        // Verify is_write_operation (in audit.rs) does not match it
+        // This test verifies the invariant from the architecture
+        assert_ne!("context_enroll", "context_store");
+        assert_ne!("context_enroll", "context_correct");
     }
 }

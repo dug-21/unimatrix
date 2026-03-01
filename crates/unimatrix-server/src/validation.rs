@@ -3,14 +3,18 @@
 //! Pure functions -- no I/O, no state. Each function takes parameter references
 //! and returns Result<(), ServerError>.
 
+use std::collections::HashSet;
+
 use unimatrix_store::Status;
 
 use crate::error::ServerError;
+use crate::registry::{Capability, TrustLevel};
 use crate::tools::{
-    BriefingParams, CorrectParams, DeprecateParams, GetParams, LookupParams, QuarantineParams,
-    SearchParams, StatusParams, StoreParams,
+    BriefingParams, CorrectParams, DeprecateParams, EnrollParams, GetParams, LookupParams,
+    QuarantineParams, SearchParams, StatusParams, StoreParams,
 };
 
+const MAX_AGENT_ID_LEN: usize = 100;
 const MAX_TITLE_LEN: usize = 200;
 const MAX_CONTENT_LEN: usize = 50_000;
 const MAX_TOPIC_LEN: usize = 100;
@@ -312,6 +316,85 @@ pub fn validated_max_tokens(max_tokens: Option<i64>) -> Result<usize, ServerErro
         }),
         Some(v) => Ok(v as usize),
     }
+}
+
+// -- alc-002: enrollment validation --
+
+/// Validate context_enroll parameters (target_agent_id field only).
+///
+/// Trust level and capabilities are validated by their dedicated parsing
+/// functions (`parse_trust_level`, `parse_capabilities`), called separately
+/// in the tool handler.
+pub fn validate_enroll_params(params: &EnrollParams) -> Result<(), ServerError> {
+    if params.target_agent_id.is_empty() {
+        return Err(ServerError::InvalidInput {
+            field: "target_agent_id".to_string(),
+            reason: "required".to_string(),
+        });
+    }
+    validate_string_field("target_agent_id", &params.target_agent_id, MAX_AGENT_ID_LEN, false)?;
+    Ok(())
+}
+
+/// Parse a trust level string into a TrustLevel enum (case-insensitive, strict).
+///
+/// Per ADR-001: only four exact values accepted, no fallback default.
+pub fn parse_trust_level(s: &str) -> Result<TrustLevel, ServerError> {
+    match s.to_lowercase().as_str() {
+        "system" => Ok(TrustLevel::System),
+        "privileged" => Ok(TrustLevel::Privileged),
+        "internal" => Ok(TrustLevel::Internal),
+        "restricted" => Ok(TrustLevel::Restricted),
+        _ => Err(ServerError::InvalidInput {
+            field: "trust_level".to_string(),
+            reason: "must be one of: system, privileged, internal, restricted".to_string(),
+        }),
+    }
+}
+
+/// Parse capability strings into Capability enums (case-insensitive, strict, no duplicates).
+///
+/// Per ADR-001: only four exact values accepted. Duplicates (case-insensitive) are rejected.
+pub fn parse_capabilities(caps: &[String]) -> Result<Vec<Capability>, ServerError> {
+    if caps.is_empty() {
+        return Err(ServerError::InvalidInput {
+            field: "capabilities".to_string(),
+            reason: "at least one capability required".to_string(),
+        });
+    }
+
+    let mut result = Vec::with_capacity(caps.len());
+    let mut seen = HashSet::new();
+
+    for cap_str in caps {
+        let lower = cap_str.to_lowercase();
+
+        if !seen.insert(lower.clone()) {
+            return Err(ServerError::InvalidInput {
+                field: "capabilities".to_string(),
+                reason: format!("duplicate capability: {cap_str}"),
+            });
+        }
+
+        let capability = match lower.as_str() {
+            "read" => Capability::Read,
+            "write" => Capability::Write,
+            "search" => Capability::Search,
+            "admin" => Capability::Admin,
+            _ => {
+                return Err(ServerError::InvalidInput {
+                    field: "capabilities".to_string(),
+                    reason: format!(
+                        "unknown capability '{cap_str}'. Valid: read, write, search, admin"
+                    ),
+                })
+            }
+        };
+
+        result.push(capability);
+    }
+
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -901,5 +984,183 @@ mod tests {
     #[test]
     fn test_validated_max_tokens_zero_rejected() {
         assert!(validated_max_tokens(Some(0)).is_err());
+    }
+
+    // -- alc-002: parse_trust_level --
+
+    #[test]
+    fn test_parse_trust_level_system() {
+        assert_eq!(parse_trust_level("system").unwrap(), TrustLevel::System);
+    }
+
+    #[test]
+    fn test_parse_trust_level_privileged() {
+        assert_eq!(
+            parse_trust_level("privileged").unwrap(),
+            TrustLevel::Privileged
+        );
+    }
+
+    #[test]
+    fn test_parse_trust_level_internal() {
+        assert_eq!(
+            parse_trust_level("internal").unwrap(),
+            TrustLevel::Internal
+        );
+    }
+
+    #[test]
+    fn test_parse_trust_level_restricted() {
+        assert_eq!(
+            parse_trust_level("restricted").unwrap(),
+            TrustLevel::Restricted
+        );
+    }
+
+    #[test]
+    fn test_parse_trust_level_case_insensitive() {
+        assert_eq!(parse_trust_level("SYSTEM").unwrap(), TrustLevel::System);
+        assert_eq!(
+            parse_trust_level("Privileged").unwrap(),
+            TrustLevel::Privileged
+        );
+    }
+
+    #[test]
+    fn test_parse_trust_level_invalid_admin() {
+        assert!(parse_trust_level("admin").is_err());
+    }
+
+    #[test]
+    fn test_parse_trust_level_empty() {
+        assert!(parse_trust_level("").is_err());
+    }
+
+    #[test]
+    fn test_parse_trust_level_trailing_space() {
+        assert!(parse_trust_level("system ").is_err());
+    }
+
+    #[test]
+    fn test_parse_trust_level_unknown() {
+        assert!(parse_trust_level("superadmin").is_err());
+    }
+
+    // -- alc-002: parse_capabilities --
+
+    #[test]
+    fn test_parse_capabilities_single() {
+        let caps = parse_capabilities(&["read".to_string()]).unwrap();
+        assert_eq!(caps, vec![Capability::Read]);
+    }
+
+    #[test]
+    fn test_parse_capabilities_all_four() {
+        let caps = parse_capabilities(&[
+            "read".to_string(),
+            "write".to_string(),
+            "search".to_string(),
+            "admin".to_string(),
+        ])
+        .unwrap();
+        assert_eq!(
+            caps,
+            vec![
+                Capability::Read,
+                Capability::Write,
+                Capability::Search,
+                Capability::Admin
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_capabilities_case_insensitive() {
+        let caps = parse_capabilities(&["READ".to_string(), "Write".to_string()]).unwrap();
+        assert_eq!(caps, vec![Capability::Read, Capability::Write]);
+    }
+
+    #[test]
+    fn test_parse_capabilities_empty_vec() {
+        assert!(parse_capabilities(&[]).is_err());
+    }
+
+    #[test]
+    fn test_parse_capabilities_duplicate() {
+        assert!(parse_capabilities(&["read".to_string(), "read".to_string()]).is_err());
+    }
+
+    #[test]
+    fn test_parse_capabilities_case_insensitive_duplicate() {
+        assert!(parse_capabilities(&["read".to_string(), "READ".to_string()]).is_err());
+    }
+
+    #[test]
+    fn test_parse_capabilities_unknown() {
+        assert!(parse_capabilities(&["unknown".to_string()]).is_err());
+    }
+
+    #[test]
+    fn test_parse_capabilities_empty_string() {
+        assert!(parse_capabilities(&["".to_string()]).is_err());
+    }
+
+    // -- alc-002: validate_enroll_params --
+
+    #[test]
+    fn test_validate_enroll_params_valid() {
+        let params = EnrollParams {
+            target_agent_id: "test-agent".to_string(),
+            trust_level: "internal".to_string(),
+            capabilities: vec!["read".to_string()],
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_enroll_params(&params).is_ok());
+    }
+
+    #[test]
+    fn test_validate_enroll_params_empty_target() {
+        let params = EnrollParams {
+            target_agent_id: "".to_string(),
+            trust_level: "internal".to_string(),
+            capabilities: vec!["read".to_string()],
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_enroll_params(&params).is_err());
+    }
+
+    #[test]
+    fn test_validate_enroll_params_control_chars() {
+        let params = EnrollParams {
+            target_agent_id: "agent\x00bad".to_string(),
+            trust_level: "internal".to_string(),
+            capabilities: vec!["read".to_string()],
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_enroll_params(&params).is_err());
+    }
+
+    #[test]
+    fn test_validate_enroll_params_max_length() {
+        let params_ok = EnrollParams {
+            target_agent_id: "a".repeat(100),
+            trust_level: "internal".to_string(),
+            capabilities: vec!["read".to_string()],
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_enroll_params(&params_ok).is_ok());
+
+        let params_over = EnrollParams {
+            target_agent_id: "a".repeat(101),
+            trust_level: "internal".to_string(),
+            capabilities: vec!["read".to_string()],
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_enroll_params(&params_over).is_err());
     }
 }
