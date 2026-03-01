@@ -75,6 +75,7 @@ Each JSONL record:
 ### Design Documents
 - `retrospective-design.md` — Hotspot-driven `/retrospective` function architecture: 4 layers (telemetry → hotspot detection → LLM conversation → optional small model), 4 hotspot categories (agent/friction/session/scope), threshold convergence model (3 stages), data lifecycle, detection tier summary
 - `compound-signals.md` — Compound signal correlation assessment: metric table + LLM reasoning + human confirmation design, per-feature metrics to collect, promoted compound signal lifecycle
+- `data-pipeline.md` — Observation data pipeline: per-session JSONL files, content-based feature attribution (not git branch), batch retrospective flow, lifecycle management, platform constraints
 
 ### Auto-Knowledge Extraction
 - `auto-knowledge.md` — Feasibility analysis: 3 extraction tiers (structural/procedural/dependency), noise prevention rules (5 specific filters), gap analysis (what agents store vs. what they do), proposed extraction strategy with confidence levels
