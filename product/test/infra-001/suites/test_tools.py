@@ -640,3 +640,121 @@ def test_quarantine_all_formats(server):
         assert_tool_success(q_resp)
         # After first quarantine, restore for next iteration
         server.context_quarantine(entry_id, action="restore", agent_id="human")
+
+
+# === context_enroll (alc-002) =============================================
+
+
+def test_enroll_new_agent(server):
+    """T-E01: Admin enrolls a new agent via MCP, verify success response."""
+    resp = server.context_enroll(
+        "new-worker",
+        "internal",
+        ["read", "write", "search"],
+        agent_id="human",
+    )
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+    assert "Enrolled" in text or "enrolled" in text
+
+
+def test_enroll_update_existing_agent(server):
+    """T-E02: Auto-enroll via search, then enroll with higher capabilities."""
+    # Auto-enroll by calling search
+    server.context_search("test", agent_id="auto-enroll-agent")
+
+    # Upgrade via enrollment
+    resp = server.context_enroll(
+        "auto-enroll-agent",
+        "internal",
+        ["read", "write", "search"],
+        agent_id="human",
+    )
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+    assert "Updated" in text or "updated" in text
+
+
+def test_enroll_requires_admin(server):
+    """T-E03: Non-admin agent calls context_enroll, expect capability denied."""
+    # First auto-enroll a restricted agent
+    server.context_search("test", agent_id="restricted-agent")
+
+    # Try to enroll as the restricted agent
+    resp = server.context_enroll(
+        "some-target",
+        "internal",
+        ["read"],
+        agent_id="restricted-agent",
+    )
+    assert_tool_error(resp, "lacks")
+
+
+def test_enroll_protected_agent_rejected(server):
+    """T-E04: Attempt to enroll 'system', expect protected agent error."""
+    resp = server.context_enroll(
+        "system",
+        "restricted",
+        ["read"],
+        agent_id="human",
+    )
+    assert_tool_error(resp, "protected bootstrap agent")
+
+
+def test_enroll_self_lockout_prevented(server):
+    """T-E05: Admin tries to remove own Admin, expect self-lockout error."""
+    # Enroll an admin agent
+    server.context_enroll(
+        "admin-test",
+        "internal",
+        ["read", "write", "admin"],
+        agent_id="human",
+    )
+
+    # Self-enrollment without Admin
+    resp = server.context_enroll(
+        "admin-test",
+        "internal",
+        ["read", "write"],
+        agent_id="admin-test",
+    )
+    assert_tool_error(resp, "lockout")
+
+
+def test_enroll_json_format(server):
+    """T-E06: Enrollment with json format returns valid JSON response."""
+    resp = server.context_enroll(
+        "json-test-agent",
+        "internal",
+        ["read", "write"],
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(resp)
+    import json
+    text = get_result_text(resp)
+    data = json.loads(text)
+    assert data["action"] == "enrolled"
+    assert data["agent_id"] == "json-test-agent"
+    assert data["trust_level"] == "internal"
+    assert "read" in data["capabilities"]
+    assert "write" in data["capabilities"]
+
+
+def test_enrolled_agent_can_write(server):
+    """T-E07: Enroll agent with Write, verify it can context_store."""
+    server.context_enroll(
+        "writer-agent",
+        "internal",
+        ["read", "write", "search"],
+        agent_id="human",
+    )
+
+    # Now the enrolled agent should be able to store
+    resp = server.context_store(
+        "test content from enrolled agent",
+        "testing",
+        "convention",
+        agent_id="writer-agent",
+    )
+    assert_tool_success(resp)
