@@ -2,11 +2,6 @@
 
 use crate::types::{ObservationRecord, ParsedSession};
 
-/// Known feature phase prefixes for pattern matching.
-const KNOWN_PREFIXES: &[&str] = &[
-    "ass", "nxs", "col", "vnc", "alc", "crt", "mtx", "dsn", "nan",
-];
-
 /// Check if a string is a valid feature ID (e.g., "col-002", "nxs-001").
 fn is_valid_feature_id(s: &str) -> bool {
     let parts: Vec<&str> = s.splitn(2, '-').collect();
@@ -36,15 +31,14 @@ fn extract_from_path(s: &str) -> Option<String> {
 }
 
 /// Extract feature ID pattern from text (word-boundary aware).
+///
+/// Accepts any feature ID matching the `alpha-digits` pattern (e.g., "col-002", "eng-001").
+/// No prefix allowlist — the structural pattern validated by `is_valid_feature_id` is sufficient.
 fn extract_feature_id_pattern(s: &str) -> Option<String> {
     for word in s.split(|c: char| c.is_whitespace() || c == '"' || c == '\'' || c == '(' || c == ')') {
         let candidate = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '-');
         if is_valid_feature_id(candidate) {
-            if let Some(prefix) = candidate.split('-').next() {
-                if KNOWN_PREFIXES.contains(&prefix) {
-                    return Some(candidate.to_string());
-                }
-            }
+            return Some(candidate.to_string());
         }
     }
     None
@@ -304,5 +298,35 @@ mod tests {
     fn test_attribute_empty_sessions() {
         let result = attribute_sessions(&[], "col-002");
         assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_extract_feature_id_pattern_accepts_arbitrary_prefixes() {
+        // Feature IDs with non-project prefixes should be accepted (#59)
+        assert_eq!(
+            extract_feature_id_pattern("Working on eng-001 design"),
+            Some("eng-001".to_string())
+        );
+        assert_eq!(
+            extract_feature_id_pattern("Review spike-042 results"),
+            Some("spike-042".to_string())
+        );
+        assert_eq!(
+            extract_feature_id_pattern("Deploy api-100"),
+            Some("api-100".to_string())
+        );
+    }
+
+    #[test]
+    fn test_attribute_sessions_with_arbitrary_prefix_feature() {
+        // End-to-end: attribution works for non-project feature prefixes (#59)
+        let records = vec![
+            make_record(1000, Some("Read"), Some("Working on eng-001 task")),
+            make_record(2000, Some("Write"), Some("Still on eng-001")),
+        ];
+        let sessions = vec![make_session("s1", records)];
+
+        let result = attribute_sessions(&sessions, "eng-001");
+        assert_eq!(result.len(), 2);
     }
 }
