@@ -1,6 +1,6 @@
 //! Shared types for the observation pipeline.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -196,6 +196,58 @@ impl Default for MetricVector {
     }
 }
 
+/// Baseline comparison status for a metric (ADR-003).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BaselineStatus {
+    /// Current value within normal range.
+    Normal,
+    /// Current value exceeds mean + 1.5 * stddev.
+    Outlier,
+    /// Historical values have zero variance (all identical, non-zero mean).
+    NoVariance,
+    /// Historical mean and stddev are both zero; current is non-zero.
+    NewSignal,
+}
+
+/// Statistical summary for one metric across historical data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BaselineEntry {
+    /// Arithmetic mean.
+    pub mean: f64,
+    /// Population standard deviation.
+    pub stddev: f64,
+    /// Number of data points used.
+    pub sample_count: usize,
+}
+
+/// Computed statistical baselines for all metrics across historical feature retrospectives.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BaselineSet {
+    /// Per-metric baselines for universal metrics (key = metric name).
+    pub universal: HashMap<String, BaselineEntry>,
+    /// Phase-specific baselines (outer key = phase name, inner key = metric name).
+    pub phases: HashMap<String, HashMap<String, BaselineEntry>>,
+}
+
+/// One metric's current value compared to its historical baseline.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BaselineComparison {
+    /// Name of the metric.
+    pub metric_name: String,
+    /// Current feature's value.
+    pub current_value: f64,
+    /// Historical mean.
+    pub mean: f64,
+    /// Historical standard deviation.
+    pub stddev: f64,
+    /// Whether current exceeds mean + 1.5 * stddev.
+    pub is_outlier: bool,
+    /// Baseline status classification.
+    pub status: BaselineStatus,
+    /// Phase name if this is a phase-specific metric.
+    pub phase: Option<String>,
+}
+
 /// Complete analysis output returned by context_retrospective.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RetrospectiveReport {
@@ -211,6 +263,9 @@ pub struct RetrospectiveReport {
     pub hotspots: Vec<HotspotFinding>,
     /// Whether this is from a previous computation.
     pub is_cached: bool,
+    /// Baseline comparison against historical metrics, if available.
+    #[serde(default)]
+    pub baseline_comparison: Option<Vec<BaselineComparison>>,
 }
 
 /// Serialize a MetricVector to bincode bytes (ADR-002).
