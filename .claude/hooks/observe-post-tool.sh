@@ -17,7 +17,7 @@ RESPONSE_SIZE=${#RESPONSE}
 RESPONSE_SNIPPET=$(echo "$RESPONSE" | head -c 500)
 TS=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
-RECORD=$(jq -n \
+RECORD=$(jq -nc \
     --arg ts "$TS" \
     --arg hook "PostToolUse" \
     --arg session_id "$SESSION_ID" \

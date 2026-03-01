@@ -13,7 +13,7 @@ TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 TOOL_INPUT=$(echo "$INPUT" | jq -c '.tool_input // null' 2>/dev/null)
 TS=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
-RECORD=$(jq -n \
+RECORD=$(jq -nc \
     --arg ts "$TS" \
     --arg hook "PreToolUse" \
     --arg session_id "$SESSION_ID" \

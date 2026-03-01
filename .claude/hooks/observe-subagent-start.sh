@@ -13,7 +13,7 @@ AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
 PROMPT_SNIPPET=$(echo "$INPUT" | jq -r '.prompt_snippet // empty' 2>/dev/null)
 TS=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
-RECORD=$(jq -n \
+RECORD=$(jq -nc \
     --arg ts "$TS" \
     --arg hook "SubagentStart" \
     --arg session_id "$SESSION_ID" \

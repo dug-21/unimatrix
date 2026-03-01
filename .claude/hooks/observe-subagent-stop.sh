@@ -12,7 +12,7 @@ mkdir -p "$OBS_DIR"
 AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
 TS=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
-RECORD=$(jq -n \
+RECORD=$(jq -nc \
     --arg ts "$TS" \
     --arg hook "SubagentStop" \
     --arg session_id "$SESSION_ID" \
