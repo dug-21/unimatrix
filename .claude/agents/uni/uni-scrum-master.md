@@ -167,6 +167,17 @@ Track rework iterations. If iteration count reaches 2 for any gate, escalate to 
 
 ---
 
+## Phase Tracking
+
+Mark phase transitions with TaskCreate. Subject format: `{phase-id}: {description}`
+
+```
+TaskCreate(subject: "Phase 2a: Architecture + Specification")
+TaskUpdate(taskId: "1", status: "completed")
+```
+
+---
+
 ## Exit Gate
 
 Before returning "complete" to the primary agent:

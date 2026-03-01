@@ -147,6 +147,17 @@ If the bug has a GH Issue:
 
 ---
 
+## Phase Tracking
+
+Mark phase transitions with TaskCreate. Subject format: `{phase-id}: {description}`
+
+```
+TaskCreate(subject: "Phase 1: Discovery")
+TaskUpdate(taskId: "1", status: "completed")
+```
+
+---
+
 ## Exit Gate
 
 Before returning "complete" to the primary agent:
