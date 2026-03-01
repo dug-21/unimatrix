@@ -33,8 +33,8 @@ def test_server_info(server):
     assert_tool_success(resp)
 
 
-def test_list_tools_returns_ten(server):
-    """P-03: tools/list returns exactly 10 context_* tools (alc-002: +context_enroll)."""
+def test_list_tools_returns_eleven(server):
+    """P-03: tools/list returns exactly 11 context_* tools (col-002: +context_retrospective)."""
     resp = server.list_tools()
     raw = resp.result
     assert raw is not None, "tools/list should return a result"
@@ -51,6 +51,7 @@ def test_list_tools_returns_ten(server):
         "context_briefing",
         "context_quarantine",
         "context_enroll",
+        "context_retrospective",
     ])
     assert tool_names == expected, f"Expected {expected}, got {tool_names}"
 

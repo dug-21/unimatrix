@@ -5,8 +5,8 @@ use redb::{ReadTransaction, ReadableDatabase, ReadableTable};
 use crate::db::Store;
 use crate::error::{Result, StoreError};
 use crate::schema::{
-    CATEGORY_INDEX, COUNTERS, ENTRIES, EntryRecord, STATUS_INDEX, Status, TAG_INDEX, TIME_INDEX,
-    TOPIC_INDEX, TimeRange, VECTOR_MAP, deserialize_entry,
+    CATEGORY_INDEX, COUNTERS, ENTRIES, EntryRecord, OBSERVATION_METRICS, STATUS_INDEX, Status,
+    TAG_INDEX, TIME_INDEX, TOPIC_INDEX, TimeRange, VECTOR_MAP, deserialize_entry,
 };
 
 // -- Internal helpers shared with query.rs (C8) --
@@ -300,6 +300,35 @@ impl Store {
         pairs.sort_by(|a, b| b.1.count.cmp(&a.1.count));
         pairs.truncate(n);
         Ok(pairs)
+    }
+
+    /// Retrieve stored observation metrics for a feature cycle.
+    ///
+    /// Returns None if no metrics have been stored for this feature.
+    pub fn get_metrics(&self, feature_cycle: &str) -> Result<Option<Vec<u8>>> {
+        let txn = self.db.begin_read()?;
+        let table = txn.open_table(OBSERVATION_METRICS)?;
+
+        match table.get(feature_cycle)? {
+            Some(guard) => Ok(Some(guard.value().to_vec())),
+            None => Ok(None),
+        }
+    }
+
+    /// List all stored observation metrics.
+    ///
+    /// Returns pairs of (feature_cycle, bincode bytes).
+    pub fn list_all_metrics(&self) -> Result<Vec<(String, Vec<u8>)>> {
+        let txn = self.db.begin_read()?;
+        let table = txn.open_table(OBSERVATION_METRICS)?;
+
+        let mut results = Vec::new();
+        for entry in table.iter()? {
+            let (key, value) = entry?;
+            results.push((key.value().to_string(), value.value().to_vec()));
+        }
+
+        Ok(results)
     }
 }
 
@@ -841,5 +870,55 @@ mod tests {
         let (total, active) = db.store().co_access_stats(0).unwrap();
         assert_eq!(total, 0);
         assert_eq!(active, 0);
+    }
+
+    // -- col-002: Observation metrics tests --
+
+    #[test]
+    fn test_store_and_get_metrics_roundtrip() {
+        let db = TestDb::new();
+        let data = b"test metric data";
+        db.store().store_metrics("col-002", data).unwrap();
+
+        let result = db.store().get_metrics("col-002").unwrap();
+        assert_eq!(result, Some(data.to_vec()));
+    }
+
+    #[test]
+    fn test_get_metrics_nonexistent() {
+        let db = TestDb::new();
+        let result = db.store().get_metrics("nonexistent").unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_list_all_metrics_empty() {
+        let db = TestDb::new();
+        let results = db.store().list_all_metrics().unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_list_all_metrics_multiple() {
+        let db = TestDb::new();
+        db.store().store_metrics("col-001", b"data1").unwrap();
+        db.store().store_metrics("col-002", b"data2").unwrap();
+        db.store().store_metrics("nxs-001", b"data3").unwrap();
+
+        let results = db.store().list_all_metrics().unwrap();
+        assert_eq!(results.len(), 3);
+    }
+
+    #[test]
+    fn test_store_metrics_overwrites() {
+        let db = TestDb::new();
+        db.store().store_metrics("col-002", b"old data").unwrap();
+        db.store().store_metrics("col-002", b"new data").unwrap();
+
+        let result = db.store().get_metrics("col-002").unwrap();
+        assert_eq!(result, Some(b"new data".to_vec()));
+
+        let all = db.store().list_all_metrics().unwrap();
+        assert_eq!(all.len(), 1);
     }
 }

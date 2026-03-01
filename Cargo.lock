@@ -2807,6 +2807,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "unimatrix-observe"
+version = "0.1.0"
+dependencies = [
+ "bincode 2.0.1",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "unimatrix-server"
 version = "0.1.0"
 dependencies = [
@@ -2828,6 +2838,7 @@ dependencies = [
  "unimatrix-adapt",
  "unimatrix-core",
  "unimatrix-embed",
+ "unimatrix-observe",
  "unimatrix-store",
  "unimatrix-vector",
 ]

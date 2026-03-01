@@ -233,6 +233,15 @@ pub struct EnrollParams {
     pub format: Option<String>,
 }
 
+/// Parameters for the context_retrospective tool.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct RetrospectiveParams {
+    /// Feature cycle to analyze (e.g., "col-002").
+    pub feature_cycle: String,
+    /// Agent making the request.
+    pub agent_id: Option<String>,
+}
+
 #[rmcp::tool_router(vis = "pub(crate)")]
 impl UnimatrixServer {
     #[tool(
@@ -1255,6 +1264,11 @@ impl UnimatrixServer {
                 outcomes_by_type: outcomes_by_type.into_iter().collect(),
                 outcomes_by_result: outcomes_by_result.into_iter().collect(),
                 outcomes_by_feature_cycle: fc_sorted,
+                observation_file_count: 0,
+                observation_total_size_bytes: 0,
+                observation_oldest_file_days: 0,
+                observation_approaching_cleanup: Vec::new(),
+                retrospected_feature_count: 0,
             };
             Ok((report, active_entries))
         }).await
@@ -1548,6 +1562,51 @@ impl UnimatrixServer {
             report.embedding_inconsistencies.len(),
             report.total_quarantined,
         );
+
+        // 5h. Observation stats
+        let obs_dir = unimatrix_observe::observation_dir();
+        let obs_stats = tokio::task::spawn_blocking({
+            let dir = obs_dir.clone();
+            move || unimatrix_observe::scan_observation_stats(&dir)
+        })
+        .await
+        .unwrap()
+        .unwrap_or_else(|_| unimatrix_observe::ObservationStats {
+            file_count: 0,
+            total_size_bytes: 0,
+            oldest_file_age_days: 0,
+            approaching_cleanup: vec![],
+        });
+
+        report.observation_file_count = obs_stats.file_count;
+        report.observation_total_size_bytes = obs_stats.total_size_bytes;
+        report.observation_oldest_file_days = obs_stats.oldest_file_age_days;
+        report.observation_approaching_cleanup = obs_stats.approaching_cleanup;
+
+        // 5i. Retrospected feature count from OBSERVATION_METRICS
+        let retrospected = tokio::task::spawn_blocking({
+            let store = Arc::clone(&self.store);
+            move || store.list_all_metrics()
+        })
+        .await
+        .unwrap()
+        .unwrap_or_else(|_| vec![]);
+        report.retrospected_feature_count = retrospected.len() as u64;
+
+        // 5j. If maintain=true, also clean up old observation files
+        if maintain_enabled {
+            let cleanup_dir = obs_dir;
+            tokio::task::spawn_blocking(move || {
+                let sixty_days = 60 * 24 * 60 * 60;
+                if let Ok(expired) = unimatrix_observe::identify_expired(&cleanup_dir, sixty_days) {
+                    for path in expired {
+                        let _ = std::fs::remove_file(path);
+                    }
+                }
+            })
+            .await
+            .unwrap();
+        }
 
         // 6. Audit (standalone, best-effort)
         let _ = self.audit.log_event(AuditEvent {
@@ -2018,6 +2077,169 @@ impl UnimatrixServer {
 
         Ok(response)
     }
+
+    #[tool(
+        name = "context_retrospective",
+        description = "Analyze observation data for a feature cycle. Parses session telemetry, attributes to feature, detects hotspots, computes metrics, and returns a self-contained report."
+    )]
+    async fn context_retrospective(
+        &self,
+        Parameters(params): Parameters<RetrospectiveParams>,
+    ) -> Result<CallToolResult, rmcp::model::ErrorData> {
+        use crate::error::{ServerError, ERROR_NO_OBSERVATION_DATA};
+        use crate::response::format_retrospective_report;
+
+        // 1. Identity resolution
+        let identity = self
+            .resolve_agent(&params.agent_id)
+            .map_err(rmcp::ErrorData::from)?;
+
+        // 2. Validation
+        crate::validation::validate_retrospective_params(&params)
+            .map_err(rmcp::ErrorData::from)?;
+
+        // 3. Determine observation directory
+        let obs_dir = unimatrix_observe::observation_dir();
+
+        // 4. Discover and parse session files (spawn_blocking for sync I/O)
+        let sessions = tokio::task::spawn_blocking({
+            let obs_dir = obs_dir.clone();
+            move || -> std::result::Result<Vec<unimatrix_observe::ParsedSession>, ServerError> {
+                let session_files = unimatrix_observe::discover_sessions(&obs_dir)
+                    .map_err(|e| ServerError::ObservationError(e.to_string()))?;
+
+                let mut parsed: Vec<unimatrix_observe::ParsedSession> = Vec::new();
+                for sf in &session_files {
+                    let records = unimatrix_observe::parse_session_file(&sf.path)
+                        .unwrap_or_default();
+                    if !records.is_empty() {
+                        parsed.push(unimatrix_observe::ParsedSession {
+                            session_id: sf.session_id.clone(),
+                            records,
+                        });
+                    }
+                }
+
+                Ok(parsed)
+            }
+        })
+        .await
+        .unwrap()
+        .map_err(rmcp::ErrorData::from)?;
+
+        // 5. Attribute sessions to target feature
+        let attributed =
+            unimatrix_observe::attribute_sessions(&sessions, &params.feature_cycle);
+
+        // 6. Check for data availability
+        let store = Arc::clone(&self.store);
+        let feature_cycle = params.feature_cycle.clone();
+
+        if attributed.is_empty() {
+            // No new data -- check for cached MetricVector
+            let cached = tokio::task::spawn_blocking({
+                let store = Arc::clone(&store);
+                let fc = feature_cycle.clone();
+                move || store.get_metrics(&fc)
+            })
+            .await
+            .unwrap()
+            .map_err(|e| ServerError::Core(CoreError::Store(e)))
+            .map_err(rmcp::ErrorData::from)?;
+
+            match cached {
+                Some(bytes) => {
+                    // Return cached result (FR-09.6)
+                    let mv = unimatrix_observe::deserialize_metric_vector(&bytes)
+                        .map_err(|e| ServerError::ObservationError(e.to_string()))
+                        .map_err(rmcp::ErrorData::from)?;
+
+                    let report = unimatrix_observe::RetrospectiveReport {
+                        feature_cycle: feature_cycle.clone(),
+                        session_count: 0,
+                        total_records: 0,
+                        metrics: mv,
+                        hotspots: vec![],
+                        is_cached: true,
+                    };
+
+                    return Ok(format_retrospective_report(&report));
+                }
+                None => {
+                    // No data, no cache (FR-09.7)
+                    return Err(rmcp::model::ErrorData::new(
+                        ERROR_NO_OBSERVATION_DATA,
+                        format!(
+                            "No observation data found for feature '{}'. Ensure hook scripts are installed and sessions have been run.",
+                            feature_cycle
+                        ),
+                        None,
+                    ));
+                }
+            }
+        }
+
+        // 7. Run analysis pipeline
+        let rules = unimatrix_observe::default_rules();
+        let hotspots = unimatrix_observe::detect_hotspots(&attributed, &rules);
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let metrics =
+            unimatrix_observe::compute_metric_vector(&attributed, &hotspots, now);
+
+        // 8. Store MetricVector
+        let mv_bytes = unimatrix_observe::serialize_metric_vector(&metrics)
+            .map_err(|e| ServerError::ObservationError(e.to_string()))
+            .map_err(rmcp::ErrorData::from)?;
+
+        tokio::task::spawn_blocking({
+            let store = Arc::clone(&store);
+            let fc = feature_cycle.clone();
+            move || store.store_metrics(&fc, &mv_bytes)
+        })
+        .await
+        .unwrap()
+        .map_err(|e| ServerError::Core(CoreError::Store(e)))
+        .map_err(rmcp::ErrorData::from)?;
+
+        // 9. Cleanup expired files (FR-09.8)
+        let cleanup_dir = obs_dir;
+        tokio::task::spawn_blocking(move || {
+            let sixty_days = 60 * 24 * 60 * 60;
+            if let Ok(expired) = unimatrix_observe::identify_expired(&cleanup_dir, sixty_days) {
+                for path in expired {
+                    let _ = std::fs::remove_file(path);
+                }
+            }
+        })
+        .await
+        .unwrap();
+
+        // 10. Build and return report
+        let report = unimatrix_observe::build_report(
+            &feature_cycle,
+            &attributed,
+            metrics,
+            hotspots,
+        );
+
+        // 11. Audit
+        let _ = self.audit.log_event(AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: identity.agent_id,
+            operation: "context_retrospective".to_string(),
+            target_ids: vec![],
+            outcome: Outcome::Success,
+            detail: format!("retrospective for {}", feature_cycle),
+        });
+
+        Ok(format_retrospective_report(&report))
+    }
 }
 
 #[cfg(test)]
@@ -2328,5 +2550,23 @@ mod tests {
         // This test verifies the invariant from the architecture
         assert_ne!("context_enroll", "context_store");
         assert_ne!("context_enroll", "context_correct");
+    }
+
+    // -- col-002: RetrospectiveParams --
+
+    #[test]
+    fn test_retrospective_params_deserialize() {
+        let json = r#"{"feature_cycle": "col-002"}"#;
+        let params: RetrospectiveParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.feature_cycle, "col-002");
+        assert!(params.agent_id.is_none());
+    }
+
+    #[test]
+    fn test_retrospective_params_with_agent() {
+        let json = r#"{"feature_cycle": "nxs-001", "agent_id": "test-agent"}"#;
+        let params: RetrospectiveParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.feature_cycle, "nxs-001");
+        assert_eq!(params.agent_id.unwrap(), "test-agent");
     }
 }

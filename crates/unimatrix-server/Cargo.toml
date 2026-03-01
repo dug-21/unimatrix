@@ -19,6 +19,7 @@ unimatrix-store = { path = "../unimatrix-store" }
 unimatrix-vector = { path = "../unimatrix-vector" }
 unimatrix-embed = { path = "../unimatrix-embed" }
 unimatrix-adapt = { path = "../unimatrix-adapt" }
+unimatrix-observe = { path = "../unimatrix-observe" }
 
 fs2 = "0.4"
 redb = { workspace = true }

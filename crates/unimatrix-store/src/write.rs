@@ -6,9 +6,9 @@ use crate::counter;
 use crate::db::Store;
 use crate::error::{Result, StoreError};
 use crate::schema::{
-    CATEGORY_INDEX, ENTRIES, EntryRecord, FEATURE_ENTRIES, NewEntry, STATUS_INDEX, Status,
-    TAG_INDEX, TIME_INDEX, TOPIC_INDEX, VECTOR_MAP, deserialize_entry, serialize_entry,
-    status_counter_key,
+    CATEGORY_INDEX, ENTRIES, EntryRecord, FEATURE_ENTRIES, NewEntry, OBSERVATION_METRICS,
+    STATUS_INDEX, Status, TAG_INDEX, TIME_INDEX, TOPIC_INDEX, VECTOR_MAP, deserialize_entry,
+    serialize_entry, status_counter_key,
 };
 
 /// Get the current unix timestamp in seconds.
@@ -586,6 +586,20 @@ impl Store {
         }
         txn.commit()?;
         Ok(removed)
+    }
+
+    /// Store observation metrics for a feature cycle.
+    ///
+    /// Overwrites any previously stored metrics for the same feature cycle.
+    /// The `data` parameter is opaque bincode bytes from unimatrix-observe.
+    pub fn store_metrics(&self, feature_cycle: &str, data: &[u8]) -> Result<()> {
+        let txn = self.db.begin_write()?;
+        {
+            let mut table = txn.open_table(OBSERVATION_METRICS)?;
+            table.insert(feature_cycle, data)?;
+        }
+        txn.commit()?;
+        Ok(())
     }
 }
 

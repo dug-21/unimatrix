@@ -94,31 +94,41 @@ Task(subagent_type: "uni-tester",
     - product/features/{id}/RISK-TEST-STRATEGY.md
 
     Produce per-component test plans rooted in the Risk Strategy.
+    Integration test planning is a required part of test plans —
+    your agent definition has the full suite catalog and planning
+    guidance. OVERVIEW.md MUST include an integration harness section.
 
     Output:
-    - test-plan/OVERVIEW.md (overall test strategy, risk-to-test mapping)
+    - test-plan/OVERVIEW.md (test strategy, risk mapping, integration harness plan)
     - test-plan/{component}.md (per-component test expectations)
 
-    Return: file paths, risk coverage mapping, open questions.")
+    Return: file paths, risk coverage mapping, integration suite plan, open questions.")
 ```
 
 Wait for both agents to complete.
 
 ### Component Map Update (MANDATORY — between Stage 3a and Gate 3a)
 
-After Stage 3a agents return, the Delivery Leader MUST update the IMPLEMENTATION-BRIEF.md Component Map with actual file paths before proceeding to Gate 3a.
+After Stage 3a agents return, the Delivery Leader MUST update the IMPLEMENTATION-BRIEF.md with actual file paths before proceeding to Gate 3a.
 
 1. Collect component lists and file paths from both agents' returns
-2. Update the Component Map table in `product/features/{id}/IMPLEMENTATION-BRIEF.md`:
+2. Update the **Component Map** table in `product/features/{id}/IMPLEMENTATION-BRIEF.md`:
    ```
    | Component | Pseudocode | Test Plan |
    |-----------|-----------|-----------|
    | {component-1} | pseudocode/{component-1}.md | test-plan/{component-1}.md |
    | {component-2} | pseudocode/{component-2}.md | test-plan/{component-2}.md |
    ```
-3. This updated Component Map is what Gate 3a validates and what Stage 3b uses for per-component routing
+3. Update the **Cross-Cutting Artifacts** section with actual paths:
+   ```
+   | Artifact | Path | Consumed By |
+   |----------|------|-------------|
+   | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+   | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+   ```
+4. The Component Map drives Stage 3b per-component routing. The Cross-Cutting Artifacts drive Stage 3c routing — the integration harness plan in `test-plan/OVERVIEW.md` tells the Stage 3c tester which suites to run and what new integration tests to write.
 
-**Do NOT skip this step.** The IMPLEMENTATION-BRIEF from Session 1 has placeholder components from the architecture. Stage 3a produces the actual pseudocode/test-plan files. The Component Map must reflect reality before validation or implementation begins.
+**Do NOT skip this step.** The IMPLEMENTATION-BRIEF from Session 1 has placeholder components from the architecture. Stage 3a produces the actual pseudocode/test-plan files. Both tables must reflect reality before validation or implementation begins.
 
 ### Gate 3a: Design Review (MANDATORY BLOCK — do NOT proceed to Stage 3b without PASS)
 
@@ -197,9 +207,7 @@ Task(subagent_type: "uni-rust-dev",
     ...same structure, with {component-2}'s pseudocode and test plan...")
 ```
 
-**Non-negotiable**: Each agent gets ONLY its own component's `pseudocode/{component}.md` and `test-plan/{component}.md`. Do NOT dump all pseudocode files into every agent. Do NOT combine multiple components into one agent.
-
-**Integration test rule**: Stage 3b agents (uni-rust-dev) do NOT run or modify integration tests (`product/test/infra-001/`). Integration testing happens in Stage 3c. If a code change breaks an integration test, the uni-tester in Stage 3c will report it for rework.
+**Non-negotiable**: Each agent gets ONLY its own component's `pseudocode/{component}.md` and `test-plan/{component}.md`. Do NOT dump all pseudocode files into every agent. Do NOT combine multiple components into one agent. Stage 3b agents do NOT run or modify integration tests — that's Stage 3c.
 
 ### Gate 3b: Code Review
 
@@ -246,46 +254,20 @@ Task(subagent_type: "uni-tester",
     PHASE: Test Execution (Stage 3c)
 
     Read these files:
+    - product/features/{id}/IMPLEMENTATION-BRIEF.md (Cross-Cutting Artifacts section for your inputs)
     - product/features/{id}/RISK-TEST-STRATEGY.md
-    - product/features/{id}/test-plan/ (all files)
+    - product/features/{id}/test-plan/OVERVIEW.md (contains the integration harness plan from Stage 3a)
+    - product/features/{id}/test-plan/{component}.md (per-component test plans)
     - product/features/{id}/ACCEPTANCE-MAP.md
     - product/test/infra-001/USAGE-PROTOCOL.md
 
-    Execute:
-    1. Unit tests: cargo test --workspace 2>&1 | tail -30
-    2. Integration smoke tests (MANDATORY GATE):
-       cd product/test/infra-001 && python -m pytest suites/ -v -m smoke --timeout=60
-    3. Integration suites relevant to this feature (see suite selection table below)
-    4. Feature-level tests mapped to Risk Strategy
-    5. Verify every identified risk has test coverage
-
-    INTEGRATION TEST FAILURE TRIAGE (CRITICAL):
-    When an integration test fails, determine causation:
-    - CAUSED BY THIS FEATURE → Fix the code. Re-run. Document in report.
-    - PRE-EXISTING / UNRELATED → Do NOT fix. File a GH Issue and mark the
-      test @pytest.mark.xfail(reason='Pre-existing: GH#NNN — description').
-      Continue with the feature. See USAGE-PROTOCOL.md for GH Issue template.
-    - BAD TEST ASSERTION → Fix the test. Document in report.
-
-    Agents must NEVER fix integration test failures unrelated to the feature
-    under development. Unrelated fixes create scope creep, blame diffusion,
-    and skip the proper risk assessment lifecycle.
-
-    SUITE SELECTION (run based on what the feature touches):
-    | Feature touches...              | Run these suites                        |
-    |---------------------------------|-----------------------------------------|
-    | Any server tool logic           | tools, protocol                         |
-    | Store/retrieval behavior        | tools, lifecycle, edge_cases            |
-    | Confidence system               | confidence, lifecycle                   |
-    | Contradiction detection         | contradiction                           |
-    | Security (scanning, caps)       | security                                |
-    | Schema or storage changes       | lifecycle (persistence), volume         |
-    | Any change at all               | smoke (minimum gate)                    |
+    Execute unit tests, integration smoke tests (mandatory gate), and
+    relevant integration suites per the integration harness plan in
+    test-plan/OVERVIEW.md. Write new integration tests identified in that
+    plan. Triage any integration failures per USAGE-PROTOCOL.md rules.
 
     Output:
-    - testing/RISK-COVERAGE-REPORT.md (maps test results to identified risks)
-      Must include: unit test counts, integration test counts (per suite),
-      any xfail markers added with GH Issue references
+    - testing/RISK-COVERAGE-REPORT.md (risk mapping, unit + integration counts, xfail references)
     - All unit tests pass
     - Integration smoke tests pass (xfail markers acceptable with GH Issues)
 
@@ -453,60 +435,14 @@ DELIVERY LEADER (uni-scrum-master):
 
 ## Integration Test Harness
 
-The project includes a comprehensive integration test harness at `product/test/infra-001/` that exercises the compiled `unimatrix-server` binary through the MCP JSON-RPC protocol — the exact interface agents use. Full details: `product/test/infra-001/USAGE-PROTOCOL.md`.
+**Authoritative reference**: `product/test/infra-001/USAGE-PROTOCOL.md` — contains commands, suite descriptions, failure triage decision tree, GH Issue templates, and xfail workflow.
 
-**157 tests across 8 suites:** protocol, tools, lifecycle, volume, security, confidence, contradiction, edge_cases.
+The uni-tester agent has full integration harness knowledge (suite selection, triage rules, commands). The delivery protocol does not duplicate those details. Key rules for the scrum master:
 
-### Commands
-
-```bash
-# From product/test/infra-001/ (binary must be built first)
-
-# Smoke tests — MANDATORY minimum gate for Stage 3c
-python -m pytest suites/ -v -m smoke --timeout=60
-
-# Full suite
-python -m pytest suites/ -v --timeout=60
-
-# Specific suite
-python -m pytest suites/test_security.py -v --timeout=60
-
-# Specific test
-python -m pytest suites/test_tools.py::test_store_roundtrip -v
-```
-
-### Non-Negotiable Failure Triage Rule
-
-**Agents ONLY fix integration test failures caused by the feature under development.** All other failures follow this protocol:
-
-1. **Caused by this feature** → Fix the code. Re-run. Document fix in gate report.
-2. **Pre-existing / unrelated** → Do NOT fix. File a GH Issue:
-   ```bash
-   gh issue create \
-     --title "[infra-001] test_<name>: <brief description>" \
-     --label "bug" \
-     --body "Discovered by: suites/test_<suite>.py::test_<name>
-   Expected: <what test expected>
-   Actual: <what happened>
-   Not caused by the current feature under development."
-   ```
-   Then mark the test:
-   ```python
-   @pytest.mark.xfail(reason="Pre-existing: GH#NNN — description")
-   def test_the_failing_test(server):
-       ...
-   ```
-3. **Bad test assertion** → Fix the test. Document in gate report.
-
-**Why**: Fixing unrelated issues in a feature PR creates scope creep, blame diffusion, no audit trail, and skips proper risk assessment. The issue deserves its own lifecycle.
-
-### Agent Rules
-
-| Agent | Integration Test Rule |
-|-------|----------------------|
-| **uni-rust-dev** (3b) | Do NOT run or modify integration tests. Stage 3c handles this. |
-| **uni-tester** (3c) | Run smoke (mandatory) + relevant suites. Triage failures per rule above. Report results + any GH Issues filed in RISK-COVERAGE-REPORT.md. |
-| **uni-validator** (Gate 3c) | Verify smoke passed, xfail markers have GH Issues, no tests deleted/commented, RISK-COVERAGE-REPORT includes integration counts. |
+- **uni-rust-dev** (Stage 3b): Do NOT run or modify integration tests. Stage 3c handles this.
+- **uni-tester** (Stage 3a): Include integration harness plan in test-plan/OVERVIEW.md — which suites apply, new tests needed.
+- **uni-tester** (Stage 3c): Run smoke (mandatory gate) + relevant suites. Triage failures per USAGE-PROTOCOL.md. Report results in RISK-COVERAGE-REPORT.md.
+- **uni-validator** (Gate 3c): Verify smoke passed, xfail markers have GH Issues, no tests deleted, RISK-COVERAGE-REPORT includes integration counts.
 
 ---
 
