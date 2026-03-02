@@ -45,6 +45,9 @@ fn unix_now_secs() -> u64 {
 
 /// Validate session_id format: [a-zA-Z0-9-_], max 128 chars. (FR-04, SEC-01)
 fn sanitize_session_id(session_id: &str) -> Result<(), String> {
+    if session_id.is_empty() {
+        return Err("session_id must not be empty".to_string());
+    }
     if session_id.len() > 128 {
         return Err("session_id too long (max 128 chars)".to_string());
     }
@@ -444,6 +447,14 @@ async fn dispatch_request(
             outcome,
             duration_secs,
         } => {
+            if let Err(e) = sanitize_session_id(&session_id) {
+                tracing::warn!(session_id, error = %e, "UDS: SessionClose rejected: invalid session_id");
+                return HookResponse::Error {
+                    code: ERR_INVALID_PAYLOAD,
+                    message: e,
+                };
+            }
+
             tracing::info!(
                 session_id,
                 outcome = ?outcome,
@@ -518,6 +529,16 @@ async fn dispatch_request(
             k,
             max_tokens: _,
         } => {
+            if let Some(ref sid) = session_id {
+                if let Err(e) = sanitize_session_id(sid) {
+                    tracing::warn!(session_id = sid, error = %e, "UDS: ContextSearch rejected: invalid session_id");
+                    return HookResponse::Error {
+                        code: ERR_INVALID_PAYLOAD,
+                        message: e,
+                    };
+                }
+            }
+
             handle_context_search(
                 query,
                 session_id,
@@ -2214,9 +2235,9 @@ mod tests {
     }
 
     #[test]
-    fn sanitize_session_id_empty_is_valid() {
-        // Empty string: no chars to fail, but zero length is ≤ 128
-        assert!(sanitize_session_id("").is_ok());
+    fn sanitize_session_id_rejects_empty() {
+        let err = sanitize_session_id("").unwrap_err();
+        assert!(err.contains("must not be empty"), "expected 'must not be empty', got: {err}");
     }
 
     // -- col-010: sanitize_metadata_field tests (SEC-02) --
