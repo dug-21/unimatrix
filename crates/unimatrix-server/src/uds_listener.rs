@@ -24,8 +24,14 @@ use unimatrix_engine::wire::{
 };
 use unimatrix_store::Store;
 
+use std::collections::HashSet;
+use std::sync::Mutex;
+
+use unimatrix_store::{SignalRecord, SignalType, SignalSource};
+
 use crate::embed_handle::EmbedServiceHandle;
-use crate::session::SessionRegistry;
+use crate::server::PendingEntriesAnalysis;
+use crate::session::{ReworkEvent, SessionOutcome, SessionRegistry, SignalOutput};
 
 /// Minimum cosine similarity for injection candidates.
 const SIMILARITY_FLOOR: f64 = 0.5;
@@ -118,6 +124,7 @@ pub async fn start_uds_listener(
     entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
+    pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
     server_uid: u32,
     server_version: String,
 ) -> io::Result<(tokio::task::JoinHandle<()>, SocketGuard)> {
@@ -144,6 +151,7 @@ pub async fn start_uds_listener(
             entry_store,
             adapt_service,
             session_registry,
+            pending_entries_analysis,
             server_uid,
             server_version,
             socket_path_display,
@@ -165,6 +173,7 @@ async fn accept_loop(
     entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
+    pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
     server_uid: u32,
     server_version: String,
     socket_path_display: String,
@@ -178,6 +187,7 @@ async fn accept_loop(
                 let entry_store = Arc::clone(&entry_store);
                 let adapt_service = Arc::clone(&adapt_service);
                 let session_registry = Arc::clone(&session_registry);
+                let pending_entries_analysis = Arc::clone(&pending_entries_analysis);
                 let version = server_version.clone();
 
                 // Per-connection handler in its own task (panic isolation -- R-19)
@@ -190,6 +200,7 @@ async fn accept_loop(
                         entry_store,
                         adapt_service,
                         session_registry,
+                        pending_entries_analysis,
                         server_uid,
                         version,
                     )
@@ -223,6 +234,7 @@ async fn handle_connection(
     entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
+    pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
     server_uid: u32,
     server_version: String,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -297,6 +309,7 @@ async fn handle_connection(
         &adapt_service,
         &server_version,
         &session_registry,
+        &pending_entries_analysis,
     )
     .await;
 
@@ -318,6 +331,7 @@ async fn dispatch_request(
     adapt_service: &Arc<AdaptationService>,
     server_version: &str,
     session_registry: &SessionRegistry,
+    pending_entries_analysis: &Arc<Mutex<PendingEntriesAnalysis>>,
 ) -> HookResponse {
     match request {
         HookRequest::Ping => HookResponse::Pong {
@@ -359,9 +373,47 @@ async fn dispatch_request(
                 "UDS: session closed"
             );
 
-            // Clear all session state (col-008: replaces coaccess_dedup.clear_session)
-            session_registry.clear_session(&session_id);
+            let hook_outcome = outcome.as_deref().unwrap_or("");
+            process_session_close(
+                &session_id,
+                hook_outcome,
+                store,
+                session_registry,
+                entry_store,
+                pending_entries_analysis,
+            )
+            .await
+        }
 
+        // col-009: Rework candidate events from PostToolUse hook
+        HookRequest::RecordEvent { ref event }
+            if event.event_type == "post_tool_use_rework_candidate" =>
+        {
+            let tool_name = event
+                .payload
+                .get("tool_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let file_path = event
+                .payload
+                .get("file_path")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let had_failure = event
+                .payload
+                .get("had_failure")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+
+            let rework_event = ReworkEvent {
+                tool_name,
+                file_path,
+                had_failure,
+                timestamp: event.timestamp,
+            };
+
+            session_registry.record_rework_event(&event.session_id, rework_event);
             HookResponse::Ack
         }
 
@@ -980,6 +1032,255 @@ async fn warm_embedding_model(embed_service: &Arc<EmbedServiceHandle>) {
     }
 }
 
+// -- col-009: Signal dispatch helpers --
+
+/// Process session close: sweep stale sessions, generate signals, run consumers.
+///
+/// Never panics. Always returns HookResponse::Ack.
+async fn process_session_close(
+    session_id: &str,
+    hook_outcome: &str,
+    store: &Arc<Store>,
+    session_registry: &SessionRegistry,
+    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    pending: &Arc<Mutex<PendingEntriesAnalysis>>,
+) -> HookResponse {
+    // Step 1: Sweep stale sessions first (FR-09.1)
+    let stale_outputs = session_registry.sweep_stale_sessions();
+    for (stale_session_id, stale_output) in stale_outputs {
+        tracing::info!(session_id = %stale_session_id, "UDS: sweeping stale session");
+        write_signals_to_queue(&stale_output, store).await;
+    }
+
+    // Step 2: Generate signals for the closing session (atomic — ADR-003)
+    let maybe_output = session_registry.drain_and_signal_session(session_id, hook_outcome);
+
+    if let Some(ref output) = maybe_output {
+        // Step 3: Write signals to SIGNAL_QUEUE
+        write_signals_to_queue(output, store).await;
+
+        // Step 4: Run consumers (after queue is written)
+        run_confidence_consumer(store, entry_store, pending).await;
+        run_retrospective_consumer(store, pending, entry_store).await;
+    }
+    // If session absent (already cleared): no-op (idempotent — AC-03)
+
+    HookResponse::Ack
+}
+
+/// Write a SignalRecord to SIGNAL_QUEUE for the given SignalOutput.
+///
+/// Only writes if there are entry_ids to signal (FR-04.6).
+pub(crate) async fn write_signals_to_queue(output: &SignalOutput, store: &Arc<Store>) {
+    let (entry_ids, signal_type, signal_source) = match output.final_outcome {
+        SessionOutcome::Success if !output.helpful_entry_ids.is_empty() => (
+            output.helpful_entry_ids.clone(),
+            SignalType::Helpful,
+            SignalSource::ImplicitOutcome,
+        ),
+        SessionOutcome::Rework if !output.flagged_entry_ids.is_empty() => (
+            output.flagged_entry_ids.clone(),
+            SignalType::Flagged,
+            SignalSource::ImplicitRework,
+        ),
+        _ => return, // No entries to signal (abandoned or empty)
+    };
+
+    let created_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let record = SignalRecord {
+        signal_id: 0, // Allocated by insert_signal
+        session_id: output.session_id.clone(),
+        created_at,
+        entry_ids,
+        signal_type,
+        signal_source,
+    };
+
+    if let Err(e) = store.insert_signal(&record) {
+        tracing::warn!(
+            session_id = %output.session_id,
+            error = %e,
+            "write_signals_to_queue: failed to insert signal"
+        );
+    }
+}
+
+/// Drain Helpful signals from SIGNAL_QUEUE and apply helpful_count increments.
+///
+/// Also updates success_session_count in PendingEntriesAnalysis (FR-06.2b).
+pub(crate) async fn run_confidence_consumer(
+    store: &Arc<Store>,
+    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    pending: &Arc<Mutex<PendingEntriesAnalysis>>,
+) {
+    // Step 1: Drain all Helpful signals in one transaction
+    let signals = match store.drain_signals(SignalType::Helpful) {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::warn!(error = %e, "run_confidence_consumer: drain_signals failed");
+            return;
+        }
+    };
+
+    if signals.is_empty() {
+        return;
+    }
+
+    // Step 2: Deduplicate entry_ids across all drained signals
+    let mut all_entry_ids: HashSet<u64> = HashSet::new();
+    for signal in &signals {
+        for &entry_id in &signal.entry_ids {
+            all_entry_ids.insert(entry_id);
+        }
+    }
+
+    // Step 3: Increment helpful_count for all unique entries (via crt-002 path)
+    // Uses spawn_blocking since record_usage_with_confidence is synchronous.
+    let entry_ids_vec: Vec<u64> = all_entry_ids.iter().copied().collect();
+    let store_clone = Arc::clone(store);
+    if let Err(e) = tokio::task::spawn_blocking(move || {
+        store_clone.record_usage_with_confidence(
+            &entry_ids_vec,
+            &[],            // access_ids: no access count bump for implicit signals
+            &entry_ids_vec, // helpful_ids: all signal entries
+            &[],
+            &[],
+            &[],
+            None,
+        )
+    })
+    .await
+    {
+        // spawn_blocking join error — warn and continue
+        tracing::warn!(error = %e, "run_confidence_consumer: spawn_blocking failed");
+    }
+    // Note: per-entry failures (entry deleted) are handled inside record_usage_with_confidence
+    // by skipping entries that no longer exist.
+
+    // Step 4: Update success_session_count in PendingEntriesAnalysis (FR-06.2b)
+    // First pass: update existing entries under lock
+    let entries_needing_fetch: Vec<u64> = {
+        let mut pending_guard = pending.lock().unwrap_or_else(|e| e.into_inner());
+        let mut needing_fetch = Vec::new();
+        for signal in &signals {
+            for &entry_id in &signal.entry_ids {
+                if let Some(existing) = pending_guard.entries.get_mut(&entry_id) {
+                    existing.success_session_count += 1;
+                } else {
+                    needing_fetch.push(entry_id);
+                }
+            }
+        }
+        needing_fetch
+    };
+
+    // Second pass: fetch metadata for new entries (outside lock — async I/O)
+    let mut fetched: std::collections::HashMap<u64, (String, String)> = std::collections::HashMap::new();
+    for entry_id in &entries_needing_fetch {
+        let (title, category) = match entry_store.get(*entry_id).await {
+            Ok(record) => (record.title.clone(), record.category.clone()),
+            Err(_) => (String::new(), String::new()),
+        };
+        fetched.insert(*entry_id, (title, category));
+    }
+
+    // Third pass: insert new entries (back under lock)
+    if !fetched.is_empty() {
+        let mut pending_guard = pending.lock().unwrap_or_else(|e| e.into_inner());
+        for (entry_id, (title, category)) in fetched {
+            if let Some(existing) = pending_guard.entries.get_mut(&entry_id) {
+                // Added between our first pass and now
+                existing.success_session_count += 1;
+            } else {
+                let analysis = unimatrix_observe::EntryAnalysis {
+                    entry_id,
+                    title,
+                    category,
+                    rework_flag_count: 0,
+                    injection_count: 0,
+                    success_session_count: 1,
+                    rework_session_count: 0,
+                };
+                pending_guard.upsert(analysis);
+            }
+        }
+    }
+}
+
+/// Drain Flagged signals from SIGNAL_QUEUE and update PendingEntriesAnalysis.
+pub(crate) async fn run_retrospective_consumer(
+    store: &Arc<Store>,
+    pending: &Arc<Mutex<PendingEntriesAnalysis>>,
+    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+) {
+    // Step 1: Drain all Flagged signals
+    let signals = match store.drain_signals(SignalType::Flagged) {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::warn!(error = %e, "run_retrospective_consumer: drain_signals failed");
+            return;
+        }
+    };
+
+    if signals.is_empty() {
+        return;
+    }
+
+    // Step 2: Collect entry_ids not yet in PendingEntriesAnalysis (outside lock)
+    let entries_needing_fetch: Vec<u64> = {
+        let pending_guard = pending.lock().unwrap_or_else(|e| e.into_inner());
+        signals
+            .iter()
+            .flat_map(|s| s.entry_ids.iter().copied())
+            .filter(|id| !pending_guard.entries.contains_key(id))
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect()
+    };
+
+    // Step 3: Fetch metadata for new entries (outside lock — async I/O)
+    let mut fetched: std::collections::HashMap<u64, (String, String)> = std::collections::HashMap::new();
+    for entry_id in entries_needing_fetch {
+        let (title, category) = match entry_store.get(entry_id).await {
+            Ok(record) => (record.title.clone(), record.category.clone()),
+            Err(_) => (String::new(), String::new()),
+        };
+        fetched.insert(entry_id, (title, category));
+    }
+
+    // Step 4: Apply updates to PendingEntriesAnalysis (under lock)
+    {
+        let mut pending_guard = pending.lock().unwrap_or_else(|e| e.into_inner());
+        for signal in &signals {
+            for &entry_id in &signal.entry_ids {
+                if let Some(existing) = pending_guard.entries.get_mut(&entry_id) {
+                    existing.rework_flag_count += 1;
+                    existing.rework_session_count += 1;
+                } else {
+                    let (title, category) = fetched
+                        .get(&entry_id)
+                        .cloned()
+                        .unwrap_or_default();
+                    let analysis = unimatrix_observe::EntryAnalysis {
+                        entry_id,
+                        title,
+                        category,
+                        rework_flag_count: 1,
+                        injection_count: 0,
+                        success_session_count: 0,
+                        rework_session_count: 1,
+                    };
+                    pending_guard.upsert(analysis);
+                }
+            }
+        }
+    }
+}
+
 /// Write a length-prefixed response frame to the async writer.
 async fn write_response(
     writer: &mut tokio::net::unix::OwnedWriteHalf,
@@ -1010,6 +1311,10 @@ mod tests {
 
     fn make_registry() -> SessionRegistry {
         SessionRegistry::new()
+    }
+
+    fn make_pending() -> Arc<Mutex<PendingEntriesAnalysis>> {
+        Arc::new(Mutex::new(PendingEntriesAnalysis::new()))
     }
 
     fn make_dispatch_deps(store: &Arc<Store>) -> (
@@ -1087,7 +1392,7 @@ mod tests {
 
         let response = dispatch_request(
             HookRequest::Ping,
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
         ).await;
         match response {
             HookResponse::Pong { server_version } => assert_eq!(server_version, "0.1.0"),
@@ -1109,7 +1414,7 @@ mod tests {
                 agent_role: Some("dev".to_string()),
                 feature: Some("col-008".to_string()),
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
         ).await;
         assert!(matches!(response, HookResponse::Ack));
 
@@ -1135,7 +1440,7 @@ mod tests {
                 outcome: Some("success".to_string()),
                 duration_secs: 60,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
         ).await;
         assert!(matches!(response, HookResponse::Ack));
 
@@ -1158,7 +1463,7 @@ mod tests {
         };
         let response = dispatch_request(
             HookRequest::RecordEvent { event },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
         ).await;
         assert!(matches!(response, HookResponse::Ack));
     }
@@ -1177,7 +1482,7 @@ mod tests {
                 feature: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
         ).await;
         match response {
             HookResponse::Error { code, .. } => assert_eq!(code, ERR_UNKNOWN_REQUEST),
@@ -1202,7 +1507,7 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
         ).await;
         match response {
             HookResponse::Entries { items, total_tokens } => {
@@ -1231,7 +1536,7 @@ mod tests {
                 outcome: None,
                 duration_secs: 0,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
         ).await;
 
         // After clear + re-register, same set should be considered new
@@ -1256,7 +1561,7 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
         ).await;
         match response {
             HookResponse::BriefingContent { content, token_count } => {
@@ -1285,7 +1590,7 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
         ).await;
 
         assert_eq!(registry.get_state("s1").unwrap().compaction_count, 1);
@@ -1543,7 +1848,7 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
         ).await;
 
         match response {
@@ -1611,7 +1916,7 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
         ).await;
 
         match response {

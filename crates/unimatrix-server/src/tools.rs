@@ -21,6 +21,7 @@ use unimatrix_store::{
 
 use crate::audit::{AuditEvent, Outcome};
 use crate::registry::Capability;
+use crate::uds_listener::{run_confidence_consumer, run_retrospective_consumer, write_signals_to_queue};
 use crate::response::{
     format_duplicate_found, format_enroll_success, format_lookup_results, format_search_results,
     format_single_entry, format_store_success, format_store_success_with_note,
@@ -1608,6 +1609,24 @@ impl UnimatrixServer {
             .unwrap();
         }
 
+        // 5k. Stale session sweep (col-009, FR-09.2) — gated by maintain=true
+        if maintain_enabled {
+            let stale_outputs = self.session_registry.sweep_stale_sessions();
+            if !stale_outputs.is_empty() {
+                let store_for_sweep = Arc::clone(&self.store);
+                let entry_store_for_sweep = Arc::clone(&self.entry_store);
+                let pending_for_sweep = Arc::clone(&self.pending_entries_analysis);
+                for (stale_session_id, stale_output) in stale_outputs {
+                    tracing::info!(session_id = %stale_session_id, "context_status: sweeping stale session");
+                    write_signals_to_queue(&stale_output, &store_for_sweep).await;
+                }
+                // Drain queued signals through both consumers — same as SessionClose path
+                // (AC-09, Goal 6: stale sessions must not leave signals unprocessed)
+                run_confidence_consumer(&store_for_sweep, &entry_store_for_sweep, &pending_for_sweep).await;
+                run_retrospective_consumer(&store_for_sweep, &pending_for_sweep, &entry_store_for_sweep).await;
+            }
+        }
+
         // 6. Audit (standalone, best-effort)
         let _ = self.audit.log_event(AuditEvent {
             event_id: 0,
@@ -2162,6 +2181,7 @@ impl UnimatrixServer {
                         hotspots: vec![],
                         is_cached: true,
                         baseline_comparison: None,
+                        entries_analysis: None,
                     };
 
                     return Ok(format_retrospective_report(&report));
@@ -2248,13 +2268,21 @@ impl UnimatrixServer {
         let baseline = unimatrix_observe::compute_baselines(&history)
             .map(|baselines| unimatrix_observe::compare_to_baseline(&metrics, &baselines));
 
-        // 10b. Build report with baseline
+        // 10b. Drain accumulated entry analysis from signal consumers (col-009, FR-10.5)
+        let entries_analysis = {
+            let mut pending = self.pending_entries_analysis.lock().unwrap_or_else(|e| e.into_inner());
+            let drained = pending.drain_all();
+            if drained.is_empty() { None } else { Some(drained) }
+        };
+
+        // 10c. Build report with baseline and entries_analysis
         let report = unimatrix_observe::build_report(
             &feature_cycle,
             &attributed,
             metrics,
             hotspots,
             baseline,
+            entries_analysis,
         );
 
         // 11. Audit
