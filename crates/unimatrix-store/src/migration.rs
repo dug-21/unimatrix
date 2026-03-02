@@ -3,10 +3,10 @@ use serde::Deserialize;
 
 use crate::error::{Result, StoreError};
 use crate::hash::compute_content_hash;
-use crate::schema::{COUNTERS, ENTRIES, SIGNAL_QUEUE, EntryRecord, Status, serialize_entry};
+use crate::schema::{COUNTERS, ENTRIES, INJECTION_LOG, SESSIONS, SIGNAL_QUEUE, EntryRecord, Status, serialize_entry};
 
 /// Current schema version. Bumped when new tables or EntryRecord fields are added.
-pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 4;
+pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 5;
 
 /// Run migration if schema_version is behind CURRENT_SCHEMA_VERSION.
 /// Called from Store::open() after table creation.
@@ -16,9 +16,10 @@ pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 4;
 /// entry-rewriting step runs per open — chaining them would try to deserialize
 /// already-upgraded entries using older intermediate structs.
 ///
-/// Non-entry-rewriting migrations (v3→v4: add SIGNAL_QUEUE table + counter)
-/// are safe to chain in the same transaction after the entry-rewriting step.
-/// They are also safe to run as the sole step when starting from v3.
+/// Non-entry-rewriting migrations (v3→v4: add SIGNAL_QUEUE table + counter;
+/// v4→v5: add SESSIONS + INJECTION_LOG tables + next_log_id counter) are safe
+/// to chain in the same transaction after the entry-rewriting step. They are
+/// also safe to run as the sole step when starting from their prerequisite version.
 pub(crate) fn migrate_if_needed(db: &redb::Database) -> Result<()> {
     let current_version = read_schema_version(db)?;
 
@@ -46,6 +47,12 @@ pub(crate) fn migrate_if_needed(db: &redb::Database) -> Result<()> {
         migrate_v3_to_v4(&txn)?;
     }
 
+    // v4→v5: add SESSIONS + INJECTION_LOG tables + next_log_id counter.
+    // No existing data to rewrite; idempotent counter init.
+    if current_version <= 4 {
+        migrate_v4_to_v5(&txn)?;
+    }
+
     // Jump to current version in one step.
     {
         let mut counters = txn.open_table(COUNTERS)?;
@@ -53,6 +60,26 @@ pub(crate) fn migrate_if_needed(db: &redb::Database) -> Result<()> {
     }
 
     txn.commit()?;
+    Ok(())
+}
+
+/// Migrate schema v4 → v5: add SESSIONS + INJECTION_LOG tables and next_log_id counter.
+///
+/// No entry scan-and-rewrite needed (both tables are new; no existing data to migrate).
+fn migrate_v4_to_v5(txn: &redb::WriteTransaction) -> Result<()> {
+    // Open SESSIONS and INJECTION_LOG — triggers redb table creation.
+    txn.open_table(SESSIONS)?;
+    txn.open_table(INJECTION_LOG)?;
+
+    // Write next_log_id = 0 to COUNTERS only if the key does not already exist.
+    // (Idempotent: a partially-migrated state won't reset a non-zero counter.)
+    {
+        let mut counters = txn.open_table(COUNTERS)?;
+        if counters.get("next_log_id")?.is_none() {
+            counters.insert("next_log_id", 0u64)?;
+        }
+    }
+
     Ok(())
 }
 
@@ -580,7 +607,7 @@ mod tests {
 
         let store = crate::Store::open(&path).unwrap();
         let version = store.read_counter("schema_version").unwrap();
-        assert_eq!(version, 4);
+        assert_eq!(version, 5);
     }
 
     // -- R-01/R-04: Migration Populates Security Fields --
@@ -639,7 +666,7 @@ mod tests {
             assert_eq!(r1.version, 1);
             assert_eq!(r1.helpful_count, 0);
             assert_eq!(r1.unhelpful_count, 0);
-            assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+            assert_eq!(store.read_counter("schema_version").unwrap(), 5);
         }
 
         // Second open: migration should be a no-op
@@ -648,7 +675,7 @@ mod tests {
             let r1 = store.get(1).unwrap();
             assert_eq!(r1.version, 1); // Still 1, not re-migrated
             assert_eq!(r1.helpful_count, 0);
-            assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+            assert_eq!(store.read_counter("schema_version").unwrap(), 5);
         }
     }
 
@@ -670,7 +697,7 @@ mod tests {
         assert_eq!(store.read_counter("total_active").unwrap(), 3);
         assert_eq!(store.read_counter("total_deprecated").unwrap(), 1);
         assert_eq!(store.read_counter("total_proposed").unwrap(), 1);
-        assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+        assert_eq!(store.read_counter("schema_version").unwrap(), 5);
     }
 
     // -- EC-06: Migration Unicode Content --
@@ -850,7 +877,7 @@ mod tests {
             assert_eq!(record.created_by, "agent-1");
             assert_eq!(record.version, 1);
         }
-        assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+        assert_eq!(store.read_counter("schema_version").unwrap(), 5);
     }
 
     #[test]
@@ -882,7 +909,7 @@ mod tests {
         // First open: v1->v2 migration runs
         {
             let store = crate::Store::open(&path).unwrap();
-            assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+            assert_eq!(store.read_counter("schema_version").unwrap(), 5);
             let r = store.get(1).unwrap();
             assert_eq!(r.helpful_count, 0);
         }
@@ -890,7 +917,7 @@ mod tests {
         // Second open: migration should be a no-op
         {
             let store = crate::Store::open(&path).unwrap();
-            assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+            assert_eq!(store.read_counter("schema_version").unwrap(), 5);
             let r = store.get(1).unwrap();
             assert_eq!(r.helpful_count, 0);
         }
@@ -916,7 +943,7 @@ mod tests {
         assert_eq!(record.helpful_count, 0);
         assert_eq!(record.unhelpful_count, 0);
 
-        assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+        assert_eq!(store.read_counter("schema_version").unwrap(), 5);
     }
 
     #[test]
@@ -1131,7 +1158,7 @@ mod tests {
         let (_dir, path) = create_v2_database(&entries);
         let store = crate::Store::open(&path).unwrap();
 
-        assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+        assert_eq!(store.read_counter("schema_version").unwrap(), 5);
 
         // f32 as f64 is lossless (IEEE 754)
         let r1 = store.get(1).unwrap();
@@ -1171,7 +1198,7 @@ mod tests {
     fn test_v2_to_v3_migration_empty() {
         let (_dir, path) = create_v2_database(&[]);
         let store = crate::Store::open(&path).unwrap();
-        assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+        assert_eq!(store.read_counter("schema_version").unwrap(), 5);
     }
 
     // IT-C1-04: Migration idempotency from v2
@@ -1185,7 +1212,7 @@ mod tests {
         // First open: v2->v3 migration runs
         {
             let store = crate::Store::open(&path).unwrap();
-            assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+            assert_eq!(store.read_counter("schema_version").unwrap(), 5);
             let r = store.get(1).unwrap();
             assert_eq!(r.confidence, 0.75_f32 as f64);
             assert_eq!(r.helpful_count, 3); // preserved from v2
@@ -1194,7 +1221,7 @@ mod tests {
         // Second open: migration should be a no-op
         {
             let store = crate::Store::open(&path).unwrap();
-            assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+            assert_eq!(store.read_counter("schema_version").unwrap(), 5);
             let r = store.get(1).unwrap();
             assert_eq!(r.confidence, 0.75_f32 as f64);
             assert_eq!(r.helpful_count, 3);
@@ -1225,7 +1252,7 @@ mod tests {
         // Original legacy entry had confidence: 0.8 (f32)
         assert_eq!(record.confidence, 0.8_f32 as f64);
 
-        assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+        assert_eq!(store.read_counter("schema_version").unwrap(), 5);
     }
 
     // IT-C1-01 supplement: v2->v3 preserves all non-confidence fields
@@ -1290,7 +1317,7 @@ mod tests {
             let expected = (i as f32) / 100.0;
             assert_eq!(r.confidence, expected as f64);
         }
-        assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+        assert_eq!(store.read_counter("schema_version").unwrap(), 5);
     }
 
     // -- v3→v4 migration helpers and tests --
@@ -1329,8 +1356,8 @@ mod tests {
     }
 
     #[test]
-    fn test_current_schema_version_is_4() {
-        assert_eq!(CURRENT_SCHEMA_VERSION, 4);
+    fn test_current_schema_version_is_5() {
+        assert_eq!(CURRENT_SCHEMA_VERSION, 5);
     }
 
     // AC-01, R-02 scenario 1: v3→v4 migration creates SIGNAL_QUEUE and next_signal_id
@@ -1339,7 +1366,7 @@ mod tests {
         let (_dir, path) = create_v3_database();
         let store = crate::Store::open(&path).unwrap();
 
-        assert_eq!(store.read_counter("schema_version").unwrap(), 4);
+        assert_eq!(store.read_counter("schema_version").unwrap(), 5);
         assert_eq!(store.read_counter("next_signal_id").unwrap(), 0);
 
         // SIGNAL_QUEUE table should be openable
@@ -1360,7 +1387,7 @@ mod tests {
 
         // Second open: already at v4, no migration needed
         let store2 = crate::Store::open(&path).unwrap();
-        assert_eq!(store2.read_counter("schema_version").unwrap(), 4);
+        assert_eq!(store2.read_counter("schema_version").unwrap(), 5);
 
         // SIGNAL_QUEUE still empty — not reset
         let txn = store2.db.begin_read().unwrap();
