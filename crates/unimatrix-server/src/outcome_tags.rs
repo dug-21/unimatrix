@@ -10,7 +10,13 @@ use crate::error::ServerError;
 const RECOGNIZED_KEYS: &[&str] = &["type", "gate", "phase", "result", "agent", "wave"];
 
 /// Valid workflow type values for the required `type` tag.
-const VALID_TYPES: &[&str] = &["feature", "bugfix", "incident", "process"];
+const VALID_TYPES: &[&str] = &[
+    "feature",
+    "bugfix",
+    "incident",
+    "process",
+    "session", // col-010: auto-generated session lifecycle outcomes
+];
 
 /// Valid outcome result values for the `result` tag.
 const VALID_RESULTS: &[&str] = &["pass", "fail", "rework", "skip"];
@@ -74,7 +80,7 @@ pub fn validate_outcome_tags(tags: &[String]) -> Result<(), ServerError> {
     if !has_type {
         return Err(ServerError::InvalidInput {
             field: "tags".to_string(),
-            reason: "type tag is required for outcome entries (e.g., type:feature, type:bugfix, type:incident, type:process)".to_string(),
+            reason: "type tag is required for outcome entries (e.g., type:feature, type:bugfix, type:incident, type:process, type:session)".to_string(),
         });
     }
 
@@ -98,7 +104,7 @@ fn validate_tag_key_value(key: &str, value: &str) -> Result<(), ServerError> {
                     reason: format!(
                         "invalid type value '{}'. Valid: {}",
                         value,
-                        VALID_TYPES.join(", ")
+                        VALID_TYPES.join(", ") // keep dynamic so tests stay consistent
                     ),
                 });
             }
@@ -202,6 +208,22 @@ mod tests {
     #[test]
     fn test_type_process_accepted() {
         assert!(validate_outcome_tags(&tags(&["type:process"])).is_ok());
+    }
+
+    #[test]
+    fn test_type_session_accepted() {
+        // col-010: auto-generated session lifecycle outcomes
+        assert!(validate_outcome_tags(&tags(&["type:session"])).is_ok());
+    }
+
+    #[test]
+    fn test_type_session_with_result_pass() {
+        assert!(validate_outcome_tags(&tags(&["type:session", "result:pass"])).is_ok());
+    }
+
+    #[test]
+    fn test_type_session_with_result_rework() {
+        assert!(validate_outcome_tags(&tags(&["type:session", "result:rework"])).is_ok());
     }
 
     #[test]

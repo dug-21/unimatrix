@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::StoreError;
 
-// -- Table Definitions (14 total) --
+// -- Table Definitions (17 total after schema v5) --
 
 /// Primary entry storage: entry_id -> bincode bytes.
 pub const ENTRIES: TableDefinition<u64, &[u8]> = TableDefinition::new("entries");
@@ -60,6 +60,14 @@ pub const OBSERVATION_METRICS: TableDefinition<&str, &[u8]> =
 /// Confidence signal work queue: signal_id -> bincode-serialized SignalRecord.
 /// Transient — records deleted after drain. Added in schema v4 (col-009).
 pub const SIGNAL_QUEUE: TableDefinition<u64, &[u8]> = TableDefinition::new("signal_queue");
+
+/// Session lifecycle records: session_id -> bincode-serialized SessionRecord.
+/// Added in schema v5 (col-010). Table 16.
+pub const SESSIONS: TableDefinition<&str, &[u8]> = TableDefinition::new("sessions");
+
+/// Injection event log: log_id (monotonic u64) -> bincode-serialized InjectionLogRecord.
+/// Added in schema v5 (col-010). Table 17.
+pub const INJECTION_LOG: TableDefinition<u64, &[u8]> = TableDefinition::new("injection_log");
 
 // -- Status Enum --
 

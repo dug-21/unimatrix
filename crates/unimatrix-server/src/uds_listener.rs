@@ -14,7 +14,7 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use unimatrix_adapt::AdaptationService;
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-use unimatrix_core::{EmbedService, SearchResult, Status, StoreAdapter, VectorAdapter};
+use unimatrix_core::{EmbedService, NewEntry, SearchResult, Status, StoreAdapter, VectorAdapter};
 use unimatrix_engine::auth;
 use unimatrix_engine::coaccess::{compute_search_boost, generate_pairs, CO_ACCESS_STALENESS_SECONDS};
 use unimatrix_engine::confidence::rerank_score;
@@ -23,15 +23,58 @@ use unimatrix_engine::wire::{
     MAX_PAYLOAD_SIZE,
 };
 use unimatrix_store::Store;
+use unimatrix_store::{InjectionLogRecord, SessionLifecycleStatus, SessionRecord, SignalRecord, SignalType, SignalSource};
 
 use std::collections::HashSet;
 use std::sync::Mutex;
-
-use unimatrix_store::{SignalRecord, SignalType, SignalSource};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::embed_handle::EmbedServiceHandle;
 use crate::server::PendingEntriesAnalysis;
 use crate::session::{ReworkEvent, SessionOutcome, SessionRegistry, SignalOutput};
+
+// -- col-010 helpers --
+
+/// Current unix timestamp in seconds.
+fn unix_now_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
+
+/// Validate session_id format: [a-zA-Z0-9-_], max 128 chars. (FR-04, SEC-01)
+fn sanitize_session_id(session_id: &str) -> Result<(), String> {
+    if session_id.is_empty() {
+        return Err("session_id must not be empty".to_string());
+    }
+    if session_id.len() > 128 {
+        return Err("session_id too long (max 128 chars)".to_string());
+    }
+    for ch in session_id.chars() {
+        if !ch.is_ascii_alphanumeric() && ch != '-' && ch != '_' {
+            return Err(format!("session_id contains invalid character: {:?}", ch));
+        }
+    }
+    Ok(())
+}
+
+/// Sanitize a metadata field: strip non-printable ASCII, truncate to 128 chars. (SEC-02)
+fn sanitize_metadata_field(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| c.is_ascii() && !c.is_ascii_control())
+        .take(128)
+        .collect()
+}
+
+/// Fire-and-forget `spawn_blocking`. The returned JoinHandle is dropped.
+fn spawn_blocking_fire_and_forget<F>(f: F)
+where
+    F: FnOnce() + Send + 'static,
+{
+    let _ = tokio::task::spawn_blocking(f);
+}
 
 /// Minimum cosine similarity for injection candidates.
 const SIMILARITY_FLOOR: f64 = 0.5;
@@ -344,16 +387,54 @@ async fn dispatch_request(
             agent_role,
             feature,
         } => {
+            // col-010: Validate session_id before any writes (SEC-01)
+            if let Err(e) = sanitize_session_id(&session_id) {
+                tracing::warn!(session_id, error = %e, "UDS: SessionRegister rejected: invalid session_id");
+                return HookResponse::Error {
+                    code: ERR_INVALID_PAYLOAD,
+                    message: e,
+                };
+            }
+
+            // col-010: Sanitize metadata fields (SEC-02)
+            let clean_role: Option<String> = agent_role.as_deref().map(sanitize_metadata_field);
+            let clean_feature: Option<String> = feature.as_deref().map(sanitize_metadata_field);
+
             tracing::info!(
                 session_id,
                 cwd,
-                agent_role = ?agent_role,
-                feature = ?feature,
+                agent_role = ?clean_role,
+                feature = ?clean_feature,
                 "UDS: session registered"
             );
 
             // Register session in registry (col-008)
-            session_registry.register_session(&session_id, agent_role.clone(), feature.clone());
+            session_registry.register_session(&session_id, clean_role.clone(), clean_feature.clone());
+
+            // col-010: Persist SessionRecord to SESSIONS table (fire-and-forget)
+            {
+                let record = SessionRecord {
+                    session_id: session_id.clone(),
+                    feature_cycle: clean_feature,
+                    agent_role: clean_role,
+                    started_at: unix_now_secs(),
+                    ended_at: None,
+                    status: SessionLifecycleStatus::Active,
+                    compaction_count: 0,
+                    outcome: None,
+                    total_injections: 0,
+                };
+                let store_clone = Arc::clone(store);
+                spawn_blocking_fire_and_forget(move || {
+                    if let Err(e) = store_clone.insert_session(&record) {
+                        tracing::warn!(
+                            session_id = %record.session_id,
+                            error = %e,
+                            "UDS: SESSIONS insert failed"
+                        );
+                    }
+                });
+            }
 
             // Pre-warm embedding model (FR-04)
             warm_embedding_model(embed_service).await;
@@ -366,6 +447,14 @@ async fn dispatch_request(
             outcome,
             duration_secs,
         } => {
+            if let Err(e) = sanitize_session_id(&session_id) {
+                tracing::warn!(session_id, error = %e, "UDS: SessionClose rejected: invalid session_id");
+                return HookResponse::Error {
+                    code: ERR_INVALID_PAYLOAD,
+                    message: e,
+                };
+            }
+
             tracing::info!(
                 session_id,
                 outcome = ?outcome,
@@ -440,6 +529,16 @@ async fn dispatch_request(
             k,
             max_tokens: _,
         } => {
+            if let Some(ref sid) = session_id {
+                if let Err(e) = sanitize_session_id(sid) {
+                    tracing::warn!(session_id = sid, error = %e, "UDS: ContextSearch rejected: invalid session_id");
+                    return HookResponse::Error {
+                        code: ERR_INVALID_PAYLOAD,
+                        message: e,
+                    };
+                }
+            }
+
             handle_context_search(
                 query,
                 session_id,
@@ -633,6 +732,35 @@ async fn handle_context_search(
                 .map(|(entry, _sim)| (entry.id, entry.confidence))
                 .collect();
             session_registry.record_injection(sid, &injection_entries);
+        }
+    }
+
+    // 10b. col-010: Persist injection log batch to INJECTION_LOG (fire-and-forget, ADR-003)
+    if let Some(ref sid) = session_id {
+        if !sid.is_empty() && !filtered.is_empty() {
+            let now = unix_now_secs();
+            let records: Vec<InjectionLogRecord> = filtered
+                .iter()
+                .map(|(entry, sim)| InjectionLogRecord {
+                    log_id: 0, // allocated by insert_injection_log_batch
+                    session_id: sid.clone(),
+                    entry_id: entry.id,
+                    confidence: rerank_score(*sim, entry.confidence),
+                    timestamp: now,
+                })
+                .collect();
+            let store_clone = Arc::clone(store);
+            let sid_clone = sid.clone();
+            spawn_blocking_fire_and_forget(move || {
+                if let Err(e) = store_clone.insert_injection_log_batch(&records) {
+                    tracing::warn!(
+                        session_id = %sid_clone,
+                        count = records.len(),
+                        error = %e,
+                        "INJECTION_LOG batch write failed"
+                    );
+                }
+            });
         }
     }
 
@@ -1045,6 +1173,20 @@ async fn process_session_close(
     entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
 ) -> HookResponse {
+    // col-010: capture session metadata before drain (state is removed by drain)
+    let (feature_cycle, agent_role, injection_count, compaction_count) = {
+        if let Some(state) = session_registry.get_state(session_id) {
+            (
+                state.feature.clone(),
+                state.role.clone(),
+                state.injection_history.len() as u32,
+                state.compaction_count,
+            )
+        } else {
+            (None, None, 0u32, 0u32)
+        }
+    };
+
     // Step 1: Sweep stale sessions first (FR-09.1)
     let stale_outputs = session_registry.sweep_stale_sessions();
     for (stale_session_id, stale_output) in stale_outputs {
@@ -1056,6 +1198,50 @@ async fn process_session_close(
     let maybe_output = session_registry.drain_and_signal_session(session_id, hook_outcome);
 
     if let Some(ref output) = maybe_output {
+        // col-010: resolve final status and outcome string
+        let (final_status, outcome_str) = match output.final_outcome {
+            SessionOutcome::Success  => (SessionLifecycleStatus::Completed, "success"),
+            SessionOutcome::Rework   => (SessionLifecycleStatus::Completed, "rework"),
+            SessionOutcome::Abandoned => (SessionLifecycleStatus::Abandoned, "abandoned"),
+        };
+        let is_abandoned = final_status == SessionLifecycleStatus::Abandoned;
+
+        // col-010: update SESSIONS record (fire-and-forget)
+        {
+            let sid = session_id.to_string();
+            let store_clone = Arc::clone(store);
+            let status_clone = final_status.clone();
+            let outcome_owned = outcome_str.to_string();
+            spawn_blocking_fire_and_forget(move || {
+                let result = store_clone.update_session(&sid, |r| {
+                    r.status = status_clone;
+                    r.ended_at = Some(unix_now_secs());
+                    r.outcome = Some(outcome_owned.clone());
+                    r.total_injections = injection_count;
+                    r.compaction_count = compaction_count;
+                });
+                if let Err(e) = result {
+                    tracing::warn!(
+                        session_id = %sid,
+                        error = %e,
+                        "UDS: SESSIONS update failed"
+                    );
+                }
+            });
+        }
+
+        // col-010: write auto-outcome entry if session had injections and was not abandoned
+        if !is_abandoned && injection_count > 0 {
+            write_auto_outcome_entry(
+                store,
+                session_id,
+                outcome_str,
+                injection_count,
+                feature_cycle.as_deref(),
+                agent_role.as_deref(),
+            );
+        }
+
         // Step 3: Write signals to SIGNAL_QUEUE
         write_signals_to_queue(output, store).await;
 
@@ -1066,6 +1252,65 @@ async fn process_session_close(
     // If session absent (already cleared): no-op (idempotent — AC-03)
 
     HookResponse::Ack
+}
+
+/// Write an auto-generated outcome entry for a session that completed with injections.
+///
+/// Called from process_session_close when `final_status != Abandoned && injection_count > 0`.
+/// Fire-and-forget: spawns a blocking task; never awaits the result.
+fn write_auto_outcome_entry(
+    store: &Arc<Store>,
+    session_id: &str,
+    outcome_str: &str,   // "success" | "rework"
+    injection_count: u32,
+    feature_cycle: Option<&str>,
+    agent_role: Option<&str>,
+) {
+    let content = format!(
+        "Session {} completed with outcome: {}. Injected {} entries.",
+        session_id, outcome_str, injection_count
+    );
+    let result_tag = if outcome_str == "success" {
+        "result:pass"
+    } else {
+        "result:rework"
+    };
+    let tags = vec!["type:session".to_string(), result_tag.to_string()];
+
+    let _ = agent_role; // metadata available for future enrichment; not used in content
+    let entry = NewEntry {
+        title: format!("Session outcome: {}", session_id),
+        content,
+        topic: format!("session/{}", session_id),
+        category: "outcome".to_string(),
+        tags,
+        source: "hook".to_string(),
+        status: Status::Active,
+        created_by: "cortical-implant".to_string(),
+        feature_cycle: feature_cycle.unwrap_or("").to_string(),
+        trust_source: "system".to_string(),
+    };
+
+    let store_clone = Arc::clone(store);
+    let sid = session_id.to_string();
+    spawn_blocking_fire_and_forget(move || {
+        match store_clone.insert(entry) {
+            Ok(entry_id) => {
+                tracing::debug!(
+                    session_id = %sid,
+                    entry_id = %entry_id,
+                    "Auto-outcome entry written"
+                );
+            }
+            Err(e) => {
+                tracing::warn!(
+                    session_id = %sid,
+                    error = %e,
+                    "Auto-outcome write failed"
+                );
+            }
+        }
+    });
 }
 
 /// Write a SignalRecord to SIGNAL_QUEUE for the given SignalOutput.
@@ -1941,5 +2186,81 @@ mod tests {
         assert!(!is_new, "unregistered session must return false");
         // Verify no session was implicitly created
         assert!(registry.get_state("unknown-session").is_none());
+    }
+
+    // -- col-010: sanitize_session_id tests (R-11, SEC-01) --
+
+    #[test]
+    fn sanitize_session_id_valid_alphanumeric() {
+        assert!(sanitize_session_id("session123").is_ok());
+    }
+
+    #[test]
+    fn sanitize_session_id_valid_with_dash_underscore() {
+        assert!(sanitize_session_id("sess-abc_XYZ-01").is_ok());
+    }
+
+    #[test]
+    fn sanitize_session_id_valid_128_chars() {
+        let id = "a".repeat(128);
+        assert!(sanitize_session_id(&id).is_ok());
+    }
+
+    #[test]
+    fn sanitize_session_id_rejects_too_long() {
+        let id = "a".repeat(129);
+        let err = sanitize_session_id(&id).unwrap_err();
+        assert!(err.contains("too long"), "expected 'too long', got: {err}");
+    }
+
+    #[test]
+    fn sanitize_session_id_rejects_exclamation() {
+        let err = sanitize_session_id("abc!def").unwrap_err();
+        assert!(err.contains("invalid character"), "expected 'invalid character', got: {err}");
+    }
+
+    #[test]
+    fn sanitize_session_id_rejects_space() {
+        assert!(sanitize_session_id("hello world").is_err());
+    }
+
+    #[test]
+    fn sanitize_session_id_rejects_slash() {
+        assert!(sanitize_session_id("path/to/session").is_err());
+    }
+
+    #[test]
+    fn sanitize_session_id_rejects_dot() {
+        assert!(sanitize_session_id("sess.ion").is_err());
+    }
+
+    #[test]
+    fn sanitize_session_id_rejects_empty() {
+        let err = sanitize_session_id("").unwrap_err();
+        assert!(err.contains("must not be empty"), "expected 'must not be empty', got: {err}");
+    }
+
+    // -- col-010: sanitize_metadata_field tests (SEC-02) --
+
+    #[test]
+    fn sanitize_metadata_field_passes_printable_ascii() {
+        assert_eq!(sanitize_metadata_field("uni-rust-dev"), "uni-rust-dev");
+    }
+
+    #[test]
+    fn sanitize_metadata_field_strips_control_chars() {
+        let input = "abc\x00\x01\x1Fdef";
+        assert_eq!(sanitize_metadata_field(input), "abcdef");
+    }
+
+    #[test]
+    fn sanitize_metadata_field_truncates_at_128() {
+        let input = "a".repeat(200);
+        assert_eq!(sanitize_metadata_field(&input).len(), 128);
+    }
+
+    #[test]
+    fn sanitize_metadata_field_strips_newline() {
+        assert_eq!(sanitize_metadata_field("line1\nline2"), "line1line2");
     }
 }

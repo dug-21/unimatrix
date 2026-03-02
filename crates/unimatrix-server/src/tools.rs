@@ -18,6 +18,7 @@ use unimatrix_store::{
     ENTRIES, CATEGORY_INDEX, TOPIC_INDEX, COUNTERS,
     deserialize_entry,
 };
+use unimatrix_store::sessions::{TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS};
 
 use crate::audit::{AuditEvent, Outcome};
 use crate::registry::Capability;
@@ -1624,6 +1625,32 @@ impl UnimatrixServer {
                 // (AC-09, Goal 6: stale sessions must not leave signals unprocessed)
                 run_confidence_consumer(&store_for_sweep, &entry_store_for_sweep, &pending_for_sweep).await;
                 run_retrospective_consumer(&store_for_sweep, &pending_for_sweep, &entry_store_for_sweep).await;
+            }
+        }
+
+        // 5l. col-010: Session GC — mark old Active sessions as TimedOut; delete very old
+        // sessions and their INJECTION_LOG records. Runs in maintain=true path only.
+        if maintain_enabled {
+            let store_gc = Arc::clone(&self.store);
+            match tokio::task::spawn_blocking(move || {
+                store_gc.gc_sessions(TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS)
+            })
+            .await
+            {
+                Ok(Ok(stats)) => {
+                    tracing::info!(
+                        timed_out = %stats.timed_out_count,
+                        deleted_sessions = %stats.deleted_session_count,
+                        deleted_log_entries = %stats.deleted_injection_log_count,
+                        "Session GC complete"
+                    );
+                }
+                Ok(Err(e)) => {
+                    tracing::warn!(error = %e, "Session GC failed");
+                }
+                Err(join_err) => {
+                    tracing::warn!(error = %join_err, "Session GC task panicked");
+                }
             }
         }
 

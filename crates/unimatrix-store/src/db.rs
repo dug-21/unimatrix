@@ -5,8 +5,8 @@ use redb::{ReadableDatabase, ReadableTable, ReadableTableMetadata};
 use crate::error::{Result, StoreError};
 use crate::schema::{
     AGENT_REGISTRY, AUDIT_LOG, CATEGORY_INDEX, CO_ACCESS, COUNTERS, DatabaseConfig, ENTRIES,
-    FEATURE_ENTRIES, OBSERVATION_METRICS, OUTCOME_INDEX, SIGNAL_QUEUE, STATUS_INDEX, TAG_INDEX,
-    TIME_INDEX, TOPIC_INDEX, VECTOR_MAP,
+    FEATURE_ENTRIES, INJECTION_LOG, OBSERVATION_METRICS, OUTCOME_INDEX, SESSIONS, SIGNAL_QUEUE,
+    STATUS_INDEX, TAG_INDEX, TIME_INDEX, TOPIC_INDEX, VECTOR_MAP,
 };
 use crate::signal::{SignalRecord, SignalType, deserialize_signal, serialize_signal};
 
@@ -21,14 +21,14 @@ pub struct Store {
 impl Store {
     /// Open or create a database at the given path with default configuration.
     ///
-    /// All 14 tables are created if they don't already exist.
+    /// All 17 tables are created if they don't already exist.
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         Self::open_with_config(path, DatabaseConfig::default())
     }
 
     /// Open or create a database at the given path with custom configuration.
     ///
-    /// All 14 tables are created if they don't already exist.
+    /// All 17 tables are created if they don't already exist.
     pub fn open_with_config(path: impl AsRef<Path>, config: DatabaseConfig) -> Result<Self> {
         let builder = redb::Builder::new();
         // Note: redb v3.1 Builder cache_size is managed internally.
@@ -38,7 +38,7 @@ impl Store {
             .create(path.as_ref())
             .map_err(StoreError::Database)?;
 
-        // Ensure all 15 tables exist by opening them in a write transaction.
+        // Ensure all 17 tables exist by opening them in a write transaction.
         let txn = db.begin_write().map_err(StoreError::Transaction)?;
         {
             txn.open_table(ENTRIES).map_err(StoreError::Table)?;
@@ -56,6 +56,8 @@ impl Store {
             txn.open_table(OUTCOME_INDEX).map_err(StoreError::Table)?;
             txn.open_table(OBSERVATION_METRICS).map_err(StoreError::Table)?;
             txn.open_table(SIGNAL_QUEUE).map_err(StoreError::Table)?;
+            txn.open_table(SESSIONS).map_err(StoreError::Table)?;
+            txn.open_table(INJECTION_LOG).map_err(StoreError::Table)?;
         }
         txn.commit().map_err(StoreError::Commit)?;
 
@@ -206,7 +208,7 @@ mod tests {
         let path = dir.path().join("test.redb");
         let store = Store::open(&path).unwrap();
 
-        // Verify all 14 tables exist by opening each in a read transaction
+        // Verify all 17 tables exist by opening each in a read transaction
         let txn = store.db.begin_read().unwrap();
         txn.open_table(ENTRIES).unwrap();
         txn.open_table(TOPIC_INDEX).unwrap();
@@ -222,6 +224,8 @@ mod tests {
         txn.open_table(CO_ACCESS).unwrap();
         txn.open_table(OUTCOME_INDEX).unwrap();
         txn.open_table(OBSERVATION_METRICS).unwrap();
+        txn.open_table(SESSIONS).unwrap();
+        txn.open_table(INJECTION_LOG).unwrap();
     }
 
     #[test]
@@ -321,7 +325,7 @@ mod tests {
     }
 
     #[test]
-    fn test_open_creates_all_15_tables() {
+    fn test_open_creates_all_17_tables() {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("test.redb");
         let store = Store::open(&path).unwrap();
@@ -342,6 +346,8 @@ mod tests {
         txn.open_table(OUTCOME_INDEX).unwrap();
         txn.open_table(OBSERVATION_METRICS).unwrap();
         txn.open_table(SIGNAL_QUEUE).unwrap();
+        txn.open_table(SESSIONS).unwrap();
+        txn.open_table(INJECTION_LOG).unwrap();
     }
 
     fn make_signal(signal_id: u64, session_id: &str, entry_ids: Vec<u64>, signal_type: crate::signal::SignalType) -> crate::signal::SignalRecord {
