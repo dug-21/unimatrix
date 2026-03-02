@@ -108,6 +108,8 @@ pub enum HookRequest {
     /// Search context entries.
     ContextSearch {
         query: String,
+        #[serde(default)]
+        session_id: Option<String>,
         role: Option<String>,
         task: Option<String>,
         feature: Option<String>,
@@ -124,8 +126,7 @@ pub enum HookRequest {
         max_tokens: Option<u32>,
     },
 
-    /// Request a compact context payload (future).
-    #[allow(dead_code)]
+    /// Request a compact context payload for PreCompact hook.
     CompactPayload {
         session_id: String,
         injected_entry_ids: Vec<u64>,
@@ -158,8 +159,7 @@ pub enum HookResponse {
         total_tokens: u32,
     },
 
-    /// Briefing content (future).
-    #[allow(dead_code)]
+    /// Briefing content (compaction defense or role briefing).
     BriefingContent {
         content: String,
         token_count: u32,
@@ -906,6 +906,7 @@ mod tests {
     fn round_trip_context_search() {
         let req = HookRequest::ContextSearch {
             query: "test query".to_string(),
+            session_id: None,
             role: Some("developer".to_string()),
             task: None,
             feature: None,
@@ -915,12 +916,149 @@ mod tests {
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
         match decoded {
-            HookRequest::ContextSearch { query, role, k, .. } => {
+            HookRequest::ContextSearch {
+                query,
+                session_id,
+                role,
+                k,
+                ..
+            } => {
                 assert_eq!(query, "test query");
+                assert!(session_id.is_none());
                 assert_eq!(role.as_deref(), Some("developer"));
                 assert_eq!(k, Some(5));
             }
             _ => panic!("expected ContextSearch"),
+        }
+    }
+
+    // -- col-008: ContextSearch session_id tests --
+
+    #[test]
+    fn context_search_with_session_id() {
+        let req = HookRequest::ContextSearch {
+            query: "test".to_string(),
+            session_id: Some("sess-1".to_string()),
+            role: None,
+            task: None,
+            feature: None,
+            k: None,
+            max_tokens: None,
+        };
+        let bytes = serialize_request(&req).unwrap();
+        let decoded = deserialize_request(&bytes).unwrap();
+        match decoded {
+            HookRequest::ContextSearch { session_id, .. } => {
+                assert_eq!(session_id.as_deref(), Some("sess-1"));
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+    }
+
+    #[test]
+    fn context_search_missing_session_id_field_defaults_none() {
+        // Simulate a JSON payload without the session_id field (backward compat)
+        let json = br#"{"type":"ContextSearch","query":"test"}"#;
+        let decoded = deserialize_request(json).unwrap();
+        match decoded {
+            HookRequest::ContextSearch { session_id, .. } => {
+                assert!(session_id.is_none());
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+    }
+
+    // -- col-008: CompactPayload round-trip tests --
+
+    #[test]
+    fn round_trip_compact_payload() {
+        let req = HookRequest::CompactPayload {
+            session_id: "s1".to_string(),
+            injected_entry_ids: vec![1, 2, 3],
+            role: Some("developer".to_string()),
+            feature: None,
+            token_limit: Some(500),
+        };
+        let bytes = serialize_request(&req).unwrap();
+        let decoded = deserialize_request(&bytes).unwrap();
+        match decoded {
+            HookRequest::CompactPayload {
+                session_id,
+                injected_entry_ids,
+                role,
+                feature,
+                token_limit,
+            } => {
+                assert_eq!(session_id, "s1");
+                assert_eq!(injected_entry_ids, vec![1, 2, 3]);
+                assert_eq!(role.as_deref(), Some("developer"));
+                assert!(feature.is_none());
+                assert_eq!(token_limit, Some(500));
+            }
+            _ => panic!("expected CompactPayload"),
+        }
+    }
+
+    #[test]
+    fn compact_payload_empty_entry_ids() {
+        let req = HookRequest::CompactPayload {
+            session_id: "s1".to_string(),
+            injected_entry_ids: vec![],
+            role: None,
+            feature: None,
+            token_limit: None,
+        };
+        let bytes = serialize_request(&req).unwrap();
+        let decoded = deserialize_request(&bytes).unwrap();
+        match decoded {
+            HookRequest::CompactPayload {
+                injected_entry_ids, ..
+            } => {
+                assert!(injected_entry_ids.is_empty());
+            }
+            _ => panic!("expected CompactPayload"),
+        }
+    }
+
+    // -- col-008: BriefingContent round-trip tests --
+
+    #[test]
+    fn round_trip_briefing_content() {
+        let resp = HookResponse::BriefingContent {
+            content: "test content".to_string(),
+            token_count: 25,
+        };
+        let bytes = serialize_response(&resp).unwrap();
+        let decoded = deserialize_response(&bytes).unwrap();
+        match decoded {
+            HookResponse::BriefingContent {
+                content,
+                token_count,
+            } => {
+                assert_eq!(content, "test content");
+                assert_eq!(token_count, 25);
+            }
+            _ => panic!("expected BriefingContent"),
+        }
+    }
+
+    #[test]
+    fn briefing_content_empty() {
+        let resp = HookResponse::BriefingContent {
+            content: String::new(),
+            token_count: 0,
+        };
+        let bytes = serialize_response(&resp).unwrap();
+        let decoded = deserialize_response(&bytes).unwrap();
+        match decoded {
+            HookResponse::BriefingContent {
+                content,
+                token_count,
+            } => {
+                assert!(content.is_empty());
+                assert_eq!(token_count, 0);
+            }
+            _ => panic!("expected BriefingContent"),
         }
     }
 

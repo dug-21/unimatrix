@@ -26,6 +26,7 @@ pub mod registry;
 pub mod response;
 pub mod scanning;
 pub mod server;
+pub mod session;
 pub mod shutdown;
 pub mod tools;
 pub mod uds_listener;

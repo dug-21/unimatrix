@@ -203,6 +203,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
             } else {
                 HookRequest::ContextSearch {
                     query,
+                    session_id: input.session_id.clone(),
                     role: None,
                     task: None,
                     feature: None,
@@ -211,6 +212,14 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                 }
             }
         }
+
+        "PreCompact" => HookRequest::CompactPayload {
+            session_id,
+            injected_entry_ids: vec![], // Server has tracked history (ADR-002)
+            role: None,
+            feature: None,
+            token_limit: None,
+        },
 
         _ => HookRequest::RecordEvent {
             event: ImplantEvent {
@@ -235,6 +244,13 @@ fn write_stdout(response: &HookResponse) -> Result<(), Box<dyn std::error::Error
                 println!("{text}");
             }
             // Empty items or None from format_injection: silent skip (no stdout)
+            Ok(())
+        }
+        HookResponse::BriefingContent { content, .. } => {
+            if !content.is_empty() {
+                println!("{content}");
+            }
+            // Empty content: silent skip (FR-01.4)
             Ok(())
         }
         _ => {
@@ -462,6 +478,7 @@ mod tests {
     fn context_search_is_not_fire_and_forget() {
         let req = HookRequest::ContextSearch {
             query: "test".to_string(),
+            session_id: None,
             role: None,
             task: None,
             feature: None,
@@ -476,6 +493,108 @@ mod tests {
                 | HookRequest::RecordEvents { .. }
         );
         assert!(!is_faf, "ContextSearch must not be fire-and-forget");
+    }
+
+    // -- PreCompact tests (col-008) --
+
+    #[test]
+    fn build_request_precompact_with_session_id() {
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        let req = build_request("PreCompact", &input);
+        match req {
+            HookRequest::CompactPayload {
+                session_id,
+                injected_entry_ids,
+                role,
+                feature,
+                token_limit,
+            } => {
+                assert_eq!(session_id, "sess-1");
+                assert!(injected_entry_ids.is_empty());
+                assert!(role.is_none());
+                assert!(feature.is_none());
+                assert!(token_limit.is_none());
+            }
+            _ => panic!("expected CompactPayload, got {req:?}"),
+        }
+    }
+
+    #[test]
+    fn build_request_precompact_without_session_id() {
+        let input = test_input();
+        let req = build_request("PreCompact", &input);
+        match req {
+            HookRequest::CompactPayload { session_id, .. } => {
+                assert!(session_id.starts_with("ppid-"));
+            }
+            _ => panic!("expected CompactPayload"),
+        }
+    }
+
+    #[test]
+    fn compact_payload_not_fire_and_forget() {
+        let req = HookRequest::CompactPayload {
+            session_id: "s1".to_string(),
+            injected_entry_ids: vec![],
+            role: None,
+            feature: None,
+            token_limit: None,
+        };
+        let is_faf = matches!(
+            req,
+            HookRequest::SessionRegister { .. }
+                | HookRequest::SessionClose { .. }
+                | HookRequest::RecordEvent { .. }
+                | HookRequest::RecordEvents { .. }
+        );
+        assert!(!is_faf, "CompactPayload must not be fire-and-forget");
+    }
+
+    #[test]
+    fn write_stdout_briefing_content_with_content() {
+        let response = HookResponse::BriefingContent {
+            content: "compaction data".to_string(),
+            token_count: 10,
+        };
+        assert!(write_stdout(&response).is_ok());
+    }
+
+    #[test]
+    fn write_stdout_briefing_content_empty() {
+        let response = HookResponse::BriefingContent {
+            content: String::new(),
+            token_count: 0,
+        };
+        assert!(write_stdout(&response).is_ok());
+    }
+
+    #[test]
+    fn build_request_user_prompt_passes_session_id() {
+        let mut input = test_input();
+        input.prompt = Some("query".to_string());
+        input.session_id = Some("sess-1".to_string());
+        let req = build_request("UserPromptSubmit", &input);
+        match req {
+            HookRequest::ContextSearch { session_id, query, .. } => {
+                assert_eq!(query, "query");
+                assert_eq!(session_id.as_deref(), Some("sess-1"));
+            }
+            _ => panic!("expected ContextSearch, got {req:?}"),
+        }
+    }
+
+    #[test]
+    fn build_request_user_prompt_no_session_id() {
+        let mut input = test_input();
+        input.prompt = Some("query".to_string());
+        let req = build_request("UserPromptSubmit", &input);
+        match req {
+            HookRequest::ContextSearch { session_id, .. } => {
+                assert!(session_id.is_none());
+            }
+            _ => panic!("expected ContextSearch"),
+        }
     }
 
     // -- parse_hook_input tests --

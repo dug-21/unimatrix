@@ -184,7 +184,10 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001)
+    // Create session registry for hook IPC (col-008)
+    let session_registry = Arc::new(unimatrix_server::session::SessionRegistry::new());
+
+    // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008)
     let server_uid = nix::unistd::getuid().as_raw();
     let (uds_handle, socket_guard) = uds_listener::start_uds_listener(
         &paths.socket_path,
@@ -193,6 +196,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&async_vector_store),
         Arc::clone(&async_entry_store),
         Arc::clone(&adapt_service),
+        Arc::clone(&session_registry),
         server_uid,
         env!("CARGO_PKG_VERSION").to_string(),
     )
