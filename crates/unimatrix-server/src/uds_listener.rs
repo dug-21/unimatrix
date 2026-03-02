@@ -404,7 +404,7 @@ async fn dispatch_request(
 
         HookRequest::CompactPayload {
             session_id,
-            injected_entry_ids: _,
+            injected_entry_ids: _, // Reserved for col-010 disk-based fallback; server uses SessionRegistry
             role,
             feature,
             token_limit,
@@ -802,7 +802,24 @@ async fn fallback_path(
             Err(_) => Vec::new(),
         };
 
-    // Sort by confidence descending
+    // If feature tag available, prefer feature-specific conventions
+    if let Some(feat) = feature {
+        let feature_conventions: Vec<_> = conventions
+            .iter()
+            .filter(|(e, _)| e.tags.iter().any(|t| t == feat))
+            .cloned()
+            .collect();
+        if !feature_conventions.is_empty() {
+            let general: Vec<_> = conventions
+                .into_iter()
+                .filter(|(e, _)| !e.tags.iter().any(|t| t == feat))
+                .collect();
+            conventions = feature_conventions;
+            conventions.extend(general);
+        }
+    }
+
+    // Sort by confidence descending (within feature-first / general groups)
     decisions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     conventions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
@@ -866,7 +883,7 @@ fn format_compaction_payload(
     // Conventions section
     let remaining = max_bytes.saturating_sub(bytes_used);
     let convention_budget = CONVENTION_BUDGET_BYTES.min(remaining);
-    format_category_section(&mut output, "Conventions", &categories.conventions, convention_budget);
+    let _ = format_category_section(&mut output, "Conventions", &categories.conventions, convention_budget);
 
     // Hard ceiling check
     if output.len() > max_bytes {
@@ -1343,20 +1360,19 @@ mod tests {
 
     #[test]
     fn format_payload_sorted_by_confidence() {
+        // Input in LOW-first order to verify format_category_section preserves caller's sort
         let categories = CompactionCategories {
             decisions: vec![
-                (make_entry(1, "Low", "c", "decision", 0.3), 0.3),
                 (make_entry(2, "High", "c", "decision", 0.9), 0.9),
+                (make_entry(1, "Low", "c", "decision", 0.3), 0.3),
             ],
             injections: vec![],
             conventions: vec![],
         };
         let result = format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
-        // The entries come in sorted by the categories struct (already sorted in primary_path)
-        // But format_category_section preserves input order.
-        // The test verifies the format includes both entries.
-        assert!(result.contains("[Low]"));
-        assert!(result.contains("[High]"));
+        let high_pos = result.find("[High]").expect("High entry missing");
+        let low_pos = result.find("[Low]").expect("Low entry missing");
+        assert!(high_pos < low_pos, "high-confidence entry must appear before low-confidence entry");
     }
 
     #[test]
@@ -1476,5 +1492,149 @@ mod tests {
     #[test]
     fn truncate_utf8_zero() {
         assert_eq!(truncate_utf8("hello", 0), "");
+    }
+
+    // -- Primary path tests (col-008 PR review) --
+
+    #[tokio::test]
+    async fn dispatch_compact_payload_primary_path_uses_injection_history() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        // Store entries in the database
+        let entry1 = unimatrix_store::NewEntry {
+            title: "ADR-Important".to_string(),
+            content: "Critical decision content".to_string(),
+            topic: "arch".to_string(),
+            category: "decision".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: String::new(),
+            trust_source: String::new(),
+        };
+        let entry2 = unimatrix_store::NewEntry {
+            title: "Coding Convention".to_string(),
+            content: "Always use snake_case".to_string(),
+            topic: "style".to_string(),
+            category: "convention".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: String::new(),
+            trust_source: String::new(),
+        };
+        let id1 = store.insert(entry1).unwrap();
+        let id2 = store.insert(entry2).unwrap();
+
+        // Register session and record injections
+        registry.register_session("s1", Some("developer".to_string()), Some("col-008".to_string()));
+        registry.record_injection("s1", &[(id1, 0.92), (id2, 0.75)]);
+
+        let response = dispatch_request(
+            HookRequest::CompactPayload {
+                session_id: "s1".to_string(),
+                injected_entry_ids: vec![],
+                role: None,
+                feature: None,
+                token_limit: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+        ).await;
+
+        match response {
+            HookResponse::BriefingContent { content, token_count } => {
+                assert!(!content.is_empty(), "primary path should produce non-empty content");
+                assert!(token_count > 0);
+                // Verify entries from injection history appear in output
+                assert!(content.contains("[ADR-Important]"), "decision entry missing");
+                assert!(content.contains("[Coding Convention]"), "convention entry missing");
+                // Verify decisions appear before conventions (priority ordering)
+                let dec_pos = content.find("[ADR-Important]").unwrap();
+                let conv_pos = content.find("[Coding Convention]").unwrap();
+                assert!(dec_pos < conv_pos, "decisions must appear before conventions");
+                // Verify session context
+                assert!(content.contains("Role: developer"));
+                assert!(content.contains("Feature: col-008"));
+            }
+            _ => panic!("expected BriefingContent, got {response:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn dispatch_compact_payload_primary_path_sorts_by_confidence() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let low = unimatrix_store::NewEntry {
+            title: "LowConf".to_string(),
+            content: "low confidence decision".to_string(),
+            topic: "t".to_string(),
+            category: "decision".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: String::new(),
+            trust_source: String::new(),
+        };
+        let high = unimatrix_store::NewEntry {
+            title: "HighConf".to_string(),
+            content: "high confidence decision".to_string(),
+            topic: "t".to_string(),
+            category: "decision".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: String::new(),
+            trust_source: String::new(),
+        };
+        let id_low = store.insert(low).unwrap();
+        let id_high = store.insert(high).unwrap();
+
+        registry.register_session("s1", None, None);
+        // Inject low first, then high — output should still sort high-confidence first
+        registry.record_injection("s1", &[(id_low, 0.3), (id_high, 0.95)]);
+
+        let response = dispatch_request(
+            HookRequest::CompactPayload {
+                session_id: "s1".to_string(),
+                injected_entry_ids: vec![],
+                role: None,
+                feature: None,
+                token_limit: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry,
+        ).await;
+
+        match response {
+            HookResponse::BriefingContent { content, .. } => {
+                let high_pos = content.find("[HighConf]").expect("HighConf missing");
+                let low_pos = content.find("[LowConf]").expect("LowConf missing");
+                assert!(high_pos < low_pos, "high-confidence entry must appear before low-confidence");
+            }
+            _ => panic!("expected BriefingContent"),
+        }
+    }
+
+    // -- CoAccessDedup regression test (col-008 PR review) --
+
+    #[tokio::test]
+    async fn coaccess_dedup_unregistered_session_skips_recording() {
+        // Regression: CoAccessDedup used to create entries for unknown sessions.
+        // SessionRegistry returns false for unregistered sessions (no silent creation).
+        let registry = make_registry();
+        // Do NOT register "unknown-session"
+        let is_new = registry.check_and_insert_coaccess("unknown-session", &[1, 2, 3]);
+        assert!(!is_new, "unregistered session must return false");
+        // Verify no session was implicitly created
+        assert!(registry.get_state("unknown-session").is_none());
     }
 }
