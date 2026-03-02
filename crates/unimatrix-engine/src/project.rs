@@ -2,6 +2,8 @@
 
 use std::fs;
 use std::io;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use sha2::{Digest, Sha256};
@@ -80,6 +82,8 @@ pub fn ensure_data_directory(override_dir: Option<&Path>) -> io::Result<ProjectP
     let socket_path = data_dir.join("unimatrix.sock");
 
     fs::create_dir_all(&data_dir)?;
+    #[cfg(unix)]
+    fs::set_permissions(&data_dir, fs::Permissions::from_mode(0o700))?;
     fs::create_dir_all(&vector_dir)?;
 
     Ok(ProjectPaths {

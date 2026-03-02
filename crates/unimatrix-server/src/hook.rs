@@ -108,10 +108,10 @@ pub fn run(
     Ok(())
 }
 
-/// Read all of stdin. Returns empty string if nothing is piped.
+/// Read all of stdin up to 1 MiB. Returns empty string if nothing is piped.
 fn read_stdin() -> String {
     let mut input = String::new();
-    let _ = std::io::stdin().read_to_string(&mut input);
+    let _ = std::io::stdin().take(1_048_576).read_to_string(&mut input);
     input
 }
 
