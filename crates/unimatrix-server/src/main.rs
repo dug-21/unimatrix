@@ -184,11 +184,15 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Start UDS listener for hook IPC
+    // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001)
     let server_uid = nix::unistd::getuid().as_raw();
     let (uds_handle, socket_guard) = uds_listener::start_uds_listener(
         &paths.socket_path,
         Arc::clone(&store),
+        Arc::clone(&embed_handle),
+        Arc::clone(&async_vector_store),
+        Arc::clone(&async_entry_store),
+        Arc::clone(&adapt_service),
         server_uid,
         env!("CARGO_PKG_VERSION").to_string(),
     )
