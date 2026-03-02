@@ -2,6 +2,8 @@
 
 use std::fs;
 use std::io;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use sha2::{Digest, Sha256};
@@ -21,6 +23,8 @@ pub struct ProjectPaths {
     pub vector_dir: PathBuf,
     /// PID file path: ~/.unimatrix/{hash}/unimatrix.pid
     pub pid_path: PathBuf,
+    /// Socket file path: ~/.unimatrix/{hash}/unimatrix.sock
+    pub socket_path: PathBuf,
 }
 
 /// Detect the project root by walking up from cwd looking for `.git/`.
@@ -75,8 +79,11 @@ pub fn ensure_data_directory(override_dir: Option<&Path>) -> io::Result<ProjectP
     let db_path = data_dir.join("unimatrix.redb");
     let vector_dir = data_dir.join("vector");
     let pid_path = data_dir.join("unimatrix.pid");
+    let socket_path = data_dir.join("unimatrix.sock");
 
     fs::create_dir_all(&data_dir)?;
+    #[cfg(unix)]
+    fs::set_permissions(&data_dir, fs::Permissions::from_mode(0o700))?;
     fs::create_dir_all(&vector_dir)?;
 
     Ok(ProjectPaths {
@@ -86,6 +93,7 @@ pub fn ensure_data_directory(override_dir: Option<&Path>) -> io::Result<ProjectP
         db_path,
         vector_dir,
         pid_path,
+        socket_path,
     })
 }
 
@@ -150,6 +158,7 @@ mod tests {
         assert!(paths.db_path.to_string_lossy().ends_with("unimatrix.redb"));
         assert!(paths.vector_dir.to_string_lossy().ends_with("vector"));
         assert!(paths.pid_path.to_string_lossy().ends_with("unimatrix.pid"));
+        assert!(paths.socket_path.to_string_lossy().ends_with("unimatrix.sock"));
     }
 
     #[test]
@@ -172,5 +181,12 @@ mod tests {
         let long_path = format!("/tmp/{}", "a".repeat(1000));
         let hash = compute_project_hash(Path::new(&long_path));
         assert_eq!(hash.len(), 16);
+    }
+
+    #[test]
+    fn test_socket_path_in_data_dir() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let paths = ensure_data_directory(Some(dir.path())).unwrap();
+        assert_eq!(paths.socket_path, paths.data_dir.join("unimatrix.sock"));
     }
 }

@@ -16,10 +16,9 @@ You are the problem space explorer for Unimatrix. You work interactively with th
 
 ## Orientation
 
-At task start, retrieve your context:
-  `context_briefing(role: "researcher", task: "{task description from prompt}")`
+<!-- context_briefing disabled: consumes too much subagent context window. Will re-enable after tuning briefing response size. -->
 
-Apply returned conventions, patterns, and prior decisions. If briefing returns nothing, proceed with the guidance in this file.
+Proceed with the guidance in this file.
 
 ---
 

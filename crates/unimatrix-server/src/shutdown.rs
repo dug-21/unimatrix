@@ -13,6 +13,7 @@ use unimatrix_vector::VectorIndex;
 use crate::audit::AuditLog;
 use crate::error::ServerError;
 use crate::registry::AgentRegistry;
+use crate::uds_listener::SocketGuard;
 
 /// Handles needed for lifecycle operations during shutdown.
 ///
@@ -33,6 +34,10 @@ pub struct LifecycleHandles {
     pub adapt_service: Arc<AdaptationService>,
     /// Data directory for adaptation state files.
     pub data_dir: PathBuf,
+    /// Socket guard for UDS cleanup (col-006). Dropped during shutdown.
+    pub socket_guard: Option<SocketGuard>,
+    /// UDS accept loop task handle for shutdown coordination (col-006).
+    pub uds_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
 /// Run the graceful shutdown sequence.
@@ -44,7 +49,7 @@ pub struct LifecycleHandles {
 ///
 /// PID file cleanup is handled by `PidGuard::drop` in the caller.
 pub async fn graceful_shutdown<S>(
-    handles: LifecycleHandles,
+    mut handles: LifecycleHandles,
     server: S,
 ) -> Result<(), ServerError>
 where
@@ -62,6 +67,16 @@ where
 
     // Brief pause for final responses to flush
     tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // Step 0: Stop UDS listener (col-006)
+    if let Some(handle) = handles.uds_handle.take() {
+        handle.abort();
+        // Wait up to 1s for in-flight handlers to complete
+        let _ = tokio::time::timeout(Duration::from_secs(1), handle).await;
+    }
+
+    // Step 0b: Remove socket file via SocketGuard drop (col-006)
+    drop(handles.socket_guard.take());
 
     // Step 1: Dump vector index (works through Arc — dump takes &self)
     tracing::info!("dumping vector index");

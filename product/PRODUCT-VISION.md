@@ -2,17 +2,22 @@
 
 ## Vision
 
-Unimatrix is a self-learning expertise engine for multi-agent software development. It captures the knowledge that emerges from doing work — decisions, patterns, conventions, and lessons — and makes it trustworthy, retrievable, and ever-improving. Agents ask Unimatrix "how do I do X?" and get answers that reflect the team's accumulated expertise, not stale documentation.
+Unimatrix is a self-learning expertise engine for multi-agent software development. It captures the knowledge that emerges from doing work — decisions, patterns, conventions, and lessons — and makes it trustworthy, retrievable, and ever-improving. Agents ask Unimatrix "how do I do X?" and get answers that reflect the team's accumulated expertise, not stale documentation. But agents don't even need to ask — Unimatrix **delivers knowledge automatically** via Claude Code's hook system. Relevant expertise is injected into every prompt, survives context compaction, and feeds confidence signals back without explicit agent action.
 
-**The boundary is clear:** Files define the process (SDLC/governance — what must be done, by whom, and when). Unimatrix holds the expertise (how our team does it well). Workflow choreography, role definitions, and phase sequencing stay in `.claude/` files where Claude Code expects them. Knowledge that evolves through feature delivery — coding patterns, interface contracts, testing procedures, architectural decisions — lives in Unimatrix where it can be searched, scored, corrected, and improved.
+**The boundary is clear — three legs:**
+- **Files** define the process (SDLC/governance — what must be done, by whom, and when)
+- **Unimatrix** holds the expertise (how our team does it well — searchable, scored, correctable, improving)
+- **Hooks** connect them — delivering expertise automatically via Claude Code lifecycle events
+
+Workflow choreography, role definitions, and phase sequencing stay in `.claude/` files where Claude Code expects them. Knowledge that evolves through feature delivery — coding patterns, interface contracts, testing procedures, architectural decisions — lives in Unimatrix. Hooks bridge the gap: context injection on every prompt, compaction resilience, confidence feedback, and session lifecycle — all without agent cooperation.
 
 ## Core Value Proposition
 
 Agent memory systems remember. Unimatrix ensures what agents remember is **trustworthy, correctable, and auditable** — and gets better with every feature delivered.
 
-The 10x story is not semantic search (ubiquitous) or local-first deployment (niche). It is the **auditable knowledge lifecycle**: hash-chained correction histories with attribution, confidence evolution from real usage signals, and contradiction detection across the knowledge base. When an agent asks "how do I write integration tests?", the answer reflects what has actually worked, what has been corrected, and what the team has learned — not what someone wrote in a wiki six months ago.
+The 10x story is not semantic search (ubiquitous) or local-first deployment (niche). It is the **auditable knowledge lifecycle** combined with **invisible delivery**: hash-chained correction histories with attribution, confidence evolution from real usage signals, contradiction detection across the knowledge base — and automatic injection of the right knowledge into every agent prompt without tool calls or agent cooperation. When an agent asks "how do I write integration tests?", the answer reflects what has actually worked, what has been corrected, and what the team has learned — not what someone wrote in a wiki six months ago. But the agent doesn't even need to ask: the knowledge arrives as ambient context, injected by hooks before the agent sees the prompt.
 
-This combination is architectural — it requires commitment from the data model up. Competitors cannot retrofit hash-chained correction histories, confidence scoring, or contradiction detection without fundamental restructuring. The defensible position is: **Trust + Lifecycle + Integrity + Learning**, delivered as a self-contained embedded engine with zero cloud dependency.
+This combination is architectural — it requires commitment from the data model up. Unimatrix strives for perfection.  The defensible position is: **Trust + Lifecycle + Integrity + Learning + Invisible Delivery**, delivered as a self-contained embedded engine with zero cloud dependency. The combination of trust and lifecycle becomes transformative when delivery is automatic — knowledge reaches agents as ambient context.
 
 **Cross-domain portability note (ASS-009):** The core engine is domain-agnostic. The `EntryRecord` schema, `QueryFilter` model, correction chains, and security fields impose no domain coupling. Domain-specific behavior is confined to four server-level configuration items (category allowlist, server instructions, agent bootstrap, content scanning patterns). This means the value proposition above applies to any domain where knowledge evolves, requires trust, and benefits from lifecycle management — not just software development. See `product/research/ass-009/` for the full analysis.
 
@@ -21,6 +26,8 @@ This combination is architectural — it requires commitment from the data model
 ## Strategic Approach
 
 Start with Proposal A (Knowledge Oracle) — a focused, testable knowledge store. Evolve incrementally toward Proposal C (Workflow-Aware Hybrid) — adding usage tracking, outcome analysis, retrospective intelligence, and eventually thin-shell agent files. Each milestone is independently shippable and provable. The schema pre-seeds all known future fields from day 1, covering M2–M5 without schema changes. When new fields are added (M6+), a `schema_version` counter triggers automatic scan-and-rewrite migration on database open — fast at Unimatrix scale.
+
+**Learning from Genius (2026-03-01):** Research comparing Unimatrix with claude-flow (Ruflo v3.5) revealed complementary strengths. Unimatrix built a sophisticated knowledge engine — redb storage, HNSW vectors, confidence evolution, contradiction detection — but agents must explicitly call `context_briefing` to benefit, and most don't. claude-flow solved the delivery problem via Claude Code lifecycle hooks (context injection on every prompt, compaction resilience) but the knowledge layer is more difficult to navigate for some.  The strategic move: adopt claude-flow's hook-driven delivery patterns with Unimatrix's engine (Which also has its roots in Ruv's Ruvector). See Unimatrix entries #190, #191 for the full analysis.
 
 Security is a cross-cutting concern woven into existing features, not a separate milestone. Foundational security fields are added to EntryRecord in nxs-004 (before MCP writes entries). Agent identity, audit logging, input validation, and capability checks are integrated into the Vinculum phase. Advanced defenses (contradiction detection, anomaly detection, behavioral analysis) align with the Cortical phase. See [Security Cross-Cutting Concerns](#security-cross-cutting-concerns) and `product/research/mcp-security/` for the full analysis.
 
@@ -61,15 +68,18 @@ Security is a cross-cutting concern woven into existing features, not a separate
 
 ### Milestone 3: Agent Integration (Alcove Phase — `alc`)
 
-**Goal**: Establish the behavioral driving chain so agents reliably use Unimatrix without manual prompting.
+**Goal**: Agent identity, enrollment, and behavioral driving so agents reliably use Unimatrix.
 
 | Feature | Prefix | Summary |
 |---------|--------|---------|
-| CLAUDE.md Integration | `alc-001` | `unimatrix init` CLI command appends Unimatrix block to CLAUDE.md. Reinforces server instructions (~90% compliance). Documents category conventions (outcome, lesson-learned, decision, convention, pattern, procedure). |
-| Agent Orientation Pattern | `alc-002` | Agent definition template with `## Orientation` section containing `context_briefing` call. `## Outcome Reporting` section for end-of-task `context_store`. Three-layer behavioral chain: server instructions → CLAUDE.md → agent file. |
-| Starter Kit | `alc-003` | Repo template with generic agents (architect, developer, tester, validator), standard protocols (planning, implementation), and Unimatrix-aware agent structure. Reduces new project setup pain. |
+| Knowledge Bootstrap | `alc-001` | Research spike: how Unimatrix integrates into Claude workflow. Established the three-layer architecture (Skills as platform-native `/command`, Agent defs as platform-native Task spawning, Knowledge in Unimatrix entries). Key finding: `context_briefing` returns unordered knowledge, not choreography — workflow sequencing must stay in agent defs. Reactive protocol delivery (v3) designed but deferred. See `product/research/ass-011/`. |
+| Agent Enrollment Tool | `alc-002` | `context_enroll` MCP tool (11th tool) — Admin-level agents can enroll new agents or update trust levels and capabilities at runtime. Protected agents ("system", "human") cannot be modified. Self-lockout prevention. Strict parsing with case-insensitive trust levels/capabilities. Fixes #46 (spawned agents blocked from writes). |
+| CLAUDE.md Integration | `alc-003` | `unimatrix init` CLI command appends Unimatrix block to CLAUDE.md. Reinforces server instructions (~90% compliance). Documents category conventions. |
+| Starter Kit | `alc-004` | Repo template with generic agents (architect, developer, tester, validator), standard protocols (planning, implementation), and Unimatrix-aware agent structure. Reduces new project setup pain. |
 
-**Ships**: New projects get Unimatrix integration out of the box. Agents orient and report without custom per-project configuration.
+**Status (2026-03-01):** alc-001 complete (research). alc-002 complete (#46, PR #55). alc-003/004 deferred — agent integration is achieved manually via CLAUDE.md and agent file conventions.
+
+**Ships**: Agent enrollment and identity management. Manual integration patterns established. CLI formalization (alc-003/004) deferred until external adoption matters.
 
 ---
 
@@ -92,21 +102,57 @@ Security is a cross-cutting concern woven into existing features, not a separate
 
 ### Milestone 5: Orchestration Engine (Collective Phase — `col`)
 
-**Goal**: Workflow orchestration as a first-class capability — phase gates, wave management, outcome tracking.
+**Goal**: Automatic knowledge delivery via hooks, process intelligence from observation, and workflow orchestration. The delivery features (col-006–011) are the immediate priority — the "nervous system" connecting Unimatrix's engine to agents automatically.
+
+#### Completed Features
 
 | Feature | Prefix | Summary |
 |---------|--------|---------|
 | Outcome Tracking | `col-001` | OUTCOME_INDEX table — `(feature_hash, entry_id)` for outcome entries. Convention: agents store `category: "outcome"` with structured tags (`gate:3a`, `phase:implementation`, `result:pass`). |
-| Retrospective Pipeline | `col-002` | Observation-driven retrospective capability. **Infrastructure**: Per-session JSONL telemetry files (`~/.unimatrix/observation/{session_id}.jsonl`) collected via Claude Code hooks (PreToolUse, PostToolUse, SubagentStart, SubagentStop). Hook change: route records to per-session files instead of monolithic file. **Feature attribution**: Content-based session-to-feature mapping at analysis time — scan tool inputs for feature file paths, task subjects, and git checkout commands. No git branch stamping (branch is global, breaks with concurrent sessions). Once a session is attributed, all records belong to that feature. **Analysis engine**: Rust binary/library that parses JSONL, runs rule-based hotspot detection with evolving thresholds, computes per-feature metric vectors. Four hotspot categories: agent (context load, lifespan, re-reads, compile cycles, edit bloat), friction (permission retries, Bash misuse, sleep workarounds), session (cold restarts, timeouts, coordinator respawns), scope (file counts, artifact counts, phase duration outliers). **Threshold convergence**: Bootstrapped priors from context engineering principles (iterations 1-3), empirical adjustment toward mean+1.5σ (iterations 4-10), project-normalized (10+). Dismissed hotspot feedback pushes thresholds higher. **`/retrospective` skill**: Presents hotspot report to LLM + human for discussion. Unimatrix has a point of view — opinionated findings with supporting data, not raw metrics. **Data lifecycle**: Metric vector stored in Unimatrix (one entry per feature, category: "observation"). Session files archived to `product/features/{id}/observation/`. Safety valve via `context_status` for unprocessed files >90 days. **Also draws from**: Outcome entries in knowledge base for cross-feature pattern detection (original col-002 scope, retained). **Detection tiers**: Pure rules handle 6/8 categories (no model needed). LLM required only for compound signal interpretation and actionable recommendations. **Platform constraints**: All subagent tool calls share parent session_id (agent-level attribution is heuristic only — hotspots operate at session/feature-cycle granularity). See `product/research/ass-013/` for full design. |
-| Auto-Knowledge Extraction | `col-005` | Derive durable project knowledge from observation telemetry automatically — without consuming agent context window. Three extraction tiers: **Tier 1** (high confidence) structural conventions from file creation patterns (naming, directory structure, crate patterns) — safe to auto-extract after cross-feature validation. **Tier 2** (medium) procedural knowledge from ordered tool-call sequences (server integration procedure, crate bootstrapping, gate validation) — require 3+ features showing identical sequence before promotion. **Tier 3** (medium-high) dependency graphs from read-before-edit chains (which files must be understood before modifying a target). **Noise prevention**: Require PostToolUse confirmation, cross-feature validation (3+ features), exclude compilation fix cycles (Write→fail→rewrite), exclude test flakiness false positives, human confirmation gate via `/retrospective` before auto-storing. **Confidence levels**: CONFIRMED (auto-store after 3+ features) → OBSERVED (present on retrospective, don't store) → DISCARDED (never extract). Depends on col-002 having accumulated 5+ feature metric vectors. See `product/research/ass-013/auto-knowledge.md`. |
+| Retrospective Pipeline | `col-002` | Observation-driven retrospective capability. `unimatrix-observe` crate: JSONL parser, content-based feature attribution, rule-based hotspot detection (21 rules across 4 categories), MetricVector computation, report generation. `context_retrospective` MCP tool (12th tool). Per-session JSONL telemetry via Claude Code hooks (PreToolUse, PostToolUse, SubagentStart, SubagentStop). Four hotspot categories: agent (context load, lifespan, file breadth, re-reads, mutation spread, compile cycles, edit bloat), friction (permission retries, sleep workarounds, search-via-bash, output parsing struggle), session (timeouts, cold restarts, coordinator respawns, post-completion work, rework events), scope (source file count, design artifacts, ADR count, post-delivery issues, phase duration outliers). Bootstrapped thresholds with convergence toward mean+1.5σ. Metric vector stored in Unimatrix (category: "observation"). See `product/research/ass-013/`. |
+| Detection & Baselines | `col-002b` | Extends col-002 with 18 additional detection rules (completing the full 21-rule library) and historical baseline comparison. Baseline computation (mean + stddev across stored MetricVectors, phase-specific grouping, 1.5σ outlier flagging). Four arithmetic guard modes (Normal, Outlier, NoVariance, NewSignal). Minimum 3 MetricVectors required for baseline. Enhances `context_retrospective` report — no new MCP tools. |
+
+#### Hook-Driven Delivery Features — IMMEDIATE PRIORITY
+
+| Feature | Prefix | Summary |
+|---------|--------|---------|
+| Hook Transport Layer ("Cortical Implant") | `col-006` | Research spike + implementation. Single `unimatrix-hook` binary — the **cortical implant** — acts as the universal router for all Claude Code lifecycle hooks. Inspired by claude-flow's router pattern: one binary, configured once in `.claude/settings.json`, dispatches all hook events internally (UserPromptSubmit → context injection, PreCompact → compaction resilience, PostToolUse → confidence feedback, etc.). **Transport**: How does the cortical implant communicate with the running Unimatrix MCP server? The MCP connection is owned by Claude Code's stdio pipe — hooks can't share it. Options: (1) Unix domain socket listener alongside stdio in unimatrix-server, (2) cortical implant opens redb directly for reads and queues writes, (3) HTTP listener, (4) named pipe / shared memory. **Router benefits**: (a) simplifies Claude configuration — one binary handles all events instead of N separate scripts, (b) single point of security — validates caller identity, checks process lineage, ensures the connection targets the correct Unimatrix instance for this project, (c) centralized transport — connection pooling / socket reuse across hook invocations within a session. Must support both synchronous query (hook needs results to inject into stdout) and fire-and-forget (hook records an event). Performance target: <50ms round-trip. Foundation for all col-007–011 features. Architecture defined by ASS-014 research spike (`product/research/ass-014/`). |
+| Automatic Context Injection | `col-007` | UserPromptSubmit hook that queries Unimatrix for knowledge relevant to the current prompt. Semantic search against active entries, formats top 3-5 matches with confidence scores, prints to stdout for injection into Claude's context. Every prompt gets enriched with relevant knowledge automatically — no agent action needed. Token budget awareness (<500 tokens per injection). Uses hook transport from col-006. |
+| Compaction Resilience | `col-008` | PreCompact hook that calls context_briefing for the active session's role and task context. Injects critical knowledge (active decisions, conventions, current feature context) into the compacted window via stdout. Ensures agents don't lose Unimatrix context on compaction. Leverages vnc-003's existing briefing infrastructure (<2000 token target). May also inject session state (current task, active files). |
+| Closed-Loop Confidence | `col-009` | PostToolUse and TaskCompleted hooks that signal helpfulness back to Unimatrix. When a task succeeds, entries retrieved during that session get bulk `helpful=true`. When rework is detected (repeated edits, compile failures), entries may get `helpful=false`. Closes the confidence evolution feedback loop (crt-002) without agent cooperation. Uses USAGE_LOG (crt-001) to identify session entries. Fire-and-forget via hook transport. |
+| Session Lifecycle & Observation | `col-010` | SessionStart hook registers session with Unimatrix — session ID, agent role, feature context, timestamp. SessionEnd hook closes session — duration, outcome. Provides clean observation boundaries for col-002 retrospective pipeline. Replaces implicit session detection in JSONL telemetry with explicit start/end signals. Session metadata stored in Unimatrix. |
+| Semantic Agent Routing | `col-011` | UserPromptSubmit hook that matches prompt against stored agent duties, patterns, and historical outcomes using 384d semantic embeddings. Unlike keyword regex, finds best-fit agent by querying `category: "duties"` + `category: "outcome"` entries, ranks by confidence + similarity. Connects col-001 outcomes to agent selection. Advisory — prints recommendation, does not spawn. |
+
+#### Process Intelligence Features — After Delivery
+
+| Feature | Prefix | Summary |
+|---------|--------|---------|
 | Process Proposal Workflow | `col-003` | CLI: `unimatrix proposals` (list pending), `unimatrix approve <id>` (promote to active process knowledge), `unimatrix reject <id>` (record rejection as learning signal). Approved proposals become entries with `category: "process"`, `status: Active`. |
 | Feature Lifecycle | `col-004` | Feature-scoped context: `context_briefing` with `feature` param returns feature-specific decisions + cross-feature patterns. Gate status tracking — which gates passed/failed for active features. |
+| Auto-Knowledge Extraction | `col-005` | Derive durable project knowledge from observation telemetry automatically — without consuming agent context window. Three extraction tiers: **Tier 1** (high confidence) structural conventions from file creation patterns — safe to auto-extract after cross-feature validation. **Tier 2** (medium) procedural knowledge from ordered tool-call sequences — require 3+ features showing identical sequence before promotion. **Tier 3** (medium-high) dependency graphs from read-before-edit chains. Depends on col-002 having accumulated 5+ feature metric vectors. See `product/research/ass-013/auto-knowledge.md`. |
 
-**Ships**: System observes agent behavior, identifies process hotspots from evidence, and proposes improvements. Human reviews hotspots via `/retrospective`, approves process changes with one command. Knowledge base self-populates from observation after sufficient iteration. This is the Proposal A → C transition.
+**Status (2026-03-01):** col-001 ✅, col-002 ✅ (#56, PR #58), col-002b ✅ (#57, PR #60). Hook delivery (col-006–011) is the immediate priority — the "nervous system" connecting Unimatrix's engine to agents automatically. col-003/004 follow after delivery features. col-005 blocked until 5+ feature retrospectives accumulated.
+
+**Ships**: Automatic knowledge delivery via hooks — every agent prompt enriched, compaction resilient, confidence feedback closed-loop. System observes agent behavior, identifies process hotspots from evidence, and proposes improvements. Knowledge base self-populates from observation after sufficient iteration. This is the Proposal A → C transition.
 
 ---
 
-### Milestone 6: Real-Time Interface (Matrix Phase — `mtx`)
+### Milestone 6: Thin-Shell Migration (Alcove Phase — `alc`)
+
+**Goal**: Gradually slim agent files as expertise moves to Unimatrix. Optional, per-agent, no big bang.
+
+| Feature | Prefix | Summary |
+|---------|--------|---------|
+| Thin-Shell Agent Pattern | `alc-010` | Agent files slim their **knowledge content** (conventions, duties, standards) to Unimatrix — retrieved via `context_briefing` at runtime. **Workflow structure** (phase sequencing, gate transitions, conditional branching) stays in agent files — briefing returns an unordered bag of entries, not a choreography. Agent files become ~80-100 lines: identity, workflow choreography, orientation directive (`context_briefing`), self-check gates, outcome reporting. |
+| Migration Assistant | `alc-011` | Analyze existing agent files. Identify content that duplicates or contradicts Unimatrix entries. Suggest what can be extracted. Preview thin-shell version. Track migration status per agent. Accessible via `mtx-006` (Control Manager) or CLI. |
+
+**Promoted (2026-03-01):** Once hooks deliver knowledge automatically (col-007 context injection, col-008 compaction resilience), agent files no longer need baked-in knowledge. Thin-shell migration becomes "just delete the static knowledge sections from agent files" — hooks deliver it at runtime. Workflow sequencing still cannot be served from Unimatrix (`context_briefing` returns an unordered set), so agent definitions retain their workflow choreography. Thin-shell migration remains limited to extracting **knowledge content** (conventions, duties, cross-cutting standards). See alc-001 (Knowledge Bootstrap) for the integration approach.
+
+**Ships**: Agent maintenance burden drops for knowledge content. Workflow structure remains author-maintained in agent files.
+
+---
+
+### Milestone 7: Real-Time Interface (Matrix Phase — `mtx`)
 
 **Goal**: Visual interface for human oversight, knowledge management, and workflow visibility.
 
@@ -119,11 +165,13 @@ Security is a cross-cutting concern woven into existing features, not a separate
 | Prompt Debugger | `mtx-005` | Inspect what `context_briefing` returned for any agent invocation. See which entries were selected, why (similarity scores, confidence), and what was excluded (token budget). Replay briefings with modified parameters. |
 | Control Manager | `mtx-006` | View and manage the relationship between `.claude/` files and Unimatrix entries. Identify drift — where file content contradicts stored knowledge. Thin-shell migration assistant — shows what can safely move to Unimatrix. |
 
+**Deprioritized (2026-03-01):** The primary consumer of knowledge shifts from humans browsing a UI to hooks injecting context automatically. Dashboards remain valuable for oversight but are no longer the primary delivery mechanism.
+
 **Ships**: Humans have full visibility into what agents know, how knowledge evolves, and where the process is working or failing. The "single pane of glass" for multi-agent orchestration.
 
 ---
 
-### Milestone 7: Multi-Project & Identity (Designation Phase — `dsn`)
+### Milestone 8: Multi-Project & Identity (Designation Phase — `dsn`)
 
 **Goal**: Support multiple concurrent projects with isolation, shared knowledge where appropriate, and project identity management.
 
@@ -135,21 +183,6 @@ Security is a cross-cutting concern woven into existing features, not a separate
 | Config & Export | `dsn-004` | `unimatrix export --project <name>` — full JSON dump for backup or migration. `unimatrix import` into new project. Config file (`~/.unimatrix/config.toml`) for global settings (embedding model, confidence parameters, decay rates). |
 
 **Ships**: Teams working on multiple repos get isolated knowledge per project with the option to share universal conventions. Portable knowledge across environments.
-
----
-
-### Milestone 8: Thin-Shell Migration (Alcove Phase — `alc`)
-
-**Goal**: Gradually slim agent files as expertise moves to Unimatrix. Optional, per-agent, no big bang.
-
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Thin-Shell Agent Pattern | `alc-010` | Agent files slim their **knowledge content** (conventions, duties, standards) to Unimatrix — retrieved via `context_briefing` at runtime. **Workflow structure** (phase sequencing, gate transitions, conditional branching) stays in agent files — briefing returns an unordered bag of entries, not a choreography. Agent files become ~80-100 lines: identity, workflow choreography, orientation directive (`context_briefing`), self-check gates, outcome reporting. |
-| Migration Assistant | `alc-011` | Analyze existing agent files. Identify content that duplicates or contradicts Unimatrix entries. Suggest what can be extracted. Preview thin-shell version. Track migration status per agent. Accessible via `mtx-006` (Control Manager) or CLI. |
-
-**On hold (2026-02-27):** Workflow sequencing cannot be served from Unimatrix — `context_briefing` returns knowledge as an unordered set, not as ordered steps. Agent definitions must retain their workflow choreography (phase ordering, gate logic, conditional transitions). Thin-shell migration is limited to extracting **knowledge content** (conventions, duties, cross-cutting standards), not workflow structure. A future capability (workflow-aware retrieval or procedure sequencing in briefing) would be needed to go thinner. See alc-001 (Knowledge Bootstrap) for the current integration approach.
-
-**Ships**: Agent maintenance burden drops for knowledge content. Workflow structure remains author-maintained in agent files.
 
 ---
 
@@ -196,7 +229,7 @@ stdio (M2):   agent_id tool parameter → AGENT_REGISTRY → capability check �
                 ↓ (future, non-breaking)
 _meta (M2+):  _meta.agent_id on MCP request → same pipeline
                 ↓ (future, non-breaking)
-HTTPS (M6+):  OAuth 2.1 bearer token claims → same pipeline
+HTTPS (M7+):  OAuth 2.1 bearer token claims → same pipeline
 ```
 
 ### Trust Hierarchy
@@ -215,24 +248,36 @@ HTTPS (M6+):  OAuth 2.1 bearer token claims → same pipeline
 ```
 M1: Foundation (nxs)         ✅ COMPLETE
  └─► M2: MCP Server (vnc)   ✅ COMPLETE (vnc-001/002/003/004)
-      ├─► vnc-005: Config Externalization  ← does not block M4, parallel track
+      ├─► vnc-005: Config Externalization  ← parallel track
+      ├─► alc-002: Agent Enrollment  ✅ COMPLETE
       ├─► M4: Learning & Drift (crt)  ✅ COMPLETE (crt-001/002/003/004/005/006)
       │    ├─► col-001: Outcome Tracking  ✅ COMPLETE
-      │    ├─► col-002: Retrospective Pipeline  ← observation telemetry + hotspot analysis
-      │    │    ├─► col-005: Auto-Knowledge Extraction  ← after 5+ features with col-002
-      │    │    └─► col-003/004: Process Proposals + Feature Lifecycle
-      │    │         └─► M6: Real-Time Interface (mtx)
-      │    │              └─► M7: Multi-Project (dsn)
-      │    └─► col-003: Process Proposal Workflow  ← parallel track (CLI plumbing)
-      └─► M3: Agent Integration (alc)    ← deferred, see note
-           └─► M8: Thin-Shell Migration (alc)
+      │    ├─► col-002/002b: Retrospective  ✅ COMPLETE
+      │    │    └─► col-005: Auto-Knowledge  ← blocked: needs 5+ retrospectives
+      │    ├─► M5: Orchestration Engine (col)  ← IMMEDIATE PRIORITY
+      │    │    ├─► ASS-014: Cortical Implant Architecture  ← research spike
+      │    │    │    └─► col-006: Hook Transport  ← foundation for all delivery
+      │    │    │    ├─► col-007: Context Injection
+      │    │    │    ├─► col-008: Compaction Resilience
+      │    │    │    ├─► col-009: Confidence Feedback
+      │    │    │    ├─► col-010: Session Lifecycle
+      │    │    │    └─► col-011: Agent Routing
+      │    │    ├─► col-003/004: Process Proposals + Feature Lifecycle
+      │    │    └─► M6: Thin-Shell Migration (alc)  ← enabled by delivery
+      │    └─► M7: Real-Time Interface (mtx)  ← deprioritized
+      │         └─► M8: Multi-Project (dsn)
+      └─► M3: Agent Integration (alc-003/004)  ← deferred
 
-M9: Build & Deploy (nan) — parallel track, ships incrementally alongside M2+
+M9: Build & Deploy (nan) — parallel track
 ```
 
-**Milestone reordering note (2026-02-24):** M3 (Agent Integration) is deferred after M4/M5. M3's features (CLI init command, starter kit) formalize external adoption — but the *intent* (agents using Unimatrix) is achieved manually via CLAUDE.md and agent file edits. M4/M5 deliver higher value (learning, contradiction detection, process proposals) and only depend on M2 + agents actively using the tools, not on M3's automation. M3 will formalize the manual integration when external adoption matters.
+**Milestone reordering note (2026-02-24):** M3 remaining features (CLI init, starter kit) formalize external adoption — but the *intent* (agents using Unimatrix) is achieved manually via CLAUDE.md and agent file edits. M4/M5 deliver higher value and only depend on M2 + agents actively using the tools. M3 will formalize the manual integration when external adoption matters.
 
-**col-002 dependency note (2026-02-28):** col-002 no longer depends on crt-005/crt-006. The original col-002 analyzed knowledge base entries (requiring accurate confidence scores). The rescoped col-002 primarily analyzes tool-call telemetry from observation hooks — independent of knowledge base quality. It depends only on M2 (metric vector storage) and the hook infrastructure (ASS-011, already exists). col-002 benefits from more delivered features (better baselines) but delivers value from iteration 1 with bootstrapped thresholds. See `product/research/ass-013/` for full design. col-005 (Auto-Knowledge Extraction) depends on col-002 having accumulated 5+ feature retrospectives to validate extraction patterns.
+**col-002 dependency note (2026-02-28):** col-002 primarily analyzes tool-call telemetry from observation hooks — independent of knowledge base quality. It depends only on M2 (metric vector storage) and the hook infrastructure. col-005 (Auto-Knowledge Extraction) depends on col-002 having accumulated 5+ feature retrospectives to validate extraction patterns.
+
+**col-002b completion note (2026-03-01):** col-002 + col-002b ship the full retrospective pipeline with 21 detection rules and historical baseline comparison. The pipeline is deployed but has not yet accumulated real observation data (hook JSONL format bug #61 fixed same day). First real retrospective data will accumulate from the next feature cycle onward.
+
+**Hook delivery rationale (2026-03-01):** Competitive analysis of claude-flow (Ruflo v3.5) revealed that Unimatrix built a sophisticated knowledge engine but lacked automatic delivery. claude-flow solved the delivery problem via Claude Code lifecycle hooks but has a broken/theater backend. The Collective phase expands to include hook-driven delivery (col-006–011) as the immediate priority — adopting claude-flow's delivery patterns with Unimatrix's real engine. This is the "nervous system" connecting the brain to agents. Consumption features (Dashboard, Multi-Project) deprioritized; Thin-Shell promoted (hooks make it trivial). See Unimatrix entries #190, #191 for full analysis.
 
 ## Phase-to-Proposal Mapping
 
@@ -240,8 +285,10 @@ M9: Build & Deploy (nan) — parallel track, ships incrementally alongside M2+
 |-----------|---------------------|---------------------|
 | M1-M2 | Core A — knowledge store + MCP | — |
 | M4 | Bridge — adds tracking infrastructure | First C capabilities active |
-| M5 | — | Full C — retrospective, proposals, process learning |
+| M5 (col-001/002) | — | Retrospective intelligence |
+| **M5 (col-006–011)** | — | **Automatic delivery — the A→C transition** |
+| M5 (col-003/004) | — | Process proposals, feature lifecycle |
 | M3 | Formalized agent integration (deferred) | — |
-| M6 | — | Beyond C — visual management layer |
-| M7 | — | Beyond C — multi-project scale |
-| M8 | — | Beyond C — thin-shell agent pattern |
+| M6 | — | Thin-shell agents (enabled by hooks) |
+| M7 | — | Visual management layer |
+| M8 | — | Multi-project scale |
