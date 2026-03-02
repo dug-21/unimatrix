@@ -59,6 +59,10 @@ pub struct HookInput {
     #[serde(default)]
     pub transcript_path: Option<String>,
 
+    /// User prompt text (UserPromptSubmit events only).
+    #[serde(default)]
+    pub prompt: Option<String>,
+
     /// Catch-all for unknown fields (forward compatibility).
     #[serde(flatten)]
     pub extra: serde_json::Value,
@@ -101,8 +105,7 @@ pub enum HookRequest {
 
     // -- Stubs for future features (col-007+) --
 
-    /// Search context entries (future).
-    #[allow(dead_code)]
+    /// Search context entries.
     ContextSearch {
         query: String,
         role: Option<String>,
@@ -149,8 +152,7 @@ pub enum HookResponse {
     /// Error response.
     Error { code: i32, message: String },
 
-    /// Search/lookup results (future).
-    #[allow(dead_code)]
+    /// Search/lookup results.
     Entries {
         items: Vec<EntryPayload>,
         total_tokens: u32,
@@ -184,9 +186,8 @@ pub struct ImplantEvent {
 
 // -- EntryPayload (stub for future search results) --
 
-/// A knowledge entry returned in search/briefing results (future).
+/// A knowledge entry returned in search/briefing results.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[allow(dead_code)]
 pub struct EntryPayload {
     pub id: u64,
     pub title: String,
@@ -645,6 +646,7 @@ mod tests {
         assert!(input.session_id.is_none());
         assert!(input.cwd.is_none());
         assert!(input.transcript_path.is_none());
+        assert!(input.prompt.is_none());
     }
 
     #[test]
@@ -865,5 +867,85 @@ mod tests {
         assert_eq!(decoded.id, 42);
         assert_eq!(decoded.title, "Test Entry");
         assert!((decoded.confidence - 0.85).abs() < f64::EPSILON);
+    }
+
+    // -- HookInput.prompt field tests (col-007) --
+
+    #[test]
+    fn hook_input_with_prompt() {
+        let json = r#"{"hook_event_name":"UserPromptSubmit","prompt":"test query"}"#;
+        let input: HookInput = serde_json::from_str(json).unwrap();
+        assert_eq!(input.prompt.as_deref(), Some("test query"));
+    }
+
+    #[test]
+    fn hook_input_without_prompt() {
+        let json = r#"{"hook_event_name":"SessionStart"}"#;
+        let input: HookInput = serde_json::from_str(json).unwrap();
+        assert!(input.prompt.is_none());
+    }
+
+    #[test]
+    fn hook_input_empty_prompt() {
+        let json = r#"{"hook_event_name":"UserPromptSubmit","prompt":""}"#;
+        let input: HookInput = serde_json::from_str(json).unwrap();
+        assert_eq!(input.prompt.as_deref(), Some(""));
+    }
+
+    #[test]
+    fn hook_input_prompt_with_unknown_fields() {
+        let json = r#"{"hook_event_name":"Test","prompt":"q","custom":"val"}"#;
+        let input: HookInput = serde_json::from_str(json).unwrap();
+        assert_eq!(input.prompt.as_deref(), Some("q"));
+        assert_eq!(input.extra["custom"], "val");
+    }
+
+    // -- ContextSearch round-trip (col-007: dead_code removed) --
+
+    #[test]
+    fn round_trip_context_search() {
+        let req = HookRequest::ContextSearch {
+            query: "test query".to_string(),
+            role: Some("developer".to_string()),
+            task: None,
+            feature: None,
+            k: Some(5),
+            max_tokens: None,
+        };
+        let bytes = serialize_request(&req).unwrap();
+        let decoded = deserialize_request(&bytes).unwrap();
+        match decoded {
+            HookRequest::ContextSearch { query, role, k, .. } => {
+                assert_eq!(query, "test query");
+                assert_eq!(role.as_deref(), Some("developer"));
+                assert_eq!(k, Some(5));
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+    }
+
+    #[test]
+    fn round_trip_entries_response() {
+        let resp = HookResponse::Entries {
+            items: vec![EntryPayload {
+                id: 1,
+                title: "Test".to_string(),
+                content: "content".to_string(),
+                confidence: 0.8,
+                similarity: 0.9,
+                category: "decision".to_string(),
+            }],
+            total_tokens: 10,
+        };
+        let bytes = serialize_response(&resp).unwrap();
+        let decoded = deserialize_response(&bytes).unwrap();
+        match decoded {
+            HookResponse::Entries { items, total_tokens } => {
+                assert_eq!(items.len(), 1);
+                assert_eq!(items[0].id, 1);
+                assert_eq!(total_tokens, 10);
+            }
+            _ => panic!("expected Entries"),
+        }
     }
 }

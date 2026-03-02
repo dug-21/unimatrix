@@ -11,11 +11,16 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use unimatrix_engine::event_queue::EventQueue;
 use unimatrix_engine::project::compute_project_hash;
 use unimatrix_engine::transport::{LocalTransport, Transport};
-use unimatrix_engine::wire::{HookInput, HookRequest, HookResponse, ImplantEvent, TransportError};
+use unimatrix_engine::wire::{
+    EntryPayload, HookInput, HookRequest, HookResponse, ImplantEvent, TransportError,
+};
 
 /// Default timeout for transport operations: 40ms.
 /// Leaves 10ms margin in the 50ms total budget for process startup + hash computation.
 const HOOK_TIMEOUT: Duration = Duration::from_millis(40);
+
+/// Maximum byte budget for injection output (~350 tokens at 4 bytes/token).
+const MAX_INJECTION_BYTES: usize = 1400;
 
 /// Run the hook subcommand.
 ///
@@ -128,6 +133,7 @@ fn parse_hook_input(raw: &str) -> HookInput {
                 session_id: None,
                 cwd: None,
                 transcript_path: None,
+                prompt: None,
                 extra: serde_json::Value::Null,
             }
         }
@@ -179,6 +185,33 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
 
         "Ping" => HookRequest::Ping,
 
+        "UserPromptSubmit" => {
+            let query = input.prompt.clone().unwrap_or_default();
+            if query.is_empty() {
+                // No prompt text -- fall through to RecordEvent
+                HookRequest::RecordEvent {
+                    event: ImplantEvent {
+                        event_type: event.to_string(),
+                        session_id,
+                        timestamp: SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs(),
+                        payload: input.extra.clone(),
+                    },
+                }
+            } else {
+                HookRequest::ContextSearch {
+                    query,
+                    role: None,
+                    task: None,
+                    feature: None,
+                    k: None,
+                    max_tokens: None,
+                }
+            }
+        }
+
         _ => HookRequest::RecordEvent {
             event: ImplantEvent {
                 event_type: event.to_string(),
@@ -193,11 +226,91 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
     }
 }
 
-/// Write a response to stdout as JSON.
+/// Write a response to stdout. For Entries responses, format as structured
+/// injection text. For all other responses, serialize as JSON.
 fn write_stdout(response: &HookResponse) -> Result<(), Box<dyn std::error::Error>> {
-    let json = serde_json::to_string(response)?;
-    println!("{json}");
-    Ok(())
+    match response {
+        HookResponse::Entries { items, .. } => {
+            if let Some(text) = format_injection(items, MAX_INJECTION_BYTES) {
+                println!("{text}");
+            }
+            // Empty items or None from format_injection: silent skip (no stdout)
+            Ok(())
+        }
+        _ => {
+            let json = serde_json::to_string(response)?;
+            println!("{json}");
+            Ok(())
+        }
+    }
+}
+
+/// Format a ranked list of entries as structured plain text within a byte budget.
+///
+/// Returns `None` if entries is empty or no entries fit within the budget.
+/// Entries are included in input order (rank order from server).
+fn format_injection(entries: &[EntryPayload], max_bytes: usize) -> Option<String> {
+    if entries.is_empty() {
+        return None;
+    }
+
+    let mut output = String::new();
+    let header = "--- Unimatrix Context ---\n";
+    output.push_str(header);
+
+    let mut entries_added = 0;
+
+    for entry in entries {
+        let block = format_entry_block(entry);
+
+        let projected_len = output.len() + block.len();
+        if projected_len <= max_bytes {
+            output.push_str(&block);
+            entries_added += 1;
+        } else {
+            let remaining = max_bytes.saturating_sub(output.len());
+            if remaining < 100 {
+                // Too small for meaningful content
+                break;
+            }
+
+            // Truncate block to fit
+            let truncated = truncate_utf8(&block, remaining);
+            output.push_str(truncated);
+            entries_added += 1;
+            break;
+        }
+    }
+
+    if entries_added == 0 {
+        return None;
+    }
+
+    Some(output)
+}
+
+/// Format a single entry as a text block.
+fn format_entry_block(entry: &EntryPayload) -> String {
+    let confidence_pct = (entry.confidence * 100.0) as u32;
+    format!(
+        "[{}] ({}, {}% confidence)\n{}\n<!-- id:{} sim:{:.2} -->\n\n",
+        entry.title, entry.category, confidence_pct, entry.content, entry.id, entry.similarity,
+    )
+}
+
+/// Truncate a string to at most `max_bytes` bytes, ensuring the result
+/// is a valid UTF-8 string (never splits a multi-byte character).
+fn truncate_utf8(s: &str, max_bytes: usize) -> &str {
+    if s.len() <= max_bytes {
+        return s;
+    }
+
+    let mut end = max_bytes;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+
+    &s[..end]
 }
 
 /// Compute the event queue directory path.
@@ -211,15 +324,37 @@ fn queue_dir(home: &Path, project_hash: &str) -> PathBuf {
 mod tests {
     use super::*;
 
+    // -- Helper to create a test HookInput --
+
+    fn test_input() -> HookInput {
+        HookInput {
+            hook_event_name: String::new(),
+            session_id: None,
+            cwd: None,
+            transcript_path: None,
+            prompt: None,
+            extra: serde_json::Value::Null,
+        }
+    }
+
+    fn test_entry(id: u64, title: &str, content: &str) -> EntryPayload {
+        EntryPayload {
+            id,
+            title: title.to_string(),
+            content: content.to_string(),
+            confidence: 0.85,
+            similarity: 0.92,
+            category: "decision".to_string(),
+        }
+    }
+
+    // -- build_request tests --
+
     #[test]
     fn build_request_session_start() {
-        let input = HookInput {
-            hook_event_name: "SessionStart".to_string(),
-            session_id: Some("sess-1".to_string()),
-            cwd: Some("/workspace".to_string()),
-            transcript_path: None,
-            extra: serde_json::Value::Null,
-        };
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        input.cwd = Some("/workspace".to_string());
         let req = build_request("SessionStart", &input);
         match req {
             HookRequest::SessionRegister {
@@ -234,13 +369,8 @@ mod tests {
 
     #[test]
     fn build_request_stop() {
-        let input = HookInput {
-            hook_event_name: "Stop".to_string(),
-            session_id: Some("sess-1".to_string()),
-            cwd: None,
-            transcript_path: None,
-            extra: serde_json::Value::Null,
-        };
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
         let req = build_request("Stop", &input);
         match req {
             HookRequest::SessionClose { session_id, .. } => {
@@ -252,26 +382,16 @@ mod tests {
 
     #[test]
     fn build_request_ping() {
-        let input = HookInput {
-            hook_event_name: String::new(),
-            session_id: None,
-            cwd: None,
-            transcript_path: None,
-            extra: serde_json::Value::Null,
-        };
+        let input = test_input();
         let req = build_request("Ping", &input);
         assert!(matches!(req, HookRequest::Ping));
     }
 
     #[test]
     fn build_request_unknown_event() {
-        let input = HookInput {
-            hook_event_name: "PreToolUse".to_string(),
-            session_id: Some("sess-1".to_string()),
-            cwd: None,
-            transcript_path: None,
-            extra: serde_json::json!({"tool": "Bash"}),
-        };
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        input.extra = serde_json::json!({"tool": "Bash"});
         let req = build_request("PreToolUse", &input);
         match req {
             HookRequest::RecordEvent { event } => {
@@ -285,13 +405,7 @@ mod tests {
 
     #[test]
     fn build_request_missing_session_id_falls_back_to_ppid() {
-        let input = HookInput {
-            hook_event_name: String::new(),
-            session_id: None,
-            cwd: None,
-            transcript_path: None,
-            extra: serde_json::Value::Null,
-        };
+        let input = test_input();
         let req = build_request("SessionStart", &input);
         match req {
             HookRequest::SessionRegister { session_id, .. } => {
@@ -300,6 +414,71 @@ mod tests {
             _ => panic!("expected SessionRegister"),
         }
     }
+
+    // -- UserPromptSubmit tests (col-007) --
+
+    #[test]
+    fn build_request_user_prompt_submit_with_prompt() {
+        let mut input = test_input();
+        input.prompt = Some("search query".to_string());
+        let req = build_request("UserPromptSubmit", &input);
+        match req {
+            HookRequest::ContextSearch { query, .. } => {
+                assert_eq!(query, "search query");
+            }
+            _ => panic!("expected ContextSearch, got {req:?}"),
+        }
+    }
+
+    #[test]
+    fn build_request_user_prompt_submit_without_prompt() {
+        let input = test_input();
+        let req = build_request("UserPromptSubmit", &input);
+        assert!(matches!(req, HookRequest::RecordEvent { .. }));
+    }
+
+    #[test]
+    fn build_request_user_prompt_submit_empty_prompt() {
+        let mut input = test_input();
+        input.prompt = Some(String::new());
+        let req = build_request("UserPromptSubmit", &input);
+        assert!(matches!(req, HookRequest::RecordEvent { .. }));
+    }
+
+    #[test]
+    fn build_request_user_prompt_submit_long_prompt() {
+        let mut input = test_input();
+        input.prompt = Some("x".repeat(20_000));
+        let req = build_request("UserPromptSubmit", &input);
+        match req {
+            HookRequest::ContextSearch { query, .. } => {
+                assert_eq!(query.len(), 20_000);
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+    }
+
+    #[test]
+    fn context_search_is_not_fire_and_forget() {
+        let req = HookRequest::ContextSearch {
+            query: "test".to_string(),
+            role: None,
+            task: None,
+            feature: None,
+            k: None,
+            max_tokens: None,
+        };
+        let is_faf = matches!(
+            req,
+            HookRequest::SessionRegister { .. }
+                | HookRequest::SessionClose { .. }
+                | HookRequest::RecordEvent { .. }
+                | HookRequest::RecordEvents { .. }
+        );
+        assert!(!is_faf, "ContextSearch must not be fire-and-forget");
+    }
+
+    // -- parse_hook_input tests --
 
     #[test]
     fn parse_hook_input_valid_json() {
@@ -314,6 +493,7 @@ mod tests {
         let input = parse_hook_input("");
         assert_eq!(input.hook_event_name, "");
         assert!(input.session_id.is_none());
+        assert!(input.prompt.is_none());
     }
 
     #[test]
@@ -321,6 +501,7 @@ mod tests {
         let input = parse_hook_input("not json");
         assert_eq!(input.hook_event_name, "");
         assert!(input.session_id.is_none());
+        assert!(input.prompt.is_none());
     }
 
     #[test]
@@ -331,43 +512,28 @@ mod tests {
         assert_eq!(input.extra["unknown"], "value");
     }
 
+    // -- resolve_cwd tests --
+
     #[test]
     fn resolve_cwd_project_dir_takes_precedence() {
-        let input = HookInput {
-            hook_event_name: String::new(),
-            session_id: None,
-            cwd: Some("/stdin-cwd".to_string()),
-            transcript_path: None,
-            extra: serde_json::Value::Null,
-        };
+        let mut input = test_input();
+        input.cwd = Some("/stdin-cwd".to_string());
         let result = resolve_cwd(&input, Some(Path::new("/override")));
         assert_eq!(result, PathBuf::from("/override"));
     }
 
     #[test]
     fn resolve_cwd_stdin_cwd_second() {
-        let input = HookInput {
-            hook_event_name: String::new(),
-            session_id: None,
-            cwd: Some("/stdin-cwd".to_string()),
-            transcript_path: None,
-            extra: serde_json::Value::Null,
-        };
+        let mut input = test_input();
+        input.cwd = Some("/stdin-cwd".to_string());
         let result = resolve_cwd(&input, None);
         assert_eq!(result, PathBuf::from("/stdin-cwd"));
     }
 
     #[test]
     fn resolve_cwd_fallback_to_process_cwd() {
-        let input = HookInput {
-            hook_event_name: String::new(),
-            session_id: None,
-            cwd: None,
-            transcript_path: None,
-            extra: serde_json::Value::Null,
-        };
+        let input = test_input();
         let result = resolve_cwd(&input, None);
-        // Should be the actual process cwd, not "."
         assert!(result.is_absolute() || result == PathBuf::from("."));
     }
 
@@ -376,6 +542,223 @@ mod tests {
         let home = PathBuf::from("/home/user");
         let hash = "abc123";
         let result = queue_dir(&home, hash);
-        assert_eq!(result, PathBuf::from("/home/user/.unimatrix/abc123/event-queue"));
+        assert_eq!(
+            result,
+            PathBuf::from("/home/user/.unimatrix/abc123/event-queue")
+        );
+    }
+
+    // -- format_injection tests (col-007) --
+
+    #[test]
+    fn format_injection_single_entry() {
+        let entries = vec![test_entry(1, "ADR-001", "Use parameter expansion")];
+        let result = format_injection(&entries, MAX_INJECTION_BYTES);
+        assert!(result.is_some());
+        let text = result.unwrap();
+        assert!(text.starts_with("--- Unimatrix Context ---\n"));
+        assert!(text.contains("[ADR-001]"));
+        assert!(text.contains("decision"));
+        assert!(text.contains("85% confidence"));
+        assert!(text.contains("Use parameter expansion"));
+        assert!(text.contains("<!-- id:1"));
+    }
+
+    #[test]
+    fn format_injection_multiple_entries() {
+        let entries = vec![
+            test_entry(1, "First", "Content one"),
+            test_entry(2, "Second", "Content two"),
+            test_entry(3, "Third", "Content three"),
+        ];
+        let result = format_injection(&entries, MAX_INJECTION_BYTES);
+        assert!(result.is_some());
+        let text = result.unwrap();
+        assert!(text.contains("[First]"));
+        assert!(text.contains("[Second]"));
+        assert!(text.contains("[Third]"));
+        // Verify order: First appears before Second appears before Third
+        let pos1 = text.find("[First]").unwrap();
+        let pos2 = text.find("[Second]").unwrap();
+        let pos3 = text.find("[Third]").unwrap();
+        assert!(pos1 < pos2);
+        assert!(pos2 < pos3);
+    }
+
+    #[test]
+    fn format_injection_empty() {
+        let result = format_injection(&[], MAX_INJECTION_BYTES);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn format_injection_respects_byte_budget() {
+        // Create entries that together exceed the budget
+        let long_content = "x".repeat(1000);
+        let entries = vec![
+            test_entry(1, "First", &long_content),
+            test_entry(2, "Second", &long_content),
+        ];
+        let result = format_injection(&entries, MAX_INJECTION_BYTES);
+        assert!(result.is_some());
+        let text = result.unwrap();
+        assert!(text.len() <= MAX_INJECTION_BYTES);
+    }
+
+    #[test]
+    fn format_injection_remaining_under_100_omits() {
+        // First entry uses almost all the budget
+        let content = "x".repeat(1300);
+        let entries = vec![
+            test_entry(1, "Big", &content),
+            test_entry(2, "Small", "tiny"),
+        ];
+        let result = format_injection(&entries, MAX_INJECTION_BYTES);
+        assert!(result.is_some());
+        let text = result.unwrap();
+        assert!(text.len() <= MAX_INJECTION_BYTES);
+        // Second entry should be omitted (remaining < 100 after header + first entry)
+    }
+
+    #[test]
+    fn format_injection_cjk_content() {
+        // CJK characters: 3 bytes each
+        let cjk = "\u{4e16}\u{754c}".repeat(200); // 1200 bytes
+        let entries = vec![test_entry(1, "CJK", &cjk)];
+        let result = format_injection(&entries, MAX_INJECTION_BYTES);
+        assert!(result.is_some());
+        let text = result.unwrap();
+        assert!(text.len() <= MAX_INJECTION_BYTES);
+        // Verify valid UTF-8 (Rust strings are always valid, but verify no panic)
+        assert!(std::str::from_utf8(text.as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn format_injection_emoji_content() {
+        // Emoji: 4 bytes each
+        let emoji = "\u{1F600}".repeat(150); // 600 bytes
+        let entries = vec![test_entry(1, "Emoji", &emoji)];
+        let result = format_injection(&entries, MAX_INJECTION_BYTES);
+        assert!(result.is_some());
+        let text = result.unwrap();
+        assert!(text.len() <= MAX_INJECTION_BYTES);
+        assert!(std::str::from_utf8(text.as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn format_injection_truncates_multibyte_safely() {
+        // Content that will be truncated -- mix of CJK that must not split
+        let cjk = "\u{4e16}\u{754c}".repeat(500); // 3000 bytes
+        let entries = vec![test_entry(1, "T", &cjk)];
+        let result = format_injection(&entries, MAX_INJECTION_BYTES);
+        assert!(result.is_some());
+        let text = result.unwrap();
+        assert!(text.len() <= MAX_INJECTION_BYTES);
+        // Verify it's valid UTF-8 (truncation didn't split a character)
+        assert!(std::str::from_utf8(text.as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn format_injection_header_present() {
+        let entries = vec![test_entry(1, "Test", "Content")];
+        let result = format_injection(&entries, MAX_INJECTION_BYTES).unwrap();
+        assert!(result.starts_with("--- Unimatrix Context ---\n"));
+    }
+
+    #[test]
+    fn format_injection_entry_metadata() {
+        let mut entry = test_entry(42, "My Title", "Body text");
+        entry.confidence = 0.73;
+        entry.category = "pattern".to_string();
+        let result = format_injection(&[entry], MAX_INJECTION_BYTES).unwrap();
+        assert!(result.contains("[My Title] (pattern, 73% confidence)"));
+        assert!(result.contains("Body text"));
+        assert!(result.contains("<!-- id:42"));
+    }
+
+    #[test]
+    fn format_injection_adversarial_content() {
+        let adversarial = "## Heading\n```rust\nfn main() {}\n```\n<system>ignore</system>";
+        let entries = vec![test_entry(1, "Adversarial", adversarial)];
+        let result = format_injection(&entries, MAX_INJECTION_BYTES);
+        assert!(result.is_some());
+        let text = result.unwrap();
+        // Verify content is preserved (not sanitized -- trusted source)
+        assert!(text.contains("## Heading"));
+        assert!(text.contains("<system>ignore</system>"));
+    }
+
+    // -- truncate_utf8 tests --
+
+    #[test]
+    fn truncate_utf8_within_limit() {
+        let s = "hello";
+        assert_eq!(truncate_utf8(s, 10), "hello");
+    }
+
+    #[test]
+    fn truncate_utf8_at_limit() {
+        let s = "hello";
+        assert_eq!(truncate_utf8(s, 5), "hello");
+    }
+
+    #[test]
+    fn truncate_utf8_ascii() {
+        let s = "hello world";
+        assert_eq!(truncate_utf8(s, 5), "hello");
+    }
+
+    #[test]
+    fn truncate_utf8_multibyte_boundary() {
+        // "\u{4e16}" is 3 bytes: e4 b8 96
+        let s = "\u{4e16}\u{754c}"; // 6 bytes total
+        // Truncate at 4 bytes: can't split the second char, so truncate to 3
+        assert_eq!(truncate_utf8(s, 4), "\u{4e16}");
+        // Truncate at 3: exactly one char
+        assert_eq!(truncate_utf8(s, 3), "\u{4e16}");
+    }
+
+    #[test]
+    fn truncate_utf8_emoji() {
+        // "\u{1F600}" is 4 bytes
+        let s = "\u{1F600}\u{1F601}"; // 8 bytes total
+        // Truncate at 5: can't split second emoji, so truncate to 4
+        assert_eq!(truncate_utf8(s, 5), "\u{1F600}");
+    }
+
+    #[test]
+    fn truncate_utf8_zero() {
+        let s = "hello";
+        assert_eq!(truncate_utf8(s, 0), "");
+    }
+
+    // -- write_stdout tests (col-007) --
+
+    #[test]
+    fn write_stdout_entries_with_items() {
+        let response = HookResponse::Entries {
+            items: vec![test_entry(1, "Title", "Content")],
+            total_tokens: 10,
+        };
+        // write_stdout with Entries should not error
+        assert!(write_stdout(&response).is_ok());
+    }
+
+    #[test]
+    fn write_stdout_entries_empty() {
+        let response = HookResponse::Entries {
+            items: vec![],
+            total_tokens: 0,
+        };
+        // write_stdout with empty Entries should not error (silent skip)
+        assert!(write_stdout(&response).is_ok());
+    }
+
+    #[test]
+    fn write_stdout_pong_unchanged() {
+        let response = HookResponse::Pong {
+            server_version: "0.1.0".to_string(),
+        };
+        assert!(write_stdout(&response).is_ok());
     }
 }
