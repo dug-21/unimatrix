@@ -61,7 +61,7 @@ From the primary agent's spawn prompt:
 
 ## Role Boundaries
 
-**You orchestrate. You don't generate content.**
+**You orchestrate. NEVER generate content.**
 
 | Responsibility | Owner | Not You |
 |---------------|-------|---------|
