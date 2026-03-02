@@ -148,6 +148,28 @@ impl AgentRegistry {
                     .insert("human", bytes.as_slice())
                     .map_err(|e| ServerError::Registry(e.to_string()))?;
             }
+
+            // Bootstrap "cortical-implant" if not present (col-006)
+            if table
+                .get("cortical-implant")
+                .map_err(|e| ServerError::Registry(e.to_string()))?
+                .is_none()
+            {
+                let record = AgentRecord {
+                    agent_id: "cortical-implant".to_string(),
+                    trust_level: TrustLevel::Internal,
+                    capabilities: vec![Capability::Read, Capability::Search],
+                    allowed_topics: None,
+                    allowed_categories: None,
+                    enrolled_at: now,
+                    last_seen_at: now,
+                    active: true,
+                };
+                let bytes = serialize_agent(&record)?;
+                table
+                    .insert("cortical-implant", bytes.as_slice())
+                    .map_err(|e| ServerError::Registry(e.to_string()))?;
+            }
         }
         txn.commit()
             .map_err(|e| ServerError::Registry(e.to_string()))?;

@@ -16,11 +16,13 @@ path = "src/lib.rs"
 [dependencies]
 unimatrix-core = { path = "../unimatrix-core", features = ["async"] }
 unimatrix-store = { path = "../unimatrix-store" }
+unimatrix-engine = { path = "../unimatrix-engine" }
 unimatrix-vector = { path = "../unimatrix-vector" }
 unimatrix-embed = { path = "../unimatrix-embed" }
 unimatrix-adapt = { path = "../unimatrix-adapt" }
 unimatrix-observe = { path = "../unimatrix-observe" }
 
+nix = { version = "0.31", features = ["user"] }
 fs2 = "0.4"
 redb = { workspace = true }
 rmcp = { version = "=0.16.0", features = ["server", "transport-io", "macros"] }

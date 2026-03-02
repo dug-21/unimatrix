@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use rmcp::ServiceExt;
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 use unimatrix_core::{CoreError, EmbedConfig, StoreAdapter, Store, VectorAdapter, VectorConfig, VectorIndex};
@@ -20,6 +20,7 @@ use unimatrix_server::project;
 use unimatrix_server::registry::AgentRegistry;
 use unimatrix_server::server::UnimatrixServer;
 use unimatrix_server::shutdown::{self, LifecycleHandles};
+use unimatrix_server::uds_listener;
 
 /// Maximum number of attempts to open the database when the lock is held.
 const DB_OPEN_MAX_ATTEMPTS: u32 = 3;
@@ -41,12 +42,48 @@ struct Cli {
     /// Enable verbose logging.
     #[arg(long, short)]
     verbose: bool,
+
+    /// Subcommand (hook, or none for server mode).
+    #[command(subcommand)]
+    command: Option<Command>,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// Subcommands for the unimatrix-server binary.
+#[derive(Subcommand)]
+enum Command {
+    /// Handle a Claude Code lifecycle hook event.
+    ///
+    /// Reads JSON from stdin, connects to the running server via UDS,
+    /// and dispatches the event. No tokio runtime is initialized.
+    Hook {
+        /// The hook event name (e.g., SessionStart, Stop, Ping).
+        event: String,
+    },
+}
+
+/// Entry point: branches between hook subcommand (sync) and server (async).
+///
+/// The hook path runs pure synchronous code with no tokio runtime (ADR-002).
+/// The server path initializes tokio for the full MCP server.
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
+    match cli.command {
+        Some(Command::Hook { event }) => {
+            // Sync path: NO tokio, NO tracing init, NO database open
+            // Minimal startup for <50ms budget
+            unimatrix_server::hook::run(event, cli.project_dir)
+        }
+        None => {
+            // Async path: full server with tokio runtime
+            tokio_main(cli)
+        }
+    }
+}
+
+/// Tokio-based server entry point (called from main when no subcommand).
+#[tokio::main]
+async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing (logs to stderr — stdout is for MCP protocol)
     let filter = if cli.verbose { "debug" } else { "info" };
     tracing_subscriber::fmt()
@@ -93,6 +130,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             None
         }
     };
+
+    // Handle stale socket file (unconditional unlink per ADR-004)
+    uds_listener::handle_stale_socket(&paths.socket_path)?;
 
     // Initialize vector index
     let vector_config = VectorConfig::default();
@@ -144,6 +184,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // Start UDS listener for hook IPC
+    let server_uid = nix::unistd::getuid().as_raw();
+    let (uds_handle, socket_guard) = uds_listener::start_uds_listener(
+        &paths.socket_path,
+        Arc::clone(&store),
+        server_uid,
+        env!("CARGO_PKG_VERSION").to_string(),
+    )
+    .await?;
+
     // Build server
     let server = UnimatrixServer::new(
         async_entry_store,
@@ -166,6 +216,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         audit,
         adapt_service,
         data_dir: paths.data_dir.clone(),
+        socket_guard: Some(socket_guard),
+        uds_handle: Some(uds_handle),
     };
 
     // Serve over stdio
