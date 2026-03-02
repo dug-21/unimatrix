@@ -248,6 +248,21 @@ pub struct BaselineComparison {
     pub phase: Option<String>,
 }
 
+/// Aggregated entry-level performance data for the retrospective.
+///
+/// Accumulated across sessions from Flagged signal drains.
+/// `injection_count` is populated as 0 in col-009; col-010 provides INJECTION_LOG data.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EntryAnalysis {
+    pub entry_id: u64,
+    pub title: String,
+    pub category: String,
+    pub rework_flag_count: u32,
+    pub injection_count: u32,       // reserved for col-010
+    pub success_session_count: u32,
+    pub rework_session_count: u32,
+}
+
 /// Complete analysis output returned by context_retrospective.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RetrospectiveReport {
@@ -266,6 +281,10 @@ pub struct RetrospectiveReport {
     /// Baseline comparison against historical metrics, if available.
     #[serde(default)]
     pub baseline_comparison: Option<Vec<BaselineComparison>>,
+    /// Entry-level analysis from Flagged signals, if any were accumulated since last call.
+    /// Absent from JSON (not null) when None.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entries_analysis: Option<Vec<EntryAnalysis>>,
 }
 
 /// Serialize a MetricVector to bincode bytes (ADR-002).

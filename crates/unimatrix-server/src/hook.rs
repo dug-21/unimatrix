@@ -177,9 +177,9 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
             feature: None,
         },
 
-        "Stop" => HookRequest::SessionClose {
+        "Stop" | "TaskCompleted" => HookRequest::SessionClose {
             session_id,
-            outcome: None,
+            outcome: Some("success".to_string()), // Server overrides to "rework" if threshold crossed
             duration_secs: 0,
         },
 
@@ -189,17 +189,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
             let query = input.prompt.clone().unwrap_or_default();
             if query.is_empty() {
                 // No prompt text -- fall through to RecordEvent
-                HookRequest::RecordEvent {
-                    event: ImplantEvent {
-                        event_type: event.to_string(),
-                        session_id,
-                        timestamp: SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_secs(),
-                        payload: input.extra.clone(),
-                    },
-                }
+                return generic_record_event(event, session_id, input);
             } else {
                 HookRequest::ContextSearch {
                     query,
@@ -221,18 +211,159 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
             token_limit: None,
         },
 
-        _ => HookRequest::RecordEvent {
-            event: ImplantEvent {
-                event_type: event.to_string(),
-                session_id,
-                timestamp: SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs(),
-                payload: input.extra.clone(),
-            },
+        // col-009: Intercept PostToolUse for rework tracking
+        "PostToolUse" => {
+            let tool_name = input
+                .extra
+                .get("tool_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            if !is_rework_eligible_tool(&tool_name) {
+                // Non-rework tool: fall through to generic RecordEvent
+                return generic_record_event(event, session_id, input);
+            }
+
+            // MultiEdit: generate one RecordEvent per path
+            if tool_name == "MultiEdit" {
+                let pairs = extract_rework_events_for_multiedit(&input.extra);
+                if pairs.is_empty() {
+                    return generic_record_event(event, session_id, input);
+                }
+                let events: Vec<ImplantEvent> = pairs
+                    .into_iter()
+                    .map(|(file_path, had_failure)| ImplantEvent {
+                        event_type: "post_tool_use_rework_candidate".to_string(),
+                        session_id: session_id.clone(),
+                        timestamp: now_secs(),
+                        payload: serde_json::json!({
+                            "tool_name": "MultiEdit",
+                            "file_path": file_path,
+                            "had_failure": had_failure,
+                        }),
+                    })
+                    .collect();
+                return HookRequest::RecordEvents { events };
+            }
+
+            // Bash, Edit, Write: single RecordEvent
+            let had_failure = if tool_name == "Bash" {
+                is_bash_failure(&input.extra)
+            } else {
+                false // Edit, Write cannot fail (ADR-002)
+            };
+            let file_path = extract_file_path(&input.extra, &tool_name);
+
+            HookRequest::RecordEvent {
+                event: ImplantEvent {
+                    event_type: "post_tool_use_rework_candidate".to_string(),
+                    session_id,
+                    timestamp: now_secs(),
+                    payload: serde_json::json!({
+                        "tool_name": tool_name,
+                        "file_path": file_path,
+                        "had_failure": had_failure,
+                    }),
+                },
+            }
+        }
+
+        _ => generic_record_event(event, session_id, input),
+    }
+}
+
+/// Build a generic RecordEvent for non-intercepted hook types.
+fn generic_record_event(event: &str, session_id: String, input: &HookInput) -> HookRequest {
+    HookRequest::RecordEvent {
+        event: ImplantEvent {
+            event_type: event.to_string(),
+            session_id,
+            timestamp: now_secs(),
+            payload: input.extra.clone(),
         },
     }
+}
+
+/// Returns true if the tool is rework-eligible (file-mutating tools).
+fn is_rework_eligible_tool(tool_name: &str) -> bool {
+    matches!(tool_name, "Bash" | "Edit" | "Write" | "MultiEdit")
+}
+
+/// Returns true if the Bash tool call had a failure.
+///
+/// Failure = exit_code is non-zero integer, OR interrupted is true.
+/// All other cases (missing fields, non-integer exit_code) return false.
+fn is_bash_failure(extra: &serde_json::Value) -> bool {
+    if let Some(exit_code) = extra.get("exit_code").and_then(|v| v.as_i64()) {
+        if exit_code != 0 {
+            return true;
+        }
+    }
+    if extra
+        .get("interrupted")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    false
+}
+
+/// Extract file_path for Edit or Write tools.
+///
+/// Edit: extra["tool_input"]["path"]
+/// Write: extra["tool_input"]["file_path"]
+/// Returns None if the field is absent or not a string.
+fn extract_file_path(extra: &serde_json::Value, tool_name: &str) -> Option<String> {
+    match tool_name {
+        "Edit" => extra
+            .get("tool_input")
+            .and_then(|ti| ti.get("path"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        "Write" => extra
+            .get("tool_input")
+            .and_then(|ti| ti.get("file_path"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+        _ => None,
+    }
+}
+
+/// Extract (file_path, had_failure) pairs for MultiEdit.
+///
+/// MultiEdit has extra["tool_input"]["edits"] = array of {path, ...}.
+/// Each distinct path produces one entry with had_failure=false.
+/// Empty edits array → empty Vec. Missing fields → empty Vec (no panic).
+fn extract_rework_events_for_multiedit(extra: &serde_json::Value) -> Vec<(Option<String>, bool)> {
+    let edits = match extra.get("tool_input").and_then(|ti| ti.get("edits")) {
+        Some(v) => v,
+        None => return Vec::new(),
+    };
+
+    let arr = match edits.as_array() {
+        Some(a) => a,
+        None => return Vec::new(),
+    };
+
+    arr.iter()
+        .map(|edit| {
+            let path = edit
+                .get("path")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            (path, false) // Edit tools can't fail (ADR-002)
+        })
+        .collect()
+}
+
+/// Current Unix timestamp in seconds.
+fn now_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
 }
 
 /// Write a response to stdout. For Entries responses, format as structured
@@ -595,6 +726,272 @@ mod tests {
             }
             _ => panic!("expected ContextSearch"),
         }
+    }
+
+    // -- PostToolUse tests (col-009) --
+
+    fn posttooluse_input(extra: serde_json::Value) -> HookInput {
+        HookInput {
+            hook_event_name: "PostToolUse".to_string(),
+            session_id: Some("sess-1".to_string()),
+            cwd: None,
+            transcript_path: None,
+            prompt: None,
+            extra,
+        }
+    }
+
+    #[test]
+    fn posttooluse_bash_failure_exit_code_nonzero() {
+        let input = posttooluse_input(serde_json::json!({
+            "tool_name": "Bash",
+            "exit_code": 1
+        }));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "post_tool_use_rework_candidate");
+                assert_eq!(event.payload["tool_name"], "Bash");
+                assert_eq!(event.payload["had_failure"], true);
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_bash_success_exit_code_zero() {
+        let input = posttooluse_input(serde_json::json!({
+            "tool_name": "Bash",
+            "exit_code": 0
+        }));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.payload["had_failure"], false);
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_bash_missing_exit_code() {
+        let input = posttooluse_input(serde_json::json!({"tool_name": "Bash"}));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.payload["had_failure"], false);
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_bash_interrupted_true() {
+        let input = posttooluse_input(serde_json::json!({
+            "tool_name": "Bash",
+            "exit_code": 0,
+            "interrupted": true
+        }));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.payload["had_failure"], true);
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_edit_extracts_path() {
+        let input = posttooluse_input(serde_json::json!({
+            "tool_name": "Edit",
+            "tool_input": {"path": "src/foo.rs", "old_string": "a", "new_string": "b"}
+        }));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.payload["tool_name"], "Edit");
+                assert_eq!(event.payload["file_path"], "src/foo.rs");
+                assert_eq!(event.payload["had_failure"], false);
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_write_extracts_file_path() {
+        let input = posttooluse_input(serde_json::json!({
+            "tool_name": "Write",
+            "tool_input": {"file_path": "src/bar.rs", "content": "..."}
+        }));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.payload["file_path"], "src/bar.rs");
+                assert_eq!(event.payload["had_failure"], false);
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_multiedit_two_paths() {
+        let input = posttooluse_input(serde_json::json!({
+            "tool_name": "MultiEdit",
+            "tool_input": {
+                "edits": [
+                    {"path": "a.rs", "old_string": "x", "new_string": "y"},
+                    {"path": "b.rs", "old_string": "p", "new_string": "q"}
+                ]
+            }
+        }));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvents { events } => {
+                assert_eq!(events.len(), 2);
+                assert_eq!(events[0].event_type, "post_tool_use_rework_candidate");
+                assert_eq!(events[0].payload["tool_name"], "MultiEdit");
+                let paths: Vec<_> = events.iter().map(|e| e.payload["file_path"].as_str().unwrap()).collect();
+                assert!(paths.contains(&"a.rs"));
+                assert!(paths.contains(&"b.rs"));
+            }
+            _ => panic!("expected RecordEvents"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_multiedit_empty_edits() {
+        let input = posttooluse_input(serde_json::json!({
+            "tool_name": "MultiEdit",
+            "tool_input": {"edits": []}
+        }));
+        let req = build_request("PostToolUse", &input);
+        // Empty edits → generic RecordEvent
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PostToolUse");
+            }
+            _ => panic!("expected generic RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_non_rework_tool() {
+        let input = posttooluse_input(serde_json::json!({"tool_name": "Read"}));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                // Generic record event, not rework candidate
+                assert_eq!(event.event_type, "PostToolUse");
+            }
+            _ => panic!("expected generic RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_missing_tool_name() {
+        let input = posttooluse_input(serde_json::json!({}));
+        let req = build_request("PostToolUse", &input);
+        // Missing tool_name → treated as non-rework tool → generic RecordEvent
+        assert!(matches!(req, HookRequest::RecordEvent { .. }));
+    }
+
+    #[test]
+    fn posttooluse_null_extra() {
+        let input = HookInput {
+            hook_event_name: "PostToolUse".to_string(),
+            session_id: Some("sess-1".to_string()),
+            cwd: None,
+            transcript_path: None,
+            prompt: None,
+            extra: serde_json::Value::Null,
+        };
+        let req = build_request("PostToolUse", &input);
+        // Null extra → no tool_name → generic RecordEvent
+        assert!(matches!(req, HookRequest::RecordEvent { .. }));
+    }
+
+    #[test]
+    fn stop_sets_outcome_success() {
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        let req = build_request("Stop", &input);
+        match req {
+            HookRequest::SessionClose { outcome, .. } => {
+                assert_eq!(outcome.as_deref(), Some("success"));
+            }
+            _ => panic!("expected SessionClose"),
+        }
+    }
+
+    #[test]
+    fn is_bash_failure_nonzero_exit() {
+        assert!(is_bash_failure(&serde_json::json!({"exit_code": 1})));
+        assert!(is_bash_failure(&serde_json::json!({"exit_code": 127})));
+    }
+
+    #[test]
+    fn is_bash_failure_zero_exit() {
+        assert!(!is_bash_failure(&serde_json::json!({"exit_code": 0})));
+    }
+
+    #[test]
+    fn is_bash_failure_no_exit_code() {
+        assert!(!is_bash_failure(&serde_json::json!({})));
+    }
+
+    #[test]
+    fn is_bash_failure_interrupted() {
+        assert!(is_bash_failure(&serde_json::json!({"exit_code": 0, "interrupted": true})));
+    }
+
+    #[test]
+    fn extract_file_path_edit() {
+        let extra = serde_json::json!({"tool_input": {"path": "/src/lib.rs"}});
+        assert_eq!(extract_file_path(&extra, "Edit"), Some("/src/lib.rs".to_string()));
+    }
+
+    #[test]
+    fn extract_file_path_write() {
+        let extra = serde_json::json!({"tool_input": {"file_path": "/src/main.rs"}});
+        assert_eq!(extract_file_path(&extra, "Write"), Some("/src/main.rs".to_string()));
+    }
+
+    #[test]
+    fn extract_file_path_bash_returns_none() {
+        let extra = serde_json::json!({"tool_input": {"path": "/src/foo.rs"}});
+        assert_eq!(extract_file_path(&extra, "Bash"), None);
+    }
+
+    #[test]
+    fn extract_rework_events_for_multiedit_two_paths() {
+        let extra = serde_json::json!({
+            "tool_input": {
+                "edits": [
+                    {"path": "a.rs"},
+                    {"path": "b.rs"}
+                ]
+            }
+        });
+        let result = extract_rework_events_for_multiedit(&extra);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].0.as_deref(), Some("a.rs"));
+        assert!(!result[0].1);
+        assert_eq!(result[1].0.as_deref(), Some("b.rs"));
+    }
+
+    #[test]
+    fn extract_rework_events_for_multiedit_empty() {
+        let extra = serde_json::json!({"tool_input": {"edits": []}});
+        let result = extract_rework_events_for_multiedit(&extra);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn extract_rework_events_for_multiedit_missing_tool_input() {
+        let extra = serde_json::json!({});
+        let result = extract_rework_events_for_multiedit(&extra);
+        assert!(result.is_empty());
     }
 
     // -- parse_hook_input tests --

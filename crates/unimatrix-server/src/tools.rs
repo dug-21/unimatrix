@@ -2162,6 +2162,7 @@ impl UnimatrixServer {
                         hotspots: vec![],
                         is_cached: true,
                         baseline_comparison: None,
+                        entries_analysis: None,
                     };
 
                     return Ok(format_retrospective_report(&report));
@@ -2248,13 +2249,21 @@ impl UnimatrixServer {
         let baseline = unimatrix_observe::compute_baselines(&history)
             .map(|baselines| unimatrix_observe::compare_to_baseline(&metrics, &baselines));
 
-        // 10b. Build report with baseline
+        // 10b. Drain accumulated entry analysis from signal consumers (col-009, FR-10.5)
+        let entries_analysis = {
+            let mut pending = self.pending_entries_analysis.lock().unwrap_or_else(|e| e.into_inner());
+            let drained = pending.drain_all();
+            if drained.is_empty() { None } else { Some(drained) }
+        };
+
+        // 10c. Build report with baseline and entries_analysis
         let report = unimatrix_observe::build_report(
             &feature_cycle,
             &attributed,
             metrics,
             hotspots,
             baseline,
+            entries_analysis,
         );
 
         // 11. Audit

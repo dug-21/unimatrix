@@ -26,6 +26,7 @@ pub use parser::{parse_session_file, parse_timestamp};
 pub use report::build_report;
 pub use types::{
     BaselineComparison, BaselineEntry, BaselineSet, BaselineStatus,
+    EntryAnalysis,
     EvidenceRecord, HookType, HotspotCategory, HotspotFinding, MetricVector, ObservationRecord,
     ObservationStats, ParsedSession, PhaseMetrics, RetrospectiveReport, Severity, SessionFile,
     UniversalMetrics, deserialize_metric_vector, serialize_metric_vector,

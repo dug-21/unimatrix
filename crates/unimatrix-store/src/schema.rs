@@ -57,6 +57,10 @@ pub const OUTCOME_INDEX: TableDefinition<(&str, u64), ()> =
 pub const OBSERVATION_METRICS: TableDefinition<&str, &[u8]> =
     TableDefinition::new("observation_metrics");
 
+/// Confidence signal work queue: signal_id -> bincode-serialized SignalRecord.
+/// Transient — records deleted after drain. Added in schema v4 (col-009).
+pub const SIGNAL_QUEUE: TableDefinition<u64, &[u8]> = TableDefinition::new("signal_queue");
+
 // -- Status Enum --
 
 /// Entry lifecycle status.

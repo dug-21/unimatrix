@@ -1,7 +1,7 @@
 //! Unimatrix MCP knowledge server entry point.
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use clap::{Parser, Subcommand};
@@ -18,7 +18,7 @@ use unimatrix_server::error::ServerError;
 use unimatrix_server::pidfile;
 use unimatrix_server::project;
 use unimatrix_server::registry::AgentRegistry;
-use unimatrix_server::server::UnimatrixServer;
+use unimatrix_server::server::{PendingEntriesAnalysis, UnimatrixServer};
 use unimatrix_server::shutdown::{self, LifecycleHandles};
 use unimatrix_server::uds_listener;
 
@@ -187,7 +187,10 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Create session registry for hook IPC (col-008)
     let session_registry = Arc::new(unimatrix_server::session::SessionRegistry::new());
 
-    // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008)
+    // Create pending entries analysis accumulator shared between UDS listener and MCP server (col-009)
+    let pending_entries_analysis = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
+
+    // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009)
     let server_uid = nix::unistd::getuid().as_raw();
     let (uds_handle, socket_guard) = uds_listener::start_uds_listener(
         &paths.socket_path,
@@ -197,13 +200,14 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&async_entry_store),
         Arc::clone(&adapt_service),
         Arc::clone(&session_registry),
+        Arc::clone(&pending_entries_analysis),
         server_uid,
         env!("CARGO_PKG_VERSION").to_string(),
     )
     .await?;
 
     // Build server
-    let server = UnimatrixServer::new(
+    let mut server = UnimatrixServer::new(
         async_entry_store,
         async_vector_store,
         Arc::clone(&embed_handle),
@@ -214,6 +218,8 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&vector_index),
         Arc::clone(&adapt_service),
     );
+    // Share pending_entries_analysis with the MCP server (col-009)
+    server.pending_entries_analysis = pending_entries_analysis;
 
     // Prepare lifecycle handles for shutdown
     let lifecycle_handles = LifecycleHandles {
