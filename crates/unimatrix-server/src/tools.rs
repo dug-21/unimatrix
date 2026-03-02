@@ -1608,6 +1608,54 @@ impl UnimatrixServer {
             .unwrap();
         }
 
+        // 5k. Stale session sweep (col-009, FR-09.2) — gated by maintain=true
+        if maintain_enabled {
+            let stale_outputs = self.session_registry.sweep_stale_sessions();
+            if !stale_outputs.is_empty() {
+                use unimatrix_store::signal::{SignalRecord, SignalType, SignalSource};
+                use crate::session::SessionOutcome;
+                let store_for_sweep = Arc::clone(&self.store);
+                let sweep_ts = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                tokio::task::spawn_blocking(move || {
+                    for (_, output) in &stale_outputs {
+                        let (entry_ids, signal_type, signal_source) = match output.final_outcome {
+                            SessionOutcome::Success if !output.helpful_entry_ids.is_empty() => (
+                                output.helpful_entry_ids.clone(),
+                                SignalType::Helpful,
+                                SignalSource::ImplicitOutcome,
+                            ),
+                            SessionOutcome::Rework if !output.flagged_entry_ids.is_empty() => (
+                                output.flagged_entry_ids.clone(),
+                                SignalType::Flagged,
+                                SignalSource::ImplicitRework,
+                            ),
+                            _ => continue,
+                        };
+                        let record = SignalRecord {
+                            signal_id: 0,
+                            session_id: output.session_id.clone(),
+                            created_at: sweep_ts,
+                            entry_ids,
+                            signal_type,
+                            signal_source,
+                        };
+                        if let Err(e) = store_for_sweep.insert_signal(&record) {
+                            tracing::warn!(
+                                session_id = %output.session_id,
+                                error = %e,
+                                "context_status sweep: failed to insert signal"
+                            );
+                        }
+                    }
+                })
+                .await
+                .unwrap_or_else(|e| tracing::warn!("context_status sweep task panicked: {e}"));
+            }
+        }
+
         // 6. Audit (standalone, best-effort)
         let _ = self.audit.log_event(AuditEvent {
             event_id: 0,

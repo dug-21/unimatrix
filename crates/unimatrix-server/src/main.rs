@@ -218,8 +218,9 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&vector_index),
         Arc::clone(&adapt_service),
     );
-    // Share pending_entries_analysis with the MCP server (col-009)
+    // Share pending_entries_analysis and session_registry with the MCP server (col-009)
     server.pending_entries_analysis = pending_entries_analysis;
+    server.session_registry = Arc::clone(&session_registry);
 
     // Prepare lifecycle handles for shutdown
     let lifecycle_handles = LifecycleHandles {
