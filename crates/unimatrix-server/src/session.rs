@@ -948,4 +948,59 @@ mod tests {
         // Session was still removed
         assert!(reg.get_state("s1").is_none());
     }
+
+    // -- Atomicity test (R-01): concurrent drain_and_signal + sweep --
+
+    #[test]
+    fn concurrent_drain_and_sweep_each_session_appears_in_exactly_one() {
+        use std::sync::Arc;
+
+        let reg = Arc::new(make_registry());
+
+        // Register "s1" as stale (will be swept) with injections
+        reg.register_session("s1", None, None);
+        {
+            let mut sessions = reg.sessions.lock().unwrap();
+            if let Some(state) = sessions.get_mut("s1") {
+                state.last_activity_at = now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
+                state.injection_history.push(InjectionRecord { entry_id: 1, confidence: 0.9, timestamp: 0 });
+            }
+        }
+
+        // Register "s2" as the closing session (won't be swept — recent)
+        reg.register_session("s2", None, None);
+        reg.record_injection("s2", &[(2, 0.8)]);
+
+        // Sweep: s1 should be swept (stale)
+        let swept = reg.sweep_stale_sessions();
+        // Drain: s2 should be drained
+        let drained = reg.drain_and_signal_session("s2", "success");
+
+        // s1 in sweep exactly once
+        assert_eq!(swept.len(), 1);
+        assert_eq!(swept[0].0, "s1");
+
+        // s2 in drain exactly once
+        assert!(drained.is_some());
+        assert_eq!(drained.unwrap().session_id, "s2");
+
+        // Both sessions are gone
+        assert!(reg.get_state("s1").is_none());
+        assert!(reg.get_state("s2").is_none());
+
+        // Neither session appears in the opposite output
+        assert!(swept.iter().all(|(id, _)| id != "s2"));
+    }
+
+    // -- Empty session no signal test (R-13, AC-05) --
+
+    #[test]
+    fn empty_injection_history_success_produces_no_entry_ids() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        // No injections — empty injection_history
+        let out = reg.drain_and_signal_session("s1", "success").unwrap();
+        assert_eq!(out.final_outcome, SessionOutcome::Success);
+        assert!(out.helpful_entry_ids.is_empty());
+    }
 }
