@@ -1071,7 +1071,7 @@ async fn process_session_close(
 /// Write a SignalRecord to SIGNAL_QUEUE for the given SignalOutput.
 ///
 /// Only writes if there are entry_ids to signal (FR-04.6).
-async fn write_signals_to_queue(output: &SignalOutput, store: &Arc<Store>) {
+pub(crate) async fn write_signals_to_queue(output: &SignalOutput, store: &Arc<Store>) {
     let (entry_ids, signal_type, signal_source) = match output.final_outcome {
         SessionOutcome::Success if !output.helpful_entry_ids.is_empty() => (
             output.helpful_entry_ids.clone(),
@@ -1112,7 +1112,7 @@ async fn write_signals_to_queue(output: &SignalOutput, store: &Arc<Store>) {
 /// Drain Helpful signals from SIGNAL_QUEUE and apply helpful_count increments.
 ///
 /// Also updates success_session_count in PendingEntriesAnalysis (FR-06.2b).
-async fn run_confidence_consumer(
+pub(crate) async fn run_confidence_consumer(
     store: &Arc<Store>,
     entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
@@ -1212,7 +1212,7 @@ async fn run_confidence_consumer(
 }
 
 /// Drain Flagged signals from SIGNAL_QUEUE and update PendingEntriesAnalysis.
-async fn run_retrospective_consumer(
+pub(crate) async fn run_retrospective_consumer(
     store: &Arc<Store>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
     entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,

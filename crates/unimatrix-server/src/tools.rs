@@ -21,6 +21,7 @@ use unimatrix_store::{
 
 use crate::audit::{AuditEvent, Outcome};
 use crate::registry::Capability;
+use crate::uds_listener::{run_confidence_consumer, run_retrospective_consumer, write_signals_to_queue};
 use crate::response::{
     format_duplicate_found, format_enroll_success, format_lookup_results, format_search_results,
     format_single_entry, format_store_success, format_store_success_with_note,
@@ -1612,47 +1613,17 @@ impl UnimatrixServer {
         if maintain_enabled {
             let stale_outputs = self.session_registry.sweep_stale_sessions();
             if !stale_outputs.is_empty() {
-                use unimatrix_store::signal::{SignalRecord, SignalType, SignalSource};
-                use crate::session::SessionOutcome;
                 let store_for_sweep = Arc::clone(&self.store);
-                let sweep_ts = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-                tokio::task::spawn_blocking(move || {
-                    for (_, output) in &stale_outputs {
-                        let (entry_ids, signal_type, signal_source) = match output.final_outcome {
-                            SessionOutcome::Success if !output.helpful_entry_ids.is_empty() => (
-                                output.helpful_entry_ids.clone(),
-                                SignalType::Helpful,
-                                SignalSource::ImplicitOutcome,
-                            ),
-                            SessionOutcome::Rework if !output.flagged_entry_ids.is_empty() => (
-                                output.flagged_entry_ids.clone(),
-                                SignalType::Flagged,
-                                SignalSource::ImplicitRework,
-                            ),
-                            _ => continue,
-                        };
-                        let record = SignalRecord {
-                            signal_id: 0,
-                            session_id: output.session_id.clone(),
-                            created_at: sweep_ts,
-                            entry_ids,
-                            signal_type,
-                            signal_source,
-                        };
-                        if let Err(e) = store_for_sweep.insert_signal(&record) {
-                            tracing::warn!(
-                                session_id = %output.session_id,
-                                error = %e,
-                                "context_status sweep: failed to insert signal"
-                            );
-                        }
-                    }
-                })
-                .await
-                .unwrap_or_else(|e| tracing::warn!("context_status sweep task panicked: {e}"));
+                let entry_store_for_sweep = Arc::clone(&self.entry_store);
+                let pending_for_sweep = Arc::clone(&self.pending_entries_analysis);
+                for (stale_session_id, stale_output) in stale_outputs {
+                    tracing::info!(session_id = %stale_session_id, "context_status: sweeping stale session");
+                    write_signals_to_queue(&stale_output, &store_for_sweep).await;
+                }
+                // Drain queued signals through both consumers — same as SessionClose path
+                // (AC-09, Goal 6: stale sessions must not leave signals unprocessed)
+                run_confidence_consumer(&store_for_sweep, &entry_store_for_sweep, &pending_for_sweep).await;
+                run_retrospective_consumer(&store_for_sweep, &pending_for_sweep, &entry_store_for_sweep).await;
             }
         }
 
