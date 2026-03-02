@@ -588,3 +588,45 @@ This order builds compaction defense before full injection, which is backwards f
 | **Total** | **~8,600** | | |
 
 For context: existing codebase is ~1,199 unit + integration tests across 5 crates. The delivery features add roughly 8,600 LOC of production code + ~2,300 LOC of tests, representing a significant expansion (~40-50% growth in server-side code).
+
+---
+
+## Scoping Revision (2026-03-02)
+
+**Decision: col-010a eliminated. col-009 owns its schema migration. col-010 scope unchanged.**
+
+During col-009 scoping, the original Wave 3 plan (col-010a infrastructure → col-009 consumer) was revised:
+
+**Problem with col-010a:** An infrastructure-only feature that creates tables (SIGNAL_QUEUE, SESSIONS, INJECTION_LOG) without a writer means tests can only validate that migrations run and tables exist — not that the schema is fit for purpose. The first real validation happens when col-009 tries to use the tables, by which point col-010a is complete and context is split between features. Infrastructure-without-consumer is a testing anti-pattern.
+
+**Revised approach:**
+- **col-009** owns schema v4: adds SIGNAL_QUEUE table + `next_signal_id` counter — the only table col-009 writes to. Consistent with prior convention (crt-001 owned USAGE_LOG, crt-005 owned confidence f64 migration). Every table tested by its actual writer.
+- **col-010** owns schema v5: adds SESSIONS table, INJECTION_LOG table, and `session_id: Option<String>` on EntryRecord. Ships independently as the full session lifecycle + col-002 integration feature. No scope change from "col-010b".
+- **No col-010a.** The thin schema-migration-only feature is eliminated entirely.
+
+**Revised sizing:**
+
+| Feature | Estimated LOC | Complexity | Wave | Schema |
+|---------|:------------:|:----------:|:----:|--------|
+| col-006 | ~2,900 | Large | 1 | — |
+| col-007 | ~950 | Medium | 2 | — |
+| col-008 | ~1,400 | Medium-High | 3 | — |
+| col-009 | ~1,350 | Medium | 4 | v4: SIGNAL_QUEUE |
+| col-010 | ~1,450 | Medium-High | 5 | v5: SESSIONS, INJECTION_LOG, session_id |
+| col-011 | ~850 | Low-Medium | independent | — |
+
+col-009 LOC estimate increases from ~1,050 to ~1,350 to account for the schema migration it now owns.
+
+**Revised dependency chain:**
+```
+col-006 → col-007 → col-008 → col-009 (schema v4) → col-010 (schema v5)
+col-006 → col-011 (independent)
+```
+
+**SessionStop reliability constraint (surfaced during col-009 scoping):**
+SessionEnd/Stop hooks cannot be guaranteed to always fire (crashes, OOM, force-quit). col-009 must not treat SessionEnd as a hard trigger. Required design elements regardless of ordering:
+1. Optimistic path: SessionClose fires → generate signals immediately
+2. Recovery path: periodic sweep processes orphaned in-memory sessions
+3. Dedup guarantee: at-most-once per (session, entry) even if signal generation runs twice
+
+This recovery logic is col-009's responsibility (it owns signal generation). col-010's stale session sweep (marking SESSIONS records TimedOut) is a separate concern with the same trigger condition.
