@@ -337,8 +337,12 @@ impl UnimatrixServer {
         }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
 
         // Step 2: Insert into HNSW only (VECTOR_MAP already committed)
-        self.vector_index.insert_hnsw_only(entry_id, data_id, &embedding)
-            .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
+        // Skip when embedding is empty (e.g. ONNX model not loaded) — entry is still
+        // stored and searchable by topic/category/tags, just not by vector similarity.
+        if !embedding.is_empty() {
+            self.vector_index.insert_hnsw_only(entry_id, data_id, &embedding)
+                .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
+        }
 
         Ok((entry_id, record))
     }
@@ -537,8 +541,10 @@ impl UnimatrixServer {
         }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
 
         // HNSW insert for the correction (after commit)
-        self.vector_index.insert_hnsw_only(new_correction.id, data_id, &embedding)
-            .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
+        if !embedding.is_empty() {
+            self.vector_index.insert_hnsw_only(new_correction.id, data_id, &embedding)
+                .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
+        }
 
         Ok((deprecated_original, new_correction))
     }
@@ -950,7 +956,7 @@ impl UnimatrixServer {
 }
 
 /// Decrement a counter value, saturating at 0.
-pub(crate) fn decrement_counter(
+fn decrement_counter(
     txn: &redb::WriteTransaction,
     key: &str,
     amount: u64,
@@ -1998,10 +2004,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn insert_with_audit_empty_embedding_returns_error() {
-        // insert_with_audit always attempts HNSW insertion, so empty embeddings
-        // fail with DimensionMismatch. This is correct: the caller (write_lesson_learned)
-        // handles this error in its fire-and-forget path.
+    async fn insert_with_audit_empty_embedding_skips_hnsw() {
+        // Empty embedding = ONNX model not loaded or embedding failed.
+        // Entry is still written to store (searchable by topic/category/tags),
+        // HNSW insert is skipped, embedding_dim is 0.
         let server = make_server();
         let entry = NewEntry {
             title: "test".to_string(),
@@ -2027,8 +2033,9 @@ mod tests {
             detail: "test".to_string(),
         };
 
-        let result = server.insert_with_audit(entry, embedding, audit).await;
-        assert!(result.is_err(), "empty embedding must fail at HNSW insertion");
+        let (id, record) = server.insert_with_audit(entry, embedding, audit).await.unwrap();
+        assert!(id > 0, "entry should be written to store");
+        assert_eq!(record.embedding_dim, 0, "empty embedding means embedding_dim = 0");
     }
 
     #[tokio::test]

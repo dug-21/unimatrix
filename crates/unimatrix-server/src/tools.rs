@@ -2525,128 +2525,41 @@ async fn write_lesson_learned(
         .insert_with_audit(new_entry, embedding, audit_event)
         .await?;
 
-    // 7. Supersede chain: deprecate old entry if found
+    // 7. Supersede chain: deprecate old, link new → old and old → new
     if let Some(old_id) = supersedes_id {
         let store = Arc::clone(&server.store);
-        let _ = tokio::task::spawn_blocking(move || -> Result<(), crate::error::ServerError> {
-            use redb::ReadableTable;
-
-            let txn = store
-                .begin_write()
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-
-            let old_bytes = {
-                let table = txn
-                    .open_table(ENTRIES)
-                    .map_err(|e: redb::TableError| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                match table
-                    .get(old_id)
-                    .map_err(|e: redb::StorageError| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                {
-                    Some(guard) => guard.value().to_vec(),
-                    None => return Ok(()), // Already gone
-                }
-            };
-            let mut old_entry = unimatrix_store::deserialize_entry(&old_bytes)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-
-            let old_status = old_entry.status;
-            old_entry.status = unimatrix_store::Status::Deprecated;
-            old_entry.superseded_by = Some(new_id);
-            old_entry.updated_at = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-
-            let bytes = unimatrix_store::serialize_entry(&old_entry)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-            {
-                let mut table = txn
-                    .open_table(ENTRIES)
-                    .map_err(|e: redb::TableError| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                table
-                    .insert(old_id, bytes.as_slice())
-                    .map_err(|e: redb::StorageError| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
+        let _ = tokio::task::spawn_blocking(move || {
+            // Deprecate old entry (handles STATUS_INDEX + counters internally)
+            if let Err(e) = store.update_status(old_id, Status::Deprecated) {
+                tracing::warn!("failed to deprecate prior lesson-learned {}: {}", old_id, e);
+                return;
             }
-
-            // Update STATUS_INDEX
-            {
-                use unimatrix_store::STATUS_INDEX;
-                let mut table = txn
-                    .open_table(STATUS_INDEX)
-                    .map_err(|e: redb::TableError| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                let _ = table.remove((old_status as u8, old_id));
-                table
-                    .insert((unimatrix_store::Status::Deprecated as u8, old_id), ())
-                    .map_err(|e: redb::StorageError| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
+            // Link old → new
+            if let Ok(mut old_entry) = store.get(old_id) {
+                old_entry.superseded_by = Some(new_id);
+                let _ = store.update(old_entry);
             }
-
-            // Update counters
-            crate::server::decrement_counter(
-                &txn,
-                unimatrix_store::status_counter_key(old_status),
-                1,
-            )
-            .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-            unimatrix_store::increment_counter(
-                &txn,
-                unimatrix_store::status_counter_key(unimatrix_store::Status::Deprecated),
-                1,
-            )
-            .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-
-            txn.commit()
-                .map_err(|e: redb::CommitError| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-            Ok(())
+            // Link new → old
+            if let Ok(mut new_entry) = store.get(new_id) {
+                new_entry.supersedes = Some(old_id);
+                let _ = store.update(new_entry);
+            }
         })
-        .await
-        .map_err(|e| crate::error::ServerError::Core(CoreError::JoinError(e.to_string())))?;
+        .await;
     }
 
     // 8. Seed confidence on new entry (best-effort)
     {
         let store = Arc::clone(&server.store);
-        let _ = tokio::task::spawn_blocking(move || -> Result<(), crate::error::ServerError> {
-            let entry_bytes = {
-                let rtxn = store
-                    .begin_read()
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-                let table = rtxn
-                    .open_table(ENTRIES)
-                    .map_err(|e: redb::TableError| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                match table
-                    .get(new_id)
-                    .map_err(|e: redb::StorageError| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                {
-                    Some(guard) => guard.value().to_vec(),
-                    None => return Ok(()),
-                }
-            };
-            let mut entry = unimatrix_store::deserialize_entry(&entry_bytes)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-            let conf = unimatrix_engine::confidence::compute_confidence(&entry, now);
-            entry.confidence = conf;
-            entry.updated_at = now;
-            let bytes = unimatrix_store::serialize_entry(&entry)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-            let txn = store
-                .begin_write()
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-            {
-                let mut table = txn
-                    .open_table(ENTRIES)
-                    .map_err(|e: redb::TableError| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                table
-                    .insert(new_id, bytes.as_slice())
-                    .map_err(|e: redb::StorageError| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
+        let _ = tokio::task::spawn_blocking(move || {
+            if let Ok(entry) = store.get(new_id) {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                let conf = unimatrix_engine::confidence::compute_confidence(&entry, now);
+                let _ = store.update_confidence(new_id, conf);
             }
-            txn.commit()
-                .map_err(|e: redb::CommitError| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-            Ok(())
         })
         .await;
     }

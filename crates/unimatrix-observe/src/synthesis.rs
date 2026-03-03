@@ -119,7 +119,7 @@ fn extract_sequence_pattern(hotspot: &HotspotFinding) -> Option<String> {
             .iter()
             .map(|v| format!("{}s", v))
             .collect::<Vec<_>>()
-            .join("->"),
+            .join("\u{2192}"),
     )
 }
 
@@ -284,7 +284,7 @@ mod tests {
         ];
         let hotspot = make_hotspot("sleep_workarounds", evidence);
         let pattern = extract_sequence_pattern(&hotspot);
-        assert_eq!(pattern, Some("30s->60s->90s->120s".to_string()));
+        assert_eq!(pattern, Some("30s\u{2192}60s\u{2192}90s\u{2192}120s".to_string()));
     }
 
     // -- T-ES-05: non-monotone returns None (AC-04) --
