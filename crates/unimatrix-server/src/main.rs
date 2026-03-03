@@ -94,7 +94,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("starting unimatrix server");
 
     // Initialize project data directory
-    let paths = project::ensure_data_directory(cli.project_dir.as_deref())
+    let paths = project::ensure_data_directory(cli.project_dir.as_deref(), None)
         .map_err(|e| ServerError::ProjectInit(e.to_string()))?;
 
     tracing::info!(

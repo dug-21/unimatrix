@@ -67,15 +67,30 @@ pub fn compute_project_hash(project_root: &Path) -> String {
 
 /// Ensure the project data directory exists, creating it if needed.
 ///
+/// `override_dir` overrides the project root (input to the path hash).
+/// `base_dir` overrides the parent directory for data storage. When `None`,
+/// defaults to `~/.unimatrix/`. Pass a tempdir here in tests to avoid
+/// leaking directories into the real home directory.
+///
 /// Returns `ProjectPaths` with all resolved paths.
-pub fn ensure_data_directory(override_dir: Option<&Path>) -> io::Result<ProjectPaths> {
+pub fn ensure_data_directory(
+    override_dir: Option<&Path>,
+    base_dir: Option<&Path>,
+) -> io::Result<ProjectPaths> {
     let project_root = detect_project_root(override_dir)?;
     let project_hash = compute_project_hash(&project_root);
 
-    let home = dirs::home_dir()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "home directory not found"))?;
+    let unimatrix_base = match base_dir {
+        Some(dir) => dir.to_path_buf(),
+        None => {
+            let home = dirs::home_dir().ok_or_else(|| {
+                io::Error::new(io::ErrorKind::NotFound, "home directory not found")
+            })?;
+            home.join(".unimatrix")
+        }
+    };
 
-    let data_dir = home.join(".unimatrix").join(&project_hash);
+    let data_dir = unimatrix_base.join(&project_hash);
     let db_path = data_dir.join("unimatrix.redb");
     let vector_dir = data_dir.join("vector");
     let pid_path = data_dir.join("unimatrix.pid");
@@ -149,11 +164,14 @@ mod tests {
 
     #[test]
     fn test_ensure_creates_dirs() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let paths = ensure_data_directory(Some(dir.path())).unwrap();
+        let project_dir = tempfile::TempDir::new().unwrap();
+        let base_dir = tempfile::TempDir::new().unwrap();
+        let paths =
+            ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
 
         assert!(paths.data_dir.exists());
         assert!(paths.vector_dir.exists());
+        assert!(paths.data_dir.starts_with(base_dir.path()));
         assert!(paths.db_path.parent().unwrap().exists());
         assert!(paths.db_path.to_string_lossy().ends_with("unimatrix.redb"));
         assert!(paths.vector_dir.to_string_lossy().ends_with("vector"));
@@ -163,9 +181,12 @@ mod tests {
 
     #[test]
     fn test_ensure_idempotent() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let paths1 = ensure_data_directory(Some(dir.path())).unwrap();
-        let paths2 = ensure_data_directory(Some(dir.path())).unwrap();
+        let project_dir = tempfile::TempDir::new().unwrap();
+        let base_dir = tempfile::TempDir::new().unwrap();
+        let paths1 =
+            ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
+        let paths2 =
+            ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
         assert_eq!(paths1.project_hash, paths2.project_hash);
     }
 
@@ -185,8 +206,33 @@ mod tests {
 
     #[test]
     fn test_socket_path_in_data_dir() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let paths = ensure_data_directory(Some(dir.path())).unwrap();
+        let project_dir = tempfile::TempDir::new().unwrap();
+        let base_dir = tempfile::TempDir::new().unwrap();
+        let paths =
+            ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
         assert_eq!(paths.socket_path, paths.data_dir.join("unimatrix.sock"));
+    }
+
+    #[test]
+    fn test_ensure_no_dirs_leak_outside_base() {
+        let project_dir = tempfile::TempDir::new().unwrap();
+        let base_dir = tempfile::TempDir::new().unwrap();
+        let paths =
+            ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
+
+        // All created directories must be inside base_dir, not ~/.unimatrix/
+        assert!(paths.data_dir.starts_with(base_dir.path()));
+        assert!(paths.vector_dir.starts_with(base_dir.path()));
+        assert!(paths.db_path.starts_with(base_dir.path()));
+        assert!(paths.pid_path.starts_with(base_dir.path()));
+        assert!(paths.socket_path.starts_with(base_dir.path()));
+
+        // The hash directory should NOT exist under ~/.unimatrix/
+        let home = dirs::home_dir().unwrap();
+        let leaked_dir = home.join(".unimatrix").join(&paths.project_hash);
+        assert!(
+            !leaked_dir.exists(),
+            "directory leaked outside base_dir into {leaked_dir:?}"
+        );
     }
 }
