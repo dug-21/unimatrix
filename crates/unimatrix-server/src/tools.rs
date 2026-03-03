@@ -22,6 +22,7 @@ use unimatrix_store::sessions::{TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS}
 
 use crate::audit::{AuditEvent, Outcome};
 use crate::registry::Capability;
+use crate::services::{AuditContext, AuditSource, ServiceSearchParams};
 use crate::uds_listener::{run_confidence_consumer, run_retrospective_consumer, write_signals_to_queue};
 use crate::response::{
     format_duplicate_found, format_enroll_success, format_lookup_results, format_search_results,
@@ -30,7 +31,6 @@ use crate::response::{
     format_quarantine_success, format_restore_success,
     format_status_report, format_briefing, StatusReport, CoAccessClusterEntry, Briefing, parse_format,
 };
-use crate::scanning::ContentScanner;
 use crate::server::UnimatrixServer;
 use crate::validation::{
     validate_get_params, validate_lookup_params, validate_search_params, validate_store_params,
@@ -41,11 +41,8 @@ use crate::validation::{
     QuarantineAction, validate_feature, validate_helpful,
 };
 
-/// HNSW search expansion factor.
+/// HNSW search expansion factor (used by context_status maintenance path).
 const EF_SEARCH: usize = 32;
-
-/// Near-duplicate cosine similarity threshold.
-const DUPLICATE_THRESHOLD: f64 = 0.92;
 
 /// Parameters for semantic search.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -277,149 +274,59 @@ impl UnimatrixServer {
         // 5. Parse k
         let k = validated_k(params.k).map_err(rmcp::ErrorData::from)?;
 
-        // 6. Get embedding adapter
-        let adapter = self
-            .embed_service
-            .get_adapter()
+        // 6. Build AuditContext (MCP transport)
+        let audit_ctx = AuditContext {
+            source: AuditSource::Mcp {
+                agent_id: identity.agent_id.clone(),
+                trust_level: identity.trust_level,
+            },
+            caller_id: identity.agent_id.clone(),
+            session_id: None,
+            feature_cycle: None,
+        };
+
+        // 7. Build ServiceSearchParams and delegate to SearchService
+        let service_params = ServiceSearchParams {
+            query: params.query.clone(),
+            k,
+            filters: if params.topic.is_some()
+                || params.category.is_some()
+                || params.tags.is_some()
+            {
+                Some(QueryFilter {
+                    topic: params.topic.clone(),
+                    category: params.category.clone(),
+                    tags: params.tags.clone(),
+                    status: Some(Status::Active),
+                    time_range: None,
+                })
+            } else {
+                None
+            },
+            similarity_floor: None,
+            confidence_floor: None,
+            feature_tag: params.feature.clone(),
+            co_access_anchors: None,
+            caller_agent_id: Some(identity.agent_id.clone()),
+        };
+
+        let search_results = self
+            .services
+            .search
+            .search(service_params, &audit_ctx)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 7. Embed query — uses embed_entry("", query) to match how context_briefing
-        //    embeds tasks. All query-side embeddings MUST use this same pattern.
-        let query = params.query.clone();
-        let raw_embedding: Vec<f32> = tokio::task::spawn_blocking({
-            let adapter = Arc::clone(&adapter);
-            move || adapter.embed_entry("", &query)
-        })
-        .await
-        .map_err(|e: tokio::task::JoinError| {
-            rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::JoinError(
-                e.to_string(),
-            )))
-        })?
-        .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
-
-        // 7b. Adapt embedding through MicroLoRA + prototype pull (crt-006)
-        let adapted = self.adapt_service.adapt_embedding(&raw_embedding, None, None);
-        let embedding = unimatrix_embed::l2_normalized(&adapted);
-
-        // 8. Search (with optional metadata pre-filtering)
-        let search_results = if params.topic.is_some()
-            || params.category.is_some()
-            || params.tags.is_some()
-        {
-            let filter = QueryFilter {
-                topic: params.topic.clone(),
-                category: params.category.clone(),
-                tags: params.tags.clone(),
-                status: Some(Status::Active),
-                time_range: None,
-            };
-            let entries = self
-                .entry_store
-                .query(filter)
-                .await
-                .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
-            let allowed_ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
-            if allowed_ids.is_empty() {
-                vec![]
-            } else {
-                self.vector_store
-                    .search_filtered(embedding, k, EF_SEARCH, allowed_ids)
-                    .await
-                    .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?
-            }
-        } else {
-            self.vector_store
-                .search(embedding, k, EF_SEARCH)
-                .await
-                .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?
-        };
-
-        // 9. Fetch full entries for results, excluding quarantined (crt-003)
-        let mut results_with_scores = Vec::new();
-        for sr in &search_results {
-            match self.entry_store.get(sr.entry_id).await {
-                Ok(entry) => {
-                    if entry.status == Status::Quarantined {
-                        continue; // exclude quarantined entries from search results
-                    }
-                    results_with_scores.push((entry, sr.similarity));
-                }
-                Err(_) => continue, // silently skip deleted entries (FR-01g)
-            }
-        }
-
-        // 9b. Re-rank by blended score: similarity * 0.85 + confidence * 0.15 + provenance (crt-002, col-010b)
-        results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-            let prov_a = if entry_a.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
-            let prov_b = if entry_b.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
-            let score_a = crate::confidence::rerank_score(*sim_a, entry_a.confidence) + prov_a;
-            let score_b = crate::confidence::rerank_score(*sim_b, entry_b.confidence) + prov_b;
-            score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
-        });
-
-        // 9c. Co-access boost (crt-004)
-        if results_with_scores.len() > 1 {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-            let staleness_cutoff = now.saturating_sub(crate::coaccess::CO_ACCESS_STALENESS_SECONDS);
-
-            // Anchor IDs: top min(3, result_count) entries
-            let anchor_count = results_with_scores.len().min(3);
-            let anchor_ids: Vec<u64> = results_with_scores.iter()
-                .take(anchor_count)
-                .map(|(e, _)| e.id)
-                .collect();
-            let result_ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
-
-            let store = Arc::clone(&self.store);
-            let boost_map = tokio::task::spawn_blocking(move || {
-                crate::coaccess::compute_search_boost(&anchor_ids, &result_ids, &store, staleness_cutoff)
-            }).await
-            .unwrap_or_else(|e| {
-                tracing::warn!("co-access boost task failed: {e}");
-                std::collections::HashMap::new()
-            });
-
-            if !boost_map.is_empty() {
-                // Re-sort with co-access boost + provenance boost (col-010b)
-                results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-                    let base_a = crate::confidence::rerank_score(*sim_a, entry_a.confidence);
-                    let base_b = crate::confidence::rerank_score(*sim_b, entry_b.confidence);
-                    let boost_a = boost_map.get(&entry_a.id).copied().unwrap_or(0.0);
-                    let boost_b = boost_map.get(&entry_b.id).copied().unwrap_or(0.0);
-                    let prov_a = if entry_a.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
-                    let prov_b = if entry_b.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
-                    let final_a = base_a + boost_a + prov_a;
-                    let final_b = base_b + boost_b + prov_b;
-                    final_b.partial_cmp(&final_a).unwrap_or(std::cmp::Ordering::Equal)
-                });
-            }
-        }
-
-        // 10. Trim to k results (boost may have changed order)
-        results_with_scores.truncate(k);
-
-        // 11. Format response
+        // 8. Format response (transport-specific)
+        let results_with_scores: Vec<_> = search_results
+            .entries
+            .iter()
+            .map(|se| (se.entry.clone(), se.similarity))
+            .collect();
         let result = format_search_results(&results_with_scores, format);
 
-        // 12. Audit (standalone, best-effort)
-        let target_ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
-        let _ = self.audit.log_event(AuditEvent {
-            event_id: 0,
-            timestamp: 0,
-            session_id: String::new(),
-            agent_id: identity.agent_id.clone(),
-            operation: "context_search".to_string(),
-            target_ids: target_ids.clone(),
-            outcome: Outcome::Success,
-            detail: format!("returned {} results", results_with_scores.len()),
-        });
-
-        // 13. Usage recording (fire-and-forget)
+        // 9. Usage recording (fire-and-forget, transport-specific)
+        let target_ids: Vec<u64> = search_results.entries.iter().map(|se| se.entry.id).collect();
         self.record_usage_for_entries(
             &identity.agent_id,
             identity.trust_level,
@@ -555,158 +462,62 @@ impl UnimatrixServer {
                 .map_err(rmcp::ErrorData::from)?;
         }
 
-        // 6. Content scanning
-        if let Err(scan_result) = ContentScanner::global().scan(&params.content) {
-            return Err(rmcp::ErrorData::from(
-                crate::error::ServerError::ContentScanRejected {
-                    category: scan_result.category.to_string(),
-                    description: scan_result.description.to_string(),
-                },
-            ));
-        }
-        if let Some(title) = &params.title {
-            if let Err(scan_result) = ContentScanner::global().scan_title(title) {
-                return Err(rmcp::ErrorData::from(
-                    crate::error::ServerError::ContentScanRejected {
-                        category: scan_result.category.to_string(),
-                        description: scan_result.description.to_string(),
-                    },
-                ));
-            }
-        }
+        // 6. Build AuditContext (MCP transport)
+        let audit_ctx = AuditContext {
+            source: AuditSource::Mcp {
+                agent_id: identity.agent_id.clone(),
+                trust_level: identity.trust_level,
+            },
+            caller_id: identity.agent_id.clone(),
+            session_id: None,
+            feature_cycle: None,
+        };
 
-        // 7. Embed title+content
+        // 7. Build title (transport-specific default)
         let title = params
             .title
             .unwrap_or_else(|| format!("{}: {}", params.topic, params.category));
-        let adapter = self
-            .embed_service
-            .get_adapter()
-            .await
-            .map_err(rmcp::ErrorData::from)?;
-        let raw_embedding: Vec<f32> = tokio::task::spawn_blocking({
-            let adapter = Arc::clone(&adapter);
-            let t = title.clone();
-            let c = params.content.clone();
-            move || adapter.embed_entry(&t, &c)
-        })
-        .await
-        .map_err(|e: tokio::task::JoinError| {
-            rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::JoinError(
-                e.to_string(),
-            )))
-        })?
-        .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
-
-        // 7b. Adapt embedding through MicroLoRA + prototype pull (crt-006)
-        let adapted = self.adapt_service.adapt_embedding(
-            &raw_embedding,
-            Some(&params.category),
-            Some(&params.topic),
-        );
-        let embedding = unimatrix_embed::l2_normalized(&adapted);
-
-        // 8. Near-duplicate detection
-        let dup_results = self
-            .vector_store
-            .search(embedding.clone(), 1, EF_SEARCH)
-            .await
-            .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
-        if let Some(top) = dup_results.first() {
-            if top.similarity >= DUPLICATE_THRESHOLD {
-                match self.entry_store.get(top.entry_id).await {
-                    Ok(existing) => {
-                        // Audit duplicate detection
-                        let _ = self.audit.log_event(AuditEvent {
-                            event_id: 0,
-                            timestamp: 0,
-                            session_id: String::new(),
-                            agent_id: identity.agent_id,
-                            operation: "context_store".to_string(),
-                            target_ids: vec![existing.id],
-                            outcome: Outcome::Success,
-                            detail: format!(
-                                "near-duplicate detected: entry #{} at {:.2} similarity",
-                                existing.id, top.similarity
-                            ),
-                        });
-                        return Ok(format_duplicate_found(&existing, top.similarity, format));
-                    }
-                    Err(_) => {
-                        // Entry was deleted since search; proceed with store
-                    }
-                }
-            }
-        }
-
-        // 9. Build NewEntry
-        let feature_cycle = params.feature_cycle.clone().unwrap_or_default();
         let is_outcome = params.category == "outcome";
+
+        // 8. Build NewEntry
+        let feature_cycle = params.feature_cycle.clone().unwrap_or_default();
         let new_entry = NewEntry {
-            title: title.clone(),
+            title,
             content: params.content,
             topic: params.topic,
             category: params.category,
             tags: params.tags.unwrap_or_default(),
             source: params.source.unwrap_or_default(),
             status: Status::Active,
-            created_by: identity.agent_id.clone(),
+            created_by: identity.agent_id,
             feature_cycle,
             trust_source: "agent".to_string(),
         };
 
-        // 10. Combined transaction: insert + audit
-        let audit_event = AuditEvent {
-            event_id: 0,
-            timestamp: 0,
-            session_id: String::new(),
-            agent_id: identity.agent_id,
-            operation: "context_store".to_string(),
-            target_ids: vec![], // will be filled by insert_with_audit
-            outcome: Outcome::Success,
-            detail: format!("stored entry: {}", title),
-        };
-        let (entry_id, record) = self
-            .insert_with_audit(new_entry, embedding, audit_event)
+        // 9. Delegate to StoreService (scanning, embedding, dup-check, insert)
+        let insert_result = self
+            .services
+            .store_ops
+            .insert(new_entry, None, &audit_ctx)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 10b. Update adaptation prototypes with the adapted embedding (crt-006)
-        self.adapt_service.update_prototypes(
-            &adapted,
-            Some(&record.category),
-            Some(&record.topic),
-        );
-
-        // 11. Seed initial confidence (fire-and-forget)
-        {
-            let store_for_conf = Arc::clone(&self.store);
-            let _ = tokio::task::spawn_blocking(move || {
-                match store_for_conf.get(entry_id) {
-                    Ok(entry) => {
-                        let now = std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_secs();
-                        let conf = crate::confidence::compute_confidence(&entry, now);
-                        if let Err(e) = store_for_conf.update_confidence(entry_id, conf) {
-                            tracing::warn!("confidence seed failed for entry {entry_id}: {e}");
-                        }
-                    }
-                    Err(e) => {
-                        tracing::warn!("confidence seed: failed to read entry {entry_id}: {e}");
-                    }
-                }
-            }).await;
+        // 10. Handle duplicate result
+        if insert_result.duplicate_of.is_some() {
+            let similarity = insert_result.duplicate_similarity.unwrap_or(1.0);
+            return Ok(format_duplicate_found(&insert_result.entry, similarity, format));
         }
 
+        // 11. Seed initial confidence (fire-and-forget, via ConfidenceService)
+        self.services.confidence.recompute(&[insert_result.entry.id]);
+
         // 12. Format response
-        if is_outcome && record.feature_cycle.is_empty() {
+        if is_outcome && insert_result.entry.feature_cycle.is_empty() {
             // Append orphan outcome warning to the formatted response
             let warning = "\nNote: outcome not linked to a workflow (no feature_cycle provided)";
-            Ok(format_store_success_with_note(&record, format, warning))
+            Ok(format_store_success_with_note(&insert_result.entry, format, warning))
         } else {
-            Ok(format_store_success(&record, format))
+            Ok(format_store_success(&insert_result.entry, format))
         }
     }
 
@@ -805,7 +616,7 @@ impl UnimatrixServer {
             .await
             .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
 
-        // Note: deprecated check is handled authoritatively inside correct_with_audit's
+        // Note: deprecated check is handled authoritatively inside StoreService.correct()'s
         // write transaction. No pre-check here to avoid TOCTOU.
 
         // 7. Category validation: only if explicit new category provided
@@ -815,64 +626,23 @@ impl UnimatrixServer {
                 .map_err(rmcp::ErrorData::from)?;
         }
 
-        // 9. Content scanning on new content
-        if let Err(scan_result) = ContentScanner::global().scan(&params.content) {
-            return Err(rmcp::ErrorData::from(
-                crate::error::ServerError::ContentScanRejected {
-                    category: scan_result.category.to_string(),
-                    description: scan_result.description.to_string(),
-                },
-            ));
-        }
-        if let Some(title) = &params.title {
-            if let Err(scan_result) = ContentScanner::global().scan_title(title) {
-                return Err(rmcp::ErrorData::from(
-                    crate::error::ServerError::ContentScanRejected {
-                        category: scan_result.category.to_string(),
-                        description: scan_result.description.to_string(),
-                    },
-                ));
-            }
-        }
+        // 8. Build AuditContext (MCP transport)
+        let audit_ctx = AuditContext {
+            source: AuditSource::Mcp {
+                agent_id: identity.agent_id.clone(),
+                trust_level: identity.trust_level,
+            },
+            caller_id: identity.agent_id.clone(),
+            session_id: None,
+            feature_cycle: None,
+        };
 
-        // 10. Get embedding adapter (fails with EmbedNotReady if not ready)
-        let adapter = self
-            .embed_service
-            .get_adapter()
-            .await
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 11. Build title for embedding
+        // 9. Build title (inherit from original if not provided)
         let title = params
             .title
             .unwrap_or_else(|| original.title.clone());
 
-        // 12. Embed title+content
-        let raw_embedding: Vec<f32> = tokio::task::spawn_blocking({
-            let adapter = Arc::clone(&adapter);
-            let t = title.clone();
-            let c = params.content.clone();
-            move || adapter.embed_entry(&t, &c)
-        })
-        .await
-        .map_err(|e: tokio::task::JoinError| {
-            rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::JoinError(
-                e.to_string(),
-            )))
-        })?
-        .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
-
-        // 12b. Adapt embedding through MicroLoRA + prototype pull (crt-006)
-        let correct_category = params.category.as_deref().unwrap_or(&original.category);
-        let correct_topic = params.topic.as_deref().unwrap_or(&original.topic);
-        let adapted = self.adapt_service.adapt_embedding(
-            &raw_embedding,
-            Some(correct_category),
-            Some(correct_topic),
-        );
-        let embedding = unimatrix_embed::l2_normalized(&adapted);
-
-        // 13. Build NewEntry with inheritance
+        // 10. Build NewEntry with inheritance
         let new_entry = NewEntry {
             title,
             content: params.content,
@@ -881,76 +651,29 @@ impl UnimatrixServer {
             tags: params.tags.unwrap_or_else(|| original.tags.clone()),
             source: original.source.clone(),
             status: Status::Active,
-            created_by: identity.agent_id.clone(),
+            created_by: identity.agent_id,
             feature_cycle: original.feature_cycle.clone(),
             trust_source: "agent".to_string(),
         };
 
-        // 14. Combined transaction
-        let audit_event = AuditEvent {
-            event_id: 0,
-            timestamp: 0,
-            session_id: String::new(),
-            agent_id: identity.agent_id,
-            operation: "context_correct".to_string(),
-            target_ids: vec![],
-            outcome: Outcome::Success,
-            detail: format!(
-                "corrected entry #{original_id}: {}",
-                params.reason.as_deref().unwrap_or("no reason")
-            ),
-        };
-        let (deprecated_original, new_correction) = self
-            .correct_with_audit(original_id, new_entry, embedding, audit_event)
+        // 11. Delegate to StoreService (scanning, embedding, atomic correct+audit)
+        let correct_result = self
+            .services
+            .store_ops
+            .correct(original_id, new_entry, params.reason, &audit_ctx)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 14b. Update adaptation prototypes with the adapted embedding (crt-006)
-        self.adapt_service.update_prototypes(
-            &adapted,
-            Some(&new_correction.category),
-            Some(&new_correction.topic),
-        );
+        // 12. Confidence for both entries (fire-and-forget, via ConfidenceService)
+        self.services.confidence.recompute(&[
+            correct_result.corrected_entry.id,
+            correct_result.deprecated_original.id,
+        ]);
 
-        // 15. Confidence for new correction + recompute for deprecated original (fire-and-forget)
-        {
-            let store_for_conf = Arc::clone(&self.store);
-            let new_correction_id = new_correction.id;
-            let dep_original_id = deprecated_original.id;
-            let _ = tokio::task::spawn_blocking(move || {
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-
-                // Confidence for new correction entry
-                match store_for_conf.get(new_correction_id) {
-                    Ok(entry) => {
-                        let conf = crate::confidence::compute_confidence(&entry, now);
-                        if let Err(e) = store_for_conf.update_confidence(new_correction_id, conf) {
-                            tracing::warn!("confidence for correction {new_correction_id}: {e}");
-                        }
-                    }
-                    Err(e) => tracing::warn!("confidence: read correction {new_correction_id}: {e}"),
-                }
-
-                // Recompute confidence for deprecated original (base_score now 0.2)
-                match store_for_conf.get(dep_original_id) {
-                    Ok(entry) => {
-                        let conf = crate::confidence::compute_confidence(&entry, now);
-                        if let Err(e) = store_for_conf.update_confidence(dep_original_id, conf) {
-                            tracing::warn!("confidence for deprecated {dep_original_id}: {e}");
-                        }
-                    }
-                    Err(e) => tracing::warn!("confidence: read deprecated {dep_original_id}: {e}"),
-                }
-            }).await;
-        }
-
-        // 16. Format response
+        // 13. Format response
         Ok(format_correct_success(
-            &deprecated_original,
-            &new_correction,
+            &correct_result.deprecated_original,
+            &correct_result.corrected_entry,
             format,
         ))
     }
@@ -1014,26 +737,8 @@ impl UnimatrixServer {
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 9. Recompute confidence for deprecated entry (fire-and-forget)
-        {
-            let store_for_conf = Arc::clone(&self.store);
-            let dep_id = deprecated.id;
-            let _ = tokio::task::spawn_blocking(move || {
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-                match store_for_conf.get(dep_id) {
-                    Ok(entry) => {
-                        let conf = crate::confidence::compute_confidence(&entry, now);
-                        if let Err(e) = store_for_conf.update_confidence(dep_id, conf) {
-                            tracing::warn!("confidence for deprecated {dep_id}: {e}");
-                        }
-                    }
-                    Err(e) => tracing::warn!("confidence: read deprecated {dep_id}: {e}"),
-                }
-            }).await;
-        }
+        // 9. Recompute confidence for deprecated entry (fire-and-forget, via ConfidenceService)
+        self.services.confidence.recompute(&[deprecated.id]);
 
         // 10. Format response
         Ok(format_deprecate_success(
