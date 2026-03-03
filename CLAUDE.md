@@ -19,7 +19,6 @@
 /crates/unimatrix-{store,vector,embed,core,server}/  - Rust workspace
 /product/features/{phase}-{NNN}/                      - Feature docs per feature
 /.claude/agents/uni/                                  - Agent definitions (active)
-/.claude/protocols/uni/                               - Agent routing
 /.claude/rules/                                       - Contextual rules
 ```
 
@@ -60,4 +59,4 @@ Knowledge engine (MCP server). **Use it.**
 - `/store-procedure` — when a reusable technique evolves
 - `/store-lesson` — after failures and gate rejections
 
-Do not store workflow choreography in Unimatrix. Protocols live in `.claude/protocols/`.
+Do not store workflow choreography in Unimatrix. Protocols live in coordinator agents.
