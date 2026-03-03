@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use crate::types::{BaselineComparison, EntryAnalysis, HotspotFinding, MetricVector, ObservationRecord, RetrospectiveReport};
+use crate::types::{BaselineComparison, EntryAnalysis, HotspotFinding, MetricVector, ObservationRecord, Recommendation, RetrospectiveReport};
 
 /// Build a self-contained RetrospectiveReport.
 ///
@@ -32,6 +32,55 @@ pub fn build_report(
         is_cached: false,
         baseline_comparison: baseline,
         entries_analysis,
+        narratives: None,
+        recommendations: vec![],
+    }
+}
+
+/// Generate actionable recommendations for recognized hotspot types (col-010b).
+///
+/// Covers four hotspot types: permission_retries, coordinator_respawns,
+/// sleep_workarounds, and compile_cycles (only when measured > 10.0).
+/// Returns empty Vec for unrecognized types or when no hotspots are recognized.
+pub fn recommendations_for_hotspots(hotspots: &[HotspotFinding]) -> Vec<Recommendation> {
+    hotspots.iter().filter_map(recommendation_for).collect()
+}
+
+fn recommendation_for(hotspot: &HotspotFinding) -> Option<Recommendation> {
+    match hotspot.rule_name.as_str() {
+        "permission_retries" => Some(Recommendation {
+            hotspot_type: "permission_retries".into(),
+            action: "Add common build/test commands to settings.json allowlist".into(),
+            rationale: format!(
+                "{} permission retries detected -- agents lose time waiting for approval",
+                hotspot.measured as u64
+            ),
+        }),
+        "coordinator_respawns" => Some(Recommendation {
+            hotspot_type: "coordinator_respawns".into(),
+            action: "Review coordinator agent lifespan and handoff patterns".into(),
+            rationale: format!(
+                "{} coordinator respawns detected -- may indicate premature termination or context overflow",
+                hotspot.measured as u64
+            ),
+        }),
+        "sleep_workarounds" => Some(Recommendation {
+            hotspot_type: "sleep_workarounds".into(),
+            action: "Use run_in_background + TaskOutput instead of sleep polling".into(),
+            rationale: format!(
+                "{} sleep workaround events detected -- sleep polling wastes agent time",
+                hotspot.measured as u64
+            ),
+        }),
+        "compile_cycles" if hotspot.measured > 10.0 => Some(Recommendation {
+            hotspot_type: "compile_cycles".into(),
+            action: "Consider incremental compilation or targeted cargo test invocations".into(),
+            rationale: format!(
+                "{:.0} compile cycles detected (threshold: 10) -- consider narrowing test scope",
+                hotspot.measured
+            ),
+        }),
+        _ => None,
     }
 }
 
@@ -226,5 +275,172 @@ mod tests {
         assert_eq!(ea.injection_count, 0);
         assert_eq!(ea.success_session_count, 0);
         assert_eq!(ea.rework_session_count, 0);
+    }
+
+    // -- col-010b: recommendation tests (T-ES-09) --
+
+    #[test]
+    fn test_recommendation_permission_retries() {
+        let hotspot = HotspotFinding {
+            category: HotspotCategory::Friction,
+            severity: Severity::Warning,
+            rule_name: "permission_retries".to_string(),
+            claim: "retries".to_string(),
+            measured: 8.0,
+            threshold: 3.0,
+            evidence: vec![],
+        };
+        let recs = recommendations_for_hotspots(&[hotspot]);
+        assert_eq!(recs.len(), 1);
+        assert_eq!(recs[0].hotspot_type, "permission_retries");
+        assert!(recs[0].action.contains("allowlist"));
+        assert!(!recs[0].rationale.is_empty());
+    }
+
+    #[test]
+    fn test_recommendation_coordinator_respawns() {
+        let hotspot = HotspotFinding {
+            category: HotspotCategory::Agent,
+            severity: Severity::Warning,
+            rule_name: "coordinator_respawns".to_string(),
+            claim: "respawns".to_string(),
+            measured: 5.0,
+            threshold: 2.0,
+            evidence: vec![],
+        };
+        let recs = recommendations_for_hotspots(&[hotspot]);
+        assert_eq!(recs.len(), 1);
+        assert_eq!(recs[0].hotspot_type, "coordinator_respawns");
+        assert!(recs[0].action.contains("lifespan"));
+    }
+
+    #[test]
+    fn test_recommendation_sleep_workarounds() {
+        let hotspot = HotspotFinding {
+            category: HotspotCategory::Friction,
+            severity: Severity::Warning,
+            rule_name: "sleep_workarounds".to_string(),
+            claim: "sleep".to_string(),
+            measured: 4.0,
+            threshold: 1.0,
+            evidence: vec![],
+        };
+        let recs = recommendations_for_hotspots(&[hotspot]);
+        assert_eq!(recs.len(), 1);
+        assert_eq!(recs[0].hotspot_type, "sleep_workarounds");
+        assert!(recs[0].action.contains("run_in_background"));
+    }
+
+    #[test]
+    fn test_recommendation_compile_cycles_above_threshold() {
+        let hotspot = HotspotFinding {
+            category: HotspotCategory::Session,
+            severity: Severity::Warning,
+            rule_name: "compile_cycles".to_string(),
+            claim: "compile".to_string(),
+            measured: 15.0,
+            threshold: 10.0,
+            evidence: vec![],
+        };
+        let recs = recommendations_for_hotspots(&[hotspot]);
+        assert_eq!(recs.len(), 1);
+        assert_eq!(recs[0].hotspot_type, "compile_cycles");
+        assert!(recs[0].action.contains("incremental"));
+    }
+
+    #[test]
+    fn test_recommendation_compile_cycles_below_threshold() {
+        let hotspot = HotspotFinding {
+            category: HotspotCategory::Session,
+            severity: Severity::Info,
+            rule_name: "compile_cycles".to_string(),
+            claim: "compile".to_string(),
+            measured: 5.0,
+            threshold: 10.0,
+            evidence: vec![],
+        };
+        let recs = recommendations_for_hotspots(&[hotspot]);
+        assert!(recs.is_empty());
+    }
+
+    #[test]
+    fn test_recommendation_unknown_type() {
+        let hotspot = HotspotFinding {
+            category: HotspotCategory::Scope,
+            severity: Severity::Info,
+            rule_name: "unknown_hotspot".to_string(),
+            claim: "something".to_string(),
+            measured: 1.0,
+            threshold: 0.5,
+            evidence: vec![],
+        };
+        let recs = recommendations_for_hotspots(&[hotspot]);
+        assert!(recs.is_empty());
+    }
+
+    #[test]
+    fn test_recommendation_empty_hotspots() {
+        let recs = recommendations_for_hotspots(&[]);
+        assert!(recs.is_empty());
+    }
+
+    // -- col-010b: new fields serde tests (T-ES-10, T-ES-11, T-ES-12) --
+
+    #[test]
+    fn test_narratives_absent_when_none() {
+        let report = build_report("col-010b", &[], MetricVector::default(), vec![], None, None);
+        let json = serde_json::to_string(&report).expect("serialize");
+        assert!(!json.contains("narratives"));
+        assert!(!json.contains("recommendations"));
+    }
+
+    #[test]
+    fn test_narratives_present_when_some() {
+        use crate::types::{HotspotNarrative, EvidenceCluster};
+        let mut report = build_report("col-010b", &[], MetricVector::default(), vec![], None, None);
+        report.narratives = Some(vec![HotspotNarrative {
+            hotspot_type: "test".to_string(),
+            summary: "test summary".to_string(),
+            clusters: vec![EvidenceCluster {
+                window_start: 1000,
+                event_count: 2,
+                description: "2 events".to_string(),
+            }],
+            top_files: vec![("src/lib.rs".to_string(), 3)],
+            sequence_pattern: None,
+        }]);
+        let json = serde_json::to_string(&report).expect("serialize");
+        assert!(json.contains("narratives"));
+        assert!(json.contains("test summary"));
+    }
+
+    #[test]
+    fn test_recommendations_present_when_nonempty() {
+        use crate::types::Recommendation;
+        let mut report = build_report("col-010b", &[], MetricVector::default(), vec![], None, None);
+        report.recommendations = vec![Recommendation {
+            hotspot_type: "test".to_string(),
+            action: "do something".to_string(),
+            rationale: "because".to_string(),
+        }];
+        let json = serde_json::to_string(&report).expect("serialize");
+        assert!(json.contains("recommendations"));
+        assert!(json.contains("do something"));
+    }
+
+    #[test]
+    fn test_backward_compat_deserialization() {
+        // Pre-col-010b JSON without narratives/recommendations
+        let json = r#"{
+            "feature_cycle": "old",
+            "session_count": 1,
+            "total_records": 5,
+            "metrics": {"computed_at": 0, "universal": {}, "phases": {}},
+            "hotspots": [],
+            "is_cached": false
+        }"#;
+        let report: RetrospectiveReport = serde_json::from_str(json).expect("deserialize");
+        assert!(report.narratives.is_none());
+        assert!(report.recommendations.is_empty());
     }
 }

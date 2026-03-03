@@ -13,6 +13,7 @@ pub mod files;
 pub mod metrics;
 pub mod parser;
 pub mod report;
+pub mod synthesis;
 pub mod types;
 
 // Re-exports for public API
@@ -23,11 +24,14 @@ pub use error::{ObserveError, Result};
 pub use files::{discover_sessions, identify_expired, observation_dir, scan_observation_stats};
 pub use metrics::compute_metric_vector;
 pub use parser::{parse_session_file, parse_timestamp};
-pub use report::build_report;
+pub use report::{build_report, recommendations_for_hotspots};
+pub use synthesis::synthesize_narratives;
 pub use types::{
     BaselineComparison, BaselineEntry, BaselineSet, BaselineStatus,
-    EntryAnalysis,
-    EvidenceRecord, HookType, HotspotCategory, HotspotFinding, MetricVector, ObservationRecord,
-    ObservationStats, ParsedSession, PhaseMetrics, RetrospectiveReport, Severity, SessionFile,
+    EntryAnalysis, EvidenceCluster,
+    EvidenceRecord, HookType, HotspotCategory, HotspotFinding, HotspotNarrative,
+    MetricVector, ObservationRecord,
+    ObservationStats, ParsedSession, PhaseMetrics, Recommendation, RetrospectiveReport,
+    Severity, SessionFile,
     UniversalMetrics, deserialize_metric_vector, serialize_metric_vector,
 };

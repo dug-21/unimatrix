@@ -242,6 +242,8 @@ pub struct RetrospectiveParams {
     pub feature_cycle: String,
     /// Agent making the request.
     pub agent_id: Option<String>,
+    /// Maximum evidence items per hotspot (default: 3, 0 = unlimited). (col-010b)
+    pub evidence_limit: Option<usize>,
 }
 
 #[rmcp::tool_router(vis = "pub(crate)")]
@@ -348,10 +350,12 @@ impl UnimatrixServer {
             }
         }
 
-        // 9b. Re-rank by blended score: similarity * 0.85 + confidence * 0.15 (crt-002)
+        // 9b. Re-rank by blended score: similarity * 0.85 + confidence * 0.15 + provenance (crt-002, col-010b)
         results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-            let score_a = crate::confidence::rerank_score(*sim_a, entry_a.confidence);
-            let score_b = crate::confidence::rerank_score(*sim_b, entry_b.confidence);
+            let prov_a = if entry_a.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
+            let prov_b = if entry_b.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
+            let score_a = crate::confidence::rerank_score(*sim_a, entry_a.confidence) + prov_a;
+            let score_b = crate::confidence::rerank_score(*sim_b, entry_b.confidence) + prov_b;
             score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
         });
 
@@ -381,14 +385,16 @@ impl UnimatrixServer {
             });
 
             if !boost_map.is_empty() {
-                // Re-sort with boost applied
+                // Re-sort with co-access boost + provenance boost (col-010b)
                 results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
                     let base_a = crate::confidence::rerank_score(*sim_a, entry_a.confidence);
                     let base_b = crate::confidence::rerank_score(*sim_b, entry_b.confidence);
                     let boost_a = boost_map.get(&entry_a.id).copied().unwrap_or(0.0);
                     let boost_b = boost_map.get(&entry_b.id).copied().unwrap_or(0.0);
-                    let final_a = base_a + boost_a;
-                    let final_b = base_b + boost_b;
+                    let prov_a = if entry_a.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
+                    let prov_b = if entry_b.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
+                    let final_a = base_a + boost_a + prov_a;
+                    let final_b = base_b + boost_b + prov_b;
                     final_b.partial_cmp(&final_a).unwrap_or(std::cmp::Ordering::Equal)
                 });
             }
@@ -2209,6 +2215,8 @@ impl UnimatrixServer {
                         is_cached: true,
                         baseline_comparison: None,
                         entries_analysis: None,
+                        narratives: None,
+                        recommendations: vec![],
                     };
 
                     return Ok(format_retrospective_report(&report));
@@ -2303,7 +2311,7 @@ impl UnimatrixServer {
         };
 
         // 10c. Build report with baseline and entries_analysis
-        let report = unimatrix_observe::build_report(
+        let mut report = unimatrix_observe::build_report(
             &feature_cycle,
             &attributed,
             metrics,
@@ -2311,6 +2319,27 @@ impl UnimatrixServer {
             baseline,
             entries_analysis,
         );
+
+        // 10d. col-010b: Synthesize recommendations (both paths)
+        let recommendations = unimatrix_observe::recommendations_for_hotspots(&report.hotspots);
+        report.recommendations = recommendations;
+
+        // 10e. col-010b: Narratives — None on JSONL path (current path).
+        // The structured-events path (from_structured_events()) would set
+        // narratives = Some(synthesize_narratives(&report.hotspots)).
+        report.narratives = None;
+
+        // 10f. col-010b: Fire-and-forget lesson-learned write (ADR-002: self.clone())
+        if !report.hotspots.is_empty() || !report.recommendations.is_empty() {
+            let server = self.clone();
+            let report_for_ll = report.clone();
+            let fc_for_ll = feature_cycle.clone();
+            tokio::spawn(async move {
+                if let Err(e) = write_lesson_learned(&server, &report_for_ll, &fc_for_ll).await {
+                    tracing::warn!("lesson-learned write failed for {}: {}", fc_for_ll, e);
+                }
+            });
+        }
 
         // 11. Audit
         let _ = self.audit.log_event(AuditEvent {
@@ -2324,8 +2353,218 @@ impl UnimatrixServer {
             detail: format!("retrospective for {}", feature_cycle),
         });
 
-        Ok(format_retrospective_report(&report))
+        // 12. col-010b: Clone-and-truncate for serialization (ADR-001)
+        let evidence_limit = params.evidence_limit.unwrap_or(3);
+        if evidence_limit > 0 {
+            let mut truncated = report.clone();
+            for hotspot in &mut truncated.hotspots {
+                hotspot.evidence.truncate(evidence_limit);
+            }
+            Ok(format_retrospective_report(&truncated))
+        } else {
+            Ok(format_retrospective_report(&report))
+        }
     }
+}
+
+/// Build lesson-learned content from a retrospective report (col-010b).
+///
+/// Uses narrative summaries when available (structured path), falls back to
+/// hotspot claims (JSONL path). Always includes recommendations.
+fn build_lesson_learned_content(report: &unimatrix_observe::RetrospectiveReport) -> String {
+    let mut content = String::new();
+
+    if let Some(narratives) = &report.narratives {
+        for n in narratives {
+            content.push_str(&format!("- {}: {}\n", n.hotspot_type, n.summary));
+        }
+    } else {
+        for h in &report.hotspots {
+            content.push_str(&format!("- {}: {}\n", h.rule_name, h.claim));
+        }
+    }
+
+    for r in &report.recommendations {
+        content.push_str(&format!("Recommendation ({}): {}\n", r.hotspot_type, r.action));
+    }
+
+    // R-09 guard: ensure non-empty content
+    if content.is_empty() {
+        content = "Retrospective analysis completed with no specific findings.".to_string();
+    }
+
+    content
+}
+
+/// Fire-and-forget lesson-learned write using self.clone() + insert_with_audit (ADR-002).
+///
+/// Called inside a tokio::spawn from context_retrospective. Embeds the content,
+/// checks for supersede, and writes via the standard insert_with_audit pipeline
+/// for atomic ENTRIES + VECTOR_MAP + HNSW + audit.
+async fn write_lesson_learned(
+    server: &UnimatrixServer,
+    report: &unimatrix_observe::RetrospectiveReport,
+    feature_cycle: &str,
+) -> Result<(), crate::error::ServerError> {
+    use unimatrix_core::Status;
+
+    // 1. CategoryAllowlist check
+    if server.categories.validate("lesson-learned").is_err() {
+        tracing::error!(
+            "lesson-learned category not in allowlist, skipping write for {}",
+            feature_cycle
+        );
+        return Ok(());
+    }
+
+    // 2. Build content
+    let content = build_lesson_learned_content(report);
+    let title = format!("Retrospective findings: {}", feature_cycle);
+    let topic = format!("retrospective/{}", feature_cycle);
+
+    // 3. Supersede check: find existing active lesson-learned with same topic
+    let existing = {
+        let store = Arc::clone(&server.store);
+        let topic_clone = topic.clone();
+        tokio::task::spawn_blocking(move || -> Result<Vec<unimatrix_core::EntryRecord>, crate::error::ServerError> {
+            let filter = unimatrix_core::QueryFilter {
+                topic: Some(topic_clone),
+                category: Some("lesson-learned".to_string()),
+                ..Default::default()
+            };
+            store.query(filter)
+                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))
+        })
+        .await
+        .map_err(|e| crate::error::ServerError::Core(CoreError::JoinError(e.to_string())))??
+    };
+
+    let supersedes_id = existing
+        .iter()
+        .filter(|e| e.status == Status::Active)
+        .max_by_key(|e| e.created_at)
+        .map(|e| e.id);
+
+    // 4. Embed content (same pipeline as context_store: get_adapter + embed_entry + adapt + normalize)
+    let embedding = match server.embed_service.get_adapter().await {
+        Ok(adapter) => {
+            let title_clone = title.clone();
+            let content_clone = content.clone();
+            match tokio::task::spawn_blocking(move || {
+                adapter.embed_entry(&title_clone, &content_clone)
+            })
+            .await
+            {
+                Ok(Ok(raw)) => {
+                    let adapted = server.adapt_service.adapt_embedding(
+                        &raw,
+                        Some("lesson-learned"),
+                        Some(&topic),
+                    );
+                    unimatrix_embed::l2_normalized(&adapted)
+                }
+                Ok(Err(e)) => {
+                    tracing::warn!(
+                        "lesson-learned embedding failed for {}: {}",
+                        feature_cycle,
+                        e
+                    );
+                    vec![]
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "lesson-learned embedding task panicked for {}: {}",
+                        feature_cycle,
+                        e
+                    );
+                    vec![]
+                }
+            }
+        }
+        Err(e) => {
+            tracing::warn!(
+                "lesson-learned embed adapter not ready for {}: {}",
+                feature_cycle,
+                e
+            );
+            vec![]
+        }
+    };
+
+    // 5. Build NewEntry
+    let new_entry = unimatrix_core::NewEntry {
+        title,
+        content,
+        topic: topic.clone(),
+        category: "lesson-learned".to_string(),
+        tags: vec![
+            format!("feature_cycle:{}", feature_cycle),
+            format!("hotspot_count:{}", report.hotspots.len()),
+            "source:retrospective".to_string(),
+        ],
+        source: String::new(),
+        status: Status::Active,
+        created_by: "cortical-implant".to_string(),
+        feature_cycle: feature_cycle.to_string(),
+        trust_source: "system".to_string(),
+    };
+
+    // 6. Insert via insert_with_audit (ADR-002: atomic ENTRIES + VECTOR_MAP + HNSW + audit)
+    let audit_event = AuditEvent {
+        event_id: 0,
+        timestamp: 0,
+        session_id: String::new(),
+        agent_id: "cortical-implant".to_string(),
+        operation: "context_retrospective/lesson-learned".to_string(),
+        target_ids: vec![],
+        outcome: Outcome::Success,
+        detail: format!("auto-persist lesson-learned for {}", feature_cycle),
+    };
+
+    let (new_id, _record) = server
+        .insert_with_audit(new_entry, embedding, audit_event)
+        .await?;
+
+    // 7. Supersede chain: deprecate old, link new → old and old → new
+    if let Some(old_id) = supersedes_id {
+        let store = Arc::clone(&server.store);
+        let _ = tokio::task::spawn_blocking(move || {
+            // Deprecate old entry (handles STATUS_INDEX + counters internally)
+            if let Err(e) = store.update_status(old_id, Status::Deprecated) {
+                tracing::warn!("failed to deprecate prior lesson-learned {}: {}", old_id, e);
+                return;
+            }
+            // Link old → new
+            if let Ok(mut old_entry) = store.get(old_id) {
+                old_entry.superseded_by = Some(new_id);
+                let _ = store.update(old_entry);
+            }
+            // Link new → old
+            if let Ok(mut new_entry) = store.get(new_id) {
+                new_entry.supersedes = Some(old_id);
+                let _ = store.update(new_entry);
+            }
+        })
+        .await;
+    }
+
+    // 8. Seed confidence on new entry (best-effort)
+    {
+        let store = Arc::clone(&server.store);
+        let _ = tokio::task::spawn_blocking(move || {
+            if let Ok(entry) = store.get(new_id) {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                let conf = unimatrix_engine::confidence::compute_confidence(&entry, now);
+                let _ = store.update_confidence(new_id, conf);
+            }
+        })
+        .await;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -2646,6 +2885,7 @@ mod tests {
         let params: RetrospectiveParams = serde_json::from_str(json).unwrap();
         assert_eq!(params.feature_cycle, "col-002");
         assert!(params.agent_id.is_none());
+        assert!(params.evidence_limit.is_none());
     }
 
     #[test]
@@ -2654,5 +2894,168 @@ mod tests {
         let params: RetrospectiveParams = serde_json::from_str(json).unwrap();
         assert_eq!(params.feature_cycle, "nxs-001");
         assert_eq!(params.agent_id.unwrap(), "test-agent");
+    }
+
+    // -- col-010b: evidence_limit tests --
+
+    #[test]
+    fn test_retrospective_params_evidence_limit() {
+        let json = r#"{"feature_cycle": "col-010b", "evidence_limit": 5}"#;
+        let params: RetrospectiveParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.evidence_limit, Some(5));
+    }
+
+    #[test]
+    fn test_retrospective_params_evidence_limit_zero() {
+        let json = r#"{"feature_cycle": "col-010b", "evidence_limit": 0}"#;
+        let params: RetrospectiveParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.evidence_limit, Some(0));
+    }
+
+    #[test]
+    fn test_evidence_limit_default() {
+        let params: RetrospectiveParams =
+            serde_json::from_str(r#"{"feature_cycle": "test"}"#).unwrap();
+        assert_eq!(params.evidence_limit.unwrap_or(3), 3);
+    }
+
+    // -- col-010b: clone-and-truncate tests --
+
+    #[test]
+    fn test_clone_and_truncate_preserves_original() {
+        let evidence: Vec<unimatrix_observe::EvidenceRecord> = (0..10)
+            .map(|i| unimatrix_observe::EvidenceRecord {
+                description: format!("event {}", i),
+                ts: i * 1000,
+                tool: None,
+                detail: String::new(),
+            })
+            .collect();
+        let report = unimatrix_observe::RetrospectiveReport {
+            feature_cycle: "test".to_string(),
+            session_count: 1,
+            total_records: 10,
+            metrics: unimatrix_observe::MetricVector::default(),
+            hotspots: vec![unimatrix_observe::HotspotFinding {
+                category: unimatrix_observe::HotspotCategory::Friction,
+                severity: unimatrix_observe::Severity::Warning,
+                rule_name: "test".to_string(),
+                claim: "test".to_string(),
+                measured: 10.0,
+                threshold: 1.0,
+                evidence,
+            }],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![],
+        };
+
+        // Clone and truncate
+        let mut truncated = report.clone();
+        for h in &mut truncated.hotspots {
+            h.evidence.truncate(3);
+        }
+
+        // Truncated has 3
+        assert_eq!(truncated.hotspots[0].evidence.len(), 3);
+        // Original still has 10
+        assert_eq!(report.hotspots[0].evidence.len(), 10);
+    }
+
+    // -- col-010b: build_lesson_learned_content tests --
+
+    #[test]
+    fn test_build_lesson_learned_content_with_hotspots() {
+        let report = unimatrix_observe::RetrospectiveReport {
+            feature_cycle: "test".to_string(),
+            session_count: 0,
+            total_records: 0,
+            metrics: unimatrix_observe::MetricVector::default(),
+            hotspots: vec![unimatrix_observe::HotspotFinding {
+                category: unimatrix_observe::HotspotCategory::Friction,
+                severity: unimatrix_observe::Severity::Warning,
+                rule_name: "permission_retries".to_string(),
+                claim: "8 retries detected".to_string(),
+                measured: 8.0,
+                threshold: 3.0,
+                evidence: vec![],
+            }],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![unimatrix_observe::Recommendation {
+                hotspot_type: "permission_retries".to_string(),
+                action: "Add to allowlist".to_string(),
+                rationale: "saves time".to_string(),
+            }],
+        };
+
+        let content = build_lesson_learned_content(&report);
+        assert!(content.contains("permission_retries"));
+        assert!(content.contains("8 retries detected"));
+        assert!(content.contains("Add to allowlist"));
+    }
+
+    #[test]
+    fn test_build_lesson_learned_content_with_narratives() {
+        let report = unimatrix_observe::RetrospectiveReport {
+            feature_cycle: "test".to_string(),
+            session_count: 0,
+            total_records: 0,
+            metrics: unimatrix_observe::MetricVector::default(),
+            hotspots: vec![unimatrix_observe::HotspotFinding {
+                category: unimatrix_observe::HotspotCategory::Friction,
+                severity: unimatrix_observe::Severity::Warning,
+                rule_name: "permission_retries".to_string(),
+                claim: "8 retries detected".to_string(),
+                measured: 8.0,
+                threshold: 3.0,
+                evidence: vec![],
+            }],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: Some(vec![unimatrix_observe::HotspotNarrative {
+                hotspot_type: "permission_retries".to_string(),
+                summary: "Permission retries clustered around build commands".to_string(),
+                clusters: vec![],
+                top_files: vec![],
+                sequence_pattern: None,
+            }]),
+            recommendations: vec![unimatrix_observe::Recommendation {
+                hotspot_type: "permission_retries".to_string(),
+                action: "Add to allowlist".to_string(),
+                rationale: "saves time".to_string(),
+            }],
+        };
+
+        let content = build_lesson_learned_content(&report);
+        // With narratives present, should use narrative summary (not hotspot claim)
+        assert!(content.contains("Permission retries clustered"));
+        assert!(!content.contains("8 retries detected"));
+        // Recommendations always included
+        assert!(content.contains("Add to allowlist"));
+    }
+
+    #[test]
+    fn test_build_lesson_learned_content_empty_fallback() {
+        let report = unimatrix_observe::RetrospectiveReport {
+            feature_cycle: "test".to_string(),
+            session_count: 0,
+            total_records: 0,
+            metrics: unimatrix_observe::MetricVector::default(),
+            hotspots: vec![],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![],
+        };
+
+        let content = build_lesson_learned_content(&report);
+        assert!(!content.is_empty());
     }
 }

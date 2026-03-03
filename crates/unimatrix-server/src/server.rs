@@ -202,6 +202,9 @@ impl UnimatrixServer {
         // Allocate HNSW data_id before the transaction (GH #14)
         let data_id = self.vector_index.allocate_data_id();
 
+        // Capture embedding dimension before moving into closure (col-010b fix)
+        let embedding_dim = embedding.len() as u16;
+
         // Step 1: Combined write transaction (spawn_blocking for redb)
         let (entry_id, record) = tokio::task::spawn_blocking(move || -> Result<(u64, EntryRecord), ServerError> {
             let txn = store.begin_write()
@@ -236,7 +239,7 @@ impl UnimatrixServer {
                 supersedes: None,
                 superseded_by: None,
                 correction_count: 0,
-                embedding_dim: 0,
+                embedding_dim,
                 created_by: entry.created_by.clone(),
                 modified_by: entry.created_by,
                 content_hash,
@@ -334,8 +337,12 @@ impl UnimatrixServer {
         }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
 
         // Step 2: Insert into HNSW only (VECTOR_MAP already committed)
-        self.vector_index.insert_hnsw_only(entry_id, data_id, &embedding)
-            .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
+        // Skip when embedding is empty (e.g. ONNX model not loaded) — entry is still
+        // stored and searchable by topic/category/tags, just not by vector similarity.
+        if !embedding.is_empty() {
+            self.vector_index.insert_hnsw_only(entry_id, data_id, &embedding)
+                .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
+        }
 
         Ok((entry_id, record))
     }
@@ -354,6 +361,9 @@ impl UnimatrixServer {
         let store = Arc::clone(&self.store);
         let audit_log = Arc::clone(&self.audit);
         let data_id = self.vector_index.allocate_data_id();
+
+        // Capture embedding dimension before moving into closure (col-010b fix)
+        let embedding_dim = embedding.len() as u16;
 
         let (deprecated_original, new_correction) = tokio::task::spawn_blocking(move || -> Result<(EntryRecord, EntryRecord), ServerError> {
             let txn = store.begin_write()
@@ -448,7 +458,7 @@ impl UnimatrixServer {
                 supersedes: Some(original_id),
                 superseded_by: None,
                 correction_count: 0,
-                embedding_dim: 0,
+                embedding_dim,
                 created_by: correction_entry.created_by.clone(),
                 modified_by: correction_entry.created_by,
                 content_hash,
@@ -531,8 +541,10 @@ impl UnimatrixServer {
         }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
 
         // HNSW insert for the correction (after commit)
-        self.vector_index.insert_hnsw_only(new_correction.id, data_id, &embedding)
-            .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
+        if !embedding.is_empty() {
+            self.vector_index.insert_hnsw_only(new_correction.id, data_id, &embedding)
+                .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
+        }
 
         Ok((deprecated_original, new_correction))
     }
@@ -1956,5 +1968,138 @@ mod tests {
         // Second drain is idempotent
         let second = pending.drain_all();
         assert!(second.is_empty());
+    }
+
+    // -- col-010b: embedding_dim tests (T-LL-08..10) --
+
+    #[tokio::test]
+    async fn insert_with_audit_sets_embedding_dim() {
+        let server = make_server();
+        let entry = NewEntry {
+            title: "test".to_string(),
+            content: "test content".to_string(),
+            topic: "test/topic".to_string(),
+            category: "decision".to_string(),
+            tags: vec![],
+            source: String::new(),
+            status: unimatrix_core::Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: String::new(),
+            trust_source: "system".to_string(),
+        };
+        let embedding: Vec<f32> = vec![0.1; 384];
+        let audit = crate::audit::AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: "test".to_string(),
+            operation: "test".to_string(),
+            target_ids: vec![],
+            outcome: crate::audit::Outcome::Success,
+            detail: "test".to_string(),
+        };
+
+        let (_id, record) = server.insert_with_audit(entry, embedding, audit).await.unwrap();
+        assert_eq!(record.embedding_dim, 384, "embedding_dim must match embedding vector length");
+    }
+
+    #[tokio::test]
+    async fn insert_with_audit_empty_embedding_skips_hnsw() {
+        // Empty embedding = ONNX model not loaded or embedding failed.
+        // Entry is still written to store (searchable by topic/category/tags),
+        // HNSW insert is skipped, embedding_dim is 0.
+        let server = make_server();
+        let entry = NewEntry {
+            title: "test".to_string(),
+            content: "test content".to_string(),
+            topic: "test/topic".to_string(),
+            category: "decision".to_string(),
+            tags: vec![],
+            source: String::new(),
+            status: unimatrix_core::Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: String::new(),
+            trust_source: "system".to_string(),
+        };
+        let embedding: Vec<f32> = vec![];
+        let audit = crate::audit::AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: "test".to_string(),
+            operation: "test".to_string(),
+            target_ids: vec![],
+            outcome: crate::audit::Outcome::Success,
+            detail: "test".to_string(),
+        };
+
+        let (id, record) = server.insert_with_audit(entry, embedding, audit).await.unwrap();
+        assert!(id > 0, "entry should be written to store");
+        assert_eq!(record.embedding_dim, 0, "empty embedding means embedding_dim = 0");
+    }
+
+    #[tokio::test]
+    async fn correct_with_audit_sets_embedding_dim() {
+        let server = make_server();
+        // First insert an entry to correct
+        let entry = NewEntry {
+            title: "original".to_string(),
+            content: "original content".to_string(),
+            topic: "test/topic".to_string(),
+            category: "decision".to_string(),
+            tags: vec![],
+            source: String::new(),
+            status: unimatrix_core::Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: String::new(),
+            trust_source: "system".to_string(),
+        };
+        let embedding: Vec<f32> = vec![0.1; 384];
+        let audit = crate::audit::AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: "test".to_string(),
+            operation: "test".to_string(),
+            target_ids: vec![],
+            outcome: crate::audit::Outcome::Success,
+            detail: "test".to_string(),
+        };
+        let (original_id, _) = server.insert_with_audit(entry, embedding, audit).await.unwrap();
+
+        // Now correct it with a new embedding
+        let correction_entry = NewEntry {
+            title: "corrected".to_string(),
+            content: "corrected content".to_string(),
+            topic: "test/topic".to_string(),
+            category: "decision".to_string(),
+            tags: vec![],
+            source: String::new(),
+            status: unimatrix_core::Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: String::new(),
+            trust_source: "system".to_string(),
+        };
+        let correction_embedding: Vec<f32> = vec![0.2; 384];
+        let correction_audit = crate::audit::AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: "test".to_string(),
+            operation: "correct".to_string(),
+            target_ids: vec![],
+            outcome: crate::audit::Outcome::Success,
+            detail: "correction".to_string(),
+        };
+        let (_deprecated, new_correction) = server
+            .correct_with_audit(
+                original_id,
+                correction_entry,
+                correction_embedding,
+                correction_audit,
+            )
+            .await
+            .unwrap();
+        assert_eq!(new_correction.embedding_dim, 384, "correction embedding_dim must match embedding vector length");
     }
 }
