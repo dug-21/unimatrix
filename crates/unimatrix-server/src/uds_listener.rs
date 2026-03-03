@@ -14,9 +14,9 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use unimatrix_adapt::AdaptationService;
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-use unimatrix_core::{EmbedService, NewEntry, SearchResult, Status, StoreAdapter, VectorAdapter};
+use unimatrix_core::{EmbedService, NewEntry, Status, StoreAdapter, VectorAdapter};
 use unimatrix_engine::auth;
-use unimatrix_engine::coaccess::{compute_search_boost, generate_pairs, CO_ACCESS_STALENESS_SECONDS};
+use unimatrix_engine::coaccess::generate_pairs;
 use unimatrix_engine::confidence::rerank_score;
 use unimatrix_engine::wire::{
     EntryPayload, HookRequest, HookResponse, ERR_INVALID_PAYLOAD, ERR_UNKNOWN_REQUEST,
@@ -84,9 +84,6 @@ const CONFIDENCE_FLOOR: f64 = 0.3;
 
 /// Maximum number of entries to search for in injection.
 const INJECTION_K: usize = 5;
-
-/// HNSW expansion factor (mirrors tools.rs constant).
-const EF_SEARCH: usize = 32;
 
 /// Total byte budget for compaction payload (~2000 tokens).
 const MAX_COMPACTION_BYTES: usize = 8000;
@@ -170,6 +167,7 @@ pub async fn start_uds_listener(
     pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
     server_uid: u32,
     server_version: String,
+    services: crate::services::ServiceLayer,
 ) -> io::Result<(tokio::task::JoinHandle<()>, SocketGuard)> {
     let listener = tokio::net::UnixListener::bind(socket_path)?;
 
@@ -198,6 +196,7 @@ pub async fn start_uds_listener(
             server_uid,
             server_version,
             socket_path_display,
+            services,
         )
         .await;
     });
@@ -220,6 +219,7 @@ async fn accept_loop(
     server_uid: u32,
     server_version: String,
     socket_path_display: String,
+    services: crate::services::ServiceLayer,
 ) {
     loop {
         match listener.accept().await {
@@ -232,6 +232,7 @@ async fn accept_loop(
                 let session_registry = Arc::clone(&session_registry);
                 let pending_entries_analysis = Arc::clone(&pending_entries_analysis);
                 let version = server_version.clone();
+                let services = services.clone();
 
                 // Per-connection handler in its own task (panic isolation -- R-19)
                 tokio::spawn(async move {
@@ -246,6 +247,7 @@ async fn accept_loop(
                         pending_entries_analysis,
                         server_uid,
                         version,
+                        services,
                     )
                     .await
                     {
@@ -280,6 +282,7 @@ async fn handle_connection(
     pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
     server_uid: u32,
     server_version: String,
+    services: crate::services::ServiceLayer,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Convert to std for auth (peer credential extraction uses std::os::unix)
     let std_stream = stream.into_std()?;
@@ -353,6 +356,7 @@ async fn handle_connection(
         &server_version,
         &session_registry,
         &pending_entries_analysis,
+        &services,
     )
     .await;
 
@@ -369,12 +373,13 @@ async fn dispatch_request(
     request: HookRequest,
     store: &Arc<Store>,
     embed_service: &Arc<EmbedServiceHandle>,
-    vector_store: &Arc<AsyncVectorStore<VectorAdapter>>,
+    _vector_store: &Arc<AsyncVectorStore<VectorAdapter>>,
     entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
-    adapt_service: &Arc<AdaptationService>,
+    _adapt_service: &Arc<AdaptationService>,
     server_version: &str,
     session_registry: &SessionRegistry,
     pending_entries_analysis: &Arc<Mutex<PendingEntriesAnalysis>>,
+    services: &crate::services::ServiceLayer,
 ) -> HookResponse {
     match request {
         HookRequest::Ping => HookResponse::Pong {
@@ -544,11 +549,8 @@ async fn dispatch_request(
                 session_id,
                 k,
                 store,
-                embed_service,
-                vector_store,
-                entry_store,
-                adapt_service,
                 session_registry,
+                services,
             )
             .await
         }
@@ -588,62 +590,40 @@ async fn handle_context_search(
     session_id: Option<String>,
     k: Option<u32>,
     store: &Arc<Store>,
-    embed_service: &Arc<EmbedServiceHandle>,
-    vector_store: &Arc<AsyncVectorStore<VectorAdapter>>,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
-    adapt_service: &Arc<AdaptationService>,
     session_registry: &SessionRegistry,
+    services: &crate::services::ServiceLayer,
 ) -> HookResponse {
     let k = k.map(|v| v as usize).unwrap_or(INJECTION_K);
 
-    // 1. Get embedding adapter
-    let adapter = match embed_service.get_adapter().await {
-        Ok(a) => a,
-        Err(_) => {
-            // EmbedNotReady or EmbedFailed: return empty results (FR-02.6)
-            tracing::debug!("embed service not ready, returning empty entries");
-            return HookResponse::Entries {
-                items: vec![],
-                total_tokens: 0,
-            };
-        }
+    // 1. Build AuditContext (UDS transport)
+    let audit_ctx = crate::services::AuditContext {
+        source: crate::services::AuditSource::Uds {
+            uid: 0,
+            pid: None,
+            session_id: session_id.clone().unwrap_or_default(),
+        },
+        caller_id: "uds".to_string(),
+        session_id: session_id.clone(),
+        feature_cycle: None,
     };
 
-    // 2. Embed query via spawn_blocking
-    let raw_embedding: Vec<f32> = match tokio::task::spawn_blocking({
-        let adapter = Arc::clone(&adapter);
-        let q = query.clone();
-        move || adapter.embed_entry("", &q)
-    })
-    .await
-    {
-        Ok(Ok(embedding)) => embedding,
-        Ok(Err(e)) => {
-            tracing::warn!("embedding failed: {e}");
-            return HookResponse::Entries {
-                items: vec![],
-                total_tokens: 0,
-            };
-        }
-        Err(e) => {
-            tracing::warn!("spawn_blocking failed: {e}");
-            return HookResponse::Entries {
-                items: vec![],
-                total_tokens: 0,
-            };
-        }
+    // 2. Build ServiceSearchParams with UDS-specific floors
+    let service_params = crate::services::ServiceSearchParams {
+        query: query.clone(),
+        k,
+        filters: None, // UDS doesn't pass metadata filters
+        similarity_floor: Some(SIMILARITY_FLOOR),
+        confidence_floor: Some(CONFIDENCE_FLOOR),
+        feature_tag: None,
+        co_access_anchors: None,
+        caller_agent_id: None,
     };
 
-    // 3. Adapt + normalize (mirrors tools.rs step 7b)
-    let adapted = adapt_service.adapt_embedding(&raw_embedding, None, None);
-    let embedding = unimatrix_embed::l2_normalized(&adapted);
-
-    // 4. HNSW search (unfiltered -- hooks don't pass metadata filters)
-    let search_results: Vec<SearchResult> = match vector_store.search(embedding, k, EF_SEARCH).await
-    {
+    // 3. Delegate to SearchService
+    let search_results = match services.search.search(service_params, &audit_ctx).await {
         Ok(results) => results,
         Err(e) => {
-            tracing::warn!("vector search failed: {e}");
+            tracing::warn!("search service error: {e}");
             return HookResponse::Entries {
                 items: vec![],
                 total_tokens: 0,
@@ -651,82 +631,11 @@ async fn handle_context_search(
         }
     };
 
-    // 5. Fetch entries, exclude quarantined (mirrors tools.rs step 9)
-    let mut results_with_scores = Vec::new();
-    for sr in &search_results {
-        match entry_store.get(sr.entry_id).await {
-            Ok(entry) => {
-                if entry.status == Status::Quarantined {
-                    continue;
-                }
-                results_with_scores.push((entry, sr.similarity));
-            }
-            Err(_) => continue, // silently skip deleted entries
-        }
-    }
-
-    // 6. Re-rank: 0.85*similarity + 0.15*confidence + provenance (mirrors tools.rs step 9b, col-010b)
-    results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-        let prov_a = if entry_a.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
-        let prov_b = if entry_b.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
-        let score_a = rerank_score(*sim_a, entry_a.confidence) + prov_a;
-        let score_b = rerank_score(*sim_b, entry_b.confidence) + prov_b;
-        score_b
-            .partial_cmp(&score_a)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-
-    // 7. Co-access boost (mirrors tools.rs step 9c)
-    if results_with_scores.len() > 1 {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let staleness_cutoff = now.saturating_sub(CO_ACCESS_STALENESS_SECONDS);
-
-        let anchor_count = results_with_scores.len().min(3);
-        let anchor_ids: Vec<u64> = results_with_scores
-            .iter()
-            .take(anchor_count)
-            .map(|(e, _)| e.id)
-            .collect();
-        let result_ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
-
-        let store_clone = Arc::clone(store);
-        let boost_map = tokio::task::spawn_blocking(move || {
-            compute_search_boost(&anchor_ids, &result_ids, &store_clone, staleness_cutoff)
-        })
-        .await
-        .unwrap_or_else(|e| {
-            tracing::warn!("co-access boost task failed: {e}");
-            HashMap::new()
-        });
-
-        if !boost_map.is_empty() {
-            // Re-sort with co-access boost + provenance boost (col-010b)
-            results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-                let base_a = rerank_score(*sim_a, entry_a.confidence);
-                let base_b = rerank_score(*sim_b, entry_b.confidence);
-                let boost_a = boost_map.get(&entry_a.id).copied().unwrap_or(0.0);
-                let boost_b = boost_map.get(&entry_b.id).copied().unwrap_or(0.0);
-                let prov_a = if entry_a.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
-                let prov_b = if entry_b.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
-                let final_a = base_a + boost_a + prov_a;
-                let final_b = base_b + boost_b + prov_b;
-                final_b
-                    .partial_cmp(&final_a)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
-        }
-    }
-
-    // 8. Truncate to k
-    results_with_scores.truncate(k);
-
-    // 9. Filter by similarity and confidence floors
-    let filtered: Vec<_> = results_with_scores
-        .into_iter()
-        .filter(|(entry, sim)| *sim >= SIMILARITY_FLOOR && entry.confidence >= CONFIDENCE_FLOOR)
+    // 4. Convert SearchResults to filtered (entry, similarity) pairs
+    let filtered: Vec<_> = search_results
+        .entries
+        .iter()
+        .map(|se| (se.entry.clone(), se.similarity))
         .collect();
 
     // 10. Injection tracking (col-008)
@@ -1587,6 +1496,32 @@ mod tests {
         (async_vector_store, async_entry_store, adapt_service)
     }
 
+    fn make_services(
+        store: &Arc<Store>,
+        embed: &Arc<EmbedServiceHandle>,
+        vs: &Arc<AsyncVectorStore<VectorAdapter>>,
+        es: &Arc<AsyncEntryStore<StoreAdapter>>,
+        adapt: &Arc<AdaptationService>,
+    ) -> crate::services::ServiceLayer {
+        let vector_index = Arc::new(
+            unimatrix_core::VectorIndex::new(
+                Arc::clone(store),
+                unimatrix_core::VectorConfig::default(),
+            )
+            .unwrap(),
+        );
+        let audit = Arc::new(crate::audit::AuditLog::new(Arc::clone(store)));
+        crate::services::ServiceLayer::new(
+            Arc::clone(store),
+            vector_index,
+            Arc::clone(vs),
+            Arc::clone(es),
+            Arc::clone(embed),
+            Arc::clone(adapt),
+            audit,
+        )
+    }
+
     // -- SocketGuard tests --
 
     #[test]
@@ -1642,7 +1577,7 @@ mod tests {
 
         let response = dispatch_request(
             HookRequest::Ping,
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
         match response {
             HookResponse::Pong { server_version } => assert_eq!(server_version, "0.1.0"),
@@ -1664,7 +1599,7 @@ mod tests {
                 agent_role: Some("dev".to_string()),
                 feature: Some("col-008".to_string()),
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
         assert!(matches!(response, HookResponse::Ack));
 
@@ -1690,7 +1625,7 @@ mod tests {
                 outcome: Some("success".to_string()),
                 duration_secs: 60,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
         assert!(matches!(response, HookResponse::Ack));
 
@@ -1713,7 +1648,7 @@ mod tests {
         };
         let response = dispatch_request(
             HookRequest::RecordEvent { event },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
         assert!(matches!(response, HookResponse::Ack));
     }
@@ -1732,7 +1667,7 @@ mod tests {
                 feature: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
         match response {
             HookResponse::Error { code, .. } => assert_eq!(code, ERR_UNKNOWN_REQUEST),
@@ -1757,7 +1692,7 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
         match response {
             HookResponse::Entries { items, total_tokens } => {
@@ -1786,7 +1721,7 @@ mod tests {
                 outcome: None,
                 duration_secs: 0,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
 
         // After clear + re-register, same set should be considered new
@@ -1811,7 +1746,7 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
         match response {
             HookResponse::BriefingContent { content, token_count } => {
@@ -1840,7 +1775,7 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
 
         assert_eq!(registry.get_state("s1").unwrap().compaction_count, 1);
@@ -2098,7 +2033,7 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
 
         match response {
@@ -2166,7 +2101,7 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(),
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
 
         match response {

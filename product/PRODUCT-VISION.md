@@ -61,8 +61,14 @@ Security is a cross-cutting concern woven into existing features, not a separate
 | v0.2 Tools | `vnc-003` | `context_correct` (supersede with correction chain), `context_deprecate` (mark irrelevant), `context_status` (health metrics — counts, age distribution, stale entries, duplicate candidates), `context_briefing` (compiled orientation — lookup duties + conventions + search task-relevant patterns in one call, <2000 token target). **Security**: Content scanning on `context_correct` writes. Capability checks (Write for correct/deprecate, Admin for status, Read for briefing). Security metrics in `context_status` — entries by trust_source, entries without attribution, write frequency by agent, content_hash mismatches. |
 | Server Process Reliability | `vnc-004` | PID file lifecycle hardening via RAII `PidGuard` with `fs2` advisory locking (flock). Process identity verification (`/proc/{pid}/cmdline` on Linux) before SIGTERM of stale processes. `DatabaseLocked` error variant replaces `process::exit(1)` — all exit paths use Rust error propagation. Poison recovery for `CategoryAllowlist` RwLock (`.unwrap_or_else(\|e\| e.into_inner())`). Eliminates cascading process lifecycle failures during extended sessions. Bug fix for #52. |
 | Config Externalization | `vnc-005` | Extract domain-specific constants into `ServerConfig` loaded from `~/.unimatrix/config.toml` or per-project config file. Four items externalized: (1) initial category allowlist (replace `INITIAL_CATEGORIES` const), (2) server instructions text (replace `SERVER_INSTRUCTIONS` const), (3) default agent bootstrap (replace hardcoded `bootstrap_defaults()`), (4) content scanning pattern extensions (additive to built-in patterns). Fall back to current dev-focused defaults when no config file present — zero breaking changes. Enables multi-domain deployment (SRE, product management, scientific research, etc.) by swapping a config file, not rebuilding the binary. **Does not block M4** — can be implemented in parallel or between features. See `product/research/ass-009/` for domain opportunity analysis. |
+| Service Layer + Security Gateway | `vnc-006` | **Wave 1 of server refactoring.** Extract transport-agnostic service layer from duplicated MCP/UDS business logic. SearchService unifies ~400 lines of duplicated search/rank/boost logic. ConfidenceService consolidates 8 fire-and-forget blocks (~160 lines). Security Gateway (S1-S5) enforces content scanning, input validation, quarantine exclusion, and structured audit at the service level — closing the critical UDS security gap (F-25/F-27/F-28: zero content scanning, zero query validation, zero audit trail on UDS path). `AuditContext` on all service methods with `session_id` + `feature_cycle` for retrospective compatibility. Internal caller concept for service-initiated writes (auto-outcome). Like-for-like behavior — zero functional changes to either transport path. See `product/research/optimizations/server-refactoring-architecture.md`. |
+| Briefing Unification | `vnc-007` | **Wave 2 of server refactoring.** Extract BriefingService unifying `context_briefing` (MCP, 223 lines) and `handle_compact_payload` (UDS, 266 lines) behind one assembly service. Extract StoreService with S1 content scan hard-reject and S2 rate limiting on writes (60/hour per caller, closes F-09). Wire `HookRequest::Briefing` for UDS-native briefing delivery. Remove duties section (per col-011). Behavioral change — validated independently from vnc-006. See `product/research/optimizations/briefing-evolution.md`. |
+| Module Reorganization | `vnc-008` | **Wave 3 of server refactoring.** Restructure 23 flat modules into `services/`, `mcp/`, `uds/`, `infra/` groups. Split `response.rs` (2,550 lines) into `mcp/response/` sub-module (4 files, Refactor #6 + #9). Extract `ToolContext` reducing 12 MCP handler ceremonies. Split `context_status` (628 lines) into StatusService. Introduce unified capability model: `SessionWrite` capability, UDS fixed to `{Read, Search, SessionWrite}` (closes F-26). Pure restructuring — no behavioral changes. |
+| Cross-Path Convergence | `vnc-009` | **Wave 4 of server refactoring.** Unified UsageService (merge MCP usage recording with UDS injection logging). Session-aware MCP (optional `session_id` param). Rate limiting on search (300/hour per caller). `#[derive(Serialize)]` on StatusReport (eliminates ~130 lines of `json!` macros). UDS auth failure audit logging (closes F-23). Strategic — positions for future HTTP transport. |
 
-**Ships**: Agents can search, store, correct, and receive briefings. Knowledge accumulates across features. Server process reliability ensures stable long-running sessions. Config externalization enables multi-domain deployment.
+**Ships**: Agents can search, store, correct, and receive briefings. Knowledge accumulates across features. Server process reliability ensures stable long-running sessions. Config externalization enables multi-domain deployment. Service layer extraction unifies dual-path architecture, closes UDS security gaps, and positions for future transport additions (HTTP/API).
+
+**Architect note — database layer**: The service layer extraction (vnc-006–009) abstracts business logic away from direct storage access, which is a prerequisite for any future database replacement. Replacing redb with an alternative storage engine (e.g., SQLite, DuckDB, or a networked database for multi-user scenarios) is **not in scope** for vnc-006–009, but the refactoring must not introduce new direct-storage coupling. StoreService and `Store::insert_in_txn` should be the only paths to the database from the service layer. Architects scoping vnc-006 design should treat storage abstraction as a constraint.
 
 ---
 
@@ -131,7 +137,7 @@ Security is a cross-cutting concern woven into existing features, not a separate
 | Feature Lifecycle | `col-004` | Feature-scoped context: `context_briefing` with `feature` param returns feature-specific decisions + cross-feature patterns. Gate status tracking — which gates passed/failed for active features. |
 | Auto-Knowledge Extraction | `col-005` | Derive durable project knowledge from observation telemetry automatically — without consuming agent context window. Three extraction tiers: **Tier 1** (high confidence) structural conventions from file creation patterns — safe to auto-extract after cross-feature validation. **Tier 2** (medium) procedural knowledge from ordered tool-call sequences — require 3+ features showing identical sequence before promotion. **Tier 3** (medium-high) dependency graphs from read-before-edit chains. Depends on col-002 having accumulated 5+ feature metric vectors. See `product/research/ass-013/auto-knowledge.md`. |
 
-**Status (2026-03-02):** col-001 ✅, col-002 ✅ (#56, PR #58), col-002b ✅ (#57, PR #60), col-006 ✅ (#63, PR #64), col-007 ✅ (#67, PR #68), col-008 ← IN PROGRESS (#69). Hook delivery (col-006–011) is the immediate priority — the "nervous system" connecting Unimatrix's engine to agents automatically. col-003/004 follow after delivery features. col-005 blocked until 5+ feature retrospectives accumulated.
+**Status (2026-03-03):** col-001 ✅, col-002 ✅ (#56, PR #58), col-002b ✅ (#57, PR #60), col-006 ✅ (#63, PR #64), col-007 ✅ (#67, PR #68), col-008 ← IN PROGRESS (#69), col-009 ✅ (#73/#74), col-010 ✅ (#76/#77), col-010b ✅ (#65/#78). **Priority shift**: vnc-006 (Service Layer + Security Gateway) is next after col-008 completes. Refactoring the dual-path architecture before adding more features on it is the prudent path — the UDS security gaps (F-25/F-27/F-28) and ~760 lines of duplication compound with each new feature. col-003/004 follow after delivery features. col-005 blocked until 5+ feature retrospectives accumulated.
 
 **Ships**: Automatic knowledge delivery via hooks — every agent prompt enriched, compaction resilient, confidence feedback closed-loop. System observes agent behavior, identifies process hotspots from evidence, and proposes improvements. Knowledge base self-populates from observation after sufficient iteration. This is the Proposal A → C transition.
 
@@ -254,18 +260,25 @@ M1: Foundation (nxs)         ✅ COMPLETE
       │    ├─► col-001: Outcome Tracking  ✅ COMPLETE
       │    ├─► col-002/002b: Retrospective  ✅ COMPLETE
       │    │    └─► col-005: Auto-Knowledge  ← blocked: needs 5+ retrospectives
-      │    ├─► M5: Orchestration Engine (col)  ← IMMEDIATE PRIORITY
-      │    │    ├─► ASS-014: Cortical Implant Architecture  ← research spike
+      │    ├─► M5: Orchestration Engine (col)
+      │    │    ├─► ASS-014: Cortical Implant Architecture  ✅ COMPLETE
       │    │    │    └─► col-006: Hook Transport  ✅ COMPLETE
       │    │    │         ├─► col-007: Context Injection  ✅ COMPLETE
       │    │    │         │    └─► col-008: Compaction Resilience  ← IN PROGRESS
-      │    │    │         │         └─► col-009: Confidence Feedback  (schema v4: SIGNAL_QUEUE)
-      │    │    │         │              └─► col-010: Session Lifecycle  (schema v5: SESSIONS, INJECTION_LOG)
       │    │    │         └─► col-011: Agent Routing  ← independent
+      │    │    ├─► col-009: Confidence Feedback  ✅ COMPLETE (schema v4: SIGNAL_QUEUE)
+      │    │    │    └─► col-010/010b: Session Lifecycle  ✅ COMPLETE (schema v5: SESSIONS, INJECTION_LOG)
       │    │    ├─► col-003/004: Process Proposals + Feature Lifecycle
       │    │    └─► M6: Thin-Shell Migration (alc)  ← enabled by delivery
       │    └─► M7: Real-Time Interface (mtx)  ← deprioritized
       │         └─► M8: Multi-Project (dsn)
+      │
+      ├─► vnc-006: Service Layer + Security Gateway  ← NEXT (after col-008)
+      │    ├─► vnc-007: Briefing Unification
+      │    │    └─► vnc-008: Module Reorganization
+      │    │         └─► vnc-009: Cross-Path Convergence
+      │    └─► (future HTTP transport — enabled by service layer)
+      │
       └─► M3: Agent Integration (alc-003/004)  ← deferred
 
 M9: Build & Deploy (nan) — parallel track
@@ -281,6 +294,10 @@ M9: Build & Deploy (nan) — parallel track
 
 **col-009/col-010 scoping revision (2026-03-02):** ASS-014 originally proposed a separate infrastructure-only "col-010a" feature (schema migration only) shipping before col-009 to provide persistent session tables. Revised during col-009 scoping: col-009 owns its own schema migration (SIGNAL_QUEUE table, schema v4), consistent with prior convention (crt-001 owned USAGE_LOG, crt-005 owned the confidence f64 migration). Infrastructure-without-consumer creates a testing gap — SIGNAL_QUEUE is best validated by its writer, not by projected use in a prior feature. col-010 ships independently as the full session lifecycle + col-002 integration feature (schema v5: SESSIONS, INJECTION_LOG; `session_id` on EntryRecord is explicitly deferred — see SCOPE.md Non-Goals). No separate col-010a. See `product/research/ass-014/findings/feature-scoping.md` for the revised sizing and dependency graph.
 
+**Server refactoring priority (2026-03-03):** Comprehensive codebase analysis (`product/research/optimizations/`) revealed that unimatrix-server (19.6K lines, 43% of codebase) has accumulated structural debt from organic growth across ~15 feature cycles. The MCP and UDS paths duplicate ~600 lines of business logic with subtle divergences, and the UDS path has zero content scanning, zero authorization, and zero audit trail — a critical security gap that compounds with each new feature built on it. vnc-006 (Service Layer + Security Gateway) is inserted as the next priority after col-008 completes. col-009+ depends on vnc-006 — new features should be built on the unified service layer, not the duplicated architecture. vnc-007–009 follow as independent features. Each wave ships and merges independently.
+
+**Database replacement note (2026-03-03):** The service layer extraction (vnc-006–009) is a prerequisite for any future database replacement. By routing all storage access through services (SearchService, StoreService, etc.) rather than direct `redb` calls from transport layers, the foundation layer becomes swappable. Replacing the underlying database (redb → SQLite, DuckDB, networked DB) is **explicitly out of scope** for vnc-006–009 but is a foreseeable architectural evolution. Architects scoping vnc-006 design must treat this as a constraint: no new direct-storage coupling from service or transport layers.
+
 ## Phase-to-Proposal Mapping
 
 | Milestone | Proposal A territory | Proposal C territory |
@@ -289,6 +306,7 @@ M9: Build & Deploy (nan) — parallel track
 | M4 | Bridge — adds tracking infrastructure | First C capabilities active |
 | M5 (col-001/002) | — | Retrospective intelligence |
 | **M5 (col-006–011)** | — | **Automatic delivery — the A→C transition** |
+| **M2 (vnc-006–009)** | **Infrastructure — unified service layer, security, modularity** | **Enables transport-agnostic evolution** |
 | M5 (col-003/004) | — | Process proposals, feature lifecycle |
 | M3 | Formalized agent integration (deferred) | — |
 | M6 | — | Thin-shell agents (enabled by hooks) |
