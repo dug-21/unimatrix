@@ -32,11 +32,21 @@ From the Bugfix Manager's spawn prompt:
 - GH Issue URL or inline description
 - Previous diagnosis report path (if this is a rework after human feedback)
 
+## Before You Investigate
+
+Query Unimatrix for prior knowledge that may accelerate diagnosis:
+
+1. **Known bug patterns** — `/query-patterns` with the affected crate/module name to find recurring root cause patterns
+2. **Prior lessons** — `/knowledge-search` with query describing the symptom (e.g., "confidence scoring returns wrong value") to find lessons from past bugfixes
+3. **Related decisions** — `/knowledge-lookup` with `category: "decision"` and relevant topic to understand design intent
+
+Findings from these queries should inform your investigation — don't re-discover what the team already knows.
+
 ## What You Produce
 
 ### Diagnosis Report
 
-Write to `product/features/{feature-id}/agents/{agent-id}-report.md` (or to the feature directory most related to the bug):
+Post as a comment on the GH Issue (never write to filesystem):
 
 ```markdown
 # Bug Investigation Report: {agent-id}
@@ -124,10 +134,10 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 ## Knowledge Stewardship
 
 After completing your task, store reusable findings in Unimatrix:
-- Root cause patterns (recurring bug categories): `context_store(topic: "bug-investigator", category: "pattern")`
-- Debugging insights for specific subsystems: `context_store(topic: "bug-investigator", category: "lesson-learned")`
+- Debugging insights and root cause patterns: `/store-lesson` — e.g., "bincode positional encoding breaks when fields are added without migration" or "HNSW stale count grows silently after context_correct; check vector_map consistency"
+- If an existing lesson covers the same area but is incomplete: use `context_correct` to supersede it with the updated version (see `/store-lesson` for details)
 
-Do not store the specific bug diagnosis — that lives in the agent report.
+Only store generalizable insights — the specific bug diagnosis lives on the GH Issue, not in Unimatrix.
 
 ## Self-Check (Run Before Returning Results)
 
@@ -139,4 +149,4 @@ Do not store the specific bug diagnosis — that lives in the agent report.
 - [ ] Risk assessment includes blast radius and regression risk
 - [ ] Confidence level stated honestly
 - [ ] Missing test identified — describes what test should have caught this
-- [ ] Report written to the correct agent report path
+- [ ] Diagnosis posted as GH Issue comment (not written to filesystem)
