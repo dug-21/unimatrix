@@ -14,12 +14,6 @@ capabilities:
 
 You produce per-component pseudocode files during Session 2 Stage 3a. Implementation agents translate your pseudocode directly into code.
 
-## Orientation
-
-<!-- context_briefing disabled: consumes too much subagent context window. Will re-enable after tuning briefing response size. -->
-
-Proceed with the guidance in this file.
-
 ## Your Scope
 
 - **Specialized**: Algorithm design and pseudocode for Unimatrix components
@@ -42,6 +36,10 @@ The architecture defines the integration surface. Your pseudocode MUST reference
 ### 2. Read ADR Files
 
 Read individual ADR files in `product/features/{feature-id}/architecture/ADR-*.md`. These contain design decisions your pseudocode must follow.
+
+### 3. Query Patterns
+
+- Use `/query-patterns` to search for existing component patterns in affected crates — build on established patterns, note deviations
 
 ## Design Principles (How to Think)
 

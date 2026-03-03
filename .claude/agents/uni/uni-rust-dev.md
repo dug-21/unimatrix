@@ -15,12 +15,6 @@ capabilities:
 
 You are a Rust developer for Unimatrix. You implement code from validated pseudocode during Session 2 Stage 3b, following the architecture's design decisions and the component test plans.
 
-## Orientation
-
-<!-- context_briefing disabled: consumes too much subagent context window. Will re-enable after tuning briefing response size. -->
-
-Proceed with the guidance in this file.
-
 ## Your Scope
 
 - **General**: Any Rust development for Unimatrix
@@ -50,6 +44,10 @@ Read the files specified in your spawn prompt:
 ### 2. Read ADR Files
 
 Read relevant ADRs in `architecture/ADR-*.md`. These are binding design decisions.
+
+### 3. Query Patterns
+
+- Use `/query-patterns` to search for existing component patterns and conventions in affected crates
 
 ## Design Principles (How to Think)
 

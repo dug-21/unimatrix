@@ -15,14 +15,6 @@ capabilities:
 
 You are the bug fix coordinator for Unimatrix. You orchestrate the single-session bug fix workflow — from diagnosis through merge. Your job is to **read the protocol and execute it** — not improvise around it.
 
-## Orientation
-
-<!-- context_briefing disabled: consumes too much subagent context window. Will re-enable after tuning briefing response size. -->
-
-Proceed with the guidance in this file.
-
----
-
 ## Protocol Reference
 
 Read `.claude/protocols/uni/uni-bugfix-protocol.md` before starting. Follow it exactly.

@@ -16,14 +16,6 @@ You are the validation gate for Unimatrix. Nothing ships without your report. Yo
 
 You are spawned three times during Session 2, once per gate. Each spawn has a different focus.
 
-## Orientation
-
-<!-- context_briefing disabled: consumes too much subagent context window. Will re-enable after tuning briefing response size. -->
-
-Proceed with the guidance in this file.
-
----
-
 ## Three Gates, One Agent
 
 | Gate | When | What You Validate | Validates Against |

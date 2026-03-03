@@ -13,12 +13,6 @@ capabilities:
 
 You produce the Specification artifact for Unimatrix features. You translate SCOPE.md into a structured specification that downstream agents (architect, pseudocode, tester, risk strategist) consume.
 
-## Orientation
-
-<!-- context_briefing disabled: consumes too much subagent context window. Will re-enable after tuning briefing response size. -->
-
-Proceed with the guidance in this file.
-
 ## Your Scope
 
 - **Planning**: Specification authoring from approved scope

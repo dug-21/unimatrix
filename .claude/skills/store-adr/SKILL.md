@@ -1,126 +1,142 @@
 ---
 name: "store-adr"
-description: "Store an architectural decision record in Unimatrix. Use after producing ADRs to make them queryable by all agents."
+description: "Store an architectural decision record in Unimatrix. ADRs live in Unimatrix only — no ADR files. Use after each design decision."
 ---
 
-# Store ADR — Write Architectural Decisions to Unimatrix
+# Store ADR — Architectural Decisions in Unimatrix
 
 ## What This Skill Does
 
-Stores a full architectural decision record in Unimatrix using the `context_store` MCP tool. ADRs become semantically searchable and deterministically queryable by any agent via `/knowledge-search` or `/knowledge-lookup`.
+Stores an architectural decision record in Unimatrix as the **sole authoritative store**. ADRs are NOT written as files — Unimatrix provides search, supersession chains, and cross-feature discovery that files cannot.
 
-**Use this AFTER writing each ADR file** — a file-only ADR that isn't in Unimatrix is incomplete work.
+**Use this AFTER each design decision.** The architect is the sole ADR authority.
 
 ---
 
 ## How to Store a New ADR
 
-Call the `context_store` MCP tool with these parameters:
+### Step 1: Search for prior ADRs in the same domain (MANDATORY)
 
-| Parameter | Value | Notes |
-|-----------|-------|-------|
-| `title` | `"ADR-NNN: {decision title}"` | Match the ADR file title exactly |
-| `content` | Full ADR text | All sections: Context, Decision, Consequences |
-| `topic` | `"{feature-id}"` | e.g., `"nxs-001"`, `"vnc-002"` |
-| `category` | `"decision"` | Always `"decision"` for ADRs |
-| `tags` | `["adr", "{phase}", ...]` | Include phase prefix + domain tags |
-| `source` | `"architect"` | Identifies the producing agent role |
-| `agent_id` | Your agent ID | From your spawn prompt |
+```
+context_search(query: "{decision domain}", category: "decision", k: 5)
+```
 
-### Example
+Check if any existing ADR covers the same concern. If so, you may need to supersede it (see "How to Supersede" below).
+
+### Step 2: Store the ADR
 
 ```
 context_store(
-  title: "ADR-003: bincode v2 serde-compatible path",
-  content: "## Context\nThe storage engine needs serialization...\n## Decision\nUse bincode v2 with serde...\n## Consequences\n...",
-  topic: "nxs-001",
+  title: "ADR-NNN: {decision title}",
+  content: "## Context\n{why this decision is needed}\n\n## Decision\n{what we decided}\n\n## Consequences\n{what follows from this decision}",
+  topic: "{feature-id}",
   category: "decision",
-  tags: ["adr", "nexus", "serialization", "bincode"],
+  tags: ["adr", "{phase-prefix}", "{domain-tags}"],
   source: "architect",
-  agent_id: "nxs-001-agent-2-architect"
+  feature_cycle: "{feature-id}",
+  agent_id: "{your agent ID}"
 )
+```
+
+### Step 3: Record the entry ID
+
+Note the Unimatrix entry ID returned. Pass it to the coordinator — downstream agents and the synthesizer need ADR entry IDs to reference decisions.
+
+### Step 4: Reference in ARCHITECTURE.md
+
+In your ARCHITECTURE.md, reference ADRs by Unimatrix entry ID:
+
+```markdown
+## Decisions
+| ADR | Title | Unimatrix ID |
+|-----|-------|--------------|
+| ADR-001 | Use rmcp 0.16 with stdio | #77 |
+| ADR-002 | Additive confidence model | #85 |
 ```
 
 ---
 
-## How to Deprecate an Existing ADR
+## How to Supersede an Existing ADR
 
-When a new decision supersedes a prior ADR, you need two actions:
+When a new decision replaces a prior one:
 
 ### Step 1: Find the old ADR
 
-Use `/knowledge-search` or `/knowledge-lookup` to find the existing ADR:
-
 ```
-context_search(query: "bincode serialization decision", category: "decision")
-```
-or
-```
-context_lookup(topic: "nxs-001", category: "decision", tags: ["adr"])
+context_search(query: "{domain of old decision}", category: "decision")
 ```
 
-Note the old entry's ID from the results.
+Note the old entry's ID.
 
-### Step 2: Store a deprecation notice
+### Step 2: Use context_correct to supersede
 
-Call `context_store` with a deprecation entry:
+```
+context_correct(
+  original_id: {old entry ID},
+  content: "## Context\n{why the old decision is being replaced}\n\n## Decision\n{new decision}\n\n## Consequences\n{what changes}",
+  title: "ADR-NNN: {new decision title}",
+  reason: "Superseded by {feature-id}: {short explanation}"
+)
+```
 
-| Parameter | Value |
-|-----------|-------|
-| `title` | `"DEPRECATED: ADR-NNN ({old-feature-id}) — {short reason}"` |
-| `content` | Why it was deprecated, what supersedes it, the new ADR reference |
-| `topic` | `"{old-feature-id}"` |
-| `category` | `"decision"` |
-| `tags` | `["adr", "deprecated", "superseded-by:{new-feature-id}"]` |
-| `source` | `"architect"` |
+This automatically:
+- Deprecates the old entry
+- Creates a new entry with supersession chain
+- Preserves the old decision for historical reference
 
-### Step 3: Store the new ADR
+---
 
-Use the normal "How to Store a New ADR" flow above. Include a `supersedes` note in the content:
+## ADR Content Guidelines
+
+**Keep ADRs to 300-800 characters.** They capture the decision, not the implementation.
 
 ```
 ## Context
-Previously, ADR-003 (nxs-001) chose bincode v2 serde path.
-With the new serialization layer in nxs-005, this is superseded.
-...
+The briefing tool returns duties, conventions, and semantic matches.
+Duties duplicate what's already in agent definition files, consuming
+~200 tokens for zero new information.
+
+## Decision
+Remove duties from Unimatrix categories and context_briefing responses.
+Agent defs are the sole authority for role responsibilities.
+
+## Consequences
+- Briefing returns 2 sections (conventions + relevant context) instead of 3
+- ~200 tokens freed per briefing call for more useful content
+- 28 existing duty entries deprecated
+- uni-init bootstrap no longer extracts duties
 ```
 
-### Deprecation Limitation (v0.1)
-
-The current MCP tools cannot change an existing entry's status directly. The deprecation notice is a NEW entry that documents the supersession. When agents search for ADRs in that domain, they will find both the original and the deprecation notice, giving them full context.
-
-True status-change deprecation will arrive with v0.2 tools (`context_deprecate`).
+NOT a full design document. NOT implementation details. Just: why, what, and so-what.
 
 ---
 
 ## Tagging Conventions
 
-Use consistent tags for discoverability:
-
 | Tag Type | Examples |
 |----------|----------|
-| Phase prefix | `nexus`, `vinculum`, `collective`, `cortical` |
-| Domain | `storage`, `serialization`, `mcp`, `embedding`, `security` |
+| Always | `adr` |
+| Phase prefix | `nexus`, `vinculum`, `collective`, `cortical`, `alcove` |
+| Domain | `storage`, `serialization`, `mcp`, `embedding`, `security`, `confidence` |
 | Cross-cutting | `error-handling`, `async`, `thread-safety`, `api-design` |
-| Lifecycle | `deprecated`, `superseded-by:{feature-id}` |
-
-Always include `adr` as a tag. Include the phase prefix that matches the feature's phase.
 
 ---
 
 ## Self-Verification
 
-After calling `context_store`, verify the response:
-- Confirms entry was stored (returns entry ID and summary)
-- If you get a **near-duplicate warning**, review the existing entry — you may need to update rather than create
-- Record the Unimatrix entry ID in your agent report for traceability
+After storing:
+- Confirm entry ID returned
+- If **near-duplicate warning**: review existing entry — you may need to supersede rather than create
+- Record entry ID in your agent report and ARCHITECTURE.md decisions table
 
 ---
 
-## What NOT to Store
+## What NOT to Store as ADRs
 
 | Don't Store | Why |
 |-------------|-----|
-| Draft decisions still under discussion | Store only after the ADR is finalized |
-| Implementation details | ADRs capture the "why", not the "how" — code does that |
-| Decisions made by other agents | You are the ADR authority; don't store others' decisions |
+| Draft decisions under discussion | Store only finalized decisions |
+| Implementation details (how) | ADRs capture the why — code captures the how |
+| Decisions by other agents | Architect is the sole ADR authority |
+| Coding conventions | Use `convention` category instead |
+| Step-by-step procedures | Use `/store-procedure` instead |

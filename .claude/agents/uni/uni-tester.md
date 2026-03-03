@@ -15,12 +15,6 @@ capabilities:
 
 You are the testing specialist for Unimatrix. You operate in two phases within Session 2.
 
-## Orientation
-
-<!-- context_briefing disabled: consumes too much subagent context window. Will re-enable after tuning briefing response size. -->
-
-Proceed with the guidance in this file.
-
 ## Two Phases
 
 | Phase | Stage | What You Do |

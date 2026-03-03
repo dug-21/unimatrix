@@ -13,14 +13,6 @@ capabilities:
 
 You compile Session 1 design outputs into implementation-ready deliverables. You get a **fresh context window** — read artifacts directly and synthesize them into high-quality briefs that Session 2 agents consume.
 
-## Orientation
-
-<!-- context_briefing disabled: consumes too much subagent context window. Will re-enable after tuning briefing response size. -->
-
-Proceed with the guidance in this file.
-
----
-
 ## What You Receive
 
 From the Design Leader's spawn prompt:
