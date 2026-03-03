@@ -1182,6 +1182,7 @@ mod tests {
         let params = RetrospectiveParams {
             feature_cycle: "col-002".to_string(),
             agent_id: None,
+            evidence_limit: None,
         };
         assert!(validate_retrospective_params(&params).is_ok());
     }
@@ -1191,6 +1192,7 @@ mod tests {
         let params = RetrospectiveParams {
             feature_cycle: "".to_string(),
             agent_id: None,
+            evidence_limit: None,
         };
         assert!(validate_retrospective_params(&params).is_err());
     }
@@ -1200,6 +1202,7 @@ mod tests {
         let params = RetrospectiveParams {
             feature_cycle: "   ".to_string(),
             agent_id: None,
+            evidence_limit: None,
         };
         assert!(validate_retrospective_params(&params).is_err());
     }

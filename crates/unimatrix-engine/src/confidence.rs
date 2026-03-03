@@ -42,6 +42,11 @@ pub const WILSON_Z: f64 = 1.96;
 /// Similarity weight for search re-ranking blend.
 pub const SEARCH_SIMILARITY_WEIGHT: f64 = 0.85;
 
+/// Query-time boost for `lesson-learned` category entries (col-010b).
+/// Applied in search re-ranking alongside co-access affinity.
+/// Does NOT modify the stored confidence formula invariant (0.92).
+pub const PROVENANCE_BOOST: f64 = 0.02;
+
 /// Base quality proxy from entry lifecycle status.
 ///
 /// Active entries = 0.5, Proposed = 0.5, Deprecated = 0.2, Quarantined = 0.1.
@@ -690,5 +695,42 @@ mod tests {
     fn search_similarity_weight_is_f64() {
         assert_eq!(SEARCH_SIMILARITY_WEIGHT, 0.85_f64, "should be exactly 0.85 f64");
         let _: f64 = SEARCH_SIMILARITY_WEIGHT;
+    }
+
+    // -- col-010b: PROVENANCE_BOOST tests (T-PB-01..04) --
+
+    #[test]
+    fn provenance_boost_value() {
+        assert_eq!(PROVENANCE_BOOST, 0.02);
+    }
+
+    #[test]
+    fn provenance_boost_less_than_coac_max() {
+        // ADR-005: PROVENANCE_BOOST must be smaller than co-access max (~0.03)
+        assert!(PROVENANCE_BOOST < 0.03);
+    }
+
+    #[test]
+    fn provenance_boost_score_difference() {
+        // AC-09: lesson-learned vs convention with identical similarity and confidence
+        let sim = 0.8;
+        let conf = 0.6;
+        let base_score = rerank_score(sim, conf);
+        let boosted_score = base_score + PROVENANCE_BOOST;
+        assert!(
+            (boosted_score - base_score - 0.02).abs() < f64::EPSILON,
+            "boost should be exactly 0.02"
+        );
+    }
+
+    #[test]
+    fn provenance_boost_is_additive_tiebreaker() {
+        // With identical scores, PROVENANCE_BOOST breaks the tie
+        let sim = 0.9;
+        let conf = 0.7;
+        let base = rerank_score(sim, conf);
+        let boosted = base + PROVENANCE_BOOST;
+        assert!(boosted > base);
+        assert!((boosted - base - 0.02).abs() < f64::EPSILON);
     }
 }

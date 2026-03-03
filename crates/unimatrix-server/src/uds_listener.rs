@@ -665,10 +665,12 @@ async fn handle_context_search(
         }
     }
 
-    // 6. Re-rank: 0.85*similarity + 0.15*confidence (mirrors tools.rs step 9b)
+    // 6. Re-rank: 0.85*similarity + 0.15*confidence + provenance (mirrors tools.rs step 9b, col-010b)
     results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-        let score_a = rerank_score(*sim_a, entry_a.confidence);
-        let score_b = rerank_score(*sim_b, entry_b.confidence);
+        let prov_a = if entry_a.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
+        let prov_b = if entry_b.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
+        let score_a = rerank_score(*sim_a, entry_a.confidence) + prov_a;
+        let score_b = rerank_score(*sim_b, entry_b.confidence) + prov_b;
         score_b
             .partial_cmp(&score_a)
             .unwrap_or(std::cmp::Ordering::Equal)
@@ -701,13 +703,16 @@ async fn handle_context_search(
         });
 
         if !boost_map.is_empty() {
+            // Re-sort with co-access boost + provenance boost (col-010b)
             results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
                 let base_a = rerank_score(*sim_a, entry_a.confidence);
                 let base_b = rerank_score(*sim_b, entry_b.confidence);
                 let boost_a = boost_map.get(&entry_a.id).copied().unwrap_or(0.0);
                 let boost_b = boost_map.get(&entry_b.id).copied().unwrap_or(0.0);
-                let final_a = base_a + boost_a;
-                let final_b = base_b + boost_b;
+                let prov_a = if entry_a.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
+                let prov_b = if entry_b.category == "lesson-learned" { unimatrix_engine::confidence::PROVENANCE_BOOST } else { 0.0 };
+                let final_a = base_a + boost_a + prov_a;
+                let final_b = base_b + boost_b + prov_b;
                 final_b
                     .partial_cmp(&final_a)
                     .unwrap_or(std::cmp::Ordering::Equal)

@@ -263,6 +263,43 @@ pub struct EntryAnalysis {
     pub rework_session_count: u32,
 }
 
+/// Synthesized narrative for a hotspot finding (col-010b).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HotspotNarrative {
+    /// Hotspot type (matches HotspotFinding.rule_name).
+    pub hotspot_type: String,
+    /// Human-readable summary of the hotspot.
+    pub summary: String,
+    /// Timestamp-clustered event groups.
+    pub clusters: Vec<EvidenceCluster>,
+    /// Top files by occurrence count (max 5).
+    pub top_files: Vec<(String, u32)>,
+    /// Monotone sequence pattern for sleep_workarounds (e.g., "30s->60s->90s->120s").
+    pub sequence_pattern: Option<String>,
+}
+
+/// A cluster of events within a time window (col-010b).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvidenceCluster {
+    /// Start of the time window (unix epoch millis).
+    pub window_start: u64,
+    /// Number of events in this cluster.
+    pub event_count: u32,
+    /// Human-readable description.
+    pub description: String,
+}
+
+/// Actionable recommendation derived from hotspot findings (col-010b).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Recommendation {
+    /// Hotspot type this recommendation addresses.
+    pub hotspot_type: String,
+    /// Actionable text.
+    pub action: String,
+    /// Rationale for the recommendation.
+    pub rationale: String,
+}
+
 /// Complete analysis output returned by context_retrospective.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RetrospectiveReport {
@@ -285,6 +322,13 @@ pub struct RetrospectiveReport {
     /// Absent from JSON (not null) when None.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub entries_analysis: Option<Vec<EntryAnalysis>>,
+    /// Synthesized narratives for hotspot findings (col-010b).
+    /// Present only on the structured-events path; None on JSONL fallback.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub narratives: Option<Vec<HotspotNarrative>>,
+    /// Actionable recommendations derived from hotspot findings (col-010b).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub recommendations: Vec<Recommendation>,
 }
 
 /// Serialize a MetricVector to bincode bytes (ADR-002).
