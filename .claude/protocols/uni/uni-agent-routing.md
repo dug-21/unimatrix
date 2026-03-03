@@ -6,137 +6,158 @@ Always use `uni-` agents for Unimatrix product work:
 
 | Instead of | Use | Why |
 |------------|-----|-----|
-| generic coder | `uni-rust-dev` | Knows Unimatrix Rust patterns |
-| generic architect | `uni-architect` | File-based ADRs, Unimatrix architecture |
+| generic coder | `uni-rust-dev` | Knows Unimatrix Rust patterns, queries `/query-patterns` before implementing |
+| generic architect | `uni-architect` | ADR authority, stores decisions in Unimatrix |
 | generic tester | `uni-tester` | Risk-based testing, dual-phase role |
-| generic planner | `uni-scrum-master` | Reads design/delivery protocols |
+| generic planner | Specialized scrum master (see routing table) | Workflow baked in, no protocol file reads |
 | generic reviewer | `uni-validator` | Three-gate validation model |
-| generic debugger | `uni-bugfix-manager` | Reads bugfix protocol, coordinates diagnosis → fix → review |
+| generic debugger | `uni-bugfix-scrum-master` | Coordinates diagnosis → fix → review |
 | generic security auditor | `uni-security-reviewer` | Fresh-context security review of diffs |
 
 ---
 
-## Every Swarm Has These Two Agents
+## Coordinator Routing
 
-| Agent | Role | Spawned By |
-|-------|------|------------|
-| `uni-scrum-master` or `uni-bugfix-manager` | **Coordinator** — reads protocol, spawns workers, manages gates | Primary agent |
-| `uni-validator` | **Validation gate** — spawned at each gate with focused checks | Coordinator |
+Choose the coordinator based on intent:
 
-Non-negotiable. No swarm runs without a coordinator and no swarm completes without validation.
+| User intent | Coordinator | Triggers |
+|-------------|-------------|----------|
+| Design, scope, spec, architecture | `uni-design-scrum-master` | specification, architecture, design, research, scope, risk strategy |
+| Implement, build, code, deliver | `uni-implementation-scrum-master` | implement, build, code, deliver, TDD, refactor, "proceed with implementation" |
+| Bug fix | `uni-bugfix-scrum-master` | bug, fix, bugfix, defect, regression, broken, failing, error, crash |
+| PR review, merge, release | `uni-deploy-scrum-master` | review PR, merge, release, deploy, ship |
+| Retrospective | `uni-retro-scrum-master` | retrospective, retro, extract patterns, knowledge review |
+
+Every swarm also includes `uni-validator` at gates. Non-negotiable.
 
 ---
 
 ## Complete Agent Roster
 
-### Coordination (3 agents — at least one coordinator + validator on every swarm)
+### Coordinators (5 agents — exactly one coordinator per session)
 
-| Agent | Type | What It Does |
-|-------|------|-------------|
-| `uni-scrum-master` | coordinator | Design Leader (Session 1) or Delivery Leader (Session 2). Reads protocol, spawns workers, manages gates, updates GH Issues |
-| `uni-bugfix-manager` | coordinator | Bug fix coordinator. Reads bugfix protocol, manages diagnosis → fix → review lifecycle |
-| `uni-validator` | gate | Validation gate. Spawned with different check sets per context. Reports PASS / REWORKABLE FAIL / SCOPE FAIL |
+| Agent | What It Does |
+|-------|-------------|
+| `uni-design-scrum-master` | Session 1 design. Spawns design agents in phase order, manages human checkpoints |
+| `uni-implementation-scrum-master` | Session 2 delivery. Runs 3 stages with 3 validation gates, manages component routing |
+| `uni-bugfix-scrum-master` | Bug fix. Diagnosis → human checkpoint → fix → test → validate → security review |
+| `uni-deploy-scrum-master` | PR review/release. Verifies gate results, runs security review, assesses merge readiness |
+| `uni-retro-scrum-master` | Retrospective. Extracts patterns, procedures, lessons from shipped features |
 
-### Session 1 — Design (6 agents)
+### Validation (1 agent — spawned at every gate)
+
+| Agent | What It Does |
+|-------|-------------|
+| `uni-validator` | Validation gate. Spawned with different check sets per context. Reports PASS / REWORKABLE FAIL / SCOPE FAIL |
+
+### Design Session Specialists (6 agents)
 
 | Agent | Type | Phase | What It Produces |
 |-------|------|-------|-----------------|
-| `uni-researcher` | specialist | 1 | Problem space exploration, writes SCOPE.md collaboratively with human |
-| `uni-architect` | specialist | 2a | `architecture/ARCHITECTURE.md` + `ADR-NNN-{name}.md` files. ADR authority |
+| `uni-researcher` | specialist | 1 | Problem space exploration, writes SCOPE.md with human |
+| `uni-architect` | specialist | 2a | `architecture/ARCHITECTURE.md` + ADRs in Unimatrix. ADR authority |
 | `uni-specification` | specialist | 2a | `specification/SPECIFICATION.md` — requirements, ACs, domain models |
-| `uni-risk-strategist` | specialist | 2a | `RISK-TEST-STRATEGY.md` — risk identification, scenario mapping, coverage requirements |
+| `uni-risk-strategist` | specialist | 1b + 2a+ | `SCOPE-RISK-ASSESSMENT.md` (1b) + `RISK-TEST-STRATEGY.md` (2a+) |
 | `uni-vision-guardian` | specialist | 2b | `ALIGNMENT-REPORT.md` — checks source docs against product vision |
 | `uni-synthesizer` | synthesizer | 2c | `IMPLEMENTATION-BRIEF.md`, `ACCEPTANCE-MAP.md`, GH Issue (fresh context) |
 
-Phase 2a agents run in parallel → Phase 2b (vision) → Phase 2c (synthesis) — sequential.
-
-### Session 2 — Delivery (3 agents)
+### Delivery Session Specialists (3 agents)
 
 | Agent | Type | Stage | What It Does |
 |-------|------|-------|-------------|
-| `uni-pseudocode` | specialist | 3a | Per-component pseudocode from the three source docs |
-| `uni-tester` | specialist | 3a + 3c | Dual-phase: test plan design (3a) + test execution with RISK-COVERAGE-REPORT.md (3c) |
-| `uni-rust-dev` | developer | 3b | Implements code from validated pseudocode |
+| `uni-pseudocode` | specialist | 3a | Per-component pseudocode. Queries `/query-patterns` before designing |
+| `uni-tester` | specialist | 3a + 3c | Test plan design (3a) + test execution with RISK-COVERAGE-REPORT.md (3c) |
+| `uni-rust-dev` | developer | 3b | Implements code from validated pseudocode. Queries `/query-patterns` before implementing |
 
-### Bug Fix Session (2 agents)
+### Bug Fix Specialists (2 agents)
 
 | Agent | Type | Phase | What It Does |
 |-------|------|-------|-------------|
 | `uni-bug-investigator` | specialist | 1 | Diagnoses root cause, proposes fix approach, identifies missing tests |
 | `uni-security-reviewer` | specialist | 4 | Fresh-context security review of PR diff, blast radius, OWASP assessment |
 
-**Total: 14 agents** (3 coordination + 6 design + 3 delivery + 2 bug fix)
+**Total: 17 agents** (5 coordinators + 1 validator + 6 design + 3 delivery + 2 bug fix)
 
 ---
 
 ## Swarm Composition Templates
 
-### Design Session (Session 1)
+### Design Session
 
 ```
-Coordinator:  uni-scrum-master (Design Leader)
+Coordinator:  uni-design-scrum-master
 Phase 1:      uni-researcher (scope exploration with human)
-Phase 2a:     uni-architect, uni-specification, uni-risk-strategist  (parallel)
-Phase 2b:     uni-vision-guardian (alignment check)                  (sequential)
-Phase 2c:     uni-synthesizer (brief + maps + GH Issue)              (fresh context)
+              ★ HUMAN CHECKPOINT — approve SCOPE.md ★
+Phase 1b:     uni-risk-strategist (scope-risk mode)
+Phase 2a:     uni-architect + uni-specification                    (parallel)
+Phase 2a+:    uni-risk-strategist (architecture-risk mode)
+Phase 2b:     uni-vision-guardian (alignment check)
+Phase 2c:     uni-synthesizer (brief + maps + GH Issue)            (fresh context)
 Phase 2d:     Return to human — SESSION 1 ENDS
 ```
 
-Produces: SCOPE.md, ARCHITECTURE.md + ADRs, SPECIFICATION.md, RISK-TEST-STRATEGY.md, ALIGNMENT-REPORT.md, IMPLEMENTATION-BRIEF.md, ACCEPTANCE-MAP.md, GH Issue.
-
-### Delivery Session (Session 2)
+### Delivery Session
 
 ```
-Coordinator:  uni-scrum-master (Delivery Leader)
-Stage 3a:     uni-pseudocode, uni-tester (test plans)                (parallel)
-Gate 3a:      uni-validator (design review)
-Stage 3b:     uni-rust-dev [+ domain specialists as needed]          (parallel)
+Coordinator:  uni-implementation-scrum-master
+Init:         Read IMPLEMENTATION-BRIEF.md, create feature branch
+Stage 3a:     uni-pseudocode + uni-tester (test plans)             (parallel)
+              UPDATE Component Map in IMPLEMENTATION-BRIEF.md
+Gate 3a:      uni-validator (design review) — MANDATORY BLOCK
+Stage 3b:     uni-rust-dev × N (one per component)                 (parallel)
 Gate 3b:      uni-validator (code review)
 Stage 3c:     uni-tester (test execution)
 Gate 3c:      uni-validator (risk validation)
-Phase 4:      Delivery — SESSION 2 ENDS
+Phase 4:      Commit, push, open PR — SESSION 2 ENDS
 ```
 
-Produces: pseudocode/, test-plan/, implemented code + tests, RISK-COVERAGE-REPORT.md, gate reports.
-
-### Bug Fix Session (Single Session)
+### Bug Fix Session
 
 ```
-Coordinator:  uni-bugfix-manager
+Coordinator:  uni-bugfix-scrum-master
 Phase 1:      uni-bug-investigator (diagnosis)
               ★ HUMAN CHECKPOINT — approve diagnosis ★
-Phase 2:      uni-rust-dev (fix implementation + tests)              (sequential)
-Phase 3:      uni-tester (full test suite verification)              (sequential)
+Phase 2:      uni-rust-dev (fix + targeted tests)
+Phase 3:      uni-tester (full test suite verification)
 Gate 3:       uni-validator (bugfix check set)
               git commit + push + PR
-Phase 4:      uni-security-reviewer (PR security review)             (fresh context)
-Phase 5:      Return PR + security assessment to human — SESSION ENDS
+Phase 4:      uni-security-reviewer (PR security review)           (fresh context)
+Phase 5:      Return PR + security assessment — SESSION ENDS
 ```
 
-Produces: bug fix code, targeted tests, gate report, security assessment, PR.
+### PR Review / Release
 
----
+```
+Coordinator:  uni-deploy-scrum-master
+Step 1:       Verify gate reports (3a, 3b, 3c all PASS)
+Step 2:       uni-security-reviewer (fresh-context PR review)
+Step 3:       Merge readiness assessment
+Step 4:       Return to human — REVIEW ENDS
+```
 
-## Session Mapping
+### Retrospective
 
-| Session | Protocol | Leader Role | Agents |
-|---------|----------|-------------|--------|
-| Session 1 (Design) | `.claude/protocols/uni/uni-design-protocol.md` | Design Leader | researcher, architect, specification, risk-strategist, vision-guardian, synthesizer |
-| Session 2 (Delivery) | `.claude/protocols/uni/uni-delivery-protocol.md` | Delivery Leader | pseudocode, tester, rust-dev, validator (×3) |
-| Bug Fix | `.claude/protocols/uni/uni-bugfix-protocol.md` | Bugfix Manager | bug-investigator, rust-dev, tester, validator, security-reviewer |
+```
+Coordinator:  uni-retro-scrum-master
+Phase 1:      Data gathering (context_retrospective + artifact review)
+Phase 2:      uni-architect (pattern/procedure extraction + ADR validation)
+Phase 3:      ADR supersession (if flagged, requires human approval)
+Phase 4:      Summary + outcome recording — RETRO ENDS
+```
 
 ---
 
 ## Composition Rules
 
-1. **Every swarm**: coordinator (uni-scrum-master or uni-bugfix-manager) + uni-validator (gate). No exceptions.
-2. **Session 1**: Always includes all six design agents in the defined phase order.
-3. **Session 2**: Always includes pseudocode + tester + rust-dev + validator at three gates.
-4. **Bug fix**: uni-bugfix-manager + bug-investigator + rust-dev + tester + validator + security-reviewer.
-5. **Domain specialists**: As Unimatrix domain agents are created, they can be added to Stage 3b alongside uni-rust-dev.
-6. **Skip swarm for**: typos, single-line obvious fixes, config-only changes, docs, exploration.
-7. **Max wave size**: 5 workers. Split into waves if more agents needed.
-8. **Bug fix triggers**: bug, fix, bugfix, defect, regression, broken, failing, error, crash.
+1. **Every session**: exactly one coordinator. No exceptions.
+2. **Validation gates**: `uni-validator` spawned at each gate by the coordinator.
+3. **Design session**: All six design agents in defined phase order.
+4. **Delivery session**: pseudocode + tester + rust-dev + validator at three gates.
+5. **Bug fix**: bugfix-scrum-master + bug-investigator + rust-dev + tester + validator + security-reviewer.
+6. **PR review**: deploy-scrum-master + security-reviewer.
+7. **Retrospective**: retro-scrum-master + architect (+ tester if testing lessons needed).
+8. **Skip swarm for**: typos, single-line obvious fixes, config-only changes, docs, exploration.
+9. **Max workers per stage**: 5. Split into waves if more needed.
 
 ---
 
@@ -144,9 +165,24 @@ Produces: bug fix code, targeted tests, gate report, security assessment, PR.
 
 The coordination model is simple — no registration, no shared memory, no hooks:
 
-1. Coordinator (uni-scrum-master or uni-bugfix-manager) spawns agents via `Task` tool
-2. Each agent receives its context in the spawn prompt (feature ID, file paths to read, task description)
+1. Coordinator spawns agents via `Agent` tool
+2. Each agent receives context in the spawn prompt (feature ID, file paths to read, task description)
 3. Agent does work, writes artifacts to disk
 4. Agent writes report to `product/features/{feature-id}/agents/{agent-id}-report.md`
 5. Agent returns summary to coordinator (file paths, results, issues)
 6. Coordinator reads returns and proceeds
+
+---
+
+## Skills Available to Agents
+
+| Skill | When | Who |
+|-------|------|-----|
+| `/query-patterns` | BEFORE designing or implementing | uni-architect, uni-pseudocode, uni-rust-dev |
+| `/store-adr` | AFTER each design decision | uni-architect |
+| `/record-outcome` | END of every session | All coordinators |
+| `/store-procedure` | During retrospectives | uni-retro-scrum-master → uni-architect |
+| `/store-lesson` | After failures | uni-bug-investigator, uni-validator, coordinators |
+| `/knowledge-search` | Exploring what's known | Any agent |
+| `/knowledge-lookup` | Exact-match retrieval | Any agent |
+| `/uni-git` | Git conventions | Coordinators |

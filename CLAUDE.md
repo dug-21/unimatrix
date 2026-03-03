@@ -1,6 +1,6 @@
-# NDP — Non-Negotiable Rules
+# Unimatrix — Non-Negotiable Rules
 
-1. **Feature work uses swarms** — spawn `uni-scrum-master` for Unimatrix product work. NDP agents retained as reference in `.claude/agents/ndp/`. 
+1. **Feature work uses swarms** — spawn `uni-scrum-master` for Unimatrix product work. 
 4. **Anti-stub**: Never leave TODO, `unimplemented!()`, `todo!()`, or placeholder functions. Ask the user if blocked.
 5. **Never save files to root.** Use project directory structure.
 
@@ -40,7 +40,7 @@ Features follow `{phase}-{NNN}` pattern in `product/features/`:
 | Cortical | `crt` | Learning & drift detection |
 | Matrix | `mtx` | UI & dashboards |
 | Designation | `dsn` | Project & identity management |
-| Nanites | `nan` | Build, deploy, CI, tooling |
+| Nanoprobes | `nan` | Build, deploy, CI, tooling |
 
 
 
