@@ -104,3 +104,17 @@ This is faster than a lookup with an ID filter and always returns full content.
 context_lookup(category: "decision", status: "deprecated", topic: "{feature-id}")
 → See what decisions have been superseded
 ```
+
+---
+
+## When You Find Stale or Wrong Knowledge
+
+Lookup may surface entries that are outdated or incorrect. Fix them:
+
+| Situation | Action |
+|-----------|--------|
+| Entry is **wrong** | `context_correct(original_id: {id}, content: "{corrected version}", reason: "{why}")` — supersedes with chain link |
+| Entry is **outdated** | `context_deprecate(id: {id}, reason: "{why}")` |
+| Entry is **suspicious** | `context_quarantine(id: {id}, reason: "{concern}")` — Admin only |
+
+Every agent shares responsibility for knowledge quality. Don't leave wrong entries for the next agent to trip over.

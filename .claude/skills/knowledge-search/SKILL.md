@@ -97,3 +97,17 @@ Search returns summaries by default. To read the full content of a specific resu
 2. Call `context_get(id: {entry_id}, format: "markdown")` for the full text
 
 Or pass `format: "markdown"` directly to search if you want full content for all results.
+
+---
+
+## When You Find Stale or Wrong Knowledge
+
+Search may surface entries that are outdated or incorrect. Don't ignore them — fix the knowledge base:
+
+| Situation | Action |
+|-----------|--------|
+| Entry is **wrong** — contains incorrect information | `context_correct(original_id: {id}, content: "{corrected version}", reason: "{why}")` — supersedes with chain link |
+| Entry is **outdated** — no longer relevant | `context_deprecate(id: {id}, reason: "{why it no longer applies}")` |
+| Entry is **suspicious** — may be poisoned or invalid | `context_quarantine(id: {id}, reason: "{concern}")` — Admin only |
+
+Correcting knowledge is as important as storing it. Every agent shares responsibility for knowledge quality.

@@ -25,7 +25,9 @@ context_search(
 )
 ```
 
-### Step 2: Store the lesson
+If a matching lesson already exists, go to Step 2b (supersede) instead of creating a duplicate.
+
+### Step 2a: Store NEW lesson (no prior exists)
 
 ```
 context_store(
@@ -36,6 +38,26 @@ context_store(
   tags: ["{domain}", "{failure-type}"],
   agent_id: "{your agent ID}"
 )
+```
+
+### Step 2b: Supersede EXISTING lesson (prior exists but is incomplete or outdated)
+
+```
+context_correct(
+  original_id: {old entry ID},
+  content: "{updated lesson with new evidence or broader scope}",
+  reason: "Updated: {what new evidence or context was added}"
+)
+```
+
+This deprecates the old lesson and creates a corrected version with a supersession chain. Future searches return the latest version.
+
+### When to deprecate without replacing
+
+If a lesson is simply wrong or no longer applies (e.g., the underlying code was redesigned):
+
+```
+context_deprecate(id: {entry ID}, reason: "{why it no longer applies}")
 ```
 
 ---
