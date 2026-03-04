@@ -16,7 +16,7 @@ use unimatrix_store::{
     serialize_entry, status_counter_key, StoreError,
 };
 
-use crate::audit::{AuditEvent, Outcome};
+use crate::infra::audit::{AuditEvent, Outcome};
 use crate::error::ServerError;
 use crate::services::{AuditContext, ServiceError};
 

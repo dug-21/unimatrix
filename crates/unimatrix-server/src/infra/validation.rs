@@ -8,8 +8,8 @@ use std::collections::HashSet;
 use unimatrix_store::Status;
 
 use crate::error::ServerError;
-use crate::registry::{Capability, TrustLevel};
-use crate::tools::{
+use crate::infra::registry::{Capability, TrustLevel};
+use crate::mcp::tools::{
     BriefingParams, CorrectParams, DeprecateParams, EnrollParams, GetParams, LookupParams,
     QuarantineParams, RetrospectiveParams, SearchParams, StatusParams, StoreParams,
 };

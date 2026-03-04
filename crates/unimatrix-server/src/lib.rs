@@ -5,6 +5,12 @@
 //! This crate provides the MCP server that exposes Unimatrix's knowledge engine
 //! to AI agents via stdio transport. Modules are public for integration testing.
 //!
+//! Module groups (vnc-008):
+//! - `infra/`: Cross-cutting infrastructure (audit, registry, session, etc.)
+//! - `mcp/`: MCP transport layer (tools, identity, response formatting)
+//! - `uds/`: UDS transport layer (hook listener, hook subcommand)
+//! - `services/`: Transport-agnostic business logic
+//!
 //! The `confidence`, `coaccess`, and `project` modules are re-exported from
 //! `unimatrix-engine` for backward compatibility (col-006 extraction).
 
@@ -12,24 +18,12 @@ pub use unimatrix_engine::confidence;
 pub use unimatrix_engine::coaccess;
 pub use unimatrix_engine::project;
 
-pub mod audit;
-pub mod categories;
-pub mod coherence;
-pub mod contradiction;
-pub mod embed_handle;
+pub mod infra;
+pub mod mcp;
+pub mod uds;
 pub mod error;
-pub mod hook;
-pub mod identity;
-pub mod outcome_tags;
-pub mod pidfile;
-pub mod registry;
-pub mod response;
-pub mod scanning;
 pub mod server;
 pub mod services;
-pub mod session;
-pub mod shutdown;
-pub mod tools;
-pub mod uds_listener;
-pub mod usage_dedup;
-pub mod validation;
+
+// Re-exports for external consumers (main.rs, integration tests).
+pub use uds::listener as uds_listener;

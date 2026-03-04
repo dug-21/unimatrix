@@ -7,7 +7,7 @@ use rmcp::model::{ErrorCode, ErrorData};
 use unimatrix_core::CoreError;
 use unimatrix_store::StoreError;
 
-use crate::registry::Capability;
+use crate::infra::registry::Capability;
 
 /// MCP error code: entry not found.
 pub const ERROR_ENTRY_NOT_FOUND: ErrorCode = ErrorCode(-32001);

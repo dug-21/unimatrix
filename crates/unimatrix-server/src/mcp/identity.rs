@@ -3,7 +3,7 @@
 //! Extracts agent_id from tool parameters and resolves it against the registry.
 
 use crate::error::ServerError;
-use crate::registry::{AgentRegistry, Capability, TrustLevel};
+use crate::infra::registry::{AgentRegistry, Capability, TrustLevel};
 
 /// Resolved agent identity for downstream capability checks and audit logging.
 #[derive(Debug, Clone)]

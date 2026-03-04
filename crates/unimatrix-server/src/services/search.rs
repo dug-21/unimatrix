@@ -13,8 +13,8 @@ use unimatrix_adapt::AdaptationService;
 
 use crate::coaccess::{compute_search_boost, CO_ACCESS_STALENESS_SECONDS};
 use crate::confidence::rerank_score;
-use crate::embed_handle::EmbedServiceHandle;
-use crate::audit::{AuditEvent, Outcome};
+use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::audit::{AuditEvent, Outcome};
 use crate::services::gateway::SecurityGateway;
 use crate::services::{AuditContext, ServiceError};
 

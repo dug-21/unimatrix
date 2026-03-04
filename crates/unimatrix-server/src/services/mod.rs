@@ -14,15 +14,16 @@ use unimatrix_store::StoreError;
 
 use unimatrix_adapt::AdaptationService;
 
-use crate::audit::AuditLog;
-use crate::embed_handle::EmbedServiceHandle;
+use crate::infra::audit::AuditLog;
+use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::error::ServerError;
-use crate::registry::TrustLevel;
+use crate::infra::registry::TrustLevel;
 
 pub(crate) mod briefing;
 pub(crate) mod confidence;
 pub(crate) mod gateway;
 pub(crate) mod search;
+pub(crate) mod status;
 pub(crate) mod store_correct;
 pub(crate) mod store_ops;
 
@@ -30,6 +31,7 @@ pub(crate) use briefing::BriefingService;
 pub(crate) use confidence::ConfidenceService;
 pub(crate) use gateway::SecurityGateway;
 pub(crate) use search::{SearchService, ServiceSearchParams};
+pub(crate) use status::StatusService;
 pub(crate) use store_ops::StoreService;
 
 // ---------------------------------------------------------------------------
@@ -152,6 +154,7 @@ pub struct ServiceLayer {
     pub(crate) store_ops: StoreService,
     pub(crate) confidence: ConfidenceService,
     pub(crate) briefing: BriefingService,
+    pub(crate) status: StatusService,
 }
 
 impl ServiceLayer {
@@ -194,11 +197,19 @@ impl ServiceLayer {
             Arc::clone(&gateway),
         );
 
+        let status = StatusService::new(
+            Arc::clone(&store),
+            Arc::clone(&vector_index),
+            Arc::clone(&embed_service),
+            Arc::clone(&adapt_service),
+        );
+
         ServiceLayer {
             search,
             store_ops,
             confidence,
             briefing,
+            status,
         }
     }
 }

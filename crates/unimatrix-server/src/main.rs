@@ -11,15 +11,15 @@ use unimatrix_core::{CoreError, EmbedConfig, StoreAdapter, Store, VectorAdapter,
 use unimatrix_store::StoreError;
 
 use unimatrix_adapt::{AdaptConfig, AdaptationService};
-use unimatrix_server::audit::AuditLog;
-use unimatrix_server::categories::CategoryAllowlist;
-use unimatrix_server::embed_handle::EmbedServiceHandle;
+use unimatrix_server::infra::audit::AuditLog;
+use unimatrix_server::infra::categories::CategoryAllowlist;
+use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
 use unimatrix_server::error::ServerError;
-use unimatrix_server::pidfile;
+use unimatrix_server::infra::pidfile;
 use unimatrix_server::project;
-use unimatrix_server::registry::AgentRegistry;
+use unimatrix_server::infra::registry::AgentRegistry;
 use unimatrix_server::server::{PendingEntriesAnalysis, UnimatrixServer};
-use unimatrix_server::shutdown::{self, LifecycleHandles};
+use unimatrix_server::infra::shutdown::{self, LifecycleHandles};
 use unimatrix_server::uds_listener;
 
 /// Maximum number of attempts to open the database when the lock is held.
@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Command::Hook { event }) => {
             // Sync path: NO tokio, NO tracing init, NO database open
             // Minimal startup for <50ms budget
-            unimatrix_server::hook::run(event, cli.project_dir)
+            unimatrix_server::uds::hook::run(event, cli.project_dir)
         }
         None => {
             // Async path: full server with tokio runtime
@@ -185,7 +185,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Create session registry for hook IPC (col-008)
-    let session_registry = Arc::new(unimatrix_server::session::SessionRegistry::new());
+    let session_registry = Arc::new(unimatrix_server::infra::session::SessionRegistry::new());
 
     // Create pending entries analysis accumulator shared between UDS listener and MCP server (col-009)
     let pending_entries_analysis = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
