@@ -162,14 +162,17 @@ impl Store {
     }
 
     /// Update an existing entry. Returns an error if the entry does not exist.
-    pub fn update(&self, entry_id: u64, new: NewEntry) -> Result<()> {
-        let now = current_unix_timestamp_secs();
+    ///
+    /// Takes a full EntryRecord (matching the redb Store API). The entry.id field
+    /// identifies which record to update.
+    pub fn update(&self, entry: EntryRecord) -> Result<()> {
+        let entry_id = entry.id;
         let conn = self.lock_conn();
         conn.execute_batch("BEGIN IMMEDIATE")
             .map_err(StoreError::Sqlite)?;
 
         let result = (|| -> Result<()> {
-            // Read existing entry
+            // Read existing entry for index diffing
             let old_bytes: Vec<u8> = conn
                 .query_row(
                     "SELECT data FROM entries WHERE id = ?1",
@@ -181,36 +184,8 @@ impl Store {
                 .ok_or(StoreError::EntryNotFound(entry_id))?;
             let old = deserialize_entry(&old_bytes)?;
 
-            // Build updated record
-            let content_hash = crate::hash::compute_content_hash(&new.title, &new.content);
-            let updated = EntryRecord {
-                id: entry_id,
-                title: new.title,
-                content: new.content,
-                topic: new.topic,
-                category: new.category,
-                tags: new.tags,
-                source: new.source,
-                status: new.status,
-                confidence: old.confidence,
-                created_at: old.created_at,
-                updated_at: now,
-                last_accessed_at: old.last_accessed_at,
-                access_count: old.access_count,
-                supersedes: old.supersedes,
-                superseded_by: old.superseded_by,
-                correction_count: old.correction_count,
-                embedding_dim: old.embedding_dim,
-                created_by: old.created_by,
-                modified_by: new.created_by,
-                content_hash,
-                previous_hash: old.content_hash,
-                version: old.version + 1,
-                feature_cycle: new.feature_cycle,
-                trust_source: new.trust_source,
-                helpful_count: old.helpful_count,
-                unhelpful_count: old.unhelpful_count,
-            };
+            // Use the provided entry as the updated record
+            let updated = entry;
 
             let bytes = serialize_entry(&updated)?;
             conn.execute(

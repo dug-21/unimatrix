@@ -69,23 +69,53 @@ fn test_update() {
         .build();
     let id = db.store().insert(entry).unwrap();
 
-    let updated = TestEntry::new("new-topic", "new-cat")
-        .with_tags(&["tag2", "tag3"])
-        .build();
-    db.store().update(id, updated).unwrap();
+    let mut record = db.store().get(id).unwrap();
+    record.topic = "new-topic".to_string();
+    record.category = "new-cat".to_string();
+    record.tags = vec!["tag2".to_string(), "tag3".to_string()];
+    db.store().update(record).unwrap();
 
     let record = db.store().get(id).unwrap();
     assert_eq!(record.topic, "new-topic");
     assert_eq!(record.category, "new-cat");
     assert_eq!(record.tags, vec!["tag2".to_string(), "tag3".to_string()]);
-    assert_eq!(record.version, 2);
     assert_index_consistent(db.store(), id);
 }
 
 #[test]
 fn test_update_not_found() {
     let db = TestDb::new();
-    let result = db.store().update(999, TestEntry::new("a", "b").build());
+    let entry = TestEntry::new("a", "b").build();
+    // Create a fake EntryRecord with nonexistent id
+    let fake_record = unimatrix_store::EntryRecord {
+        id: 999,
+        title: entry.title,
+        content: entry.content,
+        topic: entry.topic,
+        category: entry.category,
+        tags: entry.tags,
+        source: entry.source,
+        status: entry.status,
+        confidence: 0.0,
+        created_at: 0,
+        updated_at: 0,
+        last_accessed_at: 0,
+        access_count: 0,
+        supersedes: None,
+        superseded_by: None,
+        correction_count: 0,
+        embedding_dim: 0,
+        created_by: String::new(),
+        modified_by: String::new(),
+        content_hash: String::new(),
+        previous_hash: String::new(),
+        version: 1,
+        feature_cycle: String::new(),
+        trust_source: String::new(),
+        helpful_count: 0,
+        unhelpful_count: 0,
+    };
+    let result = db.store().update(fake_record);
     assert!(matches!(result, Err(StoreError::EntryNotFound(999))));
 }
 
@@ -232,15 +262,16 @@ fn test_combined_query() {
 fn test_record_usage() {
     let db = TestDb::new();
     let id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
-    let now = now_secs();
 
-    db.store().record_usage(id, true, now).unwrap();
+    // Record usage with helpful vote
+    db.store().record_usage(&[id], &[id], &[id], &[], &[], &[]).unwrap();
     let record = db.store().get(id).unwrap();
     assert_eq!(record.access_count, 1);
     assert_eq!(record.helpful_count, 1);
-    assert_eq!(record.last_accessed_at, now);
+    assert!(record.last_accessed_at > 0);
 
-    db.store().record_usage(id, false, now + 1).unwrap();
+    // Record usage with unhelpful vote
+    db.store().record_usage(&[id], &[id], &[], &[id], &[], &[]).unwrap();
     let record = db.store().get(id).unwrap();
     assert_eq!(record.access_count, 2);
     assert_eq!(record.unhelpful_count, 1);
@@ -250,9 +281,12 @@ fn test_record_usage() {
 fn test_record_usage_with_confidence() {
     let db = TestDb::new();
     let id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
-    let now = now_secs();
 
-    db.store().record_usage_with_confidence(id, true, 0.85, now).unwrap();
+    // Use confidence function that returns a fixed value
+    db.store().record_usage_with_confidence(
+        &[id], &[id], &[id], &[], &[], &[],
+        Some(&|_record, _now| 0.85),
+    ).unwrap();
     let record = db.store().get(id).unwrap();
     assert_eq!(record.confidence, 0.85);
     assert_eq!(record.helpful_count, 1);

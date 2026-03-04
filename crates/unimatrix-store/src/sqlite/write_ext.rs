@@ -3,100 +3,128 @@
 //! Usage tracking, confidence updates, vector mappings, feature entries,
 //! co-access pairs, and observation metrics.
 
+use std::collections::HashSet;
+
 use rusqlite::OptionalExtension;
 
 use crate::error::{Result, StoreError};
 use crate::schema::{
-    CoAccessRecord, deserialize_co_access, deserialize_entry,
+    CoAccessRecord, EntryRecord, deserialize_co_access, deserialize_entry,
     serialize_co_access, serialize_entry,
 };
 
 use super::db::Store;
 
+/// Get the current unix timestamp in seconds.
+fn current_unix_timestamp_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
+
 impl Store {
-    /// Record a usage event for an entry.
-    pub fn record_usage(&self, entry_id: u64, is_helpful: bool, now: u64) -> Result<()> {
-        let conn = self.lock_conn();
-        conn.execute_batch("BEGIN IMMEDIATE")
-            .map_err(StoreError::Sqlite)?;
-
-        let result = (|| -> Result<()> {
-            let bytes: Option<Vec<u8>> = conn
-                .query_row(
-                    "SELECT data FROM entries WHERE id = ?1",
-                    rusqlite::params![entry_id as i64],
-                    |row| row.get(0),
-                )
-                .optional()
-                .map_err(StoreError::Sqlite)?;
-
-            if let Some(bytes) = bytes {
-                let mut record = deserialize_entry(&bytes)?;
-                record.access_count += 1;
-                record.last_accessed_at = now;
-                if is_helpful {
-                    record.helpful_count += 1;
-                } else {
-                    record.unhelpful_count += 1;
-                }
-                let new_bytes = serialize_entry(&record)?;
-                conn.execute(
-                    "UPDATE entries SET data = ?1 WHERE id = ?2",
-                    rusqlite::params![new_bytes, entry_id as i64],
-                )
-                .map_err(StoreError::Sqlite)?;
-            }
-            Ok(())
-        })();
-
-        match result {
-            Ok(()) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
-                Ok(())
-            }
-            Err(e) => {
-                let _ = conn.execute_batch("ROLLBACK");
-                Err(e)
-            }
-        }
+    /// Record usage for a batch of entries in a single write transaction.
+    ///
+    /// Delegates to `record_usage_with_confidence` with no confidence function.
+    /// API-compatible with the redb Store.
+    pub fn record_usage(
+        &self,
+        all_ids: &[u64],
+        access_ids: &[u64],
+        helpful_ids: &[u64],
+        unhelpful_ids: &[u64],
+        decrement_helpful_ids: &[u64],
+        decrement_unhelpful_ids: &[u64],
+    ) -> Result<()> {
+        self.record_usage_with_confidence(
+            all_ids,
+            access_ids,
+            helpful_ids,
+            unhelpful_ids,
+            decrement_helpful_ids,
+            decrement_unhelpful_ids,
+            None,
+        )
     }
 
-    /// Record usage with explicit confidence value.
+    /// Record usage for a batch of entries with optional inline confidence computation.
+    ///
+    /// For each entry_id in `all_ids`, updates `last_accessed_at` to `now`.
+    /// For each entry_id in `access_ids`, increments `access_count`.
+    /// For each entry_id in `helpful_ids`, increments `helpful_count`.
+    /// For each entry_id in `unhelpful_ids`, increments `unhelpful_count`.
+    /// For each entry_id in `decrement_helpful_ids`, decrements `helpful_count` (saturating).
+    /// For each entry_id in `decrement_unhelpful_ids`, decrements `unhelpful_count` (saturating).
+    ///
+    /// If `confidence_fn` is `Some`, recomputes confidence for each entry
+    /// after applying counter updates.
+    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
     pub fn record_usage_with_confidence(
         &self,
-        entry_id: u64,
-        is_helpful: bool,
-        confidence: f64,
-        now: u64,
+        all_ids: &[u64],
+        access_ids: &[u64],
+        helpful_ids: &[u64],
+        unhelpful_ids: &[u64],
+        decrement_helpful_ids: &[u64],
+        decrement_unhelpful_ids: &[u64],
+        confidence_fn: Option<&dyn Fn(&EntryRecord, u64) -> f64>,
     ) -> Result<()> {
+        if all_ids.is_empty() {
+            return Ok(());
+        }
+
+        let now = current_unix_timestamp_secs();
         let conn = self.lock_conn();
         conn.execute_batch("BEGIN IMMEDIATE")
             .map_err(StoreError::Sqlite)?;
 
-        let result = (|| -> Result<()> {
-            let bytes: Option<Vec<u8>> = conn
-                .query_row(
-                    "SELECT data FROM entries WHERE id = ?1",
-                    rusqlite::params![entry_id as i64],
-                    |row| row.get(0),
-                )
-                .optional()
-                .map_err(StoreError::Sqlite)?;
+        let access_set: HashSet<u64> = access_ids.iter().copied().collect();
+        let helpful_set: HashSet<u64> = helpful_ids.iter().copied().collect();
+        let unhelpful_set: HashSet<u64> = unhelpful_ids.iter().copied().collect();
+        let dec_helpful_set: HashSet<u64> = decrement_helpful_ids.iter().copied().collect();
+        let dec_unhelpful_set: HashSet<u64> = decrement_unhelpful_ids.iter().copied().collect();
 
-            if let Some(bytes) = bytes {
+        let result = (|| -> Result<()> {
+            for &id in all_ids {
+                let bytes: Option<Vec<u8>> = conn
+                    .query_row(
+                        "SELECT data FROM entries WHERE id = ?1",
+                        rusqlite::params![id as i64],
+                        |row| row.get(0),
+                    )
+                    .optional()
+                    .map_err(StoreError::Sqlite)?;
+
+                let Some(bytes) = bytes else { continue };
                 let mut record = deserialize_entry(&bytes)?;
-                record.access_count += 1;
+
                 record.last_accessed_at = now;
-                record.confidence = confidence;
-                if is_helpful {
+
+                if access_set.contains(&id) {
+                    record.access_count += 1;
+                }
+                if helpful_set.contains(&id) {
                     record.helpful_count += 1;
-                } else {
+                }
+                if unhelpful_set.contains(&id) {
                     record.unhelpful_count += 1;
                 }
+                if dec_helpful_set.contains(&id) {
+                    record.helpful_count = record.helpful_count.saturating_sub(1);
+                }
+                if dec_unhelpful_set.contains(&id) {
+                    record.unhelpful_count = record.unhelpful_count.saturating_sub(1);
+                }
+
+                if let Some(f) = &confidence_fn {
+                    record.confidence = f(&record, now);
+                }
+
                 let new_bytes = serialize_entry(&record)?;
                 conn.execute(
                     "UPDATE entries SET data = ?1 WHERE id = ?2",
-                    rusqlite::params![new_bytes, entry_id as i64],
+                    rusqlite::params![new_bytes, id as i64],
                 )
                 .map_err(StoreError::Sqlite)?;
             }
