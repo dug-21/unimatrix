@@ -1,70 +1,90 @@
+#[cfg(not(feature = "backend-sqlite"))]
 use redb::{MultimapTableDefinition, TableDefinition};
 use serde::{Deserialize, Serialize};
 
 use crate::error::StoreError;
 
 // -- Table Definitions (17 total after schema v5) --
+// These are redb-specific type definitions. Under the SQLite backend,
+// tables are created via SQL DDL in sqlite/db.rs.
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Primary entry storage: entry_id -> bincode bytes.
 pub const ENTRIES: TableDefinition<u64, &[u8]> = TableDefinition::new("entries");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Topic prefix scan: (topic, entry_id) -> ().
 pub const TOPIC_INDEX: TableDefinition<(&str, u64), ()> = TableDefinition::new("topic_index");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Category prefix scan: (category, entry_id) -> ().
 pub const CATEGORY_INDEX: TableDefinition<(&str, u64), ()> =
     TableDefinition::new("category_index");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Tag set intersection: tag -> set of entry_ids.
 pub const TAG_INDEX: MultimapTableDefinition<&str, u64> =
     MultimapTableDefinition::new("tag_index");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Temporal range queries: (timestamp, entry_id) -> ().
 pub const TIME_INDEX: TableDefinition<(u64, u64), ()> = TableDefinition::new("time_index");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Status filtering: (status_byte, entry_id) -> ().
 pub const STATUS_INDEX: TableDefinition<(u8, u64), ()> = TableDefinition::new("status_index");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Bridge to vector index: entry_id -> hnsw_data_id.
 pub const VECTOR_MAP: TableDefinition<u64, u64> = TableDefinition::new("vector_map");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// ID generation and statistics: counter_name -> value.
 pub const COUNTERS: TableDefinition<&str, u64> = TableDefinition::new("counters");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Agent identity and trust records: agent_id -> bincode bytes.
 pub const AGENT_REGISTRY: TableDefinition<&str, &[u8]> =
     TableDefinition::new("agent_registry");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Append-only request audit trail: monotonic event_id -> bincode bytes.
 pub const AUDIT_LOG: TableDefinition<u64, &[u8]> = TableDefinition::new("audit_log");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Feature-entry multimap: feature_id -> set of entry_ids.
 /// Populated when retrieval tools include a `feature` parameter AND agent trust >= Internal.
 pub const FEATURE_ENTRIES: MultimapTableDefinition<&str, u64> =
     MultimapTableDefinition::new("feature_entries");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Co-access pair tracking: (min_entry_id, max_entry_id) -> bincode bytes.
 /// Keys are ordered (smaller ID first) to deduplicate symmetric pairs.
 pub const CO_ACCESS: TableDefinition<(u64, u64), &[u8]> = TableDefinition::new("co_access");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Outcome-to-feature-cycle index: (feature_cycle, entry_id) -> ().
 /// Populated when context_store creates an outcome entry with non-empty feature_cycle.
 pub const OUTCOME_INDEX: TableDefinition<(&str, u64), ()> =
     TableDefinition::new("outcome_index");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Observation metric storage: feature_cycle -> bincode-serialized MetricVector.
 /// Populated by context_retrospective tool.
 pub const OBSERVATION_METRICS: TableDefinition<&str, &[u8]> =
     TableDefinition::new("observation_metrics");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Confidence signal work queue: signal_id -> bincode-serialized SignalRecord.
 /// Transient — records deleted after drain. Added in schema v4 (col-009).
 pub const SIGNAL_QUEUE: TableDefinition<u64, &[u8]> = TableDefinition::new("signal_queue");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Session lifecycle records: session_id -> bincode-serialized SessionRecord.
 /// Added in schema v5 (col-010). Table 16.
 pub const SESSIONS: TableDefinition<&str, &[u8]> = TableDefinition::new("sessions");
 
+#[cfg(not(feature = "backend-sqlite"))]
 /// Injection event log: log_id (monotonic u64) -> bincode-serialized InjectionLogRecord.
 /// Added in schema v5 (col-010). Table 17.
 pub const INJECTION_LOG: TableDefinition<u64, &[u8]> = TableDefinition::new("injection_log");

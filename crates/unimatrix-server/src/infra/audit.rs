@@ -3,9 +3,12 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(not(feature = "backend-sqlite"))]
 use redb::{ReadableTable, WriteTransaction};
 use serde::{Deserialize, Serialize};
 use unimatrix_store::{AUDIT_LOG, COUNTERS, Store};
+#[cfg(feature = "backend-sqlite")]
+use unimatrix_store::SqliteWriteTransaction;
 
 use crate::error::ServerError;
 
@@ -144,6 +147,7 @@ impl AuditLog {
     ///
     /// The caller owns the transaction and is responsible for committing.
     /// Returns the assigned event_id.
+    #[cfg(not(feature = "backend-sqlite"))]
     pub fn write_in_txn(
         &self,
         txn: &WriteTransaction,
@@ -183,6 +187,45 @@ impl AuditLog {
             .map_err(|e| ServerError::Audit(e.to_string()))?;
 
         // DO NOT commit -- caller owns the transaction
+        Ok(current_id)
+    }
+
+    /// Write an audit event into an existing write transaction (SQLite backend).
+    #[cfg(feature = "backend-sqlite")]
+    pub fn write_in_txn(
+        &self,
+        txn: &SqliteWriteTransaction<'_>,
+        event: AuditEvent,
+    ) -> Result<u64, ServerError> {
+        let counters = txn
+            .open_table(COUNTERS)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        let current_id = match counters
+            .get("next_audit_id")
+            .map_err(|e| ServerError::Audit(e.to_string()))?
+        {
+            Some(guard) => guard.value(),
+            None => 1,
+        };
+        counters
+            .insert("next_audit_id", current_id + 1)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        drop(counters);
+
+        let final_event = AuditEvent {
+            event_id: current_id,
+            timestamp: current_unix_seconds(),
+            ..event
+        };
+
+        let audit_table = txn
+            .open_table(AUDIT_LOG)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        let bytes = serialize_audit_event(&final_event)?;
+        audit_table
+            .insert(current_id, bytes.as_slice())
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+
         Ok(current_id)
     }
 }

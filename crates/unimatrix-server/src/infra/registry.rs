@@ -5,6 +5,7 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(not(feature = "backend-sqlite"))]
 use redb::ReadableTable;
 use serde::{Deserialize, Serialize};
 use unimatrix_store::{AGENT_REGISTRY, Store};

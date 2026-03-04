@@ -7,9 +7,11 @@ license.workspace = true
 
 [features]
 test-support = ["dep:tempfile"]
+backend-sqlite = ["dep:rusqlite"]
 
 [dependencies]
 redb = { workspace = true }
+rusqlite = { version = "0.34", features = ["bundled"], optional = true }
 serde = { workspace = true }
 bincode = { workspace = true }
 sha2 = "0.10"

@@ -283,6 +283,7 @@ fn open_store_with_retry(
     for attempt in 1..=DB_OPEN_MAX_ATTEMPTS {
         match Store::open(db_path) {
             Ok(s) => return Ok(Arc::new(s)),
+            #[cfg(not(feature = "backend-sqlite"))]
             Err(StoreError::Database(redb::DatabaseError::DatabaseAlreadyOpen)) => {
                 if attempt < DB_OPEN_MAX_ATTEMPTS {
                     tracing::warn!(

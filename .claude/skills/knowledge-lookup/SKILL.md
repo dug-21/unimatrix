@@ -15,7 +15,7 @@ Retrieves Unimatrix entries by exact filters — topic, category, tags, status, 
 
 ## How to Look Up
 
-Call the `context_lookup` MCP tool:
+Call the `mcp__unimatrix__context_lookup` MCP tool:
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
@@ -34,27 +34,27 @@ Call the `context_lookup` MCP tool:
 
 **Get all ADRs for a specific feature:**
 ```
-context_lookup(topic: "nxs-002", category: "decision")
+mcp__unimatrix__context_lookup(topic: "nxs-002", category: "decision")
 ```
 
 **Get a specific entry by ID (full content):**
 ```
-context_lookup(id: 42, format: "markdown")
+mcp__unimatrix__context_lookup(id: 42, format: "markdown")
 ```
 
 **Find all deprecated decisions:**
 ```
-context_lookup(category: "decision", status: "deprecated")
+mcp__unimatrix__context_lookup(category: "decision", status: "deprecated")
 ```
 
 **Find entries tagged with a specific domain:**
 ```
-context_lookup(category: "decision", tags: ["adr", "serialization"])
+mcp__unimatrix__context_lookup(category: "decision", tags: ["adr", "serialization"])
 ```
 
 **Get all knowledge for a feature (any category):**
 ```
-context_lookup(topic: "vnc-001")
+mcp__unimatrix__context_lookup(topic: "vnc-001")
 ```
 
 ---
@@ -64,7 +64,7 @@ context_lookup(topic: "vnc-001")
 If you already have an entry ID (from a prior search or lookup result), use `context_get` for direct retrieval:
 
 ```
-context_get(id: 42, format: "markdown")
+mcp__unimatrix__context_get(id: 42, format: "markdown")
 ```
 
 This is faster than a lookup with an ID filter and always returns full content.
@@ -87,21 +87,21 @@ This is faster than a lookup with an ID filter and always returns full content.
 
 **Before writing a new ADR (architect):**
 ```
-1. context_lookup(topic: "{feature-id}", category: "decision")
+1. mcp__unimatrix__context_lookup(topic: "{feature-id}", category: "decision")
    → See what ADRs already exist for this feature
-2. context_lookup(category: "decision", tags: ["adr", "{domain}"])
+2. mcp__unimatrix__context_lookup(category: "decision", tags: ["adr", "{domain}"])
    → See ADRs across features in the same domain
 ```
 
 **Before implementing a component (developer):**
 ```
-1. context_lookup(topic: "{feature-id}", category: "decision", format: "markdown")
+1. mcp__unimatrix__context_lookup(topic: "{feature-id}", category: "decision", format: "markdown")
    → Read all architectural decisions for this feature
 ```
 
 **Checking for deprecated knowledge:**
 ```
-context_lookup(category: "decision", status: "deprecated", topic: "{feature-id}")
+mcp__unimatrix__context_lookup(category: "decision", status: "deprecated", topic: "{feature-id}")
 → See what decisions have been superseded
 ```
 
@@ -113,8 +113,8 @@ Lookup may surface entries that are outdated or incorrect. Fix them:
 
 | Situation | Action |
 |-----------|--------|
-| Entry is **wrong** | `context_correct(original_id: {id}, content: "{corrected version}", reason: "{why}")` — supersedes with chain link |
-| Entry is **outdated** | `context_deprecate(id: {id}, reason: "{why}")` |
-| Entry is **suspicious** | `context_quarantine(id: {id}, reason: "{concern}")` — Admin only |
+| Entry is **wrong** | `mcp__unimatrix__context_correct(original_id: {id}, content: "{corrected version}", reason: "{why}")` — supersedes with chain link |
+| Entry is **outdated** | `mcp__unimatrix__context_deprecate(id: {id}, reason: "{why}")` |
+| Entry is **suspicious** | `mcp__unimatrix__context_quarantine(id: {id}, reason: "{concern}")` — Admin only |
 
 Every agent shares responsibility for knowledge quality. Don't leave wrong entries for the next agent to trip over.

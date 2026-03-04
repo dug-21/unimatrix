@@ -38,20 +38,20 @@ impl Store {
             sets.push(read::collect_ids_by_category(&txn, category)?);
         }
 
-        if let Some(ref tags) = filter.tags {
-            if !tags.is_empty() {
-                sets.push(read::collect_ids_by_tags(&txn, tags)?);
-            }
+        if let Some(ref tags) = filter.tags
+            && !tags.is_empty()
+        {
+            sets.push(read::collect_ids_by_tags(&txn, tags)?);
         }
 
         if let Some(status) = effective_status {
             sets.push(read::collect_ids_by_status(&txn, status)?);
         }
 
-        if let Some(range) = filter.time_range {
-            if range.start <= range.end {
-                sets.push(read::collect_ids_by_time_range(&txn, range)?);
-            }
+        if let Some(range) = filter.time_range
+            && range.start <= range.end
+        {
+            sets.push(read::collect_ids_by_time_range(&txn, range)?);
         }
 
         // Intersect all sets

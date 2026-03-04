@@ -15,7 +15,7 @@ Stores a structured outcome record in Unimatrix. Outcomes enable the retrospecti
 
 ## How to Record
 
-Call `context_store` with these parameters:
+Call `mcp__unimatrix__context_store` with these parameters:
 
 | Parameter | Value |
 |-----------|-------|
@@ -41,7 +41,7 @@ Tags use `key:value` format. Include ALL applicable:
 
 **Design session complete:**
 ```
-context_store(
+mcp__unimatrix__context_store(
   category: "outcome",
   topic: "col-011",
   feature_cycle: "col-011",
@@ -53,7 +53,7 @@ context_store(
 
 **Delivery session complete:**
 ```
-context_store(
+mcp__unimatrix__context_store(
   category: "outcome",
   topic: "col-011",
   feature_cycle: "col-011",
@@ -65,7 +65,7 @@ context_store(
 
 **Bugfix complete:**
 ```
-context_store(
+mcp__unimatrix__context_store(
   category: "outcome",
   topic: "col-011",
   feature_cycle: "col-011",

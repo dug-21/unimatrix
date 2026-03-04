@@ -4,11 +4,15 @@
 //! with INJECTION_LOG cascade deletion. All operations are synchronous;
 //! callers in async contexts must use `tokio::task::spawn_blocking`.
 
+#[cfg(not(feature = "backend-sqlite"))]
 use redb::{ReadableDatabase, ReadableTable};
 use serde::{Deserialize, Serialize};
 
+#[cfg(not(feature = "backend-sqlite"))]
 use crate::db::Store;
+#[cfg(not(feature = "backend-sqlite"))]
 use crate::error::{Result, StoreError};
+#[cfg(not(feature = "backend-sqlite"))]
 use crate::schema::{INJECTION_LOG, SESSIONS};
 
 // -- Constants --
@@ -64,11 +68,13 @@ pub struct GcStats {
 
 // -- Serialization helpers --
 
+#[cfg(not(feature = "backend-sqlite"))]
 fn serialize_session(record: &SessionRecord) -> Result<Vec<u8>> {
     bincode::serde::encode_to_vec(record, bincode::config::standard())
         .map_err(|e| StoreError::Serialization(e.to_string()))
 }
 
+#[cfg(not(feature = "backend-sqlite"))]
 fn deserialize_session(bytes: &[u8]) -> Result<SessionRecord> {
     let (record, _) =
         bincode::serde::decode_from_slice::<SessionRecord, _>(bytes, bincode::config::standard())
@@ -76,8 +82,9 @@ fn deserialize_session(bytes: &[u8]) -> Result<SessionRecord> {
     Ok(record)
 }
 
-// -- Store methods --
+// -- Store methods (redb backend) --
 
+#[cfg(not(feature = "backend-sqlite"))]
 impl Store {
     /// Insert a new SessionRecord into SESSIONS.
     ///
@@ -301,6 +308,7 @@ impl Store {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "backend-sqlite"))]
 mod tests {
     use super::*;
     use crate::injection_log::InjectionLogRecord;
