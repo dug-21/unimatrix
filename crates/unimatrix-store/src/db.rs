@@ -193,7 +193,7 @@ impl Store {
     pub fn signal_queue_len(&self) -> Result<u64> {
         let txn = self.db.begin_read().map_err(StoreError::Transaction)?;
         let queue = txn.open_table(SIGNAL_QUEUE).map_err(StoreError::Table)?;
-        Ok(queue.len().map_err(StoreError::Storage)?)
+        queue.len().map_err(StoreError::Storage)
     }
 }
 

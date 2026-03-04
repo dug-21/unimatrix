@@ -15,11 +15,20 @@ pub struct TestDb {
     store: Store,
 }
 
+impl Default for TestDb {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TestDb {
     /// Create a new test database in a temporary directory.
     pub fn new() -> Self {
         let dir = tempfile::TempDir::new().expect("failed to create temp dir");
+        #[cfg(not(feature = "backend-sqlite"))]
         let path = dir.path().join("test.redb");
+        #[cfg(feature = "backend-sqlite")]
+        let path = dir.path().join("test.db");
         let store = Store::open(&path).expect("failed to open test database");
         TestDb { _dir: dir, store }
     }
@@ -154,7 +163,7 @@ pub fn assert_index_consistent(store: &Store, entry_id: u64) {
 
     // Verify TAG_INDEX
     for tag in &record.tags {
-        let tag_results = store.query_by_tags(&[tag.clone()]).unwrap();
+        let tag_results = store.query_by_tags(std::slice::from_ref(tag)).unwrap();
         assert!(
             tag_results.iter().any(|r| r.id == entry_id),
             "entry {entry_id} not found in TAG_INDEX for tag '{tag}'"
@@ -222,7 +231,7 @@ pub fn assert_index_absent(
         .unwrap_or_default();
     for tag in old_tags {
         if !current_tags.contains(tag) {
-            let tag_results = store.query_by_tags(&[tag.clone()]).unwrap();
+            let tag_results = store.query_by_tags(std::slice::from_ref(tag)).unwrap();
             assert!(
                 !tag_results.iter().any(|r| r.id == entry_id),
                 "entry {entry_id} still found in TAG_INDEX for old tag '{tag}'"

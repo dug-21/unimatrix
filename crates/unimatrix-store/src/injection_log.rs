@@ -4,11 +4,14 @@
 //! `insert_injection_log_batch` is the sole public write API — never insert single records.
 //! All operations are synchronous; callers in async contexts use `tokio::task::spawn_blocking`.
 
+#[cfg(not(feature = "backend-sqlite"))]
 use redb::{ReadableDatabase, ReadableTable};
 use serde::{Deserialize, Serialize};
 
+#[cfg(not(feature = "backend-sqlite"))]
 use crate::db::Store;
 use crate::error::{Result, StoreError};
+#[cfg(not(feature = "backend-sqlite"))]
 use crate::schema::{COUNTERS, INJECTION_LOG};
 
 // -- Types --
@@ -33,6 +36,7 @@ pub struct InjectionLogRecord {
 // Exposed as `pub(crate)` so `sessions.rs` can deserialize INJECTION_LOG records
 // during GC cascade without creating a circular module dependency.
 
+#[cfg_attr(feature = "backend-sqlite", allow(dead_code))]
 pub(crate) fn serialize_injection_log(record: &InjectionLogRecord) -> Result<Vec<u8>> {
     bincode::serde::encode_to_vec(record, bincode::config::standard())
         .map_err(|e| StoreError::Serialization(e.to_string()))
@@ -45,8 +49,9 @@ pub(crate) fn deserialize_injection_log(bytes: &[u8]) -> Result<InjectionLogReco
     Ok(record)
 }
 
-// -- Store methods --
+// -- Store methods (redb backend) --
 
+#[cfg(not(feature = "backend-sqlite"))]
 impl Store {
     /// Insert a batch of injection log records in a single write transaction.
     ///
@@ -110,6 +115,7 @@ impl Store {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "backend-sqlite"))]
 mod tests {
     use super::*;
 
