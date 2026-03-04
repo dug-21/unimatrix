@@ -13,6 +13,7 @@ use unimatrix_vector::VectorIndex;
 use crate::infra::audit::AuditLog;
 use crate::error::ServerError;
 use crate::infra::registry::AgentRegistry;
+use crate::services::ServiceLayer;
 use crate::uds::listener::SocketGuard;
 
 /// Handles needed for lifecycle operations during shutdown.
@@ -38,6 +39,9 @@ pub struct LifecycleHandles {
     pub socket_guard: Option<SocketGuard>,
     /// UDS accept loop task handle for shutdown coordination (col-006).
     pub uds_handle: Option<tokio::task::JoinHandle<()>>,
+    /// ServiceLayer holding Arc<Store> clones via internal services (#92).
+    /// Must be dropped before Arc::try_unwrap(store) to release all references.
+    pub services: Option<ServiceLayer>,
 }
 
 /// Run the graceful shutdown sequence.
@@ -92,7 +96,10 @@ where
         Err(e) => tracing::warn!(error = %e, "adaptation state save failed, continuing shutdown"),
     }
 
-    // Step 2: Drop all Arc<Store> holders before try_unwrap
+    // Step 2: Drop all Arc<Store> holders before try_unwrap.
+    // ServiceLayer (vnc-006) holds 5+ Arc<Store> clones via its internal
+    // services — drop it first to release those references (#92).
+    drop(handles.services.take());
     drop(handles.adapt_service);
     drop(handles.registry);
     drop(handles.audit);
@@ -175,5 +182,163 @@ mod tests {
 
         let mut owned = Arc::try_unwrap(store).ok().expect("should be sole owner");
         owned.compact().unwrap();
+    }
+
+    /// Verify that the shutdown drop sequence releases ALL Arc<Store> clones,
+    /// including the ServiceLayer introduced in vnc-006 (#92).
+    ///
+    /// Before the fix, ServiceLayer was not in LifecycleHandles, so
+    /// Arc::try_unwrap(store) always failed after vnc-006.
+    #[test]
+    fn test_shutdown_drops_release_all_store_refs() {
+        use unimatrix_adapt::{AdaptConfig, AdaptationService};
+        use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
+        use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+
+        use crate::infra::audit::AuditLog;
+        use crate::infra::embed_handle::EmbedServiceHandle;
+        use crate::infra::registry::AgentRegistry;
+        use crate::infra::usage_dedup::UsageDedup;
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let db_path = dir.path().join("test.redb");
+        let vector_dir = dir.path().join("vector");
+        std::fs::create_dir_all(&vector_dir).unwrap();
+
+        let store = Arc::new(Store::open(&db_path).unwrap());
+        let vector_config = VectorConfig::default();
+        let vector_index = Arc::new(
+            VectorIndex::new(Arc::clone(&store), vector_config).unwrap(),
+        );
+
+        // Build all the components that hold Arc<Store>, mirroring main.rs
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store)).unwrap());
+        let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
+        let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
+        let embed_handle = EmbedServiceHandle::new();
+        let usage_dedup = Arc::new(UsageDedup::new());
+
+        let store_adapter = StoreAdapter::new(Arc::clone(&store));
+        let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
+        let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
+        let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
+
+        // Build ServiceLayer (vnc-006) — this holds 5+ Arc<Store> clones
+        let services = ServiceLayer::new(
+            Arc::clone(&store),
+            Arc::clone(&vector_index),
+            Arc::clone(&async_vector_store),
+            Arc::clone(&async_entry_store),
+            Arc::clone(&embed_handle),
+            Arc::clone(&adapt_service),
+            Arc::clone(&audit),
+            Arc::clone(&usage_dedup),
+        );
+
+        // Build LifecycleHandles with ServiceLayer included (#92 fix)
+        let mut handles = LifecycleHandles {
+            store,
+            vector_index,
+            vector_dir,
+            registry,
+            audit,
+            adapt_service,
+            data_dir: dir.path().to_path_buf(),
+            socket_guard: None,
+            uds_handle: None,
+            services: Some(services),
+        };
+
+        // Drop remaining locals that held Arc clones (mirrors tokio_main ownership)
+        drop(async_entry_store);
+        drop(async_vector_store);
+        drop(embed_handle);
+        drop(usage_dedup);
+
+        // Simulate the shutdown drop sequence from graceful_shutdown
+        drop(handles.services.take());
+        drop(handles.adapt_service);
+        drop(handles.registry);
+        drop(handles.audit);
+        drop(handles.vector_index);
+
+        // Arc::try_unwrap should now succeed — all other refs are released
+        let result = Arc::try_unwrap(handles.store);
+        assert!(
+            result.is_ok(),
+            "Arc::try_unwrap(store) failed: outstanding references remain after shutdown drop sequence"
+        );
+    }
+
+    /// Verify that WITHOUT dropping ServiceLayer, Arc::try_unwrap fails.
+    /// This is the regression test: proves the bug existed before the fix.
+    #[test]
+    fn test_shutdown_fails_without_service_layer_drop() {
+        use unimatrix_adapt::{AdaptConfig, AdaptationService};
+        use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
+        use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+
+        use crate::infra::audit::AuditLog;
+        use crate::infra::embed_handle::EmbedServiceHandle;
+        use crate::infra::registry::AgentRegistry;
+        use crate::infra::usage_dedup::UsageDedup;
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let db_path = dir.path().join("test.redb");
+        let vector_dir = dir.path().join("vector");
+        std::fs::create_dir_all(&vector_dir).unwrap();
+
+        let store = Arc::new(Store::open(&db_path).unwrap());
+        let vector_config = VectorConfig::default();
+        let vector_index = Arc::new(
+            VectorIndex::new(Arc::clone(&store), vector_config).unwrap(),
+        );
+
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store)).unwrap());
+        let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
+        let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
+        let embed_handle = EmbedServiceHandle::new();
+        let usage_dedup = Arc::new(UsageDedup::new());
+
+        let store_adapter = StoreAdapter::new(Arc::clone(&store));
+        let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
+        let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
+        let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
+
+        // Build ServiceLayer — holds internal Arc<Store> clones
+        let services = ServiceLayer::new(
+            Arc::clone(&store),
+            Arc::clone(&vector_index),
+            Arc::clone(&async_vector_store),
+            Arc::clone(&async_entry_store),
+            Arc::clone(&embed_handle),
+            Arc::clone(&adapt_service),
+            Arc::clone(&audit),
+            Arc::clone(&usage_dedup),
+        );
+
+        // Drop locals except ServiceLayer
+        drop(async_entry_store);
+        drop(async_vector_store);
+        drop(embed_handle);
+        drop(usage_dedup);
+
+        // Drop the handles that graceful_shutdown would drop
+        drop(adapt_service);
+        drop(registry);
+        drop(audit);
+        drop(vector_index);
+
+        // ServiceLayer is NOT dropped — simulating the pre-fix bug
+        // Arc::try_unwrap should FAIL because ServiceLayer still holds refs
+        let result = Arc::try_unwrap(store);
+        assert!(
+            result.is_err(),
+            "Arc::try_unwrap should fail when ServiceLayer is not dropped"
+        );
+
+        // Clean up (drop services so Store can be released for tempdir cleanup)
+        drop(services);
+        drop(result);
     }
 }
