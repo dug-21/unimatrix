@@ -21,7 +21,7 @@
 | Duties Removal | pseudocode/duties-removal.md | test-plan/duties-removal.md |
 | Feature Flag | pseudocode/feature-flag.md | test-plan/feature-flag.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
