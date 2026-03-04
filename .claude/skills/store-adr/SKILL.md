@@ -34,7 +34,7 @@ context_store(
   tags: ["adr", "{phase-prefix}", "{domain-tags}"],
   source: "architect",
   feature_cycle: "{feature-id}",
-  agent_id: "{your agent ID}"
+  agent_id: "{your role name, e.g. uni-architect}"
 )
 ```
 

@@ -5,7 +5,6 @@
 //! Execution order per tool: identity -> capability -> validation -> category -> scanning
 //! -> business logic -> format -> audit.
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use rmcp::handler::server::wrapper::Parameters;
@@ -14,27 +13,21 @@ use rmcp::tool;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use unimatrix_core::{CoreError, EmbedService, NewEntry, QueryFilter, Status};
-use unimatrix_store::{
-    ENTRIES, CATEGORY_INDEX, TOPIC_INDEX, COUNTERS,
-    deserialize_entry,
-};
-use unimatrix_store::sessions::{TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS};
 
-use crate::audit::{AuditEvent, Outcome};
-use crate::registry::Capability;
-use crate::services::{AuditContext, AuditSource, ServiceSearchParams};
-use crate::uds_listener::{run_confidence_consumer, run_retrospective_consumer, write_signals_to_queue};
-use crate::response::{
+use crate::infra::audit::{AuditEvent, Outcome};
+use crate::infra::registry::Capability;
+use crate::services::ServiceSearchParams;
+use crate::mcp::response::{
     format_duplicate_found, format_enroll_success, format_lookup_results, format_search_results,
     format_single_entry, format_store_success, format_store_success_with_note,
     format_correct_success, format_deprecate_success,
     format_quarantine_success, format_restore_success,
-    format_status_report, StatusReport, CoAccessClusterEntry, parse_format,
+    format_status_report,
 };
 #[cfg(feature = "mcp-briefing")]
-use crate::response::{format_briefing, Briefing};
+use crate::mcp::response::{format_briefing, Briefing};
 use crate::server::UnimatrixServer;
-use crate::validation::{
+use crate::infra::validation::{
     validate_get_params, validate_lookup_params, validate_search_params, validate_store_params,
     validate_correct_params, validate_deprecate_params, validate_enroll_params,
     validate_quarantine_params, validate_status_params,
@@ -43,7 +36,7 @@ use crate::validation::{
     QuarantineAction, validate_feature, validate_helpful,
 };
 #[cfg(feature = "mcp-briefing")]
-use crate::validation::{validate_briefing_params, validated_max_tokens};
+use crate::infra::validation::{validate_briefing_params, validated_max_tokens};
 
 /// Parameters for semantic search.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -254,39 +247,19 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<SearchParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
-        // 1. Identity
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .map_err(rmcp::ErrorData::from)?;
+        // 1. Identity + format + audit context (vnc-008: ToolContext)
+        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        self.require_cap(&ctx.agent_id, Capability::Search)?;
 
-        // 2. Capability check
-        self.registry
-            .require_capability(&identity.agent_id, Capability::Search)
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 3. Validation
+        // 2. Validation
         validate_search_params(&params).map_err(rmcp::ErrorData::from)?;
         validate_feature(&params.feature).map_err(rmcp::ErrorData::from)?;
         validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
 
-        // 4. Parse format
-        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
-
-        // 5. Parse k
+        // 3. Parse k
         let k = validated_k(params.k).map_err(rmcp::ErrorData::from)?;
 
-        // 6. Build AuditContext (MCP transport)
-        let audit_ctx = AuditContext {
-            source: AuditSource::Mcp {
-                agent_id: identity.agent_id.clone(),
-                trust_level: identity.trust_level,
-            },
-            caller_id: identity.agent_id.clone(),
-            session_id: None,
-            feature_cycle: None,
-        };
-
-        // 7. Build ServiceSearchParams and delegate to SearchService
+        // 4. Build ServiceSearchParams and delegate to SearchService
         let service_params = ServiceSearchParams {
             query: params.query.clone(),
             k,
@@ -308,29 +281,29 @@ impl UnimatrixServer {
             confidence_floor: None,
             feature_tag: params.feature.clone(),
             co_access_anchors: None,
-            caller_agent_id: Some(identity.agent_id.clone()),
+            caller_agent_id: Some(ctx.agent_id.clone()),
         };
 
         let search_results = self
             .services
             .search
-            .search(service_params, &audit_ctx)
+            .search(service_params, &ctx.audit_ctx)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 8. Format response (transport-specific)
+        // 5. Format response (transport-specific)
         let results_with_scores: Vec<_> = search_results
             .entries
             .iter()
             .map(|se| (se.entry.clone(), se.similarity))
             .collect();
-        let result = format_search_results(&results_with_scores, format);
+        let result = format_search_results(&results_with_scores, ctx.format);
 
-        // 9. Usage recording (fire-and-forget, transport-specific)
+        // 6. Usage recording (fire-and-forget, transport-specific)
         let target_ids: Vec<u64> = search_results.entries.iter().map(|se| se.entry.id).collect();
         self.record_usage_for_entries(
-            &identity.agent_id,
-            identity.trust_level,
+            &ctx.agent_id,
+            ctx.trust_level,
             &target_ids,
             params.helpful,
             params.feature.as_deref(),
@@ -347,28 +320,19 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<LookupParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
-        // 1. Identity
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .map_err(rmcp::ErrorData::from)?;
+        // 1. Identity + format + audit context (vnc-008: ToolContext)
+        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        self.require_cap(&ctx.agent_id, Capability::Read)?;
 
-        // 2. Capability check
-        self.registry
-            .require_capability(&identity.agent_id, Capability::Read)
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 3. Validation
+        // 2. Validation
         validate_lookup_params(&params).map_err(rmcp::ErrorData::from)?;
         validate_feature(&params.feature).map_err(rmcp::ErrorData::from)?;
         validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
 
-        // 4. Parse format
-        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
-
-        // 5. Parse limit
+        // 3. Parse limit
         let limit = validated_limit(params.limit).map_err(rmcp::ErrorData::from)?;
 
-        // 6. Branch: ID-based vs filter-based
+        // 4. Branch: ID-based vs filter-based
         let (result, target_ids) = if let Some(id) = params.id {
             let id = validated_id(id).map_err(rmcp::ErrorData::from)?;
             let entry = self
@@ -377,7 +341,7 @@ impl UnimatrixServer {
                 .await
                 .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
             let ids = vec![entry.id];
-            (format_single_entry(&entry, format), ids)
+            (format_single_entry(&entry, ctx.format), ids)
         } else {
             // Build filter
             let status = match &params.status {
@@ -399,26 +363,26 @@ impl UnimatrixServer {
                 .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
             entries.truncate(limit);
             let ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
-            (format_lookup_results(&entries, format), ids)
+            (format_lookup_results(&entries, ctx.format), ids)
         };
 
-        // 7. Audit (standalone, best-effort)
+        // 5. Audit (standalone, best-effort)
         let result_count = target_ids.len();
         let _ = self.audit.log_event(AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
-            agent_id: identity.agent_id.clone(),
+            agent_id: ctx.agent_id.clone(),
             operation: "context_lookup".to_string(),
             target_ids: target_ids.clone(),
             outcome: Outcome::Success,
             detail: format!("returned {result_count} results"),
         });
 
-        // 8. Usage recording (fire-and-forget)
+        // 6. Usage recording (fire-and-forget)
         self.record_usage_for_entries(
-            &identity.agent_id,
-            identity.trust_level,
+            &ctx.agent_id,
+            ctx.trust_level,
             &target_ids,
             params.helpful,
             params.feature.as_deref(),
@@ -435,52 +399,32 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<StoreParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
-        // 1. Identity
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .map_err(rmcp::ErrorData::from)?;
+        // 1. Identity + format + audit context (vnc-008: ToolContext)
+        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        self.require_cap(&ctx.agent_id, Capability::Write)?;
 
-        // 2. Capability check (Write required)
-        self.registry
-            .require_capability(&identity.agent_id, Capability::Write)
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 3. Validation
+        // 2. Validation
         validate_store_params(&params).map_err(rmcp::ErrorData::from)?;
 
-        // 4. Parse format
-        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
-
-        // 5. Category validation
+        // 3. Category validation
         self.categories
             .validate(&params.category)
             .map_err(rmcp::ErrorData::from)?;
 
-        // 5a. Outcome tag validation (only for outcome entries)
+        // 3a. Outcome tag validation (only for outcome entries)
         if params.category == "outcome" {
             let tags = params.tags.as_deref().unwrap_or(&[]);
-            crate::outcome_tags::validate_outcome_tags(tags)
+            crate::infra::outcome_tags::validate_outcome_tags(tags)
                 .map_err(rmcp::ErrorData::from)?;
         }
 
-        // 6. Build AuditContext (MCP transport)
-        let audit_ctx = AuditContext {
-            source: AuditSource::Mcp {
-                agent_id: identity.agent_id.clone(),
-                trust_level: identity.trust_level,
-            },
-            caller_id: identity.agent_id.clone(),
-            session_id: None,
-            feature_cycle: None,
-        };
-
-        // 7. Build title (transport-specific default)
+        // 4. Build title (transport-specific default)
         let title = params
             .title
             .unwrap_or_else(|| format!("{}: {}", params.topic, params.category));
         let is_outcome = params.category == "outcome";
 
-        // 8. Build NewEntry
+        // 5. Build NewEntry
         let feature_cycle = params.feature_cycle.clone().unwrap_or_default();
         let new_entry = NewEntry {
             title,
@@ -490,35 +434,35 @@ impl UnimatrixServer {
             tags: params.tags.unwrap_or_default(),
             source: params.source.unwrap_or_default(),
             status: Status::Active,
-            created_by: identity.agent_id,
+            created_by: ctx.agent_id,
             feature_cycle,
             trust_source: "agent".to_string(),
         };
 
-        // 9. Delegate to StoreService (scanning, embedding, dup-check, insert)
+        // 6. Delegate to StoreService (scanning, embedding, dup-check, insert)
         let insert_result = self
             .services
             .store_ops
-            .insert(new_entry, None, &audit_ctx)
+            .insert(new_entry, None, &ctx.audit_ctx)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 10. Handle duplicate result
+        // 7. Handle duplicate result
         if insert_result.duplicate_of.is_some() {
             let similarity = insert_result.duplicate_similarity.unwrap_or(1.0);
-            return Ok(format_duplicate_found(&insert_result.entry, similarity, format));
+            return Ok(format_duplicate_found(&insert_result.entry, similarity, ctx.format));
         }
 
-        // 11. Seed initial confidence (fire-and-forget, via ConfidenceService)
+        // 8. Seed initial confidence (fire-and-forget, via ConfidenceService)
         self.services.confidence.recompute(&[insert_result.entry.id]);
 
-        // 12. Format response
+        // 9. Format response
         if is_outcome && insert_result.entry.feature_cycle.is_empty() {
             // Append orphan outcome warning to the formatted response
             let warning = "\nNote: outcome not linked to a workflow (no feature_cycle provided)";
-            Ok(format_store_success_with_note(&insert_result.entry, format, warning))
+            Ok(format_store_success_with_note(&insert_result.entry, ctx.format, warning))
         } else {
-            Ok(format_store_success(&insert_result.entry, format))
+            Ok(format_store_success(&insert_result.entry, ctx.format))
         }
     }
 
@@ -530,25 +474,16 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<GetParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
-        // 1. Identity
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .map_err(rmcp::ErrorData::from)?;
+        // 1. Identity + format + audit context (vnc-008: ToolContext)
+        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        self.require_cap(&ctx.agent_id, Capability::Read)?;
 
-        // 2. Capability check
-        self.registry
-            .require_capability(&identity.agent_id, Capability::Read)
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 3. Validation
+        // 2. Validation
         validate_get_params(&params).map_err(rmcp::ErrorData::from)?;
         validate_feature(&params.feature).map_err(rmcp::ErrorData::from)?;
         validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
 
-        // 4. Parse format
-        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
-
-        // 5. Get entry
+        // 3. Get entry
         let id = validated_id(params.id).map_err(rmcp::ErrorData::from)?;
         let entry = self
             .entry_store
@@ -556,25 +491,25 @@ impl UnimatrixServer {
             .await
             .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
 
-        // 6. Format response
-        let result = format_single_entry(&entry, format);
+        // 4. Format response
+        let result = format_single_entry(&entry, ctx.format);
 
-        // 7. Audit (standalone, best-effort)
+        // 5. Audit (standalone, best-effort)
         let _ = self.audit.log_event(AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
-            agent_id: identity.agent_id.clone(),
+            agent_id: ctx.agent_id.clone(),
             operation: "context_get".to_string(),
             target_ids: vec![id],
             outcome: Outcome::Success,
             detail: format!("retrieved entry #{id}"),
         });
 
-        // 8. Usage recording (fire-and-forget)
+        // 6. Usage recording (fire-and-forget)
         self.record_usage_for_entries(
-            &identity.agent_id,
-            identity.trust_level,
+            &ctx.agent_id,
+            ctx.trust_level,
             &[id],
             params.helpful,
             params.feature.as_deref(),
@@ -591,26 +526,17 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<CorrectParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
-        // 1. Identity
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .map_err(rmcp::ErrorData::from)?;
+        // 1. Identity + format + audit context (vnc-008: ToolContext)
+        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        self.require_cap(&ctx.agent_id, Capability::Write)?;
 
-        // 2. Capability check (Write required)
-        self.registry
-            .require_capability(&identity.agent_id, Capability::Write)
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 3. Validation (includes original_id range check)
+        // 2. Validation (includes original_id range check)
         validate_correct_params(&params).map_err(rmcp::ErrorData::from)?;
 
-        // 4. Parse format
-        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
-
-        // 5. Extract validated original_id (range already checked by validate_correct_params)
+        // 3. Extract validated original_id (range already checked by validate_correct_params)
         let original_id = params.original_id as u64;
 
-        // 6. Get original entry (needed for field inheritance below)
+        // 4. Get original entry (needed for field inheritance below)
         let original = self
             .entry_store
             .get(original_id)
@@ -620,30 +546,19 @@ impl UnimatrixServer {
         // Note: deprecated check is handled authoritatively inside StoreService.correct()'s
         // write transaction. No pre-check here to avoid TOCTOU.
 
-        // 7. Category validation: only if explicit new category provided
+        // 5. Category validation: only if explicit new category provided
         if let Some(category) = &params.category {
             self.categories
                 .validate(category)
                 .map_err(rmcp::ErrorData::from)?;
         }
 
-        // 8. Build AuditContext (MCP transport)
-        let audit_ctx = AuditContext {
-            source: AuditSource::Mcp {
-                agent_id: identity.agent_id.clone(),
-                trust_level: identity.trust_level,
-            },
-            caller_id: identity.agent_id.clone(),
-            session_id: None,
-            feature_cycle: None,
-        };
-
-        // 9. Build title (inherit from original if not provided)
+        // 6. Build title (inherit from original if not provided)
         let title = params
             .title
             .unwrap_or_else(|| original.title.clone());
 
-        // 10. Build NewEntry with inheritance
+        // 7. Build NewEntry with inheritance
         let new_entry = NewEntry {
             title,
             content: params.content,
@@ -652,30 +567,30 @@ impl UnimatrixServer {
             tags: params.tags.unwrap_or_else(|| original.tags.clone()),
             source: original.source.clone(),
             status: Status::Active,
-            created_by: identity.agent_id,
+            created_by: ctx.agent_id,
             feature_cycle: original.feature_cycle.clone(),
             trust_source: "agent".to_string(),
         };
 
-        // 11. Delegate to StoreService (scanning, embedding, atomic correct+audit)
+        // 8. Delegate to StoreService (scanning, embedding, atomic correct+audit)
         let correct_result = self
             .services
             .store_ops
-            .correct(original_id, new_entry, params.reason, &audit_ctx)
+            .correct(original_id, new_entry, params.reason, &ctx.audit_ctx)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 12. Confidence for both entries (fire-and-forget, via ConfidenceService)
+        // 9. Confidence for both entries (fire-and-forget, via ConfidenceService)
         self.services.confidence.recompute(&[
             correct_result.corrected_entry.id,
             correct_result.deprecated_original.id,
         ]);
 
-        // 13. Format response
+        // 10. Format response
         Ok(format_correct_success(
             &correct_result.deprecated_original,
             &correct_result.corrected_entry,
-            format,
+            ctx.format,
         ))
     }
 
@@ -687,47 +602,38 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<DeprecateParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
-        // 1. Identity
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .map_err(rmcp::ErrorData::from)?;
+        // 1. Identity + format + audit context (vnc-008: ToolContext)
+        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        self.require_cap(&ctx.agent_id, Capability::Write)?;
 
-        // 2. Capability check (Write required)
-        self.registry
-            .require_capability(&identity.agent_id, Capability::Write)
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 3. Validation (includes id range check)
+        // 2. Validation (includes id range check)
         validate_deprecate_params(&params).map_err(rmcp::ErrorData::from)?;
 
-        // 4. Parse format
-        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
-
-        // 5. Extract validated ID (range already checked by validate_deprecate_params)
+        // 3. Extract validated ID (range already checked by validate_deprecate_params)
         let entry_id = params.id as u64;
 
-        // 6. Get entry (verify exists + idempotency check)
+        // 4. Get entry (verify exists + idempotency check)
         let entry = self
             .entry_store
             .get(entry_id)
             .await
             .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
 
-        // 7. Idempotency: if already deprecated, return success immediately
+        // 5. Idempotency: if already deprecated, return success immediately
         if entry.status == Status::Deprecated {
             return Ok(format_deprecate_success(
                 &entry,
                 params.reason.as_deref(),
-                format,
+                ctx.format,
             ));
         }
 
-        // 8. Deprecate with audit
+        // 6. Deprecate with audit
         let audit_event = AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
-            agent_id: identity.agent_id,
+            agent_id: ctx.agent_id,
             operation: "context_deprecate".to_string(),
             target_ids: vec![],
             outcome: Outcome::Success,
@@ -738,14 +644,14 @@ impl UnimatrixServer {
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 9. Recompute confidence for deprecated entry (fire-and-forget, via ConfidenceService)
+        // 7. Recompute confidence for deprecated entry (fire-and-forget, via ConfidenceService)
         self.services.confidence.recompute(&[deprecated.id]);
 
-        // 10. Format response
+        // 8. Format response
         Ok(format_deprecate_success(
             &deprecated,
             params.reason.as_deref(),
-            format,
+            ctx.format,
         ))
     }
 
@@ -757,630 +663,52 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<StatusParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
-        use redb::ReadableTable;
+        // 1. Identity + format + capability (vnc-008: ToolContext)
+        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        self.require_cap(&ctx.agent_id, Capability::Admin)?;
 
-        // 1. Identity
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 2. Capability check (Admin required)
-        self.registry
-            .require_capability(&identity.agent_id, Capability::Admin)
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 3. Validation
+        // 2. Validation
         validate_status_params(&params).map_err(rmcp::ErrorData::from)?;
 
-        // 4. Parse format
-        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
+        // 3. Compute report via StatusService (vnc-008 extraction)
+        let check_embeddings = params.check_embeddings.unwrap_or(false);
+        let (mut report, active_entries) = self.services.status
+            .compute_report(params.topic, params.category, check_embeddings)
+            .await
+            .map_err(rmcp::ErrorData::from)?;
 
-        // 4b. Resolve maintain flag (ADR-002: default false, opt-in)
+        // 4. Maintenance (opt-in, ADR-002)
         let maintain_enabled = params.maintain.unwrap_or(false);
 
-        // 5. Build report in a single read transaction (consistent snapshot)
-        let store = Arc::clone(&self.store);
-        let topic_filter = params.topic.clone();
-        let category_filter = params.category.clone();
-
-        let report_result = tokio::task::spawn_blocking(move || -> Result<(StatusReport, Vec<unimatrix_store::EntryRecord>), crate::error::ServerError> {
-            let read_txn = store.begin_read()
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-
-            // 5a. Read status counters
-            let counters = read_txn.open_table(COUNTERS)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-            let total_active = counters.get("total_active")
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                .map(|g| g.value()).unwrap_or(0);
-            let total_deprecated = counters.get("total_deprecated")
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                .map(|g| g.value()).unwrap_or(0);
-            let total_proposed = counters.get("total_proposed")
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                .map(|g| g.value()).unwrap_or(0);
-            let total_quarantined = counters.get("total_quarantined")
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                .map(|g| g.value()).unwrap_or(0);
-
-            // 5b. Category distribution from CATEGORY_INDEX
-            let cat_table = read_txn.open_table(CATEGORY_INDEX)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-            let mut category_distribution: BTreeMap<String, u64> = BTreeMap::new();
-            if let Some(ref filter_cat) = category_filter {
-                let range = cat_table.range::<(&str, u64)>((filter_cat.as_str(), 0u64)..=(filter_cat.as_str(), u64::MAX))
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                let count = range.count() as u64;
-                if count > 0 {
-                    category_distribution.insert(filter_cat.clone(), count);
-                }
-            } else {
-                for item in cat_table.iter()
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))? {
-                    let (key, _) = item
-                        .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                    let (cat_str, _id) = key.value();
-                    *category_distribution.entry(cat_str.to_string()).or_insert(0) += 1;
-                }
-            }
-
-            // 5c. Topic distribution from TOPIC_INDEX
-            let topic_table = read_txn.open_table(TOPIC_INDEX)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-            let mut topic_distribution: BTreeMap<String, u64> = BTreeMap::new();
-            if let Some(ref filter_topic) = topic_filter {
-                let range = topic_table.range::<(&str, u64)>((filter_topic.as_str(), 0u64)..=(filter_topic.as_str(), u64::MAX))
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                let count = range.count() as u64;
-                if count > 0 {
-                    topic_distribution.insert(filter_topic.clone(), count);
-                }
-            } else {
-                for item in topic_table.iter()
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))? {
-                    let (key, _) = item
-                        .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                    let (topic_str, _id) = key.value();
-                    *topic_distribution.entry(topic_str.to_string()).or_insert(0) += 1;
-                }
-            }
-
-            // 5d. Correction chain metrics + security metrics from ENTRIES scan
-            //      Also collect active entries for coherence dimensions (crt-005)
-            let entries_table = read_txn.open_table(ENTRIES)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-            let mut entries_with_supersedes = 0u64;
-            let mut entries_with_superseded_by = 0u64;
-            let mut total_correction_count = 0u64;
-            let mut trust_source_dist: BTreeMap<String, u64> = BTreeMap::new();
-            let mut entries_without_attribution = 0u64;
-            let mut active_entries: Vec<unimatrix_store::EntryRecord> = Vec::new();
-
-            for item in entries_table.iter()
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))? {
-                let (_key, value) = item
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                let record = deserialize_entry(value.value())
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-                if record.supersedes.is_some() {
-                    entries_with_supersedes += 1;
-                }
-                if record.superseded_by.is_some() {
-                    entries_with_superseded_by += 1;
-                }
-                total_correction_count += record.correction_count as u64;
-                let ts = if record.trust_source.is_empty() {
-                    "(none)".to_string()
-                } else {
-                    record.trust_source.clone()
-                };
-                *trust_source_dist.entry(ts).or_insert(0) += 1;
-                if record.created_by.is_empty() {
-                    entries_without_attribution += 1;
-                }
-                if record.status == unimatrix_store::Status::Active {
-                    active_entries.push(record);
-                }
-            }
-
-            // 5d2. Outcome statistics
-            let mut total_outcomes = 0u64;
-            let mut outcomes_by_type: BTreeMap<String, u64> = BTreeMap::new();
-            let mut outcomes_by_result: BTreeMap<String, u64> = BTreeMap::new();
-            let mut outcomes_by_feature_cycle: BTreeMap<String, u64> = BTreeMap::new();
-
-            // Scan CATEGORY_INDEX for "outcome" entries
-            let outcome_range = cat_table
-                .range::<(&str, u64)>(("outcome", 0u64)..=("outcome", u64::MAX))
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-
-            for item in outcome_range {
-                let (key, _) = item
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                let (_cat, entry_id) = key.value();
-                total_outcomes += 1;
-
-                // Read the entry record to extract tags
-                if let Some(entry_guard) = entries_table
-                    .get(entry_id)
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                {
-                    let record = deserialize_entry(entry_guard.value())
-                        .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-
-                    // Extract type: and result: tags
-                    for tag in &record.tags {
-                        if let Some((tag_key, tag_value)) = tag.split_once(':') {
-                            match tag_key {
-                                "type" => {
-                                    *outcomes_by_type
-                                        .entry(tag_value.to_string())
-                                        .or_insert(0) += 1;
-                                }
-                                "result" => {
-                                    *outcomes_by_result
-                                        .entry(tag_value.to_string())
-                                        .or_insert(0) += 1;
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-
-                    // Track feature_cycle
-                    if !record.feature_cycle.is_empty() {
-                        *outcomes_by_feature_cycle
-                            .entry(record.feature_cycle.clone())
-                            .or_insert(0) += 1;
-                    }
-                }
-            }
-
-            // Sort feature cycles by count descending, take top 10
-            let mut fc_sorted: Vec<(String, u64)> =
-                outcomes_by_feature_cycle.into_iter().collect();
-            fc_sorted.sort_by(|a, b| b.1.cmp(&a.1));
-            fc_sorted.truncate(10);
-
-            // 5e. Build StatusReport
-            let report = StatusReport {
-                total_active,
-                total_deprecated,
-                total_proposed,
-                total_quarantined,
-                category_distribution: category_distribution.into_iter().collect(),
-                topic_distribution: topic_distribution.into_iter().collect(),
-                entries_with_supersedes,
-                entries_with_superseded_by,
-                total_correction_count,
-                trust_source_distribution: trust_source_dist.into_iter().collect(),
-                entries_without_attribution,
-                contradictions: Vec::new(),
-                contradiction_count: 0,
-                embedding_inconsistencies: Vec::new(),
-                contradiction_scan_performed: false,
-                embedding_check_performed: false,
-                total_co_access_pairs: 0,
-                active_co_access_pairs: 0,
-                top_co_access_pairs: Vec::new(),
-                stale_pairs_cleaned: 0,
-                coherence: 1.0,
-                confidence_freshness_score: 1.0,
-                graph_quality_score: 1.0,
-                embedding_consistency_score: 1.0,
-                contradiction_density_score: 1.0,
-                stale_confidence_count: 0,
-                confidence_refreshed_count: 0,
-                graph_stale_ratio: 0.0,
-                graph_compacted: false,
-                maintenance_recommendations: Vec::new(),
-                total_outcomes,
-                outcomes_by_type: outcomes_by_type.into_iter().collect(),
-                outcomes_by_result: outcomes_by_result.into_iter().collect(),
-                outcomes_by_feature_cycle: fc_sorted,
-                observation_file_count: 0,
-                observation_total_size_bytes: 0,
-                observation_oldest_file_days: 0,
-                observation_approaching_cleanup: Vec::new(),
-                retrospected_feature_count: 0,
-            };
-            Ok((report, active_entries))
-        }).await
-        .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::JoinError(e.to_string()))))?
-        .map_err(rmcp::ErrorData::from)?;
-        let (report, active_entries) = report_result;
-
-        // 5f. Contradiction scanning + embedding consistency (outside read txn)
-        let check_embeddings = params.check_embeddings.unwrap_or(false);
-        let mut report = report;
-
-        if let Ok(adapter) = self.embed_service.get_adapter().await {
-            // Contradiction scan (default ON)
-            let scan_config = crate::contradiction::ContradictionConfig::default();
-            let store_for_scan = Arc::clone(&self.store);
-            let vi_for_scan = Arc::clone(&self.vector_index);
-            let adapter_for_scan = Arc::clone(&adapter);
-            let config_for_scan = scan_config.clone();
-
-            match tokio::task::spawn_blocking(move || {
-                let vs = unimatrix_core::VectorAdapter::new(vi_for_scan);
-                crate::contradiction::scan_contradictions(
-                    &store_for_scan,
-                    &vs,
-                    &*adapter_for_scan,
-                    &config_for_scan,
-                )
-            }).await {
-                Ok(Ok(contradictions)) => {
-                    report.contradiction_count = contradictions.len();
-                    report.contradictions = contradictions;
-                    report.contradiction_scan_performed = true;
-                }
-                _ => {
-                    // Scan failed -- graceful degradation
-                }
-            }
-
-            // Embedding consistency check (opt-in)
-            if check_embeddings {
-                let store_for_embed = Arc::clone(&self.store);
-                let vi_for_embed = Arc::clone(&self.vector_index);
-                let adapter_for_embed = Arc::clone(&adapter);
-                let config_for_embed = scan_config;
-
-                match tokio::task::spawn_blocking(move || {
-                    let vs = unimatrix_core::VectorAdapter::new(vi_for_embed);
-                    crate::contradiction::check_embedding_consistency(
-                        &store_for_embed,
-                        &vs,
-                        &*adapter_for_embed,
-                        &config_for_embed,
-                    )
-                }).await {
-                    Ok(Ok(inconsistencies)) => {
-                        report.embedding_inconsistencies = inconsistencies;
-                        report.embedding_check_performed = true;
-                    }
-                    _ => {
-                        // Check failed -- graceful degradation
-                    }
-                }
-            }
-        }
-
-        // 5g. Co-access stats + cleanup (crt-004, gated by maintain in crt-005)
-        {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-            let staleness_cutoff = now.saturating_sub(crate::coaccess::CO_ACCESS_STALENESS_SECONDS);
-
-            let store_for_coaccess = Arc::clone(&self.store);
-            let maintain_for_coaccess = maintain_enabled;
-            let co_access_result = tokio::task::spawn_blocking(move || {
-                // Stats (always read)
-                let (total, active) = store_for_coaccess.co_access_stats(staleness_cutoff)?;
-
-                // Top clusters (always read)
-                let top_pairs = store_for_coaccess.top_co_access_pairs(5, staleness_cutoff)?;
-
-                // Resolve titles for top pairs
-                let mut clusters = Vec::new();
-                for ((id_a, id_b), record) in &top_pairs {
-                    let title_a = store_for_coaccess.get(*id_a)
-                        .map(|e| e.title.clone())
-                        .unwrap_or_else(|_| format!("#{id_a}"));
-                    let title_b = store_for_coaccess.get(*id_b)
-                        .map(|e| e.title.clone())
-                        .unwrap_or_else(|_| format!("#{id_b}"));
-                    clusters.push(CoAccessClusterEntry {
-                        entry_id_a: *id_a,
-                        entry_id_b: *id_b,
-                        title_a,
-                        title_b,
-                        count: record.count,
-                        last_updated: record.last_updated,
-                    });
-                }
-
-                // Cleanup stale pairs (only when maintain=true, ADR-002)
-                let cleaned = if maintain_for_coaccess {
-                    store_for_coaccess.cleanup_stale_co_access(staleness_cutoff)?
-                } else {
-                    0
-                };
-
-                Ok::<_, unimatrix_store::StoreError>((total, active, clusters, cleaned))
-            }).await;
-
-            match co_access_result {
-                Ok(Ok((total, active, clusters, cleaned))) => {
-                    report.total_co_access_pairs = total;
-                    report.active_co_access_pairs = active;
-                    report.top_co_access_pairs = clusters;
-                    report.stale_pairs_cleaned = cleaned;
-                }
-                Ok(Err(e)) => {
-                    tracing::warn!("co-access stats failed: {e}");
-                    // Fields remain at default (0, 0, vec![], 0)
-                }
-                Err(e) => {
-                    tracing::warn!("co-access stats task failed: {e}");
-                }
-            }
-        }
-
-        // 5h. Coherence dimensions (always computed, read-only) [crt-005]
-        let now_ts = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-
-        // Confidence freshness dimension
-        let (freshness_dim, stale_conf_count) = crate::coherence::confidence_freshness_score(
-            &active_entries,
-            now_ts,
-            crate::coherence::DEFAULT_STALENESS_THRESHOLD_SECS,
-        );
-        report.confidence_freshness_score = freshness_dim;
-        report.stale_confidence_count = stale_conf_count;
-
-        // Graph quality dimension
-        let graph_point_count = self.vector_index.point_count();
-        let graph_stale_count = self.vector_index.stale_count();
-        let graph_stale_ratio = if graph_point_count == 0 {
-            0.0
-        } else {
-            graph_stale_count as f64 / graph_point_count as f64
-        };
-        report.graph_quality_score = crate::coherence::graph_quality_score(graph_stale_count, graph_point_count);
-        report.graph_stale_ratio = graph_stale_ratio;
-
-        // Embedding consistency dimension (uses check_embeddings result if available)
-        let embed_dim = if report.embedding_check_performed {
-            let total_checked = active_entries.len();
-            let inconsistent_count = report.embedding_inconsistencies.len();
-            Some(crate::coherence::embedding_consistency_score(inconsistent_count, total_checked))
-        } else {
-            None
-        };
-        report.embedding_consistency_score = embed_dim.unwrap_or(1.0);
-
-        // Contradiction density dimension
-        report.contradiction_density_score = crate::coherence::contradiction_density_score(
-            report.total_quarantined,
-            report.total_active,
-        );
-
-        // 5i. Confidence refresh (only when maintain=true) [C5]
         if maintain_enabled {
-            let staleness_threshold = crate::coherence::DEFAULT_STALENESS_THRESHOLD_SECS;
-            let batch_cap = crate::coherence::MAX_CONFIDENCE_REFRESH_BATCH;
-
-            // Identify stale entries (same logic as confidence_freshness_score)
-            let mut stale_entries: Vec<&unimatrix_store::EntryRecord> = active_entries.iter()
-                .filter(|e| {
-                    let ref_ts = e.updated_at.max(e.last_accessed_at);
-                    if ref_ts == 0 {
-                        return true;
-                    }
-                    if now_ts > ref_ts {
-                        (now_ts - ref_ts) > staleness_threshold
-                    } else {
-                        false
-                    }
-                })
-                .collect();
-
-            // Sort oldest first (lowest reference timestamp)
-            stale_entries.sort_by_key(|e| e.updated_at.max(e.last_accessed_at));
-
-            // Cap at batch size
-            stale_entries.truncate(batch_cap);
-
-            if !stale_entries.is_empty() {
-                let ids_and_confs: Vec<(u64, f64)> = stale_entries.iter()
-                    .map(|e| (e.id, crate::confidence::compute_confidence(e, now_ts)))
-                    .collect();
-
-                let store_for_refresh = Arc::clone(&self.store);
-                let refresh_result = tokio::task::spawn_blocking(move || {
-                    let mut refreshed = 0u64;
-                    for (id, new_conf) in ids_and_confs {
-                        match store_for_refresh.update_confidence(id, new_conf) {
-                            Ok(()) => refreshed += 1,
-                            Err(e) => {
-                                tracing::warn!("confidence refresh failed for {id}: {e}");
-                            }
-                        }
-                    }
-                    refreshed
-                }).await;
-
-                match refresh_result {
-                    Ok(count) => {
-                        report.confidence_refreshed_count = count;
-                    }
-                    Err(e) => {
-                        tracing::warn!("confidence refresh task failed: {e}");
-                    }
-                }
-            }
+            self.services.status.run_maintenance(
+                &active_entries,
+                &mut report,
+                &self.session_registry,
+                &self.entry_store,
+                &self.pending_entries_analysis,
+            ).await.map_err(rmcp::ErrorData::from)?;
         }
 
-        // 5j. Graph compaction (only when maintain=true && stale ratio > trigger) [C8]
-        if maintain_enabled && graph_stale_ratio > crate::coherence::DEFAULT_STALE_RATIO_TRIGGER {
-            if let Ok(adapter) = self.embed_service.get_adapter().await {
-                // Re-embed all active entries
-                let pairs: Vec<(String, String)> = active_entries.iter()
-                    .map(|e| (e.title.clone(), e.content.clone()))
-                    .collect();
-
-                match adapter.embed_entries(&pairs) {
-                    Ok(embeddings) => {
-                        // Adapt compacted embeddings through MicroLoRA (crt-006)
-                        let compact_input: Vec<(u64, Vec<f32>)> = active_entries.iter()
-                            .zip(embeddings.into_iter())
-                            .map(|(entry, raw_emb)| {
-                                let adapted = self.adapt_service.adapt_embedding(
-                                    &raw_emb,
-                                    Some(&entry.category),
-                                    Some(&entry.topic),
-                                );
-                                (entry.id, unimatrix_embed::l2_normalized(&adapted))
-                            })
-                            .collect();
-
-                        let vi_for_compact = Arc::clone(&self.vector_index);
-                        match tokio::task::spawn_blocking(move || {
-                            vi_for_compact.compact(compact_input)
-                        }).await {
-                            Ok(Ok(())) => {
-                                report.graph_compacted = true;
-                            }
-                            Ok(Err(e)) => {
-                                tracing::warn!("graph compaction failed: {e}");
-                            }
-                            Err(e) => {
-                                tracing::warn!("graph compaction task failed: {e}");
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        tracing::warn!("re-embedding for compaction failed: {e}");
-                    }
-                }
-            }
-        }
-
-        // 5k. Lambda computation + recommendations (always) [C4 integration]
-        let oldest_stale = crate::coherence::oldest_stale_age(
-            &active_entries,
-            now_ts,
-            crate::coherence::DEFAULT_STALENESS_THRESHOLD_SECS,
-        );
-        report.coherence = crate::coherence::compute_lambda(
-            report.confidence_freshness_score,
-            report.graph_quality_score,
-            embed_dim,
-            report.contradiction_density_score,
-            &crate::coherence::DEFAULT_WEIGHTS,
-        );
-        report.maintenance_recommendations = crate::coherence::generate_recommendations(
-            report.coherence,
-            crate::coherence::DEFAULT_LAMBDA_THRESHOLD,
-            report.stale_confidence_count,
-            oldest_stale,
-            report.graph_stale_ratio,
-            report.embedding_inconsistencies.len(),
-            report.total_quarantined,
-        );
-
-        // 5h. Observation stats
-        let obs_dir = unimatrix_observe::observation_dir();
-        let obs_stats = tokio::task::spawn_blocking({
-            let dir = obs_dir.clone();
-            move || unimatrix_observe::scan_observation_stats(&dir)
-        })
-        .await
-        .unwrap()
-        .unwrap_or_else(|_| unimatrix_observe::ObservationStats {
-            file_count: 0,
-            total_size_bytes: 0,
-            oldest_file_age_days: 0,
-            approaching_cleanup: vec![],
-        });
-
-        report.observation_file_count = obs_stats.file_count;
-        report.observation_total_size_bytes = obs_stats.total_size_bytes;
-        report.observation_oldest_file_days = obs_stats.oldest_file_age_days;
-        report.observation_approaching_cleanup = obs_stats.approaching_cleanup;
-
-        // 5i. Retrospected feature count from OBSERVATION_METRICS
-        let retrospected = tokio::task::spawn_blocking({
-            let store = Arc::clone(&self.store);
-            move || store.list_all_metrics()
-        })
-        .await
-        .unwrap()
-        .unwrap_or_else(|_| vec![]);
-        report.retrospected_feature_count = retrospected.len() as u64;
-
-        // 5j. If maintain=true, also clean up old observation files
-        if maintain_enabled {
-            let cleanup_dir = obs_dir;
-            tokio::task::spawn_blocking(move || {
-                let sixty_days = 60 * 24 * 60 * 60;
-                if let Ok(expired) = unimatrix_observe::identify_expired(&cleanup_dir, sixty_days) {
-                    for path in expired {
-                        let _ = std::fs::remove_file(path);
-                    }
-                }
-            })
-            .await
-            .unwrap();
-        }
-
-        // 5k. Stale session sweep (col-009, FR-09.2) — gated by maintain=true
-        if maintain_enabled {
-            let stale_outputs = self.session_registry.sweep_stale_sessions();
-            if !stale_outputs.is_empty() {
-                let store_for_sweep = Arc::clone(&self.store);
-                let entry_store_for_sweep = Arc::clone(&self.entry_store);
-                let pending_for_sweep = Arc::clone(&self.pending_entries_analysis);
-                for (stale_session_id, stale_output) in stale_outputs {
-                    tracing::info!(session_id = %stale_session_id, "context_status: sweeping stale session");
-                    write_signals_to_queue(&stale_output, &store_for_sweep).await;
-                }
-                // Drain queued signals through both consumers — same as SessionClose path
-                // (AC-09, Goal 6: stale sessions must not leave signals unprocessed)
-                run_confidence_consumer(&store_for_sweep, &entry_store_for_sweep, &pending_for_sweep).await;
-                run_retrospective_consumer(&store_for_sweep, &pending_for_sweep, &entry_store_for_sweep).await;
-            }
-        }
-
-        // 5l. col-010: Session GC — mark old Active sessions as TimedOut; delete very old
-        // sessions and their INJECTION_LOG records. Runs in maintain=true path only.
-        if maintain_enabled {
-            let store_gc = Arc::clone(&self.store);
-            match tokio::task::spawn_blocking(move || {
-                store_gc.gc_sessions(TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS)
-            })
-            .await
-            {
-                Ok(Ok(stats)) => {
-                    tracing::info!(
-                        timed_out = %stats.timed_out_count,
-                        deleted_sessions = %stats.deleted_session_count,
-                        deleted_log_entries = %stats.deleted_injection_log_count,
-                        "Session GC complete"
-                    );
-                }
-                Ok(Err(e)) => {
-                    tracing::warn!(error = %e, "Session GC failed");
-                }
-                Err(join_err) => {
-                    tracing::warn!(error = %join_err, "Session GC task panicked");
-                }
-            }
-        }
-
-        // 6. Audit (standalone, best-effort)
+        // 5. Audit (standalone, best-effort)
         let _ = self.audit.log_event(AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
-            agent_id: identity.agent_id,
+            agent_id: ctx.agent_id,
             operation: "context_status".to_string(),
             target_ids: vec![],
             outcome: Outcome::Success,
             detail: "status report generated".to_string(),
         });
 
-        // 7. Format response
-        Ok(format_status_report(&report, format))
+        // 6. Format response
+        Ok(format_status_report(&report, ctx.format))
     }
+
+    // vnc-008: The old 618-line context_status body was extracted into
+    // services/status.rs (StatusService::compute_report + run_maintenance).
+    // Remove this comment once Gate 3b validates.
 
     #[tool(
         name = "context_briefing",
@@ -1400,39 +728,19 @@ impl UnimatrixServer {
 
         #[cfg(feature = "mcp-briefing")]
         {
-            // 1. Identity (transport-specific)
-            let identity = self
-                .resolve_agent(&params.agent_id)
-                .map_err(rmcp::ErrorData::from)?;
+            // 1. Identity + format + audit context (vnc-008: ToolContext)
+            let ctx = self.build_context(&params.agent_id, &params.format)?;
+            self.require_cap(&ctx.agent_id, Capability::Read)?;
 
-            // 2. Capability check (transport-specific)
-            self.registry
-                .require_capability(&identity.agent_id, Capability::Read)
-                .map_err(rmcp::ErrorData::from)?;
-
-            // 3. MCP-specific param validation (transport-specific)
+            // 2. Validation
             validate_briefing_params(&params).map_err(rmcp::ErrorData::from)?;
             validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
 
-            // 4. Parse format (transport-specific)
-            let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
-
-            // 5. Validate max_tokens
+            // 3. Validate max_tokens
             let max_tokens =
                 validated_max_tokens(params.max_tokens).map_err(rmcp::ErrorData::from)?;
 
-            // 6. Build AuditContext (transport-specific)
-            let audit_ctx = crate::services::AuditContext {
-                source: crate::services::AuditSource::Mcp {
-                    agent_id: identity.agent_id.clone(),
-                    trust_level: identity.trust_level,
-                },
-                caller_id: identity.agent_id.clone(),
-                session_id: None,
-                feature_cycle: None,
-            };
-
-            // 7. Delegate to BriefingService (vnc-007)
+            // 4. Delegate to BriefingService (vnc-007)
             let briefing_params = crate::services::briefing::BriefingParams {
                 role: Some(params.role.clone()),
                 task: Some(params.task.clone()),
@@ -1446,11 +754,11 @@ impl UnimatrixServer {
             let result = self
                 .services
                 .briefing
-                .assemble(briefing_params, &audit_ctx)
+                .assemble(briefing_params, &ctx.audit_ctx)
                 .await
                 .map_err(rmcp::ErrorData::from)?;
 
-            // 8. Convert BriefingResult -> Briefing for format_briefing
+            // 5. Convert BriefingResult -> Briefing for format_briefing
             let briefing = Briefing {
                 role: params.role.clone(),
                 task: params.task.clone(),
@@ -1459,30 +767,30 @@ impl UnimatrixServer {
                 search_available: result.search_available,
             };
 
-            // 9. Audit (transport-specific, best-effort)
+            // 6. Audit (transport-specific, best-effort)
             let _ = self.audit.log_event(AuditEvent {
                 event_id: 0,
                 timestamp: 0,
                 session_id: String::new(),
-                agent_id: identity.agent_id.clone(),
+                agent_id: ctx.agent_id.clone(),
                 operation: "context_briefing".to_string(),
                 target_ids: result.entry_ids.clone(),
                 outcome: Outcome::Success,
                 detail: format!("briefing for role={}, task={}", params.role, params.task),
             });
 
-            // 10. Usage recording (transport-specific, fire-and-forget)
+            // 7. Usage recording (transport-specific, fire-and-forget)
             self.record_usage_for_entries(
-                &identity.agent_id,
-                identity.trust_level,
+                &ctx.agent_id,
+                ctx.trust_level,
                 &result.entry_ids,
                 params.helpful,
                 params.feature.as_deref(),
             )
             .await;
 
-            // 11. Format response (transport-specific)
-            Ok(format_briefing(&briefing, format))
+            // 8. Format response (transport-specific)
+            Ok(format_briefing(&briefing, ctx.format))
         }
     }
 
@@ -1494,23 +802,14 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<QuarantineParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
-        // 1. Identity
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .map_err(rmcp::ErrorData::from)?;
+        // 1. Identity + format + audit context (vnc-008: ToolContext)
+        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        self.require_cap(&ctx.agent_id, Capability::Admin)?;
 
-        // 2. Capability check (Admin required)
-        self.registry
-            .require_capability(&identity.agent_id, Capability::Admin)
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 3. Validation
+        // 2. Validation
         validate_quarantine_params(&params).map_err(rmcp::ErrorData::from)?;
 
-        // 4. Parse format
-        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
-
-        // 5. Parse action
+        // 3. Parse action
         let action = parse_quarantine_action(&params.action).map_err(rmcp::ErrorData::from)?;
 
         // 6. Fetch entry (verify exists)
@@ -1529,7 +828,7 @@ impl UnimatrixServer {
                     return Ok(format_quarantine_success(
                         &entry,
                         Some("already quarantined"),
-                        format,
+                        ctx.format,
                     ));
                 }
 
@@ -1548,7 +847,7 @@ impl UnimatrixServer {
                     event_id: 0,
                     timestamp: 0,
                     session_id: String::new(),
-                    agent_id: identity.agent_id.clone(),
+                    agent_id: ctx.agent_id.clone(),
                     operation: "context_quarantine".to_string(),
                     target_ids: vec![],
                     outcome: Outcome::Success,
@@ -1581,7 +880,7 @@ impl UnimatrixServer {
                 Ok(format_quarantine_success(
                     &updated,
                     params.reason.as_deref(),
-                    format,
+                    ctx.format,
                 ))
             }
             QuarantineAction::Restore => {
@@ -1598,7 +897,7 @@ impl UnimatrixServer {
                     event_id: 0,
                     timestamp: 0,
                     session_id: String::new(),
-                    agent_id: identity.agent_id.clone(),
+                    agent_id: ctx.agent_id.clone(),
                     operation: "context_quarantine".to_string(),
                     target_ids: vec![],
                     outcome: Outcome::Success,
@@ -1631,7 +930,7 @@ impl UnimatrixServer {
                 Ok(format_restore_success(
                     &updated,
                     params.reason.as_deref(),
-                    format,
+                    ctx.format,
                 ))
             }
         }
@@ -1647,42 +946,33 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<EnrollParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
-        // 1. Identity resolution
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .map_err(rmcp::ErrorData::from)?;
+        // 1. Identity + format + audit context (vnc-008: ToolContext)
+        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        self.require_cap(&ctx.agent_id, Capability::Admin)?;
 
-        // 2. Capability check (Admin required)
-        self.registry
-            .require_capability(&identity.agent_id, Capability::Admin)
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 3. Input validation
+        // 2. Input validation
         validate_enroll_params(&params).map_err(rmcp::ErrorData::from)?;
 
-        // 4. Parse format
-        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
-
-        // 5. Parse trust level and capabilities (strict per ADR-001)
+        // 3. Parse trust level and capabilities (strict per ADR-001)
         let trust_level = parse_trust_level(&params.trust_level).map_err(rmcp::ErrorData::from)?;
         let capabilities =
             parse_capabilities(&params.capabilities).map_err(rmcp::ErrorData::from)?;
 
-        // 6. Business logic: enroll or update agent
+        // 4. Business logic: enroll or update agent
         let result = self
             .registry
             .enroll_agent(
-                &identity.agent_id,
+                &ctx.agent_id,
                 &params.target_agent_id,
                 trust_level,
                 capabilities,
             )
             .map_err(rmcp::ErrorData::from)?;
 
-        // 7. Format response
-        let response = format_enroll_success(&result, format);
+        // 5. Format response
+        let response = format_enroll_success(&result, ctx.format);
 
-        // 8. Audit logging
+        // 6. Audit logging
         let detail = if result.created {
             format!(
                 "created agent '{}' as {:?}",
@@ -1699,7 +989,7 @@ impl UnimatrixServer {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
-            agent_id: identity.agent_id.clone(),
+            agent_id: ctx.agent_id.clone(),
             operation: "context_enroll".to_string(),
             target_ids: vec![],
             outcome: Outcome::Success,
@@ -1721,15 +1011,15 @@ impl UnimatrixServer {
         Parameters(params): Parameters<RetrospectiveParams>,
     ) -> Result<CallToolResult, rmcp::model::ErrorData> {
         use crate::error::{ServerError, ERROR_NO_OBSERVATION_DATA};
-        use crate::response::format_retrospective_report;
+        use crate::mcp::response::format_retrospective_report;
 
-        // 1. Identity resolution
+        // 1. Identity resolution (no format param on this handler)
         let identity = self
             .resolve_agent(&params.agent_id)
             .map_err(rmcp::ErrorData::from)?;
 
         // 2. Validation
-        crate::validation::validate_retrospective_params(&params)
+        crate::infra::validation::validate_retrospective_params(&params)
             .map_err(rmcp::ErrorData::from)?;
 
         // 3. Determine observation directory

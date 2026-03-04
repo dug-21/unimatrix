@@ -101,6 +101,8 @@ Every `uni-` agent MUST have these sections:
 When part of a swarm, write your agent report to
 `product/features/{feature-id}/agents/{agent-id}-report.md` on completion.
 
+**Unimatrix identity:** When calling Unimatrix tools (`context_store`, `context_search`, etc.), use your **role name** (e.g. `uni-architect`, `uni-researcher`) as the `agent_id` parameter — not your swarm agent ID. Your role name is your enrolled Unimatrix identity with write/search capabilities. Swarm agent IDs are for report tracking only.
+
 ## Self-Check (Run Before Returning Results)
 
 {Checklist of verifications before returning}

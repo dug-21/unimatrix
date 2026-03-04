@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use unimatrix_core::Status;
 
-use crate::audit::{AuditEvent, AuditLog, Outcome};
-use crate::scanning::ContentScanner;
+use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
+use crate::infra::scanning::ContentScanner;
 use crate::services::{AuditContext, AuditSource, ServiceError};
 
 /// Non-fatal scan detection on search queries.
@@ -215,7 +215,7 @@ mod tests {
         AuditContext {
             source: AuditSource::Mcp {
                 agent_id: "test-agent".to_string(),
-                trust_level: crate::registry::TrustLevel::Internal,
+                trust_level: crate::infra::registry::TrustLevel::Internal,
             },
             caller_id: "test-agent".to_string(),
             session_id: None,

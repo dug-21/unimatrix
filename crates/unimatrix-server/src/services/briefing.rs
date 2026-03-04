@@ -10,7 +10,7 @@ use std::sync::Arc;
 use unimatrix_core::{EntryRecord, QueryFilter, Status, StoreAdapter};
 use unimatrix_core::async_wrappers::AsyncEntryStore;
 
-use crate::audit::{AuditEvent, Outcome};
+use crate::infra::audit::{AuditEvent, Outcome};
 use crate::services::gateway::SecurityGateway;
 use crate::services::search::{SearchService, ServiceSearchParams};
 use crate::services::{AuditContext, ServiceError};
@@ -442,8 +442,8 @@ mod tests {
     use unimatrix_core::{NewEntry, Store, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex};
     use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 
-    use crate::audit::AuditLog;
-    use crate::embed_handle::EmbedServiceHandle;
+    use crate::infra::audit::AuditLog;
+    use crate::infra::embed_handle::EmbedServiceHandle;
     use crate::services::gateway::SecurityGateway;
     use crate::services::search::SearchService;
     use crate::services::{AuditContext, AuditSource};

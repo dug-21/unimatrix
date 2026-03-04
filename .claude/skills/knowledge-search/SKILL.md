@@ -25,7 +25,7 @@ Call the `context_search` MCP tool:
 | `tags` | No | Filter by tags (all must match) |
 | `k` | No | Max results (default: 5) |
 | `format` | No | `"summary"` (default), `"markdown"` (full content), `"json"` |
-| `agent_id` | No | Your agent ID |
+| `agent_id` | No | Your role name (e.g. `uni-architect`) |
 
 ### Examples
 

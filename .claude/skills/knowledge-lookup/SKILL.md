@@ -26,7 +26,7 @@ Call the `context_lookup` MCP tool:
 | `id` | No* | Specific entry ID (returns exactly one entry) |
 | `limit` | No | Max results (default: 10) |
 | `format` | No | `"summary"` (default), `"markdown"` (full content), `"json"` |
-| `agent_id` | No | Your agent ID |
+| `agent_id` | No | Your role name (e.g. `uni-architect`) |
 
 *At least one filter parameter is required (topic, category, tags, or id).
 

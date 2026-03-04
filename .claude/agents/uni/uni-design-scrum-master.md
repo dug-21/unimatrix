@@ -75,9 +75,11 @@ Spawn `uni-researcher` to collaborate with human on scope.
 ```
 Agent(uni-researcher, "
   Your agent ID: {feature-id}-researcher
+  Your Unimatrix agent_id: uni-researcher
   Feature: {feature-id}
   Intent: {human's description}
 
+  Most features are found in `product/product-vision.md`
   Explore the problem space. Write SCOPE.md to product/features/{id}/SCOPE.md.
   Return: SCOPE.md path, key findings, open questions.")
 ```
@@ -91,6 +93,7 @@ After SCOPE.md approval, spawn risk strategist in scope-risk mode.
 ```
 Agent(uni-risk-strategist, "
   Your agent ID: {feature-id}-agent-0-scope-risk
+  Your Unimatrix agent_id: uni-risk-strategist
   MODE: scope-risk
   Feature: {feature-id}
 
@@ -110,18 +113,20 @@ Spawn both in parallel in a single message:
 ```
 Agent(uni-architect, "
   Your agent ID: {feature-id}-agent-1-architect
+  Your Unimatrix agent_id: uni-architect
   Feature: {feature-id}
 
   Read: product/features/{id}/SCOPE.md
   Read: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
 
   Produce architecture at product/features/{id}/architecture/ARCHITECTURE.md.
-  Store each ADR in Unimatrix via /store-adr (no ADR files — Unimatrix is the sole store).
+  Store each ADR in Unimatrix via /store-adr. Use agent_id: uni-architect for all Unimatrix calls.
   Address SR-XX risks in architecture decisions where applicable.
   Return: ARCHITECTURE.md path, Unimatrix ADR entry IDs, integration surface summary.")
 
 Agent(uni-specification, "
   Your agent ID: {feature-id}-agent-2-spec
+  Your Unimatrix agent_id: uni-specification
   Feature: {feature-id}
 
   Read: product/features/{id}/SCOPE.md
@@ -139,6 +144,7 @@ Wait for BOTH before proceeding.
 ```
 Agent(uni-risk-strategist, "
   Your agent ID: {feature-id}-agent-3-risk
+  Your Unimatrix agent_id: uni-risk-strategist
   MODE: architecture-risk
   Feature: {feature-id}
 
@@ -159,6 +165,7 @@ Agent(uni-risk-strategist, "
 ```
 Agent(uni-vision-guardian, "
   Your agent ID: {feature-id}-vision-guardian
+  Your Unimatrix agent_id: uni-vision-guardian
   Feature: {feature-id}
 
   Read: product/PRODUCT-VISION.md
@@ -178,6 +185,7 @@ Agent(uni-vision-guardian, "
 Agent(uni-synthesizer, "
   Feature: {feature-id}
   Your agent ID: {feature-id}-synthesizer
+  Your Unimatrix agent_id: uni-synthesizer
 
   Read these artifacts:
   - product/features/{id}/SCOPE.md

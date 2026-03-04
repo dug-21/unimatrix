@@ -1,4 +1,7 @@
 {
+  "env": {
+   "ENABLE_CLAUDEAI_MCP_SERVERS": "false"
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -28,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix-server hook UserPromptSubmit"
+            "command": "unimatrix-server hook UserPromptSubmit | tee -a ~/.unimatrix/injections/hooks.log"
           }
         ]
       }

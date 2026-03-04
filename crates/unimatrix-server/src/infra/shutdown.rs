@@ -10,10 +10,10 @@ use unimatrix_adapt::AdaptationService;
 use unimatrix_store::Store;
 use unimatrix_vector::VectorIndex;
 
-use crate::audit::AuditLog;
+use crate::infra::audit::AuditLog;
 use crate::error::ServerError;
-use crate::registry::AgentRegistry;
-use crate::uds_listener::SocketGuard;
+use crate::infra::registry::AgentRegistry;
+use crate::uds::listener::SocketGuard;
 
 /// Handles needed for lifecycle operations during shutdown.
 ///

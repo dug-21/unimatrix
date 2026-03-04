@@ -20,15 +20,15 @@ use unimatrix_store::{
 
 use unimatrix_adapt::AdaptationService;
 
-use crate::audit::{AuditEvent, AuditLog};
-use crate::categories::CategoryAllowlist;
-use crate::embed_handle::EmbedServiceHandle;
+use crate::infra::audit::{AuditEvent, AuditLog};
+use crate::infra::categories::CategoryAllowlist;
+use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::error::ServerError;
-use crate::identity::{self, ResolvedIdentity};
-use crate::registry::{AgentRegistry, TrustLevel};
+use crate::mcp::identity::{self, ResolvedIdentity};
+use crate::infra::registry::{AgentRegistry, TrustLevel};
 use crate::services::ServiceLayer;
-use crate::session::SessionRegistry;
-use crate::usage_dedup::{UsageDedup, VoteAction};
+use crate::infra::session::SessionRegistry;
+use crate::infra::usage_dedup::{UsageDedup, VoteAction};
 
 // -- col-009: PendingEntriesAnalysis --
 
@@ -195,6 +195,49 @@ impl UnimatrixServer {
     ) -> Result<ResolvedIdentity, ServerError> {
         let extracted = identity::extract_agent_id(agent_id);
         identity::resolve_identity(&self.registry, &extracted)
+    }
+
+    /// Resolve identity, parse format, build audit context.
+    ///
+    /// Replaces the 15-25 line ceremony in each MCP handler with a single call.
+    /// Capability checking is separate via `require_cap()` (ADR-002).
+    pub(crate) fn build_context(
+        &self,
+        agent_id: &Option<String>,
+        format: &Option<String>,
+    ) -> Result<crate::mcp::context::ToolContext, rmcp::ErrorData> {
+        use crate::mcp::context::ToolContext;
+        use crate::services::{AuditContext, AuditSource};
+
+        let identity = self.resolve_agent(agent_id)
+            .map_err(rmcp::ErrorData::from)?;
+        let format = crate::mcp::response::parse_format(format)
+            .map_err(rmcp::ErrorData::from)?;
+        let audit_ctx = AuditContext {
+            source: AuditSource::Mcp {
+                agent_id: identity.agent_id.clone(),
+                trust_level: identity.trust_level,
+            },
+            caller_id: identity.agent_id.clone(),
+            session_id: None,
+            feature_cycle: None,
+        };
+        Ok(ToolContext {
+            agent_id: identity.agent_id,
+            trust_level: identity.trust_level,
+            format,
+            audit_ctx,
+        })
+    }
+
+    /// Check a capability for the given agent.
+    pub(crate) fn require_cap(
+        &self,
+        agent_id: &str,
+        cap: crate::infra::registry::Capability,
+    ) -> Result<(), rmcp::ErrorData> {
+        self.registry.require_capability(agent_id, cap)
+            .map_err(rmcp::ErrorData::from)
     }
 
     /// Insert a new entry and write an audit event in a single write transaction.
@@ -1086,7 +1129,7 @@ mod tests {
             .resolve_agent(&Some("human".to_string()))
             .unwrap();
         assert_eq!(identity.agent_id, "human");
-        assert_eq!(identity.trust_level, crate::registry::TrustLevel::Privileged);
+        assert_eq!(identity.trust_level, crate::infra::registry::TrustLevel::Privileged);
     }
 
     #[test]
@@ -1493,14 +1536,14 @@ mod tests {
             trust_source: "agent".to_string(),
         };
 
-        let audit_event = crate::audit::AuditEvent {
+        let audit_event = crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
             agent_id: "test".to_string(),
             operation: "context_store".to_string(),
             target_ids: vec![],
-            outcome: crate::audit::Outcome::Success,
+            outcome: crate::infra::audit::Outcome::Success,
             detail: "test insert".to_string(),
         };
 
@@ -1547,14 +1590,14 @@ mod tests {
         assert!(before_deprecation > 0.0);
 
         // Deprecate
-        let audit_event = crate::audit::AuditEvent {
+        let audit_event = crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
             agent_id: "test".to_string(),
             operation: "context_deprecate".to_string(),
             target_ids: vec![],
-            outcome: crate::audit::Outcome::Success,
+            outcome: crate::infra::audit::Outcome::Success,
             detail: String::new(),
         };
         server
@@ -1582,15 +1625,15 @@ mod tests {
 
     // -- crt-003: Quarantine / Restore integration tests --
 
-    fn make_audit_event(agent_id: &str) -> crate::audit::AuditEvent {
-        crate::audit::AuditEvent {
+    fn make_audit_event(agent_id: &str) -> crate::infra::audit::AuditEvent {
+        crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
             agent_id: agent_id.to_string(),
             operation: "context_quarantine".to_string(),
             target_ids: vec![],
-            outcome: crate::audit::Outcome::Success,
+            outcome: crate::infra::audit::Outcome::Success,
             detail: String::new(),
         }
     }
@@ -1767,7 +1810,7 @@ mod tests {
         let mut found = false;
         for item in audit_table.iter().unwrap() {
             let (_key, value) = item.unwrap();
-            let event: crate::audit::AuditEvent =
+            let event: crate::infra::audit::AuditEvent =
                 bincode::serde::decode_from_slice(value.value(), bincode::config::standard())
                     .unwrap()
                     .0;
@@ -1792,14 +1835,14 @@ mod tests {
             .unwrap();
 
         // Attempt to correct -- should fail
-        let audit_event = crate::audit::AuditEvent {
+        let audit_event = crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
             agent_id: "system".to_string(),
             operation: "context_correct".to_string(),
             target_ids: vec![],
-            outcome: crate::audit::Outcome::Success,
+            outcome: crate::infra::audit::Outcome::Success,
             detail: String::new(),
         };
 
@@ -2002,14 +2045,14 @@ mod tests {
             trust_source: "system".to_string(),
         };
         let embedding: Vec<f32> = vec![0.1; 384];
-        let audit = crate::audit::AuditEvent {
+        let audit = crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
             agent_id: "test".to_string(),
             operation: "test".to_string(),
             target_ids: vec![],
-            outcome: crate::audit::Outcome::Success,
+            outcome: crate::infra::audit::Outcome::Success,
             detail: "test".to_string(),
         };
 
@@ -2036,14 +2079,14 @@ mod tests {
             trust_source: "system".to_string(),
         };
         let embedding: Vec<f32> = vec![];
-        let audit = crate::audit::AuditEvent {
+        let audit = crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
             agent_id: "test".to_string(),
             operation: "test".to_string(),
             target_ids: vec![],
-            outcome: crate::audit::Outcome::Success,
+            outcome: crate::infra::audit::Outcome::Success,
             detail: "test".to_string(),
         };
 
@@ -2069,14 +2112,14 @@ mod tests {
             trust_source: "system".to_string(),
         };
         let embedding: Vec<f32> = vec![0.1; 384];
-        let audit = crate::audit::AuditEvent {
+        let audit = crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
             agent_id: "test".to_string(),
             operation: "test".to_string(),
             target_ids: vec![],
-            outcome: crate::audit::Outcome::Success,
+            outcome: crate::infra::audit::Outcome::Success,
             detail: "test".to_string(),
         };
         let (original_id, _) = server.insert_with_audit(entry, embedding, audit).await.unwrap();
@@ -2095,14 +2138,14 @@ mod tests {
             trust_source: "system".to_string(),
         };
         let correction_embedding: Vec<f32> = vec![0.2; 384];
-        let correction_audit = crate::audit::AuditEvent {
+        let correction_audit = crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
             agent_id: "test".to_string(),
             operation: "correct".to_string(),
             target_ids: vec![],
-            outcome: crate::audit::Outcome::Success,
+            outcome: crate::infra::audit::Outcome::Success,
             detail: "correction".to_string(),
         };
         let (_deprecated, new_correction) = server

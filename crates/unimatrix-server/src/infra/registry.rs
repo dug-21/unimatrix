@@ -56,6 +56,9 @@ pub enum Capability {
     Search,
     /// Administrative operations.
     Admin,
+    /// Session-scoped writes: injection logs, session records, signals, co-access pairs.
+    /// Distinct from Write (knowledge writes). UDS connections get this instead of Write.
+    SessionWrite,
 }
 
 /// Result of an enrollment operation.

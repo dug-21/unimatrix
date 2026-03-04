@@ -19,8 +19,8 @@ use unimatrix_store::{
 
 use unimatrix_adapt::AdaptationService;
 
-use crate::audit::{AuditEvent, AuditLog, Outcome};
-use crate::embed_handle::EmbedServiceHandle;
+use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
+use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::error::ServerError;
 use crate::services::gateway::SecurityGateway;
 use crate::services::{AuditContext, ServiceError};

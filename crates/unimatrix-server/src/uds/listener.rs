@@ -27,9 +27,11 @@ use std::collections::HashSet;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::embed_handle::EmbedServiceHandle;
+use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::registry::Capability;
 use crate::server::PendingEntriesAnalysis;
-use crate::session::{ReworkEvent, SessionOutcome, SessionRegistry, SignalOutput};
+use crate::infra::session::{ReworkEvent, SessionOutcome, SessionRegistry, SignalOutput};
+use crate::uds::uds_has_capability;
 
 // -- col-010 helpers --
 
@@ -390,6 +392,13 @@ async fn dispatch_request(
             agent_role,
             feature,
         } => {
+            // vnc-008: UDS capability enforcement
+            if !uds_has_capability(Capability::SessionWrite) {
+                return HookResponse::Error {
+                    code: -32003,
+                    message: "insufficient capability: SessionWrite required".to_string(),
+                };
+            }
             // col-010: Validate session_id before any writes (SEC-01)
             if let Err(e) = sanitize_session_id(&session_id) {
                 tracing::warn!(session_id, error = %e, "UDS: SessionRegister rejected: invalid session_id");
@@ -450,6 +459,12 @@ async fn dispatch_request(
             outcome,
             duration_secs,
         } => {
+            if !uds_has_capability(Capability::SessionWrite) {
+                return HookResponse::Error {
+                    code: -32003,
+                    message: "insufficient capability: SessionWrite required".to_string(),
+                };
+            }
             if let Err(e) = sanitize_session_id(&session_id) {
                 tracing::warn!(session_id, error = %e, "UDS: SessionClose rejected: invalid session_id");
                 return HookResponse::Error {
@@ -481,6 +496,12 @@ async fn dispatch_request(
         HookRequest::RecordEvent { ref event }
             if event.event_type == "post_tool_use_rework_candidate" =>
         {
+            if !uds_has_capability(Capability::SessionWrite) {
+                return HookResponse::Error {
+                    code: -32003,
+                    message: "insufficient capability: SessionWrite required".to_string(),
+                };
+            }
             let tool_name = event
                 .payload
                 .get("tool_name")
@@ -510,6 +531,12 @@ async fn dispatch_request(
         }
 
         HookRequest::RecordEvent { event } => {
+            if !uds_has_capability(Capability::SessionWrite) {
+                return HookResponse::Error {
+                    code: -32003,
+                    message: "insufficient capability: SessionWrite required".to_string(),
+                };
+            }
             tracing::info!(
                 event_type = event.event_type,
                 session_id = event.session_id,
@@ -519,6 +546,12 @@ async fn dispatch_request(
         }
 
         HookRequest::RecordEvents { events } => {
+            if !uds_has_capability(Capability::SessionWrite) {
+                return HookResponse::Error {
+                    code: -32003,
+                    message: "insufficient capability: SessionWrite required".to_string(),
+                };
+            }
             tracing::info!(count = events.len(), "UDS: batch events recorded");
             HookResponse::Ack
         }
@@ -532,6 +565,12 @@ async fn dispatch_request(
             k,
             max_tokens: _,
         } => {
+            if !uds_has_capability(Capability::Search) {
+                return HookResponse::Error {
+                    code: -32003,
+                    message: "insufficient capability: Search required".to_string(),
+                };
+            }
             if let Some(ref sid) = session_id {
                 if let Err(e) = sanitize_session_id(sid) {
                     tracing::warn!(session_id = sid, error = %e, "UDS: ContextSearch rejected: invalid session_id");
@@ -560,6 +599,12 @@ async fn dispatch_request(
             feature,
             token_limit,
         } => {
+            if !uds_has_capability(Capability::Search) || !uds_has_capability(Capability::Read) {
+                return HookResponse::Error {
+                    code: -32003,
+                    message: "insufficient capability: Search + Read required".to_string(),
+                };
+            }
             handle_compact_payload(
                 &session_id,
                 role,
@@ -577,6 +622,12 @@ async fn dispatch_request(
             feature,
             max_tokens,
         } => {
+            if !uds_has_capability(Capability::Search) || !uds_has_capability(Capability::Read) {
+                return HookResponse::Error {
+                    code: -32003,
+                    message: "insufficient capability: Search + Read required".to_string(),
+                };
+            }
             let audit_ctx = crate::services::AuditContext {
                 source: crate::services::AuditSource::Uds {
                     uid: 0,
@@ -1499,7 +1550,7 @@ mod tests {
             )
             .unwrap(),
         );
-        let audit = Arc::new(crate::audit::AuditLog::new(Arc::clone(store)));
+        let audit = Arc::new(crate::infra::audit::AuditLog::new(Arc::clone(store)));
         crate::services::ServiceLayer::new(
             Arc::clone(store),
             vector_index,
