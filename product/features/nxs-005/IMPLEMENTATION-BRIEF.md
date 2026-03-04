@@ -136,3 +136,21 @@ The infra-001 harness validates system-level behavior that `cargo test` cannot: 
 | R-02 (mutex deadlock) | Never hold lock across await points. All store ops are synchronous. |
 | R-08 (cfg gaps) | CI builds both configurations. Compilation failure = immediate detection. |
 | R-10 (counter atomicity) | All counter reads and increments within same SQL transaction. |
+
+## Component Map
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| C1: Connection Manager | pseudocode/C1-connection-manager.md | test-plan/C1-connection-manager.md |
+| C2: Write Operations | pseudocode/C2-write-operations.md | test-plan/C2-write-operations.md |
+| C3: Read Operations | pseudocode/C3-read-operations.md | test-plan/C3-read-operations.md |
+| C4: Specialized Operations | pseudocode/C4-specialized-operations.md | test-plan/C4-specialized-operations.md |
+| C5: Migration | pseudocode/C5-migration.md | test-plan/C5-migration.md |
+| C6: Parity Testing | pseudocode/C6-parity-testing.md | test-plan/C6-parity-testing.md |
+
+## Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
