@@ -24,13 +24,15 @@ use unimatrix_server::infra::shutdown::{self, LifecycleHandles};
 use unimatrix_server::uds_listener;
 
 /// Maximum number of attempts to open the database when the lock is held.
-const DB_OPEN_MAX_ATTEMPTS: u32 = 3;
+/// Increased from 3 to 5 to accommodate heavier shutdown since vnc-006 (#92).
+const DB_OPEN_MAX_ATTEMPTS: u32 = 5;
 
 /// Delay between database open retry attempts.
 const DB_OPEN_RETRY_DELAY: Duration = Duration::from_secs(1);
 
 /// Timeout for waiting on a stale process to exit after SIGTERM.
-const STALE_PROCESS_TIMEOUT: Duration = Duration::from_secs(5);
+/// Increased from 5s to 10s to accommodate heavier shutdown since vnc-006 (#92).
+const STALE_PROCESS_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Unimatrix MCP knowledge server.
 #[derive(Parser)]
@@ -238,7 +240,9 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     server.pending_entries_analysis = pending_entries_analysis;
     server.session_registry = Arc::clone(&session_registry);
 
-    // Prepare lifecycle handles for shutdown
+    // Prepare lifecycle handles for shutdown.
+    // ServiceLayer is moved here so graceful_shutdown can drop it before
+    // Arc::try_unwrap(store), releasing its internal Arc<Store> clones (#92).
     let lifecycle_handles = LifecycleHandles {
         store,
         vector_index,
@@ -249,6 +253,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         data_dir: paths.data_dir.clone(),
         socket_guard: Some(socket_guard),
         uds_handle: Some(uds_handle),
+        services: Some(services),
     };
 
     // Serve over stdio
