@@ -30,7 +30,7 @@ If it has **numbered steps**, it's a procedure. If it's a **rule**, it's a conve
 ### Step 1: Check for existing procedure
 
 ```
-context_search(
+mcp__unimatrix__context_search(
   query: "{what the procedure covers}",
   category: "procedure",
   k: 3
@@ -42,7 +42,7 @@ If an existing procedure covers the same task, use Step 2 (Update) instead.
 ### Step 2a: Store NEW procedure
 
 ```
-context_store(
+mcp__unimatrix__context_store(
   title: "How to {task description}",
   content: "{step-by-step content}",
   topic: "{crate or area — e.g., 'unimatrix-server'}",
@@ -55,7 +55,7 @@ context_store(
 ### Step 2b: UPDATE existing procedure (supersedes old version)
 
 ```
-context_correct(
+mcp__unimatrix__context_correct(
   original_id: {old entry ID},
   content: "{updated step-by-step content}",
   reason: "Updated: {what changed and why}"

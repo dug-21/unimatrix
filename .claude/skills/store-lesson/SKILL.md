@@ -18,7 +18,7 @@ Stores a lesson learned in Unimatrix. Lessons capture what went wrong, why, and 
 ### Step 1: Check for existing lessons in the same area
 
 ```
-context_search(
+mcp__unimatrix__context_search(
   query: "{what went wrong}",
   category: "lesson-learned",
   k: 3
@@ -30,7 +30,7 @@ If a matching lesson already exists, go to Step 2b (supersede) instead of creati
 ### Step 2a: Store NEW lesson (no prior exists)
 
 ```
-context_store(
+mcp__unimatrix__context_store(
   title: "{concise description of what went wrong}",
   content: "{structured lesson content}",
   topic: "{feature-id or crate}",
@@ -43,7 +43,7 @@ context_store(
 ### Step 2b: Supersede EXISTING lesson (prior exists but is incomplete or outdated)
 
 ```
-context_correct(
+mcp__unimatrix__context_correct(
   original_id: {old entry ID},
   content: "{updated lesson with new evidence or broader scope}",
   reason: "Updated: {what new evidence or context was added}"
@@ -57,7 +57,7 @@ This deprecates the old lesson and creates a corrected version with a supersessi
 If a lesson is simply wrong or no longer applies (e.g., the underlying code was redesigned):
 
 ```
-context_deprecate(id: {entry ID}, reason: "{why it no longer applies}")
+mcp__unimatrix__context_deprecate(id: {entry ID}, reason: "{why it no longer applies}")
 ```
 
 ---

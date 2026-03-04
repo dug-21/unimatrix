@@ -29,7 +29,7 @@ Searches Unimatrix for established patterns, procedures, and conventions relevan
 ### Step 1: Search by crate/area
 
 ```
-context_search(
+mcp__unimatrix__context_search(
   query: "{what you're building — e.g., 'MCP tool handler'}",
   category: "pattern",
   k: 5
@@ -39,7 +39,7 @@ context_search(
 ### Step 2: Also check conventions for the area
 
 ```
-context_search(
+mcp__unimatrix__context_search(
   query: "{area — e.g., 'server tool pipeline'}",
   category: "convention",
   k: 5
@@ -49,7 +49,7 @@ context_search(
 ### Step 3: Check for procedures (step-by-step techniques)
 
 ```
-context_search(
+mcp__unimatrix__context_search(
   query: "{task — e.g., 'adding a new MCP tool'}",
   category: "procedure",
   k: 3
@@ -59,7 +59,7 @@ context_search(
 ### Step 4: Check for relevant ADRs
 
 ```
-context_lookup(
+mcp__unimatrix__context_lookup(
   topic: "{feature-id}",
   category: "decision"
 )
@@ -95,9 +95,9 @@ Query results may include entries that are outdated or incorrect. Fix them befor
 
 | Situation | Action |
 |-----------|--------|
-| Pattern/procedure is **wrong** | `context_correct(original_id: {id}, content: "{corrected version}", reason: "{why}")` |
-| Pattern/procedure is **outdated** | `context_deprecate(id: {id}, reason: "{why}")` |
-| Convention no longer applies | `context_deprecate(id: {id}, reason: "{why}")` |
+| Pattern/procedure is **wrong** | `mcp__unimatrix__context_correct(original_id: {id}, content: "{corrected version}", reason: "{why}")` |
+| Pattern/procedure is **outdated** | `mcp__unimatrix__context_deprecate(id: {id}, reason: "{why}")` |
+| Convention no longer applies | `mcp__unimatrix__context_deprecate(id: {id}, reason: "{why}")` |
 
 If you correct or deprecate an entry during your session, mention it in your return to the coordinator so it can be noted in the outcome.
 
