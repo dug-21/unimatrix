@@ -4,7 +4,6 @@
 //! credentials (Layer 2: UID verification), dispatches requests, and
 //! returns responses. Integrates into server startup/shutdown.
 
-use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -19,8 +18,7 @@ use unimatrix_engine::auth;
 use unimatrix_engine::coaccess::generate_pairs;
 use unimatrix_engine::confidence::rerank_score;
 use unimatrix_engine::wire::{
-    EntryPayload, HookRequest, HookResponse, ERR_INVALID_PAYLOAD, ERR_UNKNOWN_REQUEST,
-    MAX_PAYLOAD_SIZE,
+    EntryPayload, HookRequest, HookResponse, ERR_INVALID_PAYLOAD, MAX_PAYLOAD_SIZE,
 };
 use unimatrix_store::Store;
 use unimatrix_store::{InjectionLogRecord, SessionLifecycleStatus, SessionRecord, SignalRecord, SignalType, SignalSource};
@@ -567,17 +565,71 @@ async fn dispatch_request(
                 role,
                 feature,
                 token_limit,
-                entry_store,
                 session_registry,
+                services,
             )
             .await
         }
 
-        // Future request types return error (stubs not handled yet)
-        _ => HookResponse::Error {
-            code: ERR_UNKNOWN_REQUEST,
-            message: "request type not implemented".into(),
-        },
+        HookRequest::Briefing {
+            role,
+            task,
+            feature,
+            max_tokens,
+        } => {
+            let audit_ctx = crate::services::AuditContext {
+                source: crate::services::AuditSource::Uds {
+                    uid: 0,
+                    pid: None,
+                    session_id: String::new(),
+                },
+                caller_id: "uds-briefing".to_string(),
+                session_id: None,
+                feature_cycle: None,
+            };
+
+            let effective_max_tokens = max_tokens
+                .map(|v| v as usize)
+                .unwrap_or(3000);
+
+            let briefing_params = crate::services::briefing::BriefingParams {
+                role: Some(role),
+                task: Some(task),
+                feature,
+                max_tokens: effective_max_tokens,
+                include_conventions: true,
+                include_semantic: true,
+                injection_history: None,
+            };
+
+            match services.briefing.assemble(briefing_params, &audit_ctx).await {
+                Ok(result) => {
+                    let mut content = String::new();
+                    if !result.conventions.is_empty() {
+                        content.push_str("## Conventions\n");
+                        for entry in &result.conventions {
+                            content.push_str(&format!("- {}: {}\n", entry.title, entry.content));
+                        }
+                        content.push('\n');
+                    }
+                    if !result.relevant_context.is_empty() {
+                        content.push_str("## Relevant Context\n");
+                        for (entry, score) in &result.relevant_context {
+                            content.push_str(&format!(
+                                "- {} ({:.2}): {}\n",
+                                entry.title, score, entry.content
+                            ));
+                        }
+                    }
+                    let token_count = (content.len() / 4) as u32;
+                    HookResponse::BriefingContent { content, token_count }
+                }
+                Err(e) => HookResponse::Error {
+                    code: ERR_INVALID_PAYLOAD,
+                    message: format!("briefing failed: {e}"),
+                },
+            }
+        }
     }
 }
 
@@ -737,19 +789,18 @@ async fn handle_compact_payload(
     role: Option<String>,
     feature: Option<String>,
     token_limit: Option<u32>,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
     session_registry: &SessionRegistry,
+    services: &crate::services::ServiceLayer,
 ) -> HookResponse {
-    // Determine byte budget
+    // 1. Byte/token budget (transport concern)
     let max_bytes = match token_limit {
         Some(limit) => ((limit as usize) * 4).min(MAX_COMPACTION_BYTES),
         None => MAX_COMPACTION_BYTES,
     };
+    let max_tokens = max_bytes / 4;
 
-    // Get session state
+    // 2. Session state resolution (transport concern)
     let session_state = session_registry.get_state(session_id);
-
-    // Determine role/feature: prefer session state, fall back to request fields
     let effective_role = session_state
         .as_ref()
         .and_then(|s| s.role.clone())
@@ -763,18 +814,83 @@ async fn handle_compact_payload(
         .map(|s| s.compaction_count)
         .unwrap_or(0);
 
-    // Choose primary vs fallback path
+    // 3. Determine path
     let has_injection_history = session_state
         .as_ref()
         .is_some_and(|s| !s.injection_history.is_empty());
 
-    let categories = if has_injection_history {
-        primary_path(session_state.as_ref().unwrap(), entry_store).await
-    } else {
-        fallback_path(effective_feature.as_deref(), entry_store).await
+    // 4. Build AuditContext (transport-specific)
+    let audit_ctx = crate::services::AuditContext {
+        source: crate::services::AuditSource::Uds {
+            uid: 0,
+            pid: None,
+            session_id: session_id.to_string(),
+        },
+        caller_id: "uds-compact".to_string(),
+        session_id: Some(session_id.to_string()),
+        feature_cycle: None,
     };
 
-    // Format payload
+    // 5. Build injection history from session state
+    let injection_history = if has_injection_history {
+        let session = session_state.as_ref().unwrap();
+        Some(
+            session
+                .injection_history
+                .iter()
+                .map(|r| crate::services::briefing::InjectionEntry {
+                    entry_id: r.entry_id,
+                    confidence: r.confidence,
+                })
+                .collect(),
+        )
+    } else {
+        None
+    };
+
+    // 6. Build BriefingParams — include_semantic=false (no embedding on compact path)
+    let briefing_params = crate::services::briefing::BriefingParams {
+        role: effective_role.clone(),
+        task: None,
+        feature: effective_feature.clone(),
+        max_tokens,
+        include_conventions: !has_injection_history, // fallback includes conventions
+        include_semantic: false, // CRITICAL: no embedding, no vector search
+        injection_history,
+    };
+
+    // 7. Delegate to BriefingService
+    let result = match services.briefing.assemble(briefing_params, &audit_ctx).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!("compact payload assembly failed: {e}");
+            return HookResponse::BriefingContent {
+                content: String::new(),
+                token_count: 0,
+            };
+        }
+    };
+
+    // 8. Convert BriefingResult to CompactionCategories for formatting
+    let categories = CompactionCategories {
+        decisions: result.injection_sections.decisions,
+        injections: result.injection_sections.injections,
+        conventions: if has_injection_history {
+            result.injection_sections.conventions
+        } else {
+            // Fallback path: conventions from BriefingResult.conventions
+            result
+                .conventions
+                .into_iter()
+                .map(|e| {
+                    let c = e.confidence;
+                    (e, c)
+                })
+                .collect()
+        },
+    };
+
+    // 9. Format payload (transport-specific formatting)
     let content = format_compaction_payload(
         &categories,
         effective_role.as_deref(),
@@ -783,7 +899,7 @@ async fn handle_compact_payload(
         max_bytes,
     );
 
-    // Increment compaction count
+    // 10. Increment compaction count (transport concern)
     session_registry.increment_compaction(session_id);
 
     let token_count = content
@@ -794,133 +910,6 @@ async fn handle_compact_payload(
     HookResponse::BriefingContent {
         content: content.unwrap_or_default(),
         token_count,
-    }
-}
-
-/// Primary path: fetch entries from injection history by ID.
-///
-/// Deduplicates by entry_id (keeps highest confidence). Partitions by category.
-/// Excludes quarantined entries, includes deprecated with indicator.
-async fn primary_path(
-    session: &crate::session::SessionState,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
-) -> CompactionCategories {
-    // Deduplicate: keep highest confidence per entry_id
-    let mut best_confidence: HashMap<u64, f64> = HashMap::new();
-    for record in &session.injection_history {
-        let entry = best_confidence.entry(record.entry_id).or_insert(0.0);
-        if record.confidence > *entry {
-            *entry = record.confidence;
-        }
-    }
-
-    let mut decisions = Vec::new();
-    let mut injections = Vec::new();
-    let mut conventions = Vec::new();
-
-    for (&entry_id, &confidence) in &best_confidence {
-        match entry_store.get(entry_id).await {
-            Ok(entry) => {
-                if entry.status == Status::Quarantined {
-                    continue;
-                }
-                match entry.category.as_str() {
-                    "decision" => decisions.push((entry, confidence)),
-                    "convention" => conventions.push((entry, confidence)),
-                    _ => injections.push((entry, confidence)),
-                }
-            }
-            Err(_) => continue, // Skip entries that no longer exist (R-11)
-        }
-    }
-
-    // Sort each group by confidence descending
-    decisions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    injections.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    conventions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-    CompactionCategories {
-        decisions,
-        injections,
-        conventions,
-    }
-}
-
-/// Fallback path: query entries by category when no injection history exists.
-async fn fallback_path(
-    feature: Option<&str>,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
-) -> CompactionCategories {
-    // Query active decisions
-    let mut decisions: Vec<(unimatrix_store::EntryRecord, f64)> =
-        match entry_store.query_by_category("decision").await {
-            Ok(entries) => entries
-                .into_iter()
-                .filter(|e| e.status == Status::Active)
-                .map(|e| {
-                    let c = e.confidence;
-                    (e, c)
-                })
-                .collect(),
-            Err(_) => Vec::new(),
-        };
-
-    // If feature tag available, prefer feature-specific decisions
-    if let Some(feat) = feature {
-        let feature_decisions: Vec<_> = decisions
-            .iter()
-            .filter(|(e, _)| e.tags.iter().any(|t| t == feat))
-            .cloned()
-            .collect();
-        if !feature_decisions.is_empty() {
-            let general: Vec<_> = decisions
-                .into_iter()
-                .filter(|(e, _)| !e.tags.iter().any(|t| t == feat))
-                .collect();
-            decisions = feature_decisions;
-            decisions.extend(general);
-        }
-    }
-
-    // Query active conventions
-    let mut conventions: Vec<(unimatrix_store::EntryRecord, f64)> =
-        match entry_store.query_by_category("convention").await {
-            Ok(entries) => entries
-                .into_iter()
-                .filter(|e| e.status == Status::Active)
-                .map(|e| {
-                    let c = e.confidence;
-                    (e, c)
-                })
-                .collect(),
-            Err(_) => Vec::new(),
-        };
-
-    // If feature tag available, prefer feature-specific conventions
-    if let Some(feat) = feature {
-        let feature_conventions: Vec<_> = conventions
-            .iter()
-            .filter(|(e, _)| e.tags.iter().any(|t| t == feat))
-            .cloned()
-            .collect();
-        if !feature_conventions.is_empty() {
-            let general: Vec<_> = conventions
-                .into_iter()
-                .filter(|(e, _)| !e.tags.iter().any(|t| t == feat))
-                .collect();
-            conventions = feature_conventions;
-            conventions.extend(general);
-        }
-    }
-
-    // Sort by confidence descending (within feature-first / general groups)
-    decisions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    conventions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-    CompactionCategories {
-        decisions,
-        injections: Vec::new(),
-        conventions,
     }
 }
 
@@ -1653,8 +1642,11 @@ mod tests {
         assert!(matches!(response, HookResponse::Ack));
     }
 
+    // vnc-007: HookRequest::Briefing is now handled (returns BriefingContent).
+    // The previous test sent Briefing and expected ERR_UNKNOWN_REQUEST. Now all
+    // variants are handled, so this test verifies Briefing returns BriefingContent.
     #[tokio::test]
-    async fn dispatch_unknown_returns_error() {
+    async fn dispatch_briefing_returns_content() {
         let store = make_store();
         let embed = make_embed_service();
         let registry = make_registry();
@@ -1670,8 +1662,8 @@ mod tests {
             &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
         ).await;
         match response {
-            HookResponse::Error { code, .. } => assert_eq!(code, ERR_UNKNOWN_REQUEST),
-            _ => panic!("expected Error"),
+            HookResponse::BriefingContent { .. } => {}
+            other => panic!("expected BriefingContent, got {other:?}"),
         }
     }
 

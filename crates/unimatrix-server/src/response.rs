@@ -456,6 +456,7 @@ pub struct CoAccessClusterEntry {
 }
 
 /// Assembled briefing for format_briefing.
+#[cfg(feature = "mcp-briefing")]
 pub struct Briefing {
     /// Role the briefing is for.
     pub role: String,
@@ -463,8 +464,6 @@ pub struct Briefing {
     pub task: String,
     /// Role conventions.
     pub conventions: Vec<EntryRecord>,
-    /// Role duties.
-    pub duties: Vec<EntryRecord>,
     /// Semantically relevant context with similarity scores.
     pub relevant_context: Vec<(EntryRecord, f64)>,
     /// Whether semantic search was available.
@@ -1036,16 +1035,16 @@ pub fn format_retrospective_report(
     CallToolResult::success(vec![Content::text(json)])
 }
 
-/// Format a briefing response with conventions, duties, and relevant context.
+/// Format a briefing response with conventions and relevant context.
+#[cfg(feature = "mcp-briefing")]
 pub fn format_briefing(briefing: &Briefing, format: ResponseFormat) -> CallToolResult {
     match format {
         ResponseFormat::Summary => {
             let mut lines = vec![
                 format!("Briefing for {}: {}", briefing.role, briefing.task),
                 format!(
-                    "Conventions: {} | Duties: {} | Context: {}",
+                    "Conventions: {} | Context: {}",
                     briefing.conventions.len(),
-                    briefing.duties.len(),
                     briefing.relevant_context.len()
                 ),
             ];
@@ -1074,16 +1073,6 @@ pub fn format_briefing(briefing: &Briefing, format: ResponseFormat) -> CallToolR
                 text.push('\n');
             }
 
-            text.push_str("### Duties\n\n");
-            if briefing.duties.is_empty() {
-                text.push_str("No duties found for this role.\n\n");
-            } else {
-                for entry in &briefing.duties {
-                    text.push_str(&format!("- **{}**: {}\n", entry.title, entry.content));
-                }
-                text.push('\n');
-            }
-
             text.push_str("### Relevant Context\n\n");
             if briefing.relevant_context.is_empty() {
                 text.push_str("No relevant context found.\n");
@@ -1101,8 +1090,6 @@ pub fn format_briefing(briefing: &Briefing, format: ResponseFormat) -> CallToolR
         ResponseFormat::Json => {
             let conventions: Vec<serde_json::Value> =
                 briefing.conventions.iter().map(entry_to_json).collect();
-            let duties: Vec<serde_json::Value> =
-                briefing.duties.iter().map(entry_to_json).collect();
             let context: Vec<serde_json::Value> = briefing
                 .relevant_context
                 .iter()
@@ -1114,7 +1101,6 @@ pub fn format_briefing(briefing: &Briefing, format: ResponseFormat) -> CallToolR
                 "task": briefing.task,
                 "search_available": briefing.search_available,
                 "conventions": conventions,
-                "duties": duties,
                 "relevant_context": context,
             });
             CallToolResult::success(vec![Content::text(
@@ -1974,19 +1960,20 @@ mod tests {
         assert!(text.contains("0.7500"), "should show similarity");
     }
 
-    // -- vnc-003: format_briefing --
+    // -- vnc-003/vnc-007: format_briefing (duties removed in vnc-007) --
 
+    #[cfg(feature = "mcp-briefing")]
     fn make_briefing(search_available: bool) -> Briefing {
         Briefing {
             role: "architect".to_string(),
             task: "design auth module".to_string(),
             conventions: vec![make_entry(1, "Convention 1", "Always use trait objects")],
-            duties: vec![make_entry(2, "Duty 1", "Write ADRs")],
             relevant_context: vec![(make_entry(3, "Context 1", "Auth patterns"), 0.85)],
             search_available,
         }
     }
 
+    #[cfg(feature = "mcp-briefing")]
     #[test]
     fn test_format_briefing_summary() {
         let briefing = make_briefing(true);
@@ -1994,23 +1981,25 @@ mod tests {
         let text = result_text(&result);
         assert!(text.contains("Briefing for architect"));
         assert!(text.contains("Conventions: 1"));
-        assert!(text.contains("Duties: 1"));
         assert!(text.contains("Context: 1"));
+        assert!(!text.contains("Duties"));
     }
 
+    #[cfg(feature = "mcp-briefing")]
     #[test]
     fn test_format_briefing_markdown_all_sections() {
         let briefing = make_briefing(true);
         let result = format_briefing(&briefing, ResponseFormat::Markdown);
         let text = result_text(&result);
         assert!(text.contains("### Conventions"));
-        assert!(text.contains("### Duties"));
         assert!(text.contains("### Relevant Context"));
         assert!(text.contains("Convention 1"));
-        assert!(text.contains("Duty 1"));
         assert!(text.contains("Context 1"));
+        assert!(!text.contains("Duties"));
+        assert!(!text.contains("duties"));
     }
 
+    #[cfg(feature = "mcp-briefing")]
     #[test]
     fn test_format_briefing_markdown_search_unavailable() {
         let briefing = make_briefing(false);
@@ -2019,6 +2008,7 @@ mod tests {
         assert!(text.contains("search unavailable"));
     }
 
+    #[cfg(feature = "mcp-briefing")]
     #[test]
     fn test_format_briefing_json() {
         let briefing = make_briefing(true);
@@ -2029,25 +2019,26 @@ mod tests {
         assert_eq!(parsed["task"], "design auth module");
         assert_eq!(parsed["search_available"], true);
         assert!(parsed["conventions"].is_array());
-        assert!(parsed["duties"].is_array());
         assert!(parsed["relevant_context"].is_array());
+        assert!(parsed.get("duties").is_none());
     }
 
+    #[cfg(feature = "mcp-briefing")]
     #[test]
     fn test_format_briefing_empty_sections() {
         let briefing = Briefing {
             role: "dev".to_string(),
             task: "code".to_string(),
             conventions: vec![],
-            duties: vec![],
             relevant_context: vec![],
             search_available: true,
         };
         let result = format_briefing(&briefing, ResponseFormat::Markdown);
         let text = result_text(&result);
         assert!(text.contains("No conventions found"));
-        assert!(text.contains("No duties found"));
         assert!(text.contains("No relevant context found"));
+        assert!(!text.contains("duties"));
+        assert!(!text.contains("Duties"));
     }
 
     #[test]

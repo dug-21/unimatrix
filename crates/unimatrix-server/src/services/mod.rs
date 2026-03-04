@@ -19,12 +19,14 @@ use crate::embed_handle::EmbedServiceHandle;
 use crate::error::ServerError;
 use crate::registry::TrustLevel;
 
+pub(crate) mod briefing;
 pub(crate) mod confidence;
 pub(crate) mod gateway;
 pub(crate) mod search;
 pub(crate) mod store_correct;
 pub(crate) mod store_ops;
 
+pub(crate) use briefing::BriefingService;
 pub(crate) use confidence::ConfidenceService;
 pub(crate) use gateway::SecurityGateway;
 pub(crate) use search::{SearchService, ServiceSearchParams};
@@ -149,6 +151,7 @@ pub struct ServiceLayer {
     pub(crate) search: SearchService,
     pub(crate) store_ops: StoreService,
     pub(crate) confidence: ConfidenceService,
+    pub(crate) briefing: BriefingService,
 }
 
 impl ServiceLayer {
@@ -185,10 +188,17 @@ impl ServiceLayer {
 
         let confidence = ConfidenceService::new(Arc::clone(&store));
 
+        let briefing = BriefingService::new(
+            Arc::clone(&entry_store),
+            search.clone(),
+            Arc::clone(&gateway),
+        );
+
         ServiceLayer {
             search,
             store_ops,
             confidence,
+            briefing,
         }
     }
 }
