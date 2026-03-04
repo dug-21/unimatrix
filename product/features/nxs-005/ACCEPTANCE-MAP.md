@@ -19,6 +19,7 @@
 | AC-13 | FR-12: Injection Log Parity | R-01 | W4 | All injection_log tests pass under backend-sqlite |
 | AC-14 | FR-05: Feature Flag | R-08 | W1 | `cargo check` (redb) + `cargo check --features backend-sqlite` (SQLite) both succeed |
 | AC-15 | FR-06: Transaction Abstraction | R-03 | W1, W6 | Git diff: only store crate + minimal server import changes |
+| AC-16 | FR-13: System-Level Validation | R-01, R-02, R-03 | W6 | Build binary with `--features unimatrix-store/backend-sqlite`, run full infra-001 harness (`python -m pytest suites/ -v --timeout=60` in `product/test/infra-001/`). All 157 tests pass across 8 suites (protocol, tools, lifecycle, volume, security, confidence, contradiction, edge_cases). |
 
 ## Coverage Matrix
 
@@ -29,7 +30,7 @@
 | W3: Reads | AC-04, AC-08 (partial) | R-01 |
 | W4: Specialized | AC-08, AC-11, AC-12, AC-13 | R-01, R-06 |
 | W5: Migration | AC-05 | R-04 |
-| W6: Parity + Migration Tool | AC-02, AC-03, AC-06, AC-15 | R-03, R-08, R-09 |
+| W6: Parity + Migration Tool + System Validation | AC-02, AC-03, AC-06, AC-15, AC-16 | R-01, R-02, R-03, R-08, R-09 |
 
 ## Uncovered Areas
 
@@ -43,10 +44,11 @@
 
 All of the following must be true before nxs-005 is considered complete:
 
-- [ ] AC-01 through AC-15 verified (all PASS)
+- [ ] AC-01 through AC-16 verified (all PASS)
 - [ ] 234/234 store tests pass on redb (regression check)
 - [ ] 234/234 store tests pass on SQLite (parity check)
 - [ ] Full workspace tests pass with `--features unimatrix-store/backend-sqlite`
+- [ ] 157/157 infra-001 integration tests pass against SQLite-backed binary (AC-16)
 - [ ] Data migration tool verified with sample data
 - [ ] No code changes outside `crates/unimatrix-store/` except server import adjustments (ADR-001)
 - [ ] CI configured to test both backend configurations

@@ -82,17 +82,22 @@ Replace the redb storage backend in `crates/unimatrix-store/` with SQLite (rusql
 
 **Verification**: Migration tests pass under `backend-sqlite`.
 
-### Wave 6: Parity Testing and Migration Tooling
+### Wave 6: Parity Testing, Migration Tooling, and System Validation
 
-**Goal**: All 234 tests pass on both backends. Data migration tool works.
+**Goal**: All 234 unit tests pass on both backends. Data migration tool works. Full infra-001 harness passes against SQLite-backed binary.
 
 1. Update `test_helpers.rs` to create Store with active backend
 2. Run full `cargo test -p unimatrix-store --features backend-sqlite`
 3. Implement redb-to-SQLite migration function
 4. Test migration with sample data
 5. Run `cargo test --workspace --features unimatrix-store/backend-sqlite`
+6. Build SQLite-backed binary: `cargo build --release --features unimatrix-store/backend-sqlite`
+7. Run full infra-001 harness against SQLite-backed binary: `cd product/test/infra-001 && python -m pytest suites/ -v --timeout=60`
+8. All 157 integration tests (8 suites) must pass. This is a **gate requirement** (AC-16).
 
-**Verification**: 234/234 tests pass on SQLite. Migration tool verified with row counts.
+The infra-001 harness validates system-level behavior that `cargo test` cannot: MCP protocol compliance, multi-step lifecycle flows (store-search-correct chains), restart persistence, scale to hundreds of entries, security defenses, confidence math end-to-end, contradiction detection, and edge cases (unicode, boundary values, concurrent ops). Per the USAGE-PROTOCOL: "Schema or storage changes -> run lifecycle, volume suites." Since nxs-005 is a complete backend replacement, the full suite is required. See `product/test/infra-001/USAGE-PROTOCOL.md` for suite details and running instructions.
+
+**Verification**: 234/234 unit tests pass on SQLite. Migration tool verified with row counts. 157/157 infra-001 integration tests pass against SQLite-backed binary.
 
 ## Key Files
 

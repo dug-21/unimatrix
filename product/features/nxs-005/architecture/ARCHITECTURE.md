@@ -179,6 +179,14 @@ How the dual-backend coexistence works via Cargo features.
 | `StoreError` enum | 10 variants | `error.rs` | 6 redb variants replaced by 1 Sqlite variant under feature flag |
 | `DatabaseConfig` | `struct { cache_size: usize }` | `schema.rs` | May add SQLite-specific fields behind cfg |
 
+## Testing Architecture
+
+Validation operates at two levels:
+
+1. **Unit-level parity** (`cargo test`): All 234 store tests run against whichever backend is compiled. The feature flag selects the Store implementation; tests are backend-agnostic. This validates individual method behavior.
+
+2. **System-level parity** (infra-001 harness): The infra-001 integration test harness (`product/test/infra-001/`) exercises the compiled `unimatrix-server` binary over MCP JSON-RPC stdio -- the exact interface agents use. Building the binary with `--features unimatrix-store/backend-sqlite` and running the full harness (157 tests, 8 suites) validates that the SQLite backend produces correct behavior through the entire server stack: protocol compliance, multi-step lifecycle flows, restart persistence, scale behavior, security defenses, confidence math, contradiction detection, and edge cases. This catches integration issues that unit tests cannot (e.g., transaction lifetime mismatches under async request handling, HNSW rebuild with SQLite VECTOR_MAP). See `product/test/infra-001/USAGE-PROTOCOL.md` for suite descriptions and running instructions.
+
 ## SQLite Schema
 
 All 17 tables map 1:1 from redb. See `product/research/ass-016/retrospective-data-architecture.md` section 2.4 for the complete CREATE TABLE schema. Key design decisions:

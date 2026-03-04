@@ -28,8 +28,9 @@
 3. Insert entry with 0-byte blob (empty bincode), verify storage and retrieval
 4. Query with all filter fields set to boundary values (empty string topic, status=0, time_range start=0 end=u64::MAX)
 5. CO_ACCESS with (0, 1) and (u64::MAX-1, u64::MAX) pairs
+6. **infra-001 system-level**: Full harness run (157 tests) against SQLite-backed binary validates all 10 MCP tools return correct results through the entire server stack. The `tools` suite (53 tests) exercises every parameter and response format. The `edge_cases` suite (24 tests) covers unicode, boundary values, and empty DB operations.
 
-**Coverage Requirement**: All 234 existing tests pass plus boundary value tests for u64, empty string, and empty blob.
+**Coverage Requirement**: All 234 existing tests pass plus boundary value tests for u64, empty string, and empty blob. Full infra-001 harness (157 tests) passes against SQLite-backed binary.
 
 ### R-02: Mutex Deadlock
 **Severity**: High
@@ -40,8 +41,9 @@
 1. Concurrent insert + query from separate threads (10 threads, 100 operations each)
 2. Nested Store method call from within a write operation (if any exist)
 3. Store method that panics while holding mutex -- verify poison recovery or clean error
+4. **infra-001 system-level**: The `lifecycle` suite (16 tests) runs multi-step flows including store-search-correct chains and restart persistence -- all through the MCP stdio transport where the server handles concurrent requests. The `volume` suite (11 tests) scales to hundreds of entries, exercising sustained lock acquisition under load. Both suites exercise real concurrency through the async server stack.
 
-**Coverage Requirement**: Multi-threaded stress test. Verify no deadlock after 1000 concurrent operations.
+**Coverage Requirement**: Multi-threaded stress test. Verify no deadlock after 1000 concurrent operations. infra-001 lifecycle + volume suites pass against SQLite-backed binary.
 
 ### R-03: Transaction Type Abstraction Leakage
 **Severity**: Medium
@@ -148,6 +150,7 @@
 | StoreAdapter wraps wrong Store variant | unimatrix-core, unimatrix-store | Compilation fails or wrong backend used | Compile-check workspace under both features |
 | Server imports redb transaction types directly | unimatrix-server, unimatrix-store | Compilation fails under backend-sqlite | ADR-001 type aliases resolve this; verify with compile-check |
 | VectorIndex expects specific iter_vector_mappings ordering | unimatrix-vector, unimatrix-store | HNSW graph built with wrong ID mappings | Verify iter_vector_mappings returns same pairs in same order |
+| Full MCP stack with SQLite backend | unimatrix-server + all crates | Behavioral divergence undetected by unit tests | infra-001 full harness (157 tests) against SQLite-backed binary |
 
 ## Edge Cases
 
@@ -190,7 +193,7 @@ This feature does not introduce new external input surfaces. All data entering S
 | SR-02 (WAL sidecar files) | -- | Verified: PidGuard is process-level, not file-level. No architecture impact. |
 | SR-03 (bincode fragility) | R-04 | Migration chain tested end-to-end. Bincode serialization unchanged. |
 | SR-04 (dual-backend test matrix) | R-08 | CI runs both: `cargo test` (redb) + `cargo test --features backend-sqlite` (SQLite). |
-| SR-05 (subtle semantic differences) | R-01 | Primary risk. 234 parity tests + boundary value tests + concurrent access tests. |
+| SR-05 (subtle semantic differences) | R-01 | Primary risk. 234 parity tests + boundary value tests + concurrent access tests + infra-001 full harness (157 system-level tests). |
 | SR-06 (intentional duplication of index tables) | -- | Accepted. Zero-change scope. Documented for nxs-006. |
 | SR-07 (StoreAdapter coupling) | R-03 | ADR-001 type aliases minimize coupling. Compile-check under both features. |
 | SR-08 (transaction lifetime semantics) | R-02, R-10 | Mutex<Connection> serializes access. Counter atomicity via SQL transactions. |
@@ -200,7 +203,24 @@ This feature does not introduce new external input surfaces. All data entering S
 
 | Priority | Risk Count | Required Scenarios |
 |----------|-----------|-------------------|
-| High | 3 (R-01, R-08, R-10) | 14 scenarios |
-| Medium | 4 (R-02, R-03, R-04, R-06) | 13 scenarios |
+| High | 3 (R-01, R-08, R-10) | 16 scenarios |
+| Medium | 4 (R-02, R-03, R-04, R-06) | 14 scenarios |
 | Low | 3 (R-05, R-07, R-09) | 7 scenarios |
-| **Total** | **10** | **34 scenarios** |
+| **Total** | **10** | **37 scenarios** |
+
+### System-Level Validation (infra-001)
+
+The infra-001 integration harness provides cross-cutting system-level validation that complements unit-level parity testing. Building the `unimatrix-server` binary with `--features unimatrix-store/backend-sqlite` and running the full harness (157 tests, 8 suites) validates:
+
+| Suite | Tests | Risks Covered |
+|-------|-------|--------------|
+| `protocol` | 13 | R-03, R-08 -- MCP handshake, JSON-RPC compliance, tool discovery work through full stack |
+| `tools` | 53 | R-01 -- every tool parameter, valid/invalid inputs, all response formats |
+| `lifecycle` | 16 | R-01, R-02 -- multi-step flows, correction chains, restart persistence |
+| `volume` | 11 | R-02, R-07 -- scale to hundreds of entries, sustained load |
+| `security` | 15 | R-01 -- content scanning, capability enforcement at system level |
+| `confidence` | 13 | R-01 -- 6-factor composite formula validated end-to-end |
+| `contradiction` | 12 | R-01 -- detection pipeline through full stack |
+| `edge_cases` | 24 | R-01, R-05 -- unicode, boundary values, empty DB, concurrent ops |
+
+The harness is a gate requirement (AC-16). All 157 tests must pass against the SQLite-backed binary.

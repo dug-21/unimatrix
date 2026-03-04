@@ -77,6 +77,17 @@ Session operations (insert_session, update_session, get_session, scan_sessions_b
 
 Injection log operations (insert_injection_log_batch, scan_injection_log_by_session) produce identical results including batch insert atomicity.
 
+### FR-13: System-Level Validation via infra-001 Harness
+
+The SQLite-backed `unimatrix-server` binary must pass the full infra-001 integration test harness (157 tests across 8 suites: protocol, tools, lifecycle, volume, security, confidence, contradiction, edge_cases). The harness exercises the compiled binary over MCP JSON-RPC stdio -- the exact interface agents use. Build the binary with `cargo build --release --features unimatrix-store/backend-sqlite`, then run:
+
+```bash
+cd product/test/infra-001
+python -m pytest suites/ -v --timeout=60
+```
+
+Per the USAGE-PROTOCOL feature mapping: "Schema or storage changes -> run lifecycle, volume suites." Since nxs-005 is a complete backend replacement, the full suite is required, not just lifecycle + volume. No new harness tests are needed -- the existing 157 tests validate that the SQLite backend produces identical system-level behavior.
+
 ## Non-Functional Requirements
 
 ### NFR-01: Build Time
@@ -122,6 +133,7 @@ SQLite WAL with synchronous=NORMAL guarantees: committed transactions survive pr
 | AC-13 | Injection log operations produce identical results | Existing injection log tests (injection_log.rs) pass against SQLite |
 | AC-14 | Both backends available via feature flag | Test: `cargo check -p unimatrix-store` (redb) and `cargo check -p unimatrix-store --features backend-sqlite` (SQLite) both succeed |
 | AC-15 | No code changes outside `crates/unimatrix-store/` except import path for transaction types | Git diff verification: only store crate files modified, plus minimal server import adjustments for ADR-001 |
+| AC-16 | Full infra-001 integration harness passes against SQLite-backed binary (157 tests, 8 suites) | Build binary with `--features unimatrix-store/backend-sqlite`, run `python -m pytest suites/ -v --timeout=60` in `product/test/infra-001/`. All 157 tests pass. |
 
 ## Domain Models
 
