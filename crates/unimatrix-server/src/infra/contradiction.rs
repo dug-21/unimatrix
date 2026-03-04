@@ -39,7 +39,7 @@ const DIRECTIVE_WEIGHT: f32 = 0.3;
 const SENTIMENT_WEIGHT: f32 = 0.1;
 
 /// A pair of entries flagged as potentially contradictory.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct ContradictionPair {
     pub entry_id_a: u64,
     pub entry_id_b: u64,
@@ -51,7 +51,7 @@ pub struct ContradictionPair {
 }
 
 /// An entry whose stored embedding does not match its current content.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct EmbeddingInconsistency {
     pub entry_id: u64,
     pub title: String,

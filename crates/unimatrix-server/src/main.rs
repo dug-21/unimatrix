@@ -18,6 +18,7 @@ use unimatrix_server::error::ServerError;
 use unimatrix_server::infra::pidfile;
 use unimatrix_server::project;
 use unimatrix_server::infra::registry::AgentRegistry;
+use unimatrix_server::infra::usage_dedup::UsageDedup;
 use unimatrix_server::server::{PendingEntriesAnalysis, UnimatrixServer};
 use unimatrix_server::infra::shutdown::{self, LifecycleHandles};
 use unimatrix_server::uds_listener;
@@ -190,7 +191,8 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Create pending entries analysis accumulator shared between UDS listener and MCP server (col-009)
     let pending_entries_analysis = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
 
-    // Build shared ServiceLayer for UDS and MCP transports (vnc-006)
+    // Build shared ServiceLayer for UDS and MCP transports (vnc-006, vnc-009)
+    let usage_dedup = Arc::new(UsageDedup::new());
     let services = unimatrix_server::services::ServiceLayer::new(
         Arc::clone(&store),
         Arc::clone(&vector_index),
@@ -199,6 +201,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&embed_handle),
         Arc::clone(&adapt_service),
         Arc::clone(&audit),
+        Arc::clone(&usage_dedup),
     );
 
     // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009)
@@ -215,6 +218,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         server_uid,
         env!("CARGO_PKG_VERSION").to_string(),
         services.clone(),
+        Arc::clone(&audit),
     )
     .await?;
 

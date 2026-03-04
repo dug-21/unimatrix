@@ -23,7 +23,7 @@ use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::error::ServerError;
 use crate::services::gateway::SecurityGateway;
-use crate::services::{AuditContext, ServiceError};
+use crate::services::{AuditContext, CallerId, ServiceError};
 
 /// Near-duplicate cosine similarity threshold.
 const DUPLICATE_THRESHOLD: f64 = 0.92;
@@ -86,14 +86,18 @@ impl StoreService {
 
     /// Insert a new entry with atomic audit.
     ///
-    /// Steps: validate (S1/S3), embed, adapt, duplicate check, atomic insert+audit,
+    /// Steps: validate (S2/S1/S3), embed, adapt, duplicate check, atomic insert+audit,
     /// HNSW insert, update adaptation prototypes.
     pub(crate) async fn insert(
         &self,
         entry: NewEntry,
         embedding: Option<Vec<f32>>,
         audit_ctx: &AuditContext,
+        caller_id: &CallerId,
     ) -> Result<InsertResult, ServiceError> {
+        // Step 0: S2 rate check before any work
+        self.gateway.check_write_rate(caller_id)?;
+
         // Step 1: S1 + S3 validation via gateway
         self.gateway.validate_write(
             &entry.title,

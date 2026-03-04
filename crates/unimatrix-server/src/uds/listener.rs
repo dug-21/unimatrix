@@ -27,6 +27,7 @@ use std::collections::HashSet;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::registry::Capability;
 use crate::server::PendingEntriesAnalysis;
@@ -168,6 +169,7 @@ pub async fn start_uds_listener(
     server_uid: u32,
     server_version: String,
     services: crate::services::ServiceLayer,
+    audit_log: Arc<AuditLog>,
 ) -> io::Result<(tokio::task::JoinHandle<()>, SocketGuard)> {
     let listener = tokio::net::UnixListener::bind(socket_path)?;
 
@@ -197,6 +199,7 @@ pub async fn start_uds_listener(
             server_version,
             socket_path_display,
             services,
+            audit_log,
         )
         .await;
     });
@@ -220,6 +223,7 @@ async fn accept_loop(
     server_version: String,
     socket_path_display: String,
     services: crate::services::ServiceLayer,
+    audit_log: Arc<AuditLog>,
 ) {
     loop {
         match listener.accept().await {
@@ -233,6 +237,7 @@ async fn accept_loop(
                 let pending_entries_analysis = Arc::clone(&pending_entries_analysis);
                 let version = server_version.clone();
                 let services = services.clone();
+                let audit_log = Arc::clone(&audit_log);
 
                 // Per-connection handler in its own task (panic isolation -- R-19)
                 tokio::spawn(async move {
@@ -248,6 +253,7 @@ async fn accept_loop(
                         server_uid,
                         version,
                         services,
+                        audit_log,
                     )
                     .await
                     {
@@ -283,6 +289,7 @@ async fn handle_connection(
     server_uid: u32,
     server_version: String,
     services: crate::services::ServiceLayer,
+    audit_log: Arc<AuditLog>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Convert to std for auth (peer credential extraction uses std::os::unix)
     let std_stream = stream.into_std()?;
@@ -296,6 +303,25 @@ async fn handle_connection(
         Err(e) => {
             // Auth failure: close connection with no response (ADR-003)
             tracing::warn!(error = %e, "UDS authentication failed, closing connection");
+
+            // F-23: Audit auth failure (fire-and-forget)
+            let audit_log = Arc::clone(&audit_log);
+            let error_msg = format!("{e}");
+            let _ = tokio::task::spawn_blocking(move || {
+                let event = AuditEvent {
+                    event_id: 0,
+                    timestamp: 0,
+                    session_id: String::new(),
+                    agent_id: "uds-auth".to_string(),
+                    operation: "uds_auth_failure".to_string(),
+                    target_ids: vec![],
+                    outcome: Outcome::Error,
+                    detail: error_msg,
+                };
+                if let Err(write_err) = audit_log.log_event(event) {
+                    tracing::warn!(error = %write_err, "failed to write auth failure audit");
+                }
+            });
             return Ok(());
         }
     };
@@ -653,7 +679,7 @@ async fn dispatch_request(
                 injection_history: None,
             };
 
-            match services.briefing.assemble(briefing_params, &audit_ctx).await {
+            match services.briefing.assemble(briefing_params, &audit_ctx, None).await {
                 Ok(result) => {
                     let mut content = String::new();
                     if !result.conventions.is_empty() {
@@ -722,8 +748,11 @@ async fn handle_context_search(
         caller_agent_id: None,
     };
 
-    // 3. Delegate to SearchService
-    let search_results = match services.search.search(service_params, &audit_ctx).await {
+    // 3. Delegate to SearchService (UDS sessions are rate-exempt via CallerId::UdsSession)
+    let uds_caller = crate::services::CallerId::UdsSession(
+        session_id.clone().unwrap_or_else(|| "uds-anon".to_string()),
+    );
+    let search_results = match services.search.search(service_params, &audit_ctx, &uds_caller).await {
         Ok(results) => results,
         Err(e) => {
             tracing::warn!("search service error: {e}");
@@ -911,7 +940,7 @@ async fn handle_compact_payload(
     };
 
     // 7. Delegate to BriefingService
-    let result = match services.briefing.assemble(briefing_params, &audit_ctx).await {
+    let result = match services.briefing.assemble(briefing_params, &audit_ctx, None).await {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!("compact payload assembly failed: {e}");
@@ -1551,6 +1580,7 @@ mod tests {
             .unwrap(),
         );
         let audit = Arc::new(crate::infra::audit::AuditLog::new(Arc::clone(store)));
+        let usage_dedup = Arc::new(crate::infra::usage_dedup::UsageDedup::new());
         crate::services::ServiceLayer::new(
             Arc::clone(store),
             vector_index,
@@ -1559,6 +1589,7 @@ mod tests {
             Arc::clone(embed),
             Arc::clone(adapt),
             audit,
+            usage_dedup,
         )
     }
 

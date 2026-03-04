@@ -13,7 +13,7 @@ use unimatrix_core::async_wrappers::AsyncEntryStore;
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::services::gateway::SecurityGateway;
 use crate::services::search::{SearchService, ServiceSearchParams};
-use crate::services::{AuditContext, ServiceError};
+use crate::services::{AuditContext, CallerId, ServiceError};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -132,6 +132,7 @@ impl BriefingService {
         &self,
         params: BriefingParams,
         audit_ctx: &AuditContext,
+        caller_id: Option<&CallerId>,
     ) -> Result<BriefingResult, ServiceError> {
         // Step 1: S3 input validation
         validate_briefing_inputs(&params)?;
@@ -216,6 +217,11 @@ impl BriefingService {
 
         // Step 6: Semantic search path
         if params.include_semantic {
+            // S2 rate check when semantic search is active
+            if let Some(cid) = caller_id {
+                self.gateway.check_search_rate(cid)?;
+            }
+
             if let Some(ref task) = params.task {
                 let search_params = ServiceSearchParams {
                     query: task.clone(),
@@ -232,7 +238,10 @@ impl BriefingService {
                     caller_agent_id: None,
                 };
 
-                match self.search.search(search_params, audit_ctx).await {
+                // Use a synthetic UDS caller_id for rate limiting when no caller is provided
+                let default_caller = CallerId::UdsSession("briefing-internal".to_string());
+                let effective_caller = caller_id.unwrap_or(&default_caller);
+                match self.search.search(search_params, audit_ctx, effective_caller).await {
                     Ok(results) => {
                         for scored_entry in results.entries {
                             let entry_chars = scored_entry.entry.title.len()
@@ -553,7 +562,7 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert_eq!(result.conventions.len(), 2);
         assert!(result.injection_sections.decisions.is_empty());
         assert!(result.injection_sections.injections.is_empty());
@@ -586,7 +595,7 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert!(result.conventions.is_empty());
     }
 
@@ -612,7 +621,7 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert!(result.conventions.is_empty());
     }
 
@@ -634,7 +643,7 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert!(result.relevant_context.is_empty());
         // search_available stays true (not attempted, not failed)
         assert!(result.search_available);
@@ -663,7 +672,7 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert!(!result.search_available);
         assert!(result.relevant_context.is_empty());
         // Conventions still populated
@@ -704,7 +713,7 @@ mod tests {
             ]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert_eq!(result.injection_sections.decisions.len(), 1);
         assert_eq!(result.injection_sections.decisions[0].0.id, id_dec);
         assert_eq!(result.injection_sections.conventions.len(), 1);
@@ -740,7 +749,7 @@ mod tests {
             ]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         // Entry appears exactly once
         let total = result.injection_sections.injections.len();
         assert_eq!(total, 1);
@@ -777,7 +786,7 @@ mod tests {
             ]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert_eq!(result.injection_sections.injections.len(), 1);
         assert_eq!(result.injection_sections.injections[0].0.id, id_active);
         assert!(!result.entry_ids.contains(&id_quarantined));
@@ -809,7 +818,7 @@ mod tests {
             ]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert_eq!(result.injection_sections.injections.len(), 1);
     }
 
@@ -837,7 +846,7 @@ mod tests {
             ]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert_eq!(result.injection_sections.injections.len(), 1);
     }
 
@@ -875,7 +884,7 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         // All 3 should fit at 2000 char budget
         assert!(result.conventions.len() <= 3);
         assert!(!result.conventions.is_empty());
@@ -928,7 +937,7 @@ mod tests {
             injection_history: Some(history),
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         // Entries should be present in sections
         assert!(!result.injection_sections.decisions.is_empty());
         assert!(!result.injection_sections.injections.is_empty());
@@ -960,7 +969,7 @@ mod tests {
         };
 
         // Should not panic
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         // Entry is small enough to fit
         assert!(result.injection_sections.injections.len() <= 1);
     }
@@ -982,7 +991,7 @@ mod tests {
             injection_history: None,
         };
 
-        let err = service.assemble(params, &test_audit_ctx()).await.unwrap_err();
+        let err = service.assemble(params, &test_audit_ctx(), None).await.unwrap_err();
         assert!(matches!(err, ServiceError::ValidationFailed(msg) if msg.contains("role")));
     }
 
@@ -1003,7 +1012,7 @@ mod tests {
             injection_history: None,
         };
 
-        let err = service.assemble(params, &test_audit_ctx()).await.unwrap_err();
+        let err = service.assemble(params, &test_audit_ctx(), None).await.unwrap_err();
         assert!(matches!(err, ServiceError::ValidationFailed(msg) if msg.contains("task")));
     }
 
@@ -1024,7 +1033,7 @@ mod tests {
             injection_history: None,
         };
 
-        let err = service.assemble(params, &test_audit_ctx()).await.unwrap_err();
+        let err = service.assemble(params, &test_audit_ctx(), None).await.unwrap_err();
         assert!(matches!(err, ServiceError::ValidationFailed(msg) if msg.contains("max_tokens")));
     }
 
@@ -1043,7 +1052,7 @@ mod tests {
             injection_history: None,
         };
 
-        let err = service.assemble(params, &test_audit_ctx()).await.unwrap_err();
+        let err = service.assemble(params, &test_audit_ctx(), None).await.unwrap_err();
         assert!(matches!(err, ServiceError::ValidationFailed(msg) if msg.contains("max_tokens")));
     }
 
@@ -1064,7 +1073,7 @@ mod tests {
             injection_history: None,
         };
 
-        let err = service.assemble(params, &test_audit_ctx()).await.unwrap_err();
+        let err = service.assemble(params, &test_audit_ctx(), None).await.unwrap_err();
         assert!(matches!(err, ServiceError::ValidationFailed(msg) if msg.contains("control")));
     }
 
@@ -1085,7 +1094,7 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert!(result.conventions.is_empty());
         assert!(result.entry_ids.is_empty());
     }
@@ -1116,7 +1125,7 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert_eq!(result.conventions.len(), 2);
         assert_eq!(result.conventions[0].id, id_feature, "feature-tagged entry should be first");
     }
@@ -1152,7 +1161,7 @@ mod tests {
             ]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx()).await.expect("assemble");
+        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
         assert!(result.injection_sections.decisions.is_empty());
         assert!(result.injection_sections.injections.is_empty());
         assert!(result.injection_sections.conventions.is_empty());

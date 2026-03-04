@@ -157,6 +157,8 @@ impl UnimatrixServer {
             ..Default::default()
         };
 
+        let usage_dedup = Arc::new(UsageDedup::new());
+
         let services = ServiceLayer::new(
             Arc::clone(&store),
             Arc::clone(&vector_index),
@@ -165,6 +167,7 @@ impl UnimatrixServer {
             Arc::clone(&embed_service),
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
+            Arc::clone(&usage_dedup),
         );
 
         UnimatrixServer {
@@ -176,7 +179,7 @@ impl UnimatrixServer {
             categories,
             store,
             vector_index,
-            usage_dedup: Arc::new(UsageDedup::new()),
+            usage_dedup,
             adapt_service,
             pending_entries_analysis: Arc::new(Mutex::new(PendingEntriesAnalysis::new())),
             session_registry: Arc::new(SessionRegistry::new()),
@@ -197,37 +200,71 @@ impl UnimatrixServer {
         identity::resolve_identity(&self.registry, &extracted)
     }
 
-    /// Resolve identity, parse format, build audit context.
+    /// Resolve identity, parse format, build audit context with optional session ID.
     ///
     /// Replaces the 15-25 line ceremony in each MCP handler with a single call.
     /// Capability checking is separate via `require_cap()` (ADR-002).
+    /// Session ID is validated (S3) and prefixed with "mcp::" when present.
     pub(crate) fn build_context(
         &self,
         agent_id: &Option<String>,
         format: &Option<String>,
+        session_id: &Option<String>,
     ) -> Result<crate::mcp::context::ToolContext, rmcp::ErrorData> {
         use crate::mcp::context::ToolContext;
-        use crate::services::{AuditContext, AuditSource};
+        use crate::services::{AuditContext, AuditSource, CallerId, prefix_session_id};
 
         let identity = self.resolve_agent(agent_id)
             .map_err(rmcp::ErrorData::from)?;
         let format = crate::mcp::response::parse_format(format)
             .map_err(rmcp::ErrorData::from)?;
+
+        // Session ID: validate (S3) and prefix with mcp::
+        let prefixed_session = if let Some(sid) = session_id {
+            Self::validate_session_id(sid).map_err(rmcp::ErrorData::from)?;
+            Some(prefix_session_id("mcp", sid))
+        } else {
+            None
+        };
+
         let audit_ctx = AuditContext {
             source: AuditSource::Mcp {
                 agent_id: identity.agent_id.clone(),
                 trust_level: identity.trust_level,
             },
             caller_id: identity.agent_id.clone(),
-            session_id: None,
+            session_id: prefixed_session,
             feature_cycle: None,
         };
+
+        let caller_id = CallerId::Agent(identity.agent_id.clone());
+
         Ok(ToolContext {
             agent_id: identity.agent_id,
             trust_level: identity.trust_level,
             format,
             audit_ctx,
+            caller_id,
         })
+    }
+
+    /// Validate session_id: max 256 chars, no control characters (S3).
+    fn validate_session_id(sid: &str) -> Result<(), ServerError> {
+        if sid.len() > 256 {
+            return Err(ServerError::InvalidInput {
+                field: "session_id".to_string(),
+                reason: "session_id exceeds 256 characters".to_string(),
+            });
+        }
+        for ch in sid.chars() {
+            if ch.is_control() && ch != '\n' && ch != '\t' {
+                return Err(ServerError::InvalidInput {
+                    field: "session_id".to_string(),
+                    reason: "session_id contains control characters".to_string(),
+                });
+            }
+        }
+        Ok(())
     }
 
     /// Check a capability for the given agent.

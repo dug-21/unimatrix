@@ -1,13 +1,15 @@
-//! SecurityGateway: S1 content scanning, S3 input validation, S4 quarantine
-//! exclusion, S5 structured audit emission.
+//! SecurityGateway: S1 content scanning, S2 rate limiting, S3 input validation,
+//! S4 quarantine exclusion, S5 structured audit emission.
 
-use std::sync::Arc;
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use unimatrix_core::Status;
 
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::scanning::ContentScanner;
-use crate::services::{AuditContext, AuditSource, ServiceError};
+use crate::services::{AuditContext, AuditSource, CallerId, ServiceError};
 
 /// Non-fatal scan detection on search queries.
 #[allow(dead_code)]
@@ -17,17 +19,117 @@ pub(crate) struct ScanWarning {
     pub matched_text: String,
 }
 
-/// Security gateway enforcing S1/S3/S4/S5 invariants.
+// ---------------------------------------------------------------------------
+// RateLimiter (S2)
+// ---------------------------------------------------------------------------
+
+/// Per-caller sliding window for rate tracking.
+struct SlidingWindow {
+    timestamps: VecDeque<Instant>,
+}
+
+/// In-memory sliding window rate limiter keyed by CallerId (ADR-002).
+///
+/// Lazy eviction: expired timestamps removed on each check, no background timer.
+/// State is in-memory, resets on server restart.
+pub(crate) struct RateLimiter {
+    windows: Mutex<HashMap<CallerId, SlidingWindow>>,
+    search_limit: u32,
+    write_limit: u32,
+    window_secs: u64,
+}
+
+impl RateLimiter {
+    fn new(search_limit: u32, write_limit: u32, window_secs: u64) -> Self {
+        RateLimiter {
+            windows: Mutex::new(HashMap::new()),
+            search_limit,
+            write_limit,
+            window_secs,
+        }
+    }
+
+    /// Check and record a request against the given limit.
+    ///
+    /// UdsSession callers are exempt (return Ok immediately).
+    /// Poison recovery via `unwrap_or_else(|e| e.into_inner())`.
+    fn check_rate(
+        &self,
+        caller: &CallerId,
+        limit: u32,
+    ) -> Result<(), ServiceError> {
+        // UdsSession exemption (structural, not conditional)
+        if matches!(caller, CallerId::UdsSession(_)) {
+            return Ok(());
+        }
+
+        let now = Instant::now();
+        let window_duration = Duration::from_secs(self.window_secs);
+
+        let mut windows = self.windows.lock().unwrap_or_else(|e| e.into_inner());
+
+        let window = windows.entry(caller.clone()).or_insert_with(|| SlidingWindow {
+            timestamps: VecDeque::new(),
+        });
+
+        // Lazy eviction: remove expired timestamps
+        while let Some(front) = window.timestamps.front() {
+            if now.duration_since(*front) >= window_duration {
+                window.timestamps.pop_front();
+            } else {
+                break;
+            }
+        }
+
+        // Check limit
+        if window.timestamps.len() as u32 >= limit {
+            let oldest = window.timestamps.front().expect("len >= limit > 0");
+            let retry_after = window_duration
+                .checked_sub(now.duration_since(*oldest))
+                .unwrap_or_default()
+                .as_secs();
+            return Err(ServiceError::RateLimited {
+                limit,
+                window_secs: self.window_secs,
+                retry_after_secs: retry_after,
+            });
+        }
+
+        // Under limit: record this request
+        window.timestamps.push_back(now);
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// SecurityGateway
+// ---------------------------------------------------------------------------
+
+/// Security gateway enforcing S1/S2/S3/S4/S5 invariants.
 ///
 /// Injected into services via Arc. Services call gateway methods internally
 /// at the appropriate pipeline points (ADR-001 hybrid injection pattern).
 pub(crate) struct SecurityGateway {
     pub(crate) audit: Arc<AuditLog>,
+    rate_limiter: RateLimiter,
 }
 
 impl SecurityGateway {
     pub(crate) fn new(audit: Arc<AuditLog>) -> Self {
-        SecurityGateway { audit }
+        SecurityGateway {
+            audit,
+            rate_limiter: RateLimiter::new(300, 60, 3600),
+        }
+    }
+
+    /// S2: Check search rate limit for this caller.
+    pub(crate) fn check_search_rate(&self, caller: &CallerId) -> Result<(), ServiceError> {
+        self.rate_limiter.check_rate(caller, self.rate_limiter.search_limit)
+    }
+
+    /// S2: Check write rate limit for this caller.
+    pub(crate) fn check_write_rate(&self, caller: &CallerId) -> Result<(), ServiceError> {
+        self.rate_limiter.check_rate(caller, self.rate_limiter.write_limit)
     }
 
     /// S1+S3: Validate and scan a search query.
@@ -190,7 +292,7 @@ impl SecurityGateway {
         let _ = self.audit.log_event(event);
     }
 
-    /// Create a permissive gateway for unit tests (no-op audit).
+    /// Create a permissive gateway for unit tests (no-op audit, unlimited rate).
     #[cfg(test)]
     pub(crate) fn new_permissive() -> Self {
         use unimatrix_store::Store;
@@ -202,6 +304,7 @@ impl SecurityGateway {
         std::mem::forget(dir);
         SecurityGateway {
             audit: Arc::new(audit),
+            rate_limiter: RateLimiter::new(u32::MAX, u32::MAX, 3600),
         }
     }
 }
@@ -470,5 +573,125 @@ mod tests {
             outcome: Outcome::Success,
             detail: "test detail".to_string(),
         });
+    }
+
+    // -- S2: Rate limiting --
+
+    fn make_limited_gateway(search_limit: u32, write_limit: u32, window_secs: u64) -> SecurityGateway {
+        use unimatrix_store::Store;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = Store::open(dir.path().join("test.redb")).expect("store");
+        let audit = AuditLog::new(Arc::new(store));
+        std::mem::forget(dir);
+        SecurityGateway {
+            audit: Arc::new(audit),
+            rate_limiter: RateLimiter::new(search_limit, write_limit, window_secs),
+        }
+    }
+
+    #[test]
+    fn check_search_rate_allows_under_limit() {
+        let gw = make_limited_gateway(10, 5, 3600);
+        let caller = CallerId::Agent("test".to_string());
+        for _ in 0..10 {
+            assert!(gw.check_search_rate(&caller).is_ok());
+        }
+    }
+
+    #[test]
+    fn check_search_rate_rejects_over_limit() {
+        let gw = make_limited_gateway(10, 5, 3600);
+        let caller = CallerId::Agent("test".to_string());
+        for _ in 0..10 {
+            gw.check_search_rate(&caller).expect("under limit");
+        }
+        let err = gw.check_search_rate(&caller).unwrap_err();
+        assert!(matches!(err, ServiceError::RateLimited { limit: 10, .. }));
+    }
+
+    #[test]
+    fn check_write_rate_allows_under_limit() {
+        let gw = make_limited_gateway(300, 5, 3600);
+        let caller = CallerId::Agent("test".to_string());
+        for _ in 0..5 {
+            assert!(gw.check_write_rate(&caller).is_ok());
+        }
+    }
+
+    #[test]
+    fn check_write_rate_rejects_over_limit() {
+        let gw = make_limited_gateway(300, 5, 3600);
+        let caller = CallerId::Agent("test".to_string());
+        for _ in 0..5 {
+            gw.check_write_rate(&caller).expect("under limit");
+        }
+        let err = gw.check_write_rate(&caller).unwrap_err();
+        assert!(matches!(err, ServiceError::RateLimited { limit: 5, .. }));
+    }
+
+    #[test]
+    fn rate_limiter_different_callers_independent() {
+        let gw = make_limited_gateway(3, 3, 3600);
+        let alice = CallerId::Agent("alice".to_string());
+        let bob = CallerId::Agent("bob".to_string());
+        for _ in 0..3 {
+            gw.check_search_rate(&alice).expect("alice under limit");
+        }
+        // Alice is at limit
+        assert!(gw.check_search_rate(&alice).is_err());
+        // Bob has his own window
+        assert!(gw.check_search_rate(&bob).is_ok());
+    }
+
+    #[test]
+    fn rate_limiter_uds_exempt() {
+        let gw = make_limited_gateway(1, 1, 3600);
+        let uds = CallerId::UdsSession("sess-1".to_string());
+        // Even with limit=1, UDS is exempt
+        for _ in 0..100 {
+            assert!(gw.check_search_rate(&uds).is_ok());
+            assert!(gw.check_write_rate(&uds).is_ok());
+        }
+    }
+
+    #[test]
+    fn rate_limiter_lazy_eviction() {
+        // Use 1-second window for fast test
+        let gw = make_limited_gateway(3, 3, 1);
+        let caller = CallerId::Agent("test".to_string());
+        for _ in 0..3 {
+            gw.check_search_rate(&caller).expect("under limit");
+        }
+        assert!(gw.check_search_rate(&caller).is_err(), "should be at limit");
+
+        // Wait for window to expire
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+
+        // Expired entries evicted on next check
+        assert!(gw.check_search_rate(&caller).is_ok(), "should succeed after eviction");
+    }
+
+    #[test]
+    fn rate_limited_error_display() {
+        let err = ServiceError::RateLimited {
+            limit: 300,
+            window_secs: 3600,
+            retry_after_secs: 42,
+        };
+        let msg = format!("{err}");
+        assert!(msg.contains("300"));
+        assert!(msg.contains("3600"));
+        assert!(msg.contains("42"));
+    }
+
+    #[test]
+    fn rate_limited_to_server_error() {
+        let err = ServiceError::RateLimited {
+            limit: 300,
+            window_secs: 3600,
+            retry_after_secs: 42,
+        };
+        let server_err: crate::error::ServerError = err.into();
+        assert!(matches!(server_err, crate::error::ServerError::InvalidInput { field, .. } if field == "rate_limit"));
     }
 }
