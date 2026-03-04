@@ -348,7 +348,7 @@ fn test_co_access_roundtrip() {
     let db = TestDb::new();
     let now = now_secs();
 
-    db.store().record_co_access_pairs(&[(1, 2), (1, 3)], now).unwrap();
+    db.store().record_co_access_pairs(&[(1, 2), (1, 3)]).unwrap();
 
     let partners = db.store().get_co_access_partners(1, 0).unwrap();
     assert_eq!(partners.len(), 2);
@@ -363,8 +363,8 @@ fn test_co_access_increment() {
     let db = TestDb::new();
     let now = now_secs();
 
-    db.store().record_co_access_pairs(&[(1, 2)], now).unwrap();
-    db.store().record_co_access_pairs(&[(1, 2)], now + 1).unwrap();
+    db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
+    db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
 
     let partners = db.store().get_co_access_partners(1, 0).unwrap();
     assert_eq!(partners.len(), 1);
@@ -374,7 +374,7 @@ fn test_co_access_increment() {
 #[test]
 fn test_co_access_self_pair_skipped() {
     let db = TestDb::new();
-    db.store().record_co_access_pairs(&[(1, 1)], now_secs()).unwrap();
+    db.store().record_co_access_pairs(&[(1, 1)]).unwrap();
     let (total, _) = db.store().co_access_stats(0).unwrap();
     assert_eq!(total, 0);
 }
@@ -382,16 +382,17 @@ fn test_co_access_self_pair_skipped() {
 #[test]
 fn test_cleanup_stale_co_access() {
     let db = TestDb::new();
-    let now = now_secs();
 
-    db.store().record_co_access_pairs(&[(1, 2)], now - 1000).unwrap();
-    db.store().record_co_access_pairs(&[(3, 4)], now).unwrap();
+    db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
+    db.store().record_co_access_pairs(&[(3, 4)]).unwrap();
 
-    let deleted = db.store().cleanup_stale_co_access(now - 500).unwrap();
-    assert_eq!(deleted, 1);
+    // Cleanup with a future cutoff removes all pairs
+    let future = now_secs() + 1000;
+    let deleted = db.store().cleanup_stale_co_access(future).unwrap();
+    assert_eq!(deleted, 2);
 
     let (total, _) = db.store().co_access_stats(0).unwrap();
-    assert_eq!(total, 1);
+    assert_eq!(total, 0);
 }
 
 #[test]
@@ -399,9 +400,9 @@ fn test_top_co_access_pairs() {
     let db = TestDb::new();
     let now = now_secs();
 
-    db.store().record_co_access_pairs(&[(1, 2)], now).unwrap();
-    db.store().record_co_access_pairs(&[(1, 2)], now).unwrap(); // count=2
-    db.store().record_co_access_pairs(&[(3, 4)], now).unwrap(); // count=1
+    db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
+    db.store().record_co_access_pairs(&[(1, 2)]).unwrap(); // count=2
+    db.store().record_co_access_pairs(&[(3, 4)]).unwrap(); // count=1
 
     let top = db.store().top_co_access_pairs(10, 0).unwrap();
     assert_eq!(top.len(), 2);

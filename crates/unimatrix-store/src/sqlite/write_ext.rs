@@ -255,7 +255,11 @@ impl Store {
     }
 
     /// Record co-access pairs.
-    pub fn record_co_access_pairs(&self, pairs: &[(u64, u64)], now: u64) -> Result<()> {
+    pub fn record_co_access_pairs(&self, pairs: &[(u64, u64)]) -> Result<()> {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
         let conn = self.lock_conn();
         conn.execute_batch("BEGIN IMMEDIATE")
             .map_err(StoreError::Sqlite)?;

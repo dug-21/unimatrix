@@ -228,6 +228,7 @@ impl UsageService {
 #[cfg(test)]
 mod usage_tests {
     use super::*;
+    #[cfg(not(feature = "backend-sqlite"))]
     use redb::ReadableMultimapTable;
 
     fn make_usage_service() -> (UsageService, Arc<Store>, tempfile::TempDir) {

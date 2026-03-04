@@ -6,12 +6,7 @@ use rusqlite::Connection;
 use crate::error::{Result, StoreError};
 use crate::schema::DatabaseConfig;
 
-#[allow(unused_imports)]
-pub use super::txn::{
-    SqliteReadTransaction, SqliteWriteTransaction,
-    SqliteTableHandle, SqliteMutableTableHandle,
-    SqliteMultimapTableHandle, SqliteMutableMultimapTableHandle,
-};
+pub use super::txn::{SqliteReadTransaction, SqliteWriteTransaction};
 
 /// The storage engine handle. Wraps a Mutex<rusqlite::Connection>.
 ///
@@ -82,7 +77,7 @@ impl Store {
     /// table-access methods compatible with server usage patterns (ADR-001).
     pub fn begin_write(&self) -> Result<SqliteWriteTransaction<'_>> {
         let guard = self.conn.lock().unwrap_or_else(|e| e.into_inner());
-        Ok(SqliteWriteTransaction::new(guard))
+        SqliteWriteTransaction::new(guard)
     }
 
     /// Acquire the connection lock for internal operations.

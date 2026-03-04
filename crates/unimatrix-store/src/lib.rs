@@ -60,3 +60,28 @@ pub use db::Store;
 pub use sqlite::Store;
 #[cfg(feature = "backend-sqlite")]
 pub use sqlite::{SqliteReadTransaction, SqliteWriteTransaction};
+
+// Re-exports: SQLite compat layer (table definitions, counter helpers, guards, handles, traits)
+// These are consumed by unimatrix-server under backend-sqlite but unused within the store crate.
+#[cfg(feature = "backend-sqlite")]
+#[allow(unused_imports)]
+pub use sqlite::{
+    // Table definition constants
+    ENTRIES, TOPIC_INDEX, CATEGORY_INDEX, TAG_INDEX, TIME_INDEX,
+    STATUS_INDEX, VECTOR_MAP, COUNTERS, OUTCOME_INDEX, AUDIT_LOG,
+    AGENT_REGISTRY, FEATURE_ENTRIES, CO_ACCESS, SIGNAL_QUEUE,
+    SESSIONS, INJECTION_LOG,
+    // Counter helpers
+    next_entry_id, increment_counter, decrement_counter,
+    // Table definition types
+    SqliteTableDef, SqliteMultimapDef,
+    // Guard types
+    BlobGuard, U64Guard, UnitGuard, CompositeKeyGuard, U64KeyGuard,
+    // Typed handle structs
+    TableU64Blob, TableStrU64, TableStrBlob, TableStrU64Comp,
+    TableU64U64Comp, TableU8U64Comp, TableU64U64, MultimapStrU64,
+    // Traits for open_table dispatch
+    TableSpec, MultimapSpec,
+    // Range result wrapper
+    RangeResult,
+};

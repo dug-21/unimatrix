@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(not(feature = "backend-sqlite"))]
 use redb::ReadableTable;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
@@ -1050,6 +1051,7 @@ impl UnimatrixServer {
 }
 
 /// Decrement a counter value, saturating at 0.
+#[cfg(not(feature = "backend-sqlite"))]
 fn decrement_counter(
     txn: &redb::WriteTransaction,
     key: &str,
@@ -1067,6 +1069,16 @@ fn decrement_counter(
     table.insert(key, current.saturating_sub(amount))
         .map_err(|e| unimatrix_store::StoreError::from(e))?;
     Ok(())
+}
+
+/// Decrement a counter value, saturating at 0 (SQLite backend).
+#[cfg(feature = "backend-sqlite")]
+fn decrement_counter(
+    txn: &unimatrix_store::SqliteWriteTransaction<'_>,
+    key: &str,
+    amount: u64,
+) -> Result<(), unimatrix_store::StoreError> {
+    unimatrix_store::decrement_counter(txn, key, amount)
 }
 
 #[rmcp::tool_handler]
@@ -1694,6 +1706,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_quarantine_updates_status_index() {
+        #[cfg(not(feature = "backend-sqlite"))]
         use redb::ReadableTable;
         let server = make_server();
         let id = insert_test_entry(&server.store);
@@ -1797,6 +1810,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_restore_updates_status_index() {
+        #[cfg(not(feature = "backend-sqlite"))]
         use redb::ReadableTable;
         let server = make_server();
         let id = insert_test_entry(&server.store);
