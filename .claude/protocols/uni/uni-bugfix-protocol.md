@@ -9,10 +9,10 @@ Triggers on: bug, fix, bugfix, defect, regression, broken, failing, error, crash
 A single-session workflow that takes a bug report from diagnosis through merge. The session includes a human checkpoint after diagnosis — the human must agree with the root cause analysis before any code changes are made.
 
 ```
-Primary Agent                    uni-bugfix-manager              Specialist Agents
-─────────────                    ──────────────────              ─────────────────
+Primary Agent                    uni-bugfix-scrum-master          Specialist Agents
+─────────────                    ──────────────────────          ─────────────────
 read bug report (GH Issue or description)
-spawn bugfix-manager ──────────► read protocol + bug report
+spawn bugfix-scrum-master ─────► read protocol + bug report
                                  spawn investigator (Phase 1)
                                  ◄──────────────────────────── diagnosis + proposed fix
                                  present diagnosis to human
@@ -58,7 +58,10 @@ The human starts a bug fix session by providing a bug report. This can be:
 The Bugfix Manager:
 1. Reads the bug report (fetches GH Issue if URL provided)
 2. Identifies the feature area and any related feature directories
-3. Proceeds to Phase 1
+3. Queries Unimatrix for prior knowledge:
+   - `/query-patterns` — patterns related to the affected area
+   - `/knowledge-search` — lessons from prior bugfixes in the same subsystem
+4. Passes relevant findings to the investigator in Phase 1
 
 ---
 
@@ -189,7 +192,7 @@ Task(subagent_type: "uni-tester",
     5. Integration suites relevant to the bug area (see USAGE-PROTOCOL.md suite table)
 
     INTEGRATION TEST FAILURE TRIAGE (CRITICAL):
-    - CAUSED BY THIS BUG FIX → Report back to bugfix-manager for rework.
+    - CAUSED BY THIS BUG FIX → Report back to bugfix-scrum-master for rework.
     - PRE-EXISTING / UNRELATED → Do NOT fix. File a GH Issue, mark the test
       @pytest.mark.xfail(reason='Pre-existing: GH#NNN — description').
     - BAD TEST ASSERTION → Fix the test. Document in results.
@@ -238,9 +241,9 @@ Task(subagent_type: "uni-validator",
     Changed files: {from rust-dev return}
     New tests: {from rust-dev return}
 
-    Write report to GH issue
+    Post report as a comment on GH Issue #{issue-number}.
 
-    Return: PASS / REWORKABLE FAIL / SCOPE FAIL, report path, issues.")
+    Return: PASS / REWORKABLE FAIL / SCOPE FAIL, specific issues.")
 ```
 
 **Gate results:**
@@ -382,34 +385,32 @@ NEVER pipe full cargo output into context.
 ## Quick Reference: Message Map
 
 ```
-BUGFIX MANAGER (uni-bugfix-manager):
-  Phase 1:    Task(uni-bug-investigator) — diagnose root cause
+BUGFIX MANAGER (uni-bugfix-scrum-master):
+  Init:       /query-patterns + /knowledge-search — prior knowledge
+  Phase 1:    Task(uni-bug-investigator) — diagnose root cause → GH Issue comment
               ...present diagnosis to human...
               ★ HUMAN CHECKPOINT — human approves diagnosis ★
   Phase 2:    git checkout -b bugfix/{issue}-{desc}
-              Task(uni-rust-dev) — implement fix + tests
+              Task(uni-rust-dev) — implement fix + tests → GH Issue comment
               ...wait...
-  Phase 3:    Task(uni-tester) — full test suite verification
+  Phase 3:    Task(uni-tester) — full test suite verification → GH Issue comment
               ...wait...
-  Gate 3:     Task(uni-validator, bugfix check set)
+  Gate 3:     Task(uni-validator, bugfix check set) → GH Issue comment
               ...PASS → continue / FAIL → rework or stop...
               git commit + push + gh pr create
-  Phase 4:    Task(uni-security-reviewer) — PR security review (fresh context)
+  Phase 4:    Task(uni-security-reviewer) — PR security review → GH Issue comment
               ...wait...
-  Phase 5:    Present PR + security assessment to human — SESSION ENDS
+  Phase 5:    /record-outcome + /store-lesson (if generalizable)
+              Present PR + security assessment to human — SESSION ENDS
 ```
 
 ---
 
 ## Outcome Recording
 
-After presenting the PR to the human, record the bugfix outcome in Unimatrix:
+After presenting the PR to the human, record the bugfix outcome using Unimatrix skills:
 
-```
-context_store(
-  category: "outcome",
-  feature_cycle: "{bug-id}",
-  tags: ["type:bugfix", "phase:delivery", "result:pass"],
-  content: "Bugfix complete. Root cause: {summary}. PR: {url}"
-)
-```
+1. **Always**: `/record-outcome` — record the bugfix result (pass/fail, root cause summary, PR link)
+2. **If root cause is generalizable**: `/store-lesson` — persist the root cause pattern so future investigators find it via `/knowledge-search`
+
+All phase outputs (diagnosis, fix summary, gate results, security review) are posted as **GH Issue comments** — never written to the filesystem.

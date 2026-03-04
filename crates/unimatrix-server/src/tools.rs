@@ -29,20 +29,21 @@ use crate::response::{
     format_single_entry, format_store_success, format_store_success_with_note,
     format_correct_success, format_deprecate_success,
     format_quarantine_success, format_restore_success,
-    format_status_report, format_briefing, StatusReport, CoAccessClusterEntry, Briefing, parse_format,
+    format_status_report, StatusReport, CoAccessClusterEntry, parse_format,
 };
+#[cfg(feature = "mcp-briefing")]
+use crate::response::{format_briefing, Briefing};
 use crate::server::UnimatrixServer;
 use crate::validation::{
     validate_get_params, validate_lookup_params, validate_search_params, validate_store_params,
     validate_correct_params, validate_deprecate_params, validate_enroll_params,
-    validate_quarantine_params, validate_status_params, validate_briefing_params,
-    validated_max_tokens, validated_id, validated_k, validated_limit,
+    validate_quarantine_params, validate_status_params,
+    validated_id, validated_k, validated_limit,
     parse_status, parse_quarantine_action, parse_trust_level, parse_capabilities,
     QuarantineAction, validate_feature, validate_helpful,
 };
-
-/// HNSW search expansion factor (used by context_status maintenance path).
-const EF_SEARCH: usize = 32;
+#[cfg(feature = "mcp-briefing")]
+use crate::validation::{validate_briefing_params, validated_max_tokens};
 
 /// Parameters for semantic search.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -1383,230 +1384,106 @@ impl UnimatrixServer {
 
     #[tool(
         name = "context_briefing",
-        description = "Get an orientation briefing for a role and task. Includes role conventions, duties, and task-relevant context from the knowledge base. Use at the start of any task."
+        description = "Get an orientation briefing for a role and task. Includes role conventions and task-relevant context from the knowledge base. Use at the start of any task."
     )]
     async fn context_briefing(
         &self,
+        #[allow(unused_variables)]
         Parameters(params): Parameters<BriefingParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
-        // 1. Identity
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .map_err(rmcp::ErrorData::from)?;
+        #[cfg(not(feature = "mcp-briefing"))]
+        {
+            return Ok(CallToolResult::error(vec![rmcp::model::Content::text(
+                "context_briefing tool is not available in this build configuration",
+            )]));
+        }
 
-        // 2. Capability check (Read required)
-        self.registry
-            .require_capability(&identity.agent_id, Capability::Read)
-            .map_err(rmcp::ErrorData::from)?;
+        #[cfg(feature = "mcp-briefing")]
+        {
+            // 1. Identity (transport-specific)
+            let identity = self
+                .resolve_agent(&params.agent_id)
+                .map_err(rmcp::ErrorData::from)?;
 
-        // 3. Validation
-        validate_briefing_params(&params).map_err(rmcp::ErrorData::from)?;
-        validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
+            // 2. Capability check (transport-specific)
+            self.registry
+                .require_capability(&identity.agent_id, Capability::Read)
+                .map_err(rmcp::ErrorData::from)?;
 
-        // 4. Parse format
-        let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
+            // 3. MCP-specific param validation (transport-specific)
+            validate_briefing_params(&params).map_err(rmcp::ErrorData::from)?;
+            validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
 
-        // 5. Validate max_tokens
-        let max_tokens = validated_max_tokens(params.max_tokens).map_err(rmcp::ErrorData::from)?;
-        let char_budget = max_tokens * 4; // ~4 chars per token
+            // 4. Parse format (transport-specific)
+            let format = parse_format(&params.format).map_err(rmcp::ErrorData::from)?;
 
-        // 6. Lookup conventions: topic=role, category="convention", status=Active
-        let conventions = self
-            .entry_store
-            .query(QueryFilter {
-                topic: Some(params.role.clone()),
-                category: Some("convention".to_string()),
-                status: Some(Status::Active),
-                tags: None,
-                time_range: None,
-            })
-            .await
-            .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+            // 5. Validate max_tokens
+            let max_tokens =
+                validated_max_tokens(params.max_tokens).map_err(rmcp::ErrorData::from)?;
 
-        // 7. Lookup duties: topic=role, category="duties", status=Active
-        let duties = self
-            .entry_store
-            .query(QueryFilter {
-                topic: Some(params.role.clone()),
-                category: Some("duties".to_string()),
-                status: Some(Status::Active),
-                tags: None,
-                time_range: None,
-            })
-            .await
-            .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+            // 6. Build AuditContext (transport-specific)
+            let audit_ctx = crate::services::AuditContext {
+                source: crate::services::AuditSource::Mcp {
+                    agent_id: identity.agent_id.clone(),
+                    trust_level: identity.trust_level,
+                },
+                caller_id: identity.agent_id.clone(),
+                session_id: None,
+                feature_cycle: None,
+            };
 
-        // 8. Semantic search (if embed ready) — uses embed_entry("", task) to match
-        //    how context_search embeds queries. All query-side embeddings MUST use this
-        //    same pattern so results are comparable across tools.
-        let (relevant_context, search_available) = match self.embed_service.get_adapter().await {
-            Ok(adapter) => {
-                let task = params.task.clone();
-                let raw_embedding: Vec<f32> = tokio::task::spawn_blocking({
-                    let adapter = Arc::clone(&adapter);
-                    move || adapter.embed_entry("", &task)
-                })
+            // 7. Delegate to BriefingService (vnc-007)
+            let briefing_params = crate::services::briefing::BriefingParams {
+                role: Some(params.role.clone()),
+                task: Some(params.task.clone()),
+                feature: params.feature.clone(),
+                max_tokens,
+                include_conventions: true,
+                include_semantic: true,
+                injection_history: None,
+            };
+
+            let result = self
+                .services
+                .briefing
+                .assemble(briefing_params, &audit_ctx)
                 .await
-                .map_err(|e: tokio::task::JoinError| {
-                    rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::JoinError(
-                        e.to_string(),
-                    )))
-                })?
-                .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+                .map_err(rmcp::ErrorData::from)?;
 
-                // 8b. Adapt briefing query embedding (crt-006)
-                let adapted = self.adapt_service.adapt_embedding(&raw_embedding, None, None);
-                let embedding = unimatrix_embed::l2_normalized(&adapted);
+            // 8. Convert BriefingResult -> Briefing for format_briefing
+            let briefing = Briefing {
+                role: params.role.clone(),
+                task: params.task.clone(),
+                conventions: result.conventions,
+                relevant_context: result.relevant_context,
+                search_available: result.search_available,
+            };
 
-                let search_results = self
-                    .vector_store
-                    .search(embedding, 3, EF_SEARCH)
-                    .await
-                    .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+            // 9. Audit (transport-specific, best-effort)
+            let _ = self.audit.log_event(AuditEvent {
+                event_id: 0,
+                timestamp: 0,
+                session_id: String::new(),
+                agent_id: identity.agent_id.clone(),
+                operation: "context_briefing".to_string(),
+                target_ids: result.entry_ids.clone(),
+                outcome: Outcome::Success,
+                detail: format!("briefing for role={}, task={}", params.role, params.task),
+            });
 
-                let mut results = Vec::new();
-                for sr in &search_results {
-                    if let Ok(entry) = self.entry_store.get(sr.entry_id).await {
-                        if entry.status == Status::Quarantined {
-                            continue; // exclude quarantined entries from briefing search
-                        }
-                        results.push((entry, sr.similarity));
-                    }
-                }
+            // 10. Usage recording (transport-specific, fire-and-forget)
+            self.record_usage_for_entries(
+                &identity.agent_id,
+                identity.trust_level,
+                &result.entry_ids,
+                params.helpful,
+                params.feature.as_deref(),
+            )
+            .await;
 
-                // Feature boost: if feature param provided, boost entries tagged with it
-                if let Some(ref feature) = params.feature {
-                    results.sort_by(|a, b| {
-                        let a_has = a.0.tags.iter().any(|t| t == feature);
-                        let b_has = b.0.tags.iter().any(|t| t == feature);
-                        match (a_has, b_has) {
-                            (true, false) => std::cmp::Ordering::Less,
-                            (false, true) => std::cmp::Ordering::Greater,
-                            _ => b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal),
-                        }
-                    });
-                }
-
-                // 8b. Co-access boost for briefing (crt-004)
-                if results.len() > 1 {
-                    let now = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs();
-                    let staleness_cutoff = now.saturating_sub(crate::coaccess::CO_ACCESS_STALENESS_SECONDS);
-
-                    let anchor_count = results.len().min(3);
-                    let anchor_ids: Vec<u64> = results.iter()
-                        .take(anchor_count)
-                        .map(|(e, _)| e.id)
-                        .collect();
-                    let result_ids: Vec<u64> = results.iter().map(|(e, _)| e.id).collect();
-
-                    let store = Arc::clone(&self.store);
-                    let boost_map = tokio::task::spawn_blocking(move || {
-                        crate::coaccess::compute_briefing_boost(&anchor_ids, &result_ids, &store, staleness_cutoff)
-                    }).await
-                    .unwrap_or_else(|e| {
-                        tracing::warn!("co-access briefing boost task failed: {e}");
-                        std::collections::HashMap::new()
-                    });
-
-                    if !boost_map.is_empty() {
-                        results.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-                            let boost_a = boost_map.get(&entry_a.id).copied().unwrap_or(0.0);
-                            let boost_b = boost_map.get(&entry_b.id).copied().unwrap_or(0.0);
-                            let score_a = *sim_a + boost_a;
-                            let score_b = *sim_b + boost_b;
-                            score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
-                        });
-                    }
-                }
-
-                (results, true)
-            }
-            Err(_) => {
-                // Embed not ready -- graceful degradation (AC-28)
-                (vec![], false)
-            }
-        };
-
-        // 9. Apply token budget
-        // Priority order: conventions > duties > relevant_context
-        let mut used_chars = 0usize;
-        let mut budget_conventions = Vec::new();
-        for entry in &conventions {
-            let entry_chars = entry.title.len() + entry.content.len() + 50;
-            if used_chars + entry_chars <= char_budget {
-                budget_conventions.push(entry.clone());
-                used_chars += entry_chars;
-            }
+            // 11. Format response (transport-specific)
+            Ok(format_briefing(&briefing, format))
         }
-
-        let mut budget_duties = Vec::new();
-        for entry in &duties {
-            let entry_chars = entry.title.len() + entry.content.len() + 50;
-            if used_chars + entry_chars <= char_budget {
-                budget_duties.push(entry.clone());
-                used_chars += entry_chars;
-            }
-        }
-
-        let mut budget_context = Vec::new();
-        for (entry, score) in &relevant_context {
-            let entry_chars = entry.title.len() + entry.content.len() + 50;
-            if used_chars + entry_chars <= char_budget {
-                budget_context.push((entry.clone(), *score));
-                used_chars += entry_chars;
-            }
-        }
-
-        // 10. Build briefing
-        let briefing = Briefing {
-            role: params.role.clone(),
-            task: params.task.clone(),
-            conventions: budget_conventions,
-            duties: budget_duties,
-            relevant_context: budget_context,
-            search_available,
-        };
-
-        // 11. Collect unique entry IDs for usage recording
-        let mut briefing_entry_ids: Vec<u64> = Vec::new();
-        for entry in &briefing.conventions {
-            briefing_entry_ids.push(entry.id);
-        }
-        for entry in &briefing.duties {
-            briefing_entry_ids.push(entry.id);
-        }
-        for (entry, _) in &briefing.relevant_context {
-            briefing_entry_ids.push(entry.id);
-        }
-        briefing_entry_ids.sort_unstable();
-        briefing_entry_ids.dedup();
-
-        // 12. Audit (standalone, best-effort)
-        let _ = self.audit.log_event(AuditEvent {
-            event_id: 0,
-            timestamp: 0,
-            session_id: String::new(),
-            agent_id: identity.agent_id.clone(),
-            operation: "context_briefing".to_string(),
-            target_ids: briefing_entry_ids.clone(),
-            outcome: Outcome::Success,
-            detail: format!("briefing for role={}, task={}", params.role, params.task),
-        });
-
-        // 13. Usage recording (fire-and-forget)
-        self.record_usage_for_entries(
-            &identity.agent_id,
-            identity.trust_level,
-            &briefing_entry_ids,
-            params.helpful,
-            params.feature.as_deref(),
-        ).await;
-
-        // 14. Format response
-        Ok(format_briefing(&briefing, format))
     }
 
     #[tool(

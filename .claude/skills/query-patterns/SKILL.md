@@ -89,6 +89,20 @@ In either case, your work may establish a NEW pattern that the retrospective wil
 
 ---
 
+## When You Find Stale or Wrong Knowledge
+
+Query results may include entries that are outdated or incorrect. Fix them before they mislead the next agent:
+
+| Situation | Action |
+|-----------|--------|
+| Pattern/procedure is **wrong** | `context_correct(original_id: {id}, content: "{corrected version}", reason: "{why}")` |
+| Pattern/procedure is **outdated** | `context_deprecate(id: {id}, reason: "{why}")` |
+| Convention no longer applies | `context_deprecate(id: {id}, reason: "{why}")` |
+
+If you correct or deprecate an entry during your session, mention it in your return to the coordinator so it can be noted in the outcome.
+
+---
+
 ## What NOT to Do
 
 - Do NOT store patterns during this query phase — that's the retrospective's job

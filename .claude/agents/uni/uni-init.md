@@ -106,7 +106,7 @@ context_store(
 | uni-validator.md | `validator` |
 | uni-bug-investigator.md | `bug-investigator` |
 | uni-security-reviewer.md | `security-reviewer` |
-| uni-bugfix-manager.md | `bugfix-manager` |
+| uni-bugfix-scrum-master.md | `bugfix-scrum-master` |
 
 **Duties entry content guidelines:**
 - Lead with the one-sentence primary responsibility

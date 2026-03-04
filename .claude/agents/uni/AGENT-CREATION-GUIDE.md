@@ -114,7 +114,7 @@ These items from the NDP agent system do NOT apply to `uni-` agents:
 
 | Item | Why Not |
 |------|---------|
-| `get-pattern` / `save-pattern` / `reflexion` skills | NDP pattern store — uni- agents use `/query-patterns` and Unimatrix `context_store` |
+| `get-pattern` / `save-pattern` / `reflexion` skills | NDP pattern store — uni- agents use `/query-patterns` (read), `/store-lesson` (failures), `/store-procedure` (techniques), `/store-adr` (decisions), `/record-outcome` (session end) |
 | Pattern Integration (REQUIRED) section | NDP-specific — uni- agents use `/query-patterns` in MANDATORY sections |
 | Pattern Workflow (Mandatory) section | NDP-specific |
 | `ndp-github-workflow` skill reference | Not created for uni- yet |

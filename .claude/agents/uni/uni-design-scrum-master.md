@@ -193,7 +193,20 @@ Agent(uni-synthesizer, "
   Return: file paths + GH Issue URL.")
 ```
 
-### Phase 2d: Return to Human
+### Phase 2d: Commit Design Artifacts
+
+After all artifacts are produced, commit them to git so they are tracked:
+
+```bash
+git add product/features/{feature-id}/
+git commit -m "docs: {feature-id} design artifacts
+
+Session 1 design docs: SCOPE, SCOPE-RISK-ASSESSMENT, ARCHITECTURE,
+SPECIFICATION, RISK-TEST-STRATEGY, ALIGNMENT-REPORT,
+IMPLEMENTATION-BRIEF, ACCEPTANCE-MAP."
+```
+
+### Phase 2e: Return to Human
 
 Collect all artifact paths and return using the format in "What You Return" above. **Session 1 ends here.**
 
@@ -241,6 +254,7 @@ Before returning to the primary agent:
 - [ ] IMPLEMENTATION-BRIEF.md exists
 - [ ] ACCEPTANCE-MAP.md exists
 - [ ] GH Issue created
+- [ ] Design artifacts committed to git
 - [ ] Outcome recorded in Unimatrix
 
 ---

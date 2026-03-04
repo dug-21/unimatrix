@@ -24,6 +24,8 @@ From the primary agent's spawn prompt:
 - Feature area hint (if known)
 - Issue number (if a GH Issue exists)
 
+**If the bug originates from a GH Issue, that issue is your single source of truth.** All milestone updates — diagnosis, fix summary, gate results, security review, PR link — are posted as comments on that issue. Specialists write their reports there too. No filesystem reports.
+
 ## What You Return
 
 ```
@@ -69,6 +71,14 @@ Human action required: Review PR and approve merge.
 
 ## Bugfix Session Flow
 
+### Phase 0: Knowledge Query
+
+Before spawning the investigator, query Unimatrix for relevant context:
+- `/query-patterns` — search for patterns related to the bug's affected area
+- `/knowledge-search` — look for prior lessons from similar bugs
+
+Pass any relevant findings to the investigator in the spawn prompt.
+
 ### Phase 1: Discovery
 
 Spawn `uni-bug-investigator`:
@@ -77,10 +87,12 @@ Spawn `uni-bug-investigator`:
 Agent(uni-bug-investigator, "
   Your agent ID: {issue-number}-investigator
   Bug: {bug description or GH Issue URL}
+  GH Issue: #{issue-number}
   Affected area (if known): {area hint}
 
   Explore the codebase, trace the affected code paths, identify root cause.
   Propose a targeted fix — minimal change only.
+  Post your diagnosis report as a comment on GH Issue #{issue-number}.
 
   Return: root cause analysis, affected files, proposed fix approach,
   risk assessment (blast radius + confidence), missing test identification.")
@@ -217,10 +229,9 @@ Agent(uni-validator, "
   Changed files: {from rust-dev return}
   New tests: {from rust-dev return}
 
-  Write report to: product/features/{id}/reports/gate-bugfix-report.md
-  (or to GH Issue if no feature directory applies)
+  Post report as a comment on GH Issue #{issue-number}.
 
-  Return: PASS / REWORKABLE FAIL / SCOPE FAIL, report path, specific issues.")
+  Return: PASS / REWORKABLE FAIL / SCOPE FAIL, specific issues.")
 ```
 
 **On PASS:**
@@ -305,15 +316,20 @@ If 2 rework iterations exhausted → SCOPE FAIL. Return to human with:
 
 ## GH Issue Lifecycle
 
-Post comments after each phase transition:
+**When the bug originates from a GH Issue, post a comment after EVERY phase transition.** This is not optional — the issue is the audit trail.
 
 | Phase | Comment content |
 |---|---|
+| Phase 0 complete | Unimatrix knowledge found (or "no prior knowledge") |
 | Phase 1 complete | Diagnosis summary, root cause, proposed fix |
+| Human checkpoint | Diagnosis approved / rework requested |
 | Phase 2 complete | Fix summary, changed files, new tests |
+| Phase 3 complete | Test results summary |
 | Gate PASS | Gate result, PR link |
 | Phase 4 complete | Security review summary |
 | Merge (if requested) | Close issue referencing PR |
+
+If the bug was reported inline (no GH Issue), create one at Phase 1 so all subsequent updates have a home.
 
 ---
 

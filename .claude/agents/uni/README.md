@@ -9,7 +9,7 @@ Agents for Unimatrix product development. These agents implement the Spec-Driven
 **Use `uni-` agents for all Unimatrix product work.** NDP agents in `.claude/agents/ndp/` are retained as reference only.
 
 - Spawn `uni-scrum-master` for feature work. It reads the appropriate protocol and orchestrates the swarm.
-- Spawn `uni-bugfix-manager` for bug fixes. It reads the bugfix protocol and coordinates diagnosis through merge.
+- Spawn `uni-bugfix-scrum-master` for bug fixes. It coordinates diagnosis through merge with mandatory human checkpoint.
 
 ## Three Session Types
 
@@ -19,9 +19,9 @@ The workflow executes across distinct session types:
 |---------|------------|----------|-------------|
 | **Session 1 (Design)** | Design Leader | `.claude/protocols/uni/uni-design-protocol.md` | Research → Scope → 3 source docs → Vision check → Brief → Return to human |
 | **Session 2 (Delivery)** | Delivery Leader | `.claude/protocols/uni/uni-delivery-protocol.md` | Pseudocode → Gate 3a → Code → Gate 3b → Test → Gate 3c → Deliver |
-| **Bug Fix** | Bugfix Manager | `.claude/protocols/uni/uni-bugfix-protocol.md` | Diagnose → Human approve → Fix → Test → Validate → Security review → PR |
+| **Bug Fix** | Bugfix Scrum Master | `.claude/protocols/uni/uni-bugfix-protocol.md` | Diagnose → Human approve → Fix → Test → Validate → Security review → PR |
 
-Sessions 1 and 2 use `uni-scrum-master` reading different protocols. Bug fixes use `uni-bugfix-manager`.
+Sessions 1 and 2 use `uni-scrum-master` reading different protocols. Bug fixes use `uni-bugfix-scrum-master`.
 
 ## Agent Roster
 
@@ -30,7 +30,7 @@ Sessions 1 and 2 use `uni-scrum-master` reading different protocols. Bug fixes u
 | Agent | Role |
 |-------|------|
 | `uni-scrum-master` | Dual-role coordinator — Design Leader or Delivery Leader |
-| `uni-bugfix-manager` | Bug fix coordinator — diagnosis through merge lifecycle |
+| `uni-bugfix-scrum-master` | Bug fix coordinator — diagnosis through merge lifecycle |
 | `uni-validator` | Validation gate — spawned with different check sets per context |
 
 ### Session 1 — Design
@@ -88,7 +88,7 @@ Gate 3c:      uni-validator
 ### Bug Fix Session
 
 ```
-Coordinator:  uni-bugfix-manager
+Coordinator:  uni-bugfix-scrum-master
 Phase 1:      uni-bug-investigator                                   (diagnosis)
               ★ HUMAN CHECKPOINT ★
 Phase 2:      uni-rust-dev                                           (fix + tests)
@@ -124,7 +124,7 @@ These are produced in Session 1 and validated against throughout Session 2:
 ├── README.md                  # This file
 ├── AGENT-CREATION-GUIDE.md    # How to create uni- agents
 ├── uni-scrum-master.md        # Coordinator (Design + Delivery Leader)
-├── uni-bugfix-manager.md      # Coordinator (Bug Fix Leader)
+├── uni-bugfix-scrum-master.md  # Coordinator (Bug Fix Leader)
 ├── uni-validator.md           # Validation gate
 ├── uni-researcher.md          # Problem space explorer (Phase 1)
 ├── uni-architect.md           # Architecture + ADRs (Phase 2a)
