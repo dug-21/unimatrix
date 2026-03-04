@@ -36,7 +36,7 @@ context_store(
   topic: "{feature-id or crate}",
   category: "lesson-learned",
   tags: ["{domain}", "{failure-type}"],
-  agent_id: "{your agent ID}"
+  agent_id: "{your role name, e.g. uni-architect}"
 )
 ```
 

@@ -24,7 +24,7 @@ Call `context_store` with these parameters:
 | `feature_cycle` | `"{feature-id}"` |
 | `tags` | Structured tags (see below) |
 | `content` | What happened — artifacts, results, key facts |
-| `agent_id` | Your agent ID |
+| `agent_id` | Your role name (e.g. `uni-architect`) |
 
 ### Required Tags
 

@@ -85,6 +85,7 @@ Spawn `uni-pseudocode` and `uni-tester` in parallel (ONE message):
 ```
 Agent(uni-pseudocode, "
   Your agent ID: {feature-id}-agent-1-pseudocode
+  Your Unimatrix agent_id: uni-pseudocode
   Feature: {feature-id}
 
   Read these files before starting:
@@ -109,6 +110,7 @@ Agent(uni-pseudocode, "
 
 Agent(uni-tester, "
   Your agent ID: {feature-id}-agent-2-testplan
+  Your Unimatrix agent_id: uni-tester
   PHASE: Test Plan Design (Stage 3a)
   Feature: {feature-id}
 
@@ -161,6 +163,7 @@ After Stage 3a agents return, you MUST update the IMPLEMENTATION-BRIEF.md before
 ```
 Agent(uni-validator, "
   Your agent ID: {feature-id}-gate-3a
+  Your Unimatrix agent_id: uni-validator
   GATE: 3a (Component Design Review)
   Feature: {feature-id}
 
@@ -207,6 +210,7 @@ Each agent receives ONLY its component's pseudocode and test plan:
 ```
 Agent(uni-rust-dev, "
   Your agent ID: {feature-id}-agent-3-{component-name}
+  Your Unimatrix agent_id: uni-rust-dev
   Feature: {feature-id}
   Component: {component-name}
 
@@ -247,6 +251,7 @@ Wait for all agents to complete.
 ```
 Agent(uni-validator, "
   Your agent ID: {feature-id}-gate-3b
+  Your Unimatrix agent_id: uni-validator
   GATE: 3b (Code Review)
   Feature: {feature-id}
 
@@ -284,6 +289,7 @@ git commit -m "impl: Stage 3b complete (#{issue})"
 ```
 Agent(uni-tester, "
   Your agent ID: {feature-id}-agent-4-tester
+  Your Unimatrix agent_id: uni-tester
   PHASE: Test Execution (Stage 3c)
   Feature: {feature-id}
 
@@ -319,6 +325,7 @@ Agent(uni-tester, "
 ```
 Agent(uni-validator, "
   Your agent ID: {feature-id}-gate-3c
+  Your Unimatrix agent_id: uni-validator
   GATE: 3c (Final Risk-Based Validation)
   Feature: {feature-id}
 

@@ -86,6 +86,7 @@ Spawn `uni-bug-investigator`:
 ```
 Agent(uni-bug-investigator, "
   Your agent ID: {issue-number}-investigator
+  Your Unimatrix agent_id: uni-bug-investigator
   Bug: {bug description or GH Issue URL}
   GH Issue: #{issue-number}
   Affected area (if known): {area hint}
@@ -124,6 +125,7 @@ If diagnosis is wrong, provide feedback for re-investigation.
 ```
 Agent(uni-bug-investigator, "
   Your agent ID: {issue-number}-investigator-v2
+  Your Unimatrix agent_id: uni-bug-investigator
   REWORK: Human disagrees with initial diagnosis.
 
   Human feedback: {feedback}
@@ -149,6 +151,7 @@ git checkout -b bugfix/{issue-number}-{short-description}
 ```
 Agent(uni-rust-dev, "
   Your agent ID: {issue-number}-agent-1-fix
+  Your Unimatrix agent_id: uni-rust-dev
   BUG FIX — not a feature implementation.
 
   Bug: {bug description}
@@ -179,6 +182,7 @@ Spawn `uni-tester`:
 ```
 Agent(uni-tester, "
   Your agent ID: {issue-number}-agent-2-verify
+  Your Unimatrix agent_id: uni-tester
   PHASE: Test Execution (Bug Fix Verification)
 
   Read: product/test/infra-001/USAGE-PROTOCOL.md
@@ -209,6 +213,7 @@ Agent(uni-tester, "
 ```
 Agent(uni-validator, "
   Your agent ID: {issue-number}-gate-bugfix
+  Your Unimatrix agent_id: uni-validator
   GATE: Bug Fix Validation
   Issue: #{issue-number}
 
@@ -254,6 +259,7 @@ After PR is opened, spawn `uni-security-reviewer` with zero prior context:
 ```
 Agent(uni-security-reviewer, "
   Your agent ID: {issue-number}-security-reviewer
+  Your Unimatrix agent_id: uni-security-reviewer
   SECURITY REVIEW — Fresh context. No assumptions from fix process.
 
   PR: #{pr-number} on branch bugfix/{issue-number}-{short-description}

@@ -48,7 +48,7 @@ context_store(
   topic: "{crate or area — e.g., 'unimatrix-server'}",
   category: "procedure",
   tags: ["{domain}", "{consuming-roles}"],
-  agent_id: "{your agent ID}"
+  agent_id: "{your role name, e.g. uni-architect}"
 )
 ```
 

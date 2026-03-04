@@ -95,6 +95,7 @@ Spawn `uni-architect` to review what was built and extract reusable knowledge:
 ```
 Agent(uni-architect, "
   Your agent ID: {feature-id}-retro-architect
+  Your Unimatrix agent_id: uni-architect
   MODE: retrospective (not design)
   Feature: {feature-id}
 

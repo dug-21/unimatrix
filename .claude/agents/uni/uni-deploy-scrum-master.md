@@ -80,6 +80,7 @@ If any gate report is missing or shows FAIL, **stop and return to human** — de
 ```
 Agent(uni-security-reviewer, "
   Your agent ID: {feature-id}-security-reviewer
+  Your Unimatrix agent_id: uni-security-reviewer
   SECURITY REVIEW — Fresh context. Read the PR diff cold.
 
   PR: #{pr-number} on branch feature/{phase}-{NNN}
