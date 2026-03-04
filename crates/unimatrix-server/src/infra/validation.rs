@@ -624,6 +624,7 @@ mod tests {
             format: None,
             feature: None,
             helpful: None,
+            session_id: None,
         };
         assert!(validate_search_params(&params).is_ok());
     }
@@ -700,6 +701,7 @@ mod tests {
             format: None,
             feature: None,
             helpful: None,
+            session_id: None,
         };
         assert!(validate_get_params(&params).is_err());
     }
@@ -901,6 +903,7 @@ mod tests {
             agent_id: None,
             format: None,
             helpful: None,
+            session_id: None,
         };
         assert!(validate_briefing_params(&params).is_ok());
     }
@@ -915,6 +918,7 @@ mod tests {
             agent_id: None,
             format: None,
             helpful: None,
+            session_id: None,
         };
         assert!(validate_briefing_params(&params).is_err());
     }
@@ -929,6 +933,7 @@ mod tests {
             agent_id: None,
             format: None,
             helpful: None,
+            session_id: None,
         };
         assert!(validate_briefing_params(&params).is_err());
     }
@@ -943,6 +948,7 @@ mod tests {
             agent_id: None,
             format: None,
             helpful: None,
+            session_id: None,
         };
         assert!(validate_briefing_params(&params).is_ok());
     }
@@ -957,6 +963,7 @@ mod tests {
             agent_id: None,
             format: None,
             helpful: None,
+            session_id: None,
         };
         assert!(validate_briefing_params(&params).is_err());
     }

@@ -6,7 +6,7 @@
 
 use crate::infra::registry::TrustLevel;
 use crate::mcp::response::ResponseFormat;
-use crate::services::AuditContext;
+use crate::services::{AuditContext, CallerId};
 
 /// Pre-validated context available to every MCP tool handler.
 ///
@@ -22,4 +22,6 @@ pub(crate) struct ToolContext {
     pub format: ResponseFormat,
     /// Pre-built audit context for service calls.
     pub audit_ctx: AuditContext,
+    /// Typed caller identity for rate limiting.
+    pub caller_id: CallerId,
 }

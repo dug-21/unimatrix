@@ -1,6 +1,9 @@
 //! Status report formatting and data structures.
 
+use std::collections::HashMap;
+
 use rmcp::model::{CallToolResult, Content};
+use serde::Serialize;
 
 use super::{format_timestamp, ResponseFormat};
 
@@ -87,6 +90,7 @@ pub struct StatusReport {
 }
 
 /// A co-access cluster entry for status reporting.
+#[derive(Serialize)]
 pub struct CoAccessClusterEntry {
     /// First entry ID in the pair.
     pub entry_id_a: u64,
@@ -379,136 +383,207 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Json => {
-            let cat_dist: serde_json::Value = report
-                .category_distribution
-                .iter()
-                .map(|(k, v)| (k.clone(), serde_json::json!(v)))
-                .collect::<serde_json::Map<String, serde_json::Value>>()
-                .into();
-            let topic_dist: serde_json::Value = report
-                .topic_distribution
-                .iter()
-                .map(|(k, v)| (k.clone(), serde_json::json!(v)))
-                .collect::<serde_json::Map<String, serde_json::Value>>()
-                .into();
-            let trust_dist: serde_json::Value = report
-                .trust_source_distribution
-                .iter()
-                .map(|(k, v)| (k.clone(), serde_json::json!(v)))
-                .collect::<serde_json::Map<String, serde_json::Value>>()
-                .into();
+            let json_report = StatusReportJson::from(report);
+            CallToolResult::success(vec![Content::text(
+                serde_json::to_string_pretty(&json_report).unwrap_or_default(),
+            )])
+        }
+    }
+}
 
-            let mut obj = serde_json::json!({
-                "total_active": report.total_active,
-                "total_deprecated": report.total_deprecated,
-                "total_proposed": report.total_proposed,
-                "total_quarantined": report.total_quarantined,
-                "category_distribution": cat_dist,
-                "topic_distribution": topic_dist,
-                "correction_chains": {
-                    "entries_with_supersedes": report.entries_with_supersedes,
-                    "entries_with_superseded_by": report.entries_with_superseded_by,
-                    "total_correction_count": report.total_correction_count,
+// ---------------------------------------------------------------------------
+// Serializable JSON representation (ADR-001 vnc-009)
+// ---------------------------------------------------------------------------
+
+/// Intermediate serializable representation of `StatusReport` for JSON output.
+///
+/// Replaces ~130 lines of manual `serde_json::json!()` construction (ADR-001).
+#[derive(Serialize)]
+struct StatusReportJson {
+    total_active: u64,
+    total_deprecated: u64,
+    total_proposed: u64,
+    total_quarantined: u64,
+    category_distribution: HashMap<String, u64>,
+    topic_distribution: HashMap<String, u64>,
+    correction_chains: CorrectionChainsJson,
+    security: SecurityJson,
+    coherence: f64,
+    confidence_freshness_score: f64,
+    graph_quality_score: f64,
+    embedding_consistency_score: f64,
+    contradiction_density_score: f64,
+    stale_confidence_count: u64,
+    confidence_refreshed_count: u64,
+    graph_stale_ratio: f64,
+    graph_compacted: bool,
+    maintenance_recommendations: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    contradictions: Option<Vec<crate::infra::contradiction::ContradictionPair>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    contradiction_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    embedding_inconsistencies: Option<Vec<crate::infra::contradiction::EmbeddingInconsistency>>,
+    co_access: CoAccessJson,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    outcomes: Option<OutcomesJson>,
+    observation: ObservationJson,
+}
+
+#[derive(Serialize)]
+struct CorrectionChainsJson {
+    entries_with_supersedes: u64,
+    entries_with_superseded_by: u64,
+    total_correction_count: u64,
+}
+
+#[derive(Serialize)]
+struct SecurityJson {
+    trust_source_distribution: HashMap<String, u64>,
+    entries_without_attribution: u64,
+}
+
+#[derive(Serialize)]
+struct CoAccessClusterJson {
+    entry_a: CoAccessEntryRef,
+    entry_b: CoAccessEntryRef,
+    count: u32,
+    last_updated: u64,
+}
+
+#[derive(Serialize)]
+struct CoAccessEntryRef {
+    id: u64,
+    title: String,
+}
+
+#[derive(Serialize)]
+struct CoAccessJson {
+    total_pairs: u64,
+    active_pairs: u64,
+    stale_pairs_cleaned: u64,
+    top_clusters: Vec<CoAccessClusterJson>,
+}
+
+#[derive(Serialize)]
+struct OutcomesJson {
+    total: u64,
+    by_type: HashMap<String, u64>,
+    by_result: HashMap<String, u64>,
+    top_feature_cycles: Vec<FeatureCycleCount>,
+}
+
+#[derive(Serialize)]
+struct FeatureCycleCount {
+    feature_cycle: String,
+    count: u64,
+}
+
+#[derive(Serialize)]
+struct ObservationJson {
+    file_count: u64,
+    total_size_bytes: u64,
+    oldest_file_days: u64,
+    approaching_cleanup: Vec<String>,
+    retrospected_feature_count: u64,
+}
+
+impl From<&StatusReport> for StatusReportJson {
+    fn from(r: &StatusReport) -> Self {
+        let contradictions = if r.contradiction_scan_performed {
+            Some(r.contradictions.clone())
+        } else {
+            None
+        };
+        let contradiction_count = if r.contradiction_scan_performed {
+            Some(r.contradiction_count)
+        } else {
+            None
+        };
+        let embedding_inconsistencies = if r.embedding_check_performed {
+            Some(r.embedding_inconsistencies.clone())
+        } else {
+            None
+        };
+
+        let top_clusters: Vec<CoAccessClusterJson> = r
+            .top_co_access_pairs
+            .iter()
+            .map(|c| CoAccessClusterJson {
+                entry_a: CoAccessEntryRef {
+                    id: c.entry_id_a,
+                    title: c.title_a.clone(),
                 },
-                "security": {
-                    "trust_source_distribution": trust_dist,
-                    "entries_without_attribution": report.entries_without_attribution,
+                entry_b: CoAccessEntryRef {
+                    id: c.entry_id_b,
+                    title: c.title_b.clone(),
                 },
-            });
+                count: c.count,
+                last_updated: c.last_updated,
+            })
+            .collect();
 
-            obj["coherence"] = serde_json::json!(report.coherence);
-            obj["confidence_freshness_score"] = serde_json::json!(report.confidence_freshness_score);
-            obj["graph_quality_score"] = serde_json::json!(report.graph_quality_score);
-            obj["embedding_consistency_score"] = serde_json::json!(report.embedding_consistency_score);
-            obj["contradiction_density_score"] = serde_json::json!(report.contradiction_density_score);
-            obj["stale_confidence_count"] = serde_json::json!(report.stale_confidence_count);
-            obj["confidence_refreshed_count"] = serde_json::json!(report.confidence_refreshed_count);
-            obj["graph_stale_ratio"] = serde_json::json!(report.graph_stale_ratio);
-            obj["graph_compacted"] = serde_json::json!(report.graph_compacted);
-            obj["maintenance_recommendations"] = serde_json::json!(report.maintenance_recommendations);
-
-            if report.contradiction_scan_performed {
-                let contradictions: Vec<serde_json::Value> = report.contradictions.iter().map(|p| {
-                    serde_json::json!({
-                        "entry_id_a": p.entry_id_a,
-                        "entry_id_b": p.entry_id_b,
-                        "title_a": p.title_a,
-                        "title_b": p.title_b,
-                        "similarity": p.similarity,
-                        "conflict_score": p.conflict_score,
-                        "explanation": p.explanation,
-                    })
-                }).collect();
-                obj["contradictions"] = serde_json::json!(contradictions);
-                obj["contradiction_count"] = serde_json::json!(report.contradiction_count);
-            }
-
-            if report.embedding_check_performed {
-                let inconsistencies: Vec<serde_json::Value> = report.embedding_inconsistencies.iter().map(|i| {
-                    serde_json::json!({
-                        "entry_id": i.entry_id,
-                        "title": i.title,
-                        "self_match_similarity": i.expected_similarity,
-                    })
-                }).collect();
-                obj["embedding_inconsistencies"] = serde_json::json!(inconsistencies);
-            }
-
-            let top_clusters: Vec<serde_json::Value> = report.top_co_access_pairs.iter().map(|c| {
-                serde_json::json!({
-                    "entry_a": { "id": c.entry_id_a, "title": c.title_a },
-                    "entry_b": { "id": c.entry_id_b, "title": c.title_b },
-                    "count": c.count,
-                    "last_updated": c.last_updated,
-                })
-            }).collect();
-            obj["co_access"] = serde_json::json!({
-                "total_pairs": report.total_co_access_pairs,
-                "active_pairs": report.active_co_access_pairs,
-                "stale_pairs_cleaned": report.stale_pairs_cleaned,
-                "top_clusters": top_clusters,
-            });
-
-            if report.total_outcomes > 0 || !report.outcomes_by_type.is_empty() {
-                let type_dist: serde_json::Value = report
-                    .outcomes_by_type
-                    .iter()
-                    .map(|(k, v)| (k.clone(), serde_json::json!(v)))
-                    .collect::<serde_json::Map<String, serde_json::Value>>()
-                    .into();
-                let result_dist: serde_json::Value = report
-                    .outcomes_by_result
-                    .iter()
-                    .map(|(k, v)| (k.clone(), serde_json::json!(v)))
-                    .collect::<serde_json::Map<String, serde_json::Value>>()
-                    .into();
-                let fc_list: Vec<serde_json::Value> = report
+        let outcomes = if r.total_outcomes > 0 || !r.outcomes_by_type.is_empty() {
+            Some(OutcomesJson {
+                total: r.total_outcomes,
+                by_type: r.outcomes_by_type.iter().cloned().collect(),
+                by_result: r.outcomes_by_result.iter().cloned().collect(),
+                top_feature_cycles: r
                     .outcomes_by_feature_cycle
                     .iter()
-                    .map(|(fc, count)| {
-                        serde_json::json!({"feature_cycle": fc, "count": count})
+                    .map(|(fc, count)| FeatureCycleCount {
+                        feature_cycle: fc.clone(),
+                        count: *count,
                     })
-                    .collect();
+                    .collect(),
+            })
+        } else {
+            None
+        };
 
-                obj["outcomes"] = serde_json::json!({
-                    "total": report.total_outcomes,
-                    "by_type": type_dist,
-                    "by_result": result_dist,
-                    "top_feature_cycles": fc_list,
-                });
-            }
-
-            obj["observation"] = serde_json::json!({
-                "file_count": report.observation_file_count,
-                "total_size_bytes": report.observation_total_size_bytes,
-                "oldest_file_days": report.observation_oldest_file_days,
-                "approaching_cleanup": report.observation_approaching_cleanup,
-                "retrospected_feature_count": report.retrospected_feature_count,
-            });
-
-            CallToolResult::success(vec![Content::text(
-                serde_json::to_string_pretty(&obj).unwrap_or_default(),
-            )])
+        StatusReportJson {
+            total_active: r.total_active,
+            total_deprecated: r.total_deprecated,
+            total_proposed: r.total_proposed,
+            total_quarantined: r.total_quarantined,
+            category_distribution: r.category_distribution.iter().cloned().collect(),
+            topic_distribution: r.topic_distribution.iter().cloned().collect(),
+            correction_chains: CorrectionChainsJson {
+                entries_with_supersedes: r.entries_with_supersedes,
+                entries_with_superseded_by: r.entries_with_superseded_by,
+                total_correction_count: r.total_correction_count,
+            },
+            security: SecurityJson {
+                trust_source_distribution: r.trust_source_distribution.iter().cloned().collect(),
+                entries_without_attribution: r.entries_without_attribution,
+            },
+            coherence: r.coherence,
+            confidence_freshness_score: r.confidence_freshness_score,
+            graph_quality_score: r.graph_quality_score,
+            embedding_consistency_score: r.embedding_consistency_score,
+            contradiction_density_score: r.contradiction_density_score,
+            stale_confidence_count: r.stale_confidence_count,
+            confidence_refreshed_count: r.confidence_refreshed_count,
+            graph_stale_ratio: r.graph_stale_ratio,
+            graph_compacted: r.graph_compacted,
+            maintenance_recommendations: r.maintenance_recommendations.clone(),
+            contradictions,
+            contradiction_count,
+            embedding_inconsistencies,
+            co_access: CoAccessJson {
+                total_pairs: r.total_co_access_pairs,
+                active_pairs: r.active_co_access_pairs,
+                stale_pairs_cleaned: r.stale_pairs_cleaned,
+                top_clusters,
+            },
+            outcomes,
+            observation: ObservationJson {
+                file_count: r.observation_file_count,
+                total_size_bytes: r.observation_total_size_bytes,
+                oldest_file_days: r.observation_oldest_file_days,
+                approaching_cleanup: r.observation_approaching_cleanup.clone(),
+                retrospected_feature_count: r.retrospected_feature_count,
+            },
         }
     }
 }

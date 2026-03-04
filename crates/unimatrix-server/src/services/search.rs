@@ -16,7 +16,7 @@ use crate::confidence::rerank_score;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::services::gateway::SecurityGateway;
-use crate::services::{AuditContext, ServiceError};
+use crate::services::{AuditContext, CallerId, ServiceError};
 
 /// HNSW search expansion factor.
 const EF_SEARCH: usize = 32;
@@ -94,7 +94,11 @@ impl SearchService {
         &self,
         params: ServiceSearchParams,
         audit_ctx: &AuditContext,
+        caller_id: &CallerId,
     ) -> Result<SearchResults, ServiceError> {
+        // Step 0: S2 rate check before any work
+        self.gateway.check_search_rate(caller_id)?;
+
         // Step 1: S1 + S3 validation via gateway
         let _scan_warning =
             self.gateway

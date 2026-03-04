@@ -18,7 +18,7 @@ use unimatrix_store::{
 
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::error::ServerError;
-use crate::services::{AuditContext, ServiceError};
+use crate::services::{AuditContext, CallerId, ServiceError};
 
 use super::store_ops::{CorrectResult, StoreService};
 
@@ -31,7 +31,11 @@ impl StoreService {
         corrected: NewEntry,
         _reason: Option<String>,
         audit_ctx: &AuditContext,
+        caller_id: &CallerId,
     ) -> Result<CorrectResult, ServiceError> {
+        // Step 0: S2 rate check before any work
+        self.gateway.check_write_rate(caller_id)?;
+
         // Step 1: S1 + S3 validation on corrected content
         self.gateway.validate_write(
             &corrected.title,

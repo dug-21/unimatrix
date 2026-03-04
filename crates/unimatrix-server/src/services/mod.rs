@@ -1,7 +1,7 @@
 //! Transport-agnostic service layer for vnc-006.
 //!
 //! Provides SearchService, StoreService, ConfidenceService unified behind
-//! ServiceLayer, with SecurityGateway enforcing S1/S3/S4/S5 invariants.
+//! ServiceLayer, with SecurityGateway enforcing S1/S2/S3/S4/S5 invariants.
 
 use std::fmt;
 use std::sync::Arc;
@@ -18,6 +18,7 @@ use crate::infra::audit::AuditLog;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::error::ServerError;
 use crate::infra::registry::TrustLevel;
+use crate::infra::usage_dedup::UsageDedup;
 
 pub(crate) mod briefing;
 pub(crate) mod confidence;
@@ -26,6 +27,7 @@ pub(crate) mod search;
 pub(crate) mod status;
 pub(crate) mod store_correct;
 pub(crate) mod store_ops;
+pub(crate) mod usage;
 
 pub(crate) use briefing::BriefingService;
 pub(crate) use confidence::ConfidenceService;
@@ -33,6 +35,44 @@ pub(crate) use gateway::SecurityGateway;
 pub(crate) use search::{SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
 pub(crate) use store_ops::StoreService;
+pub(crate) use usage::UsageService;
+
+// ---------------------------------------------------------------------------
+// CallerId
+// ---------------------------------------------------------------------------
+
+/// Type-safe caller identity for rate limiting and audit.
+///
+/// Prevents cross-transport key collisions structurally. MCP constructs
+/// `Agent`, UDS constructs `UdsSession`. Services never construct CallerIds.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum CallerId {
+    /// MCP caller identified by resolved agent_id.
+    Agent(String),
+    /// UDS caller identified by session_id.
+    UdsSession(String),
+}
+
+// ---------------------------------------------------------------------------
+// Session ID helpers (ADR-004)
+// ---------------------------------------------------------------------------
+
+/// Prefix a raw session ID with transport identifier.
+pub(crate) fn prefix_session_id(transport: &str, raw: &str) -> String {
+    format!("{transport}::{raw}")
+}
+
+/// Strip transport prefix from a prefixed session ID.
+///
+/// Returns the raw ID after the first `::` delimiter.
+/// If no prefix found, returns the input unchanged.
+#[allow(dead_code)]
+pub(crate) fn strip_session_prefix(prefixed: &str) -> &str {
+    match prefixed.find("::") {
+        Some(pos) => &prefixed[pos + 2..],
+        None => prefixed,
+    }
+}
 
 // ---------------------------------------------------------------------------
 // AuditContext
@@ -77,6 +117,8 @@ pub(crate) enum AuditSource {
 pub(crate) enum ServiceError {
     /// S1: Content scan rejection (writes only).
     ContentRejected { category: String, description: String },
+    /// S2: Rate limit exceeded.
+    RateLimited { limit: u32, window_secs: u64, retry_after_secs: u64 },
     /// S3: Input validation failure.
     ValidationFailed(String),
     /// Core/store error.
@@ -94,6 +136,9 @@ impl fmt::Display for ServiceError {
                 category,
                 description,
             } => write!(f, "content rejected ({category}): {description}"),
+            ServiceError::RateLimited { limit, window_secs, retry_after_secs } => {
+                write!(f, "rate limited: {limit} requests per {window_secs}s, retry after {retry_after_secs}s")
+            }
             ServiceError::ValidationFailed(msg) => write!(f, "validation failed: {msg}"),
             ServiceError::Core(e) => write!(f, "core error: {e}"),
             ServiceError::EmbeddingFailed(msg) => write!(f, "embedding failed: {msg}"),
@@ -118,6 +163,12 @@ impl From<ServiceError> for ServerError {
                 category,
                 description,
             },
+            ServiceError::RateLimited { limit, window_secs, retry_after_secs } => {
+                ServerError::InvalidInput {
+                    field: "rate_limit".to_string(),
+                    reason: format!("rate limited: {limit} per {window_secs}s, retry after {retry_after_secs}s"),
+                }
+            }
             ServiceError::ValidationFailed(msg) => ServerError::InvalidInput {
                 field: "service".to_string(),
                 reason: msg,
@@ -155,6 +206,7 @@ pub struct ServiceLayer {
     pub(crate) confidence: ConfidenceService,
     pub(crate) briefing: BriefingService,
     pub(crate) status: StatusService,
+    pub(crate) usage: UsageService,
 }
 
 impl ServiceLayer {
@@ -166,6 +218,7 @@ impl ServiceLayer {
         embed_service: Arc<EmbedServiceHandle>,
         adapt_service: Arc<AdaptationService>,
         audit: Arc<AuditLog>,
+        usage_dedup: Arc<UsageDedup>,
     ) -> Self {
         let gateway = Arc::new(SecurityGateway::new(Arc::clone(&audit)));
 
@@ -204,12 +257,15 @@ impl ServiceLayer {
             Arc::clone(&adapt_service),
         );
 
+        let usage = UsageService::new(Arc::clone(&store), usage_dedup);
+
         ServiceLayer {
             search,
             store_ops,
             confidence,
             briefing,
             status,
+            usage,
         }
     }
 }

@@ -17,6 +17,7 @@ use unimatrix_core::{CoreError, EmbedService, NewEntry, QueryFilter, Status};
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::registry::Capability;
 use crate::services::ServiceSearchParams;
+use crate::services::usage::{AccessSource, UsageContext};
 use crate::mcp::response::{
     format_duplicate_found, format_enroll_success, format_lookup_results, format_search_results,
     format_single_entry, format_store_success, format_store_success_with_note,
@@ -59,6 +60,9 @@ pub struct SearchParams {
     pub feature: Option<String>,
     /// Whether the returned entries were helpful.
     pub helpful: Option<bool>,
+    /// Optional session ID (provided by hooks, not agent-reported).
+    #[serde(default)]
+    pub session_id: Option<String>,
 }
 
 /// Parameters for deterministic lookup.
@@ -84,6 +88,9 @@ pub struct LookupParams {
     pub feature: Option<String>,
     /// Whether the returned entries were helpful.
     pub helpful: Option<bool>,
+    /// Optional session ID (provided by hooks, not agent-reported).
+    #[serde(default)]
+    pub session_id: Option<String>,
 }
 
 /// Parameters for storing a new entry.
@@ -122,6 +129,9 @@ pub struct GetParams {
     pub feature: Option<String>,
     /// Whether the returned entries were helpful.
     pub helpful: Option<bool>,
+    /// Optional session ID (provided by hooks, not agent-reported).
+    #[serde(default)]
+    pub session_id: Option<String>,
 }
 
 /// Parameters for correcting an existing entry.
@@ -209,6 +219,9 @@ pub struct BriefingParams {
     pub format: Option<String>,
     /// Whether the returned entries were helpful.
     pub helpful: Option<bool>,
+    /// Optional session ID (provided by hooks, not agent-reported).
+    #[serde(default)]
+    pub session_id: Option<String>,
 }
 
 /// Parameters for enrolling or updating an agent.
@@ -248,7 +261,7 @@ impl UnimatrixServer {
         Parameters(params): Parameters<SearchParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id)?;
         self.require_cap(&ctx.agent_id, Capability::Search)?;
 
         // 2. Validation
@@ -287,7 +300,7 @@ impl UnimatrixServer {
         let search_results = self
             .services
             .search
-            .search(service_params, &ctx.audit_ctx)
+            .search(service_params, &ctx.audit_ctx, &ctx.caller_id)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
@@ -299,15 +312,19 @@ impl UnimatrixServer {
             .collect();
         let result = format_search_results(&results_with_scores, ctx.format);
 
-        // 6. Usage recording (fire-and-forget, transport-specific)
+        // 6. Usage recording (fire-and-forget via UsageService)
         let target_ids: Vec<u64> = search_results.entries.iter().map(|se| se.entry.id).collect();
-        self.record_usage_for_entries(
-            &ctx.agent_id,
-            ctx.trust_level,
+        self.services.usage.record_access(
             &target_ids,
-            params.helpful,
-            params.feature.as_deref(),
-        ).await;
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: ctx.audit_ctx.session_id.clone(),
+                agent_id: Some(ctx.agent_id.clone()),
+                helpful: params.helpful,
+                feature_cycle: params.feature.clone(),
+                trust_level: Some(ctx.trust_level),
+            },
+        );
 
         Ok(result)
     }
@@ -321,7 +338,7 @@ impl UnimatrixServer {
         Parameters(params): Parameters<LookupParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id)?;
         self.require_cap(&ctx.agent_id, Capability::Read)?;
 
         // 2. Validation
@@ -379,14 +396,18 @@ impl UnimatrixServer {
             detail: format!("returned {result_count} results"),
         });
 
-        // 6. Usage recording (fire-and-forget)
-        self.record_usage_for_entries(
-            &ctx.agent_id,
-            ctx.trust_level,
+        // 6. Usage recording (fire-and-forget via UsageService)
+        self.services.usage.record_access(
             &target_ids,
-            params.helpful,
-            params.feature.as_deref(),
-        ).await;
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: ctx.audit_ctx.session_id.clone(),
+                agent_id: Some(ctx.agent_id.clone()),
+                helpful: params.helpful,
+                feature_cycle: params.feature.clone(),
+                trust_level: Some(ctx.trust_level),
+            },
+        );
 
         Ok(result)
     }
@@ -400,7 +421,7 @@ impl UnimatrixServer {
         Parameters(params): Parameters<StoreParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
         self.require_cap(&ctx.agent_id, Capability::Write)?;
 
         // 2. Validation
@@ -443,7 +464,7 @@ impl UnimatrixServer {
         let insert_result = self
             .services
             .store_ops
-            .insert(new_entry, None, &ctx.audit_ctx)
+            .insert(new_entry, None, &ctx.audit_ctx, &ctx.caller_id)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
@@ -475,7 +496,7 @@ impl UnimatrixServer {
         Parameters(params): Parameters<GetParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id)?;
         self.require_cap(&ctx.agent_id, Capability::Read)?;
 
         // 2. Validation
@@ -506,14 +527,18 @@ impl UnimatrixServer {
             detail: format!("retrieved entry #{id}"),
         });
 
-        // 6. Usage recording (fire-and-forget)
-        self.record_usage_for_entries(
-            &ctx.agent_id,
-            ctx.trust_level,
+        // 6. Usage recording (fire-and-forget via UsageService)
+        self.services.usage.record_access(
             &[id],
-            params.helpful,
-            params.feature.as_deref(),
-        ).await;
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: ctx.audit_ctx.session_id.clone(),
+                agent_id: Some(ctx.agent_id.clone()),
+                helpful: params.helpful,
+                feature_cycle: params.feature.clone(),
+                trust_level: Some(ctx.trust_level),
+            },
+        );
 
         Ok(result)
     }
@@ -527,7 +552,7 @@ impl UnimatrixServer {
         Parameters(params): Parameters<CorrectParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
         self.require_cap(&ctx.agent_id, Capability::Write)?;
 
         // 2. Validation (includes original_id range check)
@@ -576,7 +601,7 @@ impl UnimatrixServer {
         let correct_result = self
             .services
             .store_ops
-            .correct(original_id, new_entry, params.reason, &ctx.audit_ctx)
+            .correct(original_id, new_entry, params.reason, &ctx.audit_ctx, &ctx.caller_id)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
@@ -603,7 +628,7 @@ impl UnimatrixServer {
         Parameters(params): Parameters<DeprecateParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
         self.require_cap(&ctx.agent_id, Capability::Write)?;
 
         // 2. Validation (includes id range check)
@@ -664,7 +689,7 @@ impl UnimatrixServer {
         Parameters(params): Parameters<StatusParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + capability (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
         self.require_cap(&ctx.agent_id, Capability::Admin)?;
 
         // 2. Validation
@@ -729,7 +754,7 @@ impl UnimatrixServer {
         #[cfg(feature = "mcp-briefing")]
         {
             // 1. Identity + format + audit context (vnc-008: ToolContext)
-            let ctx = self.build_context(&params.agent_id, &params.format)?;
+            let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id)?;
             self.require_cap(&ctx.agent_id, Capability::Read)?;
 
             // 2. Validation
@@ -754,7 +779,7 @@ impl UnimatrixServer {
             let result = self
                 .services
                 .briefing
-                .assemble(briefing_params, &ctx.audit_ctx)
+                .assemble(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
                 .await
                 .map_err(rmcp::ErrorData::from)?;
 
@@ -779,15 +804,18 @@ impl UnimatrixServer {
                 detail: format!("briefing for role={}, task={}", params.role, params.task),
             });
 
-            // 7. Usage recording (transport-specific, fire-and-forget)
-            self.record_usage_for_entries(
-                &ctx.agent_id,
-                ctx.trust_level,
+            // 7. Usage recording (fire-and-forget via UsageService)
+            self.services.usage.record_access(
                 &result.entry_ids,
-                params.helpful,
-                params.feature.as_deref(),
-            )
-            .await;
+                AccessSource::Briefing,
+                UsageContext {
+                    session_id: ctx.audit_ctx.session_id.clone(),
+                    agent_id: Some(ctx.agent_id.clone()),
+                    helpful: params.helpful,
+                    feature_cycle: params.feature.clone(),
+                    trust_level: Some(ctx.trust_level),
+                },
+            );
 
             // 8. Format response (transport-specific)
             Ok(format_briefing(&briefing, ctx.format))
@@ -803,7 +831,7 @@ impl UnimatrixServer {
         Parameters(params): Parameters<QuarantineParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
         self.require_cap(&ctx.agent_id, Capability::Admin)?;
 
         // 2. Validation
@@ -947,7 +975,7 @@ impl UnimatrixServer {
         Parameters(params): Parameters<EnrollParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
         self.require_cap(&ctx.agent_id, Capability::Admin)?;
 
         // 2. Input validation
