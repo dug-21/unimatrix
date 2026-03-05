@@ -126,6 +126,23 @@ Wave 4 is a manual operational step.
 
 ---
 
+## Component Map
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| migrate-module | pseudocode/migrate-module.md | test-plan/migrate-module.md |
+| cli-subcommands | pseudocode/cli-subcommands.md | test-plan/cli-subcommands.md |
+| feature-flag-flip | pseudocode/feature-flag-flip.md | test-plan/feature-flag-flip.md |
+
+## Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
+---
+
 ## Risk Mitigations (Implementation-Level)
 
 1. **Test the round-trip before touching production**: Wave 1 tests must pass before Wave 4 runs.
