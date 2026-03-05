@@ -22,6 +22,20 @@ pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 6;
 pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
     let conn = store.lock_conn();
 
+    // Check if this is a fresh database (no entries table yet).
+    // Fresh databases are initialized by create_tables, not migration.
+    let has_entries_table: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='entries'",
+            [],
+            |row| Ok(row.get::<_, i64>(0)? > 0),
+        )
+        .unwrap_or(false);
+
+    if !has_entries_table {
+        return Ok(());
+    }
+
     let current_version: u64 = conn
         .query_row(
             "SELECT value FROM counters WHERE name = 'schema_version'",

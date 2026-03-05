@@ -41,15 +41,25 @@ impl Store {
         )
         .map_err(StoreError::Sqlite)?;
 
-        // Create all 17 tables (idempotent)
-        create_tables(&conn)?;
+        // Ensure counters table exists so migration can read schema_version
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS counters (
+                name TEXT PRIMARY KEY,
+                value INTEGER NOT NULL
+            );"
+        ).map_err(StoreError::Sqlite)?;
 
         let store = Store {
             conn: Mutex::new(conn),
         };
 
-        // Run schema migration if needed
+        // Run schema migration BEFORE creating v6 tables/indexes,
+        // since the existing v5 entries table has (id, data) not 24 columns.
         crate::migration::migrate_if_needed(&store, path.as_ref())?;
+
+        // Create all tables (idempotent) — safe now that migration has
+        // transformed any v5 tables to v6 schema.
+        create_tables(&*store.lock_conn())?;
 
         Ok(store)
     }
