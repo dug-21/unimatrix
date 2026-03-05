@@ -10,12 +10,11 @@ use unimatrix_core::{
     CoreError, EmbedService, EntryRecord, NewEntry, StoreAdapter, Store, VectorAdapter, VectorIndex,
 };
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+use unimatrix_store::rusqlite;
 use unimatrix_store::{
-    ENTRIES, TOPIC_INDEX, CATEGORY_INDEX, TAG_INDEX, TIME_INDEX, STATUS_INDEX, VECTOR_MAP, COUNTERS,
-    OUTCOME_INDEX,
-    compute_content_hash, deserialize_entry, increment_counter, next_entry_id, serialize_entry,
-    status_counter_key, StoreError,
+    compute_content_hash, status_counter_key, StoreError,
 };
+use unimatrix_store::read::{entry_from_row, load_tags_for_entries, ENTRY_COLUMNS};
 
 use unimatrix_adapt::AdaptationService;
 
@@ -278,11 +277,8 @@ impl UnimatrixServer {
 
     /// Insert a new entry and write an audit event in a single write transaction.
     ///
-    /// Combines entry creation (with all indexes), VECTOR_MAP write, and audit
-    /// logging into one write transaction per ADR-001. The HNSW vector
-    /// insertion happens after the transaction commits (separate data structure).
-    ///
-    /// GH #14 fix: VECTOR_MAP is now written atomically with the entry.
+    /// Uses direct SQL with named params (ADR-004, nxs-008).
+    /// The HNSW vector insertion happens after the transaction commits.
     pub(crate) async fn insert_with_audit(
         &self,
         entry: NewEntry,
@@ -291,30 +287,23 @@ impl UnimatrixServer {
     ) -> Result<(u64, EntryRecord), ServerError> {
         let store = Arc::clone(&self.store);
         let audit_log = Arc::clone(&self.audit);
-
-        // Allocate HNSW data_id before the transaction (GH #14)
         let data_id = self.vector_index.allocate_data_id();
-
-        // Capture embedding dimension before moving into closure (col-010b fix)
         let embedding_dim = embedding.len() as u16;
 
-        // Step 1: Combined write transaction (spawn_blocking for SQLite)
         let (entry_id, record) = tokio::task::spawn_blocking(move || -> Result<(u64, EntryRecord), ServerError> {
             let txn = store.begin_write()
                 .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            let conn = &*txn.guard;
 
-            // Generate entry ID
-            let id = next_entry_id(&txn)
+            let id = unimatrix_store::counters::next_entry_id(conn)
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // Compute content hash
             let content_hash = compute_content_hash(&entry.title, &entry.content);
-
-            // Build EntryRecord
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
+
             let record = EntryRecord {
                 id,
                 title: entry.title,
@@ -344,94 +333,87 @@ impl UnimatrixServer {
                 unhelpful_count: 0,
             };
 
-            // Write ENTRIES
-            let bytes = serialize_entry(&record)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            {
-                let mut table = txn.open_table(ENTRIES)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert(id, bytes.as_slice())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            // INSERT into entries with named params (ADR-004)
+            conn.execute(
+                "INSERT INTO entries (id, title, content, topic, category, source,
+                    status, confidence, created_at, updated_at, last_accessed_at,
+                    access_count, supersedes, superseded_by, correction_count,
+                    embedding_dim, created_by, modified_by, content_hash,
+                    previous_hash, version, feature_cycle, trust_source,
+                    helpful_count, unhelpful_count)
+                 VALUES (:id, :title, :content, :topic, :category, :source,
+                    :status, :confidence, :created_at, :updated_at, :last_accessed_at,
+                    :access_count, :supersedes, :superseded_by, :correction_count,
+                    :embedding_dim, :created_by, :modified_by, :content_hash,
+                    :previous_hash, :version, :feature_cycle, :trust_source,
+                    :helpful_count, :unhelpful_count)",
+                rusqlite::named_params! {
+                    ":id": id as i64,
+                    ":title": &record.title,
+                    ":content": &record.content,
+                    ":topic": &record.topic,
+                    ":category": &record.category,
+                    ":source": &record.source,
+                    ":status": record.status as u8 as i64,
+                    ":confidence": record.confidence,
+                    ":created_at": record.created_at as i64,
+                    ":updated_at": record.updated_at as i64,
+                    ":last_accessed_at": record.last_accessed_at as i64,
+                    ":access_count": record.access_count as i64,
+                    ":supersedes": record.supersedes.map(|v| v as i64),
+                    ":superseded_by": record.superseded_by.map(|v| v as i64),
+                    ":correction_count": record.correction_count as i64,
+                    ":embedding_dim": record.embedding_dim as i64,
+                    ":created_by": &record.created_by,
+                    ":modified_by": &record.modified_by,
+                    ":content_hash": &record.content_hash,
+                    ":previous_hash": &record.previous_hash,
+                    ":version": record.version as i64,
+                    ":feature_cycle": &record.feature_cycle,
+                    ":trust_source": &record.trust_source,
+                    ":helpful_count": record.helpful_count as i64,
+                    ":unhelpful_count": record.unhelpful_count as i64,
+                },
+            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+
+            // Insert tags
+            for tag in &record.tags {
+                conn.execute(
+                    "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
+                    rusqlite::params![id as i64, tag],
+                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
             }
 
-            // Write TOPIC_INDEX
-            {
-                let mut table = txn.open_table(TOPIC_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((record.topic.as_str(), id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
+            // Insert vector mapping
+            conn.execute(
+                "INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)",
+                rusqlite::params![id as i64, data_id as i64],
+            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
 
-            // Write CATEGORY_INDEX
-            {
-                let mut table = txn.open_table(CATEGORY_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((record.category.as_str(), id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // Write TAG_INDEX (multimap)
-            {
-                let mut table = txn.open_multimap_table(TAG_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                for tag in &record.tags {
-                    table.insert(tag.as_str(), id)
-                        .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                }
-            }
-
-            // Write TIME_INDEX
-            {
-                let mut table = txn.open_table(TIME_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((record.created_at, id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // Write STATUS_INDEX
-            {
-                let mut table = txn.open_table(STATUS_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((record.status as u8, id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // Write VECTOR_MAP in the same transaction (GH #14 fix)
-            {
-                let mut table = txn.open_table(VECTOR_MAP)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert(id, data_id)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // Write OUTCOME_INDEX (if outcome with non-empty feature_cycle)
+            // Outcome index (if applicable)
             if record.category == "outcome" && !record.feature_cycle.is_empty() {
-                let mut outcome_table = txn.open_table(OUTCOME_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                outcome_table.insert((record.feature_cycle.as_str(), id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                conn.execute(
+                    "INSERT OR IGNORE INTO outcome_index (feature_cycle, entry_id) VALUES (?1, ?2)",
+                    rusqlite::params![&record.feature_cycle, id as i64],
+                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
             }
 
-            // Increment status counter
-            increment_counter(&txn, status_counter_key(record.status), 1)
+            // Status counter
+            unimatrix_store::counters::increment_counter(conn, status_counter_key(record.status), 1)
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // Write audit event in the same transaction
+            // Audit event
             let audit_event_with_target = AuditEvent {
                 target_ids: vec![id],
                 ..audit_event
             };
             audit_log.write_in_txn(&txn, audit_event_with_target)?;
 
-            // Commit everything atomically
             txn.commit()
                 .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
             Ok((id, record))
         }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
 
-        // Step 2: Insert into HNSW only (VECTOR_MAP already committed)
-        // Skip when embedding is empty (e.g. ONNX model not loaded) — entry is still
-        // stored and searchable by topic/category/tags, just not by vector similarity.
         if !embedding.is_empty() {
             self.vector_index.insert_hnsw_only(entry_id, data_id, &embedding)
                 .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
@@ -441,7 +423,7 @@ impl UnimatrixServer {
     }
 
     /// Correct an existing entry: deprecate original, create correction, both
-    /// in a single write transaction with audit.
+    /// in a single write transaction with audit. Uses direct SQL (ADR-004, nxs-008).
     ///
     /// Returns (deprecated_original, new_correction).
     pub(crate) async fn correct_with_audit(
@@ -454,25 +436,33 @@ impl UnimatrixServer {
         let store = Arc::clone(&self.store);
         let audit_log = Arc::clone(&self.audit);
         let data_id = self.vector_index.allocate_data_id();
-
-        // Capture embedding dimension before moving into closure (col-010b fix)
         let embedding_dim = embedding.len() as u16;
 
         let (deprecated_original, new_correction) = tokio::task::spawn_blocking(move || -> Result<(EntryRecord, EntryRecord), ServerError> {
             let txn = store.begin_write()
                 .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            let conn = &*txn.guard;
 
-            // 1. Read and validate original entry
-            let original_bytes = {
-                let table = txn.open_table(ENTRIES)
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?;
-                let guard = table.get(original_id)
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?
-                    .ok_or(ServerError::Core(CoreError::Store(StoreError::EntryNotFound(original_id))))?;
-                guard.value().to_vec()
-            };
-            let mut original = deserialize_entry(&original_bytes)
+            // 1. Read original entry via entry_from_row
+            use unimatrix_store::rusqlite::OptionalExtension;
+            let mut original: EntryRecord = conn
+                .query_row(
+                    &format!("SELECT {} FROM entries WHERE id = ?1", ENTRY_COLUMNS),
+                    rusqlite::params![original_id as i64],
+                    entry_from_row,
+                )
+                .optional()
+                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?
+                .ok_or(ServerError::Core(CoreError::Store(
+                    StoreError::EntryNotFound(original_id),
+                )))?;
+
+            // Load tags for original
+            let tag_map = load_tags_for_entries(conn, &[original_id])
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+            if let Some(tags) = tag_map.get(&original_id) {
+                original.tags = tags.clone();
+            }
 
             // 2. Verify original is not already deprecated or quarantined
             if original.status == unimatrix_store::Status::Deprecated {
@@ -489,50 +479,41 @@ impl UnimatrixServer {
             }
 
             // 3. Generate new entry ID
-            let new_id = next_entry_id(&txn)
+            let new_id = unimatrix_store::counters::next_entry_id(conn)
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // 4. Deprecate original
+            // 4. Deprecate original (direct column UPDATE)
             let old_status = original.status;
-            original.status = unimatrix_store::Status::Deprecated;
-            original.superseded_by = Some(new_id);
-            original.correction_count += 1;
-            original.updated_at = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-
-            // 5. Serialize and overwrite original in ENTRIES
-            let original_bytes = serialize_entry(&original)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            {
-                let mut table = txn.open_table(ENTRIES)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert(original_id, original_bytes.as_slice())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // 6. Update STATUS_INDEX for original
-            {
-                let mut table = txn.open_table(STATUS_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.remove((old_status as u8, original_id))
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((unimatrix_store::Status::Deprecated as u8, original_id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // 7. Update status counters for original
-            decrement_counter(&txn, status_counter_key(old_status), 1)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            increment_counter(&txn, status_counter_key(unimatrix_store::Status::Deprecated), 1)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-            // 8. Build correction EntryRecord
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
+
+            conn.execute(
+                "UPDATE entries SET status = ?1, superseded_by = ?2, \
+                 correction_count = correction_count + 1, updated_at = ?3 \
+                 WHERE id = ?4",
+                rusqlite::params![
+                    unimatrix_store::Status::Deprecated as u8 as i64,
+                    new_id as i64,
+                    now as i64,
+                    original_id as i64
+                ],
+            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+
+            // Update status counters
+            unimatrix_store::counters::decrement_counter(conn, status_counter_key(old_status), 1)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+            unimatrix_store::counters::increment_counter(conn, status_counter_key(unimatrix_store::Status::Deprecated), 1)
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+            // Update original record for return value
+            original.status = unimatrix_store::Status::Deprecated;
+            original.superseded_by = Some(new_id);
+            original.correction_count += 1;
+            original.updated_at = now;
+
+            // 5. Build correction EntryRecord
             let content_hash = compute_content_hash(&correction_entry.title, &correction_entry.content);
             let correction = EntryRecord {
                 id: new_id,
@@ -563,70 +544,75 @@ impl UnimatrixServer {
                 unhelpful_count: 0,
             };
 
-            // 9. Write correction to ENTRIES
-            let correction_bytes = serialize_entry(&correction)
+            // 6. INSERT correction with named params (ADR-004)
+            conn.execute(
+                "INSERT INTO entries (id, title, content, topic, category, source,
+                    status, confidence, created_at, updated_at, last_accessed_at,
+                    access_count, supersedes, superseded_by, correction_count,
+                    embedding_dim, created_by, modified_by, content_hash,
+                    previous_hash, version, feature_cycle, trust_source,
+                    helpful_count, unhelpful_count)
+                 VALUES (:id, :title, :content, :topic, :category, :source,
+                    :status, :confidence, :created_at, :updated_at, :last_accessed_at,
+                    :access_count, :supersedes, :superseded_by, :correction_count,
+                    :embedding_dim, :created_by, :modified_by, :content_hash,
+                    :previous_hash, :version, :feature_cycle, :trust_source,
+                    :helpful_count, :unhelpful_count)",
+                rusqlite::named_params! {
+                    ":id": correction.id as i64,
+                    ":title": &correction.title,
+                    ":content": &correction.content,
+                    ":topic": &correction.topic,
+                    ":category": &correction.category,
+                    ":source": &correction.source,
+                    ":status": correction.status as u8 as i64,
+                    ":confidence": correction.confidence,
+                    ":created_at": correction.created_at as i64,
+                    ":updated_at": correction.updated_at as i64,
+                    ":last_accessed_at": correction.last_accessed_at as i64,
+                    ":access_count": correction.access_count as i64,
+                    ":supersedes": correction.supersedes.map(|v| v as i64),
+                    ":superseded_by": correction.superseded_by.map(|v| v as i64),
+                    ":correction_count": correction.correction_count as i64,
+                    ":embedding_dim": correction.embedding_dim as i64,
+                    ":created_by": &correction.created_by,
+                    ":modified_by": &correction.modified_by,
+                    ":content_hash": &correction.content_hash,
+                    ":previous_hash": &correction.previous_hash,
+                    ":version": correction.version as i64,
+                    ":feature_cycle": &correction.feature_cycle,
+                    ":trust_source": &correction.trust_source,
+                    ":helpful_count": correction.helpful_count as i64,
+                    ":unhelpful_count": correction.unhelpful_count as i64,
+                },
+            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+
+            // 7. Insert tags for correction
+            for tag in &correction.tags {
+                conn.execute(
+                    "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
+                    rusqlite::params![new_id as i64, tag],
+                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+            }
+
+            // 8. Insert vector mapping
+            conn.execute(
+                "INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)",
+                rusqlite::params![new_id as i64, data_id as i64],
+            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+
+            // 9. Status counter for correction
+            unimatrix_store::counters::increment_counter(conn, status_counter_key(correction.status), 1)
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            {
-                let mut table = txn.open_table(ENTRIES)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert(new_id, correction_bytes.as_slice())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
 
-            // 10. Write all indexes for correction
-            {
-                let mut table = txn.open_table(TOPIC_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((correction.topic.as_str(), new_id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-            {
-                let mut table = txn.open_table(CATEGORY_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((correction.category.as_str(), new_id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-            {
-                let mut table = txn.open_multimap_table(TAG_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                for tag in &correction.tags {
-                    table.insert(tag.as_str(), new_id)
-                        .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                }
-            }
-            {
-                let mut table = txn.open_table(TIME_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((correction.created_at, new_id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-            {
-                let mut table = txn.open_table(STATUS_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((correction.status as u8, new_id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // 11. Increment status counter for correction
-            increment_counter(&txn, status_counter_key(correction.status), 1)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-            // 12. Write VECTOR_MAP for correction
-            {
-                let mut table = txn.open_table(VECTOR_MAP)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert(new_id, data_id)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // 13. Write audit event with both IDs
+            // 10. Write audit event with both IDs
             let audit_with_ids = AuditEvent {
                 target_ids: vec![original_id, new_id],
                 ..audit_event
             };
             audit_log.write_in_txn(&txn, audit_with_ids)?;
 
-            // 14. Commit
+            // 11. Commit
             txn.commit()
                 .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
 
@@ -796,240 +782,149 @@ impl UnimatrixServer {
         }
     }
 
-    /// Deprecate an entry: set status to Deprecated in a single write transaction
-    /// with audit. Idempotent: already-deprecated entries return immediately.
+    /// Deprecate an entry: set status to Deprecated using direct SQL (nxs-008).
+    /// Idempotent: already-deprecated entries return immediately.
     pub(crate) async fn deprecate_with_audit(
         &self,
         entry_id: u64,
         reason: Option<String>,
         audit_event: AuditEvent,
     ) -> Result<EntryRecord, ServerError> {
-        let store = Arc::clone(&self.store);
-        let audit_log = Arc::clone(&self.audit);
-
-        let record = tokio::task::spawn_blocking(move || -> Result<EntryRecord, ServerError> {
-            let txn = store.begin_write()
-                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-
-            // 1. Read existing entry
-            let entry_bytes = {
-                let table = txn.open_table(ENTRIES)
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?;
-                let guard = table.get(entry_id)
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?
-                    .ok_or(ServerError::Core(CoreError::Store(StoreError::EntryNotFound(entry_id))))?;
-                guard.value().to_vec()
-            };
-            let mut record = deserialize_entry(&entry_bytes)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-            // 2. Idempotency check: already deprecated -> return as-is
-            if record.status == unimatrix_store::Status::Deprecated {
-                return Ok(record);
-            }
-
-            // 3. Update status
-            let old_status = record.status;
-            record.status = unimatrix_store::Status::Deprecated;
-            record.updated_at = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-
-            // 4. Serialize and overwrite in ENTRIES
-            let bytes = serialize_entry(&record)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            {
-                let mut table = txn.open_table(ENTRIES)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert(entry_id, bytes.as_slice())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // 5. Update STATUS_INDEX
-            {
-                let mut table = txn.open_table(STATUS_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.remove((old_status as u8, entry_id))
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((unimatrix_store::Status::Deprecated as u8, entry_id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // 6. Update status counters
-            decrement_counter(&txn, status_counter_key(old_status), 1)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            increment_counter(&txn, status_counter_key(unimatrix_store::Status::Deprecated), 1)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-            // 7. Write audit event with reason in detail
-            let detail = match &reason {
-                Some(r) => format!("deprecated entry #{entry_id}: {r}"),
-                None => format!("deprecated entry #{entry_id}"),
-            };
-            let audit_with_detail = AuditEvent {
-                target_ids: vec![entry_id],
-                detail,
-                ..audit_event
-            };
-            audit_log.write_in_txn(&txn, audit_with_detail)?;
-
-            // 8. Commit
-            txn.commit()
-                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            Ok(record)
-        }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
-
-        Ok(record)
+        self.change_status_with_audit(
+            entry_id,
+            unimatrix_store::Status::Deprecated,
+            reason,
+            audit_event,
+            false, // do not set modified_by
+        ).await
     }
 
-    /// Quarantine an entry: set status to Quarantined, update indexes and counters, write audit.
+    /// Quarantine an entry: set status to Quarantined using direct SQL (nxs-008).
     pub(crate) async fn quarantine_with_audit(
         &self,
         entry_id: u64,
         reason: Option<String>,
         audit_event: AuditEvent,
     ) -> Result<EntryRecord, ServerError> {
-        let store = Arc::clone(&self.store);
-        let audit_log = Arc::clone(&self.audit);
-
-        let record = tokio::task::spawn_blocking(move || -> Result<EntryRecord, ServerError> {
-            let txn = store.begin_write()
-                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-
-            // 1. Read existing entry
-            let entry_bytes = {
-                let table = txn.open_table(ENTRIES)
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?;
-                let guard = table.get(entry_id)
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?
-                    .ok_or(ServerError::Core(CoreError::Store(StoreError::EntryNotFound(entry_id))))?;
-                guard.value().to_vec()
-            };
-            let mut record = deserialize_entry(&entry_bytes)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-            // 2. Update status
-            let old_status = record.status;
-            record.status = unimatrix_store::Status::Quarantined;
-            record.modified_by = audit_event.agent_id.clone();
-            record.updated_at = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-
-            // 3. Serialize and overwrite in ENTRIES
-            let bytes = serialize_entry(&record)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            {
-                let mut table = txn.open_table(ENTRIES)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert(entry_id, bytes.as_slice())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // 4. Update STATUS_INDEX
-            {
-                let mut table = txn.open_table(STATUS_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.remove((old_status as u8, entry_id))
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((unimatrix_store::Status::Quarantined as u8, entry_id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-
-            // 5. Update status counters
-            decrement_counter(&txn, status_counter_key(old_status), 1)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            increment_counter(&txn, status_counter_key(unimatrix_store::Status::Quarantined), 1)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-            // 6. Write audit event
-            let detail = match &reason {
-                Some(r) => format!("quarantined entry #{entry_id}: {r}"),
-                None => format!("quarantined entry #{entry_id}"),
-            };
-            let audit_with_detail = AuditEvent {
-                target_ids: vec![entry_id],
-                detail,
-                ..audit_event
-            };
-            audit_log.write_in_txn(&txn, audit_with_detail)?;
-
-            // 7. Commit
-            txn.commit()
-                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            Ok(record)
-        }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
-
-        Ok(record)
+        self.change_status_with_audit(
+            entry_id,
+            unimatrix_store::Status::Quarantined,
+            reason,
+            audit_event,
+            true, // set modified_by from audit agent_id
+        ).await
     }
 
-    /// Restore a quarantined entry: set status to Active, update indexes and counters, write audit.
+    /// Restore a quarantined entry: set status to Active using direct SQL (nxs-008).
     pub(crate) async fn restore_with_audit(
         &self,
         entry_id: u64,
         reason: Option<String>,
         audit_event: AuditEvent,
     ) -> Result<EntryRecord, ServerError> {
+        self.change_status_with_audit(
+            entry_id,
+            unimatrix_store::Status::Active,
+            reason,
+            audit_event,
+            true, // set modified_by from audit agent_id
+        ).await
+    }
+
+    /// Shared implementation for status-change operations (deprecate, quarantine, restore).
+    /// Uses direct SQL with &*txn.guard (ADR-004, nxs-008).
+    async fn change_status_with_audit(
+        &self,
+        entry_id: u64,
+        new_status: unimatrix_store::Status,
+        reason: Option<String>,
+        audit_event: AuditEvent,
+        set_modified_by: bool,
+    ) -> Result<EntryRecord, ServerError> {
         let store = Arc::clone(&self.store);
         let audit_log = Arc::clone(&self.audit);
+        let action_name = match new_status {
+            unimatrix_store::Status::Deprecated => "deprecated",
+            unimatrix_store::Status::Quarantined => "quarantined",
+            unimatrix_store::Status::Active => "restored",
+            unimatrix_store::Status::Proposed => "proposed",
+        };
 
         let record = tokio::task::spawn_blocking(move || -> Result<EntryRecord, ServerError> {
             let txn = store.begin_write()
                 .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            let conn = &*txn.guard;
 
-            // 1. Read existing entry
-            let entry_bytes = {
-                let table = txn.open_table(ENTRIES)
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?;
-                let guard = table.get(entry_id)
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::from(e))))?
-                    .ok_or(ServerError::Core(CoreError::Store(StoreError::EntryNotFound(entry_id))))?;
-                guard.value().to_vec()
-            };
-            let mut record = deserialize_entry(&entry_bytes)
+            // 1. Read existing entry status and current fields
+            use unimatrix_store::rusqlite::OptionalExtension;
+            let mut record: EntryRecord = conn
+                .query_row(
+                    &format!("SELECT {} FROM entries WHERE id = ?1", ENTRY_COLUMNS),
+                    rusqlite::params![entry_id as i64],
+                    entry_from_row,
+                )
+                .optional()
+                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?
+                .ok_or(ServerError::Core(CoreError::Store(
+                    StoreError::EntryNotFound(entry_id),
+                )))?;
+
+            // Load tags
+            let tag_map = load_tags_for_entries(conn, &[entry_id])
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+            if let Some(tags) = tag_map.get(&entry_id) {
+                record.tags = tags.clone();
+            }
 
-            // 2. Update status
+            // 2. Idempotency check for deprecate
+            if new_status == unimatrix_store::Status::Deprecated
+                && record.status == unimatrix_store::Status::Deprecated
+            {
+                return Ok(record);
+            }
+
+            // 3. Update status via direct SQL
             let old_status = record.status;
-            record.status = unimatrix_store::Status::Active;
-            record.modified_by = audit_event.agent_id.clone();
-            record.updated_at = std::time::SystemTime::now()
+            let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
 
-            // 3. Serialize and overwrite in ENTRIES
-            let bytes = serialize_entry(&record)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            {
-                let mut table = txn.open_table(ENTRIES)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert(entry_id, bytes.as_slice())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            if set_modified_by {
+                conn.execute(
+                    "UPDATE entries SET status = ?1, modified_by = ?2, updated_at = ?3 WHERE id = ?4",
+                    rusqlite::params![
+                        new_status as u8 as i64,
+                        &audit_event.agent_id,
+                        now as i64,
+                        entry_id as i64
+                    ],
+                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                record.modified_by = audit_event.agent_id.clone();
+            } else {
+                conn.execute(
+                    "UPDATE entries SET status = ?1, updated_at = ?2 WHERE id = ?3",
+                    rusqlite::params![
+                        new_status as u8 as i64,
+                        now as i64,
+                        entry_id as i64
+                    ],
+                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
             }
 
-            // 4. Update STATUS_INDEX
-            {
-                let mut table = txn.open_table(STATUS_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.remove((old_status as u8, entry_id))
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table.insert((unimatrix_store::Status::Active as u8, entry_id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
+            record.status = new_status;
+            record.updated_at = now;
 
-            // 5. Update status counters
-            decrement_counter(&txn, status_counter_key(old_status), 1)
+            // 4. Update status counters
+            unimatrix_store::counters::decrement_counter(conn, status_counter_key(old_status), 1)
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            increment_counter(&txn, status_counter_key(unimatrix_store::Status::Active), 1)
+            unimatrix_store::counters::increment_counter(conn, status_counter_key(new_status), 1)
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // 6. Write audit event
+            // 5. Write audit event
             let detail = match &reason {
-                Some(r) => format!("restored entry #{entry_id}: {r}"),
-                None => format!("restored entry #{entry_id}"),
+                Some(r) => format!("{action_name} entry #{entry_id}: {r}"),
+                None => format!("{action_name} entry #{entry_id}"),
             };
             let audit_with_detail = AuditEvent {
                 target_ids: vec![entry_id],
@@ -1038,7 +933,7 @@ impl UnimatrixServer {
             };
             audit_log.write_in_txn(&txn, audit_with_detail)?;
 
-            // 7. Commit
+            // 6. Commit
             txn.commit()
                 .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
             Ok(record)
@@ -1046,15 +941,6 @@ impl UnimatrixServer {
 
         Ok(record)
     }
-}
-
-/// Decrement a counter value, saturating at 0.
-fn decrement_counter(
-    txn: &unimatrix_store::SqliteWriteTransaction<'_>,
-    key: &str,
-    amount: u64,
-) -> Result<(), unimatrix_store::StoreError> {
-    unimatrix_store::decrement_counter(txn, key, amount)
 }
 
 #[rmcp::tool_handler]
@@ -1067,6 +953,7 @@ impl rmcp::ServerHandler for UnimatrixServer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json;
 
     pub(crate) fn make_server() -> UnimatrixServer {
         let dir = tempfile::TempDir::new().unwrap();
@@ -1366,16 +1253,19 @@ mod tests {
             )
             .await;
 
-        // Verify FEATURE_ENTRIES populated
-        let txn = server.store.begin_read().unwrap();
-        let table = txn
-            .open_multimap_table(unimatrix_store::FEATURE_ENTRIES)
-            .unwrap();
-        let found: Vec<u64> = table
-            .get("crt-001")
+        // Verify feature_entries populated via SQL
+        let conn = server.store.lock_conn();
+        let found: Vec<u64> = {
+            let mut stmt = conn
+                .prepare("SELECT entry_id FROM feature_entries WHERE feature_id = ?1 ORDER BY entry_id")
+                .unwrap();
+            stmt.query_map(rusqlite::params!["crt-001"], |row| {
+                Ok(row.get::<_, i64>(0)? as u64)
+            })
             .unwrap()
-            .map(|r| r.unwrap().value())
-            .collect();
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .unwrap()
+        };
         assert_eq!(found, vec![id]);
     }
 
@@ -1394,12 +1284,15 @@ mod tests {
             )
             .await;
 
-        // Verify FEATURE_ENTRIES NOT populated (Restricted ignored)
-        let txn = server.store.begin_read().unwrap();
-        let table = txn
-            .open_multimap_table(unimatrix_store::FEATURE_ENTRIES)
+        // Verify feature_entries NOT populated (Restricted ignored)
+        let conn = server.store.lock_conn();
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?1",
+                rusqlite::params!["crt-001"],
+                |row| row.get(0),
+            )
             .unwrap();
-        let count = table.get("crt-001").unwrap().count();
         assert_eq!(count, 0);
     }
 
@@ -1418,11 +1311,14 @@ mod tests {
             )
             .await;
 
-        let txn = server.store.begin_read().unwrap();
-        let table = txn
-            .open_multimap_table(unimatrix_store::FEATURE_ENTRIES)
+        let conn = server.store.lock_conn();
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?1",
+                rusqlite::params!["crt-001"],
+                |row| row.get(0),
+            )
             .unwrap();
-        let count = table.get("crt-001").unwrap().count();
         assert_eq!(count, 1);
     }
 
@@ -1691,20 +1587,19 @@ mod tests {
             .await
             .unwrap();
 
-        let txn = server.store.begin_read().unwrap();
-        let status_table = txn.open_table(STATUS_INDEX).unwrap();
-
-        // Active entry should NOT exist
-        let active_entry = status_table
-            .get((unimatrix_store::Status::Active as u8, id))
+        let conn = server.store.lock_conn();
+        let status: i64 = conn
+            .query_row(
+                "SELECT status FROM entries WHERE id = ?1",
+                rusqlite::params![id as i64],
+                |row| row.get(0),
+            )
             .unwrap();
-        assert!(active_entry.is_none(), "Active STATUS_INDEX entry should be removed");
-
-        // Quarantined entry SHOULD exist
-        let quarantined_entry = status_table
-            .get((unimatrix_store::Status::Quarantined as u8, id))
-            .unwrap();
-        assert!(quarantined_entry.is_some(), "Quarantined STATUS_INDEX entry should exist");
+        assert_eq!(
+            status,
+            unimatrix_store::Status::Quarantined as u8 as i64,
+            "entry status should be Quarantined"
+        );
     }
 
     #[tokio::test]
@@ -1799,20 +1694,19 @@ mod tests {
             .await
             .unwrap();
 
-        let txn = server.store.begin_read().unwrap();
-        let status_table = txn.open_table(STATUS_INDEX).unwrap();
-
-        // Should be back in Active index
-        let active_entry = status_table
-            .get((unimatrix_store::Status::Active as u8, id))
+        let conn = server.store.lock_conn();
+        let status: i64 = conn
+            .query_row(
+                "SELECT status FROM entries WHERE id = ?1",
+                rusqlite::params![id as i64],
+                |row| row.get(0),
+            )
             .unwrap();
-        assert!(active_entry.is_some(), "entry should be back in Active STATUS_INDEX");
-
-        // Should NOT be in Quarantined index
-        let quarantined_entry = status_table
-            .get((unimatrix_store::Status::Quarantined as u8, id))
-            .unwrap();
-        assert!(quarantined_entry.is_none(), "entry should not be in Quarantined STATUS_INDEX");
+        assert_eq!(
+            status,
+            unimatrix_store::Status::Active as u8 as i64,
+            "entry status should be back to Active"
+        );
     }
 
     #[tokio::test]
@@ -1830,18 +1724,21 @@ mod tests {
             .unwrap();
 
         // Verify audit log has an entry
-        let txn = server.store.begin_read().unwrap();
-        let audit_table = txn.open_table(unimatrix_store::AUDIT_LOG).unwrap();
+        let conn = server.store.lock_conn();
+        let mut stmt = conn
+            .prepare(
+                "SELECT operation, target_ids, detail FROM audit_log WHERE operation = ?1",
+            )
+            .unwrap();
         let mut found = false;
-        for item in audit_table.iter().unwrap() {
-            let (_key, value) = item.unwrap();
-            let event: crate::infra::audit::AuditEvent =
-                bincode::serde::decode_from_slice(value.value(), bincode::config::standard())
-                    .unwrap()
-                    .0;
-            if event.operation == "context_quarantine" && event.target_ids.contains(&id) {
-                assert!(event.detail.contains("quarantined"));
-                assert!(event.detail.contains("suspicious content"));
+        let mut rows = stmt.query(rusqlite::params!["context_quarantine"]).unwrap();
+        while let Some(row) = rows.next().unwrap() {
+            let target_ids_json: String = row.get(1).unwrap();
+            let target_ids: Vec<u64> = serde_json::from_str(&target_ids_json).unwrap();
+            let detail: String = row.get(2).unwrap();
+            if target_ids.contains(&id) {
+                assert!(detail.contains("quarantined"));
+                assert!(detail.contains("suspicious content"));
                 found = true;
             }
         }

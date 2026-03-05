@@ -8,10 +8,8 @@ use std::collections::HashSet;
 use rusqlite::OptionalExtension;
 
 use crate::error::{Result, StoreError};
-use crate::schema::{
-    CoAccessRecord, EntryRecord, deserialize_co_access, deserialize_entry,
-    serialize_co_access, serialize_entry,
-};
+use crate::read::{entry_from_row, load_tags_for_entries, ENTRY_COLUMNS};
+use crate::schema::EntryRecord;
 
 use crate::db::Store;
 
@@ -87,53 +85,76 @@ impl Store {
 
         let result = (|| -> Result<()> {
             for &id in all_ids {
-                let bytes: Option<Vec<u8>> = conn
+                // Check entry exists
+                let exists: bool = conn
                     .query_row(
-                        "SELECT data FROM entries WHERE id = ?1",
+                        "SELECT 1 FROM entries WHERE id = ?1",
                         rusqlite::params![id as i64],
-                        |row| row.get(0),
+                        |_| Ok(true),
                     )
                     .optional()
-                    .map_err(StoreError::Sqlite)?;
+                    .map_err(StoreError::Sqlite)?
+                    .unwrap_or(false);
 
-                let Some(bytes) = bytes else { continue };
-                let mut record = deserialize_entry(&bytes)?;
+                if !exists {
+                    continue;
+                }
 
-                record.last_accessed_at = now;
-
+                // Build dynamic SET clause based on which sets contain this id
+                let mut sets: Vec<String> = vec![format!("last_accessed_at = {}", now)];
                 if access_set.contains(&id) {
-                    record.access_count += 1;
+                    sets.push("access_count = access_count + 1".to_string());
                 }
                 if helpful_set.contains(&id) {
-                    record.helpful_count += 1;
+                    sets.push("helpful_count = helpful_count + 1".to_string());
                 }
                 if unhelpful_set.contains(&id) {
-                    record.unhelpful_count += 1;
+                    sets.push("unhelpful_count = unhelpful_count + 1".to_string());
                 }
                 if dec_helpful_set.contains(&id) {
-                    record.helpful_count = record.helpful_count.saturating_sub(1);
+                    sets.push("helpful_count = MAX(0, helpful_count - 1)".to_string());
                 }
                 if dec_unhelpful_set.contains(&id) {
-                    record.unhelpful_count = record.unhelpful_count.saturating_sub(1);
+                    sets.push("unhelpful_count = MAX(0, unhelpful_count - 1)".to_string());
                 }
 
+                let sql = format!("UPDATE entries SET {} WHERE id = ?1", sets.join(", "));
+                conn.execute(&sql, rusqlite::params![id as i64])
+                    .map_err(StoreError::Sqlite)?;
+
+                // If confidence_fn provided, read back the record and recompute
                 if let Some(f) = &confidence_fn {
-                    record.confidence = f(&record, now);
-                }
+                    let mut record: EntryRecord = conn
+                        .query_row(
+                            &format!("SELECT {} FROM entries WHERE id = ?1", ENTRY_COLUMNS),
+                            rusqlite::params![id as i64],
+                            entry_from_row,
+                        )
+                        .optional()
+                        .map_err(StoreError::Sqlite)?
+                        .ok_or(StoreError::EntryNotFound(id))?;
 
-                let new_bytes = serialize_entry(&record)?;
-                conn.execute(
-                    "UPDATE entries SET data = ?1 WHERE id = ?2",
-                    rusqlite::params![new_bytes, id as i64],
-                )
-                .map_err(StoreError::Sqlite)?;
+                    // Load tags for the confidence function
+                    let tag_map = load_tags_for_entries(&conn, &[id])?;
+                    if let Some(tags) = tag_map.get(&id) {
+                        record.tags = tags.clone();
+                    }
+
+                    let new_confidence = f(&record, now);
+                    conn.execute(
+                        "UPDATE entries SET confidence = ?1 WHERE id = ?2",
+                        rusqlite::params![new_confidence, id as i64],
+                    )
+                    .map_err(StoreError::Sqlite)?;
+                }
             }
             Ok(())
         })();
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -146,41 +167,16 @@ impl Store {
     /// Update the confidence score for an entry.
     pub fn update_confidence(&self, entry_id: u64, confidence: f64) -> Result<()> {
         let conn = self.lock_conn();
-        conn.execute_batch("BEGIN IMMEDIATE")
-            .map_err(StoreError::Sqlite)?;
-
-        let result = (|| -> Result<()> {
-            let bytes: Vec<u8> = conn
-                .query_row(
-                    "SELECT data FROM entries WHERE id = ?1",
-                    rusqlite::params![entry_id as i64],
-                    |row| row.get(0),
-                )
-                .optional()
-                .map_err(StoreError::Sqlite)?
-                .ok_or(StoreError::EntryNotFound(entry_id))?;
-
-            let mut record = deserialize_entry(&bytes)?;
-            record.confidence = confidence;
-            let new_bytes = serialize_entry(&record)?;
-            conn.execute(
-                "UPDATE entries SET data = ?1 WHERE id = ?2",
-                rusqlite::params![new_bytes, entry_id as i64],
+        let affected = conn
+            .execute(
+                "UPDATE entries SET confidence = ?1 WHERE id = ?2",
+                rusqlite::params![confidence, entry_id as i64],
             )
             .map_err(StoreError::Sqlite)?;
-            Ok(())
-        })();
-
-        match result {
-            Ok(()) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
-                Ok(())
-            }
-            Err(e) => {
-                let _ = conn.execute_batch("ROLLBACK");
-                Err(e)
-            }
+        if affected == 0 {
+            return Err(StoreError::EntryNotFound(entry_id));
         }
+        Ok(())
     }
 
     /// Insert or update a vector mapping.
@@ -215,7 +211,8 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -244,7 +241,8 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -254,12 +252,9 @@ impl Store {
         }
     }
 
-    /// Record co-access pairs.
+    /// Record co-access pairs using SQL columns (no blob serialization).
     pub fn record_co_access_pairs(&self, pairs: &[(u64, u64)]) -> Result<()> {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let now = current_unix_timestamp_secs();
         let conn = self.lock_conn();
         conn.execute_batch("BEGIN IMMEDIATE")
             .map_err(StoreError::Sqlite)?;
@@ -271,41 +266,46 @@ impl Store {
                     continue; // Skip self-pairs
                 }
 
-                let existing: Option<Vec<u8>> = conn
+                let existing: Option<i64> = conn
                     .query_row(
-                        "SELECT data FROM co_access WHERE entry_id_a = ?1 AND entry_id_b = ?2",
+                        "SELECT count FROM co_access WHERE entry_id_a = ?1 AND entry_id_b = ?2",
                         rusqlite::params![min_id as i64, max_id as i64],
                         |row| row.get(0),
                     )
                     .optional()
                     .map_err(StoreError::Sqlite)?;
 
-                let record = match existing {
-                    Some(bytes) => {
-                        let mut r = deserialize_co_access(&bytes)?;
-                        r.count += 1;
-                        r.last_updated = now;
-                        r
+                match existing {
+                    Some(count) => {
+                        conn.execute(
+                            "UPDATE co_access SET count = ?1, last_updated = ?2 \
+                             WHERE entry_id_a = ?3 AND entry_id_b = ?4",
+                            rusqlite::params![
+                                count + 1,
+                                now as i64,
+                                min_id as i64,
+                                max_id as i64
+                            ],
+                        )
+                        .map_err(StoreError::Sqlite)?;
                     }
-                    None => CoAccessRecord {
-                        count: 1,
-                        last_updated: now,
-                    },
-                };
-
-                let bytes = serialize_co_access(&record)?;
-                conn.execute(
-                    "INSERT OR REPLACE INTO co_access (entry_id_a, entry_id_b, data) VALUES (?1, ?2, ?3)",
-                    rusqlite::params![min_id as i64, max_id as i64, bytes],
-                )
-                .map_err(StoreError::Sqlite)?;
+                    None => {
+                        conn.execute(
+                            "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) \
+                             VALUES (?1, ?2, 1, ?3)",
+                            rusqlite::params![min_id as i64, max_id as i64, now as i64],
+                        )
+                        .map_err(StoreError::Sqlite)?;
+                    }
+                }
             }
             Ok(())
         })();
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -318,54 +318,13 @@ impl Store {
     /// Remove stale co-access pairs. Returns the number deleted.
     pub fn cleanup_stale_co_access(&self, staleness_cutoff: u64) -> Result<u64> {
         let conn = self.lock_conn();
-        conn.execute_batch("BEGIN IMMEDIATE")
+        let deleted = conn
+            .execute(
+                "DELETE FROM co_access WHERE last_updated < ?1",
+                rusqlite::params![staleness_cutoff as i64],
+            )
             .map_err(StoreError::Sqlite)?;
-
-        let result = (|| -> Result<u64> {
-            let mut stmt = conn
-                .prepare("SELECT entry_id_a, entry_id_b, data FROM co_access")
-                .map_err(StoreError::Sqlite)?;
-            let stale_keys: Vec<(u64, u64)> = stmt
-                .query_map([], |row| {
-                    let a = row.get::<_, i64>(0)? as u64;
-                    let b = row.get::<_, i64>(1)? as u64;
-                    let data: Vec<u8> = row.get(2)?;
-                    Ok((a, b, data))
-                })
-                .map_err(StoreError::Sqlite)?
-                .filter_map(|r| r.ok())
-                .filter(|(_, _, data)| {
-                    deserialize_co_access(data)
-                        .map(|r| r.last_updated < staleness_cutoff)
-                        .unwrap_or(true)
-                })
-                .map(|(a, b, _)| (a, b))
-                .collect();
-            drop(stmt);
-
-            let mut deleted = 0u64;
-            for (a, b) in &stale_keys {
-                conn.execute(
-                    "DELETE FROM co_access WHERE entry_id_a = ?1 AND entry_id_b = ?2",
-                    rusqlite::params![*a as i64, *b as i64],
-                )
-                .map_err(StoreError::Sqlite)?;
-                deleted += 1;
-            }
-
-            Ok(deleted)
-        })();
-
-        match result {
-            Ok(count) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
-                Ok(count)
-            }
-            Err(e) => {
-                let _ = conn.execute_batch("ROLLBACK");
-                Err(e)
-            }
-        }
+        Ok(deleted as u64)
     }
 
     /// Store observation metrics for a feature cycle.

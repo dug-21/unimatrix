@@ -1,7 +1,7 @@
 //! StatusService: transport-agnostic status computation (vnc-008).
 //!
-//! Extracted from the inline `context_status` handler (ADR-001).
-//! Inherits direct-table access; Store API expansion deferred.
+//! Rewritten for nxs-008: direct SQL queries replace compat layer.
+//! Uses SQL aggregation where possible.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -9,10 +9,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use unimatrix_core::{CoreError, EmbedService, Store, VectorAdapter, VectorIndex};
 use unimatrix_core::async_wrappers::AsyncEntryStore;
-use unimatrix_store::{
-    ENTRIES, CATEGORY_INDEX, TOPIC_INDEX, COUNTERS,
-    deserialize_entry, EntryRecord,
-};
+use unimatrix_store::rusqlite;
+use unimatrix_store::{EntryRecord, StoreError};
+use unimatrix_store::read::{entry_from_row, load_tags_for_entries, ENTRY_COLUMNS};
 use unimatrix_store::sessions::{TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS};
 
 use unimatrix_adapt::AdaptationService;
@@ -28,7 +27,7 @@ use crate::services::ServiceError;
 /// Transport-agnostic status computation service.
 ///
 /// Extracted from the `context_status` handler (ADR-001).
-/// Inherits direct-table access -- Store API expansion deferred.
+/// Uses direct SQL queries (nxs-008).
 #[derive(Clone)]
 pub(crate) struct StatusService {
     store: Arc<Store>,
@@ -55,7 +54,7 @@ impl StatusService {
         StatusService { store, vector_index, embed_service, adapt_service }
     }
 
-    /// Compute the full status report. Single read transaction for counters and entries.
+    /// Compute the full status report using direct SQL queries.
     ///
     /// Returns (StatusReport, active_entries) for optional maintenance pass.
     pub(crate) async fn compute_report(
@@ -64,73 +63,91 @@ impl StatusService {
         category_filter: Option<String>,
         check_embeddings: bool,
     ) -> Result<(StatusReport, Vec<EntryRecord>), ServiceError> {
-        // Phase 1: Read transaction (spawn_blocking)
+        // Phase 1: SQL queries (spawn_blocking)
         let store = Arc::clone(&self.store);
         let report_result = tokio::task::spawn_blocking(move || -> Result<(StatusReport, Vec<EntryRecord>), crate::error::ServerError> {
-            let read_txn = store.begin_read()
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
+            let conn = store.lock_conn();
 
-            // Status counters
-            let counters = read_txn.open_table(COUNTERS)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-            let total_active = counters.get("total_active")
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                .map(|g| g.value()).unwrap_or(0);
-            let total_deprecated = counters.get("total_deprecated")
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                .map(|g| g.value()).unwrap_or(0);
-            let total_proposed = counters.get("total_proposed")
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                .map(|g| g.value()).unwrap_or(0);
-            let total_quarantined = counters.get("total_quarantined")
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                .map(|g| g.value()).unwrap_or(0);
+            // Status counters from counters table
+            let total_active = unimatrix_store::counters::read_counter(&conn, "total_active")
+                .unwrap_or(0);
+            let total_deprecated = unimatrix_store::counters::read_counter(&conn, "total_deprecated")
+                .unwrap_or(0);
+            let total_proposed = unimatrix_store::counters::read_counter(&conn, "total_proposed")
+                .unwrap_or(0);
+            let total_quarantined = unimatrix_store::counters::read_counter(&conn, "total_quarantined")
+                .unwrap_or(0);
 
-            // Category distribution from CATEGORY_INDEX
-            let cat_table = read_txn.open_table(CATEGORY_INDEX)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
+            // Category distribution via SQL aggregation
             let mut category_distribution: BTreeMap<String, u64> = BTreeMap::new();
             if let Some(ref filter_cat) = category_filter {
-                let range = cat_table.range::<(&str, u64)>((filter_cat.as_str(), 0u64)..=(filter_cat.as_str(), u64::MAX))
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                let count = range.count() as u64;
+                let count: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM entries WHERE category = ?1",
+                    rusqlite::params![filter_cat],
+                    |row| row.get::<_, i64>(0),
+                ).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
                 if count > 0 {
-                    category_distribution.insert(filter_cat.clone(), count);
+                    category_distribution.insert(filter_cat.clone(), count as u64);
                 }
             } else {
-                for item in cat_table.iter()
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))? {
-                    let (key, _) = item
-                        .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                    let (cat_str, _id) = key.value();
-                    *category_distribution.entry(cat_str.to_string()).or_insert(0) += 1;
+                let mut stmt = conn.prepare(
+                    "SELECT category, COUNT(*) FROM entries GROUP BY category"
+                ).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                let rows = stmt.query_map([], |row| {
+                    let cat: String = row.get(0)?;
+                    let count: i64 = row.get(1)?;
+                    Ok((cat, count as u64))
+                }).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                for item in rows {
+                    let (cat, count): (String, u64) = item
+                        .map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                    category_distribution.insert(cat, count);
                 }
             }
 
-            // Topic distribution from TOPIC_INDEX
-            let topic_table = read_txn.open_table(TOPIC_INDEX)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
+            // Topic distribution via SQL aggregation
             let mut topic_distribution: BTreeMap<String, u64> = BTreeMap::new();
             if let Some(ref filter_topic) = topic_filter {
-                let range = topic_table.range::<(&str, u64)>((filter_topic.as_str(), 0u64)..=(filter_topic.as_str(), u64::MAX))
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                let count = range.count() as u64;
+                let count: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM entries WHERE topic = ?1",
+                    rusqlite::params![filter_topic],
+                    |row| row.get::<_, i64>(0),
+                ).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
                 if count > 0 {
-                    topic_distribution.insert(filter_topic.clone(), count);
+                    topic_distribution.insert(filter_topic.clone(), count as u64);
                 }
             } else {
-                for item in topic_table.iter()
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))? {
-                    let (key, _) = item
-                        .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                    let (topic_str, _id) = key.value();
-                    *topic_distribution.entry(topic_str.to_string()).or_insert(0) += 1;
+                let mut stmt = conn.prepare(
+                    "SELECT topic, COUNT(*) FROM entries GROUP BY topic"
+                ).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                let rows = stmt.query_map([], |row| {
+                    let topic: String = row.get(0)?;
+                    let count: i64 = row.get(1)?;
+                    Ok((topic, count as u64))
+                }).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                for item in rows {
+                    let (topic, count): (String, u64) = item
+                        .map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                    topic_distribution.insert(topic, count);
                 }
             }
 
-            // Correction chain metrics + security metrics from ENTRIES scan
-            let entries_table = read_txn.open_table(ENTRIES)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
+            // Correction chain metrics + security metrics from entries scan
+            let mut stmt = conn.prepare(
+                &format!("SELECT {} FROM entries", ENTRY_COLUMNS)
+            ).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+
+            let all_entries: Vec<EntryRecord> = stmt
+                .query_map([], entry_from_row)
+                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+
+            // Load tags for all entries (needed for outcome stats)
+            let all_ids: Vec<u64> = all_entries.iter().map(|e| e.id).collect();
+            let tag_map = load_tags_for_entries(&conn, &all_ids)
+                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
+
             let mut entries_with_supersedes = 0u64;
             let mut entries_with_superseded_by = 0u64;
             let mut total_correction_count = 0u64;
@@ -138,12 +155,7 @@ impl StatusService {
             let mut entries_without_attribution = 0u64;
             let mut active_entries: Vec<EntryRecord> = Vec::new();
 
-            for item in entries_table.iter()
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))? {
-                let (_key, value) = item
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                let record = deserialize_entry(value.value())
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
+            for record in &all_entries {
                 if record.supersedes.is_some() {
                     entries_with_supersedes += 1;
                 }
@@ -161,34 +173,29 @@ impl StatusService {
                     entries_without_attribution += 1;
                 }
                 if record.status == unimatrix_store::Status::Active {
-                    active_entries.push(record);
+                    let mut entry = record.clone();
+                    if let Some(tags) = tag_map.get(&entry.id) {
+                        entry.tags = tags.clone();
+                    }
+                    active_entries.push(entry);
                 }
             }
 
-            // Outcome statistics
+            // Outcome statistics (entries with category="outcome")
             let mut total_outcomes = 0u64;
             let mut outcomes_by_type: BTreeMap<String, u64> = BTreeMap::new();
             let mut outcomes_by_result: BTreeMap<String, u64> = BTreeMap::new();
             let mut outcomes_by_feature_cycle: BTreeMap<String, u64> = BTreeMap::new();
 
-            let outcome_range = cat_table
-                .range::<(&str, u64)>(("outcome", 0u64)..=("outcome", u64::MAX))
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-
-            for item in outcome_range {
-                let (key, _) = item
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?;
-                let (_cat, entry_id) = key.value();
+            for record in &all_entries {
+                if record.category != "outcome" {
+                    continue;
+                }
                 total_outcomes += 1;
 
-                if let Some(entry_guard) = entries_table
-                    .get(entry_id)
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e.into())))?
-                {
-                    let record = deserialize_entry(entry_guard.value())
-                        .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-
-                    for tag in &record.tags {
+                let tags = tag_map.get(&record.id);
+                if let Some(tags) = tags {
+                    for tag in tags {
                         if let Some((tag_key, tag_value)) = tag.split_once(':') {
                             match tag_key {
                                 "type" => {
@@ -205,12 +212,12 @@ impl StatusService {
                             }
                         }
                     }
+                }
 
-                    if !record.feature_cycle.is_empty() {
-                        *outcomes_by_feature_cycle
-                            .entry(record.feature_cycle.clone())
-                            .or_insert(0) += 1;
-                    }
+                if !record.feature_cycle.is_empty() {
+                    *outcomes_by_feature_cycle
+                        .entry(record.feature_cycle.clone())
+                        .or_insert(0) += 1;
                 }
             }
 

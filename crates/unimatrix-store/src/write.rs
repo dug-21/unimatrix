@@ -1,12 +1,7 @@
-use std::collections::HashSet;
-
 use rusqlite::OptionalExtension;
 
 use crate::error::{Result, StoreError};
-use crate::schema::{
-    EntryRecord, NewEntry, Status, deserialize_entry,
-    serialize_entry, status_counter_key,
-};
+use crate::schema::{EntryRecord, NewEntry, Status, status_counter_key};
 
 use crate::db::Store;
 
@@ -18,45 +13,10 @@ fn current_unix_timestamp_secs() -> u64 {
         .as_secs()
 }
 
-/// Read a counter value within a connection (not locked by caller).
-fn read_counter(conn: &rusqlite::Connection, name: &str) -> Result<u64> {
-    let val: Option<i64> = conn
-        .query_row(
-            "SELECT value FROM counters WHERE name = ?1",
-            rusqlite::params![name],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(StoreError::Sqlite)?;
-    Ok(val.unwrap_or(0) as u64)
-}
-
-/// Set a counter value within a connection.
-fn set_counter(conn: &rusqlite::Connection, name: &str, value: u64) -> Result<()> {
-    conn.execute(
-        "INSERT OR REPLACE INTO counters (name, value) VALUES (?1, ?2)",
-        rusqlite::params![name, value as i64],
-    )
-    .map_err(StoreError::Sqlite)?;
-    Ok(())
-}
-
-/// Increment a counter by delta.
-fn increment_counter(conn: &rusqlite::Connection, name: &str, delta: u64) -> Result<()> {
-    let current = read_counter(conn, name)?;
-    set_counter(conn, name, current + delta)
-}
-
-/// Decrement a counter by delta (saturating).
-fn decrement_counter(conn: &rusqlite::Connection, name: &str, delta: u64) -> Result<()> {
-    let current = read_counter(conn, name)?;
-    set_counter(conn, name, current.saturating_sub(delta))
-}
-
 impl Store {
     /// Insert a new entry. Returns the assigned entry_id.
     ///
-    /// All index tables and counters are updated atomically within a single
+    /// All columns and counters are updated atomically within a single
     /// transaction. If any step fails, the transaction is rolled back.
     pub fn insert(&self, entry: NewEntry) -> Result<u64> {
         let now = current_unix_timestamp_secs();
@@ -65,93 +25,75 @@ impl Store {
             .map_err(StoreError::Sqlite)?;
 
         let result = (|| -> Result<u64> {
-            // Step 1: Generate ID
-            let id = read_counter(&conn, "next_entry_id")?;
-            set_counter(&conn, "next_entry_id", id + 1)?;
+            // Step 1: Generate ID via counters module
+            let id = crate::counters::next_entry_id(&conn)?;
 
             // Step 2: Compute content hash
             let content_hash = crate::hash::compute_content_hash(&entry.title, &entry.content);
 
-            // Step 3: Build EntryRecord
-            let record = EntryRecord {
-                id,
-                title: entry.title,
-                content: entry.content,
-                topic: entry.topic,
-                category: entry.category,
-                tags: entry.tags,
-                source: entry.source,
-                status: entry.status,
-                confidence: 0.0,
-                created_at: now,
-                updated_at: now,
-                last_accessed_at: 0,
-                access_count: 0,
-                supersedes: None,
-                superseded_by: None,
-                correction_count: 0,
-                embedding_dim: 0,
-                created_by: entry.created_by,
-                modified_by: String::new(),
-                content_hash,
-                previous_hash: String::new(),
-                version: 1,
-                feature_cycle: entry.feature_cycle,
-                trust_source: entry.trust_source,
-                helpful_count: 0,
-                unhelpful_count: 0,
-            };
-
-            // Step 4: Serialize and insert
-            let bytes = serialize_entry(&record)?;
+            // Step 3: INSERT into entries with named params (ADR-004)
             conn.execute(
-                "INSERT INTO entries (id, data) VALUES (?1, ?2)",
-                rusqlite::params![id as i64, bytes],
+                "INSERT INTO entries (id, title, content, topic, category, source,
+                    status, confidence, created_at, updated_at, last_accessed_at,
+                    access_count, supersedes, superseded_by, correction_count,
+                    embedding_dim, created_by, modified_by, content_hash,
+                    previous_hash, version, feature_cycle, trust_source,
+                    helpful_count, unhelpful_count)
+                 VALUES (:id, :title, :content, :topic, :category, :source,
+                    :status, :confidence, :created_at, :updated_at, :last_accessed_at,
+                    :access_count, :supersedes, :superseded_by, :correction_count,
+                    :embedding_dim, :created_by, :modified_by, :content_hash,
+                    :previous_hash, :version, :feature_cycle, :trust_source,
+                    :helpful_count, :unhelpful_count)",
+                rusqlite::named_params! {
+                    ":id": id as i64,
+                    ":title": &entry.title,
+                    ":content": &entry.content,
+                    ":topic": &entry.topic,
+                    ":category": &entry.category,
+                    ":source": &entry.source,
+                    ":status": entry.status as u8 as i64,
+                    ":confidence": 0.0_f64,
+                    ":created_at": now as i64,
+                    ":updated_at": now as i64,
+                    ":last_accessed_at": 0_i64,
+                    ":access_count": 0_i64,
+                    ":supersedes": Option::<i64>::None,
+                    ":superseded_by": Option::<i64>::None,
+                    ":correction_count": 0_i64,
+                    ":embedding_dim": 0_i64,
+                    ":created_by": &entry.created_by,
+                    ":modified_by": "",
+                    ":content_hash": &content_hash,
+                    ":previous_hash": "",
+                    ":version": 1_i64,
+                    ":feature_cycle": &entry.feature_cycle,
+                    ":trust_source": &entry.trust_source,
+                    ":helpful_count": 0_i64,
+                    ":unhelpful_count": 0_i64,
+                },
             )
             .map_err(StoreError::Sqlite)?;
 
-            // Step 5: Insert into all index tables
-            conn.execute(
-                "INSERT INTO topic_index (topic, entry_id) VALUES (?1, ?2)",
-                rusqlite::params![&record.topic, id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
-
-            conn.execute(
-                "INSERT INTO category_index (category, entry_id) VALUES (?1, ?2)",
-                rusqlite::params![&record.category, id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
-
-            for tag in &record.tags {
+            // Step 4: Insert tags into entry_tags
+            for tag in &entry.tags {
                 conn.execute(
-                    "INSERT INTO tag_index (tag, entry_id) VALUES (?1, ?2)",
-                    rusqlite::params![tag, id as i64],
+                    "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
+                    rusqlite::params![id as i64, tag],
                 )
                 .map_err(StoreError::Sqlite)?;
             }
 
-            conn.execute(
-                "INSERT INTO time_index (timestamp, entry_id) VALUES (?1, ?2)",
-                rusqlite::params![record.created_at as i64, id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
-
-            conn.execute(
-                "INSERT INTO status_index (status, entry_id) VALUES (?1, ?2)",
-                rusqlite::params![record.status as u8 as i64, id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
-
-            // Step 6: Update status counter
-            increment_counter(&conn, status_counter_key(record.status), 1)?;
+            // Step 5: Update status counter
+            crate::counters::increment_counter(&conn, status_counter_key(entry.status), 1)?;
 
             Ok(id)
         })();
 
         match result {
             Ok(id) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(id)
             }
             Err(e) => {
@@ -172,100 +114,83 @@ impl Store {
             .map_err(StoreError::Sqlite)?;
 
         let result = (|| -> Result<()> {
-            // Read existing entry for index diffing
-            let old_bytes: Vec<u8> = conn
+            // Read old status for counter adjustment (single column, no blob deserialize)
+            let old_status: i64 = conn
                 .query_row(
-                    "SELECT data FROM entries WHERE id = ?1",
+                    "SELECT status FROM entries WHERE id = ?1",
                     rusqlite::params![entry_id as i64],
                     |row| row.get(0),
                 )
                 .optional()
                 .map_err(StoreError::Sqlite)?
                 .ok_or(StoreError::EntryNotFound(entry_id))?;
-            let old = deserialize_entry(&old_bytes)?;
 
-            // Use the provided entry as the updated record
-            let updated = entry;
-
-            let bytes = serialize_entry(&updated)?;
+            // UPDATE all 24 columns with named params (ADR-004)
             conn.execute(
-                "UPDATE entries SET data = ?1 WHERE id = ?2",
-                rusqlite::params![bytes, entry_id as i64],
+                "UPDATE entries SET
+                    title = :title, content = :content, topic = :topic,
+                    category = :category, source = :source, status = :status,
+                    confidence = :confidence, created_at = :created_at,
+                    updated_at = :updated_at, last_accessed_at = :last_accessed_at,
+                    access_count = :access_count, supersedes = :supersedes,
+                    superseded_by = :superseded_by, correction_count = :correction_count,
+                    embedding_dim = :embedding_dim, created_by = :created_by,
+                    modified_by = :modified_by, content_hash = :content_hash,
+                    previous_hash = :previous_hash, version = :version,
+                    feature_cycle = :feature_cycle, trust_source = :trust_source,
+                    helpful_count = :helpful_count, unhelpful_count = :unhelpful_count
+                 WHERE id = :id",
+                rusqlite::named_params! {
+                    ":id": entry.id as i64,
+                    ":title": &entry.title,
+                    ":content": &entry.content,
+                    ":topic": &entry.topic,
+                    ":category": &entry.category,
+                    ":source": &entry.source,
+                    ":status": entry.status as u8 as i64,
+                    ":confidence": entry.confidence,
+                    ":created_at": entry.created_at as i64,
+                    ":updated_at": entry.updated_at as i64,
+                    ":last_accessed_at": entry.last_accessed_at as i64,
+                    ":access_count": entry.access_count as i64,
+                    ":supersedes": entry.supersedes.map(|v| v as i64),
+                    ":superseded_by": entry.superseded_by.map(|v| v as i64),
+                    ":correction_count": entry.correction_count as i64,
+                    ":embedding_dim": entry.embedding_dim as i64,
+                    ":created_by": &entry.created_by,
+                    ":modified_by": &entry.modified_by,
+                    ":content_hash": &entry.content_hash,
+                    ":previous_hash": &entry.previous_hash,
+                    ":version": entry.version as i64,
+                    ":feature_cycle": &entry.feature_cycle,
+                    ":trust_source": &entry.trust_source,
+                    ":helpful_count": entry.helpful_count as i64,
+                    ":unhelpful_count": entry.unhelpful_count as i64,
+                },
             )
             .map_err(StoreError::Sqlite)?;
 
-            // Update indexes: topic
-            if updated.topic != old.topic {
-                conn.execute(
-                    "DELETE FROM topic_index WHERE topic = ?1 AND entry_id = ?2",
-                    rusqlite::params![&old.topic, entry_id as i64],
-                )
-                .map_err(StoreError::Sqlite)?;
-                conn.execute(
-                    "INSERT INTO topic_index (topic, entry_id) VALUES (?1, ?2)",
-                    rusqlite::params![&updated.topic, entry_id as i64],
-                )
-                .map_err(StoreError::Sqlite)?;
-            }
-
-            // Category
-            if updated.category != old.category {
-                conn.execute(
-                    "DELETE FROM category_index WHERE category = ?1 AND entry_id = ?2",
-                    rusqlite::params![&old.category, entry_id as i64],
-                )
-                .map_err(StoreError::Sqlite)?;
-                conn.execute(
-                    "INSERT INTO category_index (category, entry_id) VALUES (?1, ?2)",
-                    rusqlite::params![&updated.category, entry_id as i64],
-                )
-                .map_err(StoreError::Sqlite)?;
-            }
-
-            // Tags: diff old vs new
-            let old_tags: HashSet<&String> = old.tags.iter().collect();
-            let new_tags: HashSet<&String> = updated.tags.iter().collect();
-            for removed in old_tags.difference(&new_tags) {
-                conn.execute(
-                    "DELETE FROM tag_index WHERE tag = ?1 AND entry_id = ?2",
-                    rusqlite::params![removed.as_str(), entry_id as i64],
-                )
-                .map_err(StoreError::Sqlite)?;
-            }
-            for added in new_tags.difference(&old_tags) {
-                conn.execute(
-                    "INSERT INTO tag_index (tag, entry_id) VALUES (?1, ?2)",
-                    rusqlite::params![added.as_str(), entry_id as i64],
-                )
-                .map_err(StoreError::Sqlite)?;
-            }
-
-            // Time index: remove old, insert new (updated_at changed)
+            // Replace tags: delete all, re-insert (ADR-006)
             conn.execute(
-                "DELETE FROM time_index WHERE timestamp = ?1 AND entry_id = ?2",
-                rusqlite::params![old.created_at as i64, entry_id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
-            conn.execute(
-                "INSERT OR REPLACE INTO time_index (timestamp, entry_id) VALUES (?1, ?2)",
-                rusqlite::params![updated.updated_at as i64, entry_id as i64],
+                "DELETE FROM entry_tags WHERE entry_id = ?1",
+                rusqlite::params![entry_id as i64],
             )
             .map_err(StoreError::Sqlite)?;
 
-            // Status
-            if updated.status != old.status {
+            for tag in &entry.tags {
                 conn.execute(
-                    "DELETE FROM status_index WHERE status = ?1 AND entry_id = ?2",
-                    rusqlite::params![old.status as u8 as i64, entry_id as i64],
+                    "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
+                    rusqlite::params![entry_id as i64, tag],
                 )
                 .map_err(StoreError::Sqlite)?;
-                conn.execute(
-                    "INSERT INTO status_index (status, entry_id) VALUES (?1, ?2)",
-                    rusqlite::params![updated.status as u8 as i64, entry_id as i64],
-                )
-                .map_err(StoreError::Sqlite)?;
-                decrement_counter(&conn, status_counter_key(old.status), 1)?;
-                increment_counter(&conn, status_counter_key(updated.status), 1)?;
+            }
+
+            // Status counter adjustment
+            let new_status = entry.status as u8 as i64;
+            if new_status != old_status {
+                let old = Status::try_from(old_status as u8).unwrap_or(Status::Active);
+                crate::counters::decrement_counter(&conn, status_counter_key(old), 1)?;
+                crate::counters::increment_counter(&conn, status_counter_key(entry.status), 1)?;
             }
 
             Ok(())
@@ -273,7 +198,8 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -291,50 +217,36 @@ impl Store {
             .map_err(StoreError::Sqlite)?;
 
         let result = (|| -> Result<()> {
-            let old_bytes: Vec<u8> = conn
+            // Read old status (single column, no blob deserialize)
+            let old_status_val: i64 = conn
                 .query_row(
-                    "SELECT data FROM entries WHERE id = ?1",
+                    "SELECT status FROM entries WHERE id = ?1",
                     rusqlite::params![entry_id as i64],
                     |row| row.get(0),
                 )
                 .optional()
                 .map_err(StoreError::Sqlite)?
                 .ok_or(StoreError::EntryNotFound(entry_id))?;
-            let mut record = deserialize_entry(&old_bytes)?;
-            let old_status = record.status;
 
-            record.status = new_status;
-            record.updated_at = now;
-
-            let bytes = serialize_entry(&record)?;
+            // Update status and updated_at directly
             conn.execute(
-                "UPDATE entries SET data = ?1 WHERE id = ?2",
-                rusqlite::params![bytes, entry_id as i64],
+                "UPDATE entries SET status = ?1, updated_at = ?2 WHERE id = ?3",
+                rusqlite::params![new_status as u8 as i64, now as i64, entry_id as i64],
             )
             .map_err(StoreError::Sqlite)?;
 
-            // Update status index
-            conn.execute(
-                "DELETE FROM status_index WHERE status = ?1 AND entry_id = ?2",
-                rusqlite::params![old_status as u8 as i64, entry_id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
-            conn.execute(
-                "INSERT INTO status_index (status, entry_id) VALUES (?1, ?2)",
-                rusqlite::params![new_status as u8 as i64, entry_id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
-
-            // Update counters
-            decrement_counter(&conn, status_counter_key(old_status), 1)?;
-            increment_counter(&conn, status_counter_key(new_status), 1)?;
+            // Counter adjustment
+            let old_status = Status::try_from(old_status_val as u8).unwrap_or(Status::Active);
+            crate::counters::decrement_counter(&conn, status_counter_key(old_status), 1)?;
+            crate::counters::increment_counter(&conn, status_counter_key(new_status), 1)?;
 
             Ok(())
         })();
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -351,52 +263,25 @@ impl Store {
             .map_err(StoreError::Sqlite)?;
 
         let result = (|| -> Result<()> {
-            let old_bytes: Vec<u8> = conn
+            // Read status for counter adjustment (single column)
+            let old_status_val: i64 = conn
                 .query_row(
-                    "SELECT data FROM entries WHERE id = ?1",
+                    "SELECT status FROM entries WHERE id = ?1",
                     rusqlite::params![entry_id as i64],
                     |row| row.get(0),
                 )
                 .optional()
                 .map_err(StoreError::Sqlite)?
                 .ok_or(StoreError::EntryNotFound(entry_id))?;
-            let record = deserialize_entry(&old_bytes)?;
 
-            // Delete from entries
+            // Delete from entries (CASCADE deletes entry_tags automatically)
             conn.execute(
                 "DELETE FROM entries WHERE id = ?1",
                 rusqlite::params![entry_id as i64],
             )
             .map_err(StoreError::Sqlite)?;
 
-            // Delete from all indexes
-            conn.execute(
-                "DELETE FROM topic_index WHERE topic = ?1 AND entry_id = ?2",
-                rusqlite::params![&record.topic, entry_id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
-            conn.execute(
-                "DELETE FROM category_index WHERE category = ?1 AND entry_id = ?2",
-                rusqlite::params![&record.category, entry_id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
-            for tag in &record.tags {
-                conn.execute(
-                    "DELETE FROM tag_index WHERE tag = ?1 AND entry_id = ?2",
-                    rusqlite::params![tag, entry_id as i64],
-                )
-                .map_err(StoreError::Sqlite)?;
-            }
-            conn.execute(
-                "DELETE FROM time_index WHERE timestamp = ?1 AND entry_id = ?2",
-                rusqlite::params![record.created_at as i64, entry_id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
-            conn.execute(
-                "DELETE FROM status_index WHERE status = ?1 AND entry_id = ?2",
-                rusqlite::params![record.status as u8 as i64, entry_id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
+            // Delete from vector_map (no FK, manual)
             conn.execute(
                 "DELETE FROM vector_map WHERE entry_id = ?1",
                 rusqlite::params![entry_id as i64],
@@ -404,14 +289,16 @@ impl Store {
             .map_err(StoreError::Sqlite)?;
 
             // Decrement status counter
-            decrement_counter(&conn, status_counter_key(record.status), 1)?;
+            let old_status = Status::try_from(old_status_val as u8).unwrap_or(Status::Active);
+            crate::counters::decrement_counter(&conn, status_counter_key(old_status), 1)?;
 
             Ok(())
         })();
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -420,5 +307,4 @@ impl Store {
             }
         }
     }
-
 }

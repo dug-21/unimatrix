@@ -203,12 +203,14 @@ pub fn co_access_key(a: u64, b: u64) -> (u64, u64) {
 }
 
 /// Serialize a CoAccessRecord to bincode bytes using the serde-compatible path.
+#[cfg(test)]
 pub fn serialize_co_access(record: &CoAccessRecord) -> crate::error::Result<Vec<u8>> {
     let bytes = bincode::serde::encode_to_vec(record, bincode::config::standard())?;
     Ok(bytes)
 }
 
 /// Deserialize a CoAccessRecord from bincode bytes using the serde-compatible path.
+#[cfg(test)]
 pub fn deserialize_co_access(bytes: &[u8]) -> crate::error::Result<CoAccessRecord> {
     let (record, _) = bincode::serde::decode_from_slice::<CoAccessRecord, _>(
         bytes,
@@ -225,6 +227,137 @@ pub fn status_counter_key(status: Status) -> &'static str {
         Status::Proposed => "total_proposed",
         Status::Quarantined => "total_quarantined",
     }
+}
+
+// -- Agent / Audit types (moved from server crate for migration access) --
+
+/// Agent trust hierarchy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum TrustLevel {
+    /// Unimatrix internal operations.
+    System = 0,
+    /// Human user via MCP client.
+    Privileged = 1,
+    /// Orchestrator agents (scrum-master, etc).
+    Internal = 2,
+    /// Unknown/worker agents (default for auto-enrollment).
+    Restricted = 3,
+}
+
+impl TryFrom<u8> for TrustLevel {
+    type Error = StoreError;
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        match value {
+            0 => Ok(TrustLevel::System),
+            1 => Ok(TrustLevel::Privileged),
+            2 => Ok(TrustLevel::Internal),
+            3 => Ok(TrustLevel::Restricted),
+            other => Err(StoreError::InvalidStatus(other)),
+        }
+    }
+}
+
+/// Atomic permission unit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum Capability {
+    /// Read context entries.
+    Read = 0,
+    /// Write (store) context entries.
+    Write = 1,
+    /// Search context entries.
+    Search = 2,
+    /// Administrative operations.
+    Admin = 3,
+    /// Session-scoped writes.
+    SessionWrite = 4,
+}
+
+impl TryFrom<u8> for Capability {
+    type Error = StoreError;
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Capability::Read),
+            1 => Ok(Capability::Write),
+            2 => Ok(Capability::Search),
+            3 => Ok(Capability::Admin),
+            4 => Ok(Capability::SessionWrite),
+            other => Err(StoreError::InvalidStatus(other)),
+        }
+    }
+}
+
+/// An enrolled agent's identity and capabilities.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AgentRecord {
+    /// Unique agent identifier.
+    pub agent_id: String,
+    /// Agent's position in the trust hierarchy.
+    pub trust_level: TrustLevel,
+    /// Permissions granted to this agent.
+    pub capabilities: Vec<Capability>,
+    /// Optional topic restrictions (None = all topics allowed).
+    pub allowed_topics: Option<Vec<String>>,
+    /// Optional category restrictions (None = all categories allowed).
+    pub allowed_categories: Option<Vec<String>>,
+    /// Unix timestamp of enrollment.
+    pub enrolled_at: u64,
+    /// Unix timestamp of last interaction.
+    pub last_seen_at: u64,
+    /// Whether the agent is active.
+    pub active: bool,
+}
+
+/// Result of an audited operation.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Outcome {
+    /// Operation completed successfully.
+    Success = 0,
+    /// Operation denied (capability check failed).
+    Denied = 1,
+    /// Operation failed with an error.
+    Error = 2,
+    /// Tool not yet implemented.
+    NotImplemented = 3,
+}
+
+impl TryFrom<u8> for Outcome {
+    type Error = StoreError;
+
+    fn try_from(value: u8) -> std::result::Result<Self, <Outcome as TryFrom<u8>>::Error> {
+        match value {
+            0 => Ok(Outcome::Success),
+            1 => Ok(Outcome::Denied),
+            2 => Ok(Outcome::Error),
+            3 => Ok(Outcome::NotImplemented),
+            other => Err(StoreError::InvalidStatus(other)),
+        }
+    }
+}
+
+/// An immutable record of a single MCP request.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AuditEvent {
+    /// Monotonic event ID (assigned by log_event).
+    pub event_id: u64,
+    /// Unix timestamp in seconds (assigned by log_event).
+    pub timestamp: u64,
+    /// MCP session identifier.
+    pub session_id: String,
+    /// Agent that made the request.
+    pub agent_id: String,
+    /// Tool name (e.g., "context_search").
+    pub operation: String,
+    /// Entry IDs affected (empty for search/stubs).
+    pub target_ids: Vec<u64>,
+    /// Result of the operation.
+    pub outcome: Outcome,
+    /// Human-readable detail.
+    pub detail: String,
 }
 
 #[cfg(test)]

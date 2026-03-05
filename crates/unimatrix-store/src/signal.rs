@@ -1,7 +1,8 @@
-// LAYOUT FROZEN: bincode v2 positional encoding. Fields may only be APPENDED.
-// See ADR-001 (col-009). Do not reorder or remove fields.
+// Signal queue persistence for confidence and retrospective pipelines.
+//
+// Records are created at session end, consumed by dual consumers,
+// then deleted. Uses SQL columns with JSON for entry_ids (ADR-007).
 
-use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 
 use crate::db::Store;
@@ -11,48 +12,88 @@ use crate::error::{Result, StoreError};
 ///
 /// Created at session end (Stop hook), consumed by dual consumers
 /// (confidence pipeline and retrospective pipeline), then deleted.
-///
-/// Field order is frozen for bincode v2 positional compatibility (ADR-001).
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SignalRecord {
-    pub signal_id: u64,              // field 0 — monotonic key, also stored as value
-    pub session_id: String,          // field 1 — which session generated this signal
-    pub created_at: u64,             // field 2 — Unix seconds
-    pub entry_ids: Vec<u64>,         // field 3 — deduplicated entries receiving this signal
-    pub signal_type: SignalType,     // field 4 — Helpful | Flagged
-    pub signal_source: SignalSource, // field 5 — ImplicitOutcome | ImplicitRework
+    pub signal_id: u64,
+    pub session_id: String,
+    pub created_at: u64,
+    pub entry_ids: Vec<u64>,
+    pub signal_type: SignalType,
+    pub signal_source: SignalSource,
 }
 
 /// Type of confidence signal.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum SignalType {
     Helpful = 0,
     Flagged = 1,
 }
 
+impl TryFrom<u8> for SignalType {
+    type Error = StoreError;
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Helpful),
+            1 => Ok(Self::Flagged),
+            other => Err(StoreError::InvalidStatus(other)),
+        }
+    }
+}
+
 /// Source of the implicit confidence signal.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum SignalSource {
     ImplicitOutcome = 0,
     ImplicitRework = 1,
 }
 
+impl TryFrom<u8> for SignalSource {
+    type Error = StoreError;
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::ImplicitOutcome),
+            1 => Ok(Self::ImplicitRework),
+            other => Err(StoreError::InvalidStatus(other)),
+        }
+    }
+}
+
 /// Serialize a SignalRecord to bincode bytes using the serde-compatible path.
 ///
-/// Uses `bincode::serde::encode_to_vec` with `standard()` config,
-/// matching the workspace convention for EntryRecord.
+/// Retained for migration compatibility and public re-export.
 pub fn serialize_signal(record: &SignalRecord) -> Result<Vec<u8>> {
     let bytes = bincode::serde::encode_to_vec(record, bincode::config::standard())?;
     Ok(bytes)
 }
 
 /// Deserialize a SignalRecord from bincode bytes using the serde-compatible path.
+///
+/// Retained for migration compatibility and public re-export.
 pub fn deserialize_signal(bytes: &[u8]) -> Result<SignalRecord> {
     let (record, _) =
         bincode::serde::decode_from_slice::<SignalRecord, _>(bytes, bincode::config::standard())?;
     Ok(record)
+}
+
+/// Construct a SignalRecord from a SQL row.
+fn signal_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SignalRecord> {
+    let entry_ids_json: String = row.get("entry_ids")?;
+    let entry_ids: Vec<u64> =
+        serde_json::from_str(&entry_ids_json).unwrap_or_default();
+    Ok(SignalRecord {
+        signal_id: row.get::<_, i64>("signal_id")? as u64,
+        session_id: row.get("session_id")?,
+        created_at: row.get::<_, i64>("created_at")? as u64,
+        entry_ids,
+        signal_type: SignalType::try_from(row.get::<_, i64>("signal_type")? as u8)
+            .unwrap_or(SignalType::Helpful),
+        signal_source: SignalSource::try_from(row.get::<_, i64>("signal_source")? as u8)
+            .unwrap_or(SignalSource::ImplicitOutcome),
+    })
 }
 
 impl Store {
@@ -69,51 +110,40 @@ impl Store {
 
         let result = (|| -> Result<u64> {
             // 1. Read and increment next_signal_id
-            let next_id: u64 = conn
-                .query_row(
-                    "SELECT value FROM counters WHERE name = 'next_signal_id'",
-                    [],
-                    |row| Ok(row.get::<_, i64>(0)? as u64),
-                )
-                .optional()
-                .map_err(StoreError::Sqlite)?
-                .unwrap_or(0);
-            conn.execute(
-                "INSERT OR REPLACE INTO counters (name, value) VALUES ('next_signal_id', ?1)",
-                rusqlite::params![(next_id + 1) as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
+            let next_id = crate::counters::read_counter(&conn, "next_signal_id")?;
+            crate::counters::set_counter(&conn, "next_signal_id", next_id + 1)?;
 
-            // 2. Enforce cap: if queue >= 10_000, delete the oldest (lowest signal_id)
+            // 2. Enforce cap: if queue >= 10_000, delete the oldest
             let current_len: i64 = conn
                 .query_row("SELECT COUNT(*) FROM signal_queue", [], |row| row.get(0))
                 .map_err(StoreError::Sqlite)?;
             if current_len >= 10_000 {
-                let oldest_key: Option<i64> = conn
-                    .query_row(
-                        "SELECT MIN(signal_id) FROM signal_queue",
-                        [],
-                        |row| row.get(0),
-                    )
-                    .optional()
-                    .map_err(StoreError::Sqlite)?
-                    .flatten();
-                if let Some(k) = oldest_key {
-                    conn.execute(
-                        "DELETE FROM signal_queue WHERE signal_id = ?1",
-                        rusqlite::params![k],
-                    )
-                    .map_err(StoreError::Sqlite)?;
-                }
+                conn.execute(
+                    "DELETE FROM signal_queue WHERE signal_id = (\
+                        SELECT MIN(signal_id) FROM signal_queue\
+                    )",
+                    [],
+                )
+                .map_err(StoreError::Sqlite)?;
             }
 
-            // 3. Insert new record with allocated signal_id
-            let mut full_record = record.clone();
-            full_record.signal_id = next_id;
-            let bytes = serialize_signal(&full_record)?;
+            // 3. Serialize entry_ids as JSON (ADR-007)
+            let entry_ids_json = serde_json::to_string(&record.entry_ids)
+                .map_err(|e| StoreError::Serialization(e.to_string()))?;
+
+            // 4. Insert with SQL columns
             conn.execute(
-                "INSERT INTO signal_queue (signal_id, data) VALUES (?1, ?2)",
-                rusqlite::params![next_id as i64, bytes],
+                "INSERT INTO signal_queue (signal_id, session_id, created_at, \
+                    entry_ids, signal_type, signal_source) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                rusqlite::params![
+                    next_id as i64,
+                    &record.session_id,
+                    record.created_at as i64,
+                    &entry_ids_json,
+                    record.signal_type as u8 as i64,
+                    record.signal_source as u8 as i64,
+                ],
             )
             .map_err(StoreError::Sqlite)?;
 
@@ -122,7 +152,8 @@ impl Store {
 
         match result {
             Ok(id) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(id)
             }
             Err(e) => {
@@ -139,50 +170,40 @@ impl Store {
             .map_err(StoreError::Sqlite)?;
 
         let result = (|| -> Result<Vec<SignalRecord>> {
-            let mut drained = Vec::new();
-            let mut keys_to_delete: Vec<i64> = Vec::new();
-
+            // SELECT matching signals
             let mut stmt = conn
-                .prepare("SELECT signal_id, data FROM signal_queue ORDER BY signal_id")
-                .map_err(StoreError::Sqlite)?;
-            let rows = stmt
-                .query_map([], |row| {
-                    Ok((row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?))
-                })
-                .map_err(StoreError::Sqlite)?;
-
-            for row in rows {
-                let (key, bytes) = row.map_err(StoreError::Sqlite)?;
-                match deserialize_signal(&bytes) {
-                    Ok(record) if record.signal_type == signal_type => {
-                        keys_to_delete.push(key);
-                        drained.push(record);
-                    }
-                    Ok(_) => {
-                        // Different signal_type -- leave it
-                    }
-                    Err(_) => {
-                        // Corrupted record: remove
-                        keys_to_delete.push(key);
-                    }
-                }
-            }
-            drop(stmt);
-
-            for key in &keys_to_delete {
-                conn.execute(
-                    "DELETE FROM signal_queue WHERE signal_id = ?1",
-                    rusqlite::params![key],
+                .prepare(
+                    "SELECT signal_id, session_id, created_at, entry_ids, \
+                        signal_type, signal_source \
+                     FROM signal_queue WHERE signal_type = ?1 ORDER BY signal_id",
                 )
                 .map_err(StoreError::Sqlite)?;
-            }
 
-            Ok(drained)
+            let records: Vec<SignalRecord> = stmt
+                .query_map(
+                    rusqlite::params![signal_type as u8 as i64],
+                    signal_from_row,
+                )
+                .map_err(StoreError::Sqlite)?
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .map_err(StoreError::Sqlite)?;
+
+            drop(stmt);
+
+            // DELETE matching signals
+            conn.execute(
+                "DELETE FROM signal_queue WHERE signal_type = ?1",
+                rusqlite::params![signal_type as u8 as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+
+            Ok(records)
         })();
 
         match result {
             Ok(drained) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(drained)
             }
             Err(e) => {
@@ -287,5 +308,19 @@ mod tests {
         let bytes = serialize_signal(&record).expect("serialize");
         let deserialized = deserialize_signal(&bytes).expect("deserialize");
         assert_eq!(deserialized.signal_id, u64::MAX);
+    }
+
+    #[test]
+    fn test_signal_type_try_from() {
+        assert_eq!(SignalType::try_from(0u8).unwrap(), SignalType::Helpful);
+        assert_eq!(SignalType::try_from(1u8).unwrap(), SignalType::Flagged);
+        assert!(SignalType::try_from(2u8).is_err());
+    }
+
+    #[test]
+    fn test_signal_source_try_from() {
+        assert_eq!(SignalSource::try_from(0u8).unwrap(), SignalSource::ImplicitOutcome);
+        assert_eq!(SignalSource::try_from(1u8).unwrap(), SignalSource::ImplicitRework);
+        assert!(SignalSource::try_from(2u8).is_err());
     }
 }

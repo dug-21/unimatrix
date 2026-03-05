@@ -443,9 +443,12 @@ mod usage_tests {
         });
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        let txn = store.begin_read().expect("begin_read");
-        let table = txn.open_multimap_table(unimatrix_store::FEATURE_ENTRIES).expect("open table");
-        let found: Vec<u64> = table.get("vnc-009").expect("get").map(|r| r.unwrap().value()).collect();
+        let conn = store.lock_conn();
+        let mut stmt = conn.prepare("SELECT entry_id FROM feature_entries WHERE feature_id = ?1").unwrap();
+        let found: Vec<u64> = stmt.query_map(unimatrix_store::rusqlite::params!["vnc-009"], |row| {
+            let v: i64 = row.get(0)?;
+            Ok(v as u64)
+        }).unwrap().map(|r| r.unwrap()).collect();
         assert!(found.contains(&id), "feature entry should be recorded");
     }
 
@@ -463,9 +466,12 @@ mod usage_tests {
         });
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        let txn = store.begin_read().expect("begin_read");
-        let table = txn.open_multimap_table(unimatrix_store::FEATURE_ENTRIES).expect("open table");
-        let count = table.get("vnc-009").expect("get").count();
+        let conn = store.lock_conn();
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?1",
+            unimatrix_store::rusqlite::params!["vnc-009"],
+            |row| row.get(0),
+        ).unwrap();
         assert_eq!(count, 0, "restricted agent feature entry should not be recorded");
     }
 }

@@ -1,64 +1,18 @@
 //! Agent registry: identity, trust levels, and capabilities.
 //!
-//! Uses the AGENT_REGISTRY table for persistence.
+//! Uses direct SQL against the agent_registry table (ADR-004, nxs-008).
+//! Types re-exported from unimatrix_store::schema.
 
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde::{Deserialize, Serialize};
-use unimatrix_store::{AGENT_REGISTRY, Store};
+use unimatrix_store::rusqlite::{self, OptionalExtension};
+use unimatrix_store::Store;
+
+// Re-export types so existing `use crate::infra::registry::*` imports keep working.
+pub use unimatrix_store::{AgentRecord, Capability, TrustLevel};
 
 use crate::error::ServerError;
-
-/// An enrolled agent's identity and capabilities.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct AgentRecord {
-    /// Unique agent identifier.
-    pub agent_id: String,
-    /// Agent's position in the trust hierarchy.
-    pub trust_level: TrustLevel,
-    /// Permissions granted to this agent.
-    pub capabilities: Vec<Capability>,
-    /// Optional topic restrictions (None = all topics allowed).
-    pub allowed_topics: Option<Vec<String>>,
-    /// Optional category restrictions (None = all categories allowed).
-    pub allowed_categories: Option<Vec<String>>,
-    /// Unix timestamp of enrollment.
-    pub enrolled_at: u64,
-    /// Unix timestamp of last interaction.
-    pub last_seen_at: u64,
-    /// Whether the agent is active.
-    pub active: bool,
-}
-
-/// Agent trust hierarchy.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TrustLevel {
-    /// Unimatrix internal operations.
-    System,
-    /// Human user via MCP client.
-    Privileged,
-    /// Orchestrator agents (scrum-master, etc).
-    Internal,
-    /// Unknown/worker agents (default for auto-enrollment).
-    Restricted,
-}
-
-/// Atomic permission unit.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Capability {
-    /// Read context entries.
-    Read,
-    /// Write (store) context entries.
-    Write,
-    /// Search context entries.
-    Search,
-    /// Administrative operations.
-    Admin,
-    /// Session-scoped writes: injection logs, session records, signals, co-access pairs.
-    /// Distinct from Write (knowledge writes). UDS connections get this instead of Write.
-    SessionWrite,
-}
 
 /// Result of an enrollment operation.
 pub struct EnrollResult {
@@ -84,187 +38,198 @@ impl AgentRegistry {
 
     /// Bootstrap default agents if they don't already exist.
     ///
-    /// Creates "system" (System trust) and "human" (Privileged trust)
-    /// agents on first run. Idempotent -- safe to call on every startup.
+    /// Creates "system" (System trust), "human" (Privileged trust), and
+    /// "cortical-implant" (Internal trust) agents on first run.
+    /// Idempotent -- safe to call on every startup.
     pub fn bootstrap_defaults(&self) -> Result<(), ServerError> {
         let now = current_unix_seconds();
-        let txn = self
-            .store
-            .begin_write()
+        let conn = self.store.lock_conn();
+        conn.execute_batch("BEGIN IMMEDIATE")
             .map_err(|e| ServerError::Registry(e.to_string()))?;
-        {
-            let mut table = txn
-                .open_table(AGENT_REGISTRY)
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
 
+        let result = (|| -> Result<(), ServerError> {
             // Bootstrap "system" if not present
-            if table
-                .get("system")
+            let exists: bool = conn
+                .query_row(
+                    "SELECT 1 FROM agent_registry WHERE agent_id = 'system'",
+                    [],
+                    |_| Ok(true),
+                )
+                .optional()
                 .map_err(|e| ServerError::Registry(e.to_string()))?
-                .is_none()
-            {
-                let record = AgentRecord {
-                    agent_id: "system".to_string(),
-                    trust_level: TrustLevel::System,
-                    capabilities: vec![
-                        Capability::Read,
-                        Capability::Write,
-                        Capability::Search,
-                        Capability::Admin,
+                .unwrap_or(false);
+
+            if !exists {
+                let caps_json = serde_json::to_string(
+                    &[
+                        Capability::Read as u8,
+                        Capability::Write as u8,
+                        Capability::Search as u8,
+                        Capability::Admin as u8,
                     ],
-                    allowed_topics: None,
-                    allowed_categories: None,
-                    enrolled_at: now,
-                    last_seen_at: now,
-                    active: true,
-                };
-                let bytes = serialize_agent(&record)?;
-                table
-                    .insert("system", bytes.as_slice())
-                    .map_err(|e| ServerError::Registry(e.to_string()))?;
+                )
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
+                conn.execute(
+                    "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
+                        allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
+                     VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4, 1)",
+                    rusqlite::params![
+                        "system",
+                        TrustLevel::System as u8 as i64,
+                        &caps_json,
+                        now as i64
+                    ],
+                )
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
             }
 
             // Bootstrap "human" if not present
-            if table
-                .get("human")
+            let exists: bool = conn
+                .query_row(
+                    "SELECT 1 FROM agent_registry WHERE agent_id = 'human'",
+                    [],
+                    |_| Ok(true),
+                )
+                .optional()
                 .map_err(|e| ServerError::Registry(e.to_string()))?
-                .is_none()
-            {
-                let record = AgentRecord {
-                    agent_id: "human".to_string(),
-                    trust_level: TrustLevel::Privileged,
-                    capabilities: vec![
-                        Capability::Read,
-                        Capability::Write,
-                        Capability::Search,
-                        Capability::Admin,
+                .unwrap_or(false);
+
+            if !exists {
+                let caps_json = serde_json::to_string(
+                    &[
+                        Capability::Read as u8,
+                        Capability::Write as u8,
+                        Capability::Search as u8,
+                        Capability::Admin as u8,
                     ],
-                    allowed_topics: None,
-                    allowed_categories: None,
-                    enrolled_at: now,
-                    last_seen_at: now,
-                    active: true,
-                };
-                let bytes = serialize_agent(&record)?;
-                table
-                    .insert("human", bytes.as_slice())
-                    .map_err(|e| ServerError::Registry(e.to_string()))?;
+                )
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
+                conn.execute(
+                    "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
+                        allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
+                     VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4, 1)",
+                    rusqlite::params![
+                        "human",
+                        TrustLevel::Privileged as u8 as i64,
+                        &caps_json,
+                        now as i64
+                    ],
+                )
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
             }
 
             // Bootstrap "cortical-implant" if not present (col-006)
-            if table
-                .get("cortical-implant")
+            let exists: bool = conn
+                .query_row(
+                    "SELECT 1 FROM agent_registry WHERE agent_id = 'cortical-implant'",
+                    [],
+                    |_| Ok(true),
+                )
+                .optional()
                 .map_err(|e| ServerError::Registry(e.to_string()))?
-                .is_none()
-            {
-                let record = AgentRecord {
-                    agent_id: "cortical-implant".to_string(),
-                    trust_level: TrustLevel::Internal,
-                    capabilities: vec![Capability::Read, Capability::Search],
-                    allowed_topics: None,
-                    allowed_categories: None,
-                    enrolled_at: now,
-                    last_seen_at: now,
-                    active: true,
-                };
-                let bytes = serialize_agent(&record)?;
-                table
-                    .insert("cortical-implant", bytes.as_slice())
+                .unwrap_or(false);
+
+            if !exists {
+                let caps_json = serde_json::to_string(
+                    &[Capability::Read as u8, Capability::Search as u8],
+                )
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
+                conn.execute(
+                    "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
+                        allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
+                     VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4, 1)",
+                    rusqlite::params![
+                        "cortical-implant",
+                        TrustLevel::Internal as u8 as i64,
+                        &caps_json,
+                        now as i64
+                    ],
+                )
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
+            }
+
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => {
+                conn.execute_batch("COMMIT")
                     .map_err(|e| ServerError::Registry(e.to_string()))?;
+                Ok(())
+            }
+            Err(e) => {
+                let _ = conn.execute_batch("ROLLBACK");
+                Err(e)
             }
         }
-        txn.commit()
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
-        Ok(())
     }
 
     /// Look up an agent by ID, auto-enrolling as Restricted if unknown.
     ///
     /// Uses a read-first optimization to avoid write transactions for known agents.
     pub fn resolve_or_enroll(&self, agent_id: &str) -> Result<AgentRecord, ServerError> {
+        let conn = self.store.lock_conn();
+
         // Read-first: check if agent exists
-        {
-            let read_txn = self
-                .store
-                .begin_read()
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-            let table = read_txn
-                .open_table(AGENT_REGISTRY)
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-            if let Some(guard) = table
-                .get(agent_id)
-                .map_err(|e| ServerError::Registry(e.to_string()))?
-            {
-                return deserialize_agent(guard.value());
-            }
+        let record = conn
+            .query_row(
+                "SELECT agent_id, trust_level, capabilities, allowed_topics,
+                        allowed_categories, enrolled_at, last_seen_at, active
+                 FROM agent_registry WHERE agent_id = ?1",
+                rusqlite::params![agent_id],
+                agent_from_row,
+            )
+            .optional()
+            .map_err(|e| ServerError::Registry(e.to_string()))?;
+
+        if let Some(r) = record {
+            return Ok(r);
         }
 
         // Not found: auto-enroll as Restricted
         let now = current_unix_seconds();
-        let new_agent = AgentRecord {
-            agent_id: agent_id.to_string(),
-            trust_level: TrustLevel::Restricted,
-            capabilities: vec![Capability::Read, Capability::Search],
-            allowed_topics: None,
-            allowed_categories: None,
-            enrolled_at: now,
-            last_seen_at: now,
-            active: true,
-        };
-
-        let txn = self
-            .store
-            .begin_write()
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
-
-        // Double-check: another thread may have enrolled between read and write
-        let already_exists = {
-            let table = txn
-                .open_table(AGENT_REGISTRY)
+        let caps_json =
+            serde_json::to_string(&[Capability::Read as u8, Capability::Search as u8])
                 .map_err(|e| ServerError::Registry(e.to_string()))?;
-            match table
-                .get(agent_id)
-                .map_err(|e| ServerError::Registry(e.to_string()))?
-            {
-                Some(guard) => Some(deserialize_agent(guard.value())?),
-                None => None,
-            }
-        };
 
-        if let Some(record) = already_exists {
-            txn.commit()
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-            return Ok(record);
-        }
+        conn.execute(
+            "INSERT OR IGNORE INTO agent_registry (agent_id, trust_level, capabilities,
+                allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
+             VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4, 1)",
+            rusqlite::params![
+                agent_id,
+                TrustLevel::Restricted as u8 as i64,
+                &caps_json,
+                now as i64
+            ],
+        )
+        .map_err(|e| ServerError::Registry(e.to_string()))?;
 
-        {
-            let mut table = txn
-                .open_table(AGENT_REGISTRY)
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-            let bytes = serialize_agent(&new_agent)?;
-            table
-                .insert(agent_id, bytes.as_slice())
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-        }
-        txn.commit()
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
-        Ok(new_agent)
+        // Re-read (handles INSERT OR IGNORE race where another thread inserted first)
+        conn.query_row(
+            "SELECT agent_id, trust_level, capabilities, allowed_topics,
+                    allowed_categories, enrolled_at, last_seen_at, active
+             FROM agent_registry WHERE agent_id = ?1",
+            rusqlite::params![agent_id],
+            agent_from_row,
+        )
+        .map_err(|e| ServerError::Registry(e.to_string()))
     }
 
     /// Check if an agent has a specific capability.
     pub fn has_capability(&self, agent_id: &str, cap: Capability) -> Result<bool, ServerError> {
-        let read_txn = self
-            .store
-            .begin_read()
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
-        let table = read_txn
-            .open_table(AGENT_REGISTRY)
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
-        let guard = table
-            .get(agent_id)
+        let conn = self.store.lock_conn();
+        let record = conn
+            .query_row(
+                "SELECT agent_id, trust_level, capabilities, allowed_topics,
+                        allowed_categories, enrolled_at, last_seen_at, active
+                 FROM agent_registry WHERE agent_id = ?1",
+                rusqlite::params![agent_id],
+                agent_from_row,
+            )
+            .optional()
             .map_err(|e| ServerError::Registry(e.to_string()))?
             .ok_or_else(|| ServerError::Registry(format!("agent '{agent_id}' not found")))?;
-        let record = deserialize_agent(guard.value())?;
         Ok(record.capabilities.contains(&cap))
     }
 
@@ -288,36 +253,13 @@ impl AgentRegistry {
 
     /// Update the last_seen_at timestamp for an agent.
     pub fn update_last_seen(&self, agent_id: &str) -> Result<(), ServerError> {
-        let txn = self
-            .store
-            .begin_write()
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
-        {
-            let mut table = txn
-                .open_table(AGENT_REGISTRY)
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-
-            // Read existing record, extracting bytes before releasing borrow
-            let existing = {
-                let guard = table
-                    .get(agent_id)
-                    .map_err(|e| ServerError::Registry(e.to_string()))?;
-                match guard {
-                    Some(g) => Some(deserialize_agent(g.value())?),
-                    None => None,
-                }
-            };
-
-            if let Some(mut record) = existing {
-                record.last_seen_at = current_unix_seconds();
-                let bytes = serialize_agent(&record)?;
-                table
-                    .insert(agent_id, bytes.as_slice())
-                    .map_err(|e| ServerError::Registry(e.to_string()))?;
-            }
-        }
-        txn.commit()
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
+        let now = current_unix_seconds();
+        let conn = self.store.lock_conn();
+        conn.execute(
+            "UPDATE agent_registry SET last_seen_at = ?1 WHERE agent_id = ?2",
+            rusqlite::params![now as i64, agent_id],
+        )
+        .map_err(|e| ServerError::Registry(e.to_string()))?;
         Ok(())
     }
 
@@ -344,30 +286,39 @@ impl AgentRegistry {
             return Err(ServerError::SelfLockout);
         }
 
-        // 3. Read-first: check if target already exists
-        let existing: Option<AgentRecord> = {
-            let read_txn = self
-                .store
-                .begin_read()
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-            let table = read_txn
-                .open_table(AGENT_REGISTRY)
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-            match table
-                .get(target_id)
-                .map_err(|e| ServerError::Registry(e.to_string()))?
-            {
-                Some(guard) => Some(deserialize_agent(guard.value())?),
-                None => None,
-            }
-        };
+        let conn = self.store.lock_conn();
+
+        // 3. Check if target already exists
+        let existing = conn
+            .query_row(
+                "SELECT agent_id, trust_level, capabilities, allowed_topics,
+                        allowed_categories, enrolled_at, last_seen_at, active
+                 FROM agent_registry WHERE agent_id = ?1",
+                rusqlite::params![target_id],
+                agent_from_row,
+            )
+            .optional()
+            .map_err(|e| ServerError::Registry(e.to_string()))?;
 
         let now = current_unix_seconds();
+        let caps_json = serialize_capabilities(&capabilities)?;
 
-        // 4. Build the agent record
+        // 4. Build the agent record and persist
         let (created, record) = match existing {
             Some(existing_record) => {
                 // UPDATE: preserve enrolled_at, active, allowed_topics, allowed_categories
+                conn.execute(
+                    "UPDATE agent_registry SET trust_level = ?1, capabilities = ?2,
+                        last_seen_at = ?3 WHERE agent_id = ?4",
+                    rusqlite::params![
+                        trust_level as u8 as i64,
+                        &caps_json,
+                        now as i64,
+                        target_id
+                    ],
+                )
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
+
                 let updated = AgentRecord {
                     agent_id: target_id.to_string(),
                     trust_level,
@@ -382,6 +333,19 @@ impl AgentRegistry {
             }
             None => {
                 // CREATE: new agent with defaults
+                conn.execute(
+                    "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
+                        allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
+                     VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4, 1)",
+                    rusqlite::params![
+                        target_id,
+                        trust_level as u8 as i64,
+                        &caps_json,
+                        now as i64
+                    ],
+                )
+                .map_err(|e| ServerError::Registry(e.to_string()))?;
+
                 let new_agent = AgentRecord {
                     agent_id: target_id.to_string(),
                     trust_level,
@@ -395,23 +359,6 @@ impl AgentRegistry {
                 (true, new_agent)
             }
         };
-
-        // 5. Write to AGENT_REGISTRY
-        let txn = self
-            .store
-            .begin_write()
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
-        {
-            let mut table = txn
-                .open_table(AGENT_REGISTRY)
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-            let bytes = serialize_agent(&record)?;
-            table
-                .insert(target_id, bytes.as_slice())
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-        }
-        txn.commit()
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
 
         Ok(EnrollResult {
             created,
@@ -428,20 +375,41 @@ fn current_unix_seconds() -> u64 {
         .as_secs()
 }
 
-/// Serialize an AgentRecord to bincode bytes using the serde-compatible path.
-fn serialize_agent(record: &AgentRecord) -> Result<Vec<u8>, ServerError> {
-    bincode::serde::encode_to_vec(record, bincode::config::standard())
-        .map_err(|e| ServerError::Registry(format!("serialization failed: {e}")))
+/// Construct an AgentRecord from a SQL row.
+fn agent_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AgentRecord> {
+    let caps_json: String = row.get("capabilities")?;
+    let cap_ints: Vec<u8> = serde_json::from_str(&caps_json).unwrap_or_default();
+    let capabilities: Vec<Capability> = cap_ints
+        .iter()
+        .filter_map(|&v| Capability::try_from(v).ok())
+        .collect();
+
+    let topics_json: Option<String> = row.get("allowed_topics")?;
+    let allowed_topics: Option<Vec<String>> =
+        topics_json.map(|j| serde_json::from_str(&j).unwrap_or_default());
+
+    let cats_json: Option<String> = row.get("allowed_categories")?;
+    let allowed_categories: Option<Vec<String>> =
+        cats_json.map(|j| serde_json::from_str(&j).unwrap_or_default());
+
+    Ok(AgentRecord {
+        agent_id: row.get("agent_id")?,
+        trust_level: TrustLevel::try_from(row.get::<_, i64>("trust_level")? as u8)
+            .unwrap_or(TrustLevel::Restricted),
+        capabilities,
+        allowed_topics,
+        allowed_categories,
+        enrolled_at: row.get::<_, i64>("enrolled_at")? as u64,
+        last_seen_at: row.get::<_, i64>("last_seen_at")? as u64,
+        active: row.get::<_, i64>("active")? != 0,
+    })
 }
 
-/// Deserialize an AgentRecord from bincode bytes using the serde-compatible path.
-fn deserialize_agent(bytes: &[u8]) -> Result<AgentRecord, ServerError> {
-    let (record, _) = bincode::serde::decode_from_slice::<AgentRecord, _>(
-        bytes,
-        bincode::config::standard(),
-    )
-    .map_err(|e| ServerError::Registry(format!("deserialization failed: {e}")))?;
-    Ok(record)
+/// Serialize capabilities as JSON array of u8 discriminants.
+fn serialize_capabilities(capabilities: &[Capability]) -> Result<String, ServerError> {
+    let cap_ints: Vec<u8> = capabilities.iter().map(|c| *c as u8).collect();
+    serde_json::to_string(&cap_ints)
+        .map_err(|e| ServerError::Registry(e.to_string()))
 }
 
 #[cfg(test)]
@@ -596,23 +564,6 @@ mod tests {
         assert!(after.last_seen_at >= before.last_seen_at);
         // Capabilities should not change
         assert_eq!(before.capabilities, after.capabilities);
-    }
-
-    #[test]
-    fn test_agent_record_roundtrip() {
-        let record = AgentRecord {
-            agent_id: "test".to_string(),
-            trust_level: TrustLevel::Internal,
-            capabilities: vec![Capability::Read, Capability::Write, Capability::Search],
-            allowed_topics: Some(vec!["auth".to_string()]),
-            allowed_categories: None,
-            enrolled_at: 1000,
-            last_seen_at: 2000,
-            active: true,
-        };
-        let bytes = serialize_agent(&record).unwrap();
-        let deserialized = deserialize_agent(&bytes).unwrap();
-        assert_eq!(record, deserialized);
     }
 
     #[test]
