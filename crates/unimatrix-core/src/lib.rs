@@ -3,6 +3,7 @@
 mod error;
 mod traits;
 mod adapters;
+pub mod observation;
 
 #[cfg(feature = "async")]
 pub mod async_wrappers;
@@ -15,6 +16,9 @@ pub use traits::{EmbedService, EntryStore, VectorStore};
 
 // Adapters
 pub use adapters::{EmbedAdapter, StoreAdapter, VectorAdapter};
+
+// Observation types (col-013 ADR-002: moved from unimatrix-observe)
+pub use observation::{HookType, ObservationRecord, ObservationStats, ParsedSession};
 
 // Domain types from unimatrix-store
 pub use unimatrix_store::{

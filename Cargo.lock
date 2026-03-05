@@ -2851,6 +2851,8 @@ dependencies = [
 name = "unimatrix-core"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "tempfile",
  "tokio",
  "unimatrix-embed",
@@ -2894,6 +2896,8 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "unimatrix-core",
+ "unimatrix-store",
 ]
 
 [[package]]

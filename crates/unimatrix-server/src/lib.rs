@@ -18,6 +18,7 @@ pub use unimatrix_engine::confidence;
 pub use unimatrix_engine::coaccess;
 pub use unimatrix_engine::project;
 
+pub mod background;
 pub mod infra;
 pub mod mcp;
 pub mod uds;

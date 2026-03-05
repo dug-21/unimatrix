@@ -10,6 +10,9 @@ description = "Observation pipeline: JSONL parsing, feature attribution, hotspot
 serde = { workspace = true }
 bincode = { workspace = true }
 serde_json = { workspace = true }
+unimatrix-core = { path = "../unimatrix-core" }
+unimatrix-store = { path = "../unimatrix-store" }
 
 [dev-dependencies]
 tempfile = "3"
+unimatrix-store = { path = "../unimatrix-store", features = ["test-support"] }

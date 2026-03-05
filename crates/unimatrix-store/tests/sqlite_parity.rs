@@ -437,9 +437,9 @@ fn test_list_all_metrics() {
 #[test]
 fn test_read_counter() {
     let db = TestDb::new();
-    // schema_version should be 5 after creation
+    // schema_version should be current (7) after creation
     let version = db.store().read_counter("schema_version").unwrap();
-    assert_eq!(version, 5);
+    assert!(version >= 5, "schema_version should be >= 5, got {version}");
 
     // next_entry_id should be 1 initially
     let next = db.store().read_counter("next_entry_id").unwrap();

@@ -697,22 +697,34 @@ impl UnimatrixServer {
 
         // 3. Compute report via StatusService (vnc-008 extraction)
         let check_embeddings = params.check_embeddings.unwrap_or(false);
-        let (mut report, active_entries) = self.services.status
+        let (mut report, _active_entries) = self.services.status
             .compute_report(params.topic, params.category, check_embeddings)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 4. Maintenance (opt-in, ADR-002)
-        let maintain_enabled = params.maintain.unwrap_or(false);
-
-        if maintain_enabled {
-            self.services.status.run_maintenance(
-                &active_entries,
-                &mut report,
-                &self.session_registry,
-                &self.entry_store,
-                &self.pending_entries_analysis,
-            ).await.map_err(rmcp::ErrorData::from)?;
+        // 4. Maintenance is now handled by background tick (col-013).
+        // The `maintain` parameter is silently ignored for backward compatibility.
+        // Read tick metadata for status reporting.
+        {
+            use crate::mcp::response::status::ExtractionStatsResponse;
+            let tick_meta = self
+                .tick_metadata
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            report.last_maintenance_run = tick_meta.last_maintenance_run;
+            report.next_maintenance_scheduled = tick_meta.next_scheduled;
+            let stats = &tick_meta.extraction_stats;
+            if stats.entries_extracted_total > 0
+                || stats.entries_rejected_total > 0
+                || stats.last_extraction_run.is_some()
+            {
+                report.extraction_stats = Some(ExtractionStatsResponse {
+                    entries_extracted_total: stats.entries_extracted_total,
+                    entries_rejected_total: stats.entries_rejected_total,
+                    last_extraction_run: stats.last_extraction_run,
+                    rules_fired: stats.rules_fired.iter().map(|(k, v)| (k.clone(), *v)).collect(),
+                });
+            }
         }
 
         // 5. Audit (standalone, best-effort)
