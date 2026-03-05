@@ -38,11 +38,11 @@ nxs-008 decomposes 7 tables from bincode blobs to SQL columns, eliminates 5 manu
 
 **Impact**: After nxs-008, `SqliteWriteTransaction` loses `open_table`/`open_multimap_table` methods (dispatch.rs removed). Server code that uses `write_in_txn` accesses the connection directly via `txn.guard` for raw SQL.
 
-### 2.3 AD-03: Counter Helpers — Inline into Callers
+### 2.3 AD-03: Counter Helpers — Consolidate into `counters.rs` Module
 
-**Decision**: Remove `tables::next_entry_id`, `tables::increment_counter`, `tables::decrement_counter`. The equivalent functions already exist in `write.rs` (`read_counter`, `set_counter`, `increment_counter`, `decrement_counter`). Server call sites that use `tables::` counter helpers via `SqliteWriteTransaction` switch to direct SQL on `txn.guard`.
+**Decision**: Remove `tables::next_entry_id`, `tables::increment_counter`, `tables::decrement_counter` and the parallel implementations in `write.rs`. Consolidate all counter operations into a new `counters.rs` module with 5 functions (`read_counter`, `set_counter`, `increment_counter`, `decrement_counter`, `next_entry_id`), all taking `&rusqlite::Connection`. Server call sites that currently import from `unimatrix_store::tables` switch to the re-exported `counters` module. See [ADR-002](../architecture/ADR-002-counter-helpers.md).
 
-**Rationale**: Two parallel counter implementations exist (tables.rs for server, write.rs for store). After compat removal, a single set of counter helpers in write.rs (or a small `counter.rs` module) suffices. **Resolves SCOPE Open Question #2.**
+**Rationale**: Two parallel counter implementations exist (tables.rs for server, write.rs for store) with different signatures. A single `counters.rs` module provides one source of truth that survives compat layer removal. **Resolves SCOPE Open Question #2.**
 
 ### 2.4 AD-04: Waves 1-3 Bypass Compat Types
 

@@ -147,7 +147,7 @@ The risk strategy is thorough. All 8 scope risks (SR-01 through SR-08) trace to 
 
 **No variances requiring human approval.** All issues are WARN-level and can be resolved by the architect before implementation:
 
-1. **WARN-01**: Spec AD-03 contradicts Architecture ADR-002 on counter helpers location. Update spec to match architecture.
+1. **WARN-01**: ~~Spec AD-03 contradicts Architecture ADR-002 on counter helpers location.~~ **RESOLVED** — Spec AD-03 updated to match Architecture ADR-002 (`counters.rs` module).
 2. **WARN-02**: 6 additional SQL indexes beyond SCOPE.md. Amend SCOPE to list full index set.
 3. **WARN-03**: Type movement (server → store) not mentioned in SCOPE. Document under existing "mechanical updates" clause.
 
@@ -155,6 +155,6 @@ The risk strategy is thorough. All 8 scope risks (SR-01 through SR-08) trace to 
 
 ## Conclusion
 
-nxs-008 design artifacts are well-aligned with the product vision. The feature is correctly scoped as an internal restructuring that preserves behavioral parity while enabling the vision's "ever-improving" principle through SQL-native analytics. Risk coverage is comprehensive with 85 tests across 21 identified risks. Three minor inconsistencies between artifacts should be resolved before implementation begins, but none require human design decisions — they are documentation updates to bring the SCOPE and SPECIFICATION into alignment with the ARCHITECTURE.
+nxs-008 design artifacts are well-aligned with the product vision. The feature is correctly scoped as an internal restructuring that preserves behavioral parity while enabling the vision's "ever-improving" principle through SQL-native analytics. Risk coverage is comprehensive with 85 tests across 21 identified risks. WARN-01 has been resolved (Spec AD-03 updated to match Architecture ADR-002). Two remaining WARNs (WARN-02: additional indexes, WARN-03: type movement) are additive and consistent with the feature boundary — no human decisions required.
 
-**Recommendation**: Resolve WARN-01 through WARN-03, then proceed to implementation.
+**Recommendation**: WARN-02 and WARN-03 are acceptable as-is. Proceed to implementation.
