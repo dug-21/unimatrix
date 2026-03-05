@@ -3,6 +3,7 @@
 mod schema;
 mod error;
 mod hash;
+pub mod migrate;
 
 // Backend-specific modules: redb (default) or SQLite (feature-gated)
 #[cfg(not(feature = "backend-sqlite"))]

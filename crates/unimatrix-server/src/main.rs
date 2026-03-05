@@ -62,6 +62,32 @@ enum Command {
         /// The hook event name (e.g., SessionStart, Stop, Ping).
         event: String,
     },
+
+    /// Export all tables from the redb database to a JSON-lines file.
+    ///
+    /// Only available when compiled with redb backend (--no-default-features).
+    #[cfg(not(feature = "backend-sqlite"))]
+    Export {
+        /// Path to the output JSON-lines file.
+        #[arg(long)]
+        output: PathBuf,
+        /// Override the database path (default: auto-detected project database).
+        #[arg(long)]
+        db_path: Option<PathBuf>,
+    },
+
+    /// Import tables from a JSON-lines file into a new SQLite database.
+    ///
+    /// Only available when compiled with backend-sqlite feature (default).
+    #[cfg(feature = "backend-sqlite")]
+    Import {
+        /// Path to the input JSON-lines file (from export).
+        #[arg(long)]
+        input: PathBuf,
+        /// Path for the output SQLite database file.
+        #[arg(long)]
+        output: PathBuf,
+    },
 }
 
 /// Entry point: branches between hook subcommand (sync) and server (async).
@@ -76,6 +102,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Sync path: NO tokio, NO tracing init, NO database open
             // Minimal startup for <50ms budget
             unimatrix_server::uds::hook::run(event, cli.project_dir)
+        }
+        #[cfg(not(feature = "backend-sqlite"))]
+        Some(Command::Export { output, db_path }) => {
+            // Sync path: export redb database to JSON-lines (nxs-006)
+            run_export(output, db_path, cli.project_dir)
+        }
+        #[cfg(feature = "backend-sqlite")]
+        Some(Command::Import { input, output }) => {
+            // Sync path: import JSON-lines into new SQLite database (nxs-006)
+            run_import(input, output)
         }
         None => {
             // Async path: full server with tokio runtime
@@ -303,4 +339,68 @@ fn open_store_with_retry(
 
     // Unreachable: the loop either returns Ok, exits the process, or returns Err.
     unreachable!()
+}
+
+/// Export redb database to JSON-lines intermediate file (nxs-006).
+///
+/// Sync path: no tokio runtime. Resolves the database path, checks for
+/// a running server, then calls the store's export function.
+#[cfg(not(feature = "backend-sqlite"))]
+fn run_export(
+    output: PathBuf,
+    db_path_override: Option<PathBuf>,
+    project_dir: Option<PathBuf>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let resolved_db = if let Some(p) = db_path_override {
+        p
+    } else {
+        let paths = project::ensure_data_directory(project_dir.as_deref(), None)?;
+        // Check for a running server via PID file
+        if let Ok(contents) = std::fs::read_to_string(&paths.pid_path) {
+            if let Ok(pid) = contents.trim().parse::<u32>() {
+                if pidfile::is_unimatrix_process(pid) {
+                    return Err(
+                        "Cannot export while server is running. Stop the server first.".into(),
+                    );
+                }
+            }
+        }
+        paths.db_path
+    };
+
+    if !resolved_db.exists() {
+        return Err(format!("database not found: {}", resolved_db.display()).into());
+    }
+
+    eprintln!("Exporting from: {}", resolved_db.display());
+    let summary = unimatrix_store::migrate::export::export(&resolved_db, &output)?;
+    summary.print_to_stderr();
+    eprintln!("Export complete: {}", output.display());
+    Ok(())
+}
+
+/// Import JSON-lines intermediate file into a new SQLite database (nxs-006).
+///
+/// Sync path: no tokio runtime. Validates paths then calls the store's import function.
+#[cfg(feature = "backend-sqlite")]
+fn run_import(input: PathBuf, output: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    if !input.exists() {
+        return Err(format!("input file not found: {}", input.display()).into());
+    }
+
+    if output.exists() {
+        return Err(
+            format!(
+                "output already exists (will not overwrite): {}",
+                output.display()
+            )
+            .into(),
+        );
+    }
+
+    eprintln!("Importing from: {}", input.display());
+    let summary = unimatrix_store::migrate::import::import(&input, &output)?;
+    summary.print_to_stderr();
+    eprintln!("Import complete: {}", output.display());
+    Ok(())
 }

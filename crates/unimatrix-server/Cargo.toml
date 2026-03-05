@@ -39,9 +39,9 @@ clap = { version = "4", features = ["derive"] }
 bincode = { version = "2", features = ["serde"] }
 
 [features]
-default = ["mcp-briefing", "redb"]
+default = ["mcp-briefing", "backend-sqlite"]
 mcp-briefing = []
-backend-sqlite = ["unimatrix-store/backend-sqlite"]
+backend-sqlite = ["unimatrix-store/backend-sqlite", "unimatrix-engine/backend-sqlite"]
 
 [dev-dependencies]
 tempfile = "3"

@@ -7,7 +7,7 @@
 //! feature entries, co-access, metrics, counters.
 //! See sqlite_parity_specialized.rs for signals, sessions, injection log.
 
-#![cfg(feature = "backend-sqlite")]
+#![cfg(all(feature = "backend-sqlite", feature = "test-support"))]
 
 use unimatrix_store::{QueryFilter, Status, StoreError, TimeRange};
 use unimatrix_store::test_helpers::{TestDb, TestEntry, assert_index_consistent};

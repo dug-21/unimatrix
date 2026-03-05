@@ -17,7 +17,7 @@ pub struct ProjectPaths {
     pub project_hash: String,
     /// Data directory: ~/.unimatrix/{hash}/
     pub data_dir: PathBuf,
-    /// Database path: ~/.unimatrix/{hash}/unimatrix.redb
+    /// Database path: ~/.unimatrix/{hash}/unimatrix.db (SQLite) or unimatrix.redb (redb).
     pub db_path: PathBuf,
     /// Vector index directory: ~/.unimatrix/{hash}/vector/
     pub vector_dir: PathBuf,
@@ -91,6 +91,9 @@ pub fn ensure_data_directory(
     };
 
     let data_dir = unimatrix_base.join(&project_hash);
+    #[cfg(feature = "backend-sqlite")]
+    let db_path = data_dir.join("unimatrix.db");
+    #[cfg(not(feature = "backend-sqlite"))]
     let db_path = data_dir.join("unimatrix.redb");
     let vector_dir = data_dir.join("vector");
     let pid_path = data_dir.join("unimatrix.pid");
@@ -173,6 +176,9 @@ mod tests {
         assert!(paths.vector_dir.exists());
         assert!(paths.data_dir.starts_with(base_dir.path()));
         assert!(paths.db_path.parent().unwrap().exists());
+        #[cfg(feature = "backend-sqlite")]
+        assert!(paths.db_path.to_string_lossy().ends_with("unimatrix.db"));
+        #[cfg(not(feature = "backend-sqlite"))]
         assert!(paths.db_path.to_string_lossy().ends_with("unimatrix.redb"));
         assert!(paths.vector_dir.to_string_lossy().ends_with("vector"));
         assert!(paths.pid_path.to_string_lossy().ends_with("unimatrix.pid"));
