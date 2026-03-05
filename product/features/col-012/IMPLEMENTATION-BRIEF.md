@@ -103,6 +103,24 @@ Eliminate JSONL observation files by persisting all hook events in a new SQLite 
 - Net change: ~-120 lines (net reduction)
 - Test lines: ~200 new test lines
 
+## Component Map
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| schema-migration | pseudocode/schema-migration.md | test-plan/schema-migration.md |
+| event-persistence | pseudocode/event-persistence.md | test-plan/event-persistence.md |
+| observation-source | pseudocode/observation-source.md | test-plan/observation-source.md |
+| sql-implementation | pseudocode/sql-implementation.md | test-plan/sql-implementation.md |
+| retrospective-migration | pseudocode/retrospective-migration.md | test-plan/retrospective-migration.md |
+| jsonl-removal | pseudocode/jsonl-removal.md | test-plan/jsonl-removal.md |
+
+## Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
 ## Vision Alignment
 
 PASS -- 0 variances. Feature is exactly positioned in the product vision dependency graph.
