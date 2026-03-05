@@ -7,8 +7,6 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[cfg(not(feature = "backend-sqlite"))]
-use redb::ReadableTable;
 use unimatrix_core::{CoreError, EmbedService, Store, VectorAdapter, VectorIndex};
 use unimatrix_core::async_wrappers::AsyncEntryStore;
 use unimatrix_store::{

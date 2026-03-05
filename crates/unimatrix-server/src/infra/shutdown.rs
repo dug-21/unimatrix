@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn test_try_unwrap_succeeds_when_sole_owner() {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         let store = Arc::new(Store::open(&path).unwrap());
 
         // Only one reference exists
@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn test_try_unwrap_fails_with_outstanding_refs() {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         let store = Arc::new(Store::open(&path).unwrap());
         let _clone = Arc::clone(&store);
 
@@ -177,7 +177,7 @@ mod tests {
     #[test]
     fn test_compact_succeeds_after_unwrap() {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         let store = Arc::new(Store::open(&path).unwrap());
 
         let mut owned = Arc::try_unwrap(store).ok().expect("should be sole owner");
@@ -201,7 +201,7 @@ mod tests {
         use crate::infra::usage_dedup::UsageDedup;
 
         let dir = tempfile::TempDir::new().unwrap();
-        let db_path = dir.path().join("test.redb");
+        let db_path = dir.path().join("test.db");
         let vector_dir = dir.path().join("vector");
         std::fs::create_dir_all(&vector_dir).unwrap();
 
@@ -284,7 +284,7 @@ mod tests {
         use crate::infra::usage_dedup::UsageDedup;
 
         let dir = tempfile::TempDir::new().unwrap();
-        let db_path = dir.path().join("test.redb");
+        let db_path = dir.path().join("test.db");
         let vector_dir = dir.path().join("vector");
         std::fs::create_dir_all(&vector_dir).unwrap();
 

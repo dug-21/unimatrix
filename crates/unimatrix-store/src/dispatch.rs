@@ -1,21 +1,22 @@
 //! Typed open_table dispatch for server transaction compatibility.
 //!
 //! Maps SqliteTableDef<K,V> to the right typed handle via the TableSpec
-//! trait. TEMPORARY: will be removed with the server Store API migration.
+//! trait. These types provide the server's database access API. They will
+//! be replaced when the server migrates to the Store trait API (nxs-008).
 
 use rusqlite::Connection;
 
 use crate::error::Result;
-use super::compat::{
+use crate::tables::{
     Blob, Str, U64Val, Unit, StrU64Key, U64U64Key, U8U64Key,
     SqliteTableDef, SqliteMultimapDef,
 };
-use super::compat_handles::{
+use crate::handles::{
     TableU64Blob, TableStrU64, TableStrBlob,
     TableStrU64Comp, TableU64U64Comp, TableU8U64Comp,
     TableU64U64, MultimapStrU64,
 };
-use super::txn::{SqliteReadTransaction, SqliteWriteTransaction};
+use crate::txn::{SqliteReadTransaction, SqliteWriteTransaction};
 
 // ---------------------------------------------------------------------------
 // TableSpec: maps (K, V) marker types to a concrete handle constructor

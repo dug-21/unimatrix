@@ -129,7 +129,7 @@ pub enum HookRequest {
     /// Request a compact context payload for PreCompact hook.
     CompactPayload {
         session_id: String,
-        /// Reserved for col-010: once INJECTION_LOG persists to redb, the hook
+        /// Reserved for col-010: once INJECTION_LOG persists to the database, the hook
         /// process can populate this from disk after a server restart, giving
         /// the server richer input than the briefing fallback. Currently empty
         /// (server tracks injection history in-memory via SessionRegistry).

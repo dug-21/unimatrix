@@ -1,16 +1,17 @@
 //! Typed table handle implementations for server compatibility.
 //!
 //! Each handle type maps to a specific (key, value) combination from
-//! the redb table schema. Methods match redb's ReadableTable trait API.
-//! TEMPORARY: will be removed when the server migrates to the Store API.
+//! the table schema. These types provide the server's database access
+//! API. They will be replaced when the server migrates to the Store
+//! trait API (nxs-008).
 
 use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::{Result, StoreError};
-use super::compat::{BlobGuard, U64Guard, UnitGuard, CompositeKeyGuard, U64KeyGuard, RangeResult};
-use super::txn::{primary_key_column, data_column};
+use crate::tables::{BlobGuard, U64Guard, UnitGuard, CompositeKeyGuard, U64KeyGuard, RangeResult};
+use crate::txn::{primary_key_column, data_column};
 
-/// Iterator over multimap values, matching redb MultimapRange.
+/// Iterator over multimap values, matching the MultimapRange API.
 pub struct MultimapIter(std::vec::IntoIter<std::result::Result<U64Guard, StoreError>>);
 
 impl Iterator for MultimapIter {
@@ -386,7 +387,7 @@ pub struct MultimapStrU64<'a> {
 
 impl<'a> MultimapStrU64<'a> {
     /// Get all values for a key, returning an iterator of Result<U64Guard>.
-    /// Matches the redb ReadableMultimapTable::get() API shape.
+    /// Matches the ReadableMultimapTable::get() API shape.
     pub fn get(&self, key: &str) -> Result<MultimapIter> {
         let kc = primary_key_column(self.table_name);
         let sql = format!(

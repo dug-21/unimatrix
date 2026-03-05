@@ -266,7 +266,7 @@ mod tests {
     #[tokio::test]
     async fn test_async_insert_and_get() {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         let store = Arc::new(unimatrix_store::Store::open(&path).unwrap());
         let adapter = StoreAdapter::new(store);
         let async_store = AsyncEntryStore::new(Arc::new(adapter));
@@ -295,7 +295,7 @@ mod tests {
     #[tokio::test]
     async fn test_async_error_propagation() {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         let store = Arc::new(unimatrix_store::Store::open(&path).unwrap());
         let adapter = StoreAdapter::new(store);
         let async_store = AsyncEntryStore::new(Arc::new(adapter));

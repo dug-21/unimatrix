@@ -13,7 +13,7 @@ use crate::schema::{
     serialize_co_access, serialize_entry,
 };
 
-use super::db::Store;
+use crate::db::Store;
 
 /// Get the current unix timestamp in seconds.
 fn current_unix_timestamp_secs() -> u64 {
@@ -27,7 +27,7 @@ impl Store {
     /// Record usage for a batch of entries in a single write transaction.
     ///
     /// Delegates to `record_usage_with_confidence` with no confidence function.
-    /// API-compatible with the redb Store.
+    /// API-compatible with the original Store interface.
     pub fn record_usage(
         &self,
         all_ids: &[u64],

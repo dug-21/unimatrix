@@ -1,5 +1,5 @@
 //! Transaction wrapper types for server API compatibility (ADR-001).
-//! Provides API surface compatible with redb transaction/table types.
+//! Provides API surface compatible with the server's transaction/table types.
 //!
 //! The typed open_table methods are defined in compat_txn.rs, which
 //! maps SqliteTableDef<K,V> to correctly-typed handle structs.

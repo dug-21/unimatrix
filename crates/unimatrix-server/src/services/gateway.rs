@@ -297,7 +297,7 @@ impl SecurityGateway {
     pub(crate) fn new_permissive() -> Self {
         use unimatrix_store::Store;
         let dir = tempfile::tempdir().expect("failed to create tempdir");
-        let store = Store::open(dir.path().join("test.redb"))
+        let store = Store::open(dir.path().join("test.db"))
             .expect("failed to open test store");
         let audit = AuditLog::new(Arc::new(store));
         // Leak the tempdir so it persists for the test lifetime
@@ -580,7 +580,7 @@ mod tests {
     fn make_limited_gateway(search_limit: u32, write_limit: u32, window_secs: u64) -> SecurityGateway {
         use unimatrix_store::Store;
         let dir = tempfile::tempdir().expect("tempdir");
-        let store = Store::open(dir.path().join("test.redb")).expect("store");
+        let store = Store::open(dir.path().join("test.db")).expect("store");
         let audit = AuditLog::new(Arc::new(store));
         std::mem::forget(dir);
         SecurityGateway {

@@ -1,14 +1,11 @@
-//! Transitional compatibility layer: table definitions and guard types.
+//! Table definitions and guard types for server database access.
 //!
-//! Provides typed table definitions and AccessGuard-compatible wrappers
-//! that match the redb API surface used by unimatrix-server. TEMPORARY:
-//! a future feature will refactor the server to use the Store API directly.
-//!
-//! DO NOT add new usages of these types outside of existing server code.
+//! These types provide the server's database access API. They will be
+//! replaced when the server migrates to the Store trait API (nxs-008).
 
 use std::marker::PhantomData;
 
-use super::txn::SqliteWriteTransaction;
+use crate::txn::SqliteWriteTransaction;
 use crate::error::{Result, StoreError};
 
 // ---------------------------------------------------------------------------
@@ -24,7 +21,7 @@ pub struct U64U64Key;
 pub struct U8U64Key;
 
 // ---------------------------------------------------------------------------
-// Table definition types (replace redb::TableDefinition / MultimapTableDefinition)
+// Table definition types
 // ---------------------------------------------------------------------------
 
 pub struct SqliteTableDef<K, V> {
@@ -165,7 +162,7 @@ impl U64KeyGuard {
 // ---------------------------------------------------------------------------
 
 /// Wraps a Vec of results so that both `.count()` and `for item in range`
-/// work, matching the redb Range iterator API.
+/// work, matching the Range iterator API expected by callers.
 pub struct RangeResult<T>(pub Vec<T>);
 
 impl<T> RangeResult<T> {

@@ -1,15 +1,14 @@
 use std::collections::HashSet;
 
-use redb::ReadableTable;
+use rusqlite::OptionalExtension;
 
-use crate::counter;
-use crate::db::Store;
 use crate::error::{Result, StoreError};
 use crate::schema::{
-    CATEGORY_INDEX, ENTRIES, EntryRecord, FEATURE_ENTRIES, NewEntry, OBSERVATION_METRICS,
-    STATUS_INDEX, Status, TAG_INDEX, TIME_INDEX, TOPIC_INDEX, VECTOR_MAP, deserialize_entry,
+    EntryRecord, NewEntry, Status, deserialize_entry,
     serialize_entry, status_counter_key,
 };
+
+use crate::db::Store;
 
 /// Get the current unix timestamp in seconds.
 fn current_unix_timestamp_secs() -> u64 {
@@ -19,1921 +18,407 @@ fn current_unix_timestamp_secs() -> u64 {
         .as_secs()
 }
 
+/// Read a counter value within a connection (not locked by caller).
+fn read_counter(conn: &rusqlite::Connection, name: &str) -> Result<u64> {
+    let val: Option<i64> = conn
+        .query_row(
+            "SELECT value FROM counters WHERE name = ?1",
+            rusqlite::params![name],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(StoreError::Sqlite)?;
+    Ok(val.unwrap_or(0) as u64)
+}
+
+/// Set a counter value within a connection.
+fn set_counter(conn: &rusqlite::Connection, name: &str, value: u64) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO counters (name, value) VALUES (?1, ?2)",
+        rusqlite::params![name, value as i64],
+    )
+    .map_err(StoreError::Sqlite)?;
+    Ok(())
+}
+
+/// Increment a counter by delta.
+fn increment_counter(conn: &rusqlite::Connection, name: &str, delta: u64) -> Result<()> {
+    let current = read_counter(conn, name)?;
+    set_counter(conn, name, current + delta)
+}
+
+/// Decrement a counter by delta (saturating).
+fn decrement_counter(conn: &rusqlite::Connection, name: &str, delta: u64) -> Result<()> {
+    let current = read_counter(conn, name)?;
+    set_counter(conn, name, current.saturating_sub(delta))
+}
+
 impl Store {
     /// Insert a new entry. Returns the assigned entry_id.
     ///
     /// All index tables and counters are updated atomically within a single
-    /// write transaction. If any step fails, the transaction is rolled back.
+    /// transaction. If any step fails, the transaction is rolled back.
     pub fn insert(&self, entry: NewEntry) -> Result<u64> {
         let now = current_unix_timestamp_secs();
-        let txn = self.db.begin_write()?;
+        let conn = self.lock_conn();
+        conn.execute_batch("BEGIN IMMEDIATE")
+            .map_err(StoreError::Sqlite)?;
 
-        // Step 1: Generate ID
-        let id = counter::next_entry_id(&txn)?;
+        let result = (|| -> Result<u64> {
+            // Step 1: Generate ID
+            let id = read_counter(&conn, "next_entry_id")?;
+            set_counter(&conn, "next_entry_id", id + 1)?;
 
-        // Step 2: Compute content hash before moving fields
-        let content_hash = crate::hash::compute_content_hash(&entry.title, &entry.content);
+            // Step 2: Compute content hash
+            let content_hash = crate::hash::compute_content_hash(&entry.title, &entry.content);
 
-        // Step 3: Build EntryRecord
-        let record = EntryRecord {
-            id,
-            title: entry.title,
-            content: entry.content,
-            topic: entry.topic,
-            category: entry.category,
-            tags: entry.tags,
-            source: entry.source,
-            status: entry.status,
-            confidence: 0.0,
-            created_at: now,
-            updated_at: now,
-            last_accessed_at: 0,
-            access_count: 0,
-            supersedes: None,
-            superseded_by: None,
-            correction_count: 0,
-            embedding_dim: 0,
-            created_by: entry.created_by.clone(),
-            modified_by: entry.created_by,
-            content_hash,
-            previous_hash: String::new(),
-            version: 1,
-            feature_cycle: entry.feature_cycle,
-            trust_source: entry.trust_source,
-            helpful_count: 0,
-            unhelpful_count: 0,
-        };
+            // Step 3: Build EntryRecord
+            let record = EntryRecord {
+                id,
+                title: entry.title,
+                content: entry.content,
+                topic: entry.topic,
+                category: entry.category,
+                tags: entry.tags,
+                source: entry.source,
+                status: entry.status,
+                confidence: 0.0,
+                created_at: now,
+                updated_at: now,
+                last_accessed_at: 0,
+                access_count: 0,
+                supersedes: None,
+                superseded_by: None,
+                correction_count: 0,
+                embedding_dim: 0,
+                created_by: entry.created_by,
+                modified_by: String::new(),
+                content_hash,
+                previous_hash: String::new(),
+                version: 1,
+                feature_cycle: entry.feature_cycle,
+                trust_source: entry.trust_source,
+                helpful_count: 0,
+                unhelpful_count: 0,
+            };
 
-        // Step 4: Serialize and write to ENTRIES
-        let bytes = serialize_entry(&record)?;
-        {
-            let mut table = txn.open_table(ENTRIES)?;
-            table.insert(id, bytes.as_slice())?;
-        }
+            // Step 4: Serialize and insert
+            let bytes = serialize_entry(&record)?;
+            conn.execute(
+                "INSERT INTO entries (id, data) VALUES (?1, ?2)",
+                rusqlite::params![id as i64, bytes],
+            )
+            .map_err(StoreError::Sqlite)?;
 
-        // Step 5: Write TOPIC_INDEX
-        {
-            let mut table = txn.open_table(TOPIC_INDEX)?;
-            table.insert((record.topic.as_str(), id), ())?;
-        }
+            // Step 5: Insert into all index tables
+            conn.execute(
+                "INSERT INTO topic_index (topic, entry_id) VALUES (?1, ?2)",
+                rusqlite::params![&record.topic, id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
 
-        // Step 6: Write CATEGORY_INDEX
-        {
-            let mut table = txn.open_table(CATEGORY_INDEX)?;
-            table.insert((record.category.as_str(), id), ())?;
-        }
+            conn.execute(
+                "INSERT INTO category_index (category, entry_id) VALUES (?1, ?2)",
+                rusqlite::params![&record.category, id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
 
-        // Step 7: Write TAG_INDEX (multimap)
-        {
-            let mut table = txn.open_multimap_table(TAG_INDEX)?;
             for tag in &record.tags {
-                table.insert(tag.as_str(), id)?;
+                conn.execute(
+                    "INSERT INTO tag_index (tag, entry_id) VALUES (?1, ?2)",
+                    rusqlite::params![tag, id as i64],
+                )
+                .map_err(StoreError::Sqlite)?;
+            }
+
+            conn.execute(
+                "INSERT INTO time_index (timestamp, entry_id) VALUES (?1, ?2)",
+                rusqlite::params![record.created_at as i64, id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+
+            conn.execute(
+                "INSERT INTO status_index (status, entry_id) VALUES (?1, ?2)",
+                rusqlite::params![record.status as u8 as i64, id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+
+            // Step 6: Update status counter
+            increment_counter(&conn, status_counter_key(record.status), 1)?;
+
+            Ok(id)
+        })();
+
+        match result {
+            Ok(id) => {
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                Ok(id)
+            }
+            Err(e) => {
+                let _ = conn.execute_batch("ROLLBACK");
+                Err(e)
             }
         }
-
-        // Step 8: Write TIME_INDEX
-        {
-            let mut table = txn.open_table(TIME_INDEX)?;
-            table.insert((record.created_at, id), ())?;
-        }
-
-        // Step 9: Write STATUS_INDEX
-        {
-            let mut table = txn.open_table(STATUS_INDEX)?;
-            table.insert((record.status as u8, id), ())?;
-        }
-
-        // Step 10: Increment status counter
-        counter::increment_counter(&txn, status_counter_key(record.status), 1)?;
-
-        // Step 11: Commit
-        txn.commit()?;
-        Ok(id)
     }
 
-    /// Update an existing entry. Indexes are diffed and updated atomically.
+    /// Update an existing entry. Returns an error if the entry does not exist.
     ///
-    /// The caller provides the full updated `EntryRecord`. The engine reads
-    /// the old record, identifies which indexed fields changed, and performs
-    /// the minimal set of index removals and insertions.
+    /// Takes a full EntryRecord (matching the Store API). The entry.id field
+    /// identifies which record to update.
     pub fn update(&self, entry: EntryRecord) -> Result<()> {
-        let txn = self.db.begin_write()?;
+        let entry_id = entry.id;
+        let conn = self.lock_conn();
+        conn.execute_batch("BEGIN IMMEDIATE")
+            .map_err(StoreError::Sqlite)?;
 
-        // Step 1: Read old record
-        let old = {
-            let table = txn.open_table(ENTRIES)?;
-            match table.get(entry.id)? {
-                Some(guard) => deserialize_entry(guard.value())?,
-                None => return Err(StoreError::EntryNotFound(entry.id)),
+        let result = (|| -> Result<()> {
+            // Read existing entry for index diffing
+            let old_bytes: Vec<u8> = conn
+                .query_row(
+                    "SELECT data FROM entries WHERE id = ?1",
+                    rusqlite::params![entry_id as i64],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(StoreError::Sqlite)?
+                .ok_or(StoreError::EntryNotFound(entry_id))?;
+            let old = deserialize_entry(&old_bytes)?;
+
+            // Use the provided entry as the updated record
+            let updated = entry;
+
+            let bytes = serialize_entry(&updated)?;
+            conn.execute(
+                "UPDATE entries SET data = ?1 WHERE id = ?2",
+                rusqlite::params![bytes, entry_id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+
+            // Update indexes: topic
+            if updated.topic != old.topic {
+                conn.execute(
+                    "DELETE FROM topic_index WHERE topic = ?1 AND entry_id = ?2",
+                    rusqlite::params![&old.topic, entry_id as i64],
+                )
+                .map_err(StoreError::Sqlite)?;
+                conn.execute(
+                    "INSERT INTO topic_index (topic, entry_id) VALUES (?1, ?2)",
+                    rusqlite::params![&updated.topic, entry_id as i64],
+                )
+                .map_err(StoreError::Sqlite)?;
             }
-        };
 
-        // Step 2: Diff and update TOPIC_INDEX
-        if old.topic != entry.topic {
-            let mut table = txn.open_table(TOPIC_INDEX)?;
-            table.remove((old.topic.as_str(), entry.id))?;
-            table.insert((entry.topic.as_str(), entry.id), ())?;
-        }
-
-        // Step 3: Diff and update CATEGORY_INDEX
-        if old.category != entry.category {
-            let mut table = txn.open_table(CATEGORY_INDEX)?;
-            table.remove((old.category.as_str(), entry.id))?;
-            table.insert((entry.category.as_str(), entry.id), ())?;
-        }
-
-        // Step 4: Diff and update TAG_INDEX
-        if old.tags != entry.tags {
-            let mut table = txn.open_multimap_table(TAG_INDEX)?;
-            let old_set: HashSet<&str> = old.tags.iter().map(|s| s.as_str()).collect();
-            let new_set: HashSet<&str> = entry.tags.iter().map(|s| s.as_str()).collect();
-
-            for removed_tag in old_set.difference(&new_set) {
-                table.remove(removed_tag, entry.id)?;
+            // Category
+            if updated.category != old.category {
+                conn.execute(
+                    "DELETE FROM category_index WHERE category = ?1 AND entry_id = ?2",
+                    rusqlite::params![&old.category, entry_id as i64],
+                )
+                .map_err(StoreError::Sqlite)?;
+                conn.execute(
+                    "INSERT INTO category_index (category, entry_id) VALUES (?1, ?2)",
+                    rusqlite::params![&updated.category, entry_id as i64],
+                )
+                .map_err(StoreError::Sqlite)?;
             }
-            for added_tag in new_set.difference(&old_set) {
-                table.insert(added_tag, entry.id)?;
+
+            // Tags: diff old vs new
+            let old_tags: HashSet<&String> = old.tags.iter().collect();
+            let new_tags: HashSet<&String> = updated.tags.iter().collect();
+            for removed in old_tags.difference(&new_tags) {
+                conn.execute(
+                    "DELETE FROM tag_index WHERE tag = ?1 AND entry_id = ?2",
+                    rusqlite::params![removed.as_str(), entry_id as i64],
+                )
+                .map_err(StoreError::Sqlite)?;
+            }
+            for added in new_tags.difference(&old_tags) {
+                conn.execute(
+                    "INSERT INTO tag_index (tag, entry_id) VALUES (?1, ?2)",
+                    rusqlite::params![added.as_str(), entry_id as i64],
+                )
+                .map_err(StoreError::Sqlite)?;
+            }
+
+            // Time index: remove old, insert new (updated_at changed)
+            conn.execute(
+                "DELETE FROM time_index WHERE timestamp = ?1 AND entry_id = ?2",
+                rusqlite::params![old.created_at as i64, entry_id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+            conn.execute(
+                "INSERT OR REPLACE INTO time_index (timestamp, entry_id) VALUES (?1, ?2)",
+                rusqlite::params![updated.updated_at as i64, entry_id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+
+            // Status
+            if updated.status != old.status {
+                conn.execute(
+                    "DELETE FROM status_index WHERE status = ?1 AND entry_id = ?2",
+                    rusqlite::params![old.status as u8 as i64, entry_id as i64],
+                )
+                .map_err(StoreError::Sqlite)?;
+                conn.execute(
+                    "INSERT INTO status_index (status, entry_id) VALUES (?1, ?2)",
+                    rusqlite::params![updated.status as u8 as i64, entry_id as i64],
+                )
+                .map_err(StoreError::Sqlite)?;
+                decrement_counter(&conn, status_counter_key(old.status), 1)?;
+                increment_counter(&conn, status_counter_key(updated.status), 1)?;
+            }
+
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => {
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                Ok(())
+            }
+            Err(e) => {
+                let _ = conn.execute_batch("ROLLBACK");
+                Err(e)
             }
         }
-
-        // Step 5: Diff and update TIME_INDEX
-        if old.created_at != entry.created_at {
-            let mut table = txn.open_table(TIME_INDEX)?;
-            table.remove((old.created_at, entry.id))?;
-            table.insert((entry.created_at, entry.id), ())?;
-        }
-
-        // Step 6: Diff and update STATUS_INDEX + counters
-        if old.status != entry.status {
-            let mut table = txn.open_table(STATUS_INDEX)?;
-            table.remove((old.status as u8, entry.id))?;
-            table.insert((entry.status as u8, entry.id), ())?;
-            counter::decrement_counter(&txn, status_counter_key(old.status), 1)?;
-            counter::increment_counter(&txn, status_counter_key(entry.status), 1)?;
-        }
-
-        // Step 7: Compute hash chain and version
-        let mut updated = entry;
-        let new_hash = crate::hash::compute_content_hash(&updated.title, &updated.content);
-        updated.previous_hash = old.content_hash;
-        updated.content_hash = new_hash;
-        updated.version = old.version + 1;
-        updated.updated_at = current_unix_timestamp_secs();
-        let bytes = serialize_entry(&updated)?;
-        {
-            let mut table = txn.open_table(ENTRIES)?;
-            table.insert(updated.id, bytes.as_slice())?;
-        }
-
-        txn.commit()?;
-        Ok(())
     }
 
-    /// Change the status of an entry. Migrates STATUS_INDEX atomically.
-    ///
-    /// This is a specialized update that only changes the status field,
-    /// the STATUS_INDEX, and the status counters.
+    /// Update only the status of an entry.
     pub fn update_status(&self, entry_id: u64, new_status: Status) -> Result<()> {
-        let txn = self.db.begin_write()?;
-
-        // Step 1: Read existing record
-        let mut record = {
-            let table = txn.open_table(ENTRIES)?;
-            match table.get(entry_id)? {
-                Some(guard) => deserialize_entry(guard.value())?,
-                None => return Err(StoreError::EntryNotFound(entry_id)),
-            }
-        };
-
-        let old_status = record.status;
-
-        // Step 2: No-op if same status
-        if old_status == new_status {
-            return Ok(());
-        }
-
-        // Step 3: Migrate STATUS_INDEX
-        {
-            let mut table = txn.open_table(STATUS_INDEX)?;
-            table.remove((old_status as u8, entry_id))?;
-            table.insert((new_status as u8, entry_id), ())?;
-        }
-
-        // Step 4: Update record and write back
-        record.status = new_status;
-        record.updated_at = current_unix_timestamp_secs();
-        let bytes = serialize_entry(&record)?;
-        {
-            let mut table = txn.open_table(ENTRIES)?;
-            table.insert(entry_id, bytes.as_slice())?;
-        }
-
-        // Step 5: Adjust counters
-        counter::decrement_counter(&txn, status_counter_key(old_status), 1)?;
-        counter::increment_counter(&txn, status_counter_key(new_status), 1)?;
-
-        txn.commit()?;
-        Ok(())
-    }
-
-    /// Delete an entry and all its index entries.
-    ///
-    /// Removes the entry from ENTRIES, all 5 index tables, VECTOR_MAP
-    /// (if present), and decrements the appropriate status counter.
-    pub fn delete(&self, entry_id: u64) -> Result<()> {
-        let txn = self.db.begin_write()?;
-
-        // Step 1: Read existing record (need data for index cleanup)
-        let record = {
-            let table = txn.open_table(ENTRIES)?;
-            match table.get(entry_id)? {
-                Some(guard) => deserialize_entry(guard.value())?,
-                None => return Err(StoreError::EntryNotFound(entry_id)),
-            }
-        };
-
-        // Step 2: Remove from ENTRIES
-        {
-            let mut table = txn.open_table(ENTRIES)?;
-            table.remove(entry_id)?;
-        }
-
-        // Step 3: Remove from TOPIC_INDEX
-        {
-            let mut table = txn.open_table(TOPIC_INDEX)?;
-            table.remove((record.topic.as_str(), entry_id))?;
-        }
-
-        // Step 4: Remove from CATEGORY_INDEX
-        {
-            let mut table = txn.open_table(CATEGORY_INDEX)?;
-            table.remove((record.category.as_str(), entry_id))?;
-        }
-
-        // Step 5: Remove from TAG_INDEX
-        {
-            let mut table = txn.open_multimap_table(TAG_INDEX)?;
-            for tag in &record.tags {
-                table.remove(tag.as_str(), entry_id)?;
-            }
-        }
-
-        // Step 6: Remove from TIME_INDEX
-        {
-            let mut table = txn.open_table(TIME_INDEX)?;
-            table.remove((record.created_at, entry_id))?;
-        }
-
-        // Step 7: Remove from STATUS_INDEX
-        {
-            let mut table = txn.open_table(STATUS_INDEX)?;
-            table.remove((record.status as u8, entry_id))?;
-        }
-
-        // Step 8: Remove from VECTOR_MAP (if present)
-        {
-            let mut table = txn.open_table(VECTOR_MAP)?;
-            table.remove(entry_id)?; // returns Option, ignore if None
-        }
-
-        // Step 9: Decrement status counter
-        counter::decrement_counter(&txn, status_counter_key(record.status), 1)?;
-
-        txn.commit()?;
-        Ok(())
-    }
-
-    /// Record usage for a batch of entries in a single write transaction.
-    ///
-    /// Delegates to `record_usage_with_confidence` with no confidence function.
-    /// Preserved for backward compatibility (`EntryStore::record_access` trait).
-    pub fn record_usage(
-        &self,
-        all_ids: &[u64],
-        access_ids: &[u64],
-        helpful_ids: &[u64],
-        unhelpful_ids: &[u64],
-        decrement_helpful_ids: &[u64],
-        decrement_unhelpful_ids: &[u64],
-    ) -> Result<()> {
-        self.record_usage_with_confidence(
-            all_ids,
-            access_ids,
-            helpful_ids,
-            unhelpful_ids,
-            decrement_helpful_ids,
-            decrement_unhelpful_ids,
-            None,
-        )
-    }
-
-    /// Record usage for a batch of entries with optional inline confidence computation.
-    ///
-    /// For each entry_id in `all_ids`, updates `last_accessed_at` to `now`.
-    /// For each entry_id in `access_ids`, increments `access_count`.
-    /// For each entry_id in `helpful_ids`, increments `helpful_count`.
-    /// For each entry_id in `unhelpful_ids`, increments `unhelpful_count`.
-    /// For each entry_id in `decrement_helpful_ids`, decrements `helpful_count` (saturating at 0).
-    /// For each entry_id in `decrement_unhelpful_ids`, decrements `unhelpful_count` (saturating at 0).
-    ///
-    /// If `confidence_fn` is `Some`, recomputes and updates confidence for each entry
-    /// after applying counter updates. This merges confidence into the existing usage
-    /// write transaction, avoiding a separate read-modify-write cycle (ADR-001).
-    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
-    pub fn record_usage_with_confidence(
-        &self,
-        all_ids: &[u64],
-        access_ids: &[u64],
-        helpful_ids: &[u64],
-        unhelpful_ids: &[u64],
-        decrement_helpful_ids: &[u64],
-        decrement_unhelpful_ids: &[u64],
-        confidence_fn: Option<&dyn Fn(&EntryRecord, u64) -> f64>,
-    ) -> Result<()> {
-        if all_ids.is_empty() {
-            return Ok(());
-        }
-
         let now = current_unix_timestamp_secs();
-        let txn = self.db.begin_write()?;
+        let conn = self.lock_conn();
+        conn.execute_batch("BEGIN IMMEDIATE")
+            .map_err(StoreError::Sqlite)?;
 
-        let access_set: HashSet<u64> = access_ids.iter().copied().collect();
-        let helpful_set: HashSet<u64> = helpful_ids.iter().copied().collect();
-        let unhelpful_set: HashSet<u64> = unhelpful_ids.iter().copied().collect();
-        let dec_helpful_set: HashSet<u64> = decrement_helpful_ids.iter().copied().collect();
-        let dec_unhelpful_set: HashSet<u64> = decrement_unhelpful_ids.iter().copied().collect();
-
-        for &id in all_ids {
-            let old_bytes = {
-                let table = txn.open_table(ENTRIES)?;
-                match table.get(id)? {
-                    Some(guard) => guard.value().to_vec(),
-                    None => continue, // Entry deleted between retrieval and usage recording
-                }
-            };
-
+        let result = (|| -> Result<()> {
+            let old_bytes: Vec<u8> = conn
+                .query_row(
+                    "SELECT data FROM entries WHERE id = ?1",
+                    rusqlite::params![entry_id as i64],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(StoreError::Sqlite)?
+                .ok_or(StoreError::EntryNotFound(entry_id))?;
             let mut record = deserialize_entry(&old_bytes)?;
-
-            // Always update last_accessed_at (no dedup -- AC-05)
-            record.last_accessed_at = now;
-
-            // Conditionally increment access_count (deduped by server layer)
-            if access_set.contains(&id) {
-                record.access_count += 1;
-            }
-
-            // Increment helpful_count
-            if helpful_set.contains(&id) {
-                record.helpful_count += 1;
-            }
-
-            // Increment unhelpful_count
-            if unhelpful_set.contains(&id) {
-                record.unhelpful_count += 1;
-            }
-
-            // Decrement helpful_count (vote correction: was helpful, now unhelpful)
-            if dec_helpful_set.contains(&id) {
-                record.helpful_count = record.helpful_count.saturating_sub(1);
-            }
-
-            // Decrement unhelpful_count (vote correction: was unhelpful, now helpful)
-            if dec_unhelpful_set.contains(&id) {
-                record.unhelpful_count = record.unhelpful_count.saturating_sub(1);
-            }
-
-            // Compute and update confidence inline (crt-002)
-            if let Some(f) = &confidence_fn {
-                record.confidence = f(&record, now);
-            }
-
-            let new_bytes = serialize_entry(&record)?;
-            {
-                let mut table = txn.open_table(ENTRIES)?;
-                table.insert(id, new_bytes.as_slice())?;
-            }
-        }
-
-        txn.commit()?;
-        Ok(())
-    }
-
-    /// Update only the confidence field of an entry.
-    ///
-    /// Reads the entry from ENTRIES, sets the confidence value, and writes back.
-    /// No index table operations (no TOPIC_INDEX, CATEGORY_INDEX, TAG_INDEX,
-    /// TIME_INDEX, STATUS_INDEX, or VECTOR_MAP). This is the critical difference
-    /// from `Store::update()` which performs full index diffs.
-    ///
-    /// Used for mutation paths (insert, correct, deprecate) where `record_usage`
-    /// is not called.
-    pub fn update_confidence(&self, entry_id: u64, confidence: f64) -> Result<()> {
-        let txn = self.db.begin_write()?;
-
-        let old_bytes = {
-            let table = txn.open_table(ENTRIES)?;
-            match table.get(entry_id)? {
-                Some(guard) => guard.value().to_vec(),
-                None => return Err(StoreError::EntryNotFound(entry_id)),
-            }
-        };
-
-        let mut record = deserialize_entry(&old_bytes)?;
-        record.confidence = confidence;
-        let new_bytes = serialize_entry(&record)?;
-
-        {
-            let mut table = txn.open_table(ENTRIES)?;
-            table.insert(entry_id, new_bytes.as_slice())?;
-        }
-
-        txn.commit()?;
-        Ok(())
-    }
-
-    /// Replace all VECTOR_MAP entries atomically in a single write transaction.
-    ///
-    /// Clears the existing VECTOR_MAP and inserts all provided (entry_id, data_id)
-    /// mappings. Used by VectorIndex::compact (ADR-004: VECTOR_MAP-first ordering).
-    ///
-    /// If any step fails, the transaction rolls back and old mappings remain intact.
-    pub fn rewrite_vector_map(&self, mappings: &[(u64, u64)]) -> Result<()> {
-        let txn = self.db.begin_write()?;
-
-        {
-            let mut table = txn.open_table(VECTOR_MAP)?;
-
-            // Collect existing keys to remove (avoid borrow conflict)
-            let existing_keys: Vec<u64> = table
-                .iter()?
-                .map(|r| {
-                    let (key, _) = r.map_err(StoreError::Storage)?;
-                    Ok(key.value())
-                })
-                .collect::<Result<Vec<u64>>>()?;
-
-            for key in existing_keys {
-                table.remove(key)?;
-            }
-
-            // Insert new mappings
-            for &(entry_id, data_id) in mappings {
-                table.insert(entry_id, data_id)?;
-            }
-        }
-
-        txn.commit()?;
-        Ok(())
-    }
-
-    /// Link a set of entry IDs to a feature in FEATURE_ENTRIES.
-    /// Idempotent: duplicate (feature, entry_id) pairs are no-ops.
-    pub fn record_feature_entries(&self, feature: &str, entry_ids: &[u64]) -> Result<()> {
-        if entry_ids.is_empty() {
-            return Ok(());
-        }
-
-        let txn = self.db.begin_write()?;
-        {
-            let mut table = txn.open_multimap_table(FEATURE_ENTRIES)?;
-            for &id in entry_ids {
-                table.insert(feature, id)?;
-            }
-        }
-        txn.commit()?;
-        Ok(())
-    }
-
-    /// Write a vector map entry (entry_id -> hnsw_data_id).
-    ///
-    /// Inserts or overwrites the mapping. Used by nxs-002 (Vector Index).
-    pub fn put_vector_mapping(&self, entry_id: u64, hnsw_data_id: u64) -> Result<()> {
-        let txn = self.db.begin_write()?;
-        {
-            let mut table = txn.open_table(VECTOR_MAP)?;
-            table.insert(entry_id, hnsw_data_id)?;
-        }
-        txn.commit()?;
-        Ok(())
-    }
-
-    /// Record co-access for pre-computed pairs (after dedup).
-    ///
-    /// For each pair: increments count (saturating) and updates last_updated.
-    /// All pairs written in a single transaction.
-    pub fn record_co_access_pairs(&self, pairs: &[(u64, u64)]) -> Result<()> {
-        use crate::schema::{
-            CO_ACCESS, co_access_key, deserialize_co_access, serialize_co_access, CoAccessRecord,
-        };
-
-        if pairs.is_empty() {
-            return Ok(());
-        }
-
-        let now = current_unix_timestamp_secs();
-        let txn = self.db.begin_write()?;
-        {
-            let mut table = txn.open_table(CO_ACCESS)?;
-            for &(a, b) in pairs {
-                let key = co_access_key(a, b);
-                let record = match table.get(key)? {
-                    Some(existing) => {
-                        let mut rec = deserialize_co_access(existing.value())?;
-                        rec.count = rec.count.saturating_add(1);
-                        rec.last_updated = now;
-                        rec
-                    }
-                    None => CoAccessRecord {
-                        count: 1,
-                        last_updated: now,
-                    },
-                };
-                let bytes = serialize_co_access(&record)?;
-                table.insert(key, bytes.as_slice())?;
-            }
-        }
-        txn.commit()?;
-        Ok(())
-    }
-
-    /// Remove co-access pairs with last_updated < cutoff.
-    /// Returns count of removed pairs.
-    pub fn cleanup_stale_co_access(&self, cutoff_timestamp: u64) -> Result<u64> {
-        use crate::schema::{CO_ACCESS, deserialize_co_access};
-
-        let txn = self.db.begin_write()?;
-        let mut removed = 0u64;
-        {
-            // Collect stale keys first (cannot modify while iterating)
-            let stale_keys: Vec<(u64, u64)> = {
-                let table = txn.open_table(CO_ACCESS)?;
-                let mut keys = Vec::new();
-                for result in table.iter()? {
-                    let (key, value) = result?;
-                    let record = deserialize_co_access(value.value())?;
-                    if record.last_updated < cutoff_timestamp {
-                        keys.push(key.value());
-                    }
-                }
-                keys
-            };
-
-            let mut table = txn.open_table(CO_ACCESS)?;
-            for key in &stale_keys {
-                table.remove(*key)?;
-                removed += 1;
-            }
-        }
-        txn.commit()?;
-        Ok(removed)
-    }
-
-    /// Store observation metrics for a feature cycle.
-    ///
-    /// Overwrites any previously stored metrics for the same feature cycle.
-    /// The `data` parameter is opaque bincode bytes from unimatrix-observe.
-    pub fn store_metrics(&self, feature_cycle: &str, data: &[u8]) -> Result<()> {
-        let txn = self.db.begin_write()?;
-        {
-            let mut table = txn.open_table(OBSERVATION_METRICS)?;
-            table.insert(feature_cycle, data)?;
-        }
-        txn.commit()?;
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use sha2::Digest;
-
-    use crate::schema::{NewEntry, Status};
-    use crate::test_helpers::{TestDb, TestEntry};
-
-    // -- R1/AC-04: Atomic Multi-Table Insert --
-
-    #[test]
-    fn test_insert_returns_id() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention").build();
-        let id = db.store().insert(entry).unwrap();
-        assert_eq!(id, 1);
-    }
-
-    #[test]
-    fn test_insert_populates_all_indexes() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_tags(&["rust", "error"])
-            .build();
-        let id = db.store().insert(entry).unwrap();
-
-        crate::test_helpers::assert_index_consistent(db.store(), id);
-    }
-
-    #[test]
-    fn test_insert_50_entries_all_indexed() {
-        let db = TestDb::new();
-        let ids = crate::test_helpers::seed_entries(db.store(), 50);
-        for id in ids {
-            crate::test_helpers::assert_index_consistent(db.store(), id);
-        }
-    }
-
-    // -- R5/AC-05: Monotonic ID Generation --
-
-    #[test]
-    fn test_first_id_is_one() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention").build();
-        let id = db.store().insert(entry).unwrap();
-        assert_eq!(id, 1);
-    }
-
-    #[test]
-    fn test_100_sequential_inserts_monotonic() {
-        let db = TestDb::new();
-        let mut prev = 0u64;
-        for i in 0..100 {
-            let entry =
-                TestEntry::new("topic", "category").with_title(&format!("Entry {i}")).build();
-            let id = db.store().insert(entry).unwrap();
-            assert!(id > prev, "ID {id} not greater than previous {prev}");
-            prev = id;
-        }
-        assert_eq!(prev, 100);
-    }
-
-    #[test]
-    fn test_counter_matches_last_id() {
-        let db = TestDb::new();
-        for i in 0..10 {
-            let entry =
-                TestEntry::new("topic", "category").with_title(&format!("Entry {i}")).build();
-            db.store().insert(entry).unwrap();
-        }
-        let counter = db.store().read_counter("next_entry_id").unwrap();
-        assert_eq!(counter, 11); // last assigned was 10, next is 11
-    }
-
-    // -- R2/AC-18: Update Path Stale Index Orphaning --
-
-    #[test]
-    fn test_update_topic_migrates_index() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention").build();
-        let id = db.store().insert(entry).unwrap();
-
-        let mut record = db.store().get(id).unwrap();
-        record.topic = "security".to_string();
-        db.store().update(record).unwrap();
-
-        // Old topic should not contain entry
-        let old_results = db.store().query_by_topic("auth").unwrap();
-        assert!(!old_results.iter().any(|r| r.id == id));
-
-        // New topic should contain entry
-        let new_results = db.store().query_by_topic("security").unwrap();
-        assert!(new_results.iter().any(|r| r.id == id));
-    }
-
-    #[test]
-    fn test_update_category_migrates_index() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention").build();
-        let id = db.store().insert(entry).unwrap();
-
-        let mut record = db.store().get(id).unwrap();
-        record.category = "decision".to_string();
-        db.store().update(record).unwrap();
-
-        let old = db.store().query_by_category("convention").unwrap();
-        assert!(!old.iter().any(|r| r.id == id));
-
-        let new = db.store().query_by_category("decision").unwrap();
-        assert!(new.iter().any(|r| r.id == id));
-    }
-
-    #[test]
-    fn test_update_tags_add_remove() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_tags(&["rust", "error"])
-            .build();
-        let id = db.store().insert(entry).unwrap();
-
-        let mut record = db.store().get(id).unwrap();
-        record.tags = vec!["rust".to_string(), "async".to_string()];
-        db.store().update(record).unwrap();
-
-        // "error" tag should no longer have this entry
-        let error_results = db
-            .store()
-            .query_by_tags(&["error".to_string()])
-            .unwrap();
-        assert!(!error_results.iter().any(|r| r.id == id));
-
-        // "async" tag should now have this entry
-        let async_results = db
-            .store()
-            .query_by_tags(&["async".to_string()])
-            .unwrap();
-        assert!(async_results.iter().any(|r| r.id == id));
-
-        // "rust" tag should still have this entry
-        let rust_results = db
-            .store()
-            .query_by_tags(&["rust".to_string()])
-            .unwrap();
-        assert!(rust_results.iter().any(|r| r.id == id));
-    }
-
-    #[test]
-    fn test_update_multiple_fields_simultaneously() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_tags(&["rust"])
-            .build();
-        let id = db.store().insert(entry).unwrap();
-
-        let mut record = db.store().get(id).unwrap();
-        record.topic = "security".to_string();
-        record.category = "decision".to_string();
-        record.tags = vec!["go".to_string()];
-        db.store().update(record).unwrap();
-
-        // Verify old entries absent
-        crate::test_helpers::assert_index_absent(
-            db.store(),
-            id,
-            "auth",
-            "convention",
-            &["rust".to_string()],
-            Status::Active,
-        );
-
-        // Verify new entries present
-        crate::test_helpers::assert_index_consistent(db.store(), id);
-    }
-
-    #[test]
-    fn test_update_no_change_indexes_unchanged() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_tags(&["rust"])
-            .build();
-        let id = db.store().insert(entry).unwrap();
-
-        let record = db.store().get(id).unwrap();
-        db.store().update(record).unwrap();
-
-        crate::test_helpers::assert_index_consistent(db.store(), id);
-    }
-
-    #[test]
-    fn test_update_nonexistent_returns_error() {
-        let db = TestDb::new();
-        let record = crate::schema::EntryRecord {
-            id: 999,
-            title: "Ghost".to_string(),
-            content: "Does not exist".to_string(),
-            topic: "none".to_string(),
-            category: "none".to_string(),
-            tags: vec![],
-            source: "test".to_string(),
-            status: Status::Active,
-            confidence: 0.0,
-            created_at: 0,
-            updated_at: 0,
-            last_accessed_at: 0,
-            access_count: 0,
-            supersedes: None,
-            superseded_by: None,
-            correction_count: 0,
-            embedding_dim: 0,
-            created_by: String::new(),
-            modified_by: String::new(),
-            content_hash: String::new(),
-            previous_hash: String::new(),
-            version: 0,
-            feature_cycle: String::new(),
-            trust_source: String::new(),
-            helpful_count: 0,
-            unhelpful_count: 0,
-        };
-        let result = db.store().update(record);
-        assert!(matches!(result, Err(crate::StoreError::EntryNotFound(999))));
-    }
-
-    // -- R8/AC-12: Status Transition Atomicity --
-
-    #[test]
-    fn test_status_active_to_deprecated() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention").build();
-        let id = db.store().insert(entry).unwrap();
-
-        db.store().update_status(id, Status::Deprecated).unwrap();
-
-        let record = db.store().get(id).unwrap();
-        assert_eq!(record.status, Status::Deprecated);
-
-        // Should not appear in Active status query
-        let active = db.store().query_by_status(Status::Active).unwrap();
-        assert!(!active.iter().any(|r| r.id == id));
-
-        // Should appear in Deprecated status query
-        let deprecated = db.store().query_by_status(Status::Deprecated).unwrap();
-        assert!(deprecated.iter().any(|r| r.id == id));
-
-        // Counters should reflect change
-        let total_active = db.store().read_counter("total_active").unwrap();
-        assert_eq!(total_active, 0);
-        let total_deprecated = db.store().read_counter("total_deprecated").unwrap();
-        assert_eq!(total_deprecated, 1);
-    }
-
-    #[test]
-    fn test_status_proposed_to_active() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_status(Status::Proposed)
-            .build();
-        let id = db.store().insert(entry).unwrap();
-
-        db.store().update_status(id, Status::Active).unwrap();
-
-        let record = db.store().get(id).unwrap();
-        assert_eq!(record.status, Status::Active);
-
-        let total_proposed = db.store().read_counter("total_proposed").unwrap();
-        assert_eq!(total_proposed, 0);
-        let total_active = db.store().read_counter("total_active").unwrap();
-        assert_eq!(total_active, 1);
-    }
-
-    #[test]
-    fn test_status_deprecated_to_active() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_status(Status::Deprecated)
-            .build();
-        let id = db.store().insert(entry).unwrap();
-
-        db.store().update_status(id, Status::Active).unwrap();
-
-        let record = db.store().get(id).unwrap();
-        assert_eq!(record.status, Status::Active);
-    }
-
-    #[test]
-    fn test_status_same_noop() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention").build();
-        let id = db.store().insert(entry).unwrap();
-
-        db.store().update_status(id, Status::Active).unwrap();
-
-        let record = db.store().get(id).unwrap();
-        assert_eq!(record.status, Status::Active);
-    }
-
-    #[test]
-    fn test_counter_consistency_after_transitions() {
-        let db = TestDb::new();
-
-        // Insert 3 Active, 2 Deprecated, 1 Proposed
-        for _ in 0..3 {
-            let e = TestEntry::new("t", "c").build();
-            db.store().insert(e).unwrap();
-        }
-        for _ in 0..2 {
-            let e = TestEntry::new("t", "c")
-                .with_status(Status::Deprecated)
-                .build();
-            db.store().insert(e).unwrap();
-        }
-        let proposed_entry = TestEntry::new("t", "c")
-            .with_status(Status::Proposed)
-            .build();
-        let proposed_id = db.store().insert(proposed_entry).unwrap();
-
-        // Change one Active to Deprecated (ID 1)
-        db.store().update_status(1, Status::Deprecated).unwrap();
-
-        assert_eq!(db.store().read_counter("total_active").unwrap(), 2);
-        assert_eq!(db.store().read_counter("total_deprecated").unwrap(), 3);
-        assert_eq!(db.store().read_counter("total_proposed").unwrap(), 1);
-
-        // Change Proposed to Active
-        db.store().update_status(proposed_id, Status::Active).unwrap();
-        assert_eq!(db.store().read_counter("total_active").unwrap(), 3);
-        assert_eq!(db.store().read_counter("total_proposed").unwrap(), 0);
-    }
-
-    #[test]
-    fn test_status_update_nonexistent_returns_error() {
-        let db = TestDb::new();
-        let result = db.store().update_status(999, Status::Active);
-        assert!(matches!(result, Err(crate::StoreError::EntryNotFound(999))));
-    }
-
-    // -- R11/AC-13: VECTOR_MAP --
-
-    #[test]
-    fn test_put_vector_mapping_and_read() {
-        let db = TestDb::new();
-        db.store().put_vector_mapping(42, 7).unwrap();
-        let val = db.store().get_vector_mapping(42).unwrap();
-        assert_eq!(val, Some(7));
-    }
-
-    #[test]
-    fn test_vector_mapping_overwrite() {
-        let db = TestDb::new();
-        db.store().put_vector_mapping(42, 7).unwrap();
-        db.store().put_vector_mapping(42, 99).unwrap();
-        let val = db.store().get_vector_mapping(42).unwrap();
-        assert_eq!(val, Some(99));
-    }
-
-    #[test]
-    fn test_vector_mapping_nonexistent() {
-        let db = TestDb::new();
-        let val = db.store().get_vector_mapping(999).unwrap();
-        assert_eq!(val, None);
-    }
-
-    #[test]
-    fn test_vector_mapping_u64_max() {
-        let db = TestDb::new();
-        db.store().put_vector_mapping(1, u64::MAX).unwrap();
-        let val = db.store().get_vector_mapping(1).unwrap();
-        assert_eq!(val, Some(u64::MAX));
-    }
-
-    // -- Delete --
-
-    #[test]
-    fn test_delete_removes_all_indexes() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_tags(&["rust", "error"])
-            .build();
-        let id = db.store().insert(entry).unwrap();
-        db.store().put_vector_mapping(id, 42).unwrap();
-
-        db.store().delete(id).unwrap();
-
-        // Entry should not exist
-        assert!(!db.store().exists(id).unwrap());
-
-        // No index should contain it
-        assert!(db.store().query_by_topic("auth").unwrap().is_empty());
-        assert!(db.store().query_by_category("convention").unwrap().is_empty());
-        assert!(db
-            .store()
-            .query_by_tags(&["rust".to_string()])
-            .unwrap()
-            .is_empty());
-        assert!(db
-            .store()
-            .query_by_status(Status::Active)
-            .unwrap()
-            .is_empty());
-        assert_eq!(db.store().get_vector_mapping(id).unwrap(), None);
-        assert_eq!(db.store().read_counter("total_active").unwrap(), 0);
-    }
-
-    #[test]
-    fn test_delete_nonexistent_returns_error() {
-        let db = TestDb::new();
-        let result = db.store().delete(999);
-        assert!(matches!(result, Err(crate::StoreError::EntryNotFound(999))));
-    }
-
-    // -- AC-14: Close and Reopen --
-
-    #[test]
-    fn test_close_and_reopen_preserves_data() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
-
-        // Open, insert, drop
-        let id = {
-            let store = crate::Store::open(&path).unwrap();
-            let entry = NewEntry {
-                title: "Persisted".to_string(),
-                content: "Should survive reopen".to_string(),
-                topic: "auth".to_string(),
-                category: "convention".to_string(),
-                tags: vec!["rust".to_string()],
-                source: "test".to_string(),
-                status: Status::Active,
-                created_by: String::new(),
-                feature_cycle: String::new(),
-                trust_source: String::new(),
-            };
-            store.insert(entry).unwrap()
-        };
-
-        // Reopen and verify
-        let store = crate::Store::open(&path).unwrap();
-        let record = store.get(id).unwrap();
-        assert_eq!(record.title, "Persisted");
-        assert_eq!(record.content, "Should survive reopen");
-        assert_eq!(record.topic, "auth");
-    }
-
-    // -- nxs-004: Security Field Tests (R-02, R-03, R-10) --
-
-    #[test]
-    fn test_insert_sets_content_hash() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_title("Hello")
-            .with_content("World")
-            .build();
-        let id = db.store().insert(entry).unwrap();
-        let record = db.store().get(id).unwrap();
-
-        // Independently compute expected hash
-        let expected = format!(
-            "{:x}",
-            sha2::Sha256::digest(b"Hello: World")
-        );
-        assert_eq!(record.content_hash, expected);
-    }
-
-    #[test]
-    fn test_insert_sets_version_1() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention").build();
-        let id = db.store().insert(entry).unwrap();
-        let record = db.store().get(id).unwrap();
-        assert_eq!(record.version, 1);
-    }
-
-    #[test]
-    fn test_insert_sets_modified_by_to_created_by() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_created_by("agent-42")
-            .build();
-        let id = db.store().insert(entry).unwrap();
-        let record = db.store().get(id).unwrap();
-        assert_eq!(record.created_by, "agent-42");
-        assert_eq!(record.modified_by, "agent-42");
-    }
-
-    #[test]
-    fn test_insert_sets_previous_hash_empty() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention").build();
-        let id = db.store().insert(entry).unwrap();
-        let record = db.store().get(id).unwrap();
-        assert_eq!(record.previous_hash, "");
-    }
-
-    #[test]
-    fn test_insert_preserves_caller_fields() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_created_by("agent-1")
-            .with_feature_cycle("nxs-004")
-            .with_trust_source("human")
-            .build();
-        let id = db.store().insert(entry).unwrap();
-        let record = db.store().get(id).unwrap();
-        assert_eq!(record.created_by, "agent-1");
-        assert_eq!(record.feature_cycle, "nxs-004");
-        assert_eq!(record.trust_source, "human");
-    }
-
-    #[test]
-    fn test_insert_empty_fields_hash() {
-        let db = TestDb::new();
-        let entry = NewEntry {
-            title: String::new(),
-            content: String::new(),
-            topic: "t".to_string(),
-            category: "c".to_string(),
-            tags: vec![],
-            source: "test".to_string(),
-            status: Status::Active,
-            created_by: String::new(),
-            feature_cycle: String::new(),
-            trust_source: String::new(),
-        };
-        let id = db.store().insert(entry).unwrap();
-        let record = db.store().get(id).unwrap();
-        // SHA-256 of empty string
-        assert_eq!(
-            record.content_hash,
-            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-        );
-    }
-
-    #[test]
-    fn test_update_increments_version() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention").build();
-        let id = db.store().insert(entry).unwrap();
-
-        let mut record = db.store().get(id).unwrap();
-        record.title = "Updated".to_string();
-        db.store().update(record).unwrap();
-
-        let updated = db.store().get(id).unwrap();
-        assert_eq!(updated.version, 2);
-    }
-
-    #[test]
-    fn test_update_version_multiple() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention").build();
-        let id = db.store().insert(entry).unwrap();
-
-        for i in 0..10 {
-            let mut record = db.store().get(id).unwrap();
-            record.title = format!("Update {i}");
-            db.store().update(record).unwrap();
-        }
-
-        let final_record = db.store().get(id).unwrap();
-        assert_eq!(final_record.version, 11); // 1 (insert) + 10 (updates)
-    }
-
-    #[test]
-    fn test_update_sets_previous_hash() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_title("A")
-            .with_content("B")
-            .build();
-        let id = db.store().insert(entry).unwrap();
-        let after_insert = db.store().get(id).unwrap();
-        let h1 = after_insert.content_hash.clone();
-
-        let mut record = db.store().get(id).unwrap();
-        record.title = "C".to_string();
-        db.store().update(record).unwrap();
-
-        let after_update = db.store().get(id).unwrap();
-        assert_eq!(after_update.previous_hash, h1);
-
-        // New hash should be SHA-256 of "C: B"
-        let expected_h2 = format!("{:x}", sha2::Sha256::digest(b"C: B"));
-        assert_eq!(after_update.content_hash, expected_h2);
-    }
-
-    #[test]
-    fn test_update_hash_chain_three_steps() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_title("T1")
-            .with_content("C1")
-            .build();
-        let id = db.store().insert(entry).unwrap();
-
-        // Step 0: After insert
-        let r0 = db.store().get(id).unwrap();
-        let h1 = r0.content_hash.clone();
-        assert_eq!(r0.previous_hash, "");
-        assert_eq!(r0.version, 1);
-
-        // Step 1: Update title
-        let mut r1 = db.store().get(id).unwrap();
-        r1.title = "T2".to_string();
-        db.store().update(r1).unwrap();
-        let r1 = db.store().get(id).unwrap();
-        let h2 = r1.content_hash.clone();
-        assert_eq!(r1.previous_hash, h1);
-        assert_eq!(r1.version, 2);
-        assert_ne!(h1, h2);
-
-        // Step 2: Update content
-        let mut r2 = db.store().get(id).unwrap();
-        r2.content = "C2".to_string();
-        db.store().update(r2).unwrap();
-        let r2 = db.store().get(id).unwrap();
-        let h3 = r2.content_hash.clone();
-        assert_eq!(r2.previous_hash, h2);
-        assert_eq!(r2.version, 3);
-        assert_ne!(h2, h3);
-
-        // Verify chain: "" -> H1 -> H2 -> H3
-        let expected_h3 = format!("{:x}", sha2::Sha256::digest(b"T2: C2"));
-        assert_eq!(h3, expected_h3);
-    }
-
-    #[test]
-    fn test_update_no_content_change() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_title("X")
-            .with_content("Y")
-            .build();
-        let id = db.store().insert(entry).unwrap();
-        let after_insert = db.store().get(id).unwrap();
-        let h1 = after_insert.content_hash.clone();
-
-        // Update only category (no title/content change)
-        let mut record = db.store().get(id).unwrap();
-        record.category = "decision".to_string();
-        db.store().update(record).unwrap();
-
-        let after_update = db.store().get(id).unwrap();
-        // Hash unchanged (same title+content)
-        assert_eq!(after_update.content_hash, h1);
-        // previous_hash set to old hash (identical)
-        assert_eq!(after_update.previous_hash, h1);
-        // Version still increments
-        assert_eq!(after_update.version, 2);
-    }
-
-    #[test]
-    fn test_update_status_no_version_change() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention").build();
-        let id = db.store().insert(entry).unwrap();
-        let after_insert = db.store().get(id).unwrap();
-        let original_hash = after_insert.content_hash.clone();
-
-        db.store().update_status(id, Status::Deprecated).unwrap();
-
-        let after_status = db.store().get(id).unwrap();
-        assert_eq!(after_status.version, 1); // Unchanged
-        assert_eq!(after_status.content_hash, original_hash); // Unchanged
-        assert_eq!(after_status.previous_hash, ""); // Unchanged
-    }
-
-    #[test]
-    fn test_update_status_no_hash_change() {
-        let db = TestDb::new();
-        let entry = TestEntry::new("auth", "convention")
-            .with_title("Hash")
-            .with_content("Test")
-            .build();
-        let id = db.store().insert(entry).unwrap();
-        let original_hash = db.store().get(id).unwrap().content_hash.clone();
-
-        // Two status transitions
-        db.store().update_status(id, Status::Deprecated).unwrap();
-        db.store().update_status(id, Status::Active).unwrap();
-
-        let record = db.store().get(id).unwrap();
-        assert_eq!(record.content_hash, original_hash);
-    }
-
-    #[test]
-    fn test_insert_large_content_hash() {
-        let db = TestDb::new();
-        let entry = NewEntry {
-            title: "x".repeat(10_000),
-            content: "y".repeat(100_000),
-            topic: "t".to_string(),
-            category: "c".to_string(),
-            tags: vec![],
-            source: "test".to_string(),
-            status: Status::Active,
-            created_by: String::new(),
-            feature_cycle: String::new(),
-            trust_source: String::new(),
-        };
-        let id = db.store().insert(entry).unwrap();
-        let record = db.store().get(id).unwrap();
-        assert_eq!(record.content_hash.len(), 64);
-        assert!(record.content_hash.chars().all(|c| c.is_ascii_hexdigit()));
-    }
-
-    #[test]
-    fn test_insert_all_default_security_fields() {
-        let db = TestDb::new();
-        let entry = NewEntry {
-            title: "T".to_string(),
-            content: "C".to_string(),
-            topic: "t".to_string(),
-            category: "c".to_string(),
-            tags: vec![],
-            source: "test".to_string(),
-            status: Status::Active,
-            created_by: String::new(),
-            feature_cycle: String::new(),
-            trust_source: String::new(),
-        };
-        let id = db.store().insert(entry).unwrap();
-        let record = db.store().get(id).unwrap();
-        assert_eq!(record.version, 1);
-        assert_eq!(record.created_by, "");
-        assert_eq!(record.modified_by, "");
-        assert_eq!(record.feature_cycle, "");
-        assert_eq!(record.trust_source, "");
-        assert!(!record.content_hash.is_empty());
-    }
-
-    // -- crt-001: record_usage tests --
-
-    #[test]
-    fn test_record_usage_5_entries_all_updated() {
-        let db = TestDb::new();
-        let mut ids = Vec::new();
-        for _ in 0..5 {
-            let e = TestEntry::new("test", "convention").build();
-            ids.push(db.store().insert(e).unwrap());
-        }
-
-        db.store()
-            .record_usage(&ids, &ids, &[], &[], &[], &[])
-            .unwrap();
-
-        for &id in &ids {
-            let r = db.store().get(id).unwrap();
-            assert_eq!(r.access_count, 1);
-            assert!(r.last_accessed_at > 0);
-        }
-    }
-
-    #[test]
-    fn test_record_usage_overlapping_sets() {
-        let db = TestDb::new();
-        let mut ids = Vec::new();
-        for _ in 0..3 {
-            let e = TestEntry::new("test", "convention").build();
-            ids.push(db.store().insert(e).unwrap());
-        }
-
-        // all_ids=[1,2,3], access_ids=[1,2], helpful_ids=[2,3]
-        db.store()
-            .record_usage(&ids, &ids[..2], &ids[1..], &[], &[], &[])
-            .unwrap();
-
-        let r1 = db.store().get(ids[0]).unwrap();
-        assert_eq!(r1.access_count, 1);
-        assert_eq!(r1.helpful_count, 0);
-
-        let r2 = db.store().get(ids[1]).unwrap();
-        assert_eq!(r2.access_count, 1);
-        assert_eq!(r2.helpful_count, 1);
-
-        let r3 = db.store().get(ids[2]).unwrap();
-        assert_eq!(r3.access_count, 0);
-        assert_eq!(r3.helpful_count, 1);
-    }
-
-    #[test]
-    fn test_record_usage_nonexistent_entry_skipped() {
-        let db = TestDb::new();
-        let e = TestEntry::new("test", "convention").build();
-        let valid_id = db.store().insert(e).unwrap();
-
-        // Mix valid and non-existent
-        db.store()
-            .record_usage(&[valid_id, 999], &[valid_id, 999], &[], &[], &[], &[])
-            .unwrap();
-
-        let r = db.store().get(valid_id).unwrap();
-        assert_eq!(r.access_count, 1);
-    }
-
-    #[test]
-    fn test_record_usage_empty_all_ids() {
-        let db = TestDb::new();
-        db.store()
-            .record_usage(&[], &[], &[], &[], &[], &[])
-            .unwrap();
-    }
-
-    #[test]
-    fn test_record_usage_cumulative_increments() {
-        let db = TestDb::new();
-        let e = TestEntry::new("test", "convention").build();
-        let id = db.store().insert(e).unwrap();
-
-        // Store has no dedup -- increments each time
-        db.store()
-            .record_usage(&[id], &[id], &[], &[], &[], &[])
-            .unwrap();
-        db.store()
-            .record_usage(&[id], &[id], &[], &[], &[], &[])
-            .unwrap();
-
-        let r = db.store().get(id).unwrap();
-        assert_eq!(r.access_count, 2);
-    }
-
-    #[test]
-    fn test_record_usage_preserves_fields() {
-        let db = TestDb::new();
-        let e = TestEntry::new("auth", "convention")
-            .with_title("Preserve Me")
-            .with_content("Important content")
-            .with_tags(&["rust", "test"])
-            .build();
-        let id = db.store().insert(e).unwrap();
-
-        let before = db.store().get(id).unwrap();
-
-        db.store()
-            .record_usage(&[id], &[id], &[id], &[], &[], &[])
-            .unwrap();
-
-        let after = db.store().get(id).unwrap();
-        assert_eq!(after.title, before.title);
-        assert_eq!(after.content, before.content);
-        assert_eq!(after.topic, before.topic);
-        assert_eq!(after.tags, before.tags);
-        assert_eq!(after.content_hash, before.content_hash);
-        assert_eq!(after.version, before.version);
-    }
-
-    #[test]
-    fn test_record_usage_last_accessed_at_updated_without_access_count() {
-        let db = TestDb::new();
-        let e = TestEntry::new("test", "convention").build();
-        let id = db.store().insert(e).unwrap();
-
-        // all_ids includes this entry but access_ids does not
-        db.store()
-            .record_usage(&[id], &[], &[], &[], &[], &[])
-            .unwrap();
-
-        let r = db.store().get(id).unwrap();
-        assert_eq!(r.access_count, 0, "access_count should not change");
-        assert!(r.last_accessed_at > 0, "last_accessed_at should be updated");
-    }
-
-    #[test]
-    fn test_record_usage_vote_correction() {
-        let db = TestDb::new();
-        let e = TestEntry::new("test", "convention").build();
-        let id = db.store().insert(e).unwrap();
-
-        // First: mark unhelpful
-        db.store()
-            .record_usage(&[id], &[], &[], &[id], &[], &[])
-            .unwrap();
-        let r = db.store().get(id).unwrap();
-        assert_eq!(r.unhelpful_count, 1);
-        assert_eq!(r.helpful_count, 0);
-
-        // Correction: helpful + decrement unhelpful
-        db.store()
-            .record_usage(&[id], &[], &[id], &[], &[], &[id])
-            .unwrap();
-        let r = db.store().get(id).unwrap();
-        assert_eq!(r.helpful_count, 1);
-        assert_eq!(r.unhelpful_count, 0);
-    }
-
-    #[test]
-    fn test_record_usage_saturating_subtraction() {
-        let db = TestDb::new();
-        let e = TestEntry::new("test", "convention").build();
-        let id = db.store().insert(e).unwrap();
-
-        // Decrement helpful_count when it's already 0
-        db.store()
-            .record_usage(&[id], &[], &[], &[], &[id], &[])
-            .unwrap();
-
-        let r = db.store().get(id).unwrap();
-        assert_eq!(r.helpful_count, 0, "should not underflow");
-    }
-
-    // -- crt-001: record_feature_entries tests --
-
-    #[test]
-    fn test_record_feature_entries_basic() {
-        let db = TestDb::new();
-        let mut ids = Vec::new();
-        for _ in 0..3 {
-            let e = TestEntry::new("test", "convention").build();
-            ids.push(db.store().insert(e).unwrap());
-        }
-
-        db.store().record_feature_entries("crt-001", &ids).unwrap();
-
-        // Read back from multimap
-        let txn = db.store().begin_read().unwrap();
-        let table = txn.open_multimap_table(crate::FEATURE_ENTRIES).unwrap();
-        let mut found: Vec<u64> = table
-            .get("crt-001")
-            .unwrap()
-            .map(|r| r.unwrap().value())
-            .collect();
-        found.sort();
-        assert_eq!(found, ids);
-    }
-
-    #[test]
-    fn test_record_feature_entries_idempotent() {
-        let db = TestDb::new();
-        let e = TestEntry::new("test", "convention").build();
-        let id = db.store().insert(e).unwrap();
-
-        db.store().record_feature_entries("crt-001", &[id]).unwrap();
-        db.store().record_feature_entries("crt-001", &[id]).unwrap();
-
-        let txn = db.store().begin_read().unwrap();
-        let table = txn.open_multimap_table(crate::FEATURE_ENTRIES).unwrap();
-        let count = table.get("crt-001").unwrap().count();
-        assert_eq!(count, 1, "multimap should deduplicate");
-    }
-
-    #[test]
-    fn test_record_feature_entries_nonexistent_entry() {
-        let db = TestDb::new();
-        // Multimap doesn't validate entry existence
-        db.store()
-            .record_feature_entries("crt-001", &[999])
-            .unwrap();
-
-        let txn = db.store().begin_read().unwrap();
-        let table = txn.open_multimap_table(crate::FEATURE_ENTRIES).unwrap();
-        let found: Vec<u64> = table
-            .get("crt-001")
-            .unwrap()
-            .map(|r| r.unwrap().value())
-            .collect();
-        assert_eq!(found, vec![999]);
-    }
-
-    #[test]
-    fn test_record_feature_entries_empty() {
-        let db = TestDb::new();
-        db.store().record_feature_entries("crt-001", &[]).unwrap();
-    }
-
-    // -- crt-002: update_confidence tests (T-12 through T-14) --
-
-    #[test]
-    fn test_update_confidence_basic() {
-        let db = TestDb::new();
-        let e = TestEntry::new("test", "convention").build();
-        let id = db.store().insert(e).unwrap();
-
-        db.store().update_confidence(id, 0.75).unwrap();
-
-        let entry = db.store().get(id).unwrap();
-        assert_eq!(entry.confidence, 0.75);
-
-        // Verify other fields unchanged
-        assert_eq!(entry.title, "Test: test/convention");
-        assert_eq!(entry.access_count, 0);
-        assert!(entry.tags.is_empty());
-    }
-
-    #[test]
-    fn test_update_confidence_idempotent() {
-        let db = TestDb::new();
-        let e = TestEntry::new("test", "convention").build();
-        let id = db.store().insert(e).unwrap();
-
-        db.store().update_confidence(id, 0.5).unwrap();
-        db.store().update_confidence(id, 0.5).unwrap();
-
-        let entry = db.store().get(id).unwrap();
-        assert_eq!(entry.confidence, 0.5);
-    }
-
-    #[test]
-    fn test_update_confidence_not_found() {
-        let db = TestDb::new();
-        let result = db.store().update_confidence(999999, 0.5);
-        assert!(matches!(result, Err(crate::StoreError::EntryNotFound(999999))));
-    }
-
-    // -- crt-002: record_usage_with_confidence tests (T-15 through T-19) --
-
-    #[test]
-    fn test_record_usage_with_confidence_none() {
-        let db = TestDb::new();
-        let e = TestEntry::new("test", "convention").build();
-        let id = db.store().insert(e).unwrap();
-
-        db.store()
-            .record_usage_with_confidence(&[id], &[id], &[], &[], &[], &[], None)
-            .unwrap();
-
-        let entry = db.store().get(id).unwrap();
-        assert_eq!(entry.access_count, 1);
-        assert!(entry.last_accessed_at > 0);
-        assert_eq!(entry.confidence, 0.0); // unchanged, no confidence function
-    }
-
-    #[test]
-    fn test_record_usage_with_confidence_function() {
-        let db = TestDb::new();
-        let e = TestEntry::new("test", "convention").build();
-        let id = db.store().insert(e).unwrap();
-
-        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f64 {
-            0.42
-        }
-
-        db.store()
-            .record_usage_with_confidence(
-                &[id],
-                &[id],
-                &[],
-                &[],
-                &[],
-                &[],
-                Some(&test_confidence_fn),
+            let old_status = record.status;
+
+            record.status = new_status;
+            record.updated_at = now;
+
+            let bytes = serialize_entry(&record)?;
+            conn.execute(
+                "UPDATE entries SET data = ?1 WHERE id = ?2",
+                rusqlite::params![bytes, entry_id as i64],
             )
-            .unwrap();
+            .map_err(StoreError::Sqlite)?;
 
-        let entry = db.store().get(id).unwrap();
-        assert_eq!(entry.access_count, 1);
-        assert_eq!(entry.confidence, 0.42);
-    }
-
-    #[test]
-    fn test_record_usage_with_confidence_batch() {
-        let db = TestDb::new();
-        let mut ids = Vec::new();
-        for _ in 0..5 {
-            let e = TestEntry::new("test", "convention").build();
-            ids.push(db.store().insert(e).unwrap());
-        }
-
-        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f64 {
-            0.42
-        }
-
-        db.store()
-            .record_usage_with_confidence(
-                &ids,
-                &ids,
-                &[],
-                &[],
-                &[],
-                &[],
-                Some(&test_confidence_fn),
+            // Update status index
+            conn.execute(
+                "DELETE FROM status_index WHERE status = ?1 AND entry_id = ?2",
+                rusqlite::params![old_status as u8 as i64, entry_id as i64],
             )
-            .unwrap();
-
-        for &id in &ids {
-            let entry = db.store().get(id).unwrap();
-            assert_eq!(entry.access_count, 1);
-            assert_eq!(entry.confidence, 0.42);
-        }
-    }
-
-    #[test]
-    fn test_record_usage_with_confidence_deleted_entry() {
-        let db = TestDb::new();
-        let e1 = TestEntry::new("test", "convention").build();
-        let id1 = db.store().insert(e1).unwrap();
-        let e2 = TestEntry::new("test", "convention").build();
-        let id2 = db.store().insert(e2).unwrap();
-        db.store().delete(id2).unwrap();
-
-        fn test_confidence_fn(_entry: &crate::schema::EntryRecord, _now: u64) -> f64 {
-            0.42
-        }
-
-        db.store()
-            .record_usage_with_confidence(
-                &[id1, id2],
-                &[id1, id2],
-                &[],
-                &[],
-                &[],
-                &[],
-                Some(&test_confidence_fn),
+            .map_err(StoreError::Sqlite)?;
+            conn.execute(
+                "INSERT INTO status_index (status, entry_id) VALUES (?1, ?2)",
+                rusqlite::params![new_status as u8 as i64, entry_id as i64],
             )
-            .unwrap();
+            .map_err(StoreError::Sqlite)?;
 
-        let entry1 = db.store().get(id1).unwrap();
-        assert_eq!(entry1.confidence, 0.42);
-        assert!(db.store().get(id2).is_err());
-    }
+            // Update counters
+            decrement_counter(&conn, status_counter_key(old_status), 1)?;
+            increment_counter(&conn, status_counter_key(new_status), 1)?;
 
-    #[test]
-    fn test_record_usage_delegates_to_with_confidence() {
-        let db = TestDb::new();
-        let e = TestEntry::new("test", "convention").build();
-        let id = db.store().insert(e).unwrap();
+            Ok(())
+        })();
 
-        // Use original record_usage (should pass None for confidence)
-        db.store()
-            .record_usage(&[id], &[id], &[], &[], &[], &[])
-            .unwrap();
-
-        let entry = db.store().get(id).unwrap();
-        assert_eq!(entry.access_count, 1);
-        assert_eq!(entry.confidence, 0.0); // no confidence function via old method
-    }
-
-    // -- crt-004: Co-access write tests --
-
-    #[test]
-    fn test_record_co_access_pairs_basic() {
-        let db = TestDb::new();
-        db.store().record_co_access_pairs(&[(1, 2), (3, 4)]).unwrap();
-
-        let partners = db.store().get_co_access_partners(1, 0).unwrap();
-        assert_eq!(partners.len(), 1);
-        assert_eq!(partners[0].0, 2);
-        assert_eq!(partners[0].1.count, 1);
-    }
-
-    #[test]
-    fn test_record_co_access_pairs_empty_input() {
-        let db = TestDb::new();
-        db.store().record_co_access_pairs(&[]).unwrap();
-        let (total, _active) = db.store().co_access_stats(0).unwrap();
-        assert_eq!(total, 0);
-    }
-
-    #[test]
-    fn test_record_co_access_pairs_increment_existing() {
-        let db = TestDb::new();
-        db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
-        db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
-        db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
-
-        let partners = db.store().get_co_access_partners(1, 0).unwrap();
-        assert_eq!(partners.len(), 1);
-        assert_eq!(partners[0].1.count, 3);
-    }
-
-    #[test]
-    fn test_record_co_access_pairs_saturating_add() {
-        use crate::schema::{CO_ACCESS, CoAccessRecord, co_access_key, serialize_co_access, deserialize_co_access};
-        use redb::ReadableDatabase;
-
-        let db = TestDb::new();
-        // Manually insert a record at u32::MAX
-        {
-            let txn = db.store().db.begin_write().unwrap();
-            {
-                let mut table = txn.open_table(CO_ACCESS).unwrap();
-                let record = CoAccessRecord { count: u32::MAX, last_updated: 1000 };
-                let bytes = serialize_co_access(&record).unwrap();
-                table.insert(co_access_key(1, 2), bytes.as_slice()).unwrap();
+        match result {
+            Ok(()) => {
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                Ok(())
             }
-            txn.commit().unwrap();
-        }
-
-        // Record again -- should saturate at u32::MAX
-        db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
-
-        let txn = db.store().db.begin_read().unwrap();
-        let table = txn.open_table(CO_ACCESS).unwrap();
-        let val = table.get(co_access_key(1, 2)).unwrap().unwrap();
-        let record = deserialize_co_access(val.value()).unwrap();
-        assert_eq!(record.count, u32::MAX);
-    }
-
-    #[test]
-    fn test_cleanup_stale_co_access_removes_stale() {
-        use crate::schema::{CO_ACCESS, CoAccessRecord, co_access_key, serialize_co_access};
-
-        let db = TestDb::new();
-        // Insert pairs with different timestamps
-        {
-            let txn = db.store().db.begin_write().unwrap();
-            {
-                let mut table = txn.open_table(CO_ACCESS).unwrap();
-                let stale = CoAccessRecord { count: 3, last_updated: 1000 };
-                let fresh = CoAccessRecord { count: 5, last_updated: 5000 };
-                table.insert(co_access_key(1, 2), serialize_co_access(&stale).unwrap().as_slice()).unwrap();
-                table.insert(co_access_key(3, 4), serialize_co_access(&fresh).unwrap().as_slice()).unwrap();
+            Err(e) => {
+                let _ = conn.execute_batch("ROLLBACK");
+                Err(e)
             }
-            txn.commit().unwrap();
         }
-
-        let removed = db.store().cleanup_stale_co_access(3000).unwrap();
-        assert_eq!(removed, 1);
-
-        // Verify pair (1,2) removed, (3,4) preserved
-        let (total, _) = db.store().co_access_stats(0).unwrap();
-        assert_eq!(total, 1);
     }
 
-    #[test]
-    fn test_cleanup_stale_co_access_boundary_at_cutoff() {
-        use crate::schema::{CO_ACCESS, CoAccessRecord, co_access_key, serialize_co_access};
+    /// Delete an entry and all its index references.
+    pub fn delete(&self, entry_id: u64) -> Result<()> {
+        let conn = self.lock_conn();
+        conn.execute_batch("BEGIN IMMEDIATE")
+            .map_err(StoreError::Sqlite)?;
 
-        let db = TestDb::new();
-        {
-            let txn = db.store().db.begin_write().unwrap();
-            {
-                let mut table = txn.open_table(CO_ACCESS).unwrap();
-                let record = CoAccessRecord { count: 1, last_updated: 3000 };
-                table.insert(co_access_key(1, 2), serialize_co_access(&record).unwrap().as_slice()).unwrap();
+        let result = (|| -> Result<()> {
+            let old_bytes: Vec<u8> = conn
+                .query_row(
+                    "SELECT data FROM entries WHERE id = ?1",
+                    rusqlite::params![entry_id as i64],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(StoreError::Sqlite)?
+                .ok_or(StoreError::EntryNotFound(entry_id))?;
+            let record = deserialize_entry(&old_bytes)?;
+
+            // Delete from entries
+            conn.execute(
+                "DELETE FROM entries WHERE id = ?1",
+                rusqlite::params![entry_id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+
+            // Delete from all indexes
+            conn.execute(
+                "DELETE FROM topic_index WHERE topic = ?1 AND entry_id = ?2",
+                rusqlite::params![&record.topic, entry_id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+            conn.execute(
+                "DELETE FROM category_index WHERE category = ?1 AND entry_id = ?2",
+                rusqlite::params![&record.category, entry_id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+            for tag in &record.tags {
+                conn.execute(
+                    "DELETE FROM tag_index WHERE tag = ?1 AND entry_id = ?2",
+                    rusqlite::params![tag, entry_id as i64],
+                )
+                .map_err(StoreError::Sqlite)?;
             }
-            txn.commit().unwrap();
+            conn.execute(
+                "DELETE FROM time_index WHERE timestamp = ?1 AND entry_id = ?2",
+                rusqlite::params![record.created_at as i64, entry_id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+            conn.execute(
+                "DELETE FROM status_index WHERE status = ?1 AND entry_id = ?2",
+                rusqlite::params![record.status as u8 as i64, entry_id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+            conn.execute(
+                "DELETE FROM vector_map WHERE entry_id = ?1",
+                rusqlite::params![entry_id as i64],
+            )
+            .map_err(StoreError::Sqlite)?;
+
+            // Decrement status counter
+            decrement_counter(&conn, status_counter_key(record.status), 1)?;
+
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => {
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                Ok(())
+            }
+            Err(e) => {
+                let _ = conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
         }
-
-        // cutoff = 3000, record.last_updated = 3000 -> 3000 < 3000 is false -> NOT stale
-        let removed = db.store().cleanup_stale_co_access(3000).unwrap();
-        assert_eq!(removed, 0);
-
-        // cutoff = 3001 -> 3000 < 3001 is true -> stale
-        let removed = db.store().cleanup_stale_co_access(3001).unwrap();
-        assert_eq!(removed, 1);
     }
 
-    // -- crt-005: rewrite_vector_map tests --
-
-    // IT-C3-09: rewrite_vector_map single transaction
-    #[test]
-    fn test_rewrite_vector_map_replaces_entries() {
-        let db = TestDb::new();
-        let store = db.store();
-
-        // Write 5 initial mappings
-        let mappings1: Vec<(u64, u64)> = (1..=5).map(|i| (i, i * 10)).collect();
-        store.rewrite_vector_map(&mappings1).unwrap();
-
-        // Verify all 5 present
-        for i in 1..=5u64 {
-            assert_eq!(store.get_vector_mapping(i).unwrap(), Some(i * 10));
-        }
-
-        // Rewrite with 3 different mappings
-        let mappings2: Vec<(u64, u64)> = vec![(100, 0), (200, 1), (300, 2)];
-        store.rewrite_vector_map(&mappings2).unwrap();
-
-        // Old mappings should be gone
-        for i in 1..=5u64 {
-            assert_eq!(store.get_vector_mapping(i).unwrap(), None, "old entry {i} should be cleared");
-        }
-
-        // New mappings should be present
-        assert_eq!(store.get_vector_mapping(100).unwrap(), Some(0));
-        assert_eq!(store.get_vector_mapping(200).unwrap(), Some(1));
-        assert_eq!(store.get_vector_mapping(300).unwrap(), Some(2));
-    }
-
-    // IT-C3-10: rewrite_vector_map with empty mappings
-    #[test]
-    fn test_rewrite_vector_map_empty() {
-        let db = TestDb::new();
-        let store = db.store();
-
-        // Write some initial data
-        store.put_vector_mapping(1, 100).unwrap();
-        store.put_vector_mapping(2, 200).unwrap();
-        assert_eq!(store.get_vector_mapping(1).unwrap(), Some(100));
-
-        // Rewrite with empty
-        store.rewrite_vector_map(&[]).unwrap();
-
-        assert_eq!(store.get_vector_mapping(1).unwrap(), None);
-        assert_eq!(store.get_vector_mapping(2).unwrap(), None);
-    }
-
-    // UT-C2-13: update_confidence roundtrip f64
-    #[test]
-    fn test_update_confidence_f64_roundtrip() {
-        let db = TestDb::new();
-        let store = db.store();
-
-        let entry = TestEntry::new("test", "confidence")
-            .with_title("f64 confidence test")
-            .build();
-        let id = store.insert(entry).unwrap();
-
-        // Store a precise f64 value
-        let precise_value = 0.123456789012345_f64;
-        store.update_confidence(id, precise_value).unwrap();
-
-        // Read it back
-        let record = store.get(id).unwrap();
-        assert_eq!(record.confidence, precise_value, "f64 confidence should survive roundtrip exactly");
-    }
-
-    // UT-C2-13 supplement: update_confidence boundary values
-    #[test]
-    fn test_update_confidence_f64_boundaries() {
-        let db = TestDb::new();
-        let store = db.store();
-
-        let entry = TestEntry::new("test", "confidence")
-            .with_title("f64 boundary test")
-            .build();
-        let id = store.insert(entry).unwrap();
-
-        // Test 0.0
-        store.update_confidence(id, 0.0_f64).unwrap();
-        assert_eq!(store.get(id).unwrap().confidence, 0.0_f64);
-
-        // Test 1.0
-        store.update_confidence(id, 1.0_f64).unwrap();
-        assert_eq!(store.get(id).unwrap().confidence, 1.0_f64);
-
-        // Test f64::MIN_POSITIVE
-        store.update_confidence(id, f64::MIN_POSITIVE).unwrap();
-        assert_eq!(store.get(id).unwrap().confidence, f64::MIN_POSITIVE);
-
-        // Test value with more than f32 precision
-        let val = 0.999999999999_f64;
-        store.update_confidence(id, val).unwrap();
-        assert_eq!(store.get(id).unwrap().confidence, val);
-    }
 }

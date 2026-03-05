@@ -1,13 +1,10 @@
-//! Append-only audit log using the AUDIT_LOG redb table.
+//! Append-only audit log using the AUDIT_LOG table.
 
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[cfg(not(feature = "backend-sqlite"))]
-use redb::{ReadableTable, WriteTransaction};
 use serde::{Deserialize, Serialize};
 use unimatrix_store::{AUDIT_LOG, COUNTERS, Store};
-#[cfg(feature = "backend-sqlite")]
 use unimatrix_store::SqliteWriteTransaction;
 
 use crate::error::ServerError;
@@ -147,51 +144,6 @@ impl AuditLog {
     ///
     /// The caller owns the transaction and is responsible for committing.
     /// Returns the assigned event_id.
-    #[cfg(not(feature = "backend-sqlite"))]
-    pub fn write_in_txn(
-        &self,
-        txn: &WriteTransaction,
-        event: AuditEvent,
-    ) -> Result<u64, ServerError> {
-        // Get and increment the audit ID counter in the caller's transaction
-        let mut counters = txn
-            .open_table(COUNTERS)
-            .map_err(|e| ServerError::Audit(e.to_string()))?;
-        let current_id = match counters
-            .get("next_audit_id")
-            .map_err(|e| ServerError::Audit(e.to_string()))?
-        {
-            Some(guard) => guard.value(),
-            None => 1, // first event ever
-        };
-        counters
-            .insert("next_audit_id", current_id + 1)
-            .map_err(|e| ServerError::Audit(e.to_string()))?;
-        // Drop counters table handle before opening audit table
-        drop(counters);
-
-        // Build final event with assigned ID and timestamp
-        let final_event = AuditEvent {
-            event_id: current_id,
-            timestamp: current_unix_seconds(),
-            ..event
-        };
-
-        // Serialize and insert into AUDIT_LOG table (still in caller's txn)
-        let mut audit_table = txn
-            .open_table(AUDIT_LOG)
-            .map_err(|e| ServerError::Audit(e.to_string()))?;
-        let bytes = serialize_audit_event(&final_event)?;
-        audit_table
-            .insert(current_id, bytes.as_slice())
-            .map_err(|e| ServerError::Audit(e.to_string()))?;
-
-        // DO NOT commit -- caller owns the transaction
-        Ok(current_id)
-    }
-
-    /// Write an audit event into an existing write transaction (SQLite backend).
-    #[cfg(feature = "backend-sqlite")]
     pub fn write_in_txn(
         &self,
         txn: &SqliteWriteTransaction<'_>,
@@ -263,7 +215,7 @@ mod tests {
 
     fn make_store() -> Arc<Store> {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         let store = Store::open(&path).unwrap();
         std::mem::forget(dir);
         Arc::new(store)
@@ -320,7 +272,7 @@ mod tests {
     #[test]
     fn test_cross_session_continuity() {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
 
         // Session 1: log 5 events
         {

@@ -1957,15 +1957,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "redb"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae323eb086579a3769daa2c753bb96deb95993c534711e0dbe881b5192906a06"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2914,7 +2905,6 @@ dependencies = [
  "dirs",
  "fs2",
  "nix 0.31.2",
- "redb",
  "regex",
  "rmcp",
  "schemars",
@@ -2938,10 +2928,11 @@ dependencies = [
 name = "unimatrix-store"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "bincode 2.0.1",
- "redb",
  "rusqlite",
  "serde",
+ "serde_json",
  "sha2",
  "tempfile",
 ]

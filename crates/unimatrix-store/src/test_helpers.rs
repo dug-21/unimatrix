@@ -25,9 +25,6 @@ impl TestDb {
     /// Create a new test database in a temporary directory.
     pub fn new() -> Self {
         let dir = tempfile::TempDir::new().expect("failed to create temp dir");
-        #[cfg(not(feature = "backend-sqlite"))]
-        let path = dir.path().join("test.redb");
-        #[cfg(feature = "backend-sqlite")]
         let path = dir.path().join("test.db");
         let store = Store::open(&path).expect("failed to open test database");
         TestDb { _dir: dir, store }

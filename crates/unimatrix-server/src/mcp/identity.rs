@@ -59,7 +59,7 @@ mod tests {
 
     fn make_registry() -> AgentRegistry {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         let store = Arc::new(Store::open(&path).unwrap());
         std::mem::forget(dir);
         let registry = AgentRegistry::new(store).unwrap();
