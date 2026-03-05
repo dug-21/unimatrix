@@ -4,7 +4,6 @@
 //! `insert_injection_log_batch` is the sole public write API — never insert single records.
 //! All operations are synchronous; callers in async contexts use `tokio::task::spawn_blocking`.
 
-use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 
 use crate::db::Store;
@@ -25,23 +24,6 @@ pub struct InjectionLogRecord {
     pub confidence: f64,
     /// Unix epoch seconds.
     pub timestamp: u64,
-}
-
-// -- Serialization helpers --
-//
-// Exposed as `pub(crate)` so `sessions.rs` can deserialize injection_log records
-// during GC cascade without creating a circular module dependency.
-
-pub(crate) fn serialize_injection_log(record: &InjectionLogRecord) -> Result<Vec<u8>> {
-    bincode::serde::encode_to_vec(record, bincode::config::standard())
-        .map_err(|e| StoreError::Serialization(e.to_string()))
-}
-
-pub(crate) fn deserialize_injection_log(bytes: &[u8]) -> Result<InjectionLogRecord> {
-    let (record, _) =
-        bincode::serde::decode_from_slice::<InjectionLogRecord, _>(bytes, bincode::config::standard())
-            .map_err(|e| StoreError::Deserialization(e.to_string()))?;
-    Ok(record)
 }
 
 // -- Store methods (SQLite backend) --
@@ -65,32 +47,27 @@ impl Store {
 
         let result = (|| -> Result<()> {
             // Read and update counter
-            let base_id: u64 = conn
-                .query_row(
-                    "SELECT value FROM counters WHERE name = 'next_log_id'",
-                    [],
-                    |row| Ok(row.get::<_, i64>(0)? as u64),
-                )
-                .optional()
-                .map_err(StoreError::Sqlite)?
-                .unwrap_or(0);
-
+            let base_id = crate::counters::read_counter(&conn, "next_log_id")?;
             let next_id = base_id + records.len() as u64;
-            conn.execute(
-                "INSERT OR REPLACE INTO counters (name, value) VALUES ('next_log_id', ?1)",
-                rusqlite::params![next_id as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
+            crate::counters::set_counter(&conn, "next_log_id", next_id)?;
 
             // Insert each record with allocated log_id
-            for (i, record) in records.iter().enumerate() {
-                let mut r = record.clone();
-                r.log_id = base_id + i as u64;
-                let bytes = serialize_injection_log(&r)?;
-                conn.execute(
-                    "INSERT INTO injection_log (log_id, data) VALUES (?1, ?2)",
-                    rusqlite::params![r.log_id as i64, bytes],
+            let mut stmt = conn
+                .prepare(
+                    "INSERT INTO injection_log (log_id, session_id, entry_id, confidence, timestamp) \
+                     VALUES (?1, ?2, ?3, ?4, ?5)",
                 )
+                .map_err(StoreError::Sqlite)?;
+
+            for (i, record) in records.iter().enumerate() {
+                let log_id = base_id + i as u64;
+                stmt.execute(rusqlite::params![
+                    log_id as i64,
+                    &record.session_id,
+                    record.entry_id as i64,
+                    record.confidence,
+                    record.timestamp as i64,
+                ])
                 .map_err(StoreError::Sqlite)?;
             }
 
@@ -99,7 +76,8 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -109,27 +87,32 @@ impl Store {
         }
     }
 
-    /// Scan all injection log records for a given session_id.
-    ///
-    /// Full table scan + in-process filter. Acceptable at current volumes.
+    /// Scan all injection log records for a given session_id using the index.
     pub fn scan_injection_log_by_session(
         &self,
         session_id: &str,
     ) -> Result<Vec<InjectionLogRecord>> {
         let conn = self.lock_conn();
         let mut stmt = conn
-            .prepare("SELECT data FROM injection_log ORDER BY log_id")
+            .prepare(
+                "SELECT log_id, session_id, entry_id, confidence, timestamp \
+                 FROM injection_log WHERE session_id = ?1 ORDER BY log_id",
+            )
             .map_err(StoreError::Sqlite)?;
         let rows = stmt
-            .query_map([], |row| row.get::<_, Vec<u8>>(0))
+            .query_map(rusqlite::params![session_id], |row| {
+                Ok(InjectionLogRecord {
+                    log_id: row.get::<_, i64>("log_id")? as u64,
+                    session_id: row.get("session_id")?,
+                    entry_id: row.get::<_, i64>("entry_id")? as u64,
+                    confidence: row.get("confidence")?,
+                    timestamp: row.get::<_, i64>("timestamp")? as u64,
+                })
+            })
             .map_err(StoreError::Sqlite)?;
         let mut results = Vec::new();
         for row in rows {
-            let bytes = row.map_err(StoreError::Sqlite)?;
-            let record = deserialize_injection_log(&bytes)?;
-            if record.session_id == session_id {
-                results.push(record);
-            }
+            results.push(row.map_err(StoreError::Sqlite)?);
         }
         Ok(results)
     }

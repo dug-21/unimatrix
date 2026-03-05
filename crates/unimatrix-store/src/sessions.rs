@@ -40,17 +40,32 @@ pub struct SessionRecord {
 }
 
 /// Session lifecycle phase.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 pub enum SessionLifecycleStatus {
     /// Session is ongoing.
-    Active,
+    Active = 0,
     /// Session closed normally (Success or Rework outcome).
-    Completed,
+    Completed = 1,
     /// Session was active for > 24h; marked by GC sweep.
-    TimedOut,
+    TimedOut = 2,
     /// Session was explicitly abandoned (ADR-001).
     /// Excluded from retrospective metric computation.
-    Abandoned,
+    Abandoned = 3,
+}
+
+impl TryFrom<u8> for SessionLifecycleStatus {
+    type Error = StoreError;
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Active),
+            1 => Ok(Self::Completed),
+            2 => Ok(Self::TimedOut),
+            3 => Ok(Self::Abandoned),
+            other => Err(StoreError::InvalidStatus(other)),
+        }
+    }
 }
 
 /// Statistics returned by `gc_sessions`.
@@ -61,19 +76,26 @@ pub struct GcStats {
     pub deleted_injection_log_count: u32,
 }
 
-// -- Serialization helpers --
+// -- Row helper --
 
-fn serialize_session(record: &SessionRecord) -> Result<Vec<u8>> {
-    bincode::serde::encode_to_vec(record, bincode::config::standard())
-        .map_err(|e| StoreError::Serialization(e.to_string()))
+fn session_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRecord> {
+    Ok(SessionRecord {
+        session_id: row.get("session_id")?,
+        feature_cycle: row.get("feature_cycle")?,
+        agent_role: row.get("agent_role")?,
+        started_at: row.get::<_, i64>("started_at")? as u64,
+        ended_at: row.get::<_, Option<i64>>("ended_at")?.map(|v| v as u64),
+        status: SessionLifecycleStatus::try_from(row.get::<_, i64>("status")? as u8)
+            .unwrap_or(SessionLifecycleStatus::Active),
+        compaction_count: row.get::<_, i64>("compaction_count")? as u32,
+        outcome: row.get("outcome")?,
+        total_injections: row.get::<_, i64>("total_injections")? as u32,
+    })
 }
 
-fn deserialize_session(bytes: &[u8]) -> Result<SessionRecord> {
-    let (record, _) =
-        bincode::serde::decode_from_slice::<SessionRecord, _>(bytes, bincode::config::standard())
-            .map_err(|e| StoreError::Deserialization(e.to_string()))?;
-    Ok(record)
-}
+const SESSION_COLUMNS: &str =
+    "session_id, feature_cycle, agent_role, started_at, ended_at, \
+     status, compaction_count, outcome, total_injections";
 
 // -- Store methods (SQLite backend) --
 
@@ -83,11 +105,22 @@ impl Store {
     /// If a record with the same session_id already exists, it is overwritten
     /// (INSERT OR REPLACE semantics).
     pub fn insert_session(&self, record: &SessionRecord) -> Result<()> {
-        let bytes = serialize_session(record)?;
         let conn = self.lock_conn();
         conn.execute(
-            "INSERT OR REPLACE INTO sessions (session_id, data) VALUES (?1, ?2)",
-            rusqlite::params![&record.session_id, bytes],
+            "INSERT OR REPLACE INTO sessions (session_id, feature_cycle, agent_role,
+                started_at, ended_at, status, compaction_count, outcome, total_injections)
+             VALUES (:sid, :fc, :ar, :sa, :ea, :st, :cc, :oc, :ti)",
+            rusqlite::named_params! {
+                ":sid": &record.session_id,
+                ":fc": &record.feature_cycle,
+                ":ar": &record.agent_role,
+                ":sa": record.started_at as i64,
+                ":ea": record.ended_at.map(|v| v as i64),
+                ":st": record.status as u8 as i64,
+                ":cc": record.compaction_count as i64,
+                ":oc": &record.outcome,
+                ":ti": record.total_injections as i64,
+            },
         )
         .map_err(StoreError::Sqlite)?;
         Ok(())
@@ -106,38 +139,45 @@ impl Store {
             .map_err(StoreError::Sqlite)?;
 
         let result = (|| -> Result<()> {
-            let bytes: Option<Vec<u8>> = conn
+            let mut record: SessionRecord = conn
                 .query_row(
-                    "SELECT data FROM sessions WHERE session_id = ?1",
+                    &format!("SELECT {} FROM sessions WHERE session_id = ?1", SESSION_COLUMNS),
                     rusqlite::params![session_id],
-                    |row| row.get(0),
+                    session_from_row,
                 )
                 .optional()
-                .map_err(StoreError::Sqlite)?;
+                .map_err(StoreError::Sqlite)?
+                .ok_or_else(|| {
+                    StoreError::Deserialization(format!("session not found: {session_id}"))
+                })?;
 
-            match bytes {
-                None => {
-                    return Err(StoreError::Deserialization(format!(
-                        "session not found: {session_id}"
-                    )));
-                }
-                Some(bytes) => {
-                    let mut record = deserialize_session(&bytes)?;
-                    updater(&mut record);
-                    let updated_bytes = serialize_session(&record)?;
-                    conn.execute(
-                        "UPDATE sessions SET data = ?1 WHERE session_id = ?2",
-                        rusqlite::params![updated_bytes, session_id],
-                    )
-                    .map_err(StoreError::Sqlite)?;
-                }
-            }
+            updater(&mut record);
+
+            conn.execute(
+                "UPDATE sessions SET feature_cycle = :fc, agent_role = :ar,
+                    started_at = :sa, ended_at = :ea, status = :st,
+                    compaction_count = :cc, outcome = :oc, total_injections = :ti
+                 WHERE session_id = :sid",
+                rusqlite::named_params! {
+                    ":sid": &record.session_id,
+                    ":fc": &record.feature_cycle,
+                    ":ar": &record.agent_role,
+                    ":sa": record.started_at as i64,
+                    ":ea": record.ended_at.map(|v| v as i64),
+                    ":st": record.status as u8 as i64,
+                    ":cc": record.compaction_count as i64,
+                    ":oc": &record.outcome,
+                    ":ti": record.total_injections as i64,
+                },
+            )
+            .map_err(StoreError::Sqlite)?;
             Ok(())
         })();
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -150,72 +190,66 @@ impl Store {
     /// Retrieve a single SessionRecord by session_id.
     pub fn get_session(&self, session_id: &str) -> Result<Option<SessionRecord>> {
         let conn = self.lock_conn();
-        let bytes: Option<Vec<u8>> = conn
-            .query_row(
-                "SELECT data FROM sessions WHERE session_id = ?1",
-                rusqlite::params![session_id],
-                |row| row.get(0),
-            )
-            .optional()
-            .map_err(StoreError::Sqlite)?;
-        match bytes {
-            None => Ok(None),
-            Some(bytes) => Ok(Some(deserialize_session(&bytes)?)),
-        }
+        conn.query_row(
+            &format!(
+                "SELECT {} FROM sessions WHERE session_id = ?1",
+                SESSION_COLUMNS
+            ),
+            rusqlite::params![session_id],
+            session_from_row,
+        )
+        .optional()
+        .map_err(StoreError::Sqlite)
     }
 
-    /// Scan all sessions for a given feature_cycle.
-    ///
-    /// Full table scan + in-process filter. Acceptable at current volumes.
+    /// Query all sessions for a given feature_cycle using the indexed column.
     pub fn scan_sessions_by_feature(&self, feature_cycle: &str) -> Result<Vec<SessionRecord>> {
         let conn = self.lock_conn();
         let mut stmt = conn
-            .prepare("SELECT data FROM sessions")
+            .prepare(&format!(
+                "SELECT {} FROM sessions WHERE feature_cycle = ?1",
+                SESSION_COLUMNS
+            ))
             .map_err(StoreError::Sqlite)?;
         let rows = stmt
-            .query_map([], |row| row.get::<_, Vec<u8>>(0))
+            .query_map(rusqlite::params![feature_cycle], session_from_row)
             .map_err(StoreError::Sqlite)?;
         let mut results = Vec::new();
         for row in rows {
-            let bytes = row.map_err(StoreError::Sqlite)?;
-            let record = deserialize_session(&bytes)?;
-            if record.feature_cycle.as_deref() == Some(feature_cycle) {
-                results.push(record);
-            }
+            results.push(row.map_err(StoreError::Sqlite)?);
         }
         Ok(results)
     }
 
-    /// Scan sessions for a feature_cycle, optionally filtering by status.
+    /// Query sessions for a feature_cycle, optionally filtering by status.
     pub fn scan_sessions_by_feature_with_status(
         &self,
         feature_cycle: &str,
         status_filter: Option<SessionLifecycleStatus>,
     ) -> Result<Vec<SessionRecord>> {
         let conn = self.lock_conn();
-        let mut stmt = conn
-            .prepare("SELECT data FROM sessions")
-            .map_err(StoreError::Sqlite)?;
-        let rows = stmt
-            .query_map([], |row| row.get::<_, Vec<u8>>(0))
-            .map_err(StoreError::Sqlite)?;
-        let mut results = Vec::new();
-        for row in rows {
-            let bytes = row.map_err(StoreError::Sqlite)?;
-            let record = deserialize_session(&bytes)?;
-            if record.feature_cycle.as_deref() != Some(feature_cycle) {
-                continue;
-            }
-            match &status_filter {
-                None => results.push(record),
-                Some(filter) => {
-                    if &record.status == filter {
-                        results.push(record);
-                    }
+        match status_filter {
+            None => self.scan_sessions_by_feature(feature_cycle),
+            Some(status) => {
+                let mut stmt = conn
+                    .prepare(&format!(
+                        "SELECT {} FROM sessions WHERE feature_cycle = ?1 AND status = ?2",
+                        SESSION_COLUMNS
+                    ))
+                    .map_err(StoreError::Sqlite)?;
+                let rows = stmt
+                    .query_map(
+                        rusqlite::params![feature_cycle, status as u8 as i64],
+                        session_from_row,
+                    )
+                    .map_err(StoreError::Sqlite)?;
+                let mut results = Vec::new();
+                for row in rows {
+                    results.push(row.map_err(StoreError::Sqlite)?);
                 }
+                Ok(results)
             }
         }
-        Ok(results)
     }
 
     /// GC sweep: mark old Active sessions as TimedOut; delete very old sessions
@@ -240,108 +274,46 @@ impl Store {
             .map_err(StoreError::Sqlite)?;
 
         let result = (|| -> Result<GcStats> {
-            let mut stats = GcStats::default();
-
-            // Phase 1: collect session_ids to delete (started_at < delete_boundary)
-            let sessions_to_delete: Vec<String> = {
-                let mut stmt = conn
-                    .prepare("SELECT data FROM sessions")
-                    .map_err(StoreError::Sqlite)?;
-                let rows = stmt
-                    .query_map([], |row| row.get::<_, Vec<u8>>(0))
-                    .map_err(StoreError::Sqlite)?;
-                let mut to_delete = Vec::new();
-                for row in rows {
-                    let bytes = row.map_err(StoreError::Sqlite)?;
-                    let record = deserialize_session(&bytes)?;
-                    if record.started_at < delete_boundary {
-                        to_delete.push(record.session_id);
-                    }
-                }
-                to_delete
-            };
-
-            // Phase 2: collect log_ids whose session_id is in the deletion set
-            let log_ids_to_delete: Vec<i64> = {
-                let mut stmt = conn
-                    .prepare("SELECT log_id, data FROM injection_log")
-                    .map_err(StoreError::Sqlite)?;
-                let rows = stmt
-                    .query_map([], |row| {
-                        Ok((row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?))
-                    })
-                    .map_err(StoreError::Sqlite)?;
-                let mut to_delete = Vec::new();
-                for row in rows {
-                    let (log_id, bytes) = row.map_err(StoreError::Sqlite)?;
-                    let record = crate::injection_log::deserialize_injection_log(&bytes)?;
-                    if sessions_to_delete.contains(&record.session_id) {
-                        to_delete.push(log_id);
-                    }
-                }
-                to_delete
-            };
-
-            // Phase 3: delete injection_log entries
-            for log_id in &log_ids_to_delete {
-                conn.execute(
-                    "DELETE FROM injection_log WHERE log_id = ?1",
-                    rusqlite::params![log_id],
+            // Phase 1: Delete injection_log for sessions being deleted
+            let deleted_injection_log_count = conn
+                .execute(
+                    "DELETE FROM injection_log WHERE session_id IN (\
+                        SELECT session_id FROM sessions WHERE started_at < ?1\
+                    )",
+                    rusqlite::params![delete_boundary as i64],
                 )
-                .map_err(StoreError::Sqlite)?;
-                stats.deleted_injection_log_count += 1;
-            }
+                .map_err(StoreError::Sqlite)? as u32;
 
-            // Phase 4: delete sessions
-            for session_id in &sessions_to_delete {
-                conn.execute(
-                    "DELETE FROM sessions WHERE session_id = ?1",
-                    rusqlite::params![session_id],
+            // Phase 2: Delete old sessions
+            let deleted_session_count = conn
+                .execute(
+                    "DELETE FROM sessions WHERE started_at < ?1",
+                    rusqlite::params![delete_boundary as i64],
                 )
-                .map_err(StoreError::Sqlite)?;
-                stats.deleted_session_count += 1;
-            }
+                .map_err(StoreError::Sqlite)? as u32;
 
-            // Phase 5: mark Active sessions with started_at < timed_out_boundary as TimedOut
-            let timed_out_updates: Vec<(String, Vec<u8>)> = {
-                let mut stmt = conn
-                    .prepare("SELECT data FROM sessions")
-                    .map_err(StoreError::Sqlite)?;
-                let rows = stmt
-                    .query_map([], |row| row.get::<_, Vec<u8>>(0))
-                    .map_err(StoreError::Sqlite)?;
-                let mut updates = Vec::new();
-                for row in rows {
-                    let bytes = row.map_err(StoreError::Sqlite)?;
-                    let record = deserialize_session(&bytes)?;
-                    if record.status == SessionLifecycleStatus::Active
-                        && record.started_at < timed_out_boundary
-                        && !sessions_to_delete.contains(&record.session_id)
-                    {
-                        let mut updated = record.clone();
-                        updated.status = SessionLifecycleStatus::TimedOut;
-                        let bytes = serialize_session(&updated)?;
-                        updates.push((updated.session_id, bytes));
-                        stats.timed_out_count += 1;
-                    }
-                }
-                updates
-            };
-
-            for (id, bytes) in timed_out_updates {
-                conn.execute(
-                    "UPDATE sessions SET data = ?1 WHERE session_id = ?2",
-                    rusqlite::params![bytes, id],
+            // Phase 3: Mark timed-out Active sessions
+            let timed_out_count = conn
+                .execute(
+                    "UPDATE sessions SET status = ?1 WHERE status = 0 AND started_at < ?2",
+                    rusqlite::params![
+                        SessionLifecycleStatus::TimedOut as u8 as i64,
+                        timed_out_boundary as i64
+                    ],
                 )
-                .map_err(StoreError::Sqlite)?;
-            }
+                .map_err(StoreError::Sqlite)? as u32;
 
-            Ok(stats)
+            Ok(GcStats {
+                deleted_injection_log_count,
+                deleted_session_count,
+                timed_out_count,
+            })
         })();
 
         match result {
             Ok(stats) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
                 Ok(stats)
             }
             Err(e) => {

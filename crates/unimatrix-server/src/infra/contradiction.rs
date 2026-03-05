@@ -10,7 +10,9 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 use unimatrix_core::{CoreError, EmbedService, VectorStore};
-use unimatrix_store::{EntryRecord, Status, Store, STATUS_INDEX, ENTRIES, deserialize_entry};
+use unimatrix_store::rusqlite;
+use unimatrix_store::{EntryRecord, Status, Store, StoreError};
+use unimatrix_store::read::{entry_from_row, load_tags_for_entries, ENTRY_COLUMNS};
 
 use crate::error::ServerError;
 
@@ -177,33 +179,32 @@ pub fn scan_contradictions(
     Ok(results)
 }
 
-/// Read all active entries from the store using the STATUS_INDEX.
+/// Read all active entries from the store using direct SQL query.
 fn read_active_entries(store: &Store) -> Result<Vec<EntryRecord>, ServerError> {
-    let txn = store
-        .begin_read()
-        .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-    let status_table = txn
-        .open_table(STATUS_INDEX)
-        .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-    let entries_table = txn
-        .open_table(ENTRIES)
-        .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+    let conn = store.lock_conn();
+    let mut stmt = conn
+        .prepare(&format!(
+            "SELECT {} FROM entries WHERE status = ?1",
+            ENTRY_COLUMNS
+        ))
+        .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
 
-    let active_range = status_table
-        .range::<(u8, u64)>((Status::Active as u8, 0u64)..=(Status::Active as u8, u64::MAX))
-        .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+    let mut entries: Vec<EntryRecord> = stmt
+        .query_map(
+            rusqlite::params![Status::Active as u8 as i64],
+            entry_from_row,
+        )
+        .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
 
-    let mut entries = Vec::new();
-    for item in active_range {
-        let (key, _) = item.map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-        let (_, entry_id) = key.value();
-        if let Some(guard) = entries_table
-            .get(entry_id)
-            .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?
-        {
-            let record = deserialize_entry(guard.value())
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            entries.push(record);
+    // Load tags for all entries
+    let ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
+    let tag_map = load_tags_for_entries(&conn, &ids)
+        .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+    for entry in &mut entries {
+        if let Some(tags) = tag_map.get(&entry.id) {
+            entry.tags = tags.clone();
         }
     }
 

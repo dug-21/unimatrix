@@ -1,7 +1,7 @@
 //! StoreService: unified write operations with atomic audit.
 //!
 //! Replaces inline write logic in tools.rs context_store and context_correct.
-//! Uses the same atomic transaction pattern as server.rs insert_with_audit.
+//! Uses direct SQL with named params (ADR-004, nxs-008).
 
 use std::sync::Arc;
 
@@ -10,11 +10,9 @@ use unimatrix_core::{
     VectorIndex,
 };
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+use unimatrix_store::rusqlite;
 use unimatrix_store::{
-    CATEGORY_INDEX, ENTRIES, OUTCOME_INDEX, STATUS_INDEX, TAG_INDEX, TIME_INDEX,
-    TOPIC_INDEX, VECTOR_MAP,
-    compute_content_hash, increment_counter, next_entry_id,
-    serialize_entry, status_counter_key,
+    compute_content_hash, status_counter_key, StoreError,
 };
 
 use unimatrix_adapt::AdaptationService;
@@ -192,8 +190,10 @@ impl StoreService {
             let txn = store
                 .begin_write()
                 .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            let conn = &*txn.guard;
 
-            let id = next_entry_id(&txn)
+            // 1. Allocate entry ID via counters module
+            let id = unimatrix_store::counters::next_entry_id(conn)
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
             let content_hash = compute_content_hash(&entry.title, &entry.content);
@@ -231,85 +231,83 @@ impl StoreService {
                 unhelpful_count: 0,
             };
 
-            let bytes = serialize_entry(&record)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            {
-                let mut table = txn
-                    .open_table(ENTRIES)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table
-                    .insert(id, bytes.as_slice())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-            {
-                let mut table = txn
-                    .open_table(TOPIC_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table
-                    .insert((record.topic.as_str(), id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-            {
-                let mut table = txn
-                    .open_table(CATEGORY_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table
-                    .insert((record.category.as_str(), id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-            {
-                let mut table = txn
-                    .open_multimap_table(TAG_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                for tag in &record.tags {
-                    table
-                        .insert(tag.as_str(), id)
-                        .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                }
-            }
-            {
-                let mut table = txn
-                    .open_table(TIME_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table
-                    .insert((record.created_at, id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-            {
-                let mut table = txn
-                    .open_table(STATUS_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table
-                    .insert((record.status as u8, id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            }
-            {
-                let mut table = txn
-                    .open_table(VECTOR_MAP)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                table
-                    .insert(id, data_id)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+            // 2. INSERT into entries with named params (ADR-004)
+            conn.execute(
+                "INSERT INTO entries (id, title, content, topic, category, source,
+                    status, confidence, created_at, updated_at, last_accessed_at,
+                    access_count, supersedes, superseded_by, correction_count,
+                    embedding_dim, created_by, modified_by, content_hash,
+                    previous_hash, version, feature_cycle, trust_source,
+                    helpful_count, unhelpful_count)
+                 VALUES (:id, :title, :content, :topic, :category, :source,
+                    :status, :confidence, :created_at, :updated_at, :last_accessed_at,
+                    :access_count, :supersedes, :superseded_by, :correction_count,
+                    :embedding_dim, :created_by, :modified_by, :content_hash,
+                    :previous_hash, :version, :feature_cycle, :trust_source,
+                    :helpful_count, :unhelpful_count)",
+                rusqlite::named_params! {
+                    ":id": id as i64,
+                    ":title": &record.title,
+                    ":content": &record.content,
+                    ":topic": &record.topic,
+                    ":category": &record.category,
+                    ":source": &record.source,
+                    ":status": record.status as u8 as i64,
+                    ":confidence": record.confidence,
+                    ":created_at": record.created_at as i64,
+                    ":updated_at": record.updated_at as i64,
+                    ":last_accessed_at": record.last_accessed_at as i64,
+                    ":access_count": record.access_count as i64,
+                    ":supersedes": record.supersedes.map(|v| v as i64),
+                    ":superseded_by": record.superseded_by.map(|v| v as i64),
+                    ":correction_count": record.correction_count as i64,
+                    ":embedding_dim": record.embedding_dim as i64,
+                    ":created_by": &record.created_by,
+                    ":modified_by": &record.modified_by,
+                    ":content_hash": &record.content_hash,
+                    ":previous_hash": &record.previous_hash,
+                    ":version": record.version as i64,
+                    ":feature_cycle": &record.feature_cycle,
+                    ":trust_source": &record.trust_source,
+                    ":helpful_count": record.helpful_count as i64,
+                    ":unhelpful_count": record.unhelpful_count as i64,
+                },
+            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+
+            // 3. Insert tags into entry_tags
+            for tag in &record.tags {
+                conn.execute(
+                    "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
+                    rusqlite::params![id as i64, tag],
+                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
             }
 
+            // 4. Insert vector mapping
+            conn.execute(
+                "INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)",
+                rusqlite::params![id as i64, data_id as i64],
+            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+
+            // 5. Outcome index (if applicable)
             if record.category == "outcome" && !record.feature_cycle.is_empty() {
-                let mut outcome_table = txn
-                    .open_table(OUTCOME_INDEX)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                outcome_table
-                    .insert((record.feature_cycle.as_str(), id), ())
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                conn.execute(
+                    "INSERT OR IGNORE INTO outcome_index (feature_cycle, entry_id) VALUES (?1, ?2)",
+                    rusqlite::params![&record.feature_cycle, id as i64],
+                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
             }
 
-            increment_counter(&txn, status_counter_key(record.status), 1)
+            // 6. Status counter
+            unimatrix_store::counters::increment_counter(conn, status_counter_key(record.status), 1)
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
+            // 7. Audit event
             let audit_event_with_target = AuditEvent {
                 target_ids: vec![id],
                 ..audit_event
             };
             audit_log.write_in_txn(&txn, audit_event_with_target)?;
 
+            // 8. Commit
             txn.commit()
                 .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
             Ok((id, record))

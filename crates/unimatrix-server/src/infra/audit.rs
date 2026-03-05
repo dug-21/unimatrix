@@ -1,49 +1,21 @@
-//! Append-only audit log using the AUDIT_LOG table.
+//! Append-only audit log using direct SQL against the audit_log table.
+//!
+//! Rewritten for nxs-008: no bincode, no open_table compat layer.
+//! Uses SQL columns + JSON for target_ids (ADR-004, ADR-007).
 
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde::{Deserialize, Serialize};
-use unimatrix_store::{AUDIT_LOG, COUNTERS, Store};
+use unimatrix_store::rusqlite;
 use unimatrix_store::SqliteWriteTransaction;
+use unimatrix_store::Store;
+
+// Re-export types so existing `use crate::infra::audit::*` imports keep working.
+pub use unimatrix_store::{AuditEvent, Outcome};
 
 use crate::error::ServerError;
 
-/// An immutable record of a single MCP request.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct AuditEvent {
-    /// Monotonic event ID (assigned by log_event).
-    pub event_id: u64,
-    /// Unix timestamp in seconds (assigned by log_event).
-    pub timestamp: u64,
-    /// MCP session identifier.
-    pub session_id: String,
-    /// Agent that made the request.
-    pub agent_id: String,
-    /// Tool name (e.g., "context_search").
-    pub operation: String,
-    /// Entry IDs affected (empty for search/stubs).
-    pub target_ids: Vec<u64>,
-    /// Result of the operation.
-    pub outcome: Outcome,
-    /// Human-readable detail.
-    pub detail: String,
-}
-
-/// Result of an audited operation.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-pub enum Outcome {
-    /// Operation completed successfully.
-    Success,
-    /// Operation denied (capability check failed).
-    Denied,
-    /// Operation failed with an error.
-    Error,
-    /// Tool not yet implemented (vnc-001 stubs).
-    NotImplemented,
-}
-
-/// Append-only audit log backed by AUDIT_LOG table.
+/// Append-only audit log backed by audit_log table.
 pub struct AuditLog {
     store: Arc<Store>,
 }
@@ -58,86 +30,73 @@ impl AuditLog {
     ///
     /// The caller provides all fields except `event_id` and `timestamp`,
     /// which are set by this method. The event_id is monotonically increasing
-    /// using COUNTERS["next_audit_id"].
+    /// using counters["next_audit_id"].
     pub fn log_event(&self, event: AuditEvent) -> Result<(), ServerError> {
-        let txn = self
-            .store
-            .begin_write()
+        let conn = self.store.lock_conn();
+        conn.execute_batch("BEGIN IMMEDIATE")
             .map_err(|e| ServerError::Audit(e.to_string()))?;
-        {
+
+        let result = (|| -> Result<(), ServerError> {
             // Get and increment the audit ID counter
-            let mut counters = txn
-                .open_table(COUNTERS)
-                .map_err(|e| ServerError::Audit(e.to_string()))?;
-            let current_id = match counters
-                .get("next_audit_id")
-                .map_err(|e| ServerError::Audit(e.to_string()))?
-            {
-                Some(guard) => guard.value(),
-                None => 1, // first event ever
-            };
-            counters
-                .insert("next_audit_id", current_id + 1)
+            let current_id =
+                unimatrix_store::counters::read_counter(&conn, "next_audit_id")
+                    .unwrap_or(1);
+            let id = if current_id == 0 { 1 } else { current_id };
+            unimatrix_store::counters::set_counter(&conn, "next_audit_id", id + 1)
                 .map_err(|e| ServerError::Audit(e.to_string()))?;
 
-            // Build final event with assigned ID and timestamp
-            let final_event = AuditEvent {
-                event_id: current_id,
-                timestamp: current_unix_seconds(),
-                ..event
-            };
+            let target_ids_json = serde_json::to_string(&event.target_ids)
+                .map_err(|e| ServerError::Audit(e.to_string()))?;
+            let now = current_unix_seconds();
 
-            // Serialize and insert
-            let mut audit_table = txn
-                .open_table(AUDIT_LOG)
-                .map_err(|e| ServerError::Audit(e.to_string()))?;
-            let bytes = serialize_audit_event(&final_event)?;
-            audit_table
-                .insert(current_id, bytes.as_slice())
-                .map_err(|e| ServerError::Audit(e.to_string()))?;
-        }
-        txn.commit()
+            conn.execute(
+                "INSERT INTO audit_log (event_id, timestamp, session_id, agent_id,
+                    operation, target_ids, outcome, detail)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                rusqlite::params![
+                    id as i64,
+                    now as i64,
+                    &event.session_id,
+                    &event.agent_id,
+                    &event.operation,
+                    &target_ids_json,
+                    event.outcome as u8 as i64,
+                    &event.detail,
+                ],
+            )
             .map_err(|e| ServerError::Audit(e.to_string()))?;
-        Ok(())
+
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => {
+                conn.execute_batch("COMMIT")
+                    .map_err(|e| ServerError::Audit(e.to_string()))?;
+                Ok(())
+            }
+            Err(e) => {
+                let _ = conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
+        }
     }
 
     /// Count write operations by a specific agent since a given timestamp.
     ///
-    /// Scans AUDIT_LOG for entries where `agent_id` matches and `operation`
-    /// is a write tool (context_store, context_correct) with `timestamp >= since`.
-    /// Returns the count.
+    /// Uses indexed SQL query instead of full table scan.
     pub fn write_count_since(&self, agent_id: &str, since: u64) -> Result<u64, ServerError> {
-        let txn = self
-            .store
-            .begin_read()
+        let conn = self.store.lock_conn();
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM audit_log
+                 WHERE agent_id = ?1 AND timestamp >= ?2
+                 AND operation IN ('context_store', 'context_correct')",
+                rusqlite::params![agent_id, since as i64],
+                |row| row.get(0),
+            )
             .map_err(|e| ServerError::Audit(e.to_string()))?;
-        let table = txn
-            .open_table(AUDIT_LOG)
-            .map_err(|e| ServerError::Audit(e.to_string()))?;
-
-        let mut count = 0u64;
-
-        for result in table
-            .iter()
-            .map_err(|e| ServerError::Audit(e.to_string()))?
-        {
-            let (_, value) = result.map_err(|e| ServerError::Audit(e.to_string()))?;
-            let event = deserialize_audit_event(value.value())?;
-
-            if event.timestamp < since {
-                continue;
-            }
-
-            if event.agent_id != agent_id {
-                continue;
-            }
-
-            if is_write_operation(&event.operation) {
-                count += 1;
-            }
-        }
-
-        Ok(count)
+        Ok(count as u64)
     }
 
     /// Write an audit event into an existing write transaction without committing.
@@ -149,36 +108,37 @@ impl AuditLog {
         txn: &SqliteWriteTransaction<'_>,
         event: AuditEvent,
     ) -> Result<u64, ServerError> {
-        let counters = txn
-            .open_table(COUNTERS)
-            .map_err(|e| ServerError::Audit(e.to_string()))?;
-        let current_id = match counters
-            .get("next_audit_id")
-            .map_err(|e| ServerError::Audit(e.to_string()))?
-        {
-            Some(guard) => guard.value(),
-            None => 1,
-        };
-        counters
-            .insert("next_audit_id", current_id + 1)
-            .map_err(|e| ServerError::Audit(e.to_string()))?;
-        drop(counters);
+        let conn = &*txn.guard;
 
-        let final_event = AuditEvent {
-            event_id: current_id,
-            timestamp: current_unix_seconds(),
-            ..event
-        };
-
-        let audit_table = txn
-            .open_table(AUDIT_LOG)
-            .map_err(|e| ServerError::Audit(e.to_string()))?;
-        let bytes = serialize_audit_event(&final_event)?;
-        audit_table
-            .insert(current_id, bytes.as_slice())
+        // Read and increment counter within the existing transaction
+        let current_id =
+            unimatrix_store::counters::read_counter(conn, "next_audit_id").unwrap_or(1);
+        let id = if current_id == 0 { 1 } else { current_id };
+        unimatrix_store::counters::set_counter(conn, "next_audit_id", id + 1)
             .map_err(|e| ServerError::Audit(e.to_string()))?;
 
-        Ok(current_id)
+        let target_ids_json = serde_json::to_string(&event.target_ids)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        let now = current_unix_seconds();
+
+        conn.execute(
+            "INSERT INTO audit_log (event_id, timestamp, session_id, agent_id,
+                operation, target_ids, outcome, detail)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![
+                id as i64,
+                now as i64,
+                &event.session_id,
+                &event.agent_id,
+                &event.operation,
+                &target_ids_json,
+                event.outcome as u8 as i64,
+                &event.detail,
+            ],
+        )
+        .map_err(|e| ServerError::Audit(e.to_string()))?;
+
+        Ok(id)
     }
 }
 
@@ -188,25 +148,6 @@ fn current_unix_seconds() -> u64 {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs()
-}
-
-/// Serialize an AuditEvent to bincode bytes.
-fn serialize_audit_event(event: &AuditEvent) -> Result<Vec<u8>, ServerError> {
-    bincode::serde::encode_to_vec(event, bincode::config::standard())
-        .map_err(|e| ServerError::Audit(format!("serialization failed: {e}")))
-}
-
-/// Check if an operation name is a write operation.
-fn is_write_operation(operation: &str) -> bool {
-    matches!(operation, "context_store" | "context_correct")
-}
-
-/// Deserialize an AuditEvent from bincode bytes.
-pub(crate) fn deserialize_audit_event(bytes: &[u8]) -> Result<AuditEvent, ServerError> {
-    let (event, _) =
-        bincode::serde::decode_from_slice::<AuditEvent, _>(bytes, bincode::config::standard())
-            .map_err(|e| ServerError::Audit(format!("deserialization failed: {e}")))?;
-    Ok(event)
 }
 
 #[cfg(test)]
@@ -234,17 +175,41 @@ mod tests {
         }
     }
 
+    /// Helper to read an audit event by event_id directly from SQL.
+    fn read_audit_event(store: &Store, event_id: u64) -> Option<AuditEvent> {
+        let conn = store.lock_conn();
+        conn.query_row(
+            "SELECT event_id, timestamp, session_id, agent_id, operation,
+                    target_ids, outcome, detail
+             FROM audit_log WHERE event_id = ?1",
+            rusqlite::params![event_id as i64],
+            |row| {
+                let target_ids_json: String = row.get("target_ids")?;
+                let target_ids: Vec<u64> =
+                    serde_json::from_str(&target_ids_json).unwrap_or_default();
+                Ok(AuditEvent {
+                    event_id: row.get::<_, i64>("event_id")? as u64,
+                    timestamp: row.get::<_, i64>("timestamp")? as u64,
+                    session_id: row.get("session_id")?,
+                    agent_id: row.get("agent_id")?,
+                    operation: row.get("operation")?,
+                    target_ids,
+                    outcome: Outcome::try_from(row.get::<_, i64>("outcome")? as u8)
+                        .unwrap_or(Outcome::Error),
+                    detail: row.get("detail")?,
+                })
+            },
+        )
+        .ok()
+    }
+
     #[test]
     fn test_first_event_id_is_1() {
         let store = make_store();
         let audit = AuditLog::new(store.clone());
         audit.log_event(make_event()).unwrap();
 
-        // Read the event back
-        let read_txn = store.begin_read().unwrap();
-        let table = read_txn.open_table(AUDIT_LOG).unwrap();
-        let guard = table.get(1u64).unwrap().unwrap();
-        let event = deserialize_audit_event(guard.value()).unwrap();
+        let event = read_audit_event(&store, 1).unwrap();
         assert_eq!(event.event_id, 1);
     }
 
@@ -257,12 +222,9 @@ mod tests {
             audit.log_event(make_event()).unwrap();
         }
 
-        let read_txn = store.begin_read().unwrap();
-        let table = read_txn.open_table(AUDIT_LOG).unwrap();
         let mut prev_id = 0;
         for i in 1..=10u64 {
-            let guard = table.get(i).unwrap().unwrap();
-            let event = deserialize_audit_event(guard.value()).unwrap();
+            let event = read_audit_event(&store, i).unwrap();
             assert_eq!(event.event_id, i);
             assert!(event.event_id > prev_id);
             prev_id = event.event_id;
@@ -288,10 +250,7 @@ mod tests {
         let audit = AuditLog::new(store.clone());
         audit.log_event(make_event()).unwrap();
 
-        let read_txn = store.begin_read().unwrap();
-        let table = read_txn.open_table(AUDIT_LOG).unwrap();
-        let guard = table.get(6u64).unwrap().unwrap();
-        let event = deserialize_audit_event(guard.value()).unwrap();
+        let event = read_audit_event(&store, 6).unwrap();
         assert_eq!(event.event_id, 6);
     }
 
@@ -304,63 +263,55 @@ mod tests {
         event.timestamp = 0;
         audit.log_event(event).unwrap();
 
-        let read_txn = store.begin_read().unwrap();
-        let table = read_txn.open_table(AUDIT_LOG).unwrap();
-        let guard = table.get(1u64).unwrap().unwrap();
-        let stored = deserialize_audit_event(guard.value()).unwrap();
+        let stored = read_audit_event(&store, 1).unwrap();
         assert!(stored.timestamp > 0);
     }
 
     #[test]
-    fn test_audit_event_roundtrip() {
-        let event = AuditEvent {
-            event_id: 42,
-            timestamp: 1700000000,
-            session_id: "sess-1".to_string(),
-            agent_id: "uni-architect".to_string(),
-            operation: "context_store".to_string(),
-            target_ids: vec![1, 2, 3],
-            outcome: Outcome::Success,
-            detail: "stored 3 entries".to_string(),
-        };
-        let bytes = serialize_audit_event(&event).unwrap();
-        let deserialized = deserialize_audit_event(&bytes).unwrap();
-        assert_eq!(event, deserialized);
-    }
-
-    #[test]
     fn test_all_outcome_variants_roundtrip() {
-        for outcome in [
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
+        for (i, outcome) in [
             Outcome::Success,
             Outcome::Denied,
             Outcome::Error,
             Outcome::NotImplemented,
-        ] {
+        ]
+        .iter()
+        .enumerate()
+        {
             let event = AuditEvent {
-                outcome,
+                outcome: *outcome,
                 ..make_event()
             };
-            let bytes = serialize_audit_event(&event).unwrap();
-            let deserialized = deserialize_audit_event(&bytes).unwrap();
-            assert_eq!(deserialized.outcome, outcome);
+            audit.log_event(event).unwrap();
+            let stored = read_audit_event(&store, (i + 1) as u64).unwrap();
+            assert_eq!(stored.outcome, *outcome);
         }
     }
 
     #[test]
     fn test_empty_target_ids() {
-        let event = make_event();
-        let bytes = serialize_audit_event(&event).unwrap();
-        let deserialized = deserialize_audit_event(&bytes).unwrap();
-        assert!(deserialized.target_ids.is_empty());
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+        audit.log_event(make_event()).unwrap();
+
+        let stored = read_audit_event(&store, 1).unwrap();
+        assert!(stored.target_ids.is_empty());
     }
 
     #[test]
     fn test_multiple_target_ids() {
+        let store = make_store();
+        let audit = AuditLog::new(store.clone());
+
         let mut event = make_event();
         event.target_ids = vec![10, 20, 30];
-        let bytes = serialize_audit_event(&event).unwrap();
-        let deserialized = deserialize_audit_event(&bytes).unwrap();
-        assert_eq!(deserialized.target_ids, vec![10, 20, 30]);
+        audit.log_event(event).unwrap();
+
+        let stored = read_audit_event(&store, 1).unwrap();
+        assert_eq!(stored.target_ids, vec![10, 20, 30]);
     }
 
     #[test]
@@ -375,9 +326,7 @@ mod tests {
         drop(txn); // Drop without commit
 
         // Event should NOT be persisted
-        let read_txn = store.begin_read().unwrap();
-        let table = read_txn.open_table(AUDIT_LOG).unwrap();
-        assert!(table.get(1u64).unwrap().is_none());
+        assert!(read_audit_event(&store, 1).is_none());
     }
 
     #[test]
@@ -391,13 +340,9 @@ mod tests {
 
         assert_eq!(event_id, 1);
 
-        // Event should be persisted
-        let read_txn = store.begin_read().unwrap();
-        let table = read_txn.open_table(AUDIT_LOG).unwrap();
-        let guard = table.get(1u64).unwrap().unwrap();
-        let event = deserialize_audit_event(guard.value()).unwrap();
-        assert_eq!(event.event_id, 1);
-        assert!(event.timestamp > 0);
+        let stored = read_audit_event(&store, 1).unwrap();
+        assert_eq!(stored.event_id, 1);
+        assert!(stored.timestamp > 0);
     }
 
     #[test]
@@ -420,11 +365,8 @@ mod tests {
         // Use log_event for 5th
         audit.log_event(make_event()).unwrap();
 
-        let read_txn = store.begin_read().unwrap();
-        let table = read_txn.open_table(AUDIT_LOG).unwrap();
-        let guard = table.get(5u64).unwrap().unwrap();
-        let event = deserialize_audit_event(guard.value()).unwrap();
-        assert_eq!(event.event_id, 5);
+        let stored = read_audit_event(&store, 5).unwrap();
+        assert_eq!(stored.event_id, 5);
     }
 
     #[test]
@@ -450,12 +392,9 @@ mod tests {
             audit.log_event(make_event()).unwrap();
         }
 
-        let read_txn = store.begin_read().unwrap();
-        let table = read_txn.open_table(AUDIT_LOG).unwrap();
         let mut ids = Vec::new();
         for i in 1..=100u64 {
-            let guard = table.get(i).unwrap().unwrap();
-            let event = deserialize_audit_event(guard.value()).unwrap();
+            let event = read_audit_event(&store, i).unwrap();
             ids.push(event.event_id);
         }
 
