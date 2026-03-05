@@ -1,8 +1,6 @@
 //! Shared types for the observation pipeline.
 
 use std::collections::{BTreeMap, HashMap};
-use std::path::PathBuf;
-
 use serde::{Deserialize, Serialize};
 
 use crate::error::{ObserveError, Result};
@@ -35,19 +33,6 @@ pub struct ObservationRecord {
     pub response_snippet: Option<String>,
 }
 
-/// Metadata for a discovered session file.
-#[derive(Debug, Clone)]
-pub struct SessionFile {
-    /// Path to the .jsonl file.
-    pub path: PathBuf,
-    /// Session ID extracted from filename.
-    pub session_id: String,
-    /// File size in bytes.
-    pub size_bytes: u64,
-    /// Last modified time as Unix epoch seconds.
-    pub modified_at: u64,
-}
-
 /// A parsed session with its records.
 #[derive(Debug, Clone)]
 pub struct ParsedSession {
@@ -57,16 +42,16 @@ pub struct ParsedSession {
     pub records: Vec<ObservationRecord>,
 }
 
-/// Aggregate statistics about observation files.
+/// Aggregate statistics about observation data.
 #[derive(Debug, Clone)]
 pub struct ObservationStats {
-    /// Number of .jsonl files.
-    pub file_count: u64,
-    /// Total size of all files in bytes.
-    pub total_size_bytes: u64,
-    /// Age of oldest file in days.
-    pub oldest_file_age_days: u64,
-    /// Session IDs of files approaching 60-day cleanup (45-59 days old).
+    /// Number of observation records.
+    pub record_count: u64,
+    /// Number of distinct sessions with observations.
+    pub session_count: u64,
+    /// Age of oldest observation record in days.
+    pub oldest_record_age_days: u64,
+    /// Session IDs with records approaching 60-day cleanup (45-59 days old).
     pub approaching_cleanup: Vec<String>,
 }
 

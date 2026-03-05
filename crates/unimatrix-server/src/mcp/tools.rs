@@ -1050,38 +1050,18 @@ impl UnimatrixServer {
         crate::infra::validation::validate_retrospective_params(&params)
             .map_err(rmcp::ErrorData::from)?;
 
-        // 3. Determine observation directory
-        let obs_dir = unimatrix_observe::observation_dir();
-
-        // 4. Discover and parse session files (spawn_blocking for sync I/O)
-        let sessions = tokio::task::spawn_blocking({
-            let obs_dir = obs_dir.clone();
-            move || -> std::result::Result<Vec<unimatrix_observe::ParsedSession>, ServerError> {
-                let session_files = unimatrix_observe::discover_sessions(&obs_dir)
-                    .map_err(|e| ServerError::ObservationError(e.to_string()))?;
-
-                let mut parsed: Vec<unimatrix_observe::ParsedSession> = Vec::new();
-                for sf in &session_files {
-                    let records = unimatrix_observe::parse_session_file(&sf.path)
-                        .unwrap_or_default();
-                    if !records.is_empty() {
-                        parsed.push(unimatrix_observe::ParsedSession {
-                            session_id: sf.session_id.clone(),
-                            records,
-                        });
-                    }
-                }
-
-                Ok(parsed)
-            }
+        // 3. Load observations from SQL via ObservationSource (col-012)
+        let store_for_obs = Arc::clone(&self.store);
+        let feature_cycle_for_load = params.feature_cycle.clone();
+        let attributed = tokio::task::spawn_blocking(move || -> std::result::Result<Vec<unimatrix_observe::ObservationRecord>, unimatrix_observe::ObserveError> {
+            use unimatrix_observe::ObservationSource;
+            let source = crate::services::observation::SqlObservationSource::new(store_for_obs);
+            source.load_feature_observations(&feature_cycle_for_load)
         })
         .await
         .unwrap()
+        .map_err(|e| ServerError::ObservationError(e.to_string()))
         .map_err(rmcp::ErrorData::from)?;
-
-        // 5. Attribute sessions to target feature
-        let attributed =
-            unimatrix_observe::attribute_sessions(&sessions, &params.feature_cycle);
 
         // 6. Check for data availability
         let store = Arc::clone(&self.store);
@@ -1186,15 +1166,20 @@ impl UnimatrixServer {
         .map_err(|e| ServerError::Core(CoreError::Store(e)))
         .map_err(rmcp::ErrorData::from)?;
 
-        // 9. Cleanup expired files (FR-09.8)
-        let cleanup_dir = obs_dir;
+        // 9. Cleanup expired observations (FR-07: 60-day retention via SQL DELETE)
+        let store_cleanup = Arc::clone(&store);
         tokio::task::spawn_blocking(move || {
-            let sixty_days = 60 * 24 * 60 * 60;
-            if let Ok(expired) = unimatrix_observe::identify_expired(&cleanup_dir, sixty_days) {
-                for path in expired {
-                    let _ = std::fs::remove_file(path);
-                }
-            }
+            let conn = store_cleanup.lock_conn();
+            let now_millis = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis() as i64;
+            let sixty_days_millis = 60_i64 * 24 * 60 * 60 * 1000;
+            let cutoff = now_millis - sixty_days_millis;
+            let _ = conn.execute(
+                "DELETE FROM observations WHERE ts_millis < ?1",
+                unimatrix_store::rusqlite::params![cutoff],
+            );
         })
         .await
         .unwrap();
@@ -1224,10 +1209,8 @@ impl UnimatrixServer {
         let recommendations = unimatrix_observe::recommendations_for_hotspots(&report.hotspots);
         report.recommendations = recommendations;
 
-        // 10e. col-010b: Narratives — None on JSONL path (current path).
-        // The structured-events path (from_structured_events()) would set
-        // narratives = Some(synthesize_narratives(&report.hotspots)).
-        report.narratives = None;
+        // 10e. col-010b/col-012: Narratives — now on SQL path.
+        report.narratives = Some(unimatrix_observe::synthesize_narratives(&report.hotspots));
 
         // 10f. col-010b: Fire-and-forget lesson-learned write (ADR-002: self.clone())
         if !report.hotspots.is_empty() || !report.recommendations.is_empty() {

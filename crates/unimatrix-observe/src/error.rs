@@ -13,6 +13,8 @@ pub enum ObserveError {
     Serialization(String),
     /// Timestamp parsing error.
     TimestampParse(String),
+    /// Database query error (col-012: ObservationSource implementations).
+    Database(String),
 }
 
 impl fmt::Display for ObserveError {
@@ -22,6 +24,7 @@ impl fmt::Display for ObserveError {
             ObserveError::Json(e) => write!(f, "JSON error: {e}"),
             ObserveError::Serialization(msg) => write!(f, "serialization error: {msg}"),
             ObserveError::TimestampParse(msg) => write!(f, "timestamp parse error: {msg}"),
+            ObserveError::Database(msg) => write!(f, "database error: {msg}"),
         }
     }
 }

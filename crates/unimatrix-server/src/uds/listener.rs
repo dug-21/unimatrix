@@ -568,6 +568,16 @@ async fn dispatch_request(
                 session_id = event.session_id,
                 "UDS: event recorded"
             );
+
+            // col-012: Persist observation to SQLite (fire-and-forget)
+            let store_for_obs = Arc::clone(store);
+            let obs = extract_observation_fields(&event);
+            tokio::task::spawn_blocking(move || {
+                if let Err(e) = insert_observation(&store_for_obs, &obs) {
+                    tracing::error!(error = %e, "observation write failed");
+                }
+            });
+
             HookResponse::Ack
         }
 
@@ -579,6 +589,16 @@ async fn dispatch_request(
                 };
             }
             tracing::info!(count = events.len(), "UDS: batch events recorded");
+
+            // col-012: Batch persist observations in single transaction (fire-and-forget)
+            let store_for_obs = Arc::clone(store);
+            let obs_batch: Vec<ObservationRow> = events.iter().map(extract_observation_fields).collect();
+            tokio::task::spawn_blocking(move || {
+                if let Err(e) = insert_observations_batch(&store_for_obs, &obs_batch) {
+                    tracing::error!(error = %e, "batch observation write failed");
+                }
+            });
+
             HookResponse::Ack
         }
 
@@ -1520,6 +1540,127 @@ async fn write_response(
     writer.write_all(&payload).await?;
     writer.flush().await?;
     Ok(())
+}
+
+// -- col-012: Observation persistence helpers --
+
+/// Extracted observation row fields ready for SQL insertion.
+struct ObservationRow {
+    session_id: String,
+    ts_millis: i64,
+    hook: String,
+    tool: Option<String>,
+    input: Option<String>,
+    response_size: Option<i64>,
+    response_snippet: Option<String>,
+}
+
+/// Extract observation fields from an ImplantEvent for SQL insertion.
+fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> ObservationRow {
+    let session_id = event.session_id.clone();
+    let ts_millis = (event.timestamp as i64).saturating_mul(1000);
+    let hook = event.event_type.clone();
+
+    let (tool, input, response_size, response_snippet) = match hook.as_str() {
+        "PreToolUse" => {
+            let tool = event.payload.get("tool_name")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let input = event.payload.get("tool_input")
+                .map(|v| serde_json::to_string(v).unwrap_or_default());
+            (tool, input, None, None)
+        }
+        "PostToolUse" => {
+            let tool = event.payload.get("tool_name")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let input = event.payload.get("tool_input")
+                .map(|v| serde_json::to_string(v).unwrap_or_default());
+            let rs = event.payload.get("response_size")
+                .and_then(|v| v.as_i64());
+            let rsnip = event.payload.get("response_snippet")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            (tool, input, rs, rsnip)
+        }
+        "SubagentStart" => {
+            let tool = event.payload.get("agent_type")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string());
+            let input = event.payload.get("prompt_snippet")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string());
+            (tool, input, None, None)
+        }
+        "SubagentStop" | _ => {
+            (None, None, None, None)
+        }
+    };
+
+    ObservationRow {
+        session_id,
+        ts_millis,
+        hook,
+        tool,
+        input,
+        response_size,
+        response_snippet,
+    }
+}
+
+/// Insert a single observation row into the observations table.
+fn insert_observation(store: &Store, obs: &ObservationRow) -> Result<(), unimatrix_store::StoreError> {
+    let conn = store.lock_conn();
+    conn.execute(
+        "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        unimatrix_store::rusqlite::params![
+            obs.session_id,
+            obs.ts_millis,
+            obs.hook,
+            obs.tool,
+            obs.input,
+            obs.response_size,
+            obs.response_snippet,
+        ],
+    ).map_err(unimatrix_store::StoreError::Sqlite)?;
+    Ok(())
+}
+
+/// Insert a batch of observations in a single transaction.
+fn insert_observations_batch(store: &Store, batch: &[ObservationRow]) -> Result<(), unimatrix_store::StoreError> {
+    let conn = store.lock_conn();
+    conn.execute_batch("BEGIN").map_err(unimatrix_store::StoreError::Sqlite)?;
+    let result = (|| -> Result<(), unimatrix_store::StoreError> {
+        for obs in batch {
+            conn.execute(
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                unimatrix_store::rusqlite::params![
+                    obs.session_id,
+                    obs.ts_millis,
+                    obs.hook,
+                    obs.tool,
+                    obs.input,
+                    obs.response_size,
+                    obs.response_snippet,
+                ],
+            ).map_err(unimatrix_store::StoreError::Sqlite)?;
+        }
+        Ok(())
+    })();
+    match result {
+        Ok(()) => {
+            conn.execute_batch("COMMIT").map_err(unimatrix_store::StoreError::Sqlite)?;
+            Ok(())
+        }
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
+    }
 }
 
 #[cfg(test)]

@@ -15,7 +15,7 @@ use crate::schema::{deserialize_entry, serialize_entry};
 use crate::db::Store;
 
 /// Current schema version.
-pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 6;
+pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 7;
 
 /// Run migration if schema_version is behind CURRENT_SCHEMA_VERSION.
 /// Called from Store::open() after table creation.
@@ -81,6 +81,24 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
         if current_version <= 5 {
             // Backup is done outside the transaction since it's a file copy
             // We need to commit the current txn, backup, then re-start
+        }
+
+        // v6 -> v7: observations table (col-012)
+        if current_version < 7 {
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS observations (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id      TEXT    NOT NULL,
+                    ts_millis       INTEGER NOT NULL,
+                    hook            TEXT    NOT NULL,
+                    tool            TEXT,
+                    input           TEXT,
+                    response_size   INTEGER,
+                    response_snippet TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_observations_session ON observations(session_id);
+                CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts_millis);"
+            ).map_err(StoreError::Sqlite)?;
         }
 
         // Update schema version
