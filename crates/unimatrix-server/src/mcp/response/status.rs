@@ -87,6 +87,27 @@ pub struct StatusReport {
     pub observation_approaching_cleanup: Vec<String>,
     /// Number of feature cycles with stored metrics.
     pub retrospected_feature_count: u64,
+    /// Unix timestamp of last background maintenance tick.
+    pub last_maintenance_run: Option<u64>,
+    /// Unix timestamp of next scheduled background tick.
+    pub next_maintenance_scheduled: Option<u64>,
+    /// Extraction pipeline statistics from background tick.
+    pub extraction_stats: Option<ExtractionStatsResponse>,
+    /// Per-trust-source coherence lambda scores.
+    pub coherence_by_source: Vec<(String, f64)>,
+}
+
+/// Extraction pipeline statistics for status reporting (col-013).
+#[derive(Debug, Clone, Serialize)]
+pub struct ExtractionStatsResponse {
+    /// Total entries accepted and stored by the extraction pipeline.
+    pub entries_extracted_total: u64,
+    /// Total entries rejected by the quality gate.
+    pub entries_rejected_total: u64,
+    /// Unix timestamp of last extraction run.
+    pub last_extraction_run: Option<u64>,
+    /// Per-rule counts of fired extractions.
+    pub rules_fired: Vec<(String, u64)>,
 }
 
 /// A co-access cluster entry for status reporting.
@@ -174,6 +195,24 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                     "\nApproaching cleanup (>45 days): {}",
                     report.observation_approaching_cleanup.join(", ")
                 ));
+            }
+            if let Some(ts) = report.last_maintenance_run {
+                text.push_str(&format!("\nLast maintenance: {}", format_timestamp(ts)));
+            }
+            if let Some(ts) = report.next_maintenance_scheduled {
+                text.push_str(&format!("\nNext maintenance: {}", format_timestamp(ts)));
+            }
+            if let Some(ref stats) = report.extraction_stats {
+                text.push_str(&format!(
+                    "\nExtraction: {} extracted, {} rejected",
+                    stats.entries_extracted_total, stats.entries_rejected_total
+                ));
+            }
+            if !report.coherence_by_source.is_empty() {
+                let pairs: Vec<String> = report.coherence_by_source.iter()
+                    .map(|(s, l)| format!("{}={:.4}", s, l))
+                    .collect();
+                text.push_str(&format!("\nCoherence by source: {}", pairs.join(", ")));
             }
             CallToolResult::success(vec![Content::text(text)])
         }
@@ -380,6 +419,58 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 ));
             }
 
+            // Background tick metadata (col-013)
+            if report.last_maintenance_run.is_some()
+                || report.next_maintenance_scheduled.is_some()
+                || report.extraction_stats.is_some()
+            {
+                text.push_str("\n### Background Tick\n\n");
+                if let Some(ts) = report.last_maintenance_run {
+                    text.push_str(&format!(
+                        "- Last maintenance: {}\n",
+                        format_timestamp(ts)
+                    ));
+                }
+                if let Some(ts) = report.next_maintenance_scheduled {
+                    text.push_str(&format!(
+                        "- Next scheduled: {}\n",
+                        format_timestamp(ts)
+                    ));
+                }
+                if let Some(ref stats) = report.extraction_stats {
+                    text.push_str(&format!(
+                        "- Entries extracted: {}\n",
+                        stats.entries_extracted_total
+                    ));
+                    text.push_str(&format!(
+                        "- Entries rejected: {}\n",
+                        stats.entries_rejected_total
+                    ));
+                    if let Some(ts) = stats.last_extraction_run {
+                        text.push_str(&format!(
+                            "- Last extraction: {}\n",
+                            format_timestamp(ts)
+                        ));
+                    }
+                    if !stats.rules_fired.is_empty() {
+                        text.push_str("\n#### Rules Fired\n");
+                        text.push_str("| Rule | Count |\n|------|-------|\n");
+                        for (rule, count) in &stats.rules_fired {
+                            text.push_str(&format!("| {} | {} |\n", rule, count));
+                        }
+                    }
+                }
+            }
+
+            // Coherence by source (col-013)
+            if !report.coherence_by_source.is_empty() {
+                text.push_str("\n### Coherence by Source\n\n");
+                text.push_str("| Source | Lambda |\n|--------|--------|\n");
+                for (source, lambda) in &report.coherence_by_source {
+                    text.push_str(&format!("| {} | {:.4} |\n", source, lambda));
+                }
+            }
+
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Json => {
@@ -428,6 +519,20 @@ struct StatusReportJson {
     #[serde(skip_serializing_if = "Option::is_none")]
     outcomes: Option<OutcomesJson>,
     observation: ObservationJson,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    last_maintenance_run: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    next_maintenance_scheduled: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    extraction_stats: Option<ExtractionStatsResponse>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    coherence_by_source: Vec<CoherenceBySourceEntry>,
+}
+
+#[derive(Serialize)]
+struct CoherenceBySourceEntry {
+    source: String,
+    lambda: f64,
 }
 
 #[derive(Serialize)]
@@ -584,6 +689,15 @@ impl From<&StatusReport> for StatusReportJson {
                 approaching_cleanup: r.observation_approaching_cleanup.clone(),
                 retrospected_feature_count: r.retrospected_feature_count,
             },
+            last_maintenance_run: r.last_maintenance_run,
+            next_maintenance_scheduled: r.next_maintenance_scheduled,
+            extraction_stats: r.extraction_stats.clone(),
+            coherence_by_source: r.coherence_by_source.iter()
+                .map(|(s, l)| CoherenceBySourceEntry {
+                    source: s.clone(),
+                    lambda: *l,
+                })
+                .collect(),
         }
     }
 }

@@ -216,6 +216,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     // Build server
+    let async_entry_store_for_tick = Arc::clone(&async_entry_store);
     let mut server = UnimatrixServer::new(
         async_entry_store,
         async_vector_store,
@@ -228,8 +229,20 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&adapt_service),
     );
     // Share pending_entries_analysis and session_registry with the MCP server (col-009)
-    server.pending_entries_analysis = pending_entries_analysis;
+    server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
     server.session_registry = Arc::clone(&session_registry);
+
+    // Spawn background tick for automated maintenance + extraction (col-013)
+    let _tick_handle = unimatrix_server::background::spawn_background_tick(
+        Arc::clone(&store),
+        Arc::clone(&vector_index),
+        Arc::clone(&embed_handle),
+        Arc::clone(&adapt_service),
+        Arc::clone(&session_registry),
+        async_entry_store_for_tick,
+        Arc::clone(&pending_entries_analysis),
+        Arc::clone(&server.tick_metadata),
+    );
 
     // Prepare lifecycle handles for shutdown.
     // ServiceLayer is moved here so graceful_shutdown can drop it before

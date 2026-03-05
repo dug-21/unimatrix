@@ -268,6 +268,10 @@ impl StatusService {
                 observation_oldest_file_days: 0,
                 observation_approaching_cleanup: Vec::new(),
                 retrospected_feature_count: 0,
+                last_maintenance_run: None,
+                next_maintenance_scheduled: None,
+                extraction_stats: None,
+                coherence_by_source: Vec::new(),
             };
             Ok((report, active_entries))
         }).await
@@ -435,6 +439,39 @@ impl StatusService {
             report.contradiction_density_score,
             &coherence::DEFAULT_WEIGHTS,
         );
+        // Coherence by source (col-013)
+        {
+            let mut source_groups: std::collections::HashMap<String, Vec<&EntryRecord>> =
+                std::collections::HashMap::new();
+            for entry in &active_entries {
+                let source = if entry.trust_source.is_empty() {
+                    "(none)".to_string()
+                } else {
+                    entry.trust_source.clone()
+                };
+                source_groups.entry(source).or_default().push(entry);
+            }
+
+            let mut coherence_by_source = Vec::new();
+            for (source, entries) in &source_groups {
+                let (source_freshness, _) = coherence::confidence_freshness_score(
+                    &entries.iter().map(|e| (*e).clone()).collect::<Vec<_>>(),
+                    now_ts,
+                    coherence::DEFAULT_STALENESS_THRESHOLD_SECS,
+                );
+                let source_lambda = coherence::compute_lambda(
+                    source_freshness,
+                    report.graph_quality_score,
+                    embed_dim,
+                    report.contradiction_density_score,
+                    &coherence::DEFAULT_WEIGHTS,
+                );
+                coherence_by_source.push((source.clone(), source_lambda));
+            }
+            coherence_by_source.sort_by(|a, b| a.0.cmp(&b.0));
+            report.coherence_by_source = coherence_by_source;
+        }
+
         report.maintenance_recommendations = coherence::generate_recommendations(
             report.coherence,
             coherence::DEFAULT_LAMBDA_THRESHOLD,

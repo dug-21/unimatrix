@@ -1,14 +1,14 @@
 #![forbid(unsafe_code)]
 
 //! Observation pipeline for Unimatrix: hotspot detection, metric computation,
-//! and report assembly. Data sourced via ObservationSource trait (col-012).
-//!
-//! This crate has no dependency on unimatrix-store or unimatrix-server (ADR-001).
+//! report assembly, and knowledge extraction. Data sourced via ObservationSource
+//! trait (col-012). Extraction rules require unimatrix-store (col-013 ADR-001).
 
 pub mod attribution;
 pub mod baseline;
 pub mod detection;
 pub mod error;
+pub mod extraction;
 pub mod metrics;
 pub mod report;
 pub mod source;

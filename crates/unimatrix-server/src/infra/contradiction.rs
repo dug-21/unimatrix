@@ -80,6 +80,71 @@ impl Default for ContradictionConfig {
     }
 }
 
+/// Check a single piece of content for contradictions against existing entries.
+///
+/// Embeds the given title+content, searches HNSW for neighbors, and applies
+/// the conflict heuristic. Returns the highest-scoring contradiction pair,
+/// or None if no contradiction detected (col-013 ADR-006).
+pub fn check_entry_contradiction(
+    content: &str,
+    title: &str,
+    store: &Store,
+    vector_store: &dyn VectorStore,
+    embed_adapter: &dyn EmbedService,
+    config: &ContradictionConfig,
+) -> Result<Option<ContradictionPair>, ServerError> {
+    let embedding = embed_adapter
+        .embed_entry(title, content)
+        .map_err(ServerError::Core)?;
+
+    let neighbors = vector_store
+        .search(&embedding, config.neighbors_per_entry, EF_SEARCH)
+        .map_err(ServerError::Core)?;
+
+    let mut best: Option<ContradictionPair> = None;
+
+    for neighbor in &neighbors {
+        if (neighbor.similarity as f32) < config.similarity_threshold {
+            continue;
+        }
+
+        let neighbor_entry = match store.get(neighbor.entry_id) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        if neighbor_entry.status != Status::Active {
+            continue;
+        }
+
+        let (conflict_score, explanation) = conflict_heuristic(
+            content,
+            &neighbor_entry.content,
+            config.conflict_sensitivity,
+        );
+
+        if conflict_score > 0.0 {
+            let pair = ContradictionPair {
+                entry_id_a: 0, // proposed entry has no ID yet
+                entry_id_b: neighbor_entry.id,
+                title_a: title.to_string(),
+                title_b: neighbor_entry.title.clone(),
+                similarity: neighbor.similarity as f32,
+                conflict_score,
+                explanation,
+            };
+            if best
+                .as_ref()
+                .map_or(true, |b| conflict_score > b.conflict_score)
+            {
+                best = Some(pair);
+            }
+        }
+    }
+
+    Ok(best)
+}
+
 /// Scan all active entries for potential contradictions.
 ///
 /// For each active entry, re-embeds its content (ADR-002), searches for

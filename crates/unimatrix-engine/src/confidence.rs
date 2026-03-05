@@ -150,6 +150,7 @@ pub fn trust_score(trust_source: &str) -> f64 {
         "human" => 1.0,
         "system" => 0.7,
         "agent" => 0.5,
+        "auto" => 0.35,
         _ => 0.3,
     }
 }
@@ -413,9 +414,26 @@ mod tests {
         assert_eq!(trust_score("human"), 1.0);
         assert_eq!(trust_score("system"), 0.7);
         assert_eq!(trust_score("agent"), 0.5);
+        assert_eq!(trust_score("auto"), 0.35);
         assert_eq!(trust_score(""), 0.3);
         assert_eq!(trust_score("unknown"), 0.3);
         assert_eq!(trust_score("Human"), 0.3); // case-sensitive
+    }
+
+    // -- col-013: trust_score("auto") dedicated tests --
+
+    #[test]
+    fn trust_score_auto_value() {
+        assert!((trust_score("auto") - 0.35).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn trust_score_auto_between_agent_and_fallback() {
+        let auto = trust_score("auto");
+        let agent = trust_score("agent");
+        let fallback = trust_score("unknown");
+        assert!(auto > fallback, "auto ({auto}) should be > fallback ({fallback})");
+        assert!(auto < agent, "auto ({auto}) should be < agent ({agent})");
     }
 
     // -- T-09: compute_confidence composite (AC-01, AC-02, R-05) --

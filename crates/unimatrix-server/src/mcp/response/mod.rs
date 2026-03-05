@@ -622,6 +622,10 @@ mod tests {
             observation_oldest_file_days: 0,
             observation_approaching_cleanup: Vec::new(),
             retrospected_feature_count: 0,
+            last_maintenance_run: None,
+            next_maintenance_scheduled: None,
+            extraction_stats: None,
+            coherence_by_source: Vec::new(),
         }
     }
 
@@ -681,6 +685,10 @@ mod tests {
             observation_file_count: 0, observation_total_size_bytes: 0,
             observation_oldest_file_days: 0, observation_approaching_cleanup: Vec::new(),
             retrospected_feature_count: 0,
+            last_maintenance_run: None,
+            next_maintenance_scheduled: None,
+            extraction_stats: None,
+            coherence_by_source: Vec::new(),
         };
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
@@ -944,6 +952,10 @@ mod tests {
             observation_oldest_file_days: 0,
             observation_approaching_cleanup: Vec::new(),
             retrospected_feature_count: 0,
+            last_maintenance_run: None,
+            next_maintenance_scheduled: None,
+            extraction_stats: None,
+            coherence_by_source: Vec::new(),
         };
 
         let result = format_status_report(&report, ResponseFormat::Summary);
@@ -1003,6 +1015,10 @@ mod tests {
             observation_oldest_file_days: 0,
             observation_approaching_cleanup: Vec::new(),
             retrospected_feature_count: 0,
+            last_maintenance_run: None,
+            next_maintenance_scheduled: None,
+            extraction_stats: None,
+            coherence_by_source: Vec::new(),
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1064,6 +1080,10 @@ mod tests {
             observation_oldest_file_days: 0,
             observation_approaching_cleanup: Vec::new(),
             retrospected_feature_count: 0,
+            last_maintenance_run: None,
+            next_maintenance_scheduled: None,
+            extraction_stats: None,
+            coherence_by_source: Vec::new(),
         };
 
         let result = format_status_report(&report, ResponseFormat::Json);
@@ -1123,6 +1143,10 @@ mod tests {
             observation_oldest_file_days: 0,
             observation_approaching_cleanup: Vec::new(),
             retrospected_feature_count: 0,
+            last_maintenance_run: None,
+            next_maintenance_scheduled: None,
+            extraction_stats: None,
+            coherence_by_source: Vec::new(),
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1185,6 +1209,10 @@ mod tests {
             observation_oldest_file_days: 0,
             observation_approaching_cleanup: Vec::new(),
             retrospected_feature_count: 0,
+            last_maintenance_run: None,
+            next_maintenance_scheduled: None,
+            extraction_stats: None,
+            coherence_by_source: Vec::new(),
         }
     }
 
@@ -1292,6 +1320,10 @@ mod tests {
             observation_oldest_file_days: 0,
             observation_approaching_cleanup: Vec::new(),
             retrospected_feature_count: 0,
+            last_maintenance_run: None,
+            next_maintenance_scheduled: None,
+            extraction_stats: None,
+            coherence_by_source: Vec::new(),
         }
     }
 

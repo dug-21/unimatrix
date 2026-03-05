@@ -17,6 +17,8 @@ test-support = [
 unimatrix-store = { path = "../unimatrix-store" }
 unimatrix-vector = { path = "../unimatrix-vector" }
 unimatrix-embed = { path = "../unimatrix-embed" }
+serde = { workspace = true }
+serde_json = { workspace = true }
 tokio = { version = "1", features = ["rt"], optional = true }
 
 [dev-dependencies]
