@@ -210,13 +210,25 @@ fn create_tables(conn: &Connection) -> Result<()> {
             detail     TEXT    NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS idx_audit_log_agent     ON audit_log(agent_id);
-        CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp);",
+        CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp);
+        CREATE TABLE IF NOT EXISTS observations (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id      TEXT    NOT NULL,
+            ts_millis       INTEGER NOT NULL,
+            hook            TEXT    NOT NULL,
+            tool            TEXT,
+            input           TEXT,
+            response_size   INTEGER,
+            response_snippet TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_observations_session ON observations(session_id);
+        CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts_millis);",
     )
     .map_err(StoreError::Sqlite)?;
 
     // Initialize counters that other modules expect
     conn.execute_batch(
-        "INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 6);
+        "INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 7);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_entry_id', 1);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_signal_id', 0);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_log_id', 0);

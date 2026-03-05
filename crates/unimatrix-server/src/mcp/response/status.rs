@@ -163,7 +163,7 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 text.push_str(&format!("\nOutcomes: {} total", report.total_outcomes));
             }
             text.push_str(&format!(
-                "\nObservation: {} files ({} bytes), oldest {} days, {} retrospected",
+                "\nObservation: {} records ({} sessions), oldest {} days, {} retrospected",
                 report.observation_file_count,
                 report.observation_total_size_bytes,
                 report.observation_oldest_file_days,
@@ -360,13 +360,13 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             }
 
             text.push_str("\n### Observation Pipeline\n\n");
-            text.push_str(&format!("- Files: {}\n", report.observation_file_count));
+            text.push_str(&format!("- Records: {}\n", report.observation_file_count));
             text.push_str(&format!(
-                "- Total size: {} bytes\n",
+                "- Sessions: {}\n",
                 report.observation_total_size_bytes
             ));
             text.push_str(&format!(
-                "- Oldest file: {} days\n",
+                "- Oldest record: {} days\n",
                 report.observation_oldest_file_days
             ));
             text.push_str(&format!(
@@ -481,9 +481,9 @@ struct FeatureCycleCount {
 
 #[derive(Serialize)]
 struct ObservationJson {
-    file_count: u64,
-    total_size_bytes: u64,
-    oldest_file_days: u64,
+    record_count: u64,
+    session_count: u64,
+    oldest_record_days: u64,
     approaching_cleanup: Vec<String>,
     retrospected_feature_count: u64,
 }
@@ -578,9 +578,9 @@ impl From<&StatusReport> for StatusReportJson {
             },
             outcomes,
             observation: ObservationJson {
-                file_count: r.observation_file_count,
-                total_size_bytes: r.observation_total_size_bytes,
-                oldest_file_days: r.observation_oldest_file_days,
+                record_count: r.observation_file_count,
+                session_count: r.observation_total_size_bytes,
+                oldest_record_days: r.observation_oldest_file_days,
                 approaching_cleanup: r.observation_approaching_cleanup.clone(),
                 retrospected_feature_count: r.retrospected_feature_count,
             },

@@ -25,6 +25,7 @@ pub(crate) mod confidence;
 pub(crate) mod gateway;
 pub(crate) mod search;
 pub(crate) mod status;
+pub(crate) mod observation;
 pub(crate) mod store_correct;
 pub(crate) mod store_ops;
 pub(crate) mod usage;

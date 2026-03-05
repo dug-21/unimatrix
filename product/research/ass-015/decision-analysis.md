@@ -30,7 +30,7 @@ Unimatrix captures signals from 7 distinct sources today:
 | Retrospective (col-002) | 21 detection rules → hotspots | Pattern extraction triggers |
 | Confidence pipeline | 6-factor scoring | Quality gate for auto-entries |
 
-Of 70 identified signals in the taxonomy, **26 (37%) are already tracked**. The remaining 44 operate on data already present in existing JSONL records and redb tables.
+Of 70 identified signals in the taxonomy, **26 (37%) are already tracked**. The remaining 44 operate on data already present in existing JSONL records and SQLite tables.
 
 ### 1.2 The Competitive Gap is Real and Wide
 
@@ -63,7 +63,7 @@ The recommended architecture — **event-sourced hybrid, in-process** — builds
 - Quality gates → existing dedup + contradiction + confidence infrastructure
 - Provenance → existing `trust_source` field on EntryRecord
 
-The redb single-writer constraint is handled cleanly: signals go to JSONL (no redb contention), knowledge writes batch into single transactions (~10/hour marginal increase).
+The SQLite backend handles this cleanly: WAL mode supports concurrent reads during writes, and knowledge writes batch into single transactions (~10/hour marginal increase).
 
 ---
 
@@ -246,7 +246,93 @@ This is 2 feature cycles worth of implementation, roughly comparable to crt-001 
 
 ---
 
-## 8. Decision Criteria Summary
+## 8. Design Option: Self-Learning Neural Pipeline (ruv-fann + Continuous Retraining)
+
+**Added after initial analysis.** See `self-learning-neural-design.md` for full details.
+
+### The Concept
+
+Replace the LLM extraction tier (Tier 2) with bundled purpose-built neural models via ruv-fann that continuously retrain from Unimatrix's own utilization signals. Fully self-contained — no external API dependency. The one exclusion: lesson extraction from failures remains agent-driven (requires deep causal reasoning).
+
+### Why This Is Compelling
+
+**unimatrix-adapt already proves the pattern.** The crt-006 MicroLoRA adaptation crate implements continuous self-retraining for embeddings using:
+- Reservoir sampling (memory-bounded training buffer)
+- EWC++ (catastrophic forgetting prevention)
+- Fire-and-forget training (non-blocking, threshold-triggered)
+- Contrastive learning from co-access pairs
+- Versioned persistence with generation tracking
+
+These exact mechanisms apply to extraction models.
+
+### Five Models, ~87MB Total
+
+| Model | Architecture | Size | Retrains Every | CPU Time |
+|-------|-------------|------|----------------|----------|
+| Signal Classifier | MLP: input→64→32→5(softmax) | ~5MB | 2-3 features | <5s |
+| Duplicate Detector | Siamese MLP on 384-dim embeddings | ~10MB | 5-10 features | <10s |
+| Convention Scorer | MLP: input→32→1(sigmoid) | ~2MB | 3-5 features | <2s |
+| Pattern Merger | Encoder + merger MLP | ~50MB | 10 features | ~30s |
+| Entry Writer Scorer | MLP quality scorer for templates | ~20MB | 5 features | ~30s |
+
+### The Self-Learning Loop
+
+```
+Agents use Unimatrix → signals captured
+    → rules pre-digest signals
+    → neural models extract knowledge
+    → entries stored with low initial confidence
+    → agents interact with entries (helpful/unhelpful/access/ignore)
+    → utilization signals become training labels
+    → models retrain (fire-and-forget, background)
+    → models improve → better extraction → better entries
+    → (loop continues, system gets smarter with every feature)
+```
+
+### Training Labels Come Free
+
+Unimatrix's existing quality signals ARE training labels:
+- Helpful votes → positive label for classifier + writer
+- Deprecated entries → negative label for whatever produced them
+- Correction chains → ground truth for duplicate detector + classifier
+- Access patterns → relevance signal for convention scorer
+- Feature outcomes → weak labels for all models
+
+### Self-Learning Timeline
+
+| Maturity | State | Quality |
+|----------|-------|---------|
+| Features 1-5 | Observation only, models in shadow mode | Rules only |
+| Features 6-10 | Models activated, low confidence | Rules + neural (improving) |
+| Features 11-20 | Models calibrated, retraining from real feedback | Full pipeline (good) |
+| Features 21-50 | Deeply domain-adapted, high precision | Full pipeline (great) |
+| Features 50+ | Self-sustaining knowledge fabric | Autonomous |
+
+### Advantage Over LLM Tier
+
+| Dimension | Bundled Neural (ruv-fann) | LLM API (Claude Haiku) |
+|-----------|--------------------------|----------------------|
+| Dependency | None — fully self-contained | API key + network |
+| Latency | Microseconds (classifier) to seconds (merger) | 1-5 seconds per batch |
+| Cost | Zero marginal cost | ~$0.01-$2.00/day |
+| Domain adaptation | Continuously retrains on YOUR data | Generic, never improves |
+| Precision | Higher (specialized, trained on domain) | Lower (general purpose) |
+| Coverage | Lower (can't handle novel patterns) | Higher (understands semantics) |
+| Lesson extraction | Cannot do this | Can do this |
+
+### Recommendation: Neural-First, LLM-Optional
+
+1. **Default:** Rules (Tier 1) + Neural models (Tier 2) — fully self-contained
+2. **Optional enhancement:** LLM API for lesson extraction + novel pattern discovery
+3. **The system is GREAT without an API key, EXCEPTIONAL with one**
+
+### Open Risk: ruv-fann Maturity
+
+ruv-fann is v0.2.0 with ~4K downloads. Mitigation: if RPROP implementation proves insufficient, fall back to ndarray + hand-rolled training following unimatrix-adapt's proven approach (which already implements forward/backward passes, gradient computation, and weight updates in pure Rust with no ML framework dependency).
+
+---
+
+## 9. Decision Criteria Summary
 
 | Criterion | Assessment | Evidence |
 |-----------|------------|----------|
@@ -260,13 +346,17 @@ This is 2 feature cycles worth of implementation, roughly comparable to crt-001 
 
 ---
 
-## 9. Recommended Next Steps
+## 10. Recommended Next Steps
 
-1. **Scope a feature** — Create a feature cycle (likely `crt-006` or a new phase prefix) for passive knowledge acquisition
-2. **Start with Priority 1** — Knowledge gaps, structural conventions, implicit conventions, dead knowledge detection. These are rule-based, zero-risk, and immediately useful.
-3. **Build the observation buffer** — Fixed-size ring of per-feature signal observations. File-based for v1, redb table for v2.
-4. **Validate with retrospective data** — Unimatrix has 20+ completed features. Run the extraction rules against historical observation data to test precision before deploying live.
-5. **Add LLM tier after rules prove out** — Only invest in the LLM extraction path after rule-based extraction demonstrates the value proposition.
+1. **Scope a feature** — Create a feature cycle for passive knowledge acquisition (new Cortical phase feature)
+2. **Start with Priority 1 rules** — Knowledge gaps, structural conventions, implicit conventions, dead knowledge detection. Rule-based, zero-risk, immediately useful.
+3. **Build the observation buffer** — Fixed-size ring of per-feature signal observations. File-based for v1.
+4. **Validate rules against historical data** — Run extraction rules against 20+ completed features to test precision before deploying live.
+5. **Integrate ruv-fann** — Add as dependency, implement Signal Classifier and Convention Scorer (smallest models, fastest to validate)
+6. **Shadow mode validation** — Run neural models in shadow for 5 features, compare against rule-only extraction
+7. **Activate neural pipeline** — After shadow validation, promote models to production
+8. **Enable continuous retraining** — Fire-and-forget retraining from utilization signals, following unimatrix-adapt patterns
+9. **Optional: LLM tier** — Add API-based extraction for lesson learning + novel patterns if needed
 
 ---
 
@@ -276,5 +366,7 @@ Full research in this directory:
 - `existing-signals.md` — Inventory of current signal and observation infrastructure
 - `novel-approaches.md` — State-of-the-art research (45+ papers and systems)
 - `signal-taxonomy.md` — 70 signals, 10 extraction patterns, quality assessment
-- `architecture-patterns.md` — 5 architecture options, redb analysis, recommended hybrid
+- `architecture-patterns.md` — 5 architecture options, storage analysis, recommended hybrid
 - `competitive-landscape.md` — 12 competitor systems, comparative matrix, strategic positioning
+- `self-retraining.md` — Continuous/online retraining patterns, drift detection, Rust ML frameworks
+- `self-learning-neural-design.md` — Complete neural pipeline design with ruv-fann + continuous retraining

@@ -15,7 +15,7 @@ The current Unimatrix system already has significant signal infrastructure:
 | Hook process | `hook.rs` | Sync CLI, reads Claude Code stdin JSON, sends to UDS listener via UDS |
 | UDS listener | `uds_listener.rs` | Tokio task, accepts hook connections, dispatches to handlers |
 | SessionRegistry | `session.rs` | In-memory per-session state: injections, rework events, agent actions |
-| SignalRecord | `signal.rs` | Bincode-serialized confidence signals in SIGNAL_QUEUE (redb) |
+| SignalRecord | `signal.rs` | Confidence signals in signal_queue table (SQLite) |
 | INJECTION_LOG | `injection_log.rs` | Persistent log of which entries were served to which sessions |
 | SESSIONS | `sessions.rs` | Persistent session lifecycle records with GC |
 | Signal consumers | `uds_listener.rs` | `run_confidence_consumer` and `run_retrospective_consumer` |
@@ -125,7 +125,7 @@ enum ExtractableSignal {
 
 - Signal capture is a shallow clone + push to bounded VecDeque: <1us
 - ExtractionWorker runs on a separate Tokio task, never blocks request handlers
-- redb writes happen via `spawn_blocking` (same pattern as existing confidence)
+- SQLite writes happen via `spawn_blocking` (same pattern as existing confidence)
 - Bounded buffer (e.g., 10,000 entries) with oldest-drop on overflow (same
   pattern as SIGNAL_QUEUE cap)
 
@@ -143,7 +143,7 @@ enum ExtractableSignal {
 - No new processes, no IPC, no deployment changes
 - Reuses existing Store/VectorIndex/EmbedService from the process
 - Signal buffer is naturally co-located with signal sources
-- Existing `spawn_blocking` pattern for redb writes is proven
+- Existing `spawn_blocking` pattern for SQLite writes is proven
 
 ### Cons
 - Knowledge extraction rules compete for CPU with MCP request handling
@@ -182,16 +182,13 @@ Claude Code hooks
        +-- writes knowledge to ... where?
 ```
 
-### Critical Constraint: redb Exclusive Locking
+### Storage Constraint: SQLite Concurrency
 
-**redb enforces exclusive database access.** From `db.rs`:
+**SQLite (with WAL mode) supports concurrent readers alongside a single writer.** This is a significant improvement over the previous redb backend which enforced exclusive database access (only one process could open the file). With SQLite:
 
-```rust
-Err(StoreError::Database(redb::DatabaseError::DatabaseAlreadyOpen))
-```
-
-The MCP server holds the redb database open for its lifetime. A sidecar process
-CANNOT open the same `.redb` file. This is a hard constraint.
+- Multiple readers can operate concurrently with one writer
+- WAL mode enables non-blocking reads during writes
+- A sidecar process CAN open the same `.db` file for reads (though writes still serialize)
 
 ### IPC Options for the Sidecar
 
@@ -200,10 +197,9 @@ CANNOT open the same `.redb` file. This is a hard constraint.
 | Unix domain socket | Sidecar connects to MCP server's UDS | Request via existing HookRequest protocol | MEDIUM |
 | File-based JSONL | Server appends to signal.jsonl, sidecar tails it | Sidecar sends store requests via UDS | LOW |
 | Shared memory (mmap) | Lock-free ring buffer | Same UDS write-back | HIGH |
-| Separate redb file | N/A (no shared state) | Sidecar has own store; server merges periodically | HIGH |
+| Direct SQLite access | Sidecar reads DB directly (WAL mode) | Sidecar writes directly (serialized with server) | LOW-MEDIUM |
 
-The most viable sidecar approach: **sidecar reads signal JSONL files and writes
-knowledge back through the MCP server's UDS interface**.
+With SQLite, a **sidecar can read the database directly** (no UDS needed for reads). For writes, the sidecar can either write directly (SQLite serializes automatically) or route through UDS for consistency.
 
 ### Process Lifecycle
 
@@ -216,25 +212,25 @@ knowledge back through the MCP server's UDS interface**.
 
 | Criterion | Rating | Notes |
 |-----------|--------|-------|
-| Feasibility | MEDIUM | redb exclusivity forces UDS write-back, adding round-trips |
-| Complexity | HIGH | New binary, process lifecycle, IPC protocol, startup ordering |
+| Feasibility | HIGH | SQLite WAL mode allows direct DB reads; writes serialize naturally |
+| Complexity | MEDIUM | New binary, process lifecycle, but direct DB access simplifies IPC |
 | Quality potential | MEDIUM | Same extraction logic, but decoupled from server state |
 | Latency impact | NONE | Completely separate process |
-| Risk | MEDIUM | Process coordination, startup races, socket availability |
+| Risk | LOW-MEDIUM | Process coordination, startup ordering |
 
 ### Pros
 - Complete isolation from MCP request path
 - Can run heavy LLM extraction without any server impact
 - Survives server restart (reads from persistent signal log)
 - Can be upgraded independently
+- SQLite WAL mode allows direct database reads without contention
 
 ### Cons
-- redb exclusivity means NO direct database access -- must route all writes
-  through the server's UDS, adding complexity and latency
 - Cannot access in-memory SessionRegistry state (only persisted signals)
 - Two processes to deploy, monitor, and keep alive
 - Signal log becomes a new persistence surface to manage
 - Testing requires multi-process integration tests
+- Write serialization with server process (SQLite handles this, but contention possible under load)
 
 ---
 
@@ -310,13 +306,12 @@ pub enum UdsEventType {
 
 | Option | Pros | Cons |
 |--------|------|------|
-| New redb table (EVENT_LOG) | Same database, same transaction model | Table grows unbounded; redb is not optimized for append-heavy workloads |
-| Separate redb file | Isolation from knowledge store | Two databases to manage; still has exclusive lock constraint |
+| New SQLite table (event_log) | Same database, same transaction model, indexed | Table grows unbounded; needs retention policy |
+| Separate SQLite file | Isolation from knowledge store | Two databases to manage |
 | JSONL files (like EventQueue) | Simple, human-readable, easy to replay | No indexing, sequential scan for replay, manual rotation |
-| SQLite WAL | Concurrent readers, efficient append | New dependency, different consistency model |
 
-**Recommended: JSONL files with rotation** (extend existing EventQueue pattern).
-The event log is write-heavy and read-rarely -- JSONL is ideal. Replay happens
+**Recommended: SQLite table with retention policy** (same database, indexed, queryable).
+With SQLite as the storage backend, an event_log table is natural — WAL mode handles concurrent reads during append-heavy writes efficiently. Replay happens
 only during extraction or retrospective, not on the hot path.
 
 ### Signal Correlation Across Events
@@ -366,7 +361,7 @@ lost.
 - Event log grows without bound (needs rotation/retention policy)
 - Replay of large logs can be slow (mitigated by checkpointing)
 - Schema evolution for events requires backward-compatible serialization
-- Adds a third persistence surface (redb, vector files, event log)
+- Adds a third persistence surface (SQLite, vector files, event log)
 
 ---
 
@@ -690,40 +685,39 @@ place to tag provenance. The `source` field can carry additional context
 
 ---
 
-## 6. redb Constraints Analysis
+## 6. SQLite Concurrency Analysis
 
-### Exclusive Write Transactions
+### WAL Mode and Write Serialization
 
-redb uses a single-writer model. From the redb documentation and observed
-behavior in the codebase:
+SQLite (now the default backend after nxs-006 migration from redb) uses WAL mode, which provides:
 
-- `db.begin_write()` acquires an exclusive write lock
-- Only one `WriteTransaction` can exist at a time
-- Multiple `ReadTransaction`s can coexist with one `WriteTransaction`
-- The entire database file has an exclusive open lock (DatabaseAlreadyOpen)
+- Multiple concurrent readers alongside a single writer
+- Non-blocking reads during writes (readers see pre-write state until commit)
+- No exclusive file lock — multiple processes CAN open the same database
+- Write transactions serialize automatically (SQLite handles the locking)
 
 **Implications for UDS:**
 
-1. **No sidecar with direct DB access** (Pattern 2 is constrained)
-2. **Write transactions must be short** to avoid blocking MCP request handlers
-3. **Batch writes are preferred** over individual writes (fewer transactions)
+1. **Sidecar with direct DB reads is now feasible** (Pattern 2 is less constrained)
+2. **Write transactions should still be short** to minimize serialization delays
+3. **Batch writes remain preferred** over individual writes (fewer transactions, less contention)
 
 ### Current Write Transaction Usage
 
 The codebase already handles this well:
 
 ```
-MCP request -> spawn_blocking -> begin_write -> short txn -> commit
-                                                    |
-                                        (microseconds to low milliseconds)
+MCP request -> spawn_blocking -> SQL transaction -> commit
+                                        |
+                                (microseconds to low milliseconds)
 ```
 
 Key write operations and their patterns:
-- `insert_signal`: Single-record write, fast
-- `drain_signals`: Batch read + delete, moderate
-- `insert_injection_log_batch`: Batch write with counter increment, fast
+- `insert_signal`: Single-record INSERT, fast
+- `drain_signals`: Batch SELECT + DELETE, moderate
+- `insert_injection_log_batch`: Batch INSERT with counter increment, fast
 - `insert_session` / `update_session`: Single-record, fast
-- Knowledge store (`context_store`): Entry + indexes + vector map, moderate
+- Knowledge store (`context_store`): Entry + indexes + embeddings, moderate
 - Confidence refresh (`maintain=true`): Batch of 100 entries, slow but opt-in
 
 ### Can the Observe Crate's Event Log Serve as the Signal Buffer?
@@ -745,7 +739,7 @@ They are written by hook processes and read by the retrospective pipeline.
 4. A watermark file (`last_extracted_ts`) would track how far extraction has
    progressed, enabling incremental processing.
 
-### WAL-Style Append for Signals, Batch Commit for Knowledge
+### Write Pattern for Signals and Knowledge
 
 Proposed write pattern:
 
@@ -753,17 +747,17 @@ Proposed write pattern:
 Signals arrive (high frequency)
        |
        v
-  Append to JSONL observation file (filesystem write, no redb txn)
+  INSERT into observations table (lightweight SQLite write)
        |
        | (background timer or threshold trigger)
        v
-  Extraction pipeline runs
+  Extraction pipeline runs (reads from observations)
        |
        v
   Batch of ProposedEntries
        |
        v
-  Single redb WriteTransaction:
+  SQLite transaction:
     - Insert all entries
     - Update all indexes
     - Insert vector embeddings
@@ -771,9 +765,9 @@ Signals arrive (high frequency)
 ```
 
 This pattern:
-- Keeps signal capture off the redb write path entirely
+- Signal capture is a lightweight INSERT (SQLite WAL handles concurrent reads)
 - Batches knowledge writes for efficiency
-- Aligns with redb's strength (moderate write frequency, high read frequency)
+- All data in one database — enables JOIN-based correlation queries
 
 ### Transaction Contention Risk
 
@@ -800,16 +794,16 @@ injections, sessions). The marginal increase is negligible.
 
 **New capture needed:**
 
-The MCP tool handlers in `tools.rs` currently do NOT write to observation
-files -- they only interact with redb. To capture knowledge interaction signals,
-add observation file appends at:
+The MCP tool handlers in `tools.rs` currently do NOT write to the observations
+table — they only interact with the knowledge tables. To capture knowledge interaction signals,
+add observations INSERTs at:
 
 1. After `context_search` returns results (query + result IDs + count)
 2. After `context_store` completes (entry ID + category + topic)
 3. After `context_correct` completes (original ID + new ID + reason)
 4. When `helpful` parameter is provided on any retrieval tool
 
-These appends are cheap (filesystem write, no redb transaction) and provide
+These INSERTs are cheap (SQLite WAL write, non-blocking for readers) and provide
 the richest signal for knowledge extraction.
 
 ### Distinguishing Extracted vs Explicit Knowledge
@@ -906,7 +900,7 @@ Combine patterns 3, 4, and 5 with pattern 1 as the execution model:
               |
               v
     +-----------------------------------------+
-    |    Store (spawn_blocking + redb txn)     |
+    |    Store (spawn_blocking + SQLite txn)    |
     |  Status: Active | Proposed              |
     |  Source: uds:auto | uds:llm | uds:propose|
     +-----------------------------------------+
@@ -914,7 +908,7 @@ Combine patterns 3, 4, and 5 with pattern 1 as the execution model:
 
 ### Why In-Process (Not Sidecar)
 
-1. redb exclusivity makes sidecar DB access impossible
+1. In-process is simplest (sidecar adds deployment complexity even with SQLite's relaxed locking)
 2. The MCP server already runs a tokio runtime with spawn_blocking for DB ops
 3. Signal sources are co-located in the server process
 4. Existing patterns (confidence consumers, retrospective) prove this works
@@ -973,14 +967,14 @@ Combine patterns 3, 4, and 5 with pattern 1 as the execution model:
 
 ## Appendix: Comparison Matrix
 
-| Pattern | Feasibility | Complexity | Quality | Latency Impact | redb Compatible |
-|---------|-------------|------------|---------|----------------|-----------------|
+| Pattern | Feasibility | Complexity | Quality | Latency Impact | SQLite Compatible |
+|---------|-------------|------------|---------|----------------|-------------------|
 | 1. In-Process Observer | HIGH | LOW-MED | MEDIUM | NEGLIGIBLE | YES |
-| 2. Sidecar Process | MEDIUM | HIGH | MEDIUM | NONE | PARTIAL (UDS write-back) |
-| 3. Event Sourcing | HIGH | MEDIUM | HIGH | LOW | YES (JSONL, not redb) |
+| 2. Sidecar Process | HIGH | MEDIUM | MEDIUM | NONE | YES (WAL mode enables direct reads) |
+| 3. Event Sourcing | HIGH | MEDIUM | HIGH | LOW | YES (SQLite table or JSONL) |
 | 4. LLM-in-the-Loop | HIGH | MEDIUM | VERY HIGH | NONE (async) | YES |
 | 5. Hybrid (recommended) | HIGH | MED-HIGH | VERY HIGH | NEGLIGIBLE | YES |
-| 6. redb constraints | N/A | N/A | N/A | N/A | Informs all patterns |
+| 6. SQLite concurrency | N/A | N/A | N/A | N/A | Informs all patterns |
 
 **Recommendation: Pattern 5 (Hybrid) built on Pattern 3 (Event Sourcing)
 executed via Pattern 1 (In-Process), incorporating Pattern 4 (LLM) for the
