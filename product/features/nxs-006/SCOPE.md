@@ -1,305 +1,111 @@
-# nxs-006: redb Removal & SQLite Schema Normalization
+# nxs-006: SQLite Cutover
 
 ## Problem Statement
 
-After nxs-005 completes, Unimatrix has two storage backends: redb (default) and SQLite (behind `backend-sqlite` feature flag). The redb code is dead weight — ~6,200 lines of implementation, 17 `TableDefinition` constants, feature flag machinery, and a one-time migration tool that will never run again. More importantly, the SQLite backend created by nxs-005 carries forward redb's architectural limitations: entries stored as opaque bincode blobs with 5 application-managed index tables. This defeats the primary benefit of migrating to SQLite — the ability to use SQL indexes, JOINs, and column-level queries.
+Unimatrix currently ships a dual-backend storage engine (redb and SQLite) gated by Cargo feature flags. nxs-005 delivered the SQLite backend with full parity testing, but the system still defaults to redb. There is one production database (the live Unimatrix knowledge base) that must be migrated from redb format to SQLite before SQLite can become the default.
 
-The 5 index tables (TOPIC_INDEX, CATEGORY_INDEX, TAG_INDEX, TIME_INDEX, STATUS_INDEX) exist because redb has no secondary index support. Each entry write must manually maintain all 5 in the same transaction (~300 lines of synchronization code in write.rs). In SQLite, these become `CREATE INDEX` statements — zero application code. But `CREATE INDEX` requires actual SQL columns, not bincode blobs. This means completing the index elimination requires decomposing EntryRecord into SQL columns.
+Until the production data is migrated, SQLite cannot become the default backend and nxs-007 (redb removal, schema normalization, server decoupling) cannot proceed.
 
 ## Goals
 
-1. Remove redb as a dependency and delete all redb-specific code
-2. Remove the `backend-sqlite` feature flag — SQLite becomes the sole, unconditional backend
-3. Flatten the `sqlite/` module into the main store crate (no more submodule indirection)
-4. Decompose ENTRIES bincode blob into SQL columns, enabling native SQL indexes
-5. Replace 5 application-managed index tables with `CREATE INDEX` statements
-6. Decompose operational tables (CO_ACCESS, SESSIONS, INJECTION_LOG, SIGNAL_QUEUE) into SQL columns
-7. Add `session_id` column to INJECTION_LOG for efficient cascade deletes and session joins
-8. Remove the redb→SQLite migration tooling (`migrate_redb_to_sqlite`)
-9. Preserve all observable behavior — zero functional change across 10 MCP tools
-10. Migrate existing SQLite databases from nxs-005 blob schema to normalized schema
+1. Build data migration tooling: export subcommand (redb-compiled binary reads all 17 tables, writes intermediate format) and import subcommand (sqlite-compiled binary reads intermediate format, writes SQLite database)
+2. Migrate the one production database from redb to SQLite with verified row counts per table
+3. Switch the default backend from redb to SQLite (flip the feature flag default)
+4. Verify all MCP tools return identical results against the migrated SQLite database
 
 ## Non-Goals
 
-- **Do not change the public Store API surface** — all public method signatures remain identical. Internal implementation changes only.
-- **Do not change EntryRecord, NewEntry, or QueryFilter structs** — these are the Rust-side data model. Only how they map to SQL changes.
-- **Do not change code outside `crates/unimatrix-store/`** — the EntryStore trait boundary (unimatrix-core) holds completely.
-- **Do not replace HNSW with sqlite-vec** — HNSW stays in-memory with VECTOR_MAP bridge table. This decision was made in nxs-005 and remains valid.
-- **Do not normalize AUDIT_LOG or OBSERVATION_METRICS** — these are append-only/key-lookup tables where bincode blobs are appropriate.
-- **Do not change AGENT_REGISTRY serialization** — bincode is fine for point-lookup-only tables.
-- **Do not add new MCP tools or change tool signatures** — this is a storage-internal refactor.
-- **Do not implement multi-table JOINs for retrospective analytics** — that's a future feature that benefits from the schema normalization but is out of scope here.
+- **No redb code removal** -- deleting redb implementation files, removing cfg gates, flattening sqlite/ module, removing redb from Cargo.toml -- all moves to nxs-007. The redb code must remain compilable so the export subcommand works and as a backout path.
+- **No schema normalization** -- decomposing bincode blobs into SQL columns, eliminating index tables, or adding SQL JOINs is nxs-007.
+- **No server decoupling** -- refactoring the server to stop bypassing the Store API is nxs-007.
+- **No compat layer changes** -- the transitional compat layer stays as-is. Cleanup is nxs-007.
+- **No new storage features** -- no new tables, columns, or query patterns.
+- **No changes to HNSW vector index** -- VECTOR_MAP bridge table moves with the rest; in-memory HNSW is unchanged.
+- **No changes to MCP tool behavior** -- all 10 tools must return identical results.
 
-## Background
+## Background Research
 
-### Prior Work
+### Current Dual-Backend Architecture (nxs-005 Output)
 
-- **nxs-005** (in implementation): SQLite backend behind feature flag. Preserves redb's blob+index-table architecture in SQLite. Explicitly deferred: redb removal, index elimination, injection_log session_id, schema normalization.
-- **ASS-016 storage-assessment.md**: Identified 7 friction points with redb, recommended SQLite as strategic target. Section 2.1 quantified the index maintenance cost (~300 lines of write.rs synchronization).
-- **ASS-016 retrospective-data-architecture.md**: Identified that multi-table JOINs (entry effectiveness scoring) require SQL columns, not blobs.
+The store crate uses compile-time feature flags to select between backends:
+- **Default (redb)**: Top-level modules db.rs (532), read.rs (924), write.rs (1,939), migration.rs (1,421), query.rs (318), counter.rs (56) = 5,190 lines. Plus redb-gated sections in shared modules (error.rs, lib.rs, schema.rs, sessions.rs, injection_log.rs, signal.rs) ~2,400 lines.
+- **SQLite (`backend-sqlite`)**: sqlite/ submodule with 13 files totaling 2,987 lines. Includes 742 lines of transitional compat layer (compat.rs 184, compat_handles.rs 426, compat_txn.rs 132).
+- **Shared**: schema.rs (676, types and redb table definitions), error.rs (210, dual-gated error variants), hash.rs (78), lib.rs (87, dual-gated re-exports).
 
-### Why Full Column Decomposition (Not Hybrid)
+### Data Migration Requirements
 
-There are two approaches to enabling `CREATE INDEX`:
+One production database must be migrated. Tables (17 total):
+- entries, topic_index, category_index, tag_index, time_index, status_index
+- vector_map, counters, agent_registry, audit_log
+- feature_entries, co_access, outcome_index, observation_metrics
+- signal_queue, sessions, injection_log
 
-**Option A — Hybrid columns + blob**: Add SQL columns for indexed fields (topic, category, status, created_at) alongside the existing bincode blob. CREATE INDEX on the new columns. Drop the 5 index tables.
-- Pro: Minimal change to read paths
-- Con: Data duplication (indexed fields stored twice — in columns AND in blob)
-- Con: Must keep columns in sync with blob on every write
-- Con: Non-indexed fields still inaccessible to SQL queries and JOINs
+The intermediate format must preserve exact binary content (bincode blobs) for all record types. Row counts per table serve as the primary verification mechanism. The export runs on a redb-compiled binary; the import runs on the sqlite-compiled binary. This avoids needing both backends compiled into one binary.
 
-**Option B — Full decomposition**: All EntryRecord fields become SQL columns. No blob.
-- Pro: Clean relational schema, zero data duplication
-- Pro: All fields queryable via SQL, enables future analytics JOINs
-- Pro: Eliminates bincode serialization overhead on every read/write
-- Pro: Tags become a proper junction table with foreign keys
-- Con: Larger initial change (more write.rs / read.rs rewrite)
-- Con: Must handle Option<u64> mapping carefully (NULL vs 0)
+### Server Feature Flags
 
-**Recommendation: Option B.** The entire motivation for the redb→SQLite migration was to leverage SQL's strengths. Keeping bincode blobs in SQLite is an anti-pattern that preserves the friction we set out to eliminate. EntryRecord has 24 flat fields (no nested structures) — they map cleanly to SQL columns. The rewrite of read.rs/write.rs is one-time work that permanently simplifies the codebase.
+unimatrix-server Cargo.toml has:
+- `default = ["mcp-briefing", "redb"]`
+- `backend-sqlite = ["unimatrix-store/backend-sqlite"]`
+- `redb = { workspace = true, optional = true }` -- the server directly depends on redb for the `DatabaseAlreadyOpen` error variant in main.rs
 
-### Codebase Analysis
-
-**Files to delete entirely (redb implementation):**
-
-| File | Lines | Purpose |
-|------|-------|---------|
-| `src/db.rs` | 532 | redb Store struct, open, compact |
-| `src/read.rs` | 924 | redb read operations |
-| `src/write.rs` | 1,939 | redb write operations + index sync |
-| `src/counter.rs` | 56 | redb counter helpers |
-| `src/query.rs` | 318 | redb multi-filter query logic |
-| `src/migration.rs` | 1,421 | redb schema migration chain (v0→v5) |
-| `src/sessions.rs` | 674 | redb session lifecycle |
-| `src/injection_log.rs` | 253 | redb injection log |
-| `src/signal.rs` | 142 | redb signal queue |
-| **Total** | **6,259** | |
-
-**Files to modify:**
-
-| File | Change |
-|------|--------|
-| `src/schema.rs` | Remove 17 `TableDefinition` / `MultimapTableDefinition` constants, remove `use redb::*` import. Keep all Rust structs and helpers. |
-| `src/lib.rs` | Remove cfg gates, flatten sqlite module re-exports |
-| `src/error.rs` | Remove cfg-gated redb error variant, make SQLite variant unconditional |
-| `src/test_helpers.rs` | Remove backend-selection logic |
-| `Cargo.toml` | Remove `redb` dependency, make `rusqlite` unconditional, remove `backend-sqlite` feature |
-
-**Files from nxs-005 to delete:**
-
-| File | Purpose |
-|------|---------|
-| `src/migrate_redb_to_sqlite.rs` | One-time redb→SQLite export tool |
-
-**Server crate changes:**
-
-| File | Change |
-|------|--------|
-| `Cargo.toml` | Remove `redb` dependency |
-| 7+ source files | Remove `use redb::*` imports, use re-exported types from unimatrix-store |
-
-**Workspace changes:**
-
-| File | Change |
-|------|--------|
-| `Cargo.toml` | Remove `redb = "3.1"` from workspace dependencies |
-
-### Target SQLite Schema
-
-**ENTRIES table (normalized):**
-```sql
-CREATE TABLE entries (
-    id              INTEGER PRIMARY KEY,
-    title           TEXT NOT NULL DEFAULT '',
-    content         TEXT NOT NULL DEFAULT '',
-    topic           TEXT NOT NULL DEFAULT '',
-    category        TEXT NOT NULL DEFAULT '',
-    source          TEXT NOT NULL DEFAULT '',
-    status          INTEGER NOT NULL DEFAULT 0,
-    confidence      REAL NOT NULL DEFAULT 0.0,
-    created_at      INTEGER NOT NULL DEFAULT 0,
-    updated_at      INTEGER NOT NULL DEFAULT 0,
-    last_accessed_at INTEGER NOT NULL DEFAULT 0,
-    access_count    INTEGER NOT NULL DEFAULT 0,
-    supersedes      INTEGER,           -- NULL maps to Option::None
-    superseded_by   INTEGER,           -- NULL maps to Option::None
-    correction_count INTEGER NOT NULL DEFAULT 0,
-    embedding_dim   INTEGER NOT NULL DEFAULT 0,
-    created_by      TEXT NOT NULL DEFAULT '',
-    modified_by     TEXT NOT NULL DEFAULT '',
-    content_hash    TEXT NOT NULL DEFAULT '',
-    previous_hash   TEXT NOT NULL DEFAULT '',
-    version         INTEGER NOT NULL DEFAULT 0,
-    feature_cycle   TEXT NOT NULL DEFAULT '',
-    trust_source    TEXT NOT NULL DEFAULT '',
-    helpful_count   INTEGER NOT NULL DEFAULT 0,
-    unhelpful_count INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE INDEX idx_entries_topic ON entries(topic);
-CREATE INDEX idx_entries_category ON entries(category);
-CREATE INDEX idx_entries_status ON entries(status);
-CREATE INDEX idx_entries_created_at ON entries(created_at);
-CREATE INDEX idx_entries_feature_cycle ON entries(feature_cycle);
-```
-
-**ENTRY_TAGS junction table (replaces TAG_INDEX):**
-```sql
-CREATE TABLE entry_tags (
-    entry_id INTEGER NOT NULL,
-    tag      TEXT NOT NULL,
-    PRIMARY KEY (entry_id, tag),
-    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
-);
-
-CREATE INDEX idx_entry_tags_tag ON entry_tags(tag);
-```
-
-**Tables dropped (replaced by CREATE INDEX):**
-- TOPIC_INDEX
-- CATEGORY_INDEX
-- TIME_INDEX
-- STATUS_INDEX
-- TAG_INDEX (replaced by entry_tags junction table)
-
-**INJECTION_LOG (normalized + session_id column):**
-```sql
-CREATE TABLE injection_log (
-    log_id     INTEGER PRIMARY KEY,
-    session_id TEXT NOT NULL DEFAULT '',
-    entry_id   INTEGER NOT NULL DEFAULT 0,
-    confidence REAL NOT NULL DEFAULT 0.0,
-    timestamp  INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE INDEX idx_injection_log_session ON injection_log(session_id);
-```
-
-**CO_ACCESS (normalized):**
-```sql
-CREATE TABLE co_access (
-    entry_id_a   INTEGER NOT NULL,
-    entry_id_b   INTEGER NOT NULL,
-    count        INTEGER NOT NULL DEFAULT 0,
-    last_updated INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (entry_id_a, entry_id_b),
-    CHECK (entry_id_a < entry_id_b)
-);
-```
-
-**SESSIONS (normalized):**
-```sql
-CREATE TABLE sessions (
-    session_id        TEXT PRIMARY KEY,
-    feature_cycle     TEXT NOT NULL DEFAULT '',
-    agent_role        TEXT NOT NULL DEFAULT '',
-    started_at        INTEGER NOT NULL DEFAULT 0,
-    ended_at          INTEGER,
-    status            TEXT NOT NULL DEFAULT 'Active',
-    compaction_count  INTEGER NOT NULL DEFAULT 0,
-    outcome           TEXT NOT NULL DEFAULT '',
-    total_injections  INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE INDEX idx_sessions_feature ON sessions(feature_cycle);
-CREATE INDEX idx_sessions_status ON sessions(status);
-```
-
-**SIGNAL_QUEUE (normalized):**
-```sql
-CREATE TABLE signal_queue (
-    signal_id    INTEGER PRIMARY KEY,
-    session_id   TEXT NOT NULL DEFAULT '',
-    created_at   INTEGER NOT NULL DEFAULT 0,
-    entry_ids    BLOB NOT NULL,          -- bincode Vec<u64>, small and rarely queried by field
-    signal_type  TEXT NOT NULL DEFAULT '',
-    signal_source TEXT NOT NULL DEFAULT ''
-);
-```
-
-**Tables unchanged (remain as-is from nxs-005):**
-- COUNTERS (`TEXT PRIMARY KEY, INTEGER`)
-- VECTOR_MAP (`INTEGER PRIMARY KEY, INTEGER`)
-- AGENT_REGISTRY (`TEXT PRIMARY KEY, BLOB`)
-- AUDIT_LOG (`INTEGER PRIMARY KEY, BLOB`)
-- FEATURE_ENTRIES (multimap: `TEXT, INTEGER`)
-- OUTCOME_INDEX (multimap: `TEXT, INTEGER`)
-- OBSERVATION_METRICS (`TEXT PRIMARY KEY, BLOB`)
+After cutover: flip default to `["mcp-briefing", "backend-sqlite"]`, keep redb available for export subcommand.
 
 ## Proposed Approach
 
-### Phase 1: redb Removal & Module Flattening
+### Wave 1: Data Migration Tooling
 
-Delete all redb implementation files. Remove the `backend-sqlite` feature flag. Make `rusqlite` an unconditional dependency. Flatten the `sqlite/` submodule into the main `src/` directory. Remove `migrate_redb_to_sqlite`. Clean up workspace and server crate dependencies.
+Build `unimatrix-server export` and `unimatrix-server import` subcommands. The export subcommand reads all 17 tables from the redb database and writes them to a JSON-lines intermediate file (one section per table, with table name, row count, and base64-encoded bincode blobs for each row). The import subcommand reads the intermediate file and writes to SQLite. Both report per-table row counts for verification.
 
-This is mechanical cleanup with zero behavioral change. All existing SQLite tests continue to pass.
+The export subcommand only compiles when the redb feature is active. The import subcommand only compiles when backend-sqlite is active. This keeps the two backends separate -- no need for both in one binary.
 
-### Phase 2: ENTRIES Column Decomposition
+### Wave 2: Production Migration
 
-Rewrite the ENTRIES table from a bincode blob column to 24 individual SQL columns. Replace `serialize_entry`/`deserialize_entry` in the write and read paths with SQL column mapping. Add the `entry_tags` junction table. Create SQL indexes. Drop the 5 index tables. This eliminates ~300 lines of index synchronization code from write operations.
+Run export on the current production database (redb-compiled binary). Run import to create the SQLite database (sqlite-compiled binary). Verify row counts match. Verify MCP tool behavior against the new database. Back up the original redb file.
 
-Add a schema migration (v5→v6) that:
-1. Creates the new `entries` table with columns
-2. Reads each row from the old `entries` table, deserializes the blob, inserts into the new table
-3. Populates `entry_tags` from each entry's tags
-4. Drops the 5 index tables
-5. Drops the old `entries` table, renames the new one
+### Wave 3: Default Flip
 
-### Phase 3: Operational Table Normalization
+Change the default feature flags so SQLite is the default backend:
+- unimatrix-store: default features include `backend-sqlite`
+- unimatrix-server: default features become `["mcp-briefing", "backend-sqlite"]`
+- Verify `cargo build` and `cargo test` pass with the new defaults
+- Verify all integration tests pass against SQLite
 
-Decompose CO_ACCESS, SESSIONS, INJECTION_LOG, and SIGNAL_QUEUE from bincode blobs to SQL columns. Add `session_id` column to INJECTION_LOG with index. Add indexes to SESSIONS.
-
-This is a continuation of the Phase 2 pattern — blob→columns migration for each table.
-
-### Phase 4: Validation
-
-Run all existing store tests (should be ~234+ from nxs-005). Run full infra-001 integration harness. Verify zero behavioral change.
+The redb backend remains compilable (for the export subcommand and as a backout path) but is no longer the default.
 
 ## Acceptance Criteria
 
-- AC-01: `redb` does not appear in any Cargo.toml in the workspace
-- AC-02: No `cfg(feature = "backend-sqlite")` gates remain in any source file
-- AC-03: No `sqlite/` submodule — all store implementation files are in `src/` directly
-- AC-04: ENTRIES table has 24 SQL columns (no bincode blob column)
-- AC-05: 5 former index tables (TOPIC_INDEX, CATEGORY_INDEX, TAG_INDEX, TIME_INDEX, STATUS_INDEX) do not exist in the database
-- AC-06: `entry_tags` junction table exists with `(entry_id, tag)` composite primary key
-- AC-07: SQL indexes exist on entries(topic), entries(category), entries(status), entries(created_at), entry_tags(tag)
-- AC-08: INJECTION_LOG has a `session_id` TEXT column with index
-- AC-09: CO_ACCESS, SESSIONS, SIGNAL_QUEUE have SQL columns (no bincode blob for primary fields)
-- AC-10: Schema migration v5→v6 correctly migrates existing nxs-005 databases (blob→columns with data preservation)
-- AC-11: `serialize_entry`/`deserialize_entry` are removed or deprecated (no longer used in store operations)
-- AC-12: All existing store unit tests pass (count should match nxs-005 final count)
-- AC-13: All 10 MCP tools return identical results (infra-001 integration harness passes)
-- AC-14: No code changes outside `crates/unimatrix-store/` and dependency cleanup in `crates/unimatrix-server/Cargo.toml` and workspace `Cargo.toml`
-- AC-15: `Option<u64>` fields (supersedes, superseded_by) map to SQL NULL correctly (not 0)
+- AC-01: Export subcommand reads all 17 tables from a redb database and writes an intermediate file with per-table row counts
+- AC-02: Import subcommand reads the intermediate file and creates a SQLite database with identical per-table row counts
+- AC-03: Production database migrated successfully (row counts verified, MCP tools return identical results)
+- AC-04: SQLite is the default backend (`cargo build` without feature flags uses SQLite)
+- AC-05: redb backend remains compilable via explicit feature flag (backout path preserved)
+- AC-06: All existing store unit tests pass with the new default (`cargo test -p unimatrix-store`)
+- AC-07: All existing server tests pass with the new default
+- AC-08: All integration tests pass against the SQLite backend
 
 ## Constraints
 
-- **Prerequisite**: nxs-005 must be complete (SQLite backend passing all tests) before nxs-006 implementation begins
-- **Migration**: Schema migration must handle existing nxs-005 databases. Users should not lose data.
-- **No new public API**: Store's public method signatures must not change.
-- **EntryRecord struct unchanged**: The Rust struct remains identical — only the storage mapping changes.
-- **Test infrastructure is cumulative**: Extend existing test helpers, don't create isolated scaffolding.
-- **Tags are multi-valued**: TAG_INDEX cannot become a simple CREATE INDEX. It must be a junction table (entry_tags).
-- **signal_queue.entry_ids stays as blob**: Vec<u64> is a variable-length array with no SQL-native representation. Bincode is appropriate here.
-- **Transaction boundaries preserved**: All write operations that were atomic under redb/nxs-005 remain atomic.
+- **One production database**: There is exactly one redb database to migrate. The migration tooling is one-time but must remain compilable until nxs-007 removes redb entirely.
+- **No simultaneous compilation**: The export and import subcommands compile under different feature flags. There is no need to compile both backends into one binary.
+- **Backward compatibility**: After default flip, the system uses SQLite by default. redb databases can still be opened by compiling with the redb feature (for export or backout).
+- **Test infrastructure is cumulative**: Extend existing test helpers; do not create new isolated scaffolding.
 
 ## Open Questions
 
-1. **Should `serialize_entry`/`deserialize_entry` be fully removed or kept for backward compatibility?** They're currently pub exports from unimatrix-store. If external code (tests, migration tools) uses them, removal is a breaking change. Leaning toward removal since no code outside the store crate should be serializing entries.
+1. **Intermediate format**: JSON-lines with base64-encoded blobs is proposed. Alternative: bincode-serialized dump file. JSON-lines is human-inspectable and debuggable; bincode is more compact.
+2. **Export/import as subcommands vs standalone binary**: Proposed as subcommands on unimatrix-server for simplicity. Alternative: separate `unimatrix-migrate` binary.
 
-2. **Schema version: v6 or reset?** nxs-005 creates the SQLite schema at some version (likely v5 to match redb). nxs-006 migration bumps to v6. Alternatively, since this is a major normalization, we could reset to v1-sqlite. Leaning toward v6 (continuous version chain is simpler).
+## Revised nxs-007 Scope (expanded)
 
-3. **FEATURE_ENTRIES and OUTCOME_INDEX**: These are multimap tables with `(text, integer)` keys. They could become junction tables with foreign keys like entry_tags. Should we normalize them too, or leave them as-is? Leaning toward leaving them (they work fine as simple tables and aren't causing friction).
-
-## Estimated Impact
-
-- **Lines deleted**: ~6,500 (redb implementation + migration tooling + TableDefinition constants + cfg gates)
-- **Lines rewritten**: ~2,500 (sqlite read.rs/write.rs rewritten for column access instead of blob serde)
-- **Net line change**: Likely -3,000 to -4,000 (index sync elimination, serde removal)
-- **Tables dropped**: 5 (index tables) + old blob-based entries table
-- **Tables added**: 1 (entry_tags)
-- **Indexes added**: ~8 (replacing 5 application-managed tables + new operational indexes)
+nxs-007 now absorbs the cleanup work originally in nxs-006:
+- Remove redb backend implementation (~7,590 lines)
+- Remove transitional compat layer (~742 lines)
+- Remove all cfg gates from store and server crates
+- Flatten sqlite/ module to crate root
+- Remove redb from workspace dependencies
+- Make rusqlite unconditional
+- **Plus** the original nxs-007 scope: server decoupling + schema normalization
 
 ## Tracking
 
