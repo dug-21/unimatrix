@@ -112,3 +112,18 @@ col-013 adds rule-based knowledge extraction from observation data, automatic ba
 | **Total** | **~620** | **~200** | **~320** |
 
 Total: ~620 new + ~200 refactored = ~820 implementation lines, ~320 test lines. Slightly above the ASS-015 estimate of ~675 (due to the type migration adding ~100 lines of import changes not originally counted).
+
+## Component Map
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| type-migration | pseudocode/type-migration.md | test-plan/type-migration.md |
+| extraction-rules | pseudocode/extraction-rules.md | test-plan/extraction-rules.md |
+| background-tick | pseudocode/background-tick.md | test-plan/background-tick.md |
+
+## Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
