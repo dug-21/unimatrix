@@ -140,6 +140,8 @@ Security is a cross-cutting concern woven into existing features, not a separate
 | Outcome Tracking | `col-001` | OUTCOME_INDEX table — `(feature_hash, entry_id)` for outcome entries. Convention: agents store `category: "outcome"` with structured tags (`gate:3a`, `phase:implementation`, `result:pass`). |
 | Retrospective Pipeline | `col-002` | Observation-driven retrospective capability. `unimatrix-observe` crate: JSONL parser, content-based feature attribution, rule-based hotspot detection (21 rules across 4 categories), MetricVector computation, report generation. `context_retrospective` MCP tool (12th tool). Per-session JSONL telemetry via Claude Code hooks (PreToolUse, PostToolUse, SubagentStart, SubagentStop). Four hotspot categories: agent (context load, lifespan, file breadth, re-reads, mutation spread, compile cycles, edit bloat), friction (permission retries, sleep workarounds, search-via-bash, output parsing struggle), session (timeouts, cold restarts, coordinator respawns, post-completion work, rework events), scope (source file count, design artifacts, ADR count, post-delivery issues, phase duration outliers). Bootstrapped thresholds with convergence toward mean+1.5σ. Metric vector stored in Unimatrix (category: "observation"). See `product/research/ass-013/`. |
 | Detection & Baselines | `col-002b` | Extends col-002 with 18 additional detection rules (completing the full 21-rule library) and historical baseline comparison. Baseline computation (mean + stddev across stored MetricVectors, phase-specific grouping, 1.5σ outlier flagging). Four arithmetic guard modes (Normal, Outlier, NoVariance, NewSignal). Minimum 3 MetricVectors required for baseline. Enhances `context_retrospective` report — no new MCP tools. |
+| Data Path Unification | `col-012` | Eliminated dual data path (JSONL files + SQLite tables) by adding `observations` table to SQLite. All hook events persisted. Retrospective pipeline migrated from JSONL file parsing to SQL queries. PR #107. |
+| Extraction Rule Engine | `col-013` | Rule-based knowledge extraction from observation data. ExtractionRule trait + 5 rules (knowledge-gap, implicit-convention, dead-knowledge, recurring-friction, file-dependency) + 6-check quality gate pipeline. Background tick loop (15-min) for automated maintenance + extraction. context_status becomes read-only. Absorbs col-005. PR #110, GH #108. |
 
 #### Hook-Driven Delivery Features — IMMEDIATE PRIORITY
 
@@ -152,7 +154,7 @@ Security is a cross-cutting concern woven into existing features, not a separate
 | Session Lifecycle & Observation | `col-010` | Full session lifecycle persistence and structured observation pipeline. **Schema v5**: adds SESSIONS table (16th) and INJECTION_LOG table (17th). No `session_id` field on EntryRecord — deferred (bincode positional encoding requires full scan-and-rewrite migration; disproportionate to benefit). SessionStart/End hooks fully wired in `.claude/settings.json`. Upgrades col-008's in-memory `SessionState` to persistent `SessionRecord` — survives server restart, recoverable after missed SessionEnd. **Col-002 integration**: `from_structured_events()` entry point replaces JSONL-based session detection with explicit start/end signals and session-scoped feature attribution. Auto-generated session outcome entries via col-001 (`category: outcome`, `type: session`). Evidence-limited retrospective output (`evidence_limit` param, resolves issue #65 ~87KB payload). Lesson-learned auto-persistence (`category: lesson-learned`, embedded, queryable). Provenance boost (`PROVENANCE_BOOST = 0.02`) for lesson-learned entries at search re-rank time. Stale session sweep: sessions with no `ended_at` after 24h marked `TimedOut` during maintenance. Telemetry GC (30-day cleanup). |
 | Semantic Agent Routing | `col-011` | UserPromptSubmit hook that matches prompt against stored agent duties, patterns, and historical outcomes using 384d semantic embeddings. Unlike keyword regex, finds best-fit agent by querying `category: "duties"` + `category: "outcome"` entries, ranks by confidence + similarity. Connects col-001 outcomes to agent selection. Advisory — prints recommendation, does not spawn. |
 
-#### Passive Knowledge Acquisition Features — NEXT PRIORITY (ASS-015)
+#### Passive Knowledge Acquisition Features — COMPLETE (ASS-015)
 
 | Feature | Prefix | Summary |
 |---------|--------|---------|
@@ -166,7 +168,7 @@ Security is a cross-cutting concern woven into existing features, not a separate
 | Process Proposal Workflow | `col-003` | CLI: `unimatrix proposals` (list pending), `unimatrix approve <id>` (promote to active process knowledge), `unimatrix reject <id>` (record rejection as learning signal). Approved proposals become entries with `category: "process"`, `status: Active`. |
 | Feature Lifecycle | `col-004` | Feature-scoped context: `context_briefing` with `feature` param returns feature-specific decisions + cross-feature patterns. Gate status tracking — which gates passed/failed for active features. |
 
-**Status (2026-03-05):** col-001 ✅, col-002 ✅, col-002b ✅, col-006 ✅, col-007 ✅, col-008 ✅ (#69, PR #72), col-009 ✅, col-010 ✅, col-010b ✅. **All hook-driven delivery features complete.** col-003/004 unscoped. col-011 unscoped. col-012/013 scoped (ASS-015 research complete).
+**Status (2026-03-05):** col-001 ✅, col-002 ✅, col-002b ✅, col-006 ✅, col-007 ✅, col-008 ✅ (#69, PR #72), col-009 ✅, col-010 ✅, col-010b ✅, col-012 ✅, col-013 ✅ (#108, PR #110). **All hook-driven delivery features and passive knowledge acquisition complete.** col-003/004 unscoped. col-011 unscoped.
 
 **Ships**: Automatic knowledge delivery via hooks — every agent prompt enriched, compaction resilient, confidence feedback closed-loop. System observes agent behavior, identifies process hotspots from evidence, and proposes improvements. With col-012/013: knowledge base self-populates from observation via rule-based extraction with quality gates. With crt-007/008/009: neural models continuously retrain, system improves with every feature. This is the Proposal A → C transition completed by the self-learning pipeline.
 
@@ -302,8 +304,8 @@ M1: Foundation (nxs)         ✅ COMPLETE (nxs-001/002/003/004)
       │    │    ├─► col-009: Confidence Feedback  ✅ COMPLETE (schema v4: SIGNAL_QUEUE)
       │    │    │    └─► col-010/010b: Session Lifecycle  ✅ COMPLETE (schema v5: SESSIONS, INJECTION_LOG)
       │    │    │
-      │    │    ├─► col-012: Data Path Unification  ← NEXT
-      │    │    │    └─► col-013: Extraction Rule Engine  (absorbs col-005)
+      │    │    ├─► col-012: Data Path Unification  ✅ COMPLETE (PR #107)
+      │    │    │    └─► col-013: Extraction Rule Engine  ✅ COMPLETE (PR #110, absorbs col-005)
       │    │    │         ├─► (includes crt-002/003/005 refactors)
       │    │    │         └─► crt-007: Neural Extraction Pipeline
       │    │    │              ├─► (includes unimatrix-adapt refactor)
