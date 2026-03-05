@@ -101,6 +101,24 @@ crt-007 introduces the neural layer of Unimatrix's self-learning pipeline. It ex
 - **Integration seam**: shadow_evaluations SQLite table (records both rule and neural predictions)
 - **Performance**: classifier <50ms, scorer <10ms, total neural overhead <1s per tick
 
+## Component Map
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| learn-crate | pseudocode/learn-crate.md | test-plan/learn-crate.md |
+| model-trait | pseudocode/model-trait.md | test-plan/model-trait.md |
+| classifier-scorer | pseudocode/classifier-scorer.md | test-plan/classifier-scorer.md |
+| registry | pseudocode/registry.md | test-plan/registry.md |
+| shadow | pseudocode/shadow.md | test-plan/shadow.md |
+| integration | pseudocode/integration.md | test-plan/integration.md |
+
+## Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
 ## Estimated Scope
 
 | Wave | New Lines | Modified Lines | New Files | Modified Files |
