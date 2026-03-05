@@ -323,7 +323,7 @@ From ALIGNMENT-REPORT.md:
 | Non-Goals Respected | **PASS** |
 
 **WARNs (no human approval required)**:
-- **WARN-01**: Spec AD-03 hedges on counter helpers location vs Architecture ADR-002. Resolution: follow Architecture — create `counters.rs`.
+- **WARN-01**: ~~Spec AD-03 hedges on counter helpers location vs Architecture ADR-002.~~ **RESOLVED** — Spec AD-03 updated to align with Architecture ADR-002 (`counters.rs` module).
 - **WARN-02**: 6 additional SQL indexes beyond SCOPE.md (entry_tags entry_id, co_access_b, sessions started_at/feature_cycle, injection_log entry, audit_log agent/timestamp). Additive performance infrastructure within feature boundary.
 - **WARN-03**: Type movement (AgentRecord, AuditEvent, TrustLevel, Capability, Outcome) from server to store crate. Necessary for migration; consistent with ADR #352.
 
@@ -339,6 +339,30 @@ From ALIGNMENT-REPORT.md:
 | Lines added | ~400 (migration_compat, counters, DDL, entry_from_row, load_tags) |
 | Lines rewritten | ~2,000 (read/write paths, sessions, signal, injection_log, write_ext, store_ops, store_correct, registry, audit) |
 | Net change | ~-800 lines |
+
+---
+
+## Component Map (Stage 3a)
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| counters | pseudocode/counters.md | test-plan/counters.md |
+| migration-compat | pseudocode/migration-compat.md | test-plan/migration-compat.md |
+| migration | pseudocode/migration.md | test-plan/migration.md |
+| schema-ddl | pseudocode/schema-ddl.md | test-plan/schema-ddl.md |
+| write-paths | pseudocode/write-paths.md | test-plan/write-paths.md |
+| read-paths | pseudocode/read-paths.md | test-plan/read-paths.md |
+| server-entries | pseudocode/server-entries.md | test-plan/server-entries.md |
+| operational-tables | pseudocode/operational-tables.md | test-plan/operational-tables.md |
+| server-tables | pseudocode/server-tables.md | test-plan/server-tables.md |
+| compat-removal | pseudocode/compat-removal.md | test-plan/compat-removal.md |
+
+### Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
