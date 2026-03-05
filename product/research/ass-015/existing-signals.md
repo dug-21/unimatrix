@@ -87,7 +87,7 @@ pub struct MetricVector {
 }
 ```
 
-Storage: `OBSERVATION_METRICS` table in redb: `feature_cycle -> bincode(MetricVector)`
+Storage: `observation_metrics` table in SQLite: `feature_cycle -> bincode(MetricVector)`
 
 ---
 
@@ -220,4 +220,4 @@ Every MCP call writes to AUDIT_LOG with: agent_id, tool_name, entry_ids, outcome
 | Corrections | ENTRIES | Confidence component | Cascade effect tracking |
 | Status transitions | ENTRIES.status | Manual decisions | Root cause trending |
 
-Of the 70+ signals identified across the codebase, **26 (37%) are already tracked**. The remaining 44 require new extraction logic but operate on data already present in existing JSONL records and redb tables.
+Of the 70+ signals identified across the codebase, **26 (37%) are already tracked**. The remaining 44 require new extraction logic but operate on data already present in existing JSONL records and SQLite tables.

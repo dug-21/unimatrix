@@ -801,7 +801,7 @@ Given finite engineering effort, which extraction patterns should be implemented
 
 Options:
 - **Unimatrix entries (category: "observation-buffer")**: Uses existing storage. Searchable. But not designed for fixed-size ring buffers.
-- **Dedicated redb table**: Fast, structured, ring-buffer friendly. But adds schema complexity.
+- **Dedicated SQLite table**: Fast, structured, indexed, queryable. Natural fit with existing backend.
 - **File-based (JSON in observation directory)**: Simple, inspectable, no schema changes. But not queryable through MCP tools.
 
 Recommendation: File-based for v1 (simplicity), dedicated table for v2 (performance at scale).
