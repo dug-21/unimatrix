@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn test_store_adapter_insert_and_get() {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         let store = Arc::new(Store::open(&path).unwrap());
         let adapter = StoreAdapter::new(store);
 
@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn test_store_adapter_error_propagation() {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         let store = Arc::new(Store::open(&path).unwrap());
         let adapter = StoreAdapter::new(store);
 
@@ -250,7 +250,7 @@ mod tests {
     #[test]
     fn test_dyn_entry_store_invocation() {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         let store = Arc::new(Store::open(&path).unwrap());
         let adapter = StoreAdapter::new(store);
         let dyn_store: &dyn EntryStore = &adapter;

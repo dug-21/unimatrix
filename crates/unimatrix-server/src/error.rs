@@ -448,11 +448,11 @@ mod tests {
 
     #[test]
     fn test_database_locked_display() {
-        let err = ServerError::DatabaseLocked(PathBuf::from("/tmp/test.redb"));
+        let err = ServerError::DatabaseLocked(PathBuf::from("/tmp/test.db"));
         let msg = format!("{err}");
         assert!(msg.contains("locked"), "should mention locked: {msg}");
         assert!(
-            msg.contains("/tmp/test.redb"),
+            msg.contains("/tmp/test.db"),
             "should contain path: {msg}"
         );
         assert!(
@@ -463,17 +463,17 @@ mod tests {
 
     #[test]
     fn test_database_locked_error_data_code() {
-        let err = ServerError::DatabaseLocked(PathBuf::from("/data/unimatrix.redb"));
+        let err = ServerError::DatabaseLocked(PathBuf::from("/data/unimatrix.db"));
         let data: ErrorData = err.into();
         assert_eq!(data.code, ERROR_INTERNAL);
     }
 
     #[test]
     fn test_database_locked_error_data_message() {
-        let err = ServerError::DatabaseLocked(PathBuf::from("/data/unimatrix.redb"));
+        let err = ServerError::DatabaseLocked(PathBuf::from("/data/unimatrix.db"));
         let data: ErrorData = err.into();
         assert!(
-            data.message.contains("/data/unimatrix.redb"),
+            data.message.contains("/data/unimatrix.db"),
             "message should contain path: {}",
             data.message
         );

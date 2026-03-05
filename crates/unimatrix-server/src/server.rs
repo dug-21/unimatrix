@@ -4,8 +4,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[cfg(not(feature = "backend-sqlite"))]
-use redb::ReadableTable;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
 use unimatrix_core::{
@@ -281,7 +279,7 @@ impl UnimatrixServer {
     /// Insert a new entry and write an audit event in a single write transaction.
     ///
     /// Combines entry creation (with all indexes), VECTOR_MAP write, and audit
-    /// logging into one redb write transaction per ADR-001. The HNSW vector
+    /// logging into one write transaction per ADR-001. The HNSW vector
     /// insertion happens after the transaction commits (separate data structure).
     ///
     /// GH #14 fix: VECTOR_MAP is now written atomically with the entry.
@@ -300,7 +298,7 @@ impl UnimatrixServer {
         // Capture embedding dimension before moving into closure (col-010b fix)
         let embedding_dim = embedding.len() as u16;
 
-        // Step 1: Combined write transaction (spawn_blocking for redb)
+        // Step 1: Combined write transaction (spawn_blocking for SQLite)
         let (entry_id, record) = tokio::task::spawn_blocking(move || -> Result<(u64, EntryRecord), ServerError> {
             let txn = store.begin_write()
                 .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
@@ -1051,28 +1049,6 @@ impl UnimatrixServer {
 }
 
 /// Decrement a counter value, saturating at 0.
-#[cfg(not(feature = "backend-sqlite"))]
-fn decrement_counter(
-    txn: &redb::WriteTransaction,
-    key: &str,
-    amount: u64,
-) -> Result<(), unimatrix_store::StoreError> {
-    use redb::ReadableTable;
-    let mut table = txn.open_table(COUNTERS)
-        .map_err(|e| unimatrix_store::StoreError::from(e))?;
-    let current = match table.get(key)
-        .map_err(|e| unimatrix_store::StoreError::from(e))?
-    {
-        Some(guard) => guard.value(),
-        None => 0,
-    };
-    table.insert(key, current.saturating_sub(amount))
-        .map_err(|e| unimatrix_store::StoreError::from(e))?;
-    Ok(())
-}
-
-/// Decrement a counter value, saturating at 0 (SQLite backend).
-#[cfg(feature = "backend-sqlite")]
 fn decrement_counter(
     txn: &unimatrix_store::SqliteWriteTransaction<'_>,
     key: &str,
@@ -1094,7 +1070,7 @@ mod tests {
 
     pub(crate) fn make_server() -> UnimatrixServer {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         let store = Arc::new(Store::open(&path).unwrap());
         std::mem::forget(dir);
 
@@ -1706,8 +1682,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_quarantine_updates_status_index() {
-        #[cfg(not(feature = "backend-sqlite"))]
-        use redb::ReadableTable;
+
         let server = make_server();
         let id = insert_test_entry(&server.store);
 
@@ -1810,8 +1785,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_restore_updates_status_index() {
-        #[cfg(not(feature = "backend-sqlite"))]
-        use redb::ReadableTable;
+
         let server = make_server();
         let id = insert_test_entry(&server.store);
 

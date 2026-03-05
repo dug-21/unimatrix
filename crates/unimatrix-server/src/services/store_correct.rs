@@ -8,8 +8,6 @@ use std::sync::Arc;
 use unimatrix_core::{
     CoreError, EmbedService, EntryRecord, NewEntry,
 };
-#[cfg(not(feature = "backend-sqlite"))]
-use redb::ReadableTable;
 use unimatrix_store::{
     CATEGORY_INDEX, COUNTERS, ENTRIES, STATUS_INDEX, TAG_INDEX, TIME_INDEX,
     TOPIC_INDEX, VECTOR_MAP,
@@ -319,27 +317,6 @@ impl StoreService {
 }
 
 /// Decrement a counter value, saturating at 0.
-#[cfg(not(feature = "backend-sqlite"))]
-fn decrement_counter(
-    txn: &redb::WriteTransaction,
-    key: &str,
-    amount: u64,
-) -> Result<(), StoreError> {
-    let mut table = txn.open_table(COUNTERS)
-        .map_err(StoreError::from)?;
-    let current = match table.get(key)
-        .map_err(StoreError::from)?
-    {
-        Some(guard) => guard.value(),
-        None => 0,
-    };
-    table.insert(key, current.saturating_sub(amount))
-        .map_err(StoreError::from)?;
-    Ok(())
-}
-
-/// Decrement a counter value, saturating at 0 (SQLite backend).
-#[cfg(feature = "backend-sqlite")]
 fn decrement_counter(
     txn: &unimatrix_store::SqliteWriteTransaction<'_>,
     key: &str,

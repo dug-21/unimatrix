@@ -5,9 +5,6 @@ edition.workspace = true
 rust-version.workspace = true
 description = "Unimatrix shared business logic: confidence, co-access, project discovery, wire protocol, transport"
 
-[features]
-backend-sqlite = ["unimatrix-store/backend-sqlite"]
-
 [dependencies]
 unimatrix-core = { path = "../unimatrix-core" }
 unimatrix-store = { path = "../unimatrix-store" }

@@ -1,8 +1,8 @@
-//! Parity tests for SQLite backend: signals, sessions, injection log, persistence.
+//! Store integration tests: signals, sessions, injection log, persistence.
 //!
 //! Companion to sqlite_parity.rs. Covers specialized operations.
 
-#![cfg(all(feature = "backend-sqlite", feature = "test-support"))]
+#![cfg(feature = "test-support")]
 
 use unimatrix_store::Store;
 use unimatrix_store::test_helpers::{TestDb, TestEntry, assert_index_consistent, seed_entries};

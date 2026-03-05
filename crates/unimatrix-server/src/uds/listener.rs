@@ -1530,7 +1530,7 @@ mod tests {
     // -- Helpers --
 
     fn make_store() -> Arc<Store> {
-        Arc::new(Store::open(&tempfile::TempDir::new().unwrap().path().join("test.redb")).unwrap())
+        Arc::new(Store::open(&tempfile::TempDir::new().unwrap().path().join("test.db")).unwrap())
     }
 
     fn make_embed_service() -> Arc<EmbedServiceHandle> {

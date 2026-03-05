@@ -32,7 +32,7 @@ impl TestVectorIndex {
     pub fn with_config(config: VectorConfig) -> Self {
         let dir = tempfile::TempDir::new().expect("failed to create temp dir");
         let dir_path = dir.path().to_path_buf();
-        let db_path = dir.path().join("test.redb");
+        let db_path = dir.path().join("test.db");
         let store = Arc::new(Store::open(&db_path).expect("failed to open test store"));
         let index =
             VectorIndex::new(store.clone(), config).expect("failed to create test index");

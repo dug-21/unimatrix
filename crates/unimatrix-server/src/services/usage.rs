@@ -228,12 +228,9 @@ impl UsageService {
 #[cfg(test)]
 mod usage_tests {
     use super::*;
-    #[cfg(not(feature = "backend-sqlite"))]
-    use redb::ReadableMultimapTable;
-
     fn make_usage_service() -> (UsageService, Arc<Store>, tempfile::TempDir) {
         let dir = tempfile::tempdir().expect("tempdir");
-        let store = Arc::new(Store::open(dir.path().join("test.redb")).expect("store"));
+        let store = Arc::new(Store::open(dir.path().join("test.db")).expect("store"));
         let usage_dedup = Arc::new(UsageDedup::new());
         let service = UsageService::new(Arc::clone(&store), usage_dedup);
         (service, store, dir)

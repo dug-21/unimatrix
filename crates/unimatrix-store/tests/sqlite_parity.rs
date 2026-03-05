@@ -1,13 +1,12 @@
-//! Parity tests for the SQLite backend.
+//! Store integration tests.
 //!
-//! These tests exercise all Store operations to verify behavioral parity
-//! with the redb backend. They run ONLY under `--features backend-sqlite`.
+//! These tests exercise all Store operations.
 //!
 //! Coverage: CRUD, queries, usage tracking, confidence, vector map,
 //! feature entries, co-access, metrics, counters.
 //! See sqlite_parity_specialized.rs for signals, sessions, injection log.
 
-#![cfg(all(feature = "backend-sqlite", feature = "test-support"))]
+#![cfg(feature = "test-support")]
 
 use unimatrix_store::{QueryFilter, Status, StoreError, TimeRange};
 use unimatrix_store::test_helpers::{TestDb, TestEntry, assert_index_consistent};

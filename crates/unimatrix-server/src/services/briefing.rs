@@ -460,7 +460,7 @@ mod tests {
     fn make_test_store() -> (tempfile::TempDir, Arc<Store>) {
         let dir = tempfile::tempdir().expect("tempdir");
         let store = Arc::new(
-            Store::open(dir.path().join("test.redb")).expect("open store"),
+            Store::open(dir.path().join("test.db")).expect("open store"),
         );
         (dir, store)
     }

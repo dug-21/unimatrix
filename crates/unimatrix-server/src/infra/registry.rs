@@ -1,12 +1,10 @@
 //! Agent registry: identity, trust levels, and capabilities.
 //!
-//! Uses the AGENT_REGISTRY redb table for persistence.
+//! Uses the AGENT_REGISTRY table for persistence.
 
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[cfg(not(feature = "backend-sqlite"))]
-use redb::ReadableTable;
 use serde::{Deserialize, Serialize};
 use unimatrix_store::{AGENT_REGISTRY, Store};
 
@@ -452,7 +450,7 @@ mod tests {
 
     fn make_store() -> Arc<Store> {
         let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("test.redb");
+        let path = dir.path().join("test.db");
         // Leak TempDir to keep it alive for the test
         let store = Store::open(&path).unwrap();
         std::mem::forget(dir);
