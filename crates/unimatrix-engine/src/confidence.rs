@@ -47,6 +47,47 @@ pub const SEARCH_SIMILARITY_WEIGHT: f64 = 0.85;
 /// Does NOT modify the stored confidence formula invariant (0.92).
 pub const PROVENANCE_BOOST: f64 = 0.02;
 
+/// Multiplicative penalty for deprecated entries in Flexible retrieval mode (crt-010).
+/// Applied to the final re-ranked score, not the confidence formula.
+pub const DEPRECATED_PENALTY: f64 = 0.7;
+
+/// Multiplicative penalty for superseded entries in Flexible retrieval mode (crt-010).
+/// Harsher than DEPRECATED_PENALTY since a known successor exists.
+/// Applied to the final re-ranked score, not the confidence formula.
+pub const SUPERSEDED_PENALTY: f64 = 0.5;
+
+/// Cosine similarity between two f32 vectors, returned as f64 for scoring precision.
+///
+/// Returns 0.0 for zero-length, mismatched dimensions, or zero-norm vectors.
+/// Result is clamped to [0.0, 1.0] to guard against floating-point edge cases.
+pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f64 {
+    if a.len() != b.len() || a.is_empty() {
+        return 0.0;
+    }
+
+    let mut dot: f64 = 0.0;
+    let mut norm_a_sq: f64 = 0.0;
+    let mut norm_b_sq: f64 = 0.0;
+
+    for i in 0..a.len() {
+        let ai = a[i] as f64;
+        let bi = b[i] as f64;
+        dot += ai * bi;
+        norm_a_sq += ai * ai;
+        norm_b_sq += bi * bi;
+    }
+
+    let norm_a = norm_a_sq.sqrt();
+    let norm_b = norm_b_sq.sqrt();
+
+    if norm_a == 0.0 || norm_b == 0.0 {
+        return 0.0;
+    }
+
+    let result = dot / (norm_a * norm_b);
+    result.clamp(0.0, 1.0)
+}
+
 /// Base quality proxy from entry lifecycle status.
 ///
 /// Active entries = 0.5, Proposed = 0.5, Deprecated = 0.2, Quarantined = 0.1.
@@ -768,5 +809,112 @@ mod tests {
         let boosted = base + PROVENANCE_BOOST;
         assert!(boosted > base);
         assert!((boosted - base - 0.02).abs() < f64::EPSILON);
+    }
+
+    // -- crt-010: penalty constants tests (T-PC-01..04) --
+
+    #[test]
+    fn deprecated_penalty_value() {
+        assert_eq!(DEPRECATED_PENALTY, 0.7);
+        assert!(DEPRECATED_PENALTY > 0.0 && DEPRECATED_PENALTY < 1.0);
+    }
+
+    #[test]
+    fn superseded_penalty_value() {
+        assert_eq!(SUPERSEDED_PENALTY, 0.5);
+        assert!(SUPERSEDED_PENALTY > 0.0 && SUPERSEDED_PENALTY < 1.0);
+    }
+
+    #[test]
+    fn superseded_penalty_harsher_than_deprecated() {
+        assert!(
+            SUPERSEDED_PENALTY < DEPRECATED_PENALTY,
+            "superseded ({}) should be < deprecated ({})",
+            SUPERSEDED_PENALTY,
+            DEPRECATED_PENALTY,
+        );
+    }
+
+    #[test]
+    fn penalties_independent_of_confidence_formula() {
+        // Weight sum invariant unchanged
+        let stored_sum = W_BASE + W_USAGE + W_FRESH + W_HELP + W_CORR + W_TRUST;
+        assert!(
+            (stored_sum - 0.92).abs() < 0.001,
+            "penalty constants must not affect stored weight sum"
+        );
+    }
+
+    // -- crt-010: cosine_similarity tests (T-CS-01..08) --
+
+    #[test]
+    fn cosine_similarity_identical_normalized() {
+        let v = vec![0.6_f32, 0.8];
+        let result = cosine_similarity(&v, &v);
+        assert!(
+            (result - 1.0).abs() < 1e-6,
+            "identical vectors should give ~1.0, got {result}"
+        );
+    }
+
+    #[test]
+    fn cosine_similarity_orthogonal() {
+        let a = vec![1.0_f32, 0.0];
+        let b = vec![0.0_f32, 1.0];
+        let result = cosine_similarity(&a, &b);
+        assert!(
+            result.abs() < 1e-6,
+            "orthogonal vectors should give ~0.0, got {result}"
+        );
+    }
+
+    #[test]
+    fn cosine_similarity_zero_vector() {
+        let a = vec![0.6_f32, 0.8];
+        let b = vec![0.0_f32, 0.0];
+        assert_eq!(cosine_similarity(&a, &b), 0.0);
+    }
+
+    #[test]
+    fn cosine_similarity_mismatched_dimensions() {
+        let a = vec![1.0_f32, 0.0, 0.0];
+        let b = vec![1.0_f32, 0.0];
+        assert_eq!(cosine_similarity(&a, &b), 0.0);
+    }
+
+    #[test]
+    fn cosine_similarity_empty_vectors() {
+        let a: Vec<f32> = vec![];
+        let b: Vec<f32> = vec![];
+        assert_eq!(cosine_similarity(&a, &b), 0.0);
+    }
+
+    #[test]
+    fn cosine_similarity_known_angle() {
+        // 45 degrees: cos(pi/4) ~= 0.7071
+        let a = vec![1.0_f32, 0.0];
+        let b = vec![1.0_f32 / 2.0_f32.sqrt(), 1.0_f32 / 2.0_f32.sqrt()];
+        let result = cosine_similarity(&a, &b);
+        assert!(
+            (result - 0.7071).abs() < 0.01,
+            "expected ~0.7071, got {result}"
+        );
+    }
+
+    #[test]
+    fn cosine_similarity_returns_f64() {
+        let a = vec![0.6_f32, 0.8];
+        let b = vec![0.8_f32, 0.6];
+        let result: f64 = cosine_similarity(&a, &b);
+        assert!(result >= 0.0 && result <= 1.0);
+    }
+
+    #[test]
+    fn cosine_similarity_clamped_for_denormalized() {
+        // Large values that could produce > 1.0 due to floating point
+        let a = vec![1e10_f32, 1e10];
+        let b = vec![1e10_f32, 1e10];
+        let result = cosine_similarity(&a, &b);
+        assert!(result >= 0.0 && result <= 1.0, "result should be clamped, got {result}");
     }
 }

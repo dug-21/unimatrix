@@ -138,6 +138,10 @@ impl VectorStore for VectorAdapter {
         self.inner.stale_count()
     }
 
+    fn get_embedding(&self, entry_id: u64) -> Option<Vec<f32>> {
+        self.inner.get_embedding(entry_id)
+    }
+
     fn compact(&self, embeddings: Vec<(u64, Vec<f32>)>) -> Result<(), CoreError> {
         Ok(self.inner.compact(embeddings)?)
     }

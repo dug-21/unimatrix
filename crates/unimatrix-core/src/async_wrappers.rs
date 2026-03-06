@@ -219,6 +219,14 @@ impl<T: VectorStore + 'static> AsyncVectorStore<T> {
             .await
             .unwrap_or(0)
     }
+
+    /// Retrieve the stored embedding for an entry (crt-010: supersession injection).
+    pub async fn get_embedding(&self, entry_id: u64) -> Option<Vec<f32>> {
+        let inner = Arc::clone(&self.inner);
+        tokio::task::spawn_blocking(move || inner.get_embedding(entry_id))
+            .await
+            .unwrap_or(None)
+    }
 }
 
 /// Async wrapper for any `EmbedService` implementation.

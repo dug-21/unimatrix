@@ -295,6 +295,7 @@ impl UnimatrixServer {
             feature_tag: params.feature.clone(),
             co_access_anchors: None,
             caller_agent_id: Some(ctx.agent_id.clone()),
+            retrieval_mode: crate::services::RetrievalMode::Flexible, // crt-010: MCP always Flexible
         };
 
         let search_results = self

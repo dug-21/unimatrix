@@ -51,6 +51,8 @@ pub trait VectorStore: Send + Sync {
     fn point_count(&self) -> usize;
     fn contains(&self, entry_id: u64) -> bool;
     fn stale_count(&self) -> usize;
+    /// Retrieve the stored embedding for an entry. Returns None if no mapping exists (crt-010).
+    fn get_embedding(&self, entry_id: u64) -> Option<Vec<f32>>;
     /// Rebuild the HNSW graph from active entry embeddings, eliminating stale nodes.
     /// Object-safe: `&self`, concrete types, no generics.
     fn compact(&self, embeddings: Vec<(u64, Vec<f32>)>) -> Result<(), CoreError>;
