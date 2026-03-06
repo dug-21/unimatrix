@@ -142,10 +142,12 @@ Present revised diagnosis to human. If human disagrees a second time, escalate a
 
 **Prerequisite**: Human approved diagnosis.
 
-1. Create branch:
+1. Create branch (see `/uni-git` for conventions):
 ```bash
 git checkout -b bugfix/{issue-number}-{short-description}
 ```
+
+Worker agents are spawned with `isolation: "worktree"` for branch isolation.
 
 2. Spawn `uni-rust-dev`:
 ```
@@ -324,6 +326,15 @@ If 2 rework iterations exhausted → SCOPE FAIL. Return to human with:
 
 **When the bug originates from a GH Issue, post a comment after EVERY phase transition.** This is not optional — the issue is the audit trail.
 
+Standard comment format (shared by all coordinators):
+```
+## {Phase Name} -- {PASS|FAIL|BLOCKED}
+- Summary: {brief description}
+- Files: [paths]
+- Tests: X passed, Y new
+- Issues: [if any]
+```
+
 | Phase | Comment content |
 |---|---|
 | Phase 0 complete | Unimatrix knowledge found (or "no prior knowledge") |
@@ -362,15 +373,17 @@ NEVER pipe full cargo output into context.
 Before returning to the primary agent:
 
 - [ ] Root cause diagnosis approved by human
-- [ ] Bug fix branch created
+- [ ] Bug fix branch created (`bugfix/{issue}-{desc}`)
 - [ ] Validation gate passed
 - [ ] All tests passing (new + existing)
 - [ ] No stubs in code
 - [ ] PR opened
 - [ ] Security review completed
-- [ ] GH Issue updated at each phase
+- [ ] GH Issue updated at each phase (standard comment format)
+- [ ] Worktrees cleaned up (`git worktree remove` or noted for human)
 - [ ] Outcome recorded in Unimatrix
 - [ ] Lesson stored if root cause was generalizable
+- [ ] Procedure stored if diagnostic/repair sequence was reproducible
 
 ---
 

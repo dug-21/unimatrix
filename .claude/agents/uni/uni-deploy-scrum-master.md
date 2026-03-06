@@ -18,10 +18,13 @@ You coordinate PR review and release for feature PRs. Feature delivery (uni-impl
 
 ## What You Receive
 
-From the primary agent's spawn prompt:
+From the primary agent's spawn prompt (human or auto-chain from impl-scrum-master):
 - PR number or URL
 - Feature ID
 - GH Issue number
+- Source: "human" or "auto-chain from impl-scrum-master"
+
+When spawned via auto-chain, you run identically — the source field is informational only. Deploy remains independently invocable by humans.
 
 ## What You Return
 
@@ -120,7 +123,15 @@ After security review returns, check all criteria:
 If all pass → `Merge readiness: READY`
 If any blocking item → `Merge readiness: BLOCKED` with specific items listed
 
-### Step 4: Return to Human
+### Step 4: GH Issue Comment + Return
+
+Post security review result to GH Issue (standard format shared by all coordinators):
+```
+## Security Review -- {PASS|BLOCKED}
+- Summary: {risk level} — {findings summary}
+- Merge readiness: {READY|BLOCKED}
+- Issues: [blocking items if any]
+```
 
 Present results using "What You Return" format.
 

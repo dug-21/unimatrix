@@ -28,23 +28,17 @@ From the primary agent's spawn prompt:
 ```
 SESSION 1 COMPLETE — Design artifacts ready for review.
 
-Artifacts:
-- SCOPE.md: product/features/{id}/SCOPE.md
-- Scope Risk Assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
-- Architecture: product/features/{id}/architecture/ARCHITECTURE.md
-- ADRs: {Unimatrix entry IDs from architect}
-- Specification: product/features/{id}/specification/SPECIFICATION.md
-- Risk Strategy: product/features/{id}/RISK-TEST-STRATEGY.md
-- Alignment Report: product/features/{id}/ALIGNMENT-REPORT.md
-- Implementation Brief: product/features/{id}/IMPLEMENTATION-BRIEF.md
-- Acceptance Map: product/features/{id}/ACCEPTANCE-MAP.md
-- GH Issue: {URL}
+PR: {URL}
+GH Issue: {URL}
+
+Artifacts: SCOPE.md, SCOPE-RISK-ASSESSMENT.md, ARCHITECTURE.md, SPECIFICATION.md,
+RISK-TEST-STRATEGY.md, ALIGNMENT-REPORT.md, IMPLEMENTATION-BRIEF.md, ACCEPTANCE-MAP.md
 
 Vision Alignment: {PASS/WARN/VARIANCE/FAIL counts}
 Variances requiring approval: {list or "none"}
 Open questions: {list or "none"}
 
-Human action required: Review artifacts and approve to proceed to Session 2 (Delivery).
+Human action required: Review and merge PR to approve. Then proceed to Session 2.
 ```
 
 ---
@@ -63,6 +57,12 @@ Human action required: Review artifacts and approve to proceed to Session 2 (Del
 | Risk Strategy | | uni-risk-strategist |
 | Vision alignment | | uni-vision-guardian |
 | Brief + Acceptance Map + GH Issue | | uni-synthesizer |
+
+---
+
+## Initialization
+
+Create the design branch: `git checkout -b design/{feature-id}`
 
 ---
 
@@ -201,22 +201,18 @@ Agent(uni-synthesizer, "
   Return: file paths + GH Issue URL.")
 ```
 
-### Phase 2d: Commit Design Artifacts
+### Phase 2d: Commit, Push, PR, and Return
 
-After all artifacts are produced, commit them to git so they are tracked:
+Commit all artifacts, push the design branch, and open a PR:
 
 ```bash
 git add product/features/{feature-id}/
-git commit -m "docs: {feature-id} design artifacts
-
-Session 1 design docs: SCOPE, SCOPE-RISK-ASSESSMENT, ARCHITECTURE,
-SPECIFICATION, RISK-TEST-STRATEGY, ALIGNMENT-REPORT,
-IMPLEMENTATION-BRIEF, ACCEPTANCE-MAP."
+git commit -m "design: {feature-id} design artifacts (#{issue})"
+git push -u origin design/{feature-id}
+gh pr create --title "[{feature-id}] Design artifacts" --body "..."
 ```
 
-### Phase 2e: Return to Human
-
-Collect all artifact paths and return using the format in "What You Return" above. **Session 1 ends here.**
+Return using the format in "What You Return" above. **Session 1 ends here.**
 
 ---
 
@@ -252,17 +248,14 @@ Use `/record-outcome` with:
 
 Before returning to the primary agent:
 
+- [ ] Design branch created (`design/{feature-id}`)
 - [ ] SCOPE.md exists and was approved by human
-- [ ] SCOPE-RISK-ASSESSMENT.md exists
-- [ ] ARCHITECTURE.md exists
+- [ ] All source documents exist (Architecture, Specification, Risk Strategy)
 - [ ] ADRs stored in Unimatrix (entry IDs recorded)
-- [ ] SPECIFICATION.md exists
-- [ ] RISK-TEST-STRATEGY.md exists
-- [ ] ALIGNMENT-REPORT.md exists
-- [ ] IMPLEMENTATION-BRIEF.md exists
-- [ ] ACCEPTANCE-MAP.md exists
+- [ ] IMPLEMENTATION-BRIEF.md and ACCEPTANCE-MAP.md exist
 - [ ] GH Issue created
-- [ ] Design artifacts committed to git
+- [ ] Design artifacts committed and pushed to design branch
+- [ ] PR opened to main
 - [ ] Outcome recorded in Unimatrix
 
 ---

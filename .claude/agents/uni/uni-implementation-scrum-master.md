@@ -29,10 +29,9 @@ From the primary agent's spawn prompt:
 ```
 SESSION 2 COMPLETE — Feature delivered.
 
-Gates:
-- Gate 3a (Design Review): PASS
-- Gate 3b (Code Review): PASS
-- Gate 3c (Risk Validation): PASS
+Gates: 3a PASS, 3b PASS, 3c PASS
+Security Review: {risk level} — {summary}
+Merge readiness: {READY | BLOCKED}
 
 Files created/modified: [paths]
 Tests: X unit passed, Y integration passed, Z new
@@ -40,13 +39,7 @@ Risk coverage: [summary from RISK-COVERAGE-REPORT.md]
 PR: {URL}
 GH Issue: {URL} (updated)
 
-Reports:
-- product/features/{id}/reports/gate-3a-report.md
-- product/features/{id}/reports/gate-3b-report.md
-- product/features/{id}/reports/gate-3c-report.md
-- product/features/{id}/testing/RISK-COVERAGE-REPORT.md
-
-Human action required: Review PR and merge.
+Human action required: {Approve and merge | Address blocking items}.
 ```
 
 ---
@@ -74,7 +67,8 @@ Human action required: Review PR and merge.
 1. Read `product/features/{id}/IMPLEMENTATION-BRIEF.md` — Component Map, ADR references, constraints
 2. Read `product/features/{id}/ACCEPTANCE-MAP.md` — AC verification methods
 3. Verify the three source documents exist (Architecture, Specification, Risk Strategy) — paths are listed in the brief
-4. Create feature branch: `git checkout -b feature/{phase}-{NNN}`
+4. Create feature branch: `git checkout -b feature/{phase}-{NNN}` (see `/uni-git`)
+5. Spawn worker agents with `isolation: "worktree"` for parallel workstreams
 
 ---
 
@@ -357,7 +351,7 @@ Agent(uni-validator, "
 
 ---
 
-## Phase 4: Delivery
+## Phase 4: Delivery + Auto-Chain Deploy
 
 **Prerequisite**: All three gates passed.
 
@@ -374,14 +368,23 @@ gh pr create --title "[{feature-id}] {title}" --body "..."
 ```
 
 3. Comment on GH Issue with PR link
-4. Record outcome via `/record-outcome`:
-   - Feature: `{feature-id}`
-   - Type: `feature`
-   - Phase: `delivery`
-   - Result: `pass`
-   - Content: `Session 2 complete. All gates passed. PR: {url}. Tests: {counts}.`
 
-5. Return to human using the format in "What You Return" above
+4. **Auto-chain**: Spawn `uni-deploy-scrum-master`:
+```
+Agent(uni-deploy-scrum-master, "
+  Source: auto-chain from impl-scrum-master
+  PR: #{pr-number}
+  Feature: {feature-id}
+  GH Issue: #{issue-number}
+
+  Run your full review flow. Return results.")
+```
+
+Error handling: If deploy fails or returns BLOCKED, include in combined return. Never lose impl results.
+
+5. Record outcome via `/record-outcome`
+6. If a reusable technique was discovered, store via `/store-procedure`
+7. Return combined impl + deploy results to human
 
 ---
 
@@ -427,16 +430,17 @@ GH Issue: {URL}
 
 ## GH Issue Progress Comments
 
-Post after each gate completes:
+Post after each gate completes (standard format shared by all coordinators):
 
 ```
-## Gate {3a|3b|3c} — {PASS|FAIL}
+## {Phase/Gate} -- {PASS|FAIL|BLOCKED}
 - Stage: {stage name}
 - Files: [paths]
 - Tests: X passed, Y new
 - Issues: [if any]
-- Report: product/features/{id}/reports/gate-{N}-report.md
 ```
+
+The auto-chain deploy appends its own comments (security review, merge readiness) to the same GH Issue.
 
 ---
 
@@ -480,6 +484,8 @@ Before returning to the primary agent:
 - [ ] No todo!(), unimplemented!(), TODO, FIXME, HACK in non-test code
 - [ ] RISK-COVERAGE-REPORT.md exists
 - [ ] PR opened, GH Issue updated with PR link
+- [ ] Auto-chain deploy completed (or failure noted)
+- [ ] Worktrees cleaned up (`git worktree remove` or noted for human)
 - [ ] Outcome recorded in Unimatrix
 
 ---

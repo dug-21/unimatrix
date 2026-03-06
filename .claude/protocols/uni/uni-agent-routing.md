@@ -96,7 +96,7 @@ Phase 2c:     uni-synthesizer (brief + maps + GH Issue)            (fresh contex
 Phase 2d:     Return to human — SESSION 1 ENDS
 ```
 
-### Delivery Session
+### Delivery Session (includes auto-chain deploy)
 
 ```
 Coordinator:  uni-implementation-scrum-master
@@ -104,11 +104,13 @@ Init:         Read IMPLEMENTATION-BRIEF.md, create feature branch
 Stage 3a:     uni-pseudocode + uni-tester (test plans)             (parallel)
               UPDATE Component Map in IMPLEMENTATION-BRIEF.md
 Gate 3a:      uni-validator (design review) — MANDATORY BLOCK
-Stage 3b:     uni-rust-dev × N (one per component)                 (parallel)
+Stage 3b:     uni-rust-dev × N (one per component, MANDATORY)      (parallel)
 Gate 3b:      uni-validator (code review)
 Stage 3c:     uni-tester (test execution)
 Gate 3c:      uni-validator (risk validation)
-Phase 4:      Commit, push, open PR — SESSION 2 ENDS
+Phase 4:      Commit, push, open PR
+              → uni-deploy-scrum-master (auto-chain: security review + merge readiness)
+              Combined return (impl + deploy) — SESSION 2 ENDS
 ```
 
 ### Bug Fix Session
@@ -181,7 +183,7 @@ The coordination model is simple — no registration, no shared memory, no hooks
 | `/query-patterns` | BEFORE designing or implementing | uni-architect, uni-pseudocode, uni-rust-dev |
 | `/store-adr` | AFTER each design decision | uni-architect |
 | `/record-outcome` | END of every session | All coordinators |
-| `/store-procedure` | During retrospectives | uni-retro-scrum-master → uni-architect |
+| `/store-procedure` | After successful sessions (reusable techniques) | All coordinators, uni-bug-investigator |
 | `/store-lesson` | After failures | uni-bug-investigator, uni-validator, coordinators |
 | `/knowledge-search` | Exploring what's known | Any agent |
 | `/knowledge-lookup` | Exact-match retrieval | Any agent |

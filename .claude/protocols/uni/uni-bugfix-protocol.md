@@ -63,6 +63,8 @@ The Bugfix Manager:
    - `/knowledge-search` — lessons from prior bugfixes in the same subsystem
 4. Passes relevant findings to the investigator in Phase 1
 
+Worker agents are spawned with `isolation: "worktree"` for branch isolation (see `/uni-git` Worktree Isolation).
+
 ---
 
 ## Phase 1: Discovery
@@ -316,7 +318,7 @@ Human action required: Review PR and approve merge.
 ```
 
 On human approval, the Bugfix Manager:
-1. Merges the PR (if human requests it)
+1. Merges the PR with `gh pr merge --rebase` (if human requests it)
 2. Closes the GH Issue with reference to the PR (if applicable)
 
 ---
@@ -412,5 +414,6 @@ After presenting the PR to the human, record the bugfix outcome using Unimatrix 
 
 1. **Always**: `/record-outcome` — record the bugfix result (pass/fail, root cause summary, PR link)
 2. **If root cause is generalizable**: `/store-lesson` — persist the root cause pattern so future investigators find it via `/knowledge-search`
+3. **If diagnostic/repair sequence is reproducible**: `/store-procedure` — store the technique so future agents can find it
 
 All phase outputs (diagnosis, fix summary, gate results, security review) are posted as **GH Issue comments** — never written to the filesystem.

@@ -6,7 +6,7 @@ Triggers on: specification, architecture, design, research, scope, risk strategy
 
 ## Execution Model
 
-Session 1 produces three sacred source-of-truth documents, a scope risk assessment, a vision alignment report, an implementation brief, and an acceptance map. The session ends by returning everything to the human for review and approval.
+Session 1 produces three sacred source-of-truth documents, a scope risk assessment, a vision alignment report, an implementation brief, and an acceptance map. All work happens on a `design/{feature-id}` branch. The session ends by opening a PR to main — the human reviews and merges the PR as the approval step.
 
 ```
 Primary Agent                    uni-scrum-master (Design Leader)    Design Agents
@@ -43,6 +43,10 @@ Each message batches ALL related operations of the same type:
 - NO code changes. NO file edits outside `product/features/`
 - NO launching delivery agents (uni-rust-dev, uni-pseudocode, uni-tester)
 - Agents return: artifact paths + key decisions + open questions (NOT full file contents)
+
+### Branch Workflow
+
+The Design Leader creates a `design/{feature-id}` branch at session start and opens a PR at session end. See `/uni-git` for branch naming and PR conventions.
 
 ---
 
@@ -237,45 +241,38 @@ Task(
 
 The synthesizer gets a fresh context window — it reads artifacts directly for higher quality synthesis.
 
-#### Phase 2d: Return to Human
+#### Phase 2d: Commit, PR, and Return to Human
 
-The Design Leader collects all artifacts and returns to the human:
+The Design Leader commits all artifacts to the design branch and opens a PR:
 
-**Artifacts to present:**
-- `SCOPE.md` — approved in Phase 1
-- `SCOPE-RISK-ASSESSMENT.md` — scope-level risks from Phase 1b
-- `architecture/ARCHITECTURE.md` + `ADR-NNN-{name}.md` files
-- `specification/SPECIFICATION.md`
-- `RISK-TEST-STRATEGY.md`
-- `ALIGNMENT-REPORT.md` — highlight any VARIANCE or FAIL items
-- `IMPLEMENTATION-BRIEF.md` — the handoff document for Session 2
-- `ACCEPTANCE-MAP.md`
-- GH Issue URL
+```bash
+git add product/features/{feature-id}/
+git commit -m "design: {feature-id} design artifacts (#{issue})"
+git push -u origin design/{feature-id}
+gh pr create --title "[{feature-id}] Design artifacts" --body "..."
+```
 
-**Return format:**
+Then returns to the human:
+
 ```
 SESSION 1 COMPLETE — Design artifacts ready for review.
 
-Artifacts:
-- SCOPE.md: product/features/{id}/SCOPE.md
-- Scope Risk Assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
-- Architecture: product/features/{id}/architecture/ARCHITECTURE.md
-- ADRs: {list ADR file paths}
-- Specification: product/features/{id}/specification/SPECIFICATION.md
-- Risk Strategy: product/features/{id}/RISK-TEST-STRATEGY.md
-- Alignment Report: product/features/{id}/ALIGNMENT-REPORT.md
-- Implementation Brief: product/features/{id}/IMPLEMENTATION-BRIEF.md
-- Acceptance Map: product/features/{id}/ACCEPTANCE-MAP.md
-- GH Issue: {URL}
+PR: {URL}
+GH Issue: {URL}
 
-Vision Alignment: {summary — PASS/WARN/VARIANCE/FAIL counts}
+Artifacts:
+- SCOPE.md, SCOPE-RISK-ASSESSMENT.md, ARCHITECTURE.md, SPECIFICATION.md
+- RISK-TEST-STRATEGY.md, ALIGNMENT-REPORT.md
+- IMPLEMENTATION-BRIEF.md, ACCEPTANCE-MAP.md
+
+Vision Alignment: {summary}
 Variances requiring approval: {list or "none"}
 Open questions: {list or "none"}
 
-Human action required: Review artifacts and approve to proceed to Session 2 (Delivery).
+Human action required: Review and merge PR to approve. Then proceed to Session 2 (Delivery).
 ```
 
-**Session 1 ends here.** The human reviews everything. Session 2 is a separate invocation.
+**Session 1 ends here.** Human merges the PR as the approval step. Session 2 is a separate invocation.
 
 ---
 
@@ -295,6 +292,7 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 
 ```
 DESIGN LEADER (uni-scrum-master):
+  Init:       git checkout -b design/{feature-id}
   Phase 1:    Task(uni-researcher) — scope exploration with human
               ...human approves SCOPE.md...
   Phase 1b:   Task(uni-risk-strategist, MODE: scope-risk) — scope risk assessment
@@ -305,7 +303,7 @@ DESIGN LEADER (uni-scrum-master):
               ...wait...
   Phase 2b:   Task(uni-vision-guardian) — alignment check
   Phase 2c:   Task(uni-synthesizer) — brief + maps + GH Issue (fresh context)
-  Phase 2d:   Return all artifacts to human — SESSION 1 ENDS
+  Phase 2d:   git commit + push + gh pr create — SESSION 1 ENDS
 ```
 
 ---

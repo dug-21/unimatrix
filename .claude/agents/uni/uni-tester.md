@@ -26,6 +26,13 @@ Your spawn prompt tells you which phase you're in. Read it carefully.
 
 ---
 
+## MANDATORY: Before Starting
+
+Query Unimatrix for procedural knowledge relevant to your task:
+- Use `/knowledge-search` (category: "procedure") for testing procedures (e.g., "gate verification steps," "integration test triage"). If server unavailable or no results, proceed without — this is non-blocking.
+
+---
+
 ## Phase 1: Test Plan Design (Stage 3a)
 
 ### What You Receive
