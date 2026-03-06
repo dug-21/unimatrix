@@ -236,6 +236,7 @@ impl BriefingService {
                         Some(all_entry_ids.clone())
                     },
                     caller_agent_id: None,
+                    retrieval_mode: crate::services::RetrievalMode::Flexible, // crt-010: briefing uses Flexible
                 };
 
                 // Use a synthetic UDS caller_id for rate limiting when no caller is provided
@@ -322,6 +323,10 @@ impl BriefingService {
             match self.entry_store.get(entry_id).await {
                 Ok(entry) => {
                     if SecurityGateway::is_quarantined(&entry.status) {
+                        continue;
+                    }
+                    // crt-010 AC-11: exclude deprecated entries from injection history
+                    if entry.status == Status::Deprecated {
                         continue;
                     }
                     match entry.category.as_str() {
@@ -822,10 +827,10 @@ mod tests {
         assert_eq!(result.injection_sections.injections.len(), 1);
     }
 
-    // -- T-BS-10: Injection history deprecated entries included --
+    // -- T-BS-10: Injection history deprecated entries EXCLUDED (crt-010 AC-11) --
 
     #[tokio::test]
-    async fn injection_history_deprecated_entries_included() {
+    async fn injection_history_deprecated_entries_excluded() {
         let (_dir, store) = make_test_store();
         let (service, _es) = make_briefing_service(&store);
 
@@ -847,7 +852,8 @@ mod tests {
         };
 
         let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
-        assert_eq!(result.injection_sections.injections.len(), 1);
+        // crt-010: deprecated entries are now excluded from injection history (AC-11)
+        assert_eq!(result.injection_sections.injections.len(), 0);
     }
 
     // -- T-BS-11: Token budget truncation --

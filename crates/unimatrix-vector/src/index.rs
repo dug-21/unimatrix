@@ -302,6 +302,31 @@ impl VectorIndex {
         id_map.entry_to_data.contains_key(&entry_id)
     }
 
+    /// Retrieve the stored embedding for an entry.
+    ///
+    /// Returns `None` if the entry has no vector mapping or the underlying
+    /// HNSW point data cannot be retrieved. Iterates the base layer (layer 0)
+    /// to find the point by its data_id (origin_id). This is O(n) but called
+    /// infrequently (only during supersession injection, crt-010).
+    pub fn get_embedding(&self, entry_id: u64) -> Option<Vec<f32>> {
+        let data_id = {
+            let id_map = self.id_map.read().unwrap_or_else(|e| e.into_inner());
+            id_map.entry_to_data.get(&entry_id).copied()?
+        };
+
+        let hnsw = self.hnsw.read().unwrap_or_else(|e| e.into_inner());
+        let point_indexation = hnsw.get_point_indexation();
+
+        // Iterate layer 0 (base layer — contains all points) to find by origin_id
+        for point in point_indexation.get_layer_iterator(0) {
+            if point.get_origin_id() == data_id as usize {
+                return Some(point.get_v().to_vec());
+            }
+        }
+
+        None
+    }
+
     /// Number of stale points (from re-embedding) in the hnsw_rs index.
     pub fn stale_count(&self) -> usize {
         let point_count = self.point_count();

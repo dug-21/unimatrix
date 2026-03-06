@@ -33,7 +33,7 @@ pub(crate) mod usage;
 pub(crate) use briefing::BriefingService;
 pub(crate) use confidence::ConfidenceService;
 pub(crate) use gateway::SecurityGateway;
-pub(crate) use search::{SearchService, ServiceSearchParams};
+pub(crate) use search::{RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
 pub(crate) use store_ops::StoreService;
 pub(crate) use usage::UsageService;

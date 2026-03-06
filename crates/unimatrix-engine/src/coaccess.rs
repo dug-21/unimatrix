@@ -73,23 +73,38 @@ fn co_access_boost(count: u32, max_boost: f64) -> f64 {
 ///
 /// If a result is a partner of multiple anchors, takes the maximum boost.
 ///
+/// `deprecated_ids` excludes entries from both anchor and partner roles (crt-010).
+/// Pass an empty set for backward-compatible behavior.
+///
 /// Returns `HashMap<entry_id, boost>` where values are in `[0.0, MAX_CO_ACCESS_BOOST]`.
 pub fn compute_search_boost(
     anchor_ids: &[u64],
     result_ids: &[u64],
     store: &Store,
     staleness_cutoff: u64,
+    deprecated_ids: &HashSet<u64>,
 ) -> HashMap<u64, f64> {
-    compute_boost_internal(anchor_ids, result_ids, store, staleness_cutoff, MAX_CO_ACCESS_BOOST)
+    compute_boost_internal(
+        anchor_ids,
+        result_ids,
+        store,
+        staleness_cutoff,
+        MAX_CO_ACCESS_BOOST,
+        deprecated_ids,
+    )
 }
 
 /// Compute co-access boost scores for briefing results.
 /// Same algorithm as search but with a smaller max boost.
+///
+/// `deprecated_ids` excludes entries from both anchor and partner roles (crt-010).
+/// Pass an empty set for backward-compatible behavior.
 pub fn compute_briefing_boost(
     anchor_ids: &[u64],
     result_ids: &[u64],
     store: &Store,
     staleness_cutoff: u64,
+    deprecated_ids: &HashSet<u64>,
 ) -> HashMap<u64, f64> {
     compute_boost_internal(
         anchor_ids,
@@ -97,6 +112,7 @@ pub fn compute_briefing_boost(
         store,
         staleness_cutoff,
         MAX_BRIEFING_CO_ACCESS_BOOST,
+        deprecated_ids,
     )
 }
 
@@ -107,11 +123,17 @@ fn compute_boost_internal(
     store: &Store,
     staleness_cutoff: u64,
     max_boost: f64,
+    deprecated_ids: &HashSet<u64>,
 ) -> HashMap<u64, f64> {
     let mut boost_map: HashMap<u64, f64> = HashMap::new();
     let result_set: HashSet<u64> = result_ids.iter().copied().collect();
 
     for &anchor_id in anchor_ids {
+        // crt-010: skip deprecated anchors
+        if deprecated_ids.contains(&anchor_id) {
+            continue;
+        }
+
         let partners = match store.get_co_access_partners(anchor_id, staleness_cutoff) {
             Ok(p) => p,
             Err(e) => {
@@ -125,6 +147,10 @@ fn compute_boost_internal(
                 continue;
             }
             if partner_id == anchor_id {
+                continue;
+            }
+            // crt-010: skip deprecated partners
+            if deprecated_ids.contains(&partner_id) {
                 continue;
             }
 

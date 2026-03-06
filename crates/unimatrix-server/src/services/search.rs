@@ -1,18 +1,18 @@
 //! SearchService: unified search pipeline replacing duplicated logic
 //! in tools.rs and uds_listener.rs.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use unimatrix_core::{
-    EmbedService, EntryRecord, QueryFilter, Store, StoreAdapter, VectorAdapter,
+    EmbedService, EntryRecord, QueryFilter, Status, Store, StoreAdapter, VectorAdapter,
 };
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 
 use unimatrix_adapt::AdaptationService;
 
 use crate::coaccess::{compute_search_boost, CO_ACCESS_STALENESS_SECONDS};
-use crate::confidence::rerank_score;
+use crate::confidence::{rerank_score, DEPRECATED_PENALTY, SUPERSEDED_PENALTY, cosine_similarity};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::services::gateway::SecurityGateway;
@@ -23,6 +23,19 @@ const EF_SEARCH: usize = 32;
 
 /// Provenance boost for lesson-learned entries (matches existing behavior).
 const PROVENANCE_BOOST: f64 = unimatrix_engine::confidence::PROVENANCE_BOOST;
+
+/// Retrieval mode controlling status-aware filtering behavior (crt-010, ADR-001).
+///
+/// - `Strict`: UDS path — drop all non-Active and superseded entries. Zero tolerance.
+/// - `Flexible`: MCP path — penalize deprecated/superseded entries but keep them visible.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum RetrievalMode {
+    /// Hard filter: only Active, non-superseded entries survive.
+    Strict,
+    /// Soft penalty: deprecated entries penalized, superseded entries penalized more.
+    #[default]
+    Flexible,
+}
 
 /// Transport-agnostic search parameters.
 pub(crate) struct ServiceSearchParams {
@@ -37,6 +50,8 @@ pub(crate) struct ServiceSearchParams {
     pub co_access_anchors: Option<Vec<u64>>,
     #[allow(dead_code)]
     pub caller_agent_id: Option<String>,
+    /// Retrieval mode: Strict (UDS) or Flexible (MCP). Default: Flexible (crt-010).
+    pub retrieval_mode: RetrievalMode,
 }
 
 /// Search results including query embedding for reuse.
@@ -88,8 +103,8 @@ impl SearchService {
 
     /// Execute the full search pipeline.
     ///
-    /// Mirrors the exact behavior of tools.rs context_search (steps 6-12)
-    /// and uds_listener.rs handle_context_search.
+    /// Pipeline: embed -> HNSW -> quarantine filter -> status filter/penalty (crt-010)
+    /// -> supersession injection (crt-010) -> re-rank -> co-access boost -> truncate -> floors
     pub(crate) async fn search(
         &self,
         params: ServiceSearchParams,
@@ -162,7 +177,91 @@ impl SearchService {
             }
         }
 
-        // Step 7: Re-rank: 0.85*sim + 0.15*conf + provenance
+        // Step 6a: Status filter / penalty marking (crt-010)
+        //
+        // Determine if caller explicitly requested a non-Active status
+        let explicit_status_filter: Option<Status> = params
+            .filters
+            .as_ref()
+            .and_then(|f| f.status)
+            .filter(|s| *s != Status::Active);
+
+        // Penalty map: entry_id -> multiplicative penalty (1.0 = no penalty)
+        let mut penalty_map: HashMap<u64, f64> = HashMap::new();
+
+        match params.retrieval_mode {
+            RetrievalMode::Strict => {
+                // Hard filter: drop all non-Active and all superseded
+                results_with_scores.retain(|(entry, _)| {
+                    entry.status == Status::Active && entry.superseded_by.is_none()
+                });
+            }
+            RetrievalMode::Flexible => {
+                if explicit_status_filter.is_none() {
+                    // Apply penalty markers (actual penalty applied in Step 7)
+                    for (entry, _) in &results_with_scores {
+                        if entry.superseded_by.is_some() {
+                            penalty_map.insert(entry.id, SUPERSEDED_PENALTY);
+                        } else if entry.status == Status::Deprecated {
+                            penalty_map.insert(entry.id, DEPRECATED_PENALTY);
+                        }
+                    }
+                }
+                // If explicit_status_filter is Some: no penalties (FR-6.2)
+            }
+        }
+
+        // Step 6b: Supersession candidate injection (crt-010)
+        //
+        // Skip if explicit status filter is Deprecated (FR-6.2, AC-14b)
+        let should_inject = explicit_status_filter != Some(Status::Deprecated);
+
+        if should_inject {
+            // Collect successor IDs from results that have superseded_by set
+            let successor_ids: Vec<u64> = results_with_scores
+                .iter()
+                .filter_map(|(entry, _)| entry.superseded_by)
+                .collect();
+
+            if !successor_ids.is_empty() {
+                let unique_successor_ids: HashSet<u64> =
+                    successor_ids.into_iter().collect();
+                let existing_ids: HashSet<u64> = results_with_scores
+                    .iter()
+                    .map(|(e, _)| e.id)
+                    .collect();
+
+                let to_fetch: Vec<u64> = unique_successor_ids
+                    .into_iter()
+                    .filter(|id| !existing_ids.contains(id))
+                    .collect();
+
+                // Batch-fetch and inject successors (FR-2.2)
+                for successor_id in to_fetch {
+                    let successor = match self.entry_store.get(successor_id).await {
+                        Ok(s) => s,
+                        Err(_) => continue, // Dangling reference — skip (FR-2.7, AC-07)
+                    };
+
+                    // FR-2.3: Only inject if Active, not itself superseded
+                    if successor.status != Status::Active {
+                        continue;
+                    }
+                    if successor.superseded_by.is_some() {
+                        continue; // Single-hop only (ADR-003, AC-06)
+                    }
+
+                    // Compute cosine similarity from stored embedding (ADR-002)
+                    if let Some(emb) = self.vector_store.get_embedding(successor_id).await {
+                        let sim = cosine_similarity(&embedding, &emb);
+                        results_with_scores.push((successor, sim));
+                    }
+                    // If no embedding: skip injection (R-01 fallback)
+                }
+            }
+        }
+
+        // Step 7: Re-rank with penalty multipliers (crt-010)
         results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
             let prov_a = if entry_a.category == "lesson-learned" {
                 PROVENANCE_BOOST
@@ -174,14 +273,18 @@ impl SearchService {
             } else {
                 0.0
             };
-            let score_a = rerank_score(*sim_a, entry_a.confidence) + prov_a;
-            let score_b = rerank_score(*sim_b, entry_b.confidence) + prov_b;
-            score_b
-                .partial_cmp(&score_a)
+            let base_a = rerank_score(*sim_a, entry_a.confidence) + prov_a;
+            let base_b = rerank_score(*sim_b, entry_b.confidence) + prov_b;
+            let penalty_a = penalty_map.get(&entry_a.id).copied().unwrap_or(1.0);
+            let penalty_b = penalty_map.get(&entry_b.id).copied().unwrap_or(1.0);
+            let final_a = base_a * penalty_a;
+            let final_b = base_b * penalty_b;
+            final_b
+                .partial_cmp(&final_a)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        // Step 8: Co-access boost
+        // Step 8: Co-access boost with deprecated exclusion (crt-010: C3)
         if results_with_scores.len() > 1 {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -198,9 +301,22 @@ impl SearchService {
             let result_ids: Vec<u64> =
                 results_with_scores.iter().map(|(e, _)| e.id).collect();
 
+            // crt-010: collect deprecated IDs for co-access exclusion
+            let deprecated_ids: HashSet<u64> = results_with_scores
+                .iter()
+                .filter(|(e, _)| e.status == Status::Deprecated)
+                .map(|(e, _)| e.id)
+                .collect();
+
             let store = Arc::clone(&self.store);
             let boost_map = tokio::task::spawn_blocking(move || {
-                compute_search_boost(&anchor_ids, &result_ids, &store, staleness_cutoff)
+                compute_search_boost(
+                    &anchor_ids,
+                    &result_ids,
+                    &store,
+                    staleness_cutoff,
+                    &deprecated_ids,
+                )
             })
             .await
             .unwrap_or_else(|e| {
@@ -224,8 +340,10 @@ impl SearchService {
                     } else {
                         0.0
                     };
-                    let final_a = base_a + boost_a + prov_a;
-                    let final_b = base_b + boost_b + prov_b;
+                    let penalty_a = penalty_map.get(&entry_a.id).copied().unwrap_or(1.0);
+                    let penalty_b = penalty_map.get(&entry_b.id).copied().unwrap_or(1.0);
+                    let final_a = (base_a + boost_a + prov_a) * penalty_a;
+                    let final_b = (base_b + boost_b + prov_b) * penalty_b;
                     final_b
                         .partial_cmp(&final_a)
                         .unwrap_or(std::cmp::Ordering::Equal)
@@ -244,14 +362,17 @@ impl SearchService {
             results_with_scores.retain(|(entry, _)| entry.confidence >= conf_floor);
         }
 
-        // Step 11: Build ScoredEntry results
+        // Step 11: Build ScoredEntry results with penalty-adjusted final_score
         let entries: Vec<ScoredEntry> = results_with_scores
             .iter()
-            .map(|(entry, sim)| ScoredEntry {
-                entry: entry.clone(),
-                final_score: rerank_score(*sim, entry.confidence),
-                similarity: *sim,
-                confidence: entry.confidence,
+            .map(|(entry, sim)| {
+                let penalty = penalty_map.get(&entry.id).copied().unwrap_or(1.0);
+                ScoredEntry {
+                    entry: entry.clone(),
+                    final_score: rerank_score(*sim, entry.confidence) * penalty,
+                    similarity: *sim,
+                    confidence: entry.confidence,
+                }
             })
             .collect();
 
