@@ -15,6 +15,7 @@ use unimatrix_core::{
 };
 use unimatrix_core::async_wrappers::AsyncEntryStore;
 use unimatrix_learn::models::{ConventionScorer, SignalClassifier};
+use unimatrix_learn::TrainingService;
 use unimatrix_observe::extraction::{
     ExtractionContext, ExtractionStats, ProposedEntry,
     default_extraction_rules, quality_gate, run_extraction_rules, QualityGateResult,
@@ -119,6 +120,7 @@ pub fn spawn_background_tick(
     entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
     pending_entries: Arc<Mutex<PendingEntriesAnalysis>>,
     tick_metadata: Arc<Mutex<TickMetadata>>,
+    training_service: Option<Arc<TrainingService>>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(background_tick_loop(
         store,
@@ -129,6 +131,7 @@ pub fn spawn_background_tick(
         entry_store,
         pending_entries,
         tick_metadata,
+        training_service,
     ))
 }
 
@@ -143,6 +146,7 @@ async fn background_tick_loop(
     entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
     pending_entries: Arc<Mutex<PendingEntriesAnalysis>>,
     tick_metadata: Arc<Mutex<TickMetadata>>,
+    _training_service: Option<Arc<TrainingService>>,
 ) {
     let mut interval = tokio::time::interval(Duration::from_secs(TICK_INTERVAL_SECS));
     let mut extraction_ctx = ExtractionContext::new();
