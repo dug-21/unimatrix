@@ -87,6 +87,25 @@ Close the self-learning loop by building a feedback-to-label pipeline that conve
 
 **Gate**: Integration test passes. Shadow model predictions differ from baseline.
 
+## Component Map
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| trait-refactor | pseudocode/trait-refactor.md | test-plan/trait-refactor.md |
+| training-types | pseudocode/training-types.md | test-plan/training-types.md |
+| training-service | pseudocode/training-service.md | test-plan/training-service.md |
+| rollback-enhancements | pseudocode/rollback-enhancements.md | test-plan/rollback-enhancements.md |
+| feedback-hooks | pseudocode/feedback-hooks.md | test-plan/feedback-hooks.md |
+| ground-truth-backfill | pseudocode/ground-truth-backfill.md | test-plan/ground-truth-backfill.md |
+| integration-test | pseudocode/integration-test.md | test-plan/integration-test.md |
+
+## Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
 ## Dependencies
 
 | Dependency | Status | Required By |
