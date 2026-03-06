@@ -23,7 +23,7 @@ This specification defines the functional requirements, acceptance criteria with
 ### Relationships
 
 - A Session operates on exactly one Branch
-- A Branch may optionally be backed by a Worktree
+- A Branch is isolated via a Worktree (Claude Code's native `isolation: "worktree"` on Agent tool)
 - A Coordinator owns the lifecycle of its Session's Branch (create, commit, push, PR, cleanup)
 - An Auto-chain links exactly two Coordinators (impl -> deploy) within one interaction
 - Worker agents query Procedures before starting their task
@@ -73,9 +73,8 @@ This specification defines the functional requirements, acceptance criteria with
 | Worktree path convention: `.claude/worktrees/{branch-type}-{id}/` | Manual review: convention documented in uni-git skill |
 | Exit gate includes worktree cleanup | Manual review: exit gate checklist includes worktree remove |
 | Stale worktree recovery documented | Manual review: recovery section in uni-git skill |
-| Fallback path for non-worktree environments documented | Manual review: conditional logic in protocol |
 
-**Constraint (from SR-01):** Worktree creation must be conditional — if `git worktree add` fails, fall back to standard checkout.
+**Note (SR-01 RESOLVED):** Claude Code's native `isolation: "worktree"` handles worktree lifecycle. Coordinators spawn agents with this parameter — no manual worktree management or fallback path needed.
 
 ### AC-04: Build Artifact Isolation
 
@@ -164,10 +163,11 @@ This specification defines the functional requirements, acceptance criteria with
 | Requirement | Constraint |
 |-------------|-----------|
 | All changes are markdown-only | No Rust code, no build system changes, no test infrastructure changes |
+| Token budget | Agent defs ≤ ~150 lines, protocols ≤ ~250 lines. Prefer referencing uni-git skill over inlining detail. Replace existing text, don't append parallel sections. |
 | Backward compatibility | Existing feature branches (in progress) must not break |
 | Branch protection compatible | All changes must work with PR-required workflow immediately |
 | Worktree disk overhead | Acceptable for devcontainer (~3GB per active worktree) |
-| Knowledge query latency | Max 5 seconds; non-blocking with fallback |
+| Knowledge query latency | Max 5 seconds; non-blocking, proceed without if unavailable |
 
 ---
 

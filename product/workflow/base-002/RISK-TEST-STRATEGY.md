@@ -5,7 +5,7 @@
 | Risk ID | Risk Description | Severity | Likelihood | Priority |
 |---------|-----------------|----------|------------|----------|
 | R-01 | Protocol files reference stale "commit to main" language after update, causing agent confusion | High | Medium | High |
-| R-02 | Worktree fallback path untested — agents may fail silently when worktree creation fails | High | Medium | High |
+| R-02 | Stale worktree cleanup — if a session crashes mid-work, orphaned worktrees consume disk | Low | Medium | Low |
 | R-03 | Auto-chain error propagation loses impl results when deploy fails | High | Low | Medium |
 | R-04 | Design session PR creation breaks existing human approval flow | Medium | Medium | Medium |
 | R-05 | GH Issue comment format inconsistency across coordinators after standardization | Low | Medium | Low |
@@ -27,18 +27,19 @@
 
 **Coverage Requirement**: Exhaustive text search across all `.claude/` markdown files
 
-### R-02: Worktree Fallback Path
-**Severity**: High
+### R-02: Stale Worktree Cleanup
+**Severity**: Low
 **Likelihood**: Medium
-**Impact**: If worktree add fails and no fallback exists, the coordinator hangs or errors without creating a branch.
+**Impact**: Orphaned worktrees from crashed sessions consume ~3GB each. Not a functional issue but disk hygiene concern.
+
+**Note**: Worktree creation itself is validated — Claude Code's native `isolation: "worktree"` works reliably (smoke-tested 2026-03-06). The remaining risk is cleanup after abnormal session termination.
 
 **Test Scenarios**:
-1. Verify delivery protocol includes conditional: "if worktree creation fails, fall back to checkout"
-2. Verify bugfix protocol includes same conditional
-3. Verify both scrum-master agent definitions include fallback language
-4. Verify fallback path still creates a branch (just not in a worktree)
+1. Verify uni-git skill documents stale worktree recovery (`git worktree prune`)
+2. Verify coordinator exit gates include worktree cleanup step
+3. Verify `.gitignore` includes `.claude/worktrees/`
 
-**Coverage Requirement**: Each protocol and agent file that mentions worktree must also mention fallback
+**Coverage Requirement**: Recovery procedure documented; exit gates include cleanup
 
 ### R-03: Auto-Chain Error Propagation
 **Severity**: High
@@ -130,7 +131,7 @@ Since base-002 is markdown-only, traditional integration risks (API boundaries, 
 - **Session 1 with no GH Issue yet**: Design session creates GH Issue via synthesizer, then scrum-master creates PR. PR body should reference the GH Issue URL returned by synthesizer.
 - **Auto-chain when deploy-scrum-master definition is missing**: Impl-scrum-master should handle spawn failure gracefully.
 - **Worktree cleanup when session crashes mid-work**: Stale worktree recovery documented in uni-git skill. Human runs `git worktree prune`.
-- **Multiple concurrent worktrees on same branch name**: Git rejects this. Protocols should not attempt to create a worktree if one already exists for that branch.
+- **Multiple concurrent worktrees**: Claude Code auto-generates unique IDs (`agent-{id}`), so branch name collisions don't occur.
 
 ## Security Risks
 
@@ -142,7 +143,7 @@ The auto-chain (AC-05) does not introduce new security surface — it reuses the
 
 | Failure | Expected Behavior |
 |---------|------------------|
-| Worktree creation fails | Fall back to standard checkout; log warning |
+| Worktree creation fails | Claude Code handles natively; unlikely after validation |
 | PR creation fails in Session 1 | Return artifacts to human without PR; human creates manually |
 | Deploy spawn fails in auto-chain | Return impl results; note deploy failure |
 | Knowledge query times out | Agent proceeds without knowledge; logs "no procedural knowledge" |
@@ -152,7 +153,7 @@ The auto-chain (AC-05) does not introduce new security surface — it reuses the
 
 | Scope Risk | Architecture Risk | Resolution |
 |-----------|------------------|------------|
-| SR-01 (worktree platform support) | R-02 | Optional layer with fallback; fallback tested |
+| SR-01 (worktree platform support) | R-02 | RESOLVED — native support validated; R-02 reduced to cleanup-only risk |
 | SR-02 (cargo target isolation) | -- | Documented as cargo default behavior; no architecture risk |
 | SR-03 (auto-chain error handling) | R-03 | Protocol extension model with explicit error propagation |
 | SR-04 (knowledge query availability) | R-06 | Non-blocking with 5s timeout; all 3 workers checked |
@@ -164,7 +165,7 @@ The auto-chain (AC-05) does not introduce new security surface — it reuses the
 
 | Priority | Risk Count | Required Scenarios |
 |----------|-----------|-------------------|
-| High | 2 | 7 scenarios |
+| High | 1 | 3 scenarios |
 | Medium | 4 | 14 scenarios |
-| Low | 2 | 4 scenarios |
+| Low | 3 | 8 scenarios |
 | **Total** | **8** | **25 scenarios** |
