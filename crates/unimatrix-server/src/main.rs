@@ -233,7 +233,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     server.session_registry = Arc::clone(&session_registry);
 
     // Spawn background tick for automated maintenance + extraction (col-013)
-    let _tick_handle = unimatrix_server::background::spawn_background_tick(
+    let tick_handle = unimatrix_server::background::spawn_background_tick(
         Arc::clone(&store),
         Arc::clone(&vector_index),
         Arc::clone(&embed_handle),
@@ -258,6 +258,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         data_dir: paths.data_dir.clone(),
         socket_guard: Some(socket_guard),
         uds_handle: Some(uds_handle),
+        tick_handle: Some(tick_handle),
         services: Some(services),
     };
 

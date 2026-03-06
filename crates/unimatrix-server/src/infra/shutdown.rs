@@ -39,6 +39,10 @@ pub struct LifecycleHandles {
     pub socket_guard: Option<SocketGuard>,
     /// UDS accept loop task handle for shutdown coordination (col-006).
     pub uds_handle: Option<tokio::task::JoinHandle<()>>,
+    /// Background tick task handle (#52). Must be aborted during shutdown
+    /// to release Arc<Store>, Arc<VectorIndex>, and other clones held by
+    /// the tick loop.
+    pub tick_handle: Option<tokio::task::JoinHandle<()>>,
     /// ServiceLayer holding Arc<Store> clones via internal services (#92).
     /// Must be dropped before Arc::try_unwrap(store) to release all references.
     pub services: Option<ServiceLayer>,
@@ -81,6 +85,15 @@ where
 
     // Step 0b: Remove socket file via SocketGuard drop (col-006)
     drop(handles.socket_guard.take());
+
+    // Step 0c: Abort background tick loop (#52). The tick loop holds Arc clones
+    // of Store, VectorIndex, EmbedServiceHandle, etc. Without aborting, these
+    // Arcs are never released and Arc::try_unwrap(store) fails.
+    if let Some(handle) = handles.tick_handle.take() {
+        handle.abort();
+        let _ = tokio::time::timeout(Duration::from_secs(1), handle).await;
+        tracing::info!("background tick loop stopped");
+    }
 
     // Step 1: Dump vector index (works through Arc — dump takes &self)
     tracing::info!("dumping vector index");
@@ -246,6 +259,7 @@ mod tests {
             data_dir: dir.path().to_path_buf(),
             socket_guard: None,
             uds_handle: None,
+            tick_handle: None,
             services: Some(services),
         };
 
