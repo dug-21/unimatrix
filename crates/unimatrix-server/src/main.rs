@@ -242,6 +242,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         async_entry_store_for_tick,
         Arc::clone(&pending_entries_analysis),
         Arc::clone(&server.tick_metadata),
+        None, // TrainingService: wired in future integration step
     );
 
     // Prepare lifecycle handles for shutdown.

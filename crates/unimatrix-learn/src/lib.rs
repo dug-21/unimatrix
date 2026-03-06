@@ -9,13 +9,18 @@
 
 pub mod config;
 pub mod ewc;
+pub mod feedback;
 pub mod models;
 pub mod persistence;
 pub mod registry;
 pub mod reservoir;
+pub mod service;
+pub mod training;
 
 pub use config::LearnConfig;
 pub use ewc::EwcState;
 pub use persistence::{load_file, save_atomic};
 pub use registry::{ModelRegistry, ModelSlot, ModelVersion, RegistryError};
 pub use reservoir::TrainingReservoir;
+pub use service::TrainingService;
+pub use training::{FeedbackSignal, LabelGenerator, OutcomeResult, TrainingSample, TrainingTarget};
