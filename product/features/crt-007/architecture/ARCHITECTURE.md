@@ -5,13 +5,13 @@
 crt-007 introduces neural classification into the existing rule-based extraction pipeline (col-013). The feature spans three architectural concerns:
 
 1. **Shared training infrastructure** -- Extract generic ML primitives from `unimatrix-adapt` into a new `unimatrix-learn` crate, making them reusable across both MicroLoRA adaptation (crt-006) and neural extraction models (crt-007+).
-2. **Neural models** -- Two burn-based MLP models (Signal Classifier, Convention Scorer) that classify and score extraction pipeline outputs.
+2. **Neural models** -- Two ndarray-based MLP models (Signal Classifier, Convention Scorer) with hand-rolled forward/backward passes, behind a `NeuralModel` trait that accommodates future framework-backed models.
 3. **Shadow mode integration** -- Wire models into the col-013 extraction pipeline with observability, promotion logic, and rollback safety.
 
 ```
                          unimatrix-learn (NEW)
                         /                     \
-              unimatrix-adapt                  burn models
+              unimatrix-adapt                  ndarray models
               (MicroLoRA, crt-006)             (Classifier, Scorer)
                         \                     /
                          unimatrix-server
@@ -33,10 +33,11 @@ crt-007 introduces neural classification into the existing rule-based extraction
 | `ewc.rs` | Extracted from `unimatrix-adapt/src/regularization.rs` | `EwcState` -- flat `Vec<f32>` parameter interface |
 | `persistence.rs` | Extracted from `unimatrix-adapt/src/persistence.rs` | Atomic save/load helpers (not `AdaptationState`) |
 | `registry.rs` | New | `ModelRegistry` -- production/shadow/previous slot management |
-| `models/classifier.rs` | New | `SignalClassifier` -- burn MLP for 5-class signal classification |
-| `models/scorer.rs` | New | `ConventionScorer` -- burn MLP for convention confidence scoring |
+| `models/classifier.rs` | New | `SignalClassifier` -- ndarray MLP for 5-class signal classification |
+| `models/scorer.rs` | New | `ConventionScorer` -- ndarray MLP for convention confidence scoring |
+| `models/traits.rs` | New | `NeuralModel` trait -- lifecycle abstraction for all models |
 | `models/digest.rs` | New | `SignalDigest` -- fixed-width 32-slot feature vector |
-| `models/mod.rs` | New | Model trait, shared inference types |
+| `models/mod.rs` | New | Module re-exports, shared inference types |
 | `config.rs` | New | `LearnConfig` -- shared ML configuration |
 
 ### C2: unimatrix-adapt (refactored)
@@ -115,15 +116,15 @@ unimatrix-learn
   TrainingReservoir<T>  <--- unimatrix-adapt (T = TrainingPair)
                         <--- unimatrix-learn models (T = LabeledDigest, future crt-008)
   EwcState              <--- unimatrix-adapt (flat params from MicroLoRA)
-                        <--- unimatrix-learn models (flat params from burn, future crt-008)
+                        <--- unimatrix-learn models (flat params via NeuralModel trait, crt-008)
   ModelRegistry         <--- unimatrix-server (manages model lifecycle)
   save_atomic / load    <--- unimatrix-adapt (AdaptationState)
-                        <--- unimatrix-learn models (burn model records)
+                        <--- unimatrix-learn models (serialized via NeuralModel::serialize)
 ```
 
 ## Technology Decisions
 
-### ADR-001: burn Framework Selection
+### ADR-001: ndarray-only for Neural Models (supersedes burn)
 
 See `ADR-001-burn-framework.md`.
 
@@ -158,19 +159,19 @@ See `ADR-005-model-slot-architecture.md`.
 
 | Dependency | Crate | Usage |
 |-----------|-------|-------|
-| `burn 0.16` | unimatrix-learn | Neural model definition and inference |
-| `burn-ndarray 0.16` | unimatrix-learn | CPU backend for burn |
 | `unimatrix-learn` | unimatrix-adapt | Shared infra (reservoir, EWC) |
 | `unimatrix-learn` | unimatrix-server | Model inference, registry |
+| `unimatrix-learn` | unimatrix-observe | NeuralEnhancer, ShadowEvaluator |
 
-### ndarray Version Compatibility (SR-02)
+**Zero new external dependencies.** All neural models use `ndarray 0.16` (already in workspace). The `NeuralModel` trait is designed so future burn/candle implementations can be added behind cargo feature gates without changing the trait interface.
 
-burn 0.16 uses its own tensor type, not ndarray directly. The boundary is `Vec<f32>`:
-- `unimatrix-adapt` uses `ndarray::Array1/Array2` internally
-- `unimatrix-learn` shared infra uses `Vec<f32>` for parameter exchange
-- burn models use `Tensor<B, D>` internally, convert to/from `Vec<f32>` at boundaries
+### ndarray Unification (SR-02 resolved)
 
-No ndarray version conflict because burn does not re-export ndarray.
+Single math library across the entire workspace:
+- `unimatrix-adapt` uses `ndarray::Array1/Array2` for MicroLoRA
+- `unimatrix-learn` uses `ndarray::Array1/Array2` for neural models and shared infra
+- `EwcState` uses `Vec<f32>` for parameter exchange (ADR-002) but stores internally as `Array1<f32>`
+- No conversion boundary, no version conflict risk
 
 ## Integration Surface
 
@@ -195,7 +196,8 @@ No ndarray version conflict because burn does not re-export ndarray.
 | `ModelRegistry::get_production` | `pub fn get_production(&self, model_name: &str) -> Option<&ModelVersion>` | `unimatrix-learn/src/registry.rs` |
 | `ModelRegistry::promote` | `pub fn promote(&mut self, model_name: &str) -> Result<(), RegistryError>` | `unimatrix-learn/src/registry.rs` |
 | `ModelRegistry::rollback` | `pub fn rollback(&mut self, model_name: &str) -> Result<(), RegistryError>` | `unimatrix-learn/src/registry.rs` |
-| `ModelVersion` | `pub struct ModelVersion { pub generation: u64, pub timestamp: u64, pub accuracy: Option<f64>, pub burn_version: String, pub slot: ModelSlot }` | `unimatrix-learn/src/registry.rs` |
+| `NeuralModel` (trait) | `pub trait NeuralModel: Send + Sync { fn forward(&self, input: &[f32]) -> Vec<f32>; fn train_step(&mut self, input: &[f32], target: &[f32], lr: f32) -> f32; fn flat_parameters(&self) -> Vec<f32>; fn set_parameters(&mut self, params: &[f32]); fn serialize(&self) -> Vec<u8>; fn deserialize(data: &[u8]) -> Result<Self, String> where Self: Sized; }` | `unimatrix-learn/src/models/traits.rs` |
+| `ModelVersion` | `pub struct ModelVersion { pub generation: u64, pub timestamp: u64, pub accuracy: Option<f64>, pub schema_version: u32, pub slot: ModelSlot }` | `unimatrix-learn/src/registry.rs` |
 | `ModelSlot` | `pub enum ModelSlot { Production, Shadow, Previous }` | `unimatrix-learn/src/registry.rs` |
 | `NeuralEnhancer::new` | `pub fn new(classifier: SignalClassifier, scorer: ConventionScorer, mode: EnhancerMode) -> Self` | `unimatrix-observe/src/extraction/neural.rs` |
 | `NeuralEnhancer::enhance` | `pub fn enhance(&self, entry: &ProposedEntry) -> NeuralPrediction` | `unimatrix-observe/src/extraction/neural.rs` |
@@ -210,7 +212,7 @@ No ndarray version conflict because burn does not re-export ndarray.
 
 | Boundary | Error Type | Handling |
 |----------|-----------|----------|
-| burn model inference failure | `ModelError` (new) | Log, fall back to rule-only (no neural enhancement) |
+| Model inference failure (NaN/panic) | `ModelError` (new) | Log, fall back to rule-only (no neural enhancement) |
 | Model file missing/corrupt | `RegistryError` (new) | Cold-start with baseline weights; log warning |
 | Shadow evaluation DB write failure | `rusqlite::Error` | Log, skip shadow log (non-fatal) |
 | unimatrix-learn shared infra | Same error types as current adapt | Transparent -- adapt consumers see same errors |
@@ -231,7 +233,7 @@ This is ~5 lines in the confidence service.
 
 ```
 unimatrix-learn (new)
-  deps: ndarray 0.16, rand 0.9, serde, bincode, burn 0.16, burn-ndarray 0.16
+  deps: ndarray 0.16, rand 0.9, serde, bincode (all already in workspace)
 
 unimatrix-adapt (modified)
   deps: ndarray 0.16, rand 0.9, serde, bincode, unimatrix-learn (new dep)

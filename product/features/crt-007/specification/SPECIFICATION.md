@@ -2,7 +2,7 @@
 
 ## Objective
 
-Extract shared training infrastructure from unimatrix-adapt into a reusable unimatrix-learn crate, implement two burn-based neural models (Signal Classifier, Convention Scorer) for knowledge extraction enhancement, and integrate them into the col-013 extraction pipeline via shadow mode with model versioning and auto-rollback.
+Extract shared training infrastructure from unimatrix-adapt into a reusable unimatrix-learn crate, implement two ndarray-based neural models (Signal Classifier, Convention Scorer) with hand-rolled forward/backward passes behind a `NeuralModel` trait, and integrate them into the col-013 extraction pipeline via shadow mode with model versioning and auto-rollback. Zero new external dependencies.
 
 ## Functional Requirements
 
@@ -23,7 +23,7 @@ Extract shared training infrastructure from unimatrix-adapt into a reusable unim
 
 ### FR-03: Signal Classifier MLP
 
-- FR-03.1: Burn module with topology: `Linear(32, 64)` -> `Sigmoid` -> `Linear(64, 32)` -> `ReLU` -> `Linear(32, 5)` -> `Softmax`
+- FR-03.1: ndarray-based MLP implementing `NeuralModel` trait with topology: `Linear(32, 64)` -> `Sigmoid` -> `Linear(64, 32)` -> `ReLU` -> `Linear(32, 5)` -> `Softmax`. Hand-rolled forward pass via `Array2<f32>` matrix multiplies + element-wise activations.
 - FR-03.2: Input: `SignalDigest` (32-element `[f32; 32]` vector)
 - FR-03.3: Output: `ClassificationResult` with `category: SignalCategory` (highest probability), `probabilities: [f32; 5]` (full distribution), `confidence: f32` (max probability)
 - FR-03.4: `SignalCategory` enum: `Convention`, `Pattern`, `Gap`, `Dead`, `Noise`
@@ -31,7 +31,7 @@ Extract shared training infrastructure from unimatrix-adapt into a reusable unim
 
 ### FR-04: Convention Scorer MLP
 
-- FR-04.1: Burn module with topology: `Linear(32, 32)` -> `ReLU` -> `Linear(32, 1)` -> `Sigmoid`
+- FR-04.1: ndarray-based MLP implementing `NeuralModel` trait with topology: `Linear(32, 32)` -> `ReLU` -> `Linear(32, 1)` -> `Sigmoid`. Hand-rolled forward pass via `Array2<f32>` matrix multiplies + element-wise activations.
 - FR-04.2: Input: `SignalDigest` (same 32-element vector)
 - FR-04.3: Output: `f32` in [0.0, 1.0] representing convention confidence
 - FR-04.4: Cold-start baseline weights bias output toward low scores (output layer bias set to -2.0)
@@ -59,7 +59,7 @@ Extract shared training infrastructure from unimatrix-adapt into a reusable unim
 - FR-07.3: Promotion: shadow -> production (old production -> previous) when: accuracy >= rule-only accuracy AND minimum 20 evaluations AND no per-category regression
 - FR-07.4: Rollback: production -> shadow (previous -> production) when: rolling accuracy drops > 5% below pre-promotion baseline
 - FR-07.5: Registry state persisted to `~/.unimatrix/{project_hash}/models/registry.json`
-- FR-07.6: Burn version stored in ModelVersion for deserialization compatibility detection
+- FR-07.6: Schema version stored in ModelVersion for deserialization compatibility detection (detects SignalDigest slot changes)
 
 ### FR-08: Pipeline Integration
 
@@ -79,15 +79,15 @@ Extract shared training infrastructure from unimatrix-adapt into a reusable unim
 
 ### NFR-02: Resource Constraints
 
-- NFR-02.1: Classifier model file < 5MB on disk
-- NFR-02.2: Scorer model file < 2MB on disk
-- NFR-02.3: Combined model memory footprint < 20MB at runtime
-- NFR-02.4: No GPU dependencies -- CPU-only via burn-ndarray backend
+- NFR-02.1: Classifier model file < 100KB on disk (weight matrices only)
+- NFR-02.2: Scorer model file < 50KB on disk (weight matrices only)
+- NFR-02.3: Combined model memory footprint < 1MB at runtime
+- NFR-02.4: No GPU dependencies -- CPU-only via ndarray
 
 ### NFR-03: Binary Size
 
-- NFR-03.1: burn + burn-ndarray dependency adds < 15MB to release binary
-- NFR-03.2: If binary delta exceeds 15MB, burn should be feature-gated (SR-01)
+- NFR-03.1: Zero new external dependencies -- no binary size increase from ML framework
+- NFR-03.2: (Removed -- no burn dependency to feature-gate)
 
 ### NFR-04: Compatibility
 
@@ -103,8 +103,8 @@ Extract shared training infrastructure from unimatrix-adapt into a reusable unim
 | AC-01 | `unimatrix-learn` crate exists with `TrainingReservoir<T>`, `EwcState`, `ModelRegistry`, persistence helpers | Cargo build + unit tests |
 | AC-02 | `unimatrix-adapt` depends on `unimatrix-learn` and uses shared implementations | Grep for imports; no duplicated reservoir/ewc code |
 | AC-03 | All existing unimatrix-adapt tests pass after refactoring | `cargo test -p unimatrix-adapt` -- 174+ tests pass |
-| AC-04 | Signal Classifier MLP constructed with hand-tuned baseline weights via burn | Unit test: construct, verify output shape |
-| AC-05 | Convention Scorer MLP constructed with hand-tuned baseline weights via burn | Unit test: construct, verify output in [0,1] |
+| AC-04 | Signal Classifier MLP constructed with hand-tuned baseline weights via ndarray | Unit test: construct, verify output shape |
+| AC-05 | Convention Scorer MLP constructed with hand-tuned baseline weights via ndarray | Unit test: construct, verify output in [0,1] |
 | AC-06 | `SignalDigest` struct defined with all input features for both models | Unit test: from_proposed produces valid 32-element vector |
 | AC-07 | Classifier inference produces probability distribution over 5 categories in < 50ms | Benchmark test: 1000 inferences, p99 < 50ms |
 | AC-08 | Scorer inference produces convention confidence in < 10ms | Benchmark test: 1000 inferences, p99 < 10ms |
@@ -130,7 +130,8 @@ Extract shared training infrastructure from unimatrix-adapt into a reusable unim
 | `ClassificationResult` | Full classifier output: winning category, probability distribution, confidence (max probability). |
 | `NeuralPrediction` | Combined output of classifier + scorer for a single ProposedEntry. |
 | `ModelSlot` | Lifecycle position: Production (active inference), Shadow (evaluation only), Previous (rollback target). |
-| `ModelVersion` | Immutable metadata for a saved model: generation counter, timestamp, accuracy metrics, burn version. |
+| `NeuralModel` | Trait abstracting model lifecycle: `forward`, `train_step`, `flat_parameters`, `set_parameters`, `serialize`/`deserialize`. All models implement this. Designed for future burn/candle implementations behind feature gates. |
+| `ModelVersion` | Immutable metadata for a saved model: generation counter, timestamp, accuracy metrics, schema version. |
 | `ModelRegistry` | Manages model slot assignments and promotion/rollback logic. One registry per project. |
 | `NeuralEnhancer` | Pipeline component wrapping classifier + scorer. Operates in Shadow or Active mode. |
 | `ShadowEvaluator` | Tracks neural vs rule agreement. Computes per-category accuracy and overall precision. |
@@ -193,22 +194,23 @@ ShadowEvaluator consumes NeuralPrediction + rule ground truth -> accuracy metric
 - **col-013 dependency**: Extraction pipeline (background tick, ProposedEntry, quality gate) must be complete and merged
 - **crt-006 dependency**: unimatrix-adapt must exist for refactoring
 - **No breaking changes**: unimatrix-adapt public API unchanged
-- **CPU only**: No GPU. burn-ndarray backend only
+- **CPU only**: No GPU. ndarray with standard f32 operations
 - **Per-repo isolation**: Models in `~/.unimatrix/{project_hash}/models/`
 - **~800 lines total**: ~250 shared infra extraction, ~350 neural models, ~200 shadow mode
-- **Binary size**: burn dependency should add < 15MB; feature-gate if larger
+- **Zero new dependencies**: ndarray already in workspace; no binary size impact from ML framework
 
 ## Dependencies
 
 | Crate | Role |
 |-------|------|
-| `burn 0.16` | Neural model definition, training traits |
-| `burn-ndarray 0.16` | CPU-only tensor backend |
-| `ndarray 0.16` | Shared infra (EwcState internal) |
+| `ndarray 0.16` | Matrix operations for neural models + shared infra (already in workspace) |
+| `rand 0.9` | Weight initialization, reservoir sampling (already in workspace) |
 | `unimatrix-store` | SQLite access for shadow logs |
 | `unimatrix-observe` | Extraction pipeline (ProposedEntry, ExtractionRule) |
 | `unimatrix-adapt` | Refactoring target for shared infra |
-| `serde`, `bincode` | Serialization |
+| `serde`, `bincode` | Serialization (already in workspace) |
+
+**Zero new external dependencies.** All crates listed above are already in the workspace.
 
 ## NOT in Scope
 
@@ -217,6 +219,7 @@ ShadowEvaluator consumes NeuralPrediction + rule ground truth -> accuracy metric
 - LLM API integration (crt-009)
 - `context_review` MCP tool (crt-009)
 - GPU acceleration
+- burn / Candle framework (deferred behind feature gates for future micro-transformer models)
 - Multi-repository model sharing
 - Daemon mode (models run within session-scoped server)
 - Training from utilization feedback (crt-008)

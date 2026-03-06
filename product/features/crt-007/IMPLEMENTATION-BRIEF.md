@@ -2,13 +2,13 @@
 
 ## Overview
 
-Add neural classification to the col-013 rule-based extraction pipeline. Three implementation waves: (1) extract shared training infrastructure into unimatrix-learn, (2) build two burn-based MLP models, (3) integrate via shadow mode with model versioning.
+Add neural classification to the col-013 rule-based extraction pipeline. Three implementation waves: (1) extract shared training infrastructure into unimatrix-learn, (2) build two ndarray-based MLP models with hand-rolled forward/backward behind a NeuralModel trait, (3) integrate via shadow mode with model versioning. Zero new external dependencies.
 
 ## Resolved Decisions
 
 | ADR | Decision | Unimatrix ID |
 |-----|----------|-------------|
-| ADR-001 | burn 0.16 framework with NdArray CPU backend | #404 |
+| ADR-001 | ndarray-only for neural models (NeuralModel trait) | #404 (deprecated) -> #420 |
 | ADR-002 | Flat Vec<f32> parameter interface for EwcState | #405 |
 | ADR-003 | Fixed-width 32-slot SignalDigest | #406 |
 | ADR-004 | Shadow evaluation persistence in SQLite | #407 |
@@ -42,27 +42,38 @@ Add neural classification to the col-013 rule-based extraction pipeline. Three i
 
 ### Wave 2: Neural Models (~350 lines)
 
-**Crate**: `crates/unimatrix-learn/` (add burn dependency)
+**Crate**: `crates/unimatrix-learn/` (no new external dependencies)
 
-1. Add `burn = "0.16"` and `burn-ndarray = "0.16"` to unimatrix-learn Cargo.toml
+1. Implement `NeuralModel` trait in `models/traits.rs`:
+   - `forward(&self, input: &[f32]) -> Vec<f32>`
+   - `train_step(&mut self, input: &[f32], target: &[f32], lr: f32) -> f32`
+   - `flat_parameters(&self) -> Vec<f32>`
+   - `set_parameters(&mut self, params: &[f32])`
+   - `serialize(&self) -> Vec<u8>`
+   - `deserialize(data: &[u8]) -> Result<Self, String>`
 2. Implement `SignalDigest` in `models/digest.rs`:
    - `pub struct SignalDigest { pub features: [f32; 32] }`
    - `pub fn from_proposed(entry: &ProposedEntry) -> Self` -- populate slots 0-6, zero rest
    - Category/rule ordinal encoding constants
 3. Implement `SignalClassifier` in `models/classifier.rs`:
-   - burn module: Linear(32,64) -> Sigmoid -> Linear(64,32) -> ReLU -> Linear(32,5) -> Softmax
+   - ndarray MLP: Linear(32,64) -> Sigmoid -> Linear(64,32) -> ReLU -> Linear(32,5) -> Softmax
+   - Hand-rolled forward pass: `Array2<f32>` weight matrices + `Array1<f32>` bias vectors
+   - Hand-rolled backward pass: gradient computation per layer (~30 lines)
    - `pub fn new_with_baseline() -> Self` -- output bias [0, 0, 0, 0, +2.0] for Noise
    - `pub fn classify(&self, digest: &SignalDigest) -> ClassificationResult`
+   - Implements `NeuralModel`
 4. Implement `ConventionScorer` in `models/scorer.rs`:
-   - burn module: Linear(32,32) -> ReLU -> Linear(32,1) -> Sigmoid
+   - ndarray MLP: Linear(32,32) -> ReLU -> Linear(32,1) -> Sigmoid
+   - Hand-rolled forward/backward passes
    - `pub fn new_with_baseline() -> Self` -- output bias -2.0
    - `pub fn score(&self, digest: &SignalDigest) -> f32`
+   - Implements `NeuralModel`
 5. Implement `ModelRegistry` in `registry.rs`:
    - Three slots: Production, Shadow, Previous
    - `promote()`, `rollback()`, `get_production()`, `get_shadow()`
    - Registry state persisted to JSON
-   - ModelVersion metadata: generation, timestamp, accuracy, burn_version
-6. Unit tests for all models and registry
+   - ModelVersion metadata: generation, timestamp, accuracy, schema_version
+6. Unit tests: model inference, gradient correctness (numerical checks), registry state transitions
 
 **Gate**: Classifier produces non-degenerate output on test digests. Scorer output in [0,1]. Registry state transitions correct.
 
@@ -99,7 +110,8 @@ Add neural classification to the col-013 rule-based extraction pipeline. Three i
 | `crates/unimatrix-learn/src/persistence.rs` | Extracted: save_atomic, load_file |
 | `crates/unimatrix-learn/src/registry.rs` | New: ModelRegistry |
 | `crates/unimatrix-learn/src/config.rs` | New: LearnConfig |
-| `crates/unimatrix-learn/src/models/mod.rs` | New: model trait, types |
+| `crates/unimatrix-learn/src/models/mod.rs` | New: module re-exports, shared types |
+| `crates/unimatrix-learn/src/models/traits.rs` | New: NeuralModel trait |
 | `crates/unimatrix-learn/src/models/digest.rs` | New: SignalDigest |
 | `crates/unimatrix-learn/src/models/classifier.rs` | New: SignalClassifier |
 | `crates/unimatrix-learn/src/models/scorer.rs` | New: ConventionScorer |
@@ -121,10 +133,10 @@ Add neural classification to the col-013 rule-based extraction pipeline. Three i
 | Risk | Mitigation in Implementation |
 |------|------------------------------|
 | R-01 (adapt breakage) | Wave 1 gate: all adapt tests pass before Wave 2 starts |
-| R-03 (binary size) | Measure after Wave 2. Feature-gate if > 15MB |
+| R-03 (gradient correctness) | Numerical gradient checks in Wave 2 gate |
 | R-04 (degenerate weights) | Smoke tests in Wave 2 gate |
 | R-05 (bad promotion) | Unit tests for all promotion criteria in Wave 2 |
-| R-06 (model compat) | burn_version in ModelVersion, corruption fallback |
+| R-06 (model compat) | schema_version in ModelVersion, corruption fallback |
 
 ## Estimated Scope
 

@@ -12,8 +12,8 @@
 
 | AC-ID | Criterion | Wave | Test Type | Risk |
 |-------|-----------|------|-----------|------|
-| AC-04 | Signal Classifier MLP with baseline weights via burn | W2 | unit: construct, verify output shape | R-04 |
-| AC-05 | Convention Scorer MLP with baseline weights via burn | W2 | unit: construct, verify [0,1] output | R-04 |
+| AC-04 | Signal Classifier MLP with baseline weights via ndarray | W2 | unit: construct, verify output shape | R-04 |
+| AC-05 | Convention Scorer MLP with baseline weights via ndarray | W2 | unit: construct, verify [0,1] output | R-04 |
 | AC-06 | SignalDigest defined with all features | W2 | unit: from_proposed -> valid 32-element vector | -- |
 | AC-07 | Classifier inference < 50ms | W2 | benchmark: 1000 inferences, p99 | R-07 |
 | AC-08 | Scorer inference < 10ms | W2 | benchmark: 1000 inferences, p99 | R-07 |

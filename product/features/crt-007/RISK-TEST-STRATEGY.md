@@ -6,10 +6,10 @@
 |---------|-----------------|----------|------------|----------|
 | R-01 | Shared infra extraction breaks MicroLoRA training pipeline | High | Med | High |
 | R-02 | EwcState flat parameter interface produces incorrect regularization due to parameter ordering mismatch | High | Low | Med |
-| R-03 | burn binary size exceeds acceptable threshold (>15MB delta) | Med | Med | Med |
+| R-03 | Hand-rolled backpropagation contains gradient computation errors (silent correctness bug) | Med | Med | Med |
 | R-04 | Baseline weights produce degenerate classifier output (all-noise or uniform distribution) | Med | Med | Med |
 | R-05 | Shadow mode evaluation incorrectly promotes a model that degrades extraction quality | High | Low | Med |
-| R-06 | Model deserialization fails silently after burn version upgrade | Med | Med | Med |
+| R-06 | Model deserialization fails after struct layout change (field added/removed) | Med | Med | Med |
 | R-07 | Neural inference exceeds latency budget in extraction tick | Low | Low | Low |
 | R-08 | shadow_evaluations table write contention with extraction pipeline | Low | Low | Low |
 | R-09 | SignalDigest zero-padding dominates gradient flow, preventing meaningful learning | Med | Low | Low |
@@ -42,16 +42,17 @@
 
 **Coverage Requirement**: Known-value unit tests with hand-computed expected results. Cross-validation against pre-refactor behavior.
 
-### R-03: burn Binary Size Exceeds Threshold
+### R-03: Hand-Rolled Backpropagation Gradient Errors
 **Severity**: Med
 **Likelihood**: Med
-**Impact**: Release binary becomes unwieldy. Download/startup time increases.
+**Impact**: Models train on incorrect gradients (crt-008), converging to wrong solutions or diverging. Inference (crt-007) is unaffected -- only forward pass is used initially.
 
 **Test Scenarios**:
-1. Measure release binary size before and after adding burn dependency
-2. If delta > 15MB, verify feature-gate compiles and all tests pass without burn feature
+1. Numerical gradient check: compare hand-rolled backward pass output against finite-difference approximation for each layer type (sigmoid, relu, softmax, linear)
+2. Known-value gradient test: 2-layer network with specific weights, compute expected gradients by hand, verify match
+3. Gradient flow test: verify gradients propagate through full classifier network (non-zero gradients reach input layer)
 
-**Coverage Requirement**: CI step measuring binary size delta. Feature-gate test if threshold exceeded.
+**Coverage Requirement**: Numerical gradient tests for each activation function. Known-value end-to-end gradient test for each model.
 
 ### R-04: Baseline Weights Produce Degenerate Output
 **Severity**: Med
@@ -79,18 +80,18 @@
 
 **Coverage Requirement**: Unit tests for all promotion criteria (accuracy threshold, minimum evaluations, per-category check). Integration test for rollback flow.
 
-### R-06: Model Deserialization Fails After burn Upgrade
+### R-06: Model Deserialization Fails After Struct Layout Change
 **Severity**: Med
 **Likelihood**: Med
-**Impact**: Models become unloadable after burn version update. System cold-starts with baseline weights, losing learned accuracy.
+**Impact**: Models become unloadable after weight struct changes (e.g., adding a layer). System cold-starts with baseline weights, losing learned accuracy.
 
 **Test Scenarios**:
-1. Save model, verify load succeeds with same burn version
-2. Verify ModelVersion includes burn_version field
-3. Simulate version mismatch: ModelRegistry detects and cold-starts with baseline weights instead of panicking
+1. Save model via NeuralModel::serialize, verify NeuralModel::deserialize round-trip succeeds
+2. Verify ModelVersion includes schema_version field
+3. Simulate schema version mismatch: ModelRegistry detects and cold-starts with baseline weights instead of panicking
 4. Verify corrupt model file produces graceful fallback (warning log, baseline weights)
 
-**Coverage Requirement**: Save/load round-trip test. Corrupt file handling. Version mismatch detection.
+**Coverage Requirement**: Save/load round-trip test. Corrupt file handling. Schema version mismatch detection.
 
 ### R-07: Neural Inference Exceeds Latency Budget
 **Severity**: Low
@@ -156,7 +157,7 @@
 
 ## Security Risks
 
-- **Model file injection**: An attacker could place a malicious model file in the models directory. Mitigation: model files are deserialized by burn's record system, not arbitrary code execution. Blast radius: incorrect classification (not RCE).
+- **Model file injection**: An attacker could place a malicious model file in the models directory. Mitigation: model files are deserialized by bincode into f32 weight matrices, not arbitrary code execution. Blast radius: incorrect classification (not RCE).
 - **Shadow evaluation data**: shadow_evaluations table is append-only, written by background tick only. No MCP tool exposes it. No external input path.
 - **SignalDigest construction**: Input derived from ProposedEntry fields (already validated by quality gate checks 1-4). No untrusted external input reaches SignalDigest directly.
 - **trust_source "neural"**: Neural entries get 0.40 confidence weight vs 0.35 for "auto". An attacker who can control model weights could boost confidence of extracted entries. Mitigation: shadow mode evaluation period, auto-rollback, and all entries still pass quality gate checks 5-6 (near-duplicate, contradiction).
@@ -165,7 +166,7 @@
 
 | Failure | Expected Behavior |
 |---------|-------------------|
-| burn model inference panics | Caught by tokio::spawn_blocking. Log error, skip neural enhancement for this tick. Pipeline continues rule-only. |
+| Model inference produces NaN/panics | Caught by tokio::spawn_blocking. Log error, skip neural enhancement for this tick. Pipeline continues rule-only. |
 | Model file corrupt/missing | ModelRegistry returns None for model slot. NeuralEnhancer cold-starts with baseline weights. Warning logged. |
 | Shadow evaluation write fails | Log error, skip shadow log. Non-fatal -- no impact on extraction. |
 | Promotion criteria never met | Model stays in Shadow indefinitely. Pipeline operates rule-only. Acceptable -- conservative by design. |
@@ -176,15 +177,15 @@
 
 | Scope Risk | Architecture Risk | Resolution |
 |-----------|------------------|------------|
-| SR-01 (burn binary size) | R-03 | NFR-03: measure binary delta, feature-gate if > 15MB |
-| SR-02 (ndarray version conflict) | -- | Resolved in architecture: burn uses own tensor type, boundary is Vec<f32> |
-| SR-03 (burn API evolution) | R-06 | ADR-001: pin exact version. ModelVersion includes burn_version |
+| SR-01 (backprop correctness) | R-03 | Numerical gradient checks + known-value tests for each layer type |
+| SR-02 (ndarray version conflict) | -- | Eliminated: single math library (ndarray only) |
+| SR-03 (serialization fragility) | R-06 | schema_version in ModelVersion; NeuralModel::deserialize handles mismatches |
 | SR-04 (degenerate baseline weights) | R-04 | Smoke test with representative digests |
 | SR-05 (shared infra extraction breaks adapt) | R-01 | All 174+ adapt tests as hard gate |
 | SR-06 (zero-padding gradient dominance) | R-09 | Smoke test for non-degenerate output. Full analysis in crt-008 |
 | SR-07 (feature count tracking for shadow promotion) | R-05, R-10 | Shadow mode uses evaluation count (20 minimum), not feature count |
 | SR-08 (inference latency in tick) | R-07 | Benchmark tests with SLA assertions |
-| SR-09 (EwcState ndarray/burn bridge) | R-02 | ADR-002: flat Vec<f32> interface, hand-computed known-value tests |
+| SR-09 (EwcState shared interface) | R-02 | ADR-002: flat Vec<f32> interface, hand-computed known-value tests |
 | SR-10 (shadow log write pressure) | R-08 | Batch writes, low volume (10/hour rate limit) |
 
 ## Coverage Summary
