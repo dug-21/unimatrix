@@ -1,0 +1,265 @@
+# Architecture: base-002 — Workflow & Branching Improvements
+
+## Overview
+
+base-002 restructures the Unimatrix development workflow from a single-stream, commit-to-main model to a branch-first, PR-required model with worktree isolation and automated coordinator chaining. All changes are markdown files — no Rust code is modified.
+
+The architecture organizes changes into four layers: Git Foundation, Session Lifecycle, Coordinator Chaining, and Knowledge Integration.
+
+---
+
+## Layer 1: Git Foundation
+
+### Component: uni-git Skill (`.claude/skills/uni-git/SKILL.md`)
+
+The single source of truth for git conventions. All other protocol and agent files reference this skill rather than embedding git rules.
+
+**Changes:**
+- Replace "commit directly to main" with branch-first workflow for all session types
+- Add branch naming table covering all contexts (design, feature, bugfix, docs, workflow)
+- Add `docs:` commit prefix for standalone documentation changes
+- Document PR merge strategy: rebase-only (squash acceptable for single-commit PRs)
+- Document worktree conventions and lifecycle
+
+**Branch Naming Convention:**
+
+| Context | Pattern | Example | Creator |
+|---------|---------|---------|---------|
+| Feature design (Session 1) | `design/{phase}-{NNN}` | `design/crt-009` | uni-design-scrum-master |
+| Feature delivery (Session 2) | `feature/{phase}-{NNN}` | `feature/crt-009` | uni-implementation-scrum-master |
+| Bug fix | `bugfix/{issue}-{desc}` | `bugfix/52-embed-retry` | uni-bugfix-scrum-master |
+| Ad-hoc docs/config | `docs/{short-desc}` | `docs/update-vision` | Human or primary agent |
+| Workflow/process | `workflow/{desc}` | `workflow/base-002` | Human or primary agent |
+
+### Component: .gitignore
+
+Add `.claude/worktrees/` to prevent worktree checkouts from being tracked.
+
+---
+
+## Layer 2: Session Lifecycle
+
+### Design Session Branch Integration (AC-02)
+
+**Current flow:**
+```
+Session 1 starts → agents commit to main → human reviews artifacts → approves
+```
+
+**New flow:**
+```
+Session 1 starts → scrum-master creates design/{id} branch
+  → agents commit to design branch
+  → scrum-master opens PR to main
+  → human reviews PR (replaces separate approval step)
+  → human merges PR = approval
+```
+
+**Key design decision (addresses SR-06):** The design-scrum-master creates the branch at session start and opens the PR at session end. The synthesizer does NOT create the PR — it continues to create the GH Issue only. The PR is a coordinator responsibility, consistent with how impl-scrum-master handles PRs in Session 2.
+
+**Files modified:**
+- `.claude/protocols/uni/uni-design-protocol.md`: Add branch creation at init, PR creation at Phase 2d
+- `.claude/agents/uni/uni-design-scrum-master.md`: Add branch init and PR to exit gate
+
+### Worktree-Based Branch Isolation (AC-03)
+
+**Architecture (addresses SR-01):**
+
+Worktree adoption is structured as an **optional isolation layer**. Protocols define worktree creation/cleanup, but include a fallback path for environments where worktrees are unavailable or impractical.
+
+**Worktree lifecycle:**
+```
+Coordinator init:
+  1. git worktree add .claude/worktrees/{type}-{id}/ -b {branch-name}
+  2. All agent work happens in the worktree directory
+  3. Commits, pushes, PRs reference the worktree's branch
+
+Coordinator exit:
+  1. Verify all changes committed and pushed
+  2. git worktree remove .claude/worktrees/{type}-{id}/
+  3. If removal fails (dirty state): warn human, do NOT force-remove
+```
+
+**Fallback (no worktree):** If `git worktree add` fails or is not supported, the coordinator falls back to standard `git checkout -b` in the main working directory. Protocols include a conditional: "If worktree creation succeeded, work in worktree path; otherwise, work in main checkout."
+
+**Path convention:** `.claude/worktrees/{branch-type}-{id}/`
+- Example: `.claude/worktrees/feature-crt-009/`
+- Example: `.claude/worktrees/bugfix-52/`
+
+**Stale worktree recovery:** Document in uni-git skill: `git worktree prune` removes entries for deleted directories. Human can also manually `git worktree remove --force` if needed.
+
+**Files modified:**
+- `.claude/protocols/uni/uni-delivery-protocol.md`: Add worktree init at Initialization, cleanup at Phase 4
+- `.claude/protocols/uni/uni-bugfix-protocol.md`: Add worktree init at Phase 2, cleanup at Phase 5
+- `.claude/agents/uni/uni-implementation-scrum-master.md`: Worktree in init and exit gate
+- `.claude/agents/uni/uni-bugfix-scrum-master.md`: Worktree in init and exit gate
+- `.gitignore`: Add `.claude/worktrees/`
+
+### Build Artifact Isolation (AC-04)
+
+**Current state:** Hooks use `~/.local/bin/unimatrix-server` (installed binary). Integration tests use `target/release/unimatrix-server` (build artifact). These are already separate.
+
+**Worktree behavior:** Each worktree checkout gets its own `target/` directory by default (cargo builds relative to the checkout root). No configuration needed.
+
+**Documentation additions to uni-git skill:**
+- Explain the installed binary vs build artifact separation
+- `cargo build --release` in a worktree does NOT affect `~/.local/bin/` or other worktrees
+- Explicit promotion: `cargo install --path crates/unimatrix-server` to update the installed binary
+- Integration tests in worktrees should set `UNIMATRIX_BINARY` to their own `target/release/unimatrix-server`
+
+---
+
+## Layer 3: Coordinator Chaining
+
+### Implementation-to-Deploy Auto-Chain (AC-05)
+
+**Architecture (addresses SR-03):**
+
+The auto-chain is modeled as a **protocol extension** — deploy-scrum-master remains independently invocable. The impl-scrum-master spawns it as an optional final phase.
+
+**Chain contract:**
+```
+Phase 4 (impl-scrum-master):
+  1. Complete existing Phase 4 (commit, push, PR)
+  2. NEW: Spawn uni-deploy-scrum-master with:
+     - PR number
+     - Feature ID
+     - GH Issue number
+     - Source: "auto-chain from impl-scrum-master"
+  3. Deploy-scrum-master runs its full flow (verify gates, security review, merge readiness)
+  4. Deploy returns results to impl-scrum-master
+  5. Impl-scrum-master combines both results in return to human
+
+Error handling:
+  - If deploy spawn fails: return impl results only, note "deploy auto-chain failed"
+  - If deploy returns BLOCKED: include blocking items in combined return
+  - If deploy returns error: return impl results + deploy error, human decides
+```
+
+**Safeguards:**
+1. Deploy verifies all 3 gate reports exist and show PASS before proceeding
+2. Security reviewer gets fresh context — no impl context leakage (already the case)
+3. Blocking security findings return BLOCKED to human — never auto-merged
+
+**Files modified:**
+- `.claude/agents/uni/uni-implementation-scrum-master.md`: Add Phase 4 deploy spawn
+- `.claude/agents/uni/uni-deploy-scrum-master.md`: Accept spawn from impl-scrum-master, add "source" field handling
+- `.claude/protocols/uni/uni-agent-routing.md`: Update delivery swarm template to show auto-chain
+
+### GH Issue as Status Hub (AC-07)
+
+**Standardized comment format across all coordinators:**
+```
+## {Phase/Gate} -- {PASS|FAIL|BLOCKED}
+- Stage: {name}
+- Files: [paths]
+- Tests: X passed, Y new
+- Issues: [if any]
+```
+
+The bugfix protocol already uses a similar format (see bugfix-protocol.md GH Issue Lifecycle). Reconcile by adopting the bugfix format as the standard and updating impl/deploy to match.
+
+**Files modified:**
+- `.claude/agents/uni/uni-implementation-scrum-master.md`: Verify comment format matches standard
+- `.claude/agents/uni/uni-deploy-scrum-master.md`: Add comment after security review
+- `.claude/agents/uni/uni-bugfix-scrum-master.md`: Verify existing format (likely already compliant)
+
+---
+
+## Layer 4: Knowledge Integration
+
+### Procedural Knowledge Queries (AC-08)
+
+**Architecture (addresses SR-04):**
+
+Worker agents query Unimatrix for procedural knowledge before starting their task. All queries are **non-blocking with graceful degradation**.
+
+**Pattern:**
+```
+Before starting work:
+  1. Call context_search(query: "{task-relevant terms}", category: "procedure")
+  2. If results found: incorporate relevant procedures into approach
+  3. If server unavailable or no results: proceed without — log "no procedural knowledge found"
+  4. Timeout: 5 seconds max for knowledge queries
+```
+
+**Who queries:**
+- `uni-rust-dev`: Before implementing, search for procedures related to the affected crate/component
+- `uni-pseudocode`: Before designing, search for design procedures in the affected area
+- `uni-tester`: Before test execution, search for testing procedures
+
+**Who stores:**
+- Coordinators: After successful delivery, if a reusable multi-step technique was used or discovered
+- Bugfix agents: After fix, if the diagnostic or repair sequence is reproducible
+- Not just during retrospectives — any successful session can produce procedures
+
+**Distinction from workflow choreography:** Procedures are "how to do X" (e.g., "server integration file order," "crate bootstrapping sequence"). Workflows are "what order to do things" (phase sequences, gate logic). Procedures go in Unimatrix. Workflows stay in protocol files.
+
+**Files modified:**
+- `.claude/agents/uni/uni-rust-dev.md`: Add knowledge query before implementation
+- `.claude/agents/uni/uni-pseudocode.md`: Add knowledge query before design
+- `.claude/agents/uni/uni-tester.md`: Add knowledge query before test execution
+- Coordinator agents: Add procedure storage guidance after successful sessions
+
+---
+
+## Layer 5: Protocol Compliance (AC-06)
+
+### Merge Strategy Alignment
+
+Both delivery and bugfix protocols updated to use `--rebase` merge strategy (consistent with branch protection requiring linear history).
+
+### Per-Component Enforcement
+
+Delivery protocol Stage 3b documents one-agent-per-component as MANDATORY, referencing the monolithic agent anti-pattern from retrospective data (4A).
+
+### Post-Delivery Review
+
+Formalize the observed post-delivery review pattern: after Phase 4, an optional step for tech debt discovery and GH Issue filing. Not a gate — just an acknowledged practice.
+
+### Cargo Output
+
+Add `cargo test --workspace -- --format json` as the preferred structured output format where available. Keep grep-based truncation as fallback.
+
+**Files modified:**
+- `.claude/protocols/uni/uni-delivery-protocol.md`: Merge strategy, per-component enforcement, post-delivery step
+- `.claude/protocols/uni/uni-bugfix-protocol.md`: Merge strategy alignment
+
+---
+
+## Component Interaction Map
+
+```
+                    uni-git/SKILL.md
+                   (branch naming, merge strategy, worktree lifecycle)
+                          |
+          +---------------+----------------+
+          |               |                |
+  uni-design-protocol  uni-delivery-protocol  uni-bugfix-protocol
+  (branch at init,     (worktree init,        (worktree init,
+   PR at end)           auto-chain Phase 4)    merge strategy)
+          |               |                |
+  uni-design-SM       uni-impl-SM        uni-bugfix-SM
+                          |
+                    uni-deploy-SM
+                    (accepts auto-chain spawn)
+                          |
+                    uni-agent-routing.md
+                    (updated swarm templates)
+```
+
+Worker agents (uni-rust-dev, uni-pseudocode, uni-tester) receive knowledge query additions independently — they don't interact with the branch/worktree layer.
+
+---
+
+## Risks Addressed from Scope Risk Assessment
+
+| Scope Risk | Architecture Response |
+|-----------|----------------------|
+| SR-01 (worktree platform support) | Optional isolation layer with fallback path |
+| SR-02 (cargo target isolation) | Document reliance on cargo defaults; no custom config needed |
+| SR-03 (auto-chain error handling) | Protocol extension model; deploy remains independent; explicit error propagation |
+| SR-04 (knowledge query availability) | Non-blocking with graceful degradation and 5s timeout |
+| SR-05 (rebase on non-linear history) | AC-09 hygiene runs first to clean up |
+| SR-06 (Session 1 PR lifecycle) | Design-scrum-master creates PR; synthesizer creates GH Issue only |
+| SR-07 (GH Issue format conflict) | Adopt bugfix format as standard; reconcile others to match |
