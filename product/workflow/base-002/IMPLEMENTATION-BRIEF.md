@@ -17,7 +17,7 @@ Modernize the development workflow to support branch-first PR workflow, worktree
 
 | ADR | Entry ID | Decision |
 |-----|----------|----------|
-| ADR-001 | #510 | Worktree isolation as optional layer with fallback |
+| ADR-001 | #510 | Worktree isolation via Claude Code's native `isolation: "worktree"` (validated) |
 | ADR-002 | #511 | Auto-chain as protocol extension (deploy remains independent) |
 | ADR-003 | #512 | Design-scrum-master owns Session 1 PR (not synthesizer) |
 | ADR-004 | #513 | Non-blocking knowledge queries with 5s timeout |
@@ -27,8 +27,9 @@ Modernize the development workflow to support branch-first PR workflow, worktree
 - All changes are markdown-only — no Rust code
 - Must work with branch protection (PR required) immediately
 - Hooks use installed binary (`~/.local/bin/`) — do not change
-- Worktree adoption is optional (fallback to standard checkout)
+- Worktree isolation uses Claude Code's native `isolation: "worktree"` parameter (validated 2026-03-06)
 - Knowledge queries are non-blocking with graceful degradation
+- **Token budget**: agent defs ≤ ~150 lines, protocols ≤ ~250 lines. Replace text in-place; reference uni-git skill for detail rather than inlining in every file
 
 ---
 
@@ -77,7 +78,7 @@ Waves 1-2 are sequential. Waves 3-5 can be parallelized if components within eac
 ## Verification Approach
 
 Since all deliverables are markdown files, verification is done through:
-1. **Text search**: Grep for prohibited terms ("directly to main"), required terms (worktree, fallback, timeout)
+1. **Text search**: Grep for prohibited terms ("directly to main"), required terms (worktree, isolation, timeout)
 2. **Cross-reference**: Verify consistency between uni-git skill and all protocols/agents
 3. **Checklist**: Walk through each AC sub-criterion in the specification
 

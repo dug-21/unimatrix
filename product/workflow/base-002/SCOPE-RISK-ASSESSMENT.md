@@ -4,7 +4,7 @@
 
 | Risk ID | Risk | Severity | Likelihood | Recommendation |
 |---------|------|----------|------------|----------------|
-| SR-01 | Git worktrees may not be fully supported by Claude Code's `EnterWorktree` tool — agent isolation depends on platform behavior not fully validated | High | Medium | Architect should define a fallback path if worktree support is incomplete; keep worktree adoption optional initially |
+| SR-01 | **RESOLVED** — Claude Code's `isolation: "worktree"` parameter on the Agent tool natively creates and manages worktrees at `.claude/worktrees/agent-{id}/`. Validated via smoke test (2026-03-06): worktree created, isolated branch checked out, changes stayed isolated, cleanup worked. | ~~High~~ None | ~~Medium~~ None | Worktrees are the primary isolation mechanism. No fallback needed — Claude Code handles the lifecycle. |
 | SR-02 | Worktree target directory isolation depends on cargo default behavior (per-checkout `target/`); custom CARGO_TARGET_DIR settings or `.cargo/config.toml` overrides could break isolation | Medium | Low | Document the exact cargo behavior relied upon; add verification step to worktree initialization |
 
 ## Scope Boundary Risks
@@ -30,7 +30,8 @@
 
 ## Design Recommendations
 
-- **SR-01, SR-02**: Architecture should separate worktree adoption into a distinct "isolation layer" so the rest of the workflow changes work regardless of whether worktrees are used.
+- **SR-01**: RESOLVED. Claude Code's native `isolation: "worktree"` handles worktree creation, branch checkout, and cleanup. Coordinators spawn agents with this parameter — no manual worktree management needed.
+- **SR-02**: Document reliance on cargo defaults; no custom config needed.
 - **SR-03**: Spec should define the auto-chain contract as a protocol extension, not a replacement — deploy-scrum-master must remain independently invocable.
 - **SR-04**: Architect should specify that all `/knowledge-search` calls in worker agents use a timeout with fallback to "proceed without knowledge."
 - **SR-06**: Architecture should clarify the PR lifecycle for Session 1 — who creates it, what triggers it, and how it maps to the existing human checkpoint.

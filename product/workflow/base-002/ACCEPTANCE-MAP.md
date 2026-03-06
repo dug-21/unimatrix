@@ -37,8 +37,7 @@ Each acceptance criterion from SCOPE.md is mapped to its verification method, th
 | `.gitignore` updated | repo-hygiene | Manual: `.claude/worktrees/` line present | R-07 |
 | Path convention documented | git-conventions | Manual: convention in worktree section | -- |
 | Exit gate includes cleanup | impl-scrum-master, bugfix-scrum-master | Manual: exit gate checklist includes worktree | -- |
-| Stale recovery documented | git-conventions | Manual: recovery section present | -- |
-| Fallback for non-worktree envs | delivery-protocol, bugfix-protocol | Manual: conditional fallback present | R-02 |
+| Stale recovery documented | git-conventions | Manual: recovery section present (`git worktree prune`) | R-02 |
 
 ## AC-04: Build Artifact Isolation
 
