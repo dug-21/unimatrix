@@ -14,10 +14,13 @@ use unimatrix_core::{
     VectorStore,
 };
 use unimatrix_core::async_wrappers::AsyncEntryStore;
+use unimatrix_learn::models::{ConventionScorer, SignalClassifier};
 use unimatrix_observe::extraction::{
     ExtractionContext, ExtractionStats, ProposedEntry,
     default_extraction_rules, quality_gate, run_extraction_rules, QualityGateResult,
 };
+use unimatrix_observe::extraction::neural::{EnhancerMode, NeuralEnhancer};
+use unimatrix_observe::extraction::shadow::{ShadowEvaluator, ShadowLogEntry};
 use unimatrix_observe::types::{HookType, ObservationRecord};
 use unimatrix_store::rusqlite;
 
@@ -58,6 +61,49 @@ fn now_secs() -> u64 {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs()
+}
+
+/// Initialize the neural enhancer with baseline models.
+///
+/// Always starts in Shadow mode. Returns `None` only if initialization
+/// fails catastrophically (which should not happen with baseline models).
+pub fn init_neural_enhancer() -> Option<(NeuralEnhancer, ShadowEvaluator)> {
+    let classifier = SignalClassifier::new_with_baseline();
+    let scorer = ConventionScorer::new_with_baseline();
+    let enhancer = NeuralEnhancer::new(classifier, scorer, EnhancerMode::Shadow);
+    let evaluator = ShadowEvaluator::new(20, 0.05, 50);
+    Some((enhancer, evaluator))
+}
+
+/// Persist shadow evaluation logs to the shadow_evaluations table.
+fn persist_shadow_evaluations(store: &Store, logs: &[ShadowLogEntry]) {
+    let conn = store.lock_conn();
+    let mut stmt = match conn.prepare_cached(
+        "INSERT INTO shadow_evaluations
+         (timestamp, rule_name, rule_category, neural_category,
+          neural_confidence, convention_score, rule_accepted, digest)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+    ) {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::warn!("failed to prepare shadow_evaluations insert: {e}");
+            return;
+        }
+    };
+    for log in logs {
+        if let Err(e) = stmt.execute(rusqlite::params![
+            log.timestamp as i64,
+            log.rule_name,
+            log.rule_category,
+            log.neural_category,
+            log.neural_confidence as f64,
+            log.convention_score as f64,
+            log.rule_accepted as i32,
+            log.digest_bytes,
+        ]) {
+            tracing::warn!("failed to insert shadow evaluation: {e}");
+        }
+    }
 }
 
 /// Spawn the background tick loop. Call once at server startup.
@@ -101,6 +147,18 @@ async fn background_tick_loop(
     let mut interval = tokio::time::interval(Duration::from_secs(TICK_INTERVAL_SECS));
     let mut extraction_ctx = ExtractionContext::new();
 
+    // Initialize neural enhancer (crt-007: shadow mode)
+    let (neural_enhancer, mut shadow_evaluator) = match init_neural_enhancer() {
+        Some((e, s)) => {
+            tracing::info!("neural enhancer initialized in shadow mode");
+            (Some(e), Some(s))
+        }
+        None => {
+            tracing::warn!("neural enhancer initialization failed, running rule-only");
+            (None, None)
+        }
+    };
+
     // Skip the immediate first tick (fires at t=0).
     interval.tick().await;
 
@@ -141,6 +199,8 @@ async fn background_tick_loop(
             &vector_index,
             &embed_service,
             &mut extraction_ctx,
+            neural_enhancer.as_ref(),
+            shadow_evaluator.as_mut(),
         )
         .await
         {
@@ -204,11 +264,14 @@ fn parse_hook_type(s: &str) -> HookType {
 }
 
 /// Run extraction pipeline on new observations since last watermark.
+#[allow(clippy::too_many_arguments)]
 async fn extraction_tick(
     store: &Arc<Store>,
     vector_index: &Arc<VectorIndex>,
     embed_service: &Arc<EmbedServiceHandle>,
     ctx: &mut ExtractionContext,
+    neural_enhancer: Option<&NeuralEnhancer>,
+    shadow_evaluator: Option<&mut ShadowEvaluator>,
 ) -> Result<ExtractionStats, ServiceError> {
     let store_clone = Arc::clone(store);
     let watermark = ctx.last_watermark;
@@ -306,6 +369,51 @@ async fn extraction_tick(
         }
     }
 
+    // 3.5 Neural enhancement (crt-007: between quality gate checks 1-4 and 5-6)
+    let accepted = if let (Some(enhancer), Some(evaluator)) =
+        (neural_enhancer, shadow_evaluator)
+    {
+        let mut neural_accepted = Vec::new();
+        for entry in accepted {
+            let prediction = enhancer.enhance(&entry);
+
+            match enhancer.mode() {
+                EnhancerMode::Shadow => {
+                    // Log prediction, pass entry unchanged
+                    evaluator.log_prediction(&entry, &prediction, true);
+                    neural_accepted.push(entry);
+                }
+                EnhancerMode::Active => {
+                    // Suppress if classified as Noise with high confidence
+                    if prediction.classification.category
+                        == unimatrix_learn::models::SignalCategory::Noise
+                        && prediction.classification.confidence > 0.8
+                    {
+                        evaluator.log_prediction(&entry, &prediction, false);
+                        ctx.stats.entries_rejected_total += 1;
+                        continue;
+                    }
+                    evaluator.log_prediction(&entry, &prediction, true);
+                    neural_accepted.push(entry);
+                }
+            }
+        }
+
+        // Persist shadow evaluations (batch INSERT)
+        let logs = evaluator.drain_evaluations();
+        if !logs.is_empty() {
+            let store_for_shadow = Arc::clone(store);
+            let _ = tokio::task::spawn_blocking(move || {
+                persist_shadow_evaluations(&store_for_shadow, &logs);
+            })
+            .await;
+        }
+
+        neural_accepted
+    } else {
+        accepted
+    };
+
     // 4. Quality gate checks 5-6: near-duplicate + contradiction (need embedding)
     #[allow(clippy::collapsible_if)]
     if !accepted.is_empty() {
@@ -364,6 +472,11 @@ async fn extraction_tick(
                 let rule_name = entry.source_rule.clone();
                 let source_features_str = entry.source_features.join(",");
 
+                // trust_source: "neural" when Active mode, else "auto"
+                let trust_source = match neural_enhancer {
+                    Some(e) if e.mode() == EnhancerMode::Active => "neural",
+                    _ => "auto",
+                };
                 let new_entry = NewEntry {
                     title: entry.title,
                     content: entry.content,
@@ -378,7 +491,7 @@ async fn extraction_tick(
                     status: unimatrix_core::Status::Active,
                     created_by: "background-tick".to_string(),
                     feature_cycle: String::new(),
-                    trust_source: "auto".to_string(),
+                    trust_source: trust_source.to_string(),
                 };
 
                 let store_for_entry = Arc::clone(&store_for_insert);
@@ -436,5 +549,13 @@ mod tests {
         let ts = now_secs();
         // Should be after 2024-01-01 (1704067200)
         assert!(ts > 1_704_067_200);
+    }
+
+    #[test]
+    fn init_neural_enhancer_returns_some() {
+        let result = init_neural_enhancer();
+        assert!(result.is_some());
+        let (enhancer, _evaluator) = result.unwrap();
+        assert_eq!(enhancer.mode(), EnhancerMode::Shadow);
     }
 }
