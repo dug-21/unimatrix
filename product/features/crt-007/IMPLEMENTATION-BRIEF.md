@@ -138,6 +138,24 @@ Add neural classification to the col-013 rule-based extraction pipeline. Three i
 | R-05 (bad promotion) | Unit tests for all promotion criteria in Wave 2 |
 | R-06 (model compat) | schema_version in ModelVersion, corruption fallback |
 
+## Component Map
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| learn-crate | pseudocode/learn-crate.md | test-plan/learn-crate.md |
+| model-trait | pseudocode/model-trait.md | test-plan/model-trait.md |
+| classifier-scorer | pseudocode/classifier-scorer.md | test-plan/classifier-scorer.md |
+| registry | pseudocode/registry.md | test-plan/registry.md |
+| shadow | pseudocode/shadow.md | test-plan/shadow.md |
+| integration | pseudocode/integration.md | test-plan/integration.md |
+
+## Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
 ## Estimated Scope
 
 ~800 lines total:
