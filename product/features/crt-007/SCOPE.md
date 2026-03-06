@@ -12,8 +12,8 @@ crt-007 bridges both gaps: it extracts shared training primitives from unimatrix
 
 1. Extract shared training infrastructure (`TrainingReservoir`, `EwcState`, `ModelRegistry`, persistence helpers) from `unimatrix-adapt` into a new `unimatrix-learn` crate consumed by both `unimatrix-adapt` (MicroLoRA) and the new extraction models
 2. Refactor `unimatrix-adapt` to consume `unimatrix-learn` primitives instead of its own copies (~200 lines moved, not rewritten; all existing adapt tests pass)
-3. Implement a Signal Classifier MLP (~5MB) via ruv-fann that classifies signal digests into `convention | pattern | gap | dead | noise` categories
-4. Implement a Convention Scorer MLP (~2MB) via ruv-fann that scores cross-feature pattern confidence (0.0-1.0)
+3. Implement a Signal Classifier MLP (~5MB) via burn that classifies signal digests into `convention | pattern | gap | dead | noise` categories
+4. Implement a Convention Scorer MLP (~2MB) via burn that scores cross-feature pattern confidence (0.0-1.0)
 5. Integrate neural models into the col-013 extraction pipeline as an enhancement layer (rules produce signal digests, models classify/score them)
 6. Build shadow mode infrastructure: models run alongside rules, predictions logged but not stored, with precision/recall comparison against rule-only extraction
 7. Implement model versioning (production/shadow/previous) with auto-rollback on accuracy regression (>5% drop)
@@ -29,7 +29,7 @@ crt-007 bridges both gaps: it extracts shared training primitives from unimatrix
 - **New MCP tools** (e.g., `context_review`) -- deferred to crt-009
 - **GPU acceleration** -- CPU-only; models are small enough (<5s inference, <5s training)
 - **Multi-repository model sharing** -- per-repo scope; models live in `~/.unimatrix/{project_hash}/models/`
-- **Burn or Candle framework** -- ruv-fann is the initial framework; framework migration is a crt-008/009 concern if RPROP proves insufficient
+- **Candle framework** -- burn is the selected framework; Candle evaluated but burn's `TrainStep` trait and autodiff better fit the self-learning roadmap
 - **Daemon mode** -- models run within the session-scoped server process
 
 ## Background Research
@@ -48,18 +48,18 @@ The `unimatrix-adapt` crate implements the full continuous learning pipeline for
 
 The reservoir sampling, EWC++ regularization, and persistence helpers are generic. The `MicroLoRA`-specific code (lora.rs, prototypes.rs, episodic.rs, InfoNCE loss) stays in unimatrix-adapt. The service orchestrator stays but is refactored to use shared primitives.
 
-### ruv-fann (v0.2.0)
+### burn
 
-Pure Rust neural network library providing:
-- MLP construction (layer sizes, activations)
-- Forward pass (inference)
-- RPROP training (well-suited for small batch incremental updates)
-- Sigmoid-symmetric activation
-- Model save/load with metadata
-- Optional rayon parallelism
-- MIT/Apache-2.0 licensed, ~4K downloads
+Pure Rust deep learning framework providing:
+- Declarative module system (`nn::Linear`, `nn::Relu`, etc.)
+- Full training loop ownership via `TrainStep` trait — custom loss, gradient injection, optimizer control
+- Autodiff backend — gradients flow through any tensor operation (including EWC penalty) natively
+- Model save/load with versioning (`burn::record`)
+- Multiple backends (NdArray for CPU, wgpu for GPU — CPU-only for Unimatrix)
+- ONNX import/export
+- Active ecosystem, well-maintained, MIT/Apache-2.0 licensed
 
-**Risk**: Low download count suggests limited production validation. Mitigation: fall back to `ndarray` + hand-rolled forward/backward passes following unimatrix-adapt's proven approach (which already implements gradient computation in pure Rust with no ML framework dependency).
+**Why burn over ruv-fann**: ruv-fann's RPROP training is a black box — cannot inject EWC gradients (crt-008), cannot implement Siamese shared-weight architecture (crt-009). burn gives full training loop control while still providing topology-agnostic model definition. See Resolved Question #1.
 
 ### Signal Classifier Architecture
 
@@ -109,11 +109,11 @@ In shadow mode, the neural branch logs predictions but does not influence the qu
 
 ### Constraints Discovered
 
-- `unimatrix-adapt` uses `ndarray` for matrix operations; ruv-fann has its own tensor representation -- bridging types needed
+- `unimatrix-adapt` uses `ndarray` for matrix operations; burn has its own tensor type — bridging at the `Vec<f32>` boundary
 - The extraction pipeline (col-013) runs in the background maintenance tick; neural model inference must complete within the tick budget (~1 hour interval, but individual operations should be <100ms)
 - Model files live in `~/.unimatrix/{project_hash}/models/` alongside existing `adaptation.state`
 - The `TrainingReservoir` in unimatrix-adapt is currently typed to `TrainingPair` (co-access pairs); the shared version must be generic over the sample type
-- `EwcState` currently takes `Array2<f32>` gradient matrices (MicroLoRA shape); the shared version needs to work with flat parameter vectors (ruv-fann models)
+- `EwcState` currently takes `Array2<f32>` gradient matrices (MicroLoRA shape); the shared version needs to work with flat parameter vectors (burn models)
 - Shadow mode requires persisting evaluation logs and metrics across sessions (simple SQLite table or flat file)
 
 ## Proposed Approach
@@ -129,11 +129,11 @@ New crate `crates/unimatrix-learn/` containing:
 
 Refactor `unimatrix-adapt` to depend on `unimatrix-learn` and use shared primitives. All 174+ existing adapt tests must pass.
 
-### Phase 2: Neural Models (ruv-fann Integration)
+### Phase 2: Neural Models (burn Integration)
 
-New module in a suitable crate (likely `unimatrix-engine` alongside extraction logic, or a new `unimatrix-neural` crate):
-- `SignalClassifier` wrapping a ruv-fann MLP with hand-tuned baseline weights
-- `ConventionScorer` wrapping a ruv-fann MLP with hand-tuned baseline weights
+New module in `unimatrix-learn` (resolved question #2):
+- `SignalClassifier` as a burn module (`nn::Linear` layers) with hand-tuned baseline weights
+- `ConventionScorer` as a burn module (`nn::Linear` layers) with hand-tuned baseline weights
 - `SignalDigest` struct: the structured feature vector fed to models
 - Input normalization (feature scaling to [0,1] range)
 - Cold-start weight initialization biased toward conservative classification
@@ -159,8 +159,8 @@ New module in a suitable crate (likely `unimatrix-engine` alongside extraction l
 - AC-01: `unimatrix-learn` crate exists with `TrainingReservoir<T>`, `EwcState`, `ModelRegistry`, and persistence helpers
 - AC-02: `unimatrix-adapt` depends on `unimatrix-learn` and uses shared `TrainingReservoir<T>` and `EwcState` (no duplicated implementations)
 - AC-03: All existing unimatrix-adapt tests pass after refactoring
-- AC-04: Signal Classifier MLP constructed with hand-tuned baseline weights via ruv-fann (or ndarray fallback)
-- AC-05: Convention Scorer MLP constructed with hand-tuned baseline weights via ruv-fann (or ndarray fallback)
+- AC-04: Signal Classifier MLP constructed with hand-tuned baseline weights via burn
+- AC-05: Convention Scorer MLP constructed with hand-tuned baseline weights via burn
 - AC-06: `SignalDigest` struct defined with all input features for both models
 - AC-07: Classifier inference produces probability distribution over 5 categories in <50ms
 - AC-08: Scorer inference produces convention confidence in <10ms
@@ -180,14 +180,14 @@ New module in a suitable crate (likely `unimatrix-engine` alongside extraction l
 - **col-013 dependency**: Extraction pipeline and background maintenance tick must be complete and merged
 - **crt-006 dependency**: `unimatrix-adapt` must exist to be refactored
 - **No breaking changes**: `unimatrix-adapt` public API unchanged; only internal implementation moves to shared crate
-- **Binary size**: ruv-fann adds ~200KB to binary; model files are runtime artifacts (~7MB total for both models)
+- **Binary size**: burn (NdArray backend, CPU-only) adds to binary size; model files are runtime artifacts (~7MB total for both models)
 - **CPU only**: No GPU dependencies. All inference and (future) training runs on CPU
 - **Per-repo isolation**: Model state is project-scoped via `{project_hash}` directory
 - **~800 lines total**: ~250 shared infrastructure extraction, ~350 neural models, ~200 shadow mode (per ASS-015 scoping)
 
 ## Resolved Questions
 
-1. **ruv-fann vs ndarray**: **Resolved: ruv-fann first, with clear exit ramps.** The value of ruv-fann is not saving ~130 lines on crt-007's two models — it's topology-agnostic training across the full model zoo (5+ models planned across crt-007/008/009: Signal Classifier, Convention Scorer, Duplicate Detector, Pattern Merger, Entry Writer Scorer). Each new model with ndarray requires hand-rolled forward/backward passes and gradient verification per topology. ruv-fann provides declarative topology definition with correct training for any architecture. **Exit ramps if ruv-fann proves insufficient**: (a) vendor the crate and fix issues directly, or (b) fall back to ndarray hand-rolled approach (proven by unimatrix-adapt's MicroLoRA). Both are bounded efforts given model sizes (<50MB). The dependency risk is accepted and mitigated, not eliminated.
+1. **ML framework**: **Resolved: burn (not ruv-fann or ndarray).** Originally scoped as "ruv-fann first, with exit ramps." Exit ramp exercised mid-implementation when ruv-fann's black-box RPROP training was found to be fundamentally incompatible with the self-learning roadmap: (a) cannot access loss gradients before weight update — prevents EWC gradient injection required by crt-008, (b) cannot modify training loop — prevents custom optimizer strategies, (c) opaque network API blocks Siamese MLP shared-weight architecture required by crt-009 Duplicate Detector. **burn solves all three**: full training loop ownership via `TrainStep` trait, autodiff computes gradients through EWC penalty natively (no approximation), `nn::Linear` + shared module references support all crt-009 architectures. burn is pure Rust, active ecosystem, well-maintained, supports ONNX export. The topology-agnostic training value originally attributed to ruv-fann applies equally to burn — with the critical addition of training loop transparency. **ndarray remains** in unimatrix-learn for shared infra (reservoir, EWC state vectors) where full tensor/autodiff is unnecessary.
 
 2. **Crate placement**: **Resolved: models live in `unimatrix-learn`.** Through the crt-008/009 lens, `unimatrix-learn` becomes "the ML crate" — shared training infra (reservoir, EWC++, model registry) plus all models (5+ across crt-007/008/009). The extraction pipeline in `unimatrix-engine` calls into `unimatrix-learn` for classification/scoring but doesn't own models. crt-009 adds models to `unimatrix-learn` without touching the extraction crate. Clean separation: domain logic (extraction rules) vs ML logic (model zoo + training).
 
@@ -201,6 +201,10 @@ New module in a suitable crate (likely `unimatrix-engine` alongside extraction l
 
 (All resolved — see above.)
 
+## Scope Change Log
+
+**2026-03-06 — Framework pivot (ruv-fann → burn):** Human identified ruv-fann's black-box RPROP as fundamentally incompatible with the self-learning roadmap during Stage 3b implementation. Exit ramp exercised as designed. All design artifacts beyond SCOPE.md removed; architecture, specification, pseudocode, and implementation to be re-derived from updated scope. 78% of implementation work (shared infra, digest, registry, shadow) is framework-agnostic and conceptually survives — only classifier/scorer/model-trait components change. Partial implementation stashed as `crt-007 partial implementation (pre-burn pivot)`.
+
 ## Tracking
 
-GitHub Issue to be created during Session 1 synthesis phase.
+GitHub Issue: #109
