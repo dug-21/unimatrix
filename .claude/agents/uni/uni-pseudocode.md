@@ -37,9 +37,10 @@ The architecture defines the integration surface. Your pseudocode MUST reference
 
 Read individual ADR files in `product/features/{feature-id}/architecture/ADR-*.md`. These contain design decisions your pseudocode must follow.
 
-### 3. Query Patterns
+### 3. Query Patterns and Procedures
 
 - Use `/query-patterns` to search for existing component patterns in affected crates — build on established patterns, note deviations
+- Use `/knowledge-search` (category: "procedure") to find design procedures relevant to your task. If server unavailable or no results, proceed without — this is non-blocking.
 
 ## Design Principles (How to Think)
 

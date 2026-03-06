@@ -1,51 +1,54 @@
 # uni-git — Git Conventions for Unimatrix
 
-## Branch Strategy
+## Branch-First Workflow
 
-- **Session 1 (Design)**: Commit design docs directly to `main` (markdown only, non-destructive)
-- **Session 2 (Delivery)**: Work on `feature/{phase}-{NNN}` branch. PR to main after Gate 3c.
+All workflows produce PRs. No workflow commits directly to main.
 
-## Branch Lifecycle
+### Branch Naming
+
+| Context | Pattern | Example | Creator |
+|---------|---------|---------|---------|
+| Feature design (Session 1) | `design/{phase}-{NNN}` | `design/crt-009` | uni-design-scrum-master |
+| Feature delivery (Session 2) | `feature/{phase}-{NNN}` | `feature/crt-009` | uni-implementation-scrum-master |
+| Bug fix | `bugfix/{issue}-{desc}` | `bugfix/52-embed-retry` | uni-bugfix-scrum-master |
+| Ad-hoc docs/config | `docs/{short-desc}` | `docs/update-vision` | Human or primary agent |
+| Workflow/process | `workflow/{desc}` | `workflow/base-002` | Human or primary agent |
+
+### Branch Lifecycle
 
 ```bash
-# Delivery Leader creates at Session 2 start
-git checkout -b feature/{phase}-{NNN}
+# Create branch at session start
+git checkout -b {branch-pattern}
 
-# Commit after each gate pass (Delivery Leader)
-git add <files> && git commit -m "{stage}: {description} (#{issue})"
-git push -u origin feature/{phase}-{NNN}
+# Commit after each gate pass or milestone
+git add <files> && git commit -m "{prefix}: {description} (#{issue})"
+git push -u origin {branch}
 
-# After Gate 3c — open PR
+# Open PR when session completes
 gh pr create --title "[{feature-id}] {title}" --body "..."
+
+# After merge: branch auto-deletes (repo setting enabled)
 ```
 
 ## Commit Format
 
 ```
-{stage}: {description} (#{issue})
+{prefix}: {description} (#{issue})
 ```
 
-| Stage | Prefix |
-|-------|--------|
-| Design docs (Session 1) | `design:` |
-| Stage 3a artifacts | `pseudocode:` |
-| Component implementation | `impl({component}):` |
-| Test execution | `test:` |
-| Gate fix (rework) | `fix({gate}):` |
+| Prefix | When |
+|--------|------|
+| `design:` | Design docs (Session 1) |
+| `pseudocode:` | Stage 3a artifacts |
+| `impl({component}):` | Component implementation |
+| `test:` | Test execution |
+| `fix({gate}):` | Gate rework |
+| `fix:` | Bug fix |
+| `docs:` | Standalone documentation changes |
 
-Examples:
-- `design: architecture + specification for nxs-001 (#12)`
-- `pseudocode: component design + test plans (#12)`
-- `impl(storage-engine): implement from pseudocode (#12)`
-- `test: risk coverage validation (#12)`
+## PR Merge Strategy
 
-## Commit Checkpoints (Delivery Leader)
-
-| When | What to Commit |
-|------|---------------|
-| After Gate 3a PASS | pseudocode/, test-plan/, updated IMPLEMENTATION-BRIEF.md |
-| After each Stage 3b agent returns | Component code + tests |
-| After Gate 3c PASS | testing/RISK-COVERAGE-REPORT.md, gate reports |
+**Rebase-only** (`gh pr merge --rebase`). Squash acceptable for single-commit PRs. Merge commits are disabled at repo level.
 
 ## PR Template
 
@@ -72,9 +75,31 @@ EOF
 )"
 ```
 
+## Worktree Isolation
+
+Coordinators use Claude Code's native `isolation: "worktree"` parameter when spawning worker agents. Claude Code automatically creates worktrees at `.claude/worktrees/agent-{id}/` and cleans up afterward.
+
+**Coordinator responsibilities:**
+- Spawn agents with `isolation: "worktree"` for parallel workstreams
+- Exit gate includes worktree cleanup: `git worktree remove .claude/worktrees/agent-{id}/`
+- If removal fails (dirty state): warn human, do NOT force-remove
+
+**Stale worktree recovery:** `git worktree prune` removes entries for deleted directories. Human can `git worktree remove --force` if needed.
+
+## Build Artifact Isolation
+
+| Binary | Location | Used by |
+|--------|----------|---------|
+| Installed | `~/.local/bin/unimatrix-server` | Hooks, MCP server |
+| Build artifact | `target/release/unimatrix-server` | Integration tests |
+
+- `cargo build --release` in a worktree does NOT affect `~/.local/bin/` or other worktrees (each worktree has its own `target/`)
+- To update the installed binary: `cargo install --path crates/unimatrix-server`
+- Integration tests in worktrees: set `UNIMATRIX_BINARY` to the worktree's own `target/release/unimatrix-server`
+
 ## Rules
 
 - Never force-push to main
 - Never commit `.env`, credentials, or build artifacts
 - Never skip pre-commit hooks (`--no-verify`)
-- Feature branches are deleted after merge
+- Feature branches auto-delete after merge

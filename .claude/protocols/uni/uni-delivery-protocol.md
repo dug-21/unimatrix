@@ -53,7 +53,8 @@ The Delivery Leader:
 1. Reads `product/features/{feature-id}/IMPLEMENTATION-BRIEF.md` — Component Map, ADR references, constraints
 2. Reads `product/features/{feature-id}/ACCEPTANCE-MAP.md` — AC verification methods
 3. Reads paths to the three source documents (listed in the brief)
-4. **Creates feature branch**: `git checkout -b feature/{phase}-{NNN}` (see `.claude/skills/uni-git/SKILL.md`)
+4. **Creates feature branch**: `git checkout -b feature/{phase}-{NNN}` (see `/uni-git`)
+5. Spawns worker agents with `isolation: "worktree"` for parallel workstreams (see `/uni-git` Worktree Isolation)
 
 ---
 
@@ -207,7 +208,9 @@ Task(subagent_type: "uni-rust-dev",
     ...same structure, with {component-2}'s pseudocode and test plan...")
 ```
 
-**Non-negotiable**: Each agent gets ONLY its own component's `pseudocode/{component}.md` and `test-plan/{component}.md`. Do NOT dump all pseudocode files into every agent. Do NOT combine multiple components into one agent. Stage 3b agents do NOT run or modify integration tests — that's Stage 3c.
+**MANDATORY — One Agent Per Component**: Each component in the Component Map gets its own agent. No grouping, no exceptions. This is mandatory for both speed (parallel execution) and context window management. Monolithic single-agent implementations are an anti-pattern that causes context exhaustion and silent quality loss.
+
+Each agent gets ONLY its own component's `pseudocode/{component}.md` and `test-plan/{component}.md`. Do NOT dump all pseudocode files into every agent. Stage 3b agents do NOT run or modify integration tests — that's Stage 3c.
 
 ### Gate 3b: Code Review
 
@@ -325,9 +328,10 @@ Task(subagent_type: "uni-validator",
 
 The Delivery Leader:
 1. Commits final artifacts (`test: risk coverage + gate reports (#{issue})`)
-2. Pushes feature branch and opens PR (see `.claude/skills/uni-git/SKILL.md` for PR template)
+2. Pushes feature branch and opens PR (see `/uni-git` for PR template)
 3. Updates GH Issue with PR link
-4. Returns to the human — **human reviews PR and merges**
+4. Spawns `uni-deploy-scrum-master` for automated security review and merge readiness (auto-chain)
+5. Combines impl + deploy results in the return to human
 
 ```bash
 # Commit final artifacts
@@ -339,26 +343,48 @@ git push -u origin feature/{phase}-{NNN}
 gh pr create --title "[{feature-id}] {title}" --body "..."
 ```
 
+### Auto-Chain: Deploy (after PR opens)
+
+Spawn `uni-deploy-scrum-master` with the PR details:
+
+```
+Agent(uni-deploy-scrum-master, "
+  Source: auto-chain from impl-scrum-master
+  PR: #{pr-number}
+  Feature: {feature-id}
+  GH Issue: #{issue-number}
+
+  Run your full review flow (gate verification, security review, merge readiness).
+  Return results for inclusion in the combined session return.")
+```
+
+**Error handling:**
+- Deploy spawn fails → return impl results only, note "deploy auto-chain failed"
+- Deploy returns BLOCKED → include blocking items in combined return
+- Deploy returns error → return impl results + deploy error, human decides
+
 **Return format:**
 ```
 SESSION 2 COMPLETE — Feature delivered.
 
-Gates:
-- Gate 3a (Design Review): PASS
-- Gate 3b (Code Review): PASS
-- Gate 3c (Risk Validation): PASS
+Gates: 3a PASS, 3b PASS, 3c PASS
+Security Review: {risk level} — {summary}
+Merge readiness: {READY | BLOCKED}
 
 Files created/modified: [paths]
 Tests: X passed, Y new
 Risk coverage: [summary]
+PR: {URL}
 GH Issue: {URL} (updated)
 
-Reports:
-- product/features/{id}/reports/gate-3a-report.md
-- product/features/{id}/reports/gate-3b-report.md
-- product/features/{id}/reports/gate-3c-report.md
-- product/features/{id}/testing/RISK-COVERAGE-REPORT.md
+Human action required: {Approve and merge | Address blocking items}.
 ```
+
+### Post-Delivery Review (Optional)
+
+After Phase 4, the Delivery Leader may optionally review for tech debt or cleanup opportunities discovered during implementation. If found, file GH Issues — do not include in this PR.
+
+If a reusable multi-step technique was used or discovered during this session, store it via `/store-procedure`.
 
 ---
 
@@ -394,8 +420,9 @@ Always truncate cargo output:
 cargo build --workspace 2>&1 | grep -A5 "^error" | head -20
 cargo build --workspace 2>&1 | tail -3
 
-# Test: summary only
+# Test: summary only (prefer JSON when available)
 cargo test --workspace 2>&1 | tail -30
+# Or: cargo test --workspace -- --format json 2>&1 | tail -30
 
 # Clippy: first warnings only
 cargo clippy --workspace -- -D warnings 2>&1 | head -30
@@ -428,7 +455,9 @@ DELIVERY LEADER (uni-scrum-master):
               ...wait...
               Task(uni-validator, Gate 3c)
               ...PASS → continue / FAIL → rework or stop...
-  Phase 4:    gh issue comment + return summary — SESSION 2 ENDS
+  Phase 4:    git commit + push + gh pr create
+              Agent(uni-deploy-scrum-master) — auto-chain security review
+              Combined return (impl + deploy) — SESSION 2 ENDS
 ```
 
 ---

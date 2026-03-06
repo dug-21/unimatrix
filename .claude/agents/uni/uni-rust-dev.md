@@ -45,9 +45,10 @@ Read the files specified in your spawn prompt:
 
 Read relevant ADRs in `architecture/ADR-*.md`. These are binding design decisions.
 
-### 3. Query Patterns
+### 3. Query Patterns and Procedures
 
 - Use `/query-patterns` to search for existing component patterns and conventions in affected crates
+- Use `/knowledge-search` (category: "procedure") to find procedural knowledge relevant to your task (e.g., "server integration file order," "crate bootstrapping sequence"). If server unavailable or no results, proceed without — this is non-blocking.
 
 ## Design Principles (How to Think)
 
