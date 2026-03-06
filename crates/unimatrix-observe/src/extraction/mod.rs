@@ -8,7 +8,9 @@ pub mod dead_knowledge;
 pub mod file_dependency;
 pub mod implicit_convention;
 pub mod knowledge_gap;
+pub mod neural;
 pub mod recurring_friction;
+pub mod shadow;
 
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};

@@ -2845,6 +2845,7 @@ dependencies = [
  "serde",
  "tempfile",
  "tracing",
+ "unimatrix-learn",
 ]
 
 [[package]]
@@ -2889,6 +2890,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "unimatrix-learn"
+version = "0.1.0"
+dependencies = [
+ "bincode 2.0.1",
+ "ndarray",
+ "rand",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tracing",
+]
+
+[[package]]
 name = "unimatrix-observe"
 version = "0.1.0"
 dependencies = [
@@ -2897,6 +2911,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "unimatrix-core",
+ "unimatrix-learn",
  "unimatrix-store",
 ]
 
@@ -2923,6 +2938,7 @@ dependencies = [
  "unimatrix-core",
  "unimatrix-embed",
  "unimatrix-engine",
+ "unimatrix-learn",
  "unimatrix-observe",
  "unimatrix-store",
  "unimatrix-vector",

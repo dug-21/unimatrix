@@ -21,6 +21,7 @@ unimatrix-vector = { path = "../unimatrix-vector" }
 unimatrix-embed = { path = "../unimatrix-embed" }
 unimatrix-adapt = { path = "../unimatrix-adapt" }
 unimatrix-observe = { path = "../unimatrix-observe" }
+unimatrix-learn = { path = "../unimatrix-learn" }
 
 nix = { version = "0.31", features = ["user"] }
 fs2 = "0.4"

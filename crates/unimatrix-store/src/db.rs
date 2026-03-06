@@ -222,7 +222,19 @@ fn create_tables(conn: &Connection) -> Result<()> {
             response_snippet TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_observations_session ON observations(session_id);
-        CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts_millis);",
+        CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts_millis);
+        CREATE TABLE IF NOT EXISTS shadow_evaluations (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp         INTEGER NOT NULL,
+            rule_name         TEXT    NOT NULL,
+            rule_category     TEXT    NOT NULL,
+            neural_category   TEXT    NOT NULL,
+            neural_confidence REAL    NOT NULL,
+            convention_score  REAL    NOT NULL,
+            rule_accepted     INTEGER NOT NULL,
+            digest            BLOB
+        );
+        CREATE INDEX IF NOT EXISTS idx_shadow_eval_ts ON shadow_evaluations(timestamp);",
     )
     .map_err(StoreError::Sqlite)?;
 
