@@ -1,4 +1,4 @@
-# Unimatrix — Product Vision & Feature Roadmap
+# Unimatrix — Product Vision & Roadmap
 
 ## Vision
 
@@ -17,350 +17,134 @@ Agent memory systems remember. Unimatrix ensures what agents remember is **trust
 
 The 10x story is not semantic search (ubiquitous) or local-first deployment (niche). It is the **auditable knowledge lifecycle** combined with **invisible delivery**: hash-chained correction histories with attribution, confidence evolution from real usage signals, contradiction detection across the knowledge base — and automatic injection of the right knowledge into every agent prompt without tool calls or agent cooperation. When an agent asks "how do I write integration tests?", the answer reflects what has actually worked, what has been corrected, and what the team has learned — not what someone wrote in a wiki six months ago. But the agent doesn't even need to ask: the knowledge arrives as ambient context, injected by hooks before the agent sees the prompt.
 
-This combination is architectural — it requires commitment from the data model up. Unimatrix strives for perfection.  The defensible position is: **Trust + Lifecycle + Integrity + Learning + Invisible Delivery**, delivered as a self-contained embedded engine with zero cloud dependency. The combination of trust and lifecycle becomes transformative when delivery is automatic — knowledge reaches agents as ambient context.
+This combination is architectural — it requires commitment from the data model up. The defensible position is: **Trust + Lifecycle + Integrity + Learning + Invisible Delivery**, delivered as a self-contained embedded engine with zero cloud dependency.
 
-**Cross-domain portability note (ASS-009):** The core engine is domain-agnostic. The `EntryRecord` schema, `QueryFilter` model, correction chains, and security fields impose no domain coupling. Domain-specific behavior is confined to four server-level configuration items (category allowlist, server instructions, agent bootstrap, content scanning patterns). This means the value proposition above applies to any domain where knowledge evolves, requires trust, and benefits from lifecycle management — not just software development. See `product/research/ass-009/` for the full analysis.
-
----
-
-## Strategic Approach
-
-Start with Proposal A (Knowledge Oracle) — a focused, testable knowledge store. Evolve incrementally toward Proposal C (Workflow-Aware Hybrid) — adding usage tracking, outcome analysis, retrospective intelligence, and eventually thin-shell agent files. Each milestone is independently shippable and provable. The schema pre-seeds all known future fields from day 1, covering M2–M5 without schema changes. When new fields are added (M6+), a `schema_version` counter triggers automatic scan-and-rewrite migration on database open — fast at Unimatrix scale.
-
-**Learning from Genius (2026-03-01):** Research comparing Unimatrix with claude-flow (Ruflo v3.5) revealed complementary strengths. Unimatrix built a sophisticated knowledge engine — redb storage, HNSW vectors, confidence evolution, contradiction detection — but agents must explicitly call `context_briefing` to benefit, and most don't. claude-flow solved the delivery problem via Claude Code lifecycle hooks (context injection on every prompt, compaction resilience) but the knowledge layer is more difficult to navigate for some.  The strategic move: adopt claude-flow's hook-driven delivery patterns with Unimatrix's engine (Which also has its roots in Ruv's Ruvector). See Unimatrix entries #190, #191 for the full analysis.
-
-Security is a cross-cutting concern woven into existing features, not a separate milestone. Foundational security fields are added to EntryRecord in nxs-004 (before MCP writes entries). Agent identity, audit logging, input validation, and capability checks are integrated into the Vinculum phase. Advanced defenses (contradiction detection, anomaly detection, behavioral analysis) align with the Cortical phase. See [Security Cross-Cutting Concerns](#security-cross-cutting-concerns) and `product/research/mcp-security/` for the full analysis.
+**Cross-domain portability (ASS-009):** The core engine is domain-agnostic. Domain-specific behavior is confined to four server-level configuration items (category allowlist, server instructions, agent bootstrap, content scanning patterns). The value proposition applies to any domain where knowledge evolves, requires trust, and benefits from lifecycle management. See `product/research/ass-009/`.
 
 ---
 
-## Feature Roadmap
+## What We've Built
 
-### Milestone 1: Foundation (Nexus Phase — `nxs`)
+36 features shipped across 5 phases. ~1,600+ tests. 10 MCP tools + 1 retrospective tool + 1 agent enrollment tool. SQLite-backed with in-memory HNSW vector index. Hook-driven delivery pipeline operational.
 
-**Goal**: Ship a working knowledge store that agents can read from and write to via MCP.
+### Storage & Schema (Nexus — `nxs`)
 
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Embedded Storage Engine | `nxs-001` | redb-backed entry store with 8 tables (ENTRIES, TOPIC_INDEX, CATEGORY_INDEX, TAG_INDEX, TIME_INDEX, STATUS_INDEX, VECTOR_MAP, COUNTERS). bincode v2 serialization. EntryRecord schema pre-seeds all known future fields (M2–M5). Schema versioning via COUNTERS table with scan-and-rewrite migration when fields are added. |
-| Vector Index | `nxs-002` | hnsw_rs integration — 384-dimension embeddings (all-MiniLM-L6-v2), DistDot, 16 max connections, ef_construction=200. VECTOR_MAP bridge table between entry IDs and hnsw data IDs. |
-| Embedding Pipeline | `nxs-003` | Local embedding generation via ONNX runtime or API-based fallback. Title+content concatenation strategy. Batch embedding on import. |
-| Core Traits & Domain Adapters | `nxs-004` | Storage traits (EntryStore, VectorStore, IndexStore) in core crate. Domain adapter pattern — implementations in domain modules. `spawn_blocking` with `Arc<Database>` for async. **Security schema**: Add 7 fields to EntryRecord — `created_by`, `modified_by`, `content_hash` (SHA-256), `previous_hash`, `version` (u32), `feature_cycle`, `trust_source` ("agent"\|"human"\|"system"). Implement scan-and-rewrite migration capability (first schema evolution event — establishes the migration pattern for all future field additions). |
-| SQLite Storage Engine | `nxs-005` | ✅ **COMPLETE.** Replace redb with SQLite (rusqlite, `bundled` feature) as the storage backend behind a Cargo feature flag (`backend-sqlite`). redb remains the default for safe backout. **Zero functional change** — all 10 MCP tools return identical results, all 17 tables preserved as SQLite tables with equivalent schemas, bincode blob serialization unchanged. HNSW vector index remains in-memory with VECTOR_MAP bridge table in SQLite. **Dual-backend parity testing**: 234 redb tests + 87 SQLite tests + 157 infra-001 integration tests against SQLite binary all pass. **Scope**: unimatrix-store crate (10 new SQLite module files) + transitional compatibility layer in unimatrix-server (cfg-gated redb/sqlite imports). **Discovery**: Server crate bypasses the Store API in ~8 files, directly coupling to redb transaction internals. Addressed with transitional compat layer; proper decoupling tracked as nxs-007 (#97). See `product/features/nxs-005/`. |
-| SQLite Cutover | `nxs-006` | ✅ **COMPLETE.** Migrate production data from redb to SQLite and make SQLite the sole backend. Export/import subcommands on `unimatrix-server`. redb removed from workspace, `rusqlite` unconditional. See `product/features/nxs-006/`. PR #100, GH #98. |
-| redb Removal & Store Flattening | `nxs-007` | ✅ **COMPLETE.** Remove redb backend code, flatten SQLite module to sole storage engine. Relocate redb-pattern abstractions (typed table handles, dispatch traits) into compatibility layer for subsequent normalization. ~3,100 lines removed. See `product/features/nxs-007/`. PR #102, GH #99. |
-| Schema Normalization | `nxs-008` | ✅ **COMPLETE.** Decompose 7 tables from bincode blobs to SQL columns (ENTRIES 24 cols, entry_tags junction, CO_ACCESS, SESSIONS, INJECTION_LOG, SIGNAL_QUEUE, AGENT_REGISTRY, AUDIT_LOG). Eliminate 5 manual index tables → SQL CREATE INDEX. Replace client-side HashSet intersection with SQL WHERE clauses. Remove compat layer (handles.rs, dispatch.rs, tables.rs). Schema v5→v6 automatic migration with backup. ~800 net lines removed. 8 ADRs. See `product/features/nxs-008/`. PR #105, GH #104. |
+SQLite storage engine with normalized schema (24-column entries table, junction tables, SQL indexes). HNSW vector index (384-dim, all-MiniLM-L6-v2 embeddings). Started on redb, migrated to SQLite for analytical query support. Schema v6. 8 features: nxs-001 through nxs-008.
 
-**Status (2026-03-05):** nxs-001 through nxs-008 ✅ ALL COMPLETE. Nexus phase finished.
+### MCP Server (Vinculum — `vnc`)
 
-**Ships**: Functional storage + retrieval backend on normalized SQLite. SQL-native queries replace client-side filtering. Schema evolution via `ALTER TABLE ADD COLUMN` (no more scan-and-rewrite). Foundation ready for multi-table JOIN analytics (entry effectiveness, session health).
+rmcp 0.16 SDK, stdio transport. 12 tools: `context_{search, lookup, get, store, correct, deprecate, status, briefing, quarantine, enroll, retrospective}`. Unified service layer (SearchService, StoreService, BriefingService, ConfidenceService) with SecurityGateway (S1-S5). Content scanning (~50 injection + PII patterns). Agent registry with trust levels and capability checks. PID lifecycle hardening. 9 features: vnc-001 through vnc-009.
 
-**Vector architecture note (nxs-005):** HNSW remains the vector search engine. sqlite-vec was evaluated and rejected for Unimatrix's use case: (1) sqlite-vec is brute-force only — O(n) scan, adequate at ~53 entries but scales poorly past 10K. (2) The atomic compact flow (ADR-004, build-new-then-swap with RwLock) has no SQLite equivalent — sqlite-vec would require transaction-based compaction with weaker atomicity guarantees. (3) crt-006 (Adaptive Embedding) is architecturally coupled to in-memory HNSW — MicroLoRA adaptation, generation-tracked staleness, and lazy re-adaptation all assume mutable in-memory indexing. (4) sqlite-vec uses i64 row IDs; Unimatrix entry IDs are u64. The VECTOR_MAP bridge table moves trivially from redb to SQLite (it's a simple KV table), preserving the existing crash-safe source-of-truth pattern. See `product/research/ass-016/retrospective-data-architecture.md`.
+### Learning & Drift (Cortical — `crt`)
 
----
+Six-factor additive confidence formula (base, usage, freshness, helpfulness, correction, trust — weights sum to 0.92, co-access 0.08 at query time). Wilson score helpfulness with min-5-votes guard. Contradiction detection. Co-access boosting. Coherence gate (lambda health metric from 4 dimensions). Adaptive embedding pipeline (MicroLoRA + prototype adjustment on frozen ONNX). Status-aware retrieval with topology-derived penalties for deprecated/superseded entries. Neural extraction pipeline (Signal Classifier + Convention Scorer MLPs) with continuous self-retraining from utilization feedback. 8 features: crt-001 through crt-008, crt-010.
 
-### Milestone 2: MCP Server (Vinculum Phase — `vnc`)
+### Orchestration & Delivery (Collective — `col`)
 
-**Goal**: Expose the knowledge engine to Claude Code via MCP stdio transport.
+Hook-driven delivery: automatic context injection on every prompt (UserPromptSubmit), compaction resilience (PreCompact), closed-loop confidence feedback (PostToolUse/Stop), full session lifecycle persistence. Retrospective pipeline with 21 detection rules across 4 hotspot categories and historical baseline comparison. Observation data unified in SQLite. Rule-based knowledge extraction engine (5 rules + 6-check quality gate) with automatic background maintenance. 11 features: col-001, col-002, col-002b, col-006 through col-010, col-010b, col-012, col-013.
 
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| MCP Server Core | `vnc-001` | rmcp 0.16 SDK, stdio transport. Server `instructions` field for behavioral driving (70-85% agent compliance). Auto-init on first `context_store`. Project isolation via `~/.unimatrix/{project_hash}/`. **Persistence note**: vnc-001 must coordinate graceful shutdown — calling both `Store::compact()` (nxs-001) and `VectorIndex::dump()` (nxs-002) to ensure all data is persisted. Both are explicit-only; neither auto-persists on drop. **Security infrastructure**: AGENT_REGISTRY table (agent_id, trust_level, capabilities, allowed_topics/categories, enrollment metadata). AUDIT_LOG table (append-only — request_id, session_id, agent_id, operation, target_ids, outcome). Agent identification via `agent_id` tool parameter for stdio (design internal plumbing transport-agnostic for future `_meta` field and OAuth 2.1 bearer token support on HTTPS). Unknown agents auto-enroll as Restricted (read-only). |
-| v0.1 Tools | `vnc-002` | `context_search` (semantic, query-driven, returns top-k with similarity scores), `context_lookup` (deterministic, metadata-driven, category/topic/tags filters), `context_store` (with near-duplicate detection at 0.92 threshold), `context_get` (full entry by ID). Dual response format: compact markdown in `content`, JSON in `structuredContent`. **Security**: Input validation on all tool params (max lengths, pattern matching, no control chars). Category allowlist enforcement (initial: outcome, lesson-learned, decision, convention, pattern, procedure — extensible at runtime). Content scanning on `context_store` writes (~50 injection patterns + PII detection, native Rust `regex` crate). Output framing on read tools to distinguish data from instructions. Capability check per tool call against AGENT_REGISTRY (Read for search/lookup/get, Write for store). |
-| v0.2 Tools | `vnc-003` | `context_correct` (supersede with correction chain), `context_deprecate` (mark irrelevant), `context_status` (health metrics — counts, age distribution, stale entries, duplicate candidates), `context_briefing` (compiled orientation — lookup duties + conventions + search task-relevant patterns in one call, <2000 token target). **Security**: Content scanning on `context_correct` writes. Capability checks (Write for correct/deprecate, Admin for status, Read for briefing). Security metrics in `context_status` — entries by trust_source, entries without attribution, write frequency by agent, content_hash mismatches. |
-| Server Process Reliability | `vnc-004` | PID file lifecycle hardening via RAII `PidGuard` with `fs2` advisory locking (flock). Process identity verification (`/proc/{pid}/cmdline` on Linux) before SIGTERM of stale processes. `DatabaseLocked` error variant replaces `process::exit(1)` — all exit paths use Rust error propagation. Poison recovery for `CategoryAllowlist` RwLock (`.unwrap_or_else(\|e\| e.into_inner())`). Eliminates cascading process lifecycle failures during extended sessions. Bug fix for #52. |
-| Config Externalization | `vnc-005` | Extract domain-specific constants into `ServerConfig` loaded from `~/.unimatrix/config.toml` or per-project config file. Four items externalized: (1) initial category allowlist (replace `INITIAL_CATEGORIES` const), (2) server instructions text (replace `SERVER_INSTRUCTIONS` const), (3) default agent bootstrap (replace hardcoded `bootstrap_defaults()`), (4) content scanning pattern extensions (additive to built-in patterns). Fall back to current dev-focused defaults when no config file present — zero breaking changes. Enables multi-domain deployment (SRE, product management, scientific research, etc.) by swapping a config file, not rebuilding the binary. **Does not block M4** — can be implemented in parallel or between features. See `product/research/ass-009/` for domain opportunity analysis. |
-| Service Layer + Security Gateway | `vnc-006` | ✅ **COMPLETE.** Extract transport-agnostic service layer from duplicated MCP/UDS business logic. SearchService, ConfidenceService, Security Gateway (S1-S5). Closes UDS security gaps (F-25/F-27/F-28). PR #83. |
-| Briefing Unification | `vnc-007` | ✅ **COMPLETE.** BriefingService unifying MCP and UDS briefing paths. StoreService with content scan and rate limiting. UDS-native briefing delivery. PR #85. |
-| Module Reorganization | `vnc-008` | ✅ **COMPLETE.** Restructure 23 flat modules into `services/`, `mcp/`, `uds/`, `infra/` groups. ToolContext extraction. Unified capability model with `SessionWrite`. PR #87. |
-| Cross-Path Convergence | `vnc-009` | ✅ **COMPLETE.** Unified UsageService, session-aware MCP, search rate limiting, `#[derive(Serialize)]` on StatusReport, UDS auth failure audit logging. PR #90. |
+### Agent Integration (Alcove — `alc`)
 
-**Ships**: Agents can search, store, correct, and receive briefings. Knowledge accumulates across features. Server process reliability ensures stable long-running sessions. Config externalization enables multi-domain deployment. Service layer extraction unifies dual-path architecture, closes UDS security gaps, and positions for future transport additions (HTTP/API).
-
-**Architect note — database layer**: The service layer extraction (vnc-006–009) abstracts business logic away from direct storage access, which is a prerequisite for any future database replacement. nxs-005 (SQLite Storage Engine) is now scoped as a parallel track — it changes only unimatrix-store, while vnc-006–009 changes only unimatrix-server. The refactoring must not introduce new direct-storage coupling. StoreService and `Store::insert_in_txn` should be the only paths to the database from the service layer. Architects scoping vnc-006 design should treat storage abstraction as a constraint.
+Agent enrollment tool with protected agents, self-lockout prevention, strict capability parsing. Three-layer architecture established: Skills (platform-native), Agent defs (platform-native), Knowledge (Unimatrix). 2 features: alc-001 (research), alc-002.
 
 ---
 
-### Milestone 3: Agent Integration (Alcove Phase — `alc`)
+## What's Next
 
-**Goal**: Agent identity, enrollment, and behavioral driving so agents reliably use Unimatrix.
+### Hardening Pass
 
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Knowledge Bootstrap | `alc-001` | Research spike: how Unimatrix integrates into Claude workflow. Established the three-layer architecture (Skills as platform-native `/command`, Agent defs as platform-native Task spawning, Knowledge in Unimatrix entries). Key finding: `context_briefing` returns unordered knowledge, not choreography — workflow sequencing must stay in agent defs. Reactive protocol delivery (v3) designed but deferred. See `product/research/ass-011/`. |
-| Agent Enrollment Tool | `alc-002` | `context_enroll` MCP tool (11th tool) — Admin-level agents can enroll new agents or update trust levels and capabilities at runtime. Protected agents ("system", "human") cannot be modified. Self-lockout prevention. Strict parsing with case-insensitive trust levels/capabilities. Fixes #46 (spawned agents blocked from writes). |
-| CLAUDE.md Integration | `alc-003` | `unimatrix init` CLI command appends Unimatrix block to CLAUDE.md. Reinforces server instructions (~90% compliance). Documents category conventions. |
-| Starter Kit | `alc-004` | Repo template with generic agents (architect, developer, tester, validator), standard protocols (planning, implementation), and Unimatrix-aware agent structure. Reduces new project setup pain. |
+Consolidate before expanding. 25 open issues spanning bugs, structural debt, and test gaps accumulated across 36 features. Priority: fix correctness issues, close test coverage gaps, reduce structural debt. Scope TBD — curated from open issue backlog.
 
-**Status (2026-03-01):** alc-001 complete (research). alc-002 complete (#46, PR #55). alc-003/004 deferred — agent integration is achieved manually via CLAUDE.md and agent file conventions.
+Key candidates:
+- **Bugs:** Zombie test processes (#122), feature ID validation (#79), session count over-counting (#75), quarantine status transitions (#43)
+- **Structural debt:** Direct transaction coupling (#97), observation metrics normalization (#103), training infrastructure dedup (#113), VectorIndex Box::leak (#4)
+- **Test gaps:** Server reliability suite (#93), col-007 coverage (#71), latency benchmarks (#70)
+- **Quality-of-life:** Status scan optimization (#17), outcome stats performance (#42), text-format retrospective (#91)
 
-**Ships**: Agent enrollment and identity management. Manual integration patterns established. CLI formalization (alc-003/004) deferred until external adoption matters.
+### Intelligence Pipeline Testing
 
----
+Research in progress. The self-learning pipeline (crt-007/008 neural extraction, col-013 rule-based extraction, confidence evolution, co-access boosting) represents a significant amount of intelligence capability that needs end-to-end validation under real conditions. Goal: confirm the pipeline produces trustworthy, useful knowledge autonomously.
 
-### Milestone 4: Learning & Drift (Cortical Phase — `crt`)
+### petgraph Integration
 
-**Goal**: Turn passive knowledge accumulation into active learning — the bridge from Proposal A to C.
+Research complete (ASS-017, `product/research/ass-017/`). Replace hardcoded deprecation/supersession penalty constants (0.7x/0.5x) with graph-topology-derived scoring. Enables multi-hop supersession traversal, co-access transitivity, connected component analysis for coherence gate, correction chain quality scoring, and cycle detection as integrity check. Three-phase rollout: supersession graph → co-access graph → unified knowledge graph. Technical risk: LOW.
 
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Usage Tracking | `crt-001` | USAGE_LOG table — every retrieval logged with `(entry_id, timestamp, agent_role, feature_id, tool, helpful)`. FEATURE_ENTRIES multimap links features to entries used. Populate `usage_count`, `helpful_count`, `last_used_at` on EntryRecord. **Security alignment**: Enables write rate limiting per agent and behavioral baseline establishment for anomaly detection. |
-| Confidence Evolution | `crt-002` | Helpfulness factor added to confidence formula: `confidence = base * usage * freshness * correction * helpfulness`. Before usage data, factor = 1.0 (neutral). Confidence boost (+0.03/access), time decay (-0.005/hr), floor at 0.1. **Gaming resistance note (from crt-001 design):** The multiplicative formula should be replaced with an additive weighted composite of independent signals, each clamped to [0,1], to bound the impact of gaming any single factor. Usage factor must use log-transform (not linear access_count). Helpfulness factor must use Wilson score lower bound (not naive ratio) with a **minimum sample size** (e.g., n >= 5 votes) before deviating from the neutral prior (0.5) — this defends against both boosting (helpful-flag stuffing) and active suppression (systematic unhelpful voting to degrade entry quality). See `product/research/ass-008/USAGE-TRACKING-RESEARCH.md` for full analysis and recommended formula. |
-| Contradiction Detection | `crt-003` | Flag entries with high embedding similarity (>0.85) but conflicting content. Surface during `context_status`. Similar to ReasoningBank's contradiction pipeline — cheap, high value. **Security alignment**: This is also the primary defense against semantic poisoning — the highest-severity knowledge integrity risk (see `product/research/mcp-security/`). Extend with embedding consistency checks (re-embed and compare to detect relevance hijacking) and entry quarantine status in StatusIndex. |
-| Co-Access Boosting | `crt-004` | Track entries frequently retrieved together. Boost co-accessed entries in search results. Lightweight version of PageRank on access graph — 80% of value, 20% of complexity. |
-| Coherence Gate | `crt-005` | Unified structural health metric (λ) monitoring knowledge base coherence across four dimensions and gating autonomous self-maintenance. **Dimension 1 — Confidence staleness**: `EntryRecord.confidence` is computed at mutation time and stored as f32, but the freshness component (`e^(-age/168h)`) decays with real time. Entries that haven't been touched become increasingly overconfident. crt-005 introduces lazy confidence refresh — on `context_status` or `context_search`, entries whose stored confidence age exceeds a staleness threshold (configurable, default 24h) are recomputed. No schema change — reuses existing `confidence` field. **Dimension 2 — HNSW graph degradation**: Re-embeds (from `context_correct` and embedding consistency checks) add new points to the hnsw_rs graph but leave old points as stale routing nodes. `stale_count()` is tracked (nxs-002) but never triggers cleanup. crt-005 adds graph compaction — when stale ratio exceeds a threshold (default 10%), rebuild affected graph regions. Piggybacked on `context_status` calls (same pattern as crt-004 co-access staleness cleanup). **Dimension 3 — Embedding consistency**: Extends the opt-in `check_embedding_consistency` from crt-003 into a coherence signal. Track the ratio of entries failing the 0.99 self-similarity threshold. A rising inconsistency ratio indicates model drift or content corruption. **Dimension 4 — Contradiction density**: Track the ratio of quarantined entries to active entries. A rising ratio signals knowledge base quality degradation. **Coherence metric**: Composite λ score (0.0–1.0) combining all four dimensions, exposed as `coherence` field in `StatusReport`. Individual dimension scores also exposed for diagnostics. **Maintenance gating**: When λ drops below configurable threshold (default 0.8), `context_status` response includes maintenance recommendations. Maintenance operations execute inline during `context_status` calls — no background threads, no timers, no new async patterns. **Ordering note**: Should complete before col-002 (Retrospective Pipeline) — col-002 draws conclusions from knowledge quality signals; stale confidence and degraded HNSW graphs produce misleading retrospective insights. **Mathematical foundation**: Structural de-alignment via irrational constants (Weyl equidistribution theorem) informs the design of thresholds that avoid binary-aligned resonance in scoring — see `product/research/ass-012/` for full analysis. |
-| Adaptive Embedding | `crt-006` | 4-stage adaptation pipeline on frozen ONNX embeddings: MicroLoRA (rank 2-8, ~3K params for rank=4 on 384d) → Prototype Adjustment → Episodic Augmentation → adapted 384d vector. **Training signal**: Co-access pairs from crt-004 via contrastive learning (InfoNCE loss) — entries frequently retrieved together get pulled closer in embedding space. Batch processing: accumulate pairs, process when buffer reaches 16, use other pairs as negatives. **Domain prototypes**: Online running-mean centroids per category/topic with soft pull (alpha=0.1*similarity). Unimatrix categories (decision, pattern, convention) provide natural prototype labels. **EWC++ regularization**: Diagonal Fisher approximation prevents catastrophic forgetting when domain shifts — preserves prior adaptation while learning new relationships. **Architecture**: Pipeline sits between unimatrix-embed (ONNX, frozen) and unimatrix-vector (HNSW). f32 throughout — no precision boundary changes (ADR-001 f64 scoring boundary unaffected). MicroLoRA forward pass: `output = input + scale * (input @ A @ B)`. **Coherence gate impact**: crt-005 embedding consistency dimension (0.99 self-similarity threshold) must compare against adapted embeddings, not raw re-embeds — adapted vectors intentionally diverge from raw ONNX output. **What this does NOT change**: ONNX embedder (frozen), HNSW index (hnsw_rs), distance metric (DistDot), vector dimensionality (384). **Ordering**: After crt-005 (coherence monitoring required for adapted embeddings), before col-002 (better embeddings improve retrospective quality). See Unimatrix entry #181 for d-ruvector source analysis. |
+### Future Horizons
 
-#### Passive Knowledge Acquisition Features — Self-Learning Pipeline (ASS-015)
+Not committed. Directional priorities based on where the product stands today.
 
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Neural Extraction Pipeline | `crt-007` | Integrate ruv-fann neural models for knowledge extraction from behavioral signals. Two initial models: Signal Classifier MLP (~5MB, classifies signal digests → convention\|pattern\|gap\|dead\|noise) and Convention Scorer MLP (~2MB, scores cross-feature pattern confidence 0.0-1.0). Shadow mode validation before activation (5 features observation-only, then shadow comparison against rule-only extraction). **Shared training infrastructure refactor**: extract `TrainingReservoir`, `EwcState`, `ModelRegistry` from unimatrix-adapt into shared `unimatrix-learn` module — both crt-006 (embedding adaptation) and crt-007 (extraction models) consume the same primitives. unimatrix-adapt refactored to use shared module (~200 lines moved, not rewritten). Cold start with hand-tuned baseline weights biased toward conservative extraction. Model versioning: production/shadow/previous with auto-rollback (>5% accuracy drop). **Open risk**: ruv-fann v0.2.0 (~4K downloads); fallback to ndarray + hand-rolled training if RPROP insufficient. See `product/research/ass-015/self-learning-neural-design.md`. |
-| Continuous Self-Retraining | `crt-008` | Close the self-learning loop — utilization signals become training labels, models retrain incrementally via fire-and-forget background tasks. **Feedback-to-label pipeline**: helpful votes → positive label, deprecated entries → negative label, corrections → ground truth re-labeling, feature outcomes → weak labels. EWC++ regularization per model (reusing shared infra from crt-007). Threshold-triggered retraining: Classifier every 20 signals with feedback (<5s CPU), Convention Scorer every 5 evaluations (<2s CPU). Auto-rollback on accuracy regression. **Timeline**: first meaningful retraining after ~5 features; well-calibrated after ~20 features; deeply domain-adapted after ~50 features. The system gets better with every feature delivered. See `product/research/ass-015/self-learning-neural-design.md`. |
-| Advanced Models + Optional LLM | `crt-009` | Three additional neural models: Duplicate Detector (~10MB, Siamese MLP on 384-dim embeddings → duplicate\|extend\|distinct), Pattern Merger (~50MB, encoder + merger MLP for N-way observation merging), Entry Writer Scorer (~20MB, template quality scoring). Optional LLM API tier: `LlmClient` trait + Claude Haiku implementation for lesson extraction from failure traces — the one capability neural models cannot provide. Graceful degradation: system is GREAT without API key, EXCEPTIONAL with one. `context_review` MCP tool for human review of Proposed entries (feeds highest-quality training labels back to pipeline). ~$0.01-$2.00/day LLM cost with batch processing. See `product/research/ass-015/decision-analysis.md`. |
+| Area | Key Features | Why |
+|------|-------------|-----|
+| **Advanced Models** | crt-009: Duplicate Detector, Pattern Merger, Entry Writer Scorer, optional LLM tier | Completes the self-learning pipeline with sophisticated extraction |
+| **Semantic Routing** | col-011: Prompt→agent matching via embeddings | Advisory agent selection from knowledge, not keywords |
+| **Config Externalization** | vnc-005: `ServerConfig` from TOML | Enables multi-domain deployment without rebuilding |
+| **Thin-Shell Agents** | alc-010/011: Slim agent files, migration assistant | Hooks deliver knowledge at runtime; agent files shed static content |
+| **Real-Time Interface** | mtx-*: Dashboard, knowledge explorer, prompt debugger | Human oversight layer — deprioritized vs delivery features |
+| **Multi-Project** | dsn-*: Project isolation, cross-project knowledge, export/import | Scale to multiple concurrent repos |
+| **Packaging** | nan-*: CLI binary, Docker, CI integration, release automation | Installable product distribution |
 
-**CRT integration refactors (scoped within col-013 and crt-007):**
-- crt-002: Add `"auto"` and `"neural"` trust_source values (~5 lines)
-- crt-003: Extract single-entry contradiction check from batch `scan_contradictions()` for point-of-insertion use (~30 lines refactored)
-- crt-005: Add per-trust_source lambda breakdown to StatusReport for monitoring auto-extraction health (~40 lines)
-- crt-005: Relocate `maintain=true` operations to automatic background tick; `context_status` becomes read-only (~100 lines moved)
-- crt-006/unimatrix-adapt: Extract TrainingReservoir, EWC++, persistence helpers into shared module (~250 lines moved)
+### Research Threads
 
-**Ships**: Knowledge base self-populates from agent behavioral signals. Purpose-built neural models continuously retrain from utilization feedback. No external API dependency for core pipeline. The "self-learning" in the vision statement becomes real.
+Open questions, not yet features:
 
----
-
-### Milestone 5: Orchestration Engine (Collective Phase — `col`)
-
-**Goal**: Automatic knowledge delivery via hooks, process intelligence from observation, and workflow orchestration. The delivery features (col-006–011) are the immediate priority — the "nervous system" connecting Unimatrix's engine to agents automatically.
-
-#### Completed Features
-
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Outcome Tracking | `col-001` | OUTCOME_INDEX table — `(feature_hash, entry_id)` for outcome entries. Convention: agents store `category: "outcome"` with structured tags (`gate:3a`, `phase:implementation`, `result:pass`). |
-| Retrospective Pipeline | `col-002` | Observation-driven retrospective capability. `unimatrix-observe` crate: JSONL parser, content-based feature attribution, rule-based hotspot detection (21 rules across 4 categories), MetricVector computation, report generation. `context_retrospective` MCP tool (12th tool). Per-session JSONL telemetry via Claude Code hooks (PreToolUse, PostToolUse, SubagentStart, SubagentStop). Four hotspot categories: agent (context load, lifespan, file breadth, re-reads, mutation spread, compile cycles, edit bloat), friction (permission retries, sleep workarounds, search-via-bash, output parsing struggle), session (timeouts, cold restarts, coordinator respawns, post-completion work, rework events), scope (source file count, design artifacts, ADR count, post-delivery issues, phase duration outliers). Bootstrapped thresholds with convergence toward mean+1.5σ. Metric vector stored in Unimatrix (category: "observation"). See `product/research/ass-013/`. |
-| Detection & Baselines | `col-002b` | Extends col-002 with 18 additional detection rules (completing the full 21-rule library) and historical baseline comparison. Baseline computation (mean + stddev across stored MetricVectors, phase-specific grouping, 1.5σ outlier flagging). Four arithmetic guard modes (Normal, Outlier, NoVariance, NewSignal). Minimum 3 MetricVectors required for baseline. Enhances `context_retrospective` report — no new MCP tools. |
-| Data Path Unification | `col-012` | Eliminated dual data path (JSONL files + SQLite tables) by adding `observations` table to SQLite. All hook events persisted. Retrospective pipeline migrated from JSONL file parsing to SQL queries. PR #107. |
-| Extraction Rule Engine | `col-013` | Rule-based knowledge extraction from observation data. ExtractionRule trait + 5 rules (knowledge-gap, implicit-convention, dead-knowledge, recurring-friction, file-dependency) + 6-check quality gate pipeline. Background tick loop (15-min) for automated maintenance + extraction. context_status becomes read-only. Absorbs col-005. PR #110, GH #108. |
-
-#### Hook-Driven Delivery Features — IMMEDIATE PRIORITY
-
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Hook Transport Layer ("Cortical Implant") | `col-006` | Research spike + implementation. Single `unimatrix-hook` binary — the **cortical implant** — acts as the universal router for all Claude Code lifecycle hooks. Inspired by claude-flow's router pattern: one binary, configured once in `.claude/settings.json`, dispatches all hook events internally (UserPromptSubmit → context injection, PreCompact → compaction resilience, PostToolUse → confidence feedback, etc.). **Transport**: How does the cortical implant communicate with the running Unimatrix MCP server? The MCP connection is owned by Claude Code's stdio pipe — hooks can't share it. Options: (1) Unix domain socket listener alongside stdio in unimatrix-server, (2) cortical implant opens redb directly for reads and queues writes, (3) HTTP listener, (4) named pipe / shared memory. **Router benefits**: (a) simplifies Claude configuration — one binary handles all events instead of N separate scripts, (b) single point of security — validates caller identity, checks process lineage, ensures the connection targets the correct Unimatrix instance for this project, (c) centralized transport — connection pooling / socket reuse across hook invocations within a session. Must support both synchronous query (hook needs results to inject into stdout) and fire-and-forget (hook records an event). Performance target: <50ms round-trip. Foundation for all col-007–011 features. Architecture defined by ASS-014 research spike (`product/research/ass-014/`). |
-| Automatic Context Injection | `col-007` | UserPromptSubmit hook that queries Unimatrix for knowledge relevant to the current prompt. Semantic search against active entries, formats top 3-5 matches with confidence scores, prints to stdout for injection into Claude's context. Every prompt gets enriched with relevant knowledge automatically — no agent action needed. Token budget awareness (<500 tokens per injection). Uses hook transport from col-006. |
-| Compaction Resilience | `col-008` | ✅ **COMPLETE.** PreCompact hook that calls context_briefing for the active session's role and task context. Injects critical knowledge into the compacted window via stdout. PR #72, GH #69. |
-| Closed-Loop Confidence | `col-009` | PostToolUse and Stop/TaskCompleted hooks that close the confidence evolution feedback loop without agent cooperation. **Asymmetric signals**: successful session → bulk `helpful=true` for injected entries (auto-applied via confidence pipeline); rework detected → entries flagged for human review in retrospective pipeline (never auto-downweighted — only explicit MCP votes touch `unhelpful_count`). **Schema v4**: adds SIGNAL_QUEUE table (14th) and `next_signal_id` counter — owned by col-009, consistent with prior convention (crt-001 owned USAGE_LOG, crt-005 owned confidence f64 migration). Dual-consumer signal processing: confidence consumer drains `Helpful` signals into `helpful_count`; retrospective consumer routes `Flagged` signals to `entries_analysis` in col-002 report. Session-scoped dedup (max 1 helpful vote per entry per session). Stale session sweep for unreliable-SessionStop recovery — orphaned in-memory sessions processed before eviction. Operates on col-008's in-memory `SessionState` for injection history; server restart mid-session loses that session's signals (accepted tradeoff — col-010 provides persistent recovery). |
-| Session Lifecycle & Observation | `col-010` | Full session lifecycle persistence and structured observation pipeline. **Schema v5**: adds SESSIONS table (16th) and INJECTION_LOG table (17th). No `session_id` field on EntryRecord — deferred (bincode positional encoding requires full scan-and-rewrite migration; disproportionate to benefit). SessionStart/End hooks fully wired in `.claude/settings.json`. Upgrades col-008's in-memory `SessionState` to persistent `SessionRecord` — survives server restart, recoverable after missed SessionEnd. **Col-002 integration**: `from_structured_events()` entry point replaces JSONL-based session detection with explicit start/end signals and session-scoped feature attribution. Auto-generated session outcome entries via col-001 (`category: outcome`, `type: session`). Evidence-limited retrospective output (`evidence_limit` param, resolves issue #65 ~87KB payload). Lesson-learned auto-persistence (`category: lesson-learned`, embedded, queryable). Provenance boost (`PROVENANCE_BOOST = 0.02`) for lesson-learned entries at search re-rank time. Stale session sweep: sessions with no `ended_at` after 24h marked `TimedOut` during maintenance. Telemetry GC (30-day cleanup). |
-| Semantic Agent Routing | `col-011` | UserPromptSubmit hook that matches prompt against stored agent duties, patterns, and historical outcomes using 384d semantic embeddings. Unlike keyword regex, finds best-fit agent by querying `category: "duties"` + `category: "outcome"` entries, ranks by confidence + similarity. Connects col-001 outcomes to agent selection. Advisory — prints recommendation, does not spawn. |
-
-#### Passive Knowledge Acquisition Features — COMPLETE (ASS-015)
-
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Data Path Unification | `col-012` | Eliminate dual data path (JSONL files + SQLite tables) by adding `observations` table to SQLite. Persist ALL hook events that `RecordEvent` currently discards. Migrate retrospective pipeline from JSONL file parsing to SQL queries. Session discovery via SESSIONS table, feature attribution via `SESSIONS.feature_cycle`. Remove JSONL write path from hooks, remove JSONL parsing from unimatrix-observe. **Net code reduction**: ~200 lines changed, JSONL infrastructure removed. All 21 detection rules unchanged (same input type, different source). Resolves the "Retrospective Pipeline v2" gap — observation data, audit data, injection data, and session data all in one database, JOINable. See `product/research/ass-015/data-unification-analysis.md`. |
-| Extraction Rule Engine | `col-013` | Rule-based knowledge extraction from observation data. `ExtractionRule` trait (mirrors `DetectionRule`). 5 initial rules: knowledge gap (zero-result searches across 2+ features), implicit convention (100%-consistent patterns), dead knowledge (access cliff detection), recurring friction (same hotspot in 3+ features), file dependency (read-before-edit chains). Quality gate pipeline: near-duplicate check (cosine >= 0.92), point-of-insertion contradiction check (refactored from crt-003), rate limit (max 10/hour), cross-feature validation (no entry from single observation), confidence floor. Auto-extracted entries stored with `trust_source: "auto"`. **Automatic background maintenance**: single `tokio::spawn` with interval timer replaces manual `maintain=true` on `context_status` — confidence refresh, co-access cleanup, HNSW compaction, session GC all run automatically. `context_status` becomes read-only (reports maintenance status, no writes). Extraction pipeline triggers piggyback on the same timer infrastructure. **CRT refactors included**: crt-002 new trust_source value (~5 lines), crt-003 single-entry contradiction check extraction (~30 lines), crt-005 per-trust_source lambda breakdown (~40 lines), crt-005 maintenance operations relocated to background tick (~100 lines moved). **Absorbs col-005** — col-005's three tiers map directly to col-013 rules 2, 4, 5. See `product/research/ass-015/feature-scoping.md`. |
-
-#### Process Intelligence Features — After Delivery
-
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Process Proposal Workflow | `col-003` | CLI: `unimatrix proposals` (list pending), `unimatrix approve <id>` (promote to active process knowledge), `unimatrix reject <id>` (record rejection as learning signal). Approved proposals become entries with `category: "process"`, `status: Active`. |
-| Feature Lifecycle | `col-004` | Feature-scoped context: `context_briefing` with `feature` param returns feature-specific decisions + cross-feature patterns. Gate status tracking — which gates passed/failed for active features. |
-
-**Status (2026-03-05):** col-001 ✅, col-002 ✅, col-002b ✅, col-006 ✅, col-007 ✅, col-008 ✅ (#69, PR #72), col-009 ✅, col-010 ✅, col-010b ✅, col-012 ✅, col-013 ✅ (#108, PR #110). **All hook-driven delivery features and passive knowledge acquisition complete.** col-003/004 unscoped. col-011 unscoped.
-
-**Ships**: Automatic knowledge delivery via hooks — every agent prompt enriched, compaction resilient, confidence feedback closed-loop. System observes agent behavior, identifies process hotspots from evidence, and proposes improvements. With col-012/013: knowledge base self-populates from observation via rule-based extraction with quality gates. With crt-007/008/009: neural models continuously retrain, system improves with every feature. This is the Proposal A → C transition completed by the self-learning pipeline.
-
----
-
-### Milestone 6: Thin-Shell Migration (Alcove Phase — `alc`)
-
-**Goal**: Gradually slim agent files as expertise moves to Unimatrix. Optional, per-agent, no big bang.
-
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Thin-Shell Agent Pattern | `alc-010` | Agent files slim their **knowledge content** (conventions, duties, standards) to Unimatrix — retrieved via `context_briefing` at runtime. **Workflow structure** (phase sequencing, gate transitions, conditional branching) stays in agent files — briefing returns an unordered bag of entries, not a choreography. Agent files become ~80-100 lines: identity, workflow choreography, orientation directive (`context_briefing`), self-check gates, outcome reporting. |
-| Migration Assistant | `alc-011` | Analyze existing agent files. Identify content that duplicates or contradicts Unimatrix entries. Suggest what can be extracted. Preview thin-shell version. Track migration status per agent. Accessible via `mtx-006` (Control Manager) or CLI. |
-
-**Promoted (2026-03-01):** Once hooks deliver knowledge automatically (col-007 context injection, col-008 compaction resilience), agent files no longer need baked-in knowledge. Thin-shell migration becomes "just delete the static knowledge sections from agent files" — hooks deliver it at runtime. Workflow sequencing still cannot be served from Unimatrix (`context_briefing` returns an unordered set), so agent definitions retain their workflow choreography. Thin-shell migration remains limited to extracting **knowledge content** (conventions, duties, cross-cutting standards). See alc-001 (Knowledge Bootstrap) for the integration approach.
-
-**Ships**: Agent maintenance burden drops for knowledge content. Workflow structure remains author-maintained in agent files.
-
----
-
-### Milestone 7: Real-Time Interface (Matrix Phase — `mtx`)
-
-**Goal**: Visual interface for human oversight, knowledge management, and workflow visibility.
-
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Dashboard Core | `mtx-001` | Web-based dashboard (local, no cloud). Feature list view — all features with status, agent count, entry count, gate results. Real-time updates via WebSocket or SSE from MCP server events. **Live activity stream**: Tail per-session JSONL files from `~/.unimatrix/observation/` to show agent activity in real-time — tool calls, subagent spawns, file access patterns. Consumes the same telemetry infrastructure as col-002 (observation hooks). Nice-to-have visibility during swarm runs ("is my swarm healthy right now?"), distinct from col-002's retrospective analysis ("what should I improve next time?"). |
-| Knowledge Explorer | `mtx-002` | Browse, search, and filter all entries. Correction chain visualization (supersedes/superseded_by graph). Confidence trends over time. Category/topic breakdown charts. Entry detail view with full metadata and usage history. |
-| Feature Drilldown | `mtx-003` | Per-feature view: which entries were created, which were retrieved, gate pass/fail timeline, outcome summaries. Cross-feature comparison (bug rates, agent counts, entry helpfulness). |
-| Process Proposal Manager | `mtx-004` | Visual review of pending process proposals. Evidence display with cross-feature data. Approve/reject/modify inline. History of approved and rejected proposals with outcomes. |
-| Prompt Debugger | `mtx-005` | Inspect what `context_briefing` returned for any agent invocation. See which entries were selected, why (similarity scores, confidence), and what was excluded (token budget). Replay briefings with modified parameters. |
-| Control Manager | `mtx-006` | View and manage the relationship between `.claude/` files and Unimatrix entries. Identify drift — where file content contradicts stored knowledge. Thin-shell migration assistant — shows what can safely move to Unimatrix. |
-
-**Deprioritized (2026-03-01):** The primary consumer of knowledge shifts from humans browsing a UI to hooks injecting context automatically. Dashboards remain valuable for oversight but are no longer the primary delivery mechanism.
-
-**Ships**: Humans have full visibility into what agents know, how knowledge evolves, and where the process is working or failing. The "single pane of glass" for multi-agent orchestration.
-
----
-
-### Milestone 8: Multi-Project & Identity (Designation Phase — `dsn`)
-
-**Goal**: Support multiple concurrent projects with isolation, shared knowledge where appropriate, and project identity management.
-
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| Project Registry | `dsn-001` | Central registry of projects — each with its own `{project_hash}` data directory. Project metadata: name, path, created date, last accessed. `project_id` field on EntryRecord (requires schema migration — add field + scan-and-rewrite existing entries). Auto-detection of project root from git or file markers. |
-| Project Isolation | `dsn-002` | Strict isolation by default — each project's entries, vectors, and indexes are separate. No cross-project leakage. Separate hnsw_rs indexes per project. |
-| Cross-Project Knowledge | `dsn-003` | Opt-in shared knowledge layer. Entries tagged `scope: "global"` are visible across projects. Global conventions (e.g., "always use conventional commits") stored once, available everywhere. Project-specific overrides via correction chain. |
-| Config & Export | `dsn-004` | `unimatrix export --project <name>` — full JSON dump for backup or migration. `unimatrix import` into new project. Config file (`~/.unimatrix/config.toml`) for global settings (embedding model, confidence parameters, decay rates). |
-
-**Ships**: Teams working on multiple repos get isolated knowledge per project with the option to share universal conventions. Portable knowledge across environments.
-
----
-
-### Milestone 9: Build & Deploy (Nanites Phase — `nan`)
-
-**Goal**: Production packaging, distribution, and CI integration.
-
-| Feature | Prefix | Summary |
-|---------|--------|---------|
-| CLI Binary | `nan-001` | `unimatrix` CLI — single binary distribution (Rust). Commands: init, status, export, import, proposals, approve, reject, rebuild-index. Cross-platform (Linux, macOS, Windows). |
-| Docker Packaging | `nan-002` | Container image with MCP server + CLI. Dev container integration for VS Code / Codespaces. Pre-built with embedding model. |
-| CI Integration | `nan-003` | GitHub Actions for Unimatrix — export knowledge base on release, validate entry health in CI, flag stale entries in PR checks. |
-| Release Automation | `nan-004` | Versioned releases with changelog. Schema migration infrastructure (scan-and-rewrite on version bump, triggered automatically on database open). Homebrew/cargo install distribution. |
-
-**Ships**: Installable product. One command to add Unimatrix to any project.
+- **Code pattern observation** — Can tool call sequences across sessions reveal emergent coding patterns? Fits col-002 retrospective detection rules. Needs spike to validate signal-to-noise. (Unimatrix #549)
+- **Graph visualization** — petgraph exports to Graphviz DOT. Lightweight path to knowledge topology visualization without full mtx-* UI investment.
+- **Competitive positioning** — FastBuilder.ai analysis (Unimatrix #547) confirmed Unimatrix's approach (confidence decay, contradiction detection) is fundamentally stronger than enforcing architectural compliance. No action needed; validates direction.
 
 ---
 
 ## Security Cross-Cutting Concerns
 
-Security is integrated into existing features across milestones, not isolated into a separate phase. Full analysis: `product/research/mcp-security/`.
+Security is integrated into existing features across the product, not isolated into a separate phase. Full analysis: `product/research/mcp-security/`.
 
-### Threat Landscape Summary
+### Threat Landscape
 
-Unimatrix faces amplified versions of standard MCP security risks because it is a **cumulative knowledge engine** — a single poisoned entry propagates across feature cycles. OWASP classifies memory/context poisoning (ASI06) as a top agentic AI risk. Demonstrated attacks (PoisonedRAG, ADMIT, MemoryGraft) achieve 86-90% success rates with minimal poisoning. MCP's architectural weaknesses amplify attack success by 23-41% (arXiv:2601.17549).
+Unimatrix faces amplified versions of standard MCP security risks because it is a **cumulative knowledge engine** — a single poisoned entry propagates across feature cycles. OWASP classifies memory/context poisoning (ASI06) as a top agentic AI risk. MCP's architectural weaknesses amplify attack success by 23-41%.
 
-### Security by Milestone
+### Security by Layer
 
-| Milestone | Security Responsibilities |
-|-----------|--------------------------|
-| **M1 (nxs-004)** | Schema fields: `created_by`, `modified_by`, `content_hash`, `previous_hash`, `version`, `feature_cycle`, `trust_source`. Scan-and-rewrite migration capability. |
-| **M2 (vnc-001)** | AGENT_REGISTRY table, AUDIT_LOG table (append-only), agent identification flow (self-reported `agent_id` param for stdio, transport-agnostic internal plumbing). |
-| **M2 (vnc-002)** | Input validation, content scanning (~50 injection patterns + PII, native Rust), output framing, capability checks (Read/Write per tool). |
-| **M2 (vnc-003)** | Security metrics in `context_status`, capability checks on mutations, content scanning on `context_correct`. |
-| **M4 (crt-001)** | Write rate limiting, behavioral baselines for anomaly detection. |
-| **M4 (crt-003)** | Semantic poisoning defense via contradiction detection, embedding consistency checks, entry quarantine. |
-| **M5 (col-004)** | Merkle root computation, trusted snapshots, rollback capability. |
-| **Future (HTTPS)** | OAuth 2.1 bearer tokens, TLS, CORS, hard rate limiting. Agent identity upgrades from self-reported to verified. No foundation changes required — internal plumbing is transport-agnostic. |
+| Layer | Capabilities |
+|-------|-------------|
+| **Schema** | `created_by`, `modified_by`, `content_hash`, `previous_hash`, `version`, `feature_cycle`, `trust_source` |
+| **Identity** | AGENT_REGISTRY with trust levels (System/Privileged/Internal/Restricted), capability checks per tool call |
+| **Audit** | Append-only AUDIT_LOG — request_id, session_id, agent_id, operation, target_ids, outcome |
+| **Input** | Content scanning (~50 injection patterns + PII), input validation (max lengths, pattern matching, no control chars) |
+| **Output** | Framing on read tools to distinguish data from instructions |
+| **Integrity** | Contradiction detection, embedding consistency checks, entry quarantine, hash-chained correction histories |
+| **Feedback** | Confidence evolution from real signals, Wilson score with gaming resistance, co-access from actual usage |
 
 ### Agent Identity Evolution
 
 ```
-stdio (M2):   agent_id tool parameter → AGENT_REGISTRY → capability check → execute
-                ↓ (future, non-breaking)
-_meta (M2+):  _meta.agent_id on MCP request → same pipeline
-                ↓ (future, non-breaking)
-HTTPS (M7+):  OAuth 2.1 bearer token claims → same pipeline
+stdio (current):  agent_id tool parameter → AGENT_REGISTRY → capability check → execute
+_meta (future):   _meta.agent_id on MCP request → same pipeline
+HTTPS (future):   OAuth 2.1 bearer token claims → same pipeline
 ```
-
-### Trust Hierarchy
-
-| Level | Who | Default Capabilities |
-|-------|-----|---------------------|
-| System | Unimatrix server internals | All operations |
-| Privileged | Human user via MCP client | All tools, all topics |
-| Internal | Orchestrator agents (e.g., scrum-master) | Read-write, scoped to active feature |
-| Restricted | Worker agents, unknown agents | Read-only |
 
 ---
 
-## Milestone Dependency Graph
+## Architecture Notes
 
-```
-M1: Foundation (nxs)         ✅ COMPLETE (nxs-001/002/003/004)
- ├─► nxs-005: SQLite Storage Engine  ✅ COMPLETE
- │    └─► nxs-006: SQLite Cutover  ✅ COMPLETE (PR #100)
- │         └─► nxs-007: redb Removal  ✅ COMPLETE (PR #102)
- │              └─► nxs-008: Schema Normalization  ✅ COMPLETE (PR #105, schema v6)
- │
- └─► M2: MCP Server (vnc)   ✅ COMPLETE (vnc-001/002/003/004)
-      ├─► vnc-005: Config Externalization  ← parallel track
-      ├─► alc-002: Agent Enrollment  ✅ COMPLETE
-      ├─► M4: Learning & Drift (crt)  ✅ COMPLETE (crt-001/002/003/004/005/006)
-      │    ├─► col-001: Outcome Tracking  ✅ COMPLETE
-      │    ├─► col-002/002b: Retrospective  ✅ COMPLETE
-      │    ├─► M5: Orchestration Engine (col)
-      │    │    ├─► ASS-014: Cortical Implant Architecture  ✅ COMPLETE
-      │    │    │    └─► col-006: Hook Transport  ✅ COMPLETE
-      │    │    │         ├─► col-007: Context Injection  ✅ COMPLETE
-      │    │    │         │    └─► col-008: Compaction Resilience  ✅ COMPLETE (PR #72)
-      │    │    │         └─► col-011: Agent Routing  ← unscoped
-      │    │    ├─► col-009: Confidence Feedback  ✅ COMPLETE (schema v4: SIGNAL_QUEUE)
-      │    │    │    └─► col-010/010b: Session Lifecycle  ✅ COMPLETE (schema v5: SESSIONS, INJECTION_LOG)
-      │    │    │
-      │    │    ├─► col-012: Data Path Unification  ✅ COMPLETE (PR #107)
-      │    │    │    └─► col-013: Extraction Rule Engine  ✅ COMPLETE (PR #110, absorbs col-005)
-      │    │    │         ├─► (includes crt-002/003/005 refactors)
-      │    │    │         └─► crt-007: Neural Extraction Pipeline
-      │    │    │              ├─► (includes unimatrix-adapt refactor)
-      │    │    │              └─► crt-008: Continuous Self-Retraining
-      │    │    │                   └─► crt-009: Advanced Models + Optional LLM
-      │    │    │
-      │    │    ├─► col-003/004: Process Proposals + Feature Lifecycle  ← unscoped
-      │    │    └─► M6: Thin-Shell Migration (alc)  ← enabled by delivery
-      │    └─► M7: Real-Time Interface (mtx)  ← deprioritized
-      │         └─► M8: Multi-Project (dsn)
-      │
-      ├─► vnc-006: Service Layer + Security Gateway  ✅ COMPLETE (PR #83)
-      │    ├─► vnc-007: Briefing Unification  ✅ COMPLETE (PR #85)
-      │    │    └─► vnc-008: Module Reorganization  ✅ COMPLETE (PR #87)
-      │    │         └─► vnc-009: Cross-Path Convergence  ✅ COMPLETE (PR #90)
-      │    └─► (future HTTP transport — enabled by service layer)
-      │
-      └─► M3: Agent Integration (alc-003/004)  ← deferred
+### Phase Prefixes
 
-M9: Build & Deploy (nan) — parallel track
-```
+Phase prefixes (`nxs`, `vnc`, `crt`, `col`, `alc`, `mtx`, `dsn`, `nan`) are used for commit messages, branch names, and issue tracking. Milestones are goal-oriented and may pull features from multiple phases.
 
-**Milestone reordering note (2026-02-24):** M3 remaining features (CLI init, starter kit) formalize external adoption — but the *intent* (agents using Unimatrix) is achieved manually via CLAUDE.md and agent file edits. M4/M5 deliver higher value and only depend on M2 + agents actively using the tools. M3 will formalize the manual integration when external adoption matters.
+| Phase | Prefix | Focus |
+|-------|--------|-------|
+| Nexus | `nxs` | Storage, vectors, embedding, schema |
+| Vinculum | `vnc` | MCP server |
+| Cortical | `crt` | Learning & drift |
+| Collective | `col` | Orchestration & delivery |
+| Alcove | `alc` | Agent management |
+| Matrix | `mtx` | UI & dashboards |
+| Designation | `dsn` | Multi-project identity |
+| Nanoprobes | `nan` | Build, deploy, CI |
+| Assimilate | `ass` | Research spikes |
 
-**col-002 dependency note (2026-02-28):** col-002 primarily analyzes tool-call telemetry from observation hooks — independent of knowledge base quality. It depends only on M2 (metric vector storage) and the hook infrastructure. col-005 (Auto-Knowledge Extraction) was originally blocked until 5+ feature retrospectives accumulated; it is now absorbed into col-013 (Extraction Rule Engine) which applies cross-feature validation gates instead of a hard retrospective count threshold.
+### Key Architecture Decisions
 
-**col-002b completion note (2026-03-01):** col-002 + col-002b ship the full retrospective pipeline with 21 detection rules and historical baseline comparison. The pipeline is deployed but has not yet accumulated real observation data (hook JSONL format bug #61 fixed same day). First real retrospective data will accumulate from the next feature cycle onward.
-
-**Hook delivery rationale (2026-03-01):** Competitive analysis of claude-flow (Ruflo v3.5) revealed that Unimatrix built a sophisticated knowledge engine but lacked automatic delivery. claude-flow solved the delivery problem via Claude Code lifecycle hooks but has a broken/theater backend. The Collective phase expands to include hook-driven delivery (col-006–011) as the immediate priority — adopting claude-flow's delivery patterns with Unimatrix's real engine. This is the "nervous system" connecting the brain to agents. Consumption features (Dashboard, Multi-Project) deprioritized; Thin-Shell promoted (hooks make it trivial). See Unimatrix entries #190, #191 for full analysis.
-
-**col-009/col-010 scoping revision (2026-03-02):** ASS-014 originally proposed a separate infrastructure-only "col-010a" feature (schema migration only) shipping before col-009 to provide persistent session tables. Revised during col-009 scoping: col-009 owns its own schema migration (SIGNAL_QUEUE table, schema v4), consistent with prior convention (crt-001 owned USAGE_LOG, crt-005 owned the confidence f64 migration). Infrastructure-without-consumer creates a testing gap — SIGNAL_QUEUE is best validated by its writer, not by projected use in a prior feature. col-010 ships independently as the full session lifecycle + col-002 integration feature (schema v5: SESSIONS, INJECTION_LOG; `session_id` on EntryRecord is explicitly deferred — see SCOPE.md Non-Goals). No separate col-010a. See `product/research/ass-014/findings/feature-scoping.md` for the revised sizing and dependency graph.
-
-**Server refactoring priority (2026-03-03):** Comprehensive codebase analysis (`product/research/optimizations/`) revealed that unimatrix-server (19.6K lines, 43% of codebase) has accumulated structural debt from organic growth across ~15 feature cycles. The MCP and UDS paths duplicate ~600 lines of business logic with subtle divergences, and the UDS path has zero content scanning, zero authorization, and zero audit trail — a critical security gap that compounds with each new feature built on it. vnc-006 (Service Layer + Security Gateway) is inserted as the next priority after col-008 completes. col-009+ depends on vnc-006 — new features should be built on the unified service layer, not the duplicated architecture. vnc-007–009 follow as independent features. Each wave ships and merges independently.
-
-**Database replacement note (2026-03-03):** The service layer extraction (vnc-006–009) is a prerequisite for any future database replacement. By routing all storage access through services (SearchService, StoreService, etc.) rather than direct `redb` calls from transport layers, the foundation layer becomes swappable. Replacing the underlying database (redb → SQLite, DuckDB, networked DB) is **explicitly out of scope** for vnc-006–009 but is a foreseeable architectural evolution. Architects scoping vnc-006 design must treat this as a constraint: no new direct-storage coupling from service or transport layers.
-
-**SQLite migration scoping (2026-03-04):** ASS-016 research (Parts 1 and 2) confirmed that the retrospective analytics pipeline (col-002) has rich structured data available in SESSIONS, INJECTION_LOG, and SIGNAL_QUEUE tables that the analysis engine cannot efficiently query in redb. The driver is not "more tables" — it's multi-table correlation queries (entry effectiveness scoring, session health, knowledge injection patterns) that are trivial in SQL but require full table scans and client-side joins in KV. nxs-005 (SQLite Storage Engine) is scoped as a zero-functional-change engine swap: identical behavior, dual-backend parity testing, unimatrix-store only. nxs-006 (Schema Normalization) follows to exploit SQL capabilities — index table elimination, reverse lookup indexes, and SQL JOINs that enable the retrospective structured events path. **HNSW stays in-memory** — sqlite-vec was evaluated and rejected due to brute-force-only search (no ANN), broken atomic compact guarantees, architectural mismatch with crt-006 adaptation pipeline, and i64/u64 ID incompatibility. VECTOR_MAP bridge table moves trivially to SQLite. **Ordering**: nxs-005 touches only unimatrix-store; vnc-006 touches only unimatrix-server. These are **independent parallel tracks** with no file overlap. nxs-006 benefits from vnc-006 completion (service layer reduces normalized-schema consumers) but does not depend on it. The original ASS-016 recommendation (server refactoring before storage migration) was based on reducing the migration surface from ~12 call sites to ~5 service modules. With the zero-change parity-testing approach, this risk is mitigated by the 234 existing tests — the trait boundary already isolates consumers. See `product/research/ass-016/retrospective-data-architecture.md`.
-
-**nxs-005 completion & path forward (2026-03-05):** nxs-005 shipped with dual-backend feature flag (PR #96). Discovery during Gate 3c: unimatrix-server bypasses the Store API in ~8 files, directly coupling to redb transaction internals (214 compile errors under `backend-sqlite`). Addressed with a transitional compatibility layer (cfg-gated imports). All tests pass: 1,695 redb workspace, 1,548 SQLite workspace, 167 infra-001 integration. **Three-feature path**: nxs-005 (done, dual-backend) → nxs-006 (migrate prod DB, remove redb, SQLite = only backend) → nxs-007 (server decoupling + schema normalization, clean architecture). **Migration approach**: The feature flag is compile-time, so the migration tool is built into unimatrix-server as export/import subcommands — the redb binary exports all 15 tables to a single file, the sqlite binary imports it. One production database to migrate. Schema normalization intentionally deferred to nxs-007 — nxs-006 is focused purely on safe cutover with minimal risk.
-
-**Passive knowledge acquisition scoping (2026-03-05):** ASS-015 research (8 documents, ~4,900 lines) confirms passive knowledge acquisition is feasible and the competitive gap is wide open (no production system combines behavioral signal capture + multi-agent pattern detection + quality evolution + domain specialization). Five features scoped: col-012 (data path unification, ~200 lines) → col-013 (extraction rules + automatic maintenance, ~675 lines, absorbs col-005) → crt-007 (neural extraction via ruv-fann, ~800 lines, includes unimatrix-adapt training infrastructure refactor) → crt-008 (continuous self-retraining, ~600 lines) → crt-009 (advanced models + optional LLM, ~1,000 lines). Total ~3,275 lines. Minimum viable passive acquisition: col-012 + col-013 (~875 lines). CRT overlap analysis identified 5 refactors to existing features (crt-002 trust_source, crt-003 single-entry contradiction check, crt-005 per-source lambda breakdown, crt-005 maintenance relocation to background tick, crt-006/unimatrix-adapt training infrastructure extraction) — all scoped within col-013 and crt-007, no standalone refactor features needed. col-005 is absorbed into col-013. Automatic maintenance replaces manual `maintain=true` — `context_status` becomes read-only. All features are per-repo scoped; cross-repo intelligence is a dsn-phase (Milestone 8) concern requiring daemon mode, explicitly out of scope for ASS-015. See `product/research/ass-015/feature-scoping.md` for complete scope with CRT integration details.
-
-## Phase-to-Proposal Mapping
-
-| Milestone | Proposal A territory | Proposal C territory |
-|-----------|---------------------|---------------------|
-| M1-M2 | Core A — knowledge store + MCP | — |
-| M4 | Bridge — adds tracking infrastructure | First C capabilities active |
-| M5 (col-001/002) | — | Retrospective intelligence |
-| **M5 (col-006–011)** | — | **Automatic delivery — the A→C transition** |
-| **M2 (vnc-006–009)** | **Infrastructure — unified service layer, security, modularity** | **Enables transport-agnostic evolution** |
-| **M5 (col-012/013)** | — | **Passive acquisition — knowledge self-populates from observation** |
-| **M4 (crt-007/008/009)** | — | **Self-learning — neural models retrain from utilization** |
-| M5 (col-003/004) | — | Process proposals, feature lifecycle |
-| M3 | Formalized agent integration (deferred) | — |
-| M6 | — | Thin-shell agents (enabled by hooks) |
-| M7 | — | Visual management layer |
-| M8 | — | Multi-project scale |
+- **SQLite** (normalized, schema v6) replaced redb for analytical query support. HNSW stays in-memory — sqlite-vec rejected (brute-force only, no ANN).
+- **f64 scoring pipeline** end-to-end. Embeddings remain f32 (ONNX boundary). Precision boundary lives in `VectorIndex::map_neighbours_to_results`.
+- **Hook-driven delivery** via `unimatrix-server hook` subcommand. Single binary routes all Claude Code lifecycle events. Unix domain socket transport between hooks and running MCP server.
+- **Service layer** (vnc-006–009) abstracts business logic from transport. All storage access through services, not direct SQL from transport layers.
+- **Self-learning pipeline**: observation hooks → SQLite persistence → rule-based extraction (col-013) → neural extraction (crt-007/008) → quality gates → auto-stored entries with `trust_source: "auto"`. Continuous self-retraining from utilization feedback.
