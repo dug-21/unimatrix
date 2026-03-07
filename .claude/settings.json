@@ -57,10 +57,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/observe-post-tool.sh"
-          },
-          {
-            "type": "command",
             "command": "unimatrix-server hook PostToolUse"
           }
         ]
@@ -72,10 +68,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/observe-subagent-start.sh"
-          },
-          {
-            "type": "command",
             "command": "unimatrix-server hook SubagentStart"
           }
         ]
@@ -85,10 +77,6 @@
       {
         "matcher": "*",
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/observe-subagent-stop.sh"
-          },
           {
             "type": "command",
             "command": "unimatrix-server hook SubagentStop"
