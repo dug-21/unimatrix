@@ -42,10 +42,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/observe-pre-tool.sh"
-          },
-          {
-            "type": "command",
             "command": "unimatrix-server hook PreToolUse"
           }
         ]
