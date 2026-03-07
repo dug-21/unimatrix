@@ -32,9 +32,9 @@ Tags use `key:value` format. Include ALL applicable:
 
 | Tag | Values | Required |
 |-----|--------|----------|
-| `type:{x}` | `feature`, `bugfix`, `retro` | Yes |
-| `phase:{x}` | `design`, `delivery`, `review`, `retro` | Yes |
-| `result:{x}` | `pass`, `fail`, `partial` | Yes |
+| `type:{x}` | `feature`, `bugfix`, `incident`, `process`, `session` | Yes |
+| `phase:{x}` | `research`, `design`, `implementation`, `testing`, `validation` | Yes |
+| `result:{x}` | `pass`, `fail`, `rework`, `skip` | Yes |
 | `gate:{x}` | `3a`, `3b`, `3c` | Only for delivery (last gate passed) |
 
 ### Examples
@@ -51,13 +51,13 @@ mcp__unimatrix__context_store(
 )
 ```
 
-**Delivery session complete:**
+**Implementation session complete:**
 ```
 mcp__unimatrix__context_store(
   category: "outcome",
   topic: "col-011",
   feature_cycle: "col-011",
-  tags: ["type:feature", "phase:delivery", "result:pass", "gate:3c"],
+  tags: ["type:feature", "phase:implementation", "result:pass", "gate:3c"],
   content: "Session 2 complete. All 3 gates passed. PR #70.
     12 unit tests, 4 integration tests added. No rework needed."
 )
@@ -69,7 +69,7 @@ mcp__unimatrix__context_store(
   category: "outcome",
   topic: "col-011",
   feature_cycle: "col-011",
-  tags: ["type:bugfix", "phase:delivery", "result:pass"],
+  tags: ["type:bugfix", "phase:implementation", "result:pass"],
   content: "Bug fix shipped. Root cause: off-by-one in confidence calculation.
     PR #72. 2 tests added. No rework."
 )
