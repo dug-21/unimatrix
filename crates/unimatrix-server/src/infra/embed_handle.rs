@@ -55,7 +55,13 @@ impl EmbedServiceHandle {
     pub fn start_loading(self: &Arc<Self>, config: EmbedConfig) {
         // Store config for potential retries.
         {
-            let mut cfg = self.config.try_write().expect("config lock uncontended at startup");
+            let mut cfg = match self.config.try_write() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    tracing::error!("embed config lock contended at startup; cannot start loading");
+                    return;
+                }
+            };
             *cfg = Some(config.clone());
         }
         self.spawn_load_task(config, 1);

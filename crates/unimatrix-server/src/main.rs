@@ -60,6 +60,23 @@ enum Command {
 /// The hook path runs pure synchronous code with no tokio runtime (ADR-002).
 /// The server path initializes tokio for the full MCP server.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Install panic hook that logs to stderr before aborting (vnc-010).
+    // Without this, panics in background tasks are swallowed silently.
+    std::panic::set_hook(Box::new(|info| {
+        let payload = if let Some(s) = info.payload().downcast_ref::<&str>() {
+            (*s).to_string()
+        } else if let Some(s) = info.payload().downcast_ref::<String>() {
+            s.clone()
+        } else {
+            "unknown panic payload".to_string()
+        };
+        let location = info
+            .location()
+            .map(|loc| format!("{}:{}:{}", loc.file(), loc.line(), loc.column()))
+            .unwrap_or_else(|| "unknown location".to_string());
+        eprintln!("PANIC at {location}: {payload}");
+    }));
+
     let cli = Cli::parse();
 
     match cli.command {
