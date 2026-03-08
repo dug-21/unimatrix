@@ -67,8 +67,12 @@ Human action required: {Approve and merge | Address blocking items}.
 1. Read `product/features/{id}/IMPLEMENTATION-BRIEF.md` — Component Map, ADR references, constraints
 2. Read `product/features/{id}/ACCEPTANCE-MAP.md` — AC verification methods
 3. Verify the three source documents exist (Architecture, Specification, Risk Strategy) — paths are listed in the brief
-4. Create feature branch: `git checkout -b feature/{phase}-{NNN}` (see `/uni-git`)
-5. Spawn worker agents with `isolation: "worktree"` for parallel workstreams
+4. Detect branch state:
+   - If already on `feature/{id}` with design commits → stay (Session 1 handoff)
+   - If `feature/{id}` exists but not checked out → `git checkout feature/{id}`
+   - If on main with no feature branch → `git checkout -b feature/{phase}-{NNN}` (see `/uni-git`)
+5. If a draft PR exists for this branch, note the PR number for later conversion to ready
+6. Spawn worker agents with `isolation: "worktree"` for parallel workstreams
 
 ---
 
@@ -361,11 +365,19 @@ git add product/features/{id}/testing/ product/features/{id}/reports/
 git commit -m "test: risk coverage + gate reports (#{issue})"
 ```
 
-2. Push and open PR (see `/uni-git` for PR template):
+2. Push and open/update PR:
 ```bash
 git push -u origin feature/{phase}-{NNN}
-gh pr create --title "[{feature-id}] {title}" --body "..."
 ```
+   - If a draft PR exists (from Session 1): convert to ready and update body:
+     ```bash
+     gh pr ready {pr-number}
+     gh pr edit {pr-number} --title "[{feature-id}] {title}" --body "..."
+     ```
+   - If no PR exists: create one (see `/uni-git` for PR template):
+     ```bash
+     gh pr create --title "[{feature-id}] {title}" --body "..."
+     ```
 
 3. Comment on GH Issue with PR link
 
@@ -476,17 +488,44 @@ cargo clippy --workspace -- -D warnings 2>&1 | head -30
 
 Before returning to the primary agent:
 
-- [ ] Feature branch created (`feature/{phase}-{NNN}`)
+- [ ] Feature branch exists (`feature/{phase}-{NNN}`)
 - [ ] All three gates passed (3a, 3b, 3c)
 - [ ] Gate commits made after each PASS
 - [ ] All unit tests passing
 - [ ] Integration smoke tests passing
 - [ ] No todo!(), unimplemented!(), TODO, FIXME, HACK in non-test code
 - [ ] RISK-COVERAGE-REPORT.md exists
-- [ ] PR opened, GH Issue updated with PR link
+- [ ] PR opened (or draft converted to ready), GH Issue updated with PR link
 - [ ] Auto-chain deploy completed (or failure noted)
-- [ ] Worktrees cleaned up (`git worktree remove` or noted for human)
+- [ ] Worker worktrees cleaned up (see Worktree Cleanup below)
 - [ ] Outcome recorded in Unimatrix
+
+---
+
+## Worktree Cleanup (MANDATORY)
+
+Worker agents spawned with `isolation: "worktree"` create directories under `.claude/worktrees/`.
+Each worktree contains a full `target/` build directory (~1-2GB). Clean up after their work
+is committed to the feature branch.
+
+**When to clean up worker worktrees:** After each gate pass (their changes have been committed).
+
+```bash
+# List worktrees to find agent-created ones
+git worktree list
+
+# Remove each worker worktree (safe — their code is committed)
+git worktree remove .claude/worktrees/{agent-id}/ 2>/dev/null
+
+# Prune stale entries (handles already-deleted directories)
+git worktree prune
+```
+
+**Do NOT remove the session's own worktree** (if the coordinator is running in one).
+That worktree holds the feature branch and must persist until the PR is merged.
+The deploy scrum master or human handles final cleanup after merge.
+
+If a worktree has uncommitted changes, warn the human — do NOT force-remove.
 
 ---
 
