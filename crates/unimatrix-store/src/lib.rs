@@ -12,6 +12,7 @@ mod write_ext;
 mod migration;
 pub mod counters;
 mod migration_compat;
+pub mod metrics;
 
 pub mod signal;
 pub mod sessions;
@@ -33,6 +34,7 @@ pub use error::{StoreError, Result};
 pub use signal::{SignalRecord, SignalType, SignalSource};
 pub use sessions::{SessionRecord, SessionLifecycleStatus, GcStats, TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS};
 pub use injection_log::InjectionLogRecord;
+pub use metrics::{MetricVector, UniversalMetrics, PhaseMetrics, UNIVERSAL_METRICS_FIELDS};
 
 // Re-exports: SQLite backend
 pub use db::Store;

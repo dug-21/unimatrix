@@ -15,7 +15,7 @@ use crate::schema::{deserialize_entry, serialize_entry};
 use crate::db::Store;
 
 /// Current schema version.
-pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 8;
+pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 9;
 
 /// Run migration if schema_version is behind CURRENT_SCHEMA_VERSION.
 /// Called from Store::open() after table creation.
@@ -135,6 +135,28 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
 
         Ok(())
     })();
+
+    // v8 -> v9: observation metrics normalization (nxs-009)
+    // Must run outside the main transaction since it drops/recreates tables.
+    if (6..9).contains(&current_version) && result.is_ok() {
+        // Check if old-style blob table still exists
+        let needs_migration: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('observation_metrics') WHERE name = 'data'",
+                [],
+                |row| Ok(row.get::<_, i64>(0)? > 0),
+            )
+            .unwrap_or(false);
+
+        if needs_migration {
+            // Commit the main transaction first, then run v8->v9 in its own transaction
+            if let Ok(()) = &result {
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                migrate_v8_to_v9(&conn, db_path)?;
+                return Ok(());
+            }
+        }
+    }
 
     match result {
         Ok(()) => {
@@ -692,4 +714,160 @@ fn migrate_entries_to_current_schema(conn: &rusqlite::Connection) -> Result<()> 
     }
 
     Ok(())
+}
+
+/// Migrate database from schema v8 (bincode blob observation_metrics) to v9 (SQL columns).
+/// Creates backup at {path}.v8-backup before starting (NFR-01).
+/// Runs in a single transaction (NFR-02).
+fn migrate_v8_to_v9(conn: &rusqlite::Connection, db_path: &Path) -> Result<()> {
+    // Step 1: Backup database file
+    let path_str = db_path.to_str().unwrap_or("");
+    if !path_str.is_empty() && path_str != ":memory:" {
+        let backup_path = format!("{}.v8-backup", path_str);
+        std::fs::copy(db_path, &backup_path)
+            .map_err(|e| StoreError::Deserialization(format!("v8 backup failed: {e}")))?;
+    }
+
+    // Step 2: Read all existing rows
+    let mut stmt = conn
+        .prepare("SELECT feature_cycle, data FROM observation_metrics")
+        .map_err(StoreError::Sqlite)?;
+    let rows: Vec<(String, Vec<u8>)> = stmt
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(StoreError::Sqlite)?
+        .collect::<rusqlite::Result<_>>()
+        .map_err(StoreError::Sqlite)?;
+    drop(stmt);
+
+    // Step 3: Deserialize blobs
+    let mut migrated: Vec<(String, crate::metrics::MetricVector)> = Vec::new();
+    for (fc, data) in &rows {
+        // Corrupted blob: insert default MetricVector to preserve the key (FR-06)
+        let mv = migration_compat::deserialize_metric_vector_v8(data)
+            .unwrap_or_default();
+        migrated.push((fc.clone(), mv));
+    }
+
+    // Step 4: Transaction — drop old, create new, insert data
+    conn.execute_batch("BEGIN IMMEDIATE")
+        .map_err(StoreError::Sqlite)?;
+
+    let result = (|| -> Result<()> {
+        conn.execute_batch("DROP TABLE IF EXISTS observation_phase_metrics")
+            .map_err(StoreError::Sqlite)?;
+        conn.execute_batch("DROP TABLE observation_metrics")
+            .map_err(StoreError::Sqlite)?;
+
+        conn.execute_batch(
+            "CREATE TABLE observation_metrics (
+                feature_cycle                      TEXT    PRIMARY KEY,
+                computed_at                        INTEGER NOT NULL DEFAULT 0,
+                total_tool_calls                   INTEGER NOT NULL DEFAULT 0,
+                total_duration_secs                INTEGER NOT NULL DEFAULT 0,
+                session_count                      INTEGER NOT NULL DEFAULT 0,
+                search_miss_rate                   REAL    NOT NULL DEFAULT 0.0,
+                edit_bloat_total_kb                REAL    NOT NULL DEFAULT 0.0,
+                edit_bloat_ratio                   REAL    NOT NULL DEFAULT 0.0,
+                permission_friction_events         INTEGER NOT NULL DEFAULT 0,
+                bash_for_search_count              INTEGER NOT NULL DEFAULT 0,
+                cold_restart_events                INTEGER NOT NULL DEFAULT 0,
+                coordinator_respawn_count          INTEGER NOT NULL DEFAULT 0,
+                parallel_call_rate                 REAL    NOT NULL DEFAULT 0.0,
+                context_load_before_first_write_kb REAL    NOT NULL DEFAULT 0.0,
+                total_context_loaded_kb            REAL    NOT NULL DEFAULT 0.0,
+                post_completion_work_pct           REAL    NOT NULL DEFAULT 0.0,
+                follow_up_issues_created           INTEGER NOT NULL DEFAULT 0,
+                knowledge_entries_stored           INTEGER NOT NULL DEFAULT 0,
+                sleep_workaround_count             INTEGER NOT NULL DEFAULT 0,
+                agent_hotspot_count                INTEGER NOT NULL DEFAULT 0,
+                friction_hotspot_count             INTEGER NOT NULL DEFAULT 0,
+                session_hotspot_count              INTEGER NOT NULL DEFAULT 0,
+                scope_hotspot_count                INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE observation_phase_metrics (
+                feature_cycle   TEXT    NOT NULL,
+                phase_name      TEXT    NOT NULL,
+                duration_secs   INTEGER NOT NULL DEFAULT 0,
+                tool_call_count INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (feature_cycle, phase_name),
+                FOREIGN KEY (feature_cycle) REFERENCES observation_metrics(feature_cycle) ON DELETE CASCADE
+            );"
+        ).map_err(StoreError::Sqlite)?;
+
+        // Insert migrated data
+        for (fc, mv) in &migrated {
+            let u = &mv.universal;
+            conn.execute(
+                "INSERT INTO observation_metrics (
+                    feature_cycle, computed_at,
+                    total_tool_calls, total_duration_secs, session_count,
+                    search_miss_rate, edit_bloat_total_kb, edit_bloat_ratio,
+                    permission_friction_events, bash_for_search_count,
+                    cold_restart_events, coordinator_respawn_count,
+                    parallel_call_rate, context_load_before_first_write_kb,
+                    total_context_loaded_kb, post_completion_work_pct,
+                    follow_up_issues_created, knowledge_entries_stored,
+                    sleep_workaround_count, agent_hotspot_count,
+                    friction_hotspot_count, session_hotspot_count, scope_hotspot_count
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23)",
+                rusqlite::params![
+                    fc,
+                    mv.computed_at as i64,
+                    u.total_tool_calls as i64,
+                    u.total_duration_secs as i64,
+                    u.session_count as i64,
+                    u.search_miss_rate,
+                    u.edit_bloat_total_kb,
+                    u.edit_bloat_ratio,
+                    u.permission_friction_events as i64,
+                    u.bash_for_search_count as i64,
+                    u.cold_restart_events as i64,
+                    u.coordinator_respawn_count as i64,
+                    u.parallel_call_rate,
+                    u.context_load_before_first_write_kb,
+                    u.total_context_loaded_kb,
+                    u.post_completion_work_pct,
+                    u.follow_up_issues_created as i64,
+                    u.knowledge_entries_stored as i64,
+                    u.sleep_workaround_count as i64,
+                    u.agent_hotspot_count as i64,
+                    u.friction_hotspot_count as i64,
+                    u.session_hotspot_count as i64,
+                    u.scope_hotspot_count as i64,
+                ],
+            ).map_err(StoreError::Sqlite)?;
+
+            for (phase_name, phase) in &mv.phases {
+                conn.execute(
+                    "INSERT INTO observation_phase_metrics (feature_cycle, phase_name, duration_secs, tool_call_count)
+                     VALUES (?1, ?2, ?3, ?4)",
+                    rusqlite::params![
+                        fc,
+                        phase_name,
+                        phase.duration_secs as i64,
+                        phase.tool_call_count as i64,
+                    ],
+                ).map_err(StoreError::Sqlite)?;
+            }
+        }
+
+        // Update schema version
+        conn.execute(
+            "INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', 9)",
+            [],
+        ).map_err(StoreError::Sqlite)?;
+
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => {
+            conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+            Ok(())
+        }
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
+    }
 }

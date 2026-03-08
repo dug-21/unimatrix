@@ -2144,7 +2144,7 @@ mod tests {
                     |row| row.get(0),
                 )
                 .unwrap();
-            assert_eq!(version, 8);
+            assert_eq!(version, 9);
 
             // Verify backfill: quarantined entry should have pre_quarantine_status = 0
             let pre_q: Option<i64> = conn
@@ -2168,7 +2168,7 @@ mod tests {
                     |row| row.get(0),
                 )
                 .unwrap();
-            assert_eq!(version, 8, "schema version should remain 8 on re-open");
+            assert_eq!(version, 9, "schema version should remain 9 on re-open");
         }
     }
 

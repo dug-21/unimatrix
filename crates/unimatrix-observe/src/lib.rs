@@ -31,5 +31,5 @@ pub use types::{
     MetricVector, ObservationRecord,
     ObservationStats, ParsedSession, PhaseMetrics, Recommendation, RetrospectiveReport,
     Severity,
-    UniversalMetrics, deserialize_metric_vector, serialize_metric_vector,
+    UniversalMetrics,
 };

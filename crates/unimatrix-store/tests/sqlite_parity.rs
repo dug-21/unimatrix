@@ -409,28 +409,297 @@ fn test_top_co_access_pairs() {
     assert_eq!(top[0].1.count, 2); // highest count first
 }
 
-// === OBSERVATION METRICS ===
+// === OBSERVATION METRICS (nxs-009: typed API) ===
+
+use std::collections::BTreeMap;
+use unimatrix_store::{MetricVector, UniversalMetrics, PhaseMetrics, UNIVERSAL_METRICS_FIELDS};
+
+/// Build a fully populated MetricVector for testing.
+fn sample_metric_vector() -> MetricVector {
+    let mut phases = BTreeMap::new();
+    phases.insert("3a".to_string(), PhaseMetrics { duration_secs: 600, tool_call_count: 15 });
+    phases.insert("3b".to_string(), PhaseMetrics { duration_secs: 300, tool_call_count: 25 });
+    phases.insert("3c".to_string(), PhaseMetrics { duration_secs: 120, tool_call_count: 8 });
+
+    MetricVector {
+        computed_at: 1700000000,
+        universal: UniversalMetrics {
+            total_tool_calls: 42,
+            total_duration_secs: 1020,
+            session_count: 3,
+            search_miss_rate: 0.15,
+            edit_bloat_total_kb: 12.5,
+            edit_bloat_ratio: 1.3,
+            permission_friction_events: 2,
+            bash_for_search_count: 5,
+            cold_restart_events: 1,
+            coordinator_respawn_count: 0,
+            parallel_call_rate: 0.67,
+            context_load_before_first_write_kb: 45.2,
+            total_context_loaded_kb: 128.0,
+            post_completion_work_pct: 0.12,
+            follow_up_issues_created: 3,
+            knowledge_entries_stored: 7,
+            sleep_workaround_count: 0,
+            agent_hotspot_count: 1,
+            friction_hotspot_count: 2,
+            session_hotspot_count: 0,
+            scope_hotspot_count: 1,
+        },
+        phases,
+    }
+}
 
 #[test]
 fn test_store_and_get_metrics() {
+    // AC-02: Store roundtrip with 21 universal metrics, 3 phases, non-zero computed_at
     let db = TestDb::new();
-    let data = b"metric data here";
-    db.store().store_metrics("col-001", data).unwrap();
+    let mv = sample_metric_vector();
+    db.store().store_metrics("col-001", &mv).unwrap();
 
     let got = db.store().get_metrics("col-001").unwrap().unwrap();
-    assert_eq!(got, data);
+    assert_eq!(got, mv);
 
     assert!(db.store().get_metrics("nonexistent").unwrap().is_none());
 }
 
 #[test]
-fn test_list_all_metrics() {
+fn test_store_metrics_replace_phases() {
+    // AC-03: Replace semantics — phases ["3a","3b"] -> ["3a","3c"]
     let db = TestDb::new();
-    db.store().store_metrics("a", b"data-a").unwrap();
-    db.store().store_metrics("b", b"data-b").unwrap();
+
+    let mut mv1 = MetricVector::default();
+    mv1.computed_at = 100;
+    mv1.phases.insert("3a".to_string(), PhaseMetrics { duration_secs: 10, tool_call_count: 5 });
+    mv1.phases.insert("3b".to_string(), PhaseMetrics { duration_secs: 20, tool_call_count: 10 });
+    db.store().store_metrics("col-001", &mv1).unwrap();
+
+    let mut mv2 = MetricVector::default();
+    mv2.computed_at = 200;
+    mv2.phases.insert("3a".to_string(), PhaseMetrics { duration_secs: 15, tool_call_count: 7 });
+    mv2.phases.insert("3c".to_string(), PhaseMetrics { duration_secs: 30, tool_call_count: 12 });
+    db.store().store_metrics("col-001", &mv2).unwrap();
+
+    let got = db.store().get_metrics("col-001").unwrap().unwrap();
+    assert_eq!(got, mv2);
+    assert_eq!(got.phases.len(), 2);
+    assert!(got.phases.contains_key("3a"));
+    assert!(got.phases.contains_key("3c"));
+    assert!(!got.phases.contains_key("3b"));
+}
+
+#[test]
+fn test_store_metrics_empty_phases() {
+    // AC-12: Empty phases roundtrip
+    let db = TestDb::new();
+    let mv = MetricVector {
+        computed_at: 500,
+        universal: UniversalMetrics::default(),
+        phases: BTreeMap::new(),
+    };
+    db.store().store_metrics("empty-phases", &mv).unwrap();
+
+    let got = db.store().get_metrics("empty-phases").unwrap().unwrap();
+    assert_eq!(got, mv);
+    assert!(got.phases.is_empty());
+}
+
+#[test]
+fn test_list_all_metrics() {
+    // AC-04: List all with correct phase attachment
+    let db = TestDb::new();
+
+    let mut mv_a = MetricVector::default();
+    mv_a.computed_at = 100;
+    mv_a.universal.total_tool_calls = 10;
+    mv_a.phases.insert("design".to_string(), PhaseMetrics { duration_secs: 60, tool_call_count: 5 });
+
+    let mut mv_b = MetricVector::default();
+    mv_b.computed_at = 200;
+    mv_b.universal.total_tool_calls = 20;
+    mv_b.phases.insert("impl".to_string(), PhaseMetrics { duration_secs: 120, tool_call_count: 15 });
+    mv_b.phases.insert("test".to_string(), PhaseMetrics { duration_secs: 30, tool_call_count: 3 });
+
+    let mv_c = MetricVector::default(); // no phases
+
+    db.store().store_metrics("a-feature", &mv_a).unwrap();
+    db.store().store_metrics("b-feature", &mv_b).unwrap();
+    db.store().store_metrics("c-feature", &mv_c).unwrap();
 
     let all = db.store().list_all_metrics().unwrap();
-    assert_eq!(all.len(), 2);
+    assert_eq!(all.len(), 3);
+
+    // Ordered by feature_cycle
+    assert_eq!(all[0].0, "a-feature");
+    assert_eq!(all[1].0, "b-feature");
+    assert_eq!(all[2].0, "c-feature");
+
+    // Verify phase attachment
+    assert_eq!(all[0].1, mv_a);
+    assert_eq!(all[1].1, mv_b);
+    assert_eq!(all[2].1, mv_c);
+    assert_eq!(all[0].1.phases.len(), 1);
+    assert_eq!(all[1].1.phases.len(), 2);
+    assert!(all[2].1.phases.is_empty());
+}
+
+#[test]
+fn test_list_all_metrics_overlapping_phases() {
+    // R-04: Multiple features with overlapping phase names
+    let db = TestDb::new();
+
+    for i in 0..5 {
+        let mut mv = MetricVector::default();
+        mv.computed_at = i as u64 * 100;
+        mv.universal.total_tool_calls = i as u64 * 10;
+        mv.phases.insert("3a".to_string(), PhaseMetrics { duration_secs: i as u64 * 10, tool_call_count: i as u64 });
+        mv.phases.insert("3b".to_string(), PhaseMetrics { duration_secs: i as u64 * 20, tool_call_count: i as u64 * 2 });
+        db.store().store_metrics(&format!("feature-{i:03}"), &mv).unwrap();
+    }
+
+    let all = db.store().list_all_metrics().unwrap();
+    assert_eq!(all.len(), 5);
+
+    for (i, (fc, mv)) in all.iter().enumerate() {
+        assert_eq!(fc, &format!("feature-{i:03}"));
+        assert_eq!(mv.phases.len(), 2);
+        assert_eq!(mv.phases["3a"].duration_secs, i as u64 * 10);
+        assert_eq!(mv.phases["3b"].tool_call_count, i as u64 * 2);
+    }
+}
+
+#[test]
+fn test_delete_cascade_phases() {
+    // AC-07: Delete cascade removes phase rows
+    let db = TestDb::new();
+
+    let mut mv = sample_metric_vector();
+    mv.phases.insert("extra".to_string(), PhaseMetrics { duration_secs: 50, tool_call_count: 3 });
+    db.store().store_metrics("cascade-test", &mv).unwrap();
+
+    // Verify phases exist
+    let got = db.store().get_metrics("cascade-test").unwrap().unwrap();
+    assert_eq!(got.phases.len(), 4);
+
+    // Delete parent row directly via SQL
+    {
+        let conn = db.store().lock_conn();
+        conn.execute("DELETE FROM observation_metrics WHERE feature_cycle = ?1",
+            unimatrix_store::rusqlite::params!["cascade-test"]).unwrap();
+    }
+
+    // Verify get returns None
+    assert!(db.store().get_metrics("cascade-test").unwrap().is_none());
+
+    // Verify no orphaned phase rows
+    {
+        let conn = db.store().lock_conn();
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM observation_phase_metrics WHERE feature_cycle = ?1",
+            unimatrix_store::rusqlite::params!["cascade-test"],
+            |row| row.get(0),
+        ).unwrap();
+        assert_eq!(count, 0, "CASCADE should have removed phase rows");
+    }
+}
+
+#[test]
+fn test_schema_column_count() {
+    // AC-01: observation_metrics has 23 columns, observation_phase_metrics exists with 4 columns
+    let db = TestDb::new();
+    let conn = db.store().lock_conn();
+
+    let metric_cols: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('observation_metrics')",
+        [],
+        |row| row.get(0),
+    ).unwrap();
+    assert_eq!(metric_cols, 23, "observation_metrics should have 23 columns");
+
+    let phase_cols: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('observation_phase_metrics')",
+        [],
+        |row| row.get(0),
+    ).unwrap();
+    assert_eq!(phase_cols, 4, "observation_phase_metrics should have 4 columns");
+
+    // Verify no BLOB column
+    let has_blob: bool = conn.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('observation_metrics') WHERE type = 'BLOB'",
+        [],
+        |row| Ok(row.get::<_, i64>(0)? > 0),
+    ).unwrap();
+    assert!(!has_blob, "observation_metrics should not have a BLOB column");
+}
+
+#[test]
+fn test_column_field_alignment() {
+    // R-03: SQL columns match Rust struct field names
+    let db = TestDb::new();
+    let conn = db.store().lock_conn();
+
+    // Get column names from SQLite (skip feature_cycle and computed_at which are not in UniversalMetrics)
+    let mut stmt = conn.prepare(
+        "SELECT name FROM pragma_table_info('observation_metrics') ORDER BY cid"
+    ).unwrap();
+    let sql_columns: Vec<String> = stmt.query_map([], |row| row.get(0))
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
+
+    // Skip first two columns (feature_cycle, computed_at)
+    let universal_columns: Vec<&str> = sql_columns.iter()
+        .skip(2) // feature_cycle, computed_at
+        .map(|s| s.as_str())
+        .collect();
+
+    assert_eq!(
+        universal_columns.len(),
+        UNIVERSAL_METRICS_FIELDS.len(),
+        "SQL column count must match UNIVERSAL_METRICS_FIELDS count"
+    );
+
+    for (sql_col, rust_field) in universal_columns.iter().zip(UNIVERSAL_METRICS_FIELDS.iter()) {
+        assert_eq!(sql_col, rust_field,
+            "SQL column name '{}' does not match Rust field name '{}'", sql_col, rust_field);
+    }
+}
+
+#[test]
+fn test_sql_analytics_query() {
+    // AC-13: SQL analytics query works without Rust-side deserialization
+    let db = TestDb::new();
+
+    let mut mv1 = MetricVector::default();
+    mv1.universal.session_count = 10;
+    mv1.universal.total_tool_calls = 100;
+    db.store().store_metrics("feature-a", &mv1).unwrap();
+
+    let mut mv2 = MetricVector::default();
+    mv2.universal.session_count = 3;
+    mv2.universal.total_tool_calls = 30;
+    db.store().store_metrics("feature-b", &mv2).unwrap();
+
+    // Raw SQL query without any Rust deserialization
+    let conn = db.store().lock_conn();
+    let mut stmt = conn.prepare(
+        "SELECT feature_cycle, total_tool_calls FROM observation_metrics WHERE session_count > 5"
+    ).unwrap();
+    let results: Vec<(String, i64)> = stmt.query_map([], |row| {
+        Ok((row.get(0)?, row.get(1)?))
+    }).unwrap().collect::<rusqlite::Result<_>>().unwrap();
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].0, "feature-a");
+    assert_eq!(results[0].1, 100);
+}
+
+#[test]
+fn test_schema_version_is_9() {
+    // C-04: Schema version must be exactly 9
+    let db = TestDb::new();
+    let version = db.store().read_counter("schema_version").unwrap();
+    assert_eq!(version, 9, "schema version must be 9 after nxs-009");
 }
 
 // === COUNTERS ===
@@ -438,9 +707,9 @@ fn test_list_all_metrics() {
 #[test]
 fn test_read_counter() {
     let db = TestDb::new();
-    // schema_version should be current (7) after creation
+    // schema_version should be current (9) after creation
     let version = db.store().read_counter("schema_version").unwrap();
-    assert!(version >= 5, "schema_version should be >= 5, got {version}");
+    assert!(version >= 9, "schema_version should be >= 9, got {version}");
 
     // next_entry_id should be 1 initially
     let next = db.store().read_counter("next_entry_id").unwrap();

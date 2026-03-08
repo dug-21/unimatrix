@@ -19,14 +19,14 @@ pub struct Store {
 impl Store {
     /// Open or create a database at the given path with default configuration.
     ///
-    /// All 17 tables are created if they don't already exist.
+    /// All 18 tables are created if they don't already exist.
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         Self::open_with_config(path, DatabaseConfig::default())
     }
 
     /// Open or create a database at the given path with custom configuration.
     ///
-    /// All 17 tables are created if they don't already exist.
+    /// All 18 tables are created if they don't already exist.
     pub fn open_with_config(path: impl AsRef<Path>, _config: DatabaseConfig) -> Result<Self> {
         let conn = Connection::open(path.as_ref()).map_err(StoreError::Sqlite)?;
 
@@ -157,8 +157,37 @@ fn create_tables(conn: &Connection) -> Result<()> {
             PRIMARY KEY (feature_cycle, entry_id)
         );
         CREATE TABLE IF NOT EXISTS observation_metrics (
-            feature_cycle TEXT PRIMARY KEY,
-            data BLOB NOT NULL
+            feature_cycle                      TEXT    PRIMARY KEY,
+            computed_at                        INTEGER NOT NULL DEFAULT 0,
+            total_tool_calls                   INTEGER NOT NULL DEFAULT 0,
+            total_duration_secs                INTEGER NOT NULL DEFAULT 0,
+            session_count                      INTEGER NOT NULL DEFAULT 0,
+            search_miss_rate                   REAL    NOT NULL DEFAULT 0.0,
+            edit_bloat_total_kb                REAL    NOT NULL DEFAULT 0.0,
+            edit_bloat_ratio                   REAL    NOT NULL DEFAULT 0.0,
+            permission_friction_events         INTEGER NOT NULL DEFAULT 0,
+            bash_for_search_count              INTEGER NOT NULL DEFAULT 0,
+            cold_restart_events                INTEGER NOT NULL DEFAULT 0,
+            coordinator_respawn_count          INTEGER NOT NULL DEFAULT 0,
+            parallel_call_rate                 REAL    NOT NULL DEFAULT 0.0,
+            context_load_before_first_write_kb REAL    NOT NULL DEFAULT 0.0,
+            total_context_loaded_kb            REAL    NOT NULL DEFAULT 0.0,
+            post_completion_work_pct           REAL    NOT NULL DEFAULT 0.0,
+            follow_up_issues_created           INTEGER NOT NULL DEFAULT 0,
+            knowledge_entries_stored           INTEGER NOT NULL DEFAULT 0,
+            sleep_workaround_count             INTEGER NOT NULL DEFAULT 0,
+            agent_hotspot_count                INTEGER NOT NULL DEFAULT 0,
+            friction_hotspot_count             INTEGER NOT NULL DEFAULT 0,
+            session_hotspot_count              INTEGER NOT NULL DEFAULT 0,
+            scope_hotspot_count                INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS observation_phase_metrics (
+            feature_cycle   TEXT    NOT NULL,
+            phase_name      TEXT    NOT NULL,
+            duration_secs   INTEGER NOT NULL DEFAULT 0,
+            tool_call_count INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (feature_cycle, phase_name),
+            FOREIGN KEY (feature_cycle) REFERENCES observation_metrics(feature_cycle) ON DELETE CASCADE
         );
         CREATE TABLE IF NOT EXISTS signal_queue (
             signal_id     INTEGER PRIMARY KEY,
@@ -241,7 +270,7 @@ fn create_tables(conn: &Connection) -> Result<()> {
 
     // Initialize counters that other modules expect
     conn.execute_batch(
-        "INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 8);
+        "INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 9);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_entry_id', 1);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_signal_id', 0);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_log_id', 0);
