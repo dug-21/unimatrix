@@ -2,16 +2,24 @@
 
 use crate::types::{ObservationRecord, ParsedSession};
 
-/// Check if a string is a valid feature ID (e.g., "col-002", "nxs-001").
+const MAX_FEATURE_ID_LEN: usize = 128;
+
+/// Check if a string is a plausible feature ID.
+///
+/// Permissive safety gating: non-empty, reasonable length, contains a hyphen,
+/// only safe characters (ASCII alphanumeric, hyphen, underscore, dot).
+/// No leading/trailing hyphens.
+///
+/// Unimatrix is domain-agnostic (ASS-009) -- feature ID format is a
+/// project-level concern, not an engine-level concern.
 fn is_valid_feature_id(s: &str) -> bool {
-    let parts: Vec<&str> = s.splitn(2, '-').collect();
-    if parts.len() != 2 {
-        return false;
-    }
-    !parts[0].is_empty()
-        && parts[0].chars().all(|c| c.is_ascii_alphabetic())
-        && !parts[1].is_empty()
-        && parts[1].chars().all(|c| c.is_ascii_digit())
+    !s.is_empty()
+        && s.len() <= MAX_FEATURE_ID_LEN
+        && s.contains('-')
+        && !s.starts_with('-')
+        && !s.ends_with('-')
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
 }
 
 /// Extract feature ID from a file path like "product/features/col-002/...".
@@ -205,7 +213,7 @@ mod tests {
         assert!(!is_valid_feature_id("col-"));
         assert!(!is_valid_feature_id("-002"));
         assert!(!is_valid_feature_id(""));
-        assert!(!is_valid_feature_id("col-abc"));
+        assert!(!is_valid_feature_id("nohyphen"));
     }
 
     #[test]
@@ -327,6 +335,78 @@ mod tests {
         let sessions = vec![make_session("s1", records)];
 
         let result = attribute_sessions(&sessions, "eng-001");
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_is_valid_feature_id_suffixed() {
+        // AC-1, AC-2: Suffixed feature IDs now accepted (#79)
+        assert!(is_valid_feature_id("col-010b"));
+        assert!(is_valid_feature_id("col-002b"));
+    }
+
+    #[test]
+    fn test_is_valid_feature_id_domain_agnostic() {
+        // AC-4 through AC-7: Domain-agnostic feature ID formats (#79)
+        assert!(is_valid_feature_id("PROJ-123"));
+        assert!(is_valid_feature_id("sprint-7-auth"));
+        assert!(is_valid_feature_id("v2.1-migration"));
+        assert!(is_valid_feature_id("my_project-feat_1"));
+    }
+
+    #[test]
+    fn test_is_valid_feature_id_no_hyphen() {
+        // AC-9: Strings without hyphens rejected (#79)
+        assert!(!is_valid_feature_id("nohyphen"));
+        assert!(!is_valid_feature_id("justletters"));
+        assert!(!is_valid_feature_id("12345"));
+    }
+
+    #[test]
+    fn test_is_valid_feature_id_special_chars() {
+        // AC-10: Injection characters rejected (#79)
+        assert!(!is_valid_feature_id("a]b-c"));
+        assert!(!is_valid_feature_id("feat<script>-1"));
+        assert!(!is_valid_feature_id("col-001;drop"));
+    }
+
+    #[test]
+    fn test_is_valid_feature_id_whitespace() {
+        // AC-11: Whitespace rejected (#79)
+        assert!(!is_valid_feature_id("a b-c"));
+        assert!(!is_valid_feature_id("col -001"));
+    }
+
+    #[test]
+    fn test_is_valid_feature_id_length_boundary() {
+        // AC-12: 128/129 length boundary (#79)
+        let at_limit = format!("{}-{}", "a".repeat(64), "b".repeat(63));
+        assert_eq!(at_limit.len(), 128);
+        assert!(is_valid_feature_id(&at_limit));
+
+        let over_limit = format!("{}-{}", "a".repeat(64), "b".repeat(64));
+        assert_eq!(over_limit.len(), 129);
+        assert!(!is_valid_feature_id(&over_limit));
+    }
+
+    #[test]
+    fn test_is_valid_feature_id_leading_trailing_hyphen() {
+        // Leading/trailing hyphen rejected (#79)
+        assert!(!is_valid_feature_id("-abc"));
+        assert!(!is_valid_feature_id("abc-"));
+        assert!(!is_valid_feature_id("-"));
+    }
+
+    #[test]
+    fn test_attribute_sessions_suffixed_feature() {
+        // AC-14: E2E attribution with suffixed feature ID (#79)
+        let records = vec![
+            make_record(1000, Some("Read"), Some("product/features/col-010b/SCOPE.md")),
+            make_record(2000, Some("Write"), Some("product/features/col-010b/test.rs")),
+        ];
+        let sessions = vec![make_session("s1", records)];
+
+        let result = attribute_sessions(&sessions, "col-010b");
         assert_eq!(result.len(), 2);
     }
 }
