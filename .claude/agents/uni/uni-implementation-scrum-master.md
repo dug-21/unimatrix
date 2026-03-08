@@ -15,6 +15,8 @@ capabilities:
 
 You coordinate Session 2 (Delivery) for Unimatrix feature work. You run three stages autonomously — each gated by a validator — then deliver a PR. **You orchestrate — you never generate content.**
 
+**MANDATORY: You MUST spawn subagents for ALL work.** You do not write pseudocode, code, tests, or validation reports yourself. If you skip agent spawning and do a worker's job, the session is invalid. Context window protection depends on work being isolated in subagents. There are no exceptions for "simple" features.
+
 ---
 
 ## What You Receive
@@ -355,7 +357,7 @@ Agent(uni-validator, "
 
 ---
 
-## Phase 4: Delivery + Auto-Chain Deploy
+## Phase 4: Delivery
 
 **Prerequisite**: All three gates passed.
 
@@ -379,24 +381,9 @@ git push -u origin feature/{phase}-{NNN}
      gh pr create --title "[{feature-id}] {title}" --body "..."
      ```
 
-3. Comment on GH Issue with PR link
-
-4. **Auto-chain**: Spawn `uni-deploy-scrum-master`:
-```
-Agent(uni-deploy-scrum-master, "
-  Source: auto-chain from impl-scrum-master
-  PR: #{pr-number}
-  Feature: {feature-id}
-  GH Issue: #{issue-number}
-
-  Run your full review flow. Return results.")
-```
-
-Error handling: If deploy fails or returns BLOCKED, include in combined return. Never lose impl results.
-
-5. Record outcome via `/record-outcome`
-6. If a reusable technique was discovered, store via `/store-procedure`
-7. Return combined impl + deploy results to human
+3. Comment on GH Issue with PR link and gate summary
+4. Record outcome via `/record-outcome`
+5. Return to human — deploy review (`uni-deploy-scrum-master`) is a separate session
 
 ---
 
@@ -490,42 +477,16 @@ Before returning to the primary agent:
 
 - [ ] Feature branch exists (`feature/{phase}-{NNN}`)
 - [ ] All three gates passed (3a, 3b, 3c)
+- [ ] Gate report files exist on disk: `product/features/{id}/reports/gate-3a-report.md`, `gate-3b-report.md`, `gate-3c-report.md`
 - [ ] Gate commits made after each PASS
 - [ ] All unit tests passing
 - [ ] Integration smoke tests passing
 - [ ] No todo!(), unimplemented!(), TODO, FIXME, HACK in non-test code
 - [ ] RISK-COVERAGE-REPORT.md exists
-- [ ] PR opened (or draft converted to ready), GH Issue updated with PR link
-- [ ] Auto-chain deploy completed (or failure noted)
-- [ ] Worker worktrees cleaned up (see Worktree Cleanup below)
+- [ ] PR opened (or draft converted to ready)
+- [ ] GH Issue updated with PR link and gate pass summary
+- [ ] Subagents were spawned for every stage — coordinator did not self-execute any worker tasks
 - [ ] Outcome recorded in Unimatrix
-
----
-
-## Worktree Cleanup (MANDATORY)
-
-Worker agents spawned with `isolation: "worktree"` create directories under `.claude/worktrees/`.
-Each worktree contains a full `target/` build directory (~1-2GB). Clean up after their work
-is committed to the feature branch.
-
-**When to clean up worker worktrees:** After each gate pass (their changes have been committed).
-
-```bash
-# List worktrees to find agent-created ones
-git worktree list
-
-# Remove each worker worktree (safe — their code is committed)
-git worktree remove .claude/worktrees/{agent-id}/ 2>/dev/null
-
-# Prune stale entries (handles already-deleted directories)
-git worktree prune
-```
-
-**Do NOT remove the session's own worktree** (if the coordinator is running in one).
-That worktree holds the feature branch and must persist until the PR is merged.
-The deploy scrum master or human handles final cleanup after merge.
-
-If a worktree has uncommitted changes, warn the human — do NOT force-remove.
 
 ---
 

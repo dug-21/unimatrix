@@ -164,7 +164,24 @@ If the architect flagged any ADRs for supersession:
 2. If human approves: spawn architect to perform the supersession via `/store-adr`.
 3. If human disagrees: note as "ADR validated with caveat" in the retro report.
 
-### Phase 4: Summary & Outcome
+### Phase 4: Worktree Cleanup
+
+Worker agents spawned with `isolation: "worktree"` create directories under `.claude/worktrees/`. Each contains a full `target/` build directory (~1-2GB). Clean up after the feature is merged.
+
+```bash
+# List worktrees to find stale agent-created ones
+git worktree list
+
+# Remove each stale worktree (safe — feature is merged)
+git worktree remove .claude/worktrees/{agent-id}/ 2>/dev/null
+
+# Prune stale entries
+git worktree prune
+```
+
+If a worktree has uncommitted changes, warn the human — do NOT force-remove.
+
+### Phase 5: Summary & Outcome
 
 1. Collect all knowledge base changes from Phase 2 and Phase 3
 2. Record outcome via `/record-outcome`:
@@ -220,6 +237,7 @@ Before returning to the primary agent:
 - [ ] Procedures updated (if changed)
 - [ ] Lessons stored (if gate failures occurred)
 - [ ] ADRs validated or flagged for supersession
+- [ ] Stale worktrees cleaned up
 - [ ] Outcome recorded in Unimatrix
 
 ---
