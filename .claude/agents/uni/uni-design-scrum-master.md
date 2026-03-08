@@ -28,7 +28,8 @@ From the primary agent's spawn prompt:
 ```
 SESSION 1 COMPLETE — Design artifacts ready for review.
 
-PR: {URL}
+Branch: feature/{feature-id}
+Draft PR: {URL}
 GH Issue: {URL}
 
 Artifacts: SCOPE.md, SCOPE-RISK-ASSESSMENT.md, ARCHITECTURE.md, SPECIFICATION.md,
@@ -38,7 +39,8 @@ Vision Alignment: {PASS/WARN/VARIANCE/FAIL counts}
 Variances requiring approval: {list or "none"}
 Open questions: {list or "none"}
 
-Human action required: Review and merge PR to approve. Then proceed to Session 2.
+Human action required: Review design artifacts. Then proceed to Session 2
+(implementation will continue on the same branch).
 ```
 
 ---
@@ -62,7 +64,7 @@ Human action required: Review and merge PR to approve. Then proceed to Session 2
 
 ## Initialization
 
-Create the design branch: `git checkout -b design/{feature-id}`
+Create the feature branch: `git checkout -b feature/{feature-id}`
 
 ---
 
@@ -201,15 +203,32 @@ Agent(uni-synthesizer, "
   Return: file paths + GH Issue URL.")
 ```
 
-### Phase 2d: Commit, Push, PR, and Return
+### Phase 2d: Commit, Push, and Checkpoint
 
-Commit all artifacts, push the design branch, and open a PR:
+Commit all artifacts and push the feature branch:
 
 ```bash
 git add product/features/{feature-id}/
 git commit -m "design: {feature-id} design artifacts (#{issue})"
-git push -u origin design/{feature-id}
-gh pr create --title "[{feature-id}] Design artifacts" --body "..."
+git push -u origin feature/{feature-id}
+```
+
+Open a **draft PR** as a review surface (NOT for merge — implementation will add commits to this same branch):
+
+```bash
+gh pr create --draft --title "[{feature-id}] {short description}" --body "$(cat <<'EOF'
+## Design Artifacts
+- Architecture: product/features/{id}/architecture/ARCHITECTURE.md
+- Specification: product/features/{id}/specification/SPECIFICATION.md
+- Risk Strategy: product/features/{id}/RISK-TEST-STRATEGY.md
+- Implementation Brief: product/features/{id}/IMPLEMENTATION-BRIEF.md
+
+## GH Issue
+Closes #{N}
+
+Session 1 (Design) complete. Session 2 (Implementation) will add code commits to this branch.
+EOF
+)"
 ```
 
 Return using the format in "What You Return" above. **Session 1 ends here.**
@@ -248,14 +267,14 @@ Use `/record-outcome` with:
 
 Before returning to the primary agent:
 
-- [ ] Design branch created (`design/{feature-id}`)
+- [ ] Feature branch created (`feature/{feature-id}`)
 - [ ] SCOPE.md exists and was approved by human
 - [ ] All source documents exist (Architecture, Specification, Risk Strategy)
 - [ ] ADRs stored in Unimatrix (entry IDs recorded)
 - [ ] IMPLEMENTATION-BRIEF.md and ACCEPTANCE-MAP.md exist
 - [ ] GH Issue created
-- [ ] Design artifacts committed and pushed to design branch
-- [ ] PR opened to main
+- [ ] Design artifacts committed and pushed to feature branch
+- [ ] Draft PR opened (NOT merged — implementation continues on this branch)
 - [ ] Outcome recorded in Unimatrix
 
 ---

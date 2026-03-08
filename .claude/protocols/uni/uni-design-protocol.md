@@ -6,7 +6,7 @@ Triggers on: specification, architecture, design, research, scope, risk strategy
 
 ## Execution Model
 
-Session 1 produces three sacred source-of-truth documents, a scope risk assessment, a vision alignment report, an implementation brief, and an acceptance map. All work happens on a `design/{feature-id}` branch. The session ends by opening a PR to main — the human reviews and merges the PR as the approval step.
+Session 1 produces three sacred source-of-truth documents, a scope risk assessment, a vision alignment report, an implementation brief, and an acceptance map. All work happens on a `feature/{feature-id}` branch. The session ends by opening a **draft PR** — the human reviews the design artifacts and approves verbally. Session 2 (Implementation) continues on the same branch and converts the draft PR to ready when complete.
 
 ```
 Primary Agent                    uni-scrum-master (Design Leader)    Design Agents
@@ -46,7 +46,7 @@ Each message batches ALL related operations of the same type:
 
 ### Branch Workflow
 
-The Design Leader creates a `design/{feature-id}` branch at session start and opens a PR at session end. See `/uni-git` for branch naming and PR conventions.
+The Design Leader creates a `feature/{feature-id}` branch at session start and opens a **draft PR** at session end. Implementation continues on the same branch — no separate design merge step. See `/uni-git` for branch naming and PR conventions.
 
 ---
 
@@ -241,15 +241,20 @@ Task(
 
 The synthesizer gets a fresh context window — it reads artifacts directly for higher quality synthesis.
 
-#### Phase 2d: Commit, PR, and Return to Human
+#### Phase 2d: Commit, Push, and Checkpoint
 
-The Design Leader commits all artifacts to the design branch and opens a PR:
+The Design Leader commits all artifacts and pushes the feature branch:
 
 ```bash
 git add product/features/{feature-id}/
 git commit -m "design: {feature-id} design artifacts (#{issue})"
-git push -u origin design/{feature-id}
-gh pr create --title "[{feature-id}] Design artifacts" --body "..."
+git push -u origin feature/{feature-id}
+```
+
+Open a **draft PR** as a review surface (NOT for merge — implementation will add commits to this branch):
+
+```bash
+gh pr create --draft --title "[{feature-id}] {short description}" --body "..."
 ```
 
 Then returns to the human:
@@ -257,7 +262,8 @@ Then returns to the human:
 ```
 SESSION 1 COMPLETE — Design artifacts ready for review.
 
-PR: {URL}
+Branch: feature/{feature-id}
+Draft PR: {URL}
 GH Issue: {URL}
 
 Artifacts:
@@ -269,10 +275,11 @@ Vision Alignment: {summary}
 Variances requiring approval: {list or "none"}
 Open questions: {list or "none"}
 
-Human action required: Review and merge PR to approve. Then proceed to Session 2 (Delivery).
+Human action required: Review design artifacts. Then proceed to Session 2
+(implementation will continue on the same branch).
 ```
 
-**Session 1 ends here.** Human merges the PR as the approval step. Session 2 is a separate invocation.
+**Session 1 ends here.** Session 2 continues on the same branch — no merge needed between sessions.
 
 ---
 
@@ -292,7 +299,7 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 
 ```
 DESIGN LEADER (uni-scrum-master):
-  Init:       git checkout -b design/{feature-id}
+  Init:       git checkout -b feature/{feature-id}
   Phase 1:    Task(uni-researcher) — scope exploration with human
               ...human approves SCOPE.md...
   Phase 1b:   Task(uni-risk-strategist, MODE: scope-risk) — scope risk assessment
@@ -303,7 +310,7 @@ DESIGN LEADER (uni-scrum-master):
               ...wait...
   Phase 2b:   Task(uni-vision-guardian) — alignment check
   Phase 2c:   Task(uni-synthesizer) — brief + maps + GH Issue (fresh context)
-  Phase 2d:   git commit + push + gh pr create — SESSION 1 ENDS
+  Phase 2d:   git commit + push + gh pr create --draft — SESSION 1 ENDS
 ```
 
 ---

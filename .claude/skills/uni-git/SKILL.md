@@ -8,8 +8,7 @@ All workflows produce PRs. No workflow commits directly to main.
 
 | Context | Pattern | Example | Creator |
 |---------|---------|---------|---------|
-| Feature design (Session 1) | `design/{phase}-{NNN}` | `design/crt-009` | uni-design-scrum-master |
-| Feature delivery (Session 2) | `feature/{phase}-{NNN}` | `feature/crt-009` | uni-implementation-scrum-master |
+| Feature (design + delivery) | `feature/{phase}-{NNN}` | `feature/crt-009` | uni-design-scrum-master (Session 1 creates, Session 2 continues) |
 | Bug fix | `bugfix/{issue}-{desc}` | `bugfix/52-embed-retry` | uni-bugfix-scrum-master |
 | Ad-hoc docs/config | `docs/{short-desc}` | `docs/update-vision` | Human or primary agent |
 | Workflow/process | `workflow/{desc}` | `workflow/base-002` | Human or primary agent |
@@ -17,15 +16,17 @@ All workflows produce PRs. No workflow commits directly to main.
 ### Branch Lifecycle
 
 ```bash
-# Create branch at session start
-git checkout -b {branch-pattern}
+# Session 1 (Design): create feature branch, commit artifacts, open DRAFT PR
+git checkout -b feature/{phase}-{NNN}
+git add <files> && git commit -m "design: {description} (#{issue})"
+git push -u origin feature/{phase}-{NNN}
+gh pr create --draft --title "[{feature-id}] {title}" --body "..."
 
-# Commit after each gate pass or milestone
+# Session 2 (Implementation): continue on same branch, convert draft to ready
+git checkout feature/{phase}-{NNN}  # if not already on it
 git add <files> && git commit -m "{prefix}: {description} (#{issue})"
-git push -u origin {branch}
-
-# Open PR when session completes
-gh pr create --title "[{feature-id}] {title}" --body "..."
+git push -u origin feature/{phase}-{NNN}
+gh pr ready {pr-number}  # convert draft → ready for review
 
 # After merge: branch auto-deletes (repo setting enabled)
 ```
@@ -81,8 +82,19 @@ Coordinators use Claude Code's native `isolation: "worktree"` parameter when spa
 
 **Coordinator responsibilities:**
 - Spawn agents with `isolation: "worktree"` for parallel workstreams
-- Exit gate includes worktree cleanup: `git worktree remove .claude/worktrees/agent-{id}/`
+- Clean up **worker** worktrees after their code is committed to the feature branch (after each gate pass)
+- Do NOT remove the session's own worktree — it must persist until PR merge
 - If removal fails (dirty state): warn human, do NOT force-remove
+
+**Mandatory cleanup after each gate pass:**
+```bash
+# Remove worker worktrees whose code has been committed
+git worktree remove .claude/worktrees/{agent-id}/ 2>/dev/null
+# Prune stale entries
+git worktree prune
+```
+
+Each worktree contains a full `target/` build directory (~1-2GB). Failing to clean up causes disk exhaustion during parallel development.
 
 **Stale worktree recovery:** `git worktree prune` removes entries for deleted directories. Human can `git worktree remove --force` if needed.
 
