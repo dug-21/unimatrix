@@ -154,6 +154,23 @@ Extraction rules need ObservationRecord data. The extraction tests must construc
 
 This requires understanding each rule's detection logic. Read the rule implementations during Wave 3.
 
+## Component Map
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| shared-fixtures | pseudocode/shared-fixtures.md | test-plan/shared-fixtures.md |
+| calibration-tests | pseudocode/calibration-tests.md | test-plan/calibration-tests.md |
+| regression-tests | pseudocode/regression-tests.md | test-plan/regression-tests.md |
+| extraction-tests | pseudocode/extraction-tests.md | test-plan/extraction-tests.md |
+| server-e2e-tests | pseudocode/server-e2e-tests.md | test-plan/server-e2e-tests.md |
+
+## Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
 ## Files Changed Summary
 
 | File | Change Type | Wave |
