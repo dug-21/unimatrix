@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use rusqlite::OptionalExtension;
 
@@ -715,4 +715,135 @@ impl Store {
 
         Ok(results)
     }
+
+    /// Compute status aggregates via SQL without deserializing all entries.
+    ///
+    /// Replaces the full table scan in StatusService (crt-013: ADR-004).
+    pub fn compute_status_aggregates(&self) -> Result<StatusAggregates> {
+        let conn = self.lock_conn();
+
+        // Query 1: Scalar aggregates (single row)
+        let (supersedes_count, superseded_by_count, total_correction_count, unattributed_count) =
+            conn.query_row(
+                "SELECT \
+                    COALESCE(SUM(CASE WHEN supersedes IS NOT NULL THEN 1 ELSE 0 END), 0), \
+                    COALESCE(SUM(CASE WHEN superseded_by IS NOT NULL THEN 1 ELSE 0 END), 0), \
+                    COALESCE(SUM(correction_count), 0), \
+                    COALESCE(SUM(CASE WHEN created_by = '' OR created_by IS NULL THEN 1 ELSE 0 END), 0) \
+                FROM entries",
+                [],
+                |row| {
+                    Ok((
+                        row.get::<_, i64>(0)? as u64,
+                        row.get::<_, i64>(1)? as u64,
+                        row.get::<_, i64>(2)? as u64,
+                        row.get::<_, i64>(3)? as u64,
+                    ))
+                },
+            )
+            .map_err(StoreError::Sqlite)?;
+
+        // Query 2: Trust source distribution
+        let mut trust_source_distribution = BTreeMap::new();
+        let mut stmt = conn
+            .prepare(
+                "SELECT CASE WHEN trust_source = '' OR trust_source IS NULL \
+                        THEN '(none)' ELSE trust_source END, \
+                        COUNT(*) \
+                 FROM entries \
+                 GROUP BY 1",
+            )
+            .map_err(StoreError::Sqlite)?;
+
+        let rows = stmt
+            .query_map([], |row| {
+                let source: String = row.get(0)?;
+                let count: i64 = row.get(1)?;
+                Ok((source, count as u64))
+            })
+            .map_err(StoreError::Sqlite)?;
+
+        for item in rows {
+            let (source, count) = item.map_err(StoreError::Sqlite)?;
+            trust_source_distribution.insert(source, count);
+        }
+
+        Ok(StatusAggregates {
+            supersedes_count,
+            superseded_by_count,
+            total_correction_count,
+            trust_source_distribution,
+            unattributed_count,
+        })
+    }
+
+    /// Load only Active entries with their tags populated.
+    ///
+    /// More efficient than loading all entries when only active ones are needed (crt-013).
+    pub fn load_active_entries_with_tags(&self) -> Result<Vec<EntryRecord>> {
+        let conn = self.lock_conn();
+
+        let mut stmt = conn
+            .prepare(&format!(
+                "SELECT {} FROM entries WHERE status = ?1",
+                ENTRY_COLUMNS
+            ))
+            .map_err(StoreError::Sqlite)?;
+
+        let mut entries: Vec<EntryRecord> = stmt
+            .query_map(
+                rusqlite::params![Status::Active as u8 as i64],
+                entry_from_row,
+            )
+            .map_err(StoreError::Sqlite)?
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(StoreError::Sqlite)?;
+
+        let ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
+        let tag_map = load_tags_for_entries(&conn, &ids)?;
+        apply_tags(&mut entries, &tag_map);
+
+        Ok(entries)
+    }
+
+    /// Load only entries with category="outcome" and their tags populated.
+    ///
+    /// Used by StatusService for outcome statistics (crt-013).
+    pub fn load_outcome_entries_with_tags(&self) -> Result<Vec<EntryRecord>> {
+        let conn = self.lock_conn();
+
+        let mut stmt = conn
+            .prepare(&format!(
+                "SELECT {} FROM entries WHERE category = 'outcome'",
+                ENTRY_COLUMNS
+            ))
+            .map_err(StoreError::Sqlite)?;
+
+        let mut entries: Vec<EntryRecord> = stmt
+            .query_map([], entry_from_row)
+            .map_err(StoreError::Sqlite)?
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(StoreError::Sqlite)?;
+
+        let ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
+        let tag_map = load_tags_for_entries(&conn, &ids)?;
+        apply_tags(&mut entries, &tag_map);
+
+        Ok(entries)
+    }
+}
+
+/// Aggregated status metrics computed via SQL (crt-013: ADR-004).
+#[derive(Debug, Clone)]
+pub struct StatusAggregates {
+    /// Number of entries where supersedes IS NOT NULL.
+    pub supersedes_count: u64,
+    /// Number of entries where superseded_by IS NOT NULL.
+    pub superseded_by_count: u64,
+    /// Sum of correction_count across all entries.
+    pub total_correction_count: u64,
+    /// Distribution of trust_source values (empty mapped to "(none)").
+    pub trust_source_distribution: BTreeMap<String, u64>,
+    /// Number of entries where created_by is empty or NULL.
+    pub unattributed_count: u64,
 }

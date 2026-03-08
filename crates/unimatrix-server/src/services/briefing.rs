@@ -29,6 +29,7 @@ pub(crate) struct BriefingService {
     entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
     search: SearchService,
     gateway: Arc<SecurityGateway>,
+    semantic_k: usize,
 }
 
 /// Caller-provided parameters controlling `BriefingService::assemble()` behavior.
@@ -109,16 +110,44 @@ const MAX_MAX_TOKENS: usize = 10_000;
 // Implementation
 // ---------------------------------------------------------------------------
 
+/// Parse `UNIMATRIX_BRIEFING_K` env var.
+///
+/// Returns default (3) if unset or unparseable. Clamps to \[1, 20\].
+/// Read once at construction time -- runtime changes to the env var are ignored.
+pub(crate) fn parse_semantic_k() -> usize {
+    parse_semantic_k_from(std::env::var("UNIMATRIX_BRIEFING_K").ok())
+}
+
+/// Pure parsing logic for semantic_k. Extracted for testability without
+/// requiring env var mutation (which is unsafe in Rust 2024+).
+fn parse_semantic_k_from(value: Option<String>) -> usize {
+    match value {
+        Some(val) => match val.parse::<usize>() {
+            Ok(k) => k.clamp(1, 20),
+            Err(_) => {
+                tracing::warn!(
+                    value = %val,
+                    "UNIMATRIX_BRIEFING_K: invalid value, using default 3"
+                );
+                3
+            }
+        },
+        None => 3,
+    }
+}
+
 impl BriefingService {
     pub(crate) fn new(
         entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
         search: SearchService,
         gateway: Arc<SecurityGateway>,
+        semantic_k: usize,
     ) -> Self {
         BriefingService {
             entry_store,
             search,
             gateway,
+            semantic_k,
         }
     }
 
@@ -225,7 +254,7 @@ impl BriefingService {
             if let Some(ref task) = params.task {
                 let search_params = ServiceSearchParams {
                     query: task.clone(),
-                    k: 3,
+                    k: self.semantic_k,
                     filters: None,
                     similarity_floor: None,
                     confidence_floor: None,
@@ -500,6 +529,7 @@ mod tests {
             Arc::clone(&entry_store),
             search,
             gateway,
+            3, // default semantic_k for existing tests
         );
 
         (service, entry_store)
@@ -1172,5 +1202,49 @@ mod tests {
         assert!(result.injection_sections.injections.is_empty());
         assert!(result.injection_sections.conventions.is_empty());
         assert!(result.entry_ids.is_empty());
+    }
+
+    // -- crt-013: parse_semantic_k tests (pure function, no env var mutation) --
+
+    #[test]
+    fn parse_semantic_k_default_when_unset() {
+        let k = super::parse_semantic_k_from(None);
+        assert_eq!(k, 3);
+    }
+
+    #[test]
+    fn parse_semantic_k_valid_value() {
+        let k = super::parse_semantic_k_from(Some("5".to_string()));
+        assert_eq!(k, 5);
+    }
+
+    #[test]
+    fn parse_semantic_k_clamps_to_min() {
+        let k = super::parse_semantic_k_from(Some("0".to_string()));
+        assert_eq!(k, 1);
+    }
+
+    #[test]
+    fn parse_semantic_k_clamps_to_max() {
+        let k = super::parse_semantic_k_from(Some("100".to_string()));
+        assert_eq!(k, 20);
+    }
+
+    #[test]
+    fn parse_semantic_k_invalid_falls_back() {
+        let k = super::parse_semantic_k_from(Some("abc".to_string()));
+        assert_eq!(k, 3);
+    }
+
+    #[test]
+    fn parse_semantic_k_boundary_one() {
+        let k = super::parse_semantic_k_from(Some("1".to_string()));
+        assert_eq!(k, 1);
+    }
+
+    #[test]
+    fn parse_semantic_k_boundary_twenty() {
+        let k = super::parse_semantic_k_from(Some("20".to_string()));
+        assert_eq!(k, 20);
     }
 }

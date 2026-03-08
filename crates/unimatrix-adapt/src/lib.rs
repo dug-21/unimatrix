@@ -12,13 +12,11 @@
 //! - `training`: InfoNCE loss, reservoir sampling, batch training
 //! - `regularization`: EWC++ online Fisher regularization
 //! - `prototypes`: Domain prototype centroids with soft pull
-//! - `episodic`: Post-search episodic augmentation (stub for now)
 //! - `persistence`: Versioned binary state save/load
 //! - `service`: Public API orchestrating all components
 //! - `config`: Configuration with sensible defaults
 
 pub mod config;
-pub mod episodic;
 pub mod lora;
 pub mod persistence;
 pub mod prototypes;

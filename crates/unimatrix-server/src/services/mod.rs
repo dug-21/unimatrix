@@ -245,10 +245,12 @@ impl ServiceLayer {
 
         let confidence = ConfidenceService::new(Arc::clone(&store));
 
+        let semantic_k = briefing::parse_semantic_k();
         let briefing = BriefingService::new(
             Arc::clone(&entry_store),
             search.clone(),
             Arc::clone(&gateway),
+            semantic_k,
         );
 
         let status = StatusService::new(

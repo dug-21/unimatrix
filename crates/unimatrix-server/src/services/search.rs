@@ -395,3 +395,182 @@ impl SearchService {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use unimatrix_core::EntryRecord;
+
+    fn make_test_entry(
+        id: u64,
+        status: Status,
+        superseded_by: Option<u64>,
+        confidence: f64,
+        category: &str,
+    ) -> EntryRecord {
+        EntryRecord {
+            id,
+            title: format!("entry-{id}"),
+            content: String::new(),
+            topic: String::new(),
+            category: category.to_string(),
+            tags: vec![],
+            source: String::new(),
+            status,
+            confidence,
+            created_at: 1_000_000,
+            updated_at: 0,
+            last_accessed_at: 1_000_000,
+            access_count: 10,
+            supersedes: None,
+            superseded_by,
+            correction_count: 0,
+            embedding_dim: 0,
+            created_by: String::new(),
+            modified_by: String::new(),
+            content_hash: String::new(),
+            previous_hash: String::new(),
+            version: 1,
+            feature_cycle: String::new(),
+            trust_source: "agent".to_string(),
+            helpful_count: 0,
+            unhelpful_count: 0,
+            pre_quarantine_status: None,
+        }
+    }
+
+    /// Simulate the penalty-applied final score as computed in Step 7.
+    fn penalized_score(similarity: f64, confidence: f64, penalty: f64) -> f64 {
+        rerank_score(similarity, confidence) * penalty
+    }
+
+    // -- T-SP-01: Deprecated ranks below active in Flexible mode --
+    #[test]
+    fn deprecated_below_active_flexible() {
+        let active = make_test_entry(1, Status::Active, None, 0.65, "decision");
+        let deprecated = make_test_entry(2, Status::Deprecated, None, 0.65, "decision");
+
+        // Deprecated entry has HIGHER raw similarity than active
+        let active_sim = 0.80;
+        let deprecated_sim = 0.90;
+
+        let active_score = penalized_score(active_sim, active.confidence, 1.0);
+        let deprecated_score = penalized_score(deprecated_sim, deprecated.confidence, DEPRECATED_PENALTY);
+
+        assert!(
+            active_score > deprecated_score,
+            "active ({active_score:.4}) should rank above deprecated ({deprecated_score:.4})"
+        );
+    }
+
+    // -- T-SP-02: Superseded ranks below active in Flexible mode --
+    #[test]
+    fn superseded_below_active_flexible() {
+        let active = make_test_entry(1, Status::Active, None, 0.65, "decision");
+        let superseded = make_test_entry(2, Status::Deprecated, Some(1), 0.65, "decision");
+
+        let active_sim = 0.80;
+        let superseded_sim = 0.90;
+
+        let active_score = penalized_score(active_sim, active.confidence, 1.0);
+        let superseded_score = penalized_score(superseded_sim, superseded.confidence, SUPERSEDED_PENALTY);
+
+        assert!(
+            active_score > superseded_score,
+            "active ({active_score:.4}) should rank above superseded ({superseded_score:.4})"
+        );
+    }
+
+    // -- T-SP-03: Strict mode excludes deprecated and superseded --
+    #[test]
+    fn strict_mode_excludes_non_active() {
+        let active = make_test_entry(1, Status::Active, None, 0.65, "decision");
+        let deprecated = make_test_entry(2, Status::Deprecated, None, 0.65, "decision");
+        let superseded = make_test_entry(3, Status::Active, Some(99), 0.65, "decision");
+
+        let entries = vec![
+            (active.clone(), 0.9),
+            (deprecated.clone(), 0.85),
+            (superseded.clone(), 0.8),
+        ];
+
+        // Apply strict mode filtering
+        let filtered: Vec<_> = entries
+            .into_iter()
+            .filter(|(e, _)| e.status == Status::Active && e.superseded_by.is_none())
+            .collect();
+
+        assert_eq!(filtered.len(), 1, "strict mode should keep only active non-superseded");
+        assert_eq!(filtered[0].0.id, active.id);
+    }
+
+    // -- T-SP-04: Superseded penalty is harsher than deprecated penalty --
+    #[test]
+    fn superseded_penalty_harsher() {
+        assert!(
+            SUPERSEDED_PENALTY < DEPRECATED_PENALTY,
+            "superseded penalty ({SUPERSEDED_PENALTY}) should be < deprecated penalty ({DEPRECATED_PENALTY})"
+        );
+    }
+
+    // -- T-SP-05: Deprecated-only query returns results in Flexible mode --
+    #[test]
+    fn deprecated_only_results_visible_flexible() {
+        let deprecated = make_test_entry(1, Status::Deprecated, None, 0.65, "decision");
+        let deprecated_sim = 0.85;
+
+        // In flexible mode, deprecated entries are penalized but NOT excluded
+        let score = penalized_score(deprecated_sim, deprecated.confidence, DEPRECATED_PENALTY);
+
+        assert!(score > 0.0, "deprecated entry should have a positive score ({score:.4})");
+    }
+
+    // -- T-SP-06: Successor injection ranking --
+    #[test]
+    fn successor_ranks_above_superseded() {
+        let successor = make_test_entry(1, Status::Active, None, 0.7, "decision");
+        let superseded = make_test_entry(2, Status::Deprecated, Some(1), 0.65, "decision");
+
+        // Superseded has higher raw similarity (it matched the query better)
+        let successor_sim = 0.70;
+        let superseded_sim = 0.90;
+
+        let successor_score = penalized_score(successor_sim, successor.confidence, 1.0);
+        let superseded_score = penalized_score(superseded_sim, superseded.confidence, SUPERSEDED_PENALTY);
+
+        assert!(
+            successor_score > superseded_score,
+            "successor ({successor_score:.4}) should rank above superseded ({superseded_score:.4})"
+        );
+    }
+
+    // -- T-SP-07: Penalty does not affect stored confidence formula invariant --
+    #[test]
+    fn penalty_independent_of_confidence_formula() {
+        // Penalties are multiplicative on the FINAL re-ranked score, not on confidence
+        let sim = 0.9;
+        let conf = 0.8;
+        let base = rerank_score(sim, conf);
+        let penalized = base * DEPRECATED_PENALTY;
+
+        // The rerank base score is unchanged
+        assert_eq!(base, rerank_score(sim, conf));
+        // The penalty only affects the final score
+        assert!(penalized < base);
+        assert!((penalized - base * DEPRECATED_PENALTY).abs() < f64::EPSILON);
+    }
+
+    // -- T-SP-08: Equal similarity, penalty determines ranking --
+    #[test]
+    fn equal_similarity_penalty_determines_rank() {
+        let sim = 0.85;
+        let conf = 0.65;
+
+        let active_score = penalized_score(sim, conf, 1.0);
+        let deprecated_score = penalized_score(sim, conf, DEPRECATED_PENALTY);
+        let superseded_score = penalized_score(sim, conf, SUPERSEDED_PENALTY);
+
+        assert!(active_score > deprecated_score);
+        assert!(deprecated_score > superseded_score);
+    }
+}
