@@ -27,22 +27,32 @@ pub struct ProjectPaths {
     pub socket_path: PathBuf,
 }
 
-/// Detect the project root by walking up from cwd looking for `.git/`.
+/// Detect the project root by walking up from cwd looking for `.git`.
 ///
 /// If `override_dir` is provided, it is used directly (canonicalized).
-/// Otherwise, walks up from the current working directory. If no `.git/`
-/// directory is found, the current working directory is used.
+/// Otherwise, walks up from the current working directory. If no `.git`
+/// is found, the current working directory is used.
+///
+/// Handles both normal repositories (`.git` is a directory) and git
+/// worktrees (`.git` is a file containing `gitdir: <path>`). For
+/// worktrees, resolves through the gitdir pointer back to the main
+/// repository root so all worktrees share the same project hash.
 pub fn detect_project_root(override_dir: Option<&Path>) -> io::Result<PathBuf> {
     if let Some(dir) = override_dir {
-        return dir.canonicalize();
+        let canonical = dir.canonicalize()?;
+        return resolve_worktree_root(&canonical);
     }
 
     let start = std::env::current_dir()?;
     let mut current = start.as_path();
 
     loop {
-        if current.join(".git").is_dir() {
+        let git_path = current.join(".git");
+        if git_path.is_dir() {
             return current.to_path_buf().canonicalize();
+        }
+        if git_path.is_file() {
+            return resolve_git_file(&git_path, current);
         }
         match current.parent() {
             Some(parent) => current = parent,
@@ -52,6 +62,62 @@ pub fn detect_project_root(override_dir: Option<&Path>) -> io::Result<PathBuf> {
 
     // No .git found — use original cwd
     start.canonicalize()
+}
+
+/// Resolve a `.git` file (worktree marker) to the main repository root.
+///
+/// The file contains a single line: `gitdir: <path>`. The path points to
+/// `<main-repo>/.git/worktrees/<name>`. We resolve to `<main-repo>` by
+/// finding the `.git` directory ancestor of the gitdir target.
+fn resolve_git_file(git_file: &Path, worktree_dir: &Path) -> io::Result<PathBuf> {
+    let content = fs::read_to_string(git_file)?;
+    let gitdir_line = content
+        .lines()
+        .find(|l| l.starts_with("gitdir:"))
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("no gitdir line in {}", git_file.display()),
+            )
+        })?;
+
+    let gitdir_raw = gitdir_line["gitdir:".len()..].trim();
+    let gitdir_path = if Path::new(gitdir_raw).is_absolute() {
+        PathBuf::from(gitdir_raw)
+    } else {
+        worktree_dir.join(gitdir_raw)
+    };
+
+    // Walk up from the gitdir target to find the `.git` directory itself.
+    // Typical path: <repo>/.git/worktrees/<name> -> we want <repo>.
+    let gitdir_canonical = gitdir_path.canonicalize()?;
+    let mut ancestor = gitdir_canonical.as_path();
+    loop {
+        if ancestor.file_name().and_then(|n| n.to_str()) == Some(".git")
+            && ancestor.is_dir()
+            && let Some(repo_root) = ancestor.parent()
+        {
+            return repo_root.to_path_buf().canonicalize();
+        }
+        match ancestor.parent() {
+            Some(parent) => ancestor = parent,
+            None => break,
+        }
+    }
+
+    // Fallback: if we can't resolve, use the worktree dir itself
+    worktree_dir.to_path_buf().canonicalize()
+}
+
+/// If the given directory is a worktree, resolve to the main repo root.
+/// Otherwise return the directory as-is.
+fn resolve_worktree_root(dir: &Path) -> io::Result<PathBuf> {
+    let git_path = dir.join(".git");
+    if git_path.is_file() {
+        resolve_git_file(&git_path, dir)
+    } else {
+        Ok(dir.to_path_buf())
+    }
 }
 
 /// Compute a deterministic project hash from a canonical path.
@@ -211,6 +277,117 @@ mod tests {
         let paths =
             ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
         assert_eq!(paths.socket_path, paths.data_dir.join("unimatrix.sock"));
+    }
+
+    #[test]
+    fn test_detect_root_worktree_git_file() {
+        // Simulate a worktree: main repo has .git dir, worktree has .git file
+        let main_repo = tempfile::TempDir::new().unwrap();
+        let git_dir = main_repo.path().join(".git");
+        fs::create_dir(&git_dir).unwrap();
+        let worktrees_dir = git_dir.join("worktrees").join("my-worktree");
+        fs::create_dir_all(&worktrees_dir).unwrap();
+
+        let worktree = tempfile::TempDir::new().unwrap();
+        let gitdir_target = worktrees_dir.canonicalize().unwrap();
+        fs::write(
+            worktree.path().join(".git"),
+            format!("gitdir: {}\n", gitdir_target.display()),
+        )
+        .unwrap();
+
+        let result = detect_project_root(Some(worktree.path())).unwrap();
+        assert_eq!(result, main_repo.path().canonicalize().unwrap());
+    }
+
+    #[test]
+    fn test_worktree_same_hash_as_main_repo() {
+        // A worktree and its main repo must produce the same project hash
+        let main_repo = tempfile::TempDir::new().unwrap();
+        let git_dir = main_repo.path().join(".git");
+        fs::create_dir(&git_dir).unwrap();
+        let worktrees_dir = git_dir.join("worktrees").join("feature-branch");
+        fs::create_dir_all(&worktrees_dir).unwrap();
+
+        let worktree = tempfile::TempDir::new().unwrap();
+        let gitdir_target = worktrees_dir.canonicalize().unwrap();
+        fs::write(
+            worktree.path().join(".git"),
+            format!("gitdir: {}\n", gitdir_target.display()),
+        )
+        .unwrap();
+
+        let main_root = detect_project_root(Some(main_repo.path())).unwrap();
+        let wt_root = detect_project_root(Some(worktree.path())).unwrap();
+        assert_eq!(main_root, wt_root);
+
+        let main_hash = compute_project_hash(&main_root);
+        let wt_hash = compute_project_hash(&wt_root);
+        assert_eq!(main_hash, wt_hash);
+    }
+
+    #[test]
+    fn test_worktree_relative_gitdir() {
+        // Worktree .git file can use a relative path
+        let main_repo = tempfile::TempDir::new().unwrap();
+        let git_dir = main_repo.path().join(".git");
+        fs::create_dir(&git_dir).unwrap();
+        let worktrees_dir = git_dir.join("worktrees").join("rel-wt");
+        fs::create_dir_all(&worktrees_dir).unwrap();
+
+        // Create worktree as a subdirectory of main repo (like .claude/worktrees/...)
+        let worktree_dir = main_repo.path().join("worktrees").join("rel-wt");
+        fs::create_dir_all(&worktree_dir).unwrap();
+        // Relative path from worktree to main .git/worktrees/rel-wt
+        fs::write(
+            worktree_dir.join(".git"),
+            "gitdir: ../../.git/worktrees/rel-wt\n",
+        )
+        .unwrap();
+
+        let result = detect_project_root(Some(&worktree_dir)).unwrap();
+        assert_eq!(result, main_repo.path().canonicalize().unwrap());
+    }
+
+    #[test]
+    fn test_worktree_git_file_no_gitdir_line() {
+        // A .git file without a gitdir line should fail with InvalidData
+        let dir = tempfile::TempDir::new().unwrap();
+        fs::write(dir.path().join(".git"), "something unexpected\n").unwrap();
+
+        let result = detect_project_root(Some(dir.path()));
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn test_worktree_ensure_data_dir_matches_main() {
+        // ensure_data_directory from a worktree should produce the same paths
+        // as from the main repo
+        let main_repo = tempfile::TempDir::new().unwrap();
+        let git_dir = main_repo.path().join(".git");
+        fs::create_dir(&git_dir).unwrap();
+        let worktrees_dir = git_dir.join("worktrees").join("data-test");
+        fs::create_dir_all(&worktrees_dir).unwrap();
+
+        let worktree = tempfile::TempDir::new().unwrap();
+        let gitdir_target = worktrees_dir.canonicalize().unwrap();
+        fs::write(
+            worktree.path().join(".git"),
+            format!("gitdir: {}\n", gitdir_target.display()),
+        )
+        .unwrap();
+
+        let base_dir = tempfile::TempDir::new().unwrap();
+        let main_paths =
+            ensure_data_directory(Some(main_repo.path()), Some(base_dir.path())).unwrap();
+        let wt_paths =
+            ensure_data_directory(Some(worktree.path()), Some(base_dir.path())).unwrap();
+
+        assert_eq!(main_paths.project_hash, wt_paths.project_hash);
+        assert_eq!(main_paths.db_path, wt_paths.db_path);
+        assert_eq!(main_paths.socket_path, wt_paths.socket_path);
     }
 
     #[test]
