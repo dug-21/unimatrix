@@ -51,37 +51,77 @@ Agent enrollment tool with protected agents, self-lockout prevention, strict cap
 
 ## What's Next
 
-### Hardening Pass
+### Milestone: Intelligence Sharpening
 
-Consolidate before expanding. 25 open issues spanning bugs, structural debt, and test gaps accumulated across 36 features. Priority: fix correctness issues, close test coverage gaps, reduce structural debt. Scope TBD — curated from open issue backlog.
+Fix, validate, and tune the self-learning intelligence pipeline before adding new capabilities. Predecessor to graph enablement.
 
-Key candidates:
-- **Bugs:** Zombie test processes (#122), feature ID validation (#79), session count over-counting (#75), quarantine status transitions (#43)
-- **Structural debt:** Direct transaction coupling (#97), observation metrics normalization (#103), training infrastructure dedup (#113), VectorIndex Box::leak (#4)
-- **Test gaps:** Server reliability suite (#93), col-007 coverage (#71), latency benchmarks (#70)
-- **Quality-of-life:** Status scan optimization (#17), outcome stats performance (#42), text-format retrospective (#91)
+**Bugs affecting intelligence accuracy:**
+- #75 — session count over-counting (corrupts confidence signals)
+- #43 — quarantine from Deprecated status (blocks knowledge cleanup; restore must track pre-quarantine status)
+- #79 — feature ID validation rejects suffixed IDs (breaks feature_cycle linking)
 
-### Intelligence Pipeline Testing
+**Structural debt in intelligence pipeline:**
+- #113 — deduplicate TrainingReservoir/EwcState (crt-007 tech debt)
+- #103 — observation metrics blob normalization (enables SQL analytics on metrics)
+- #51 — reservoir RNG seed hardcoded (affects training reproducibility)
+- #32 — confidence integration tests bypass tool handlers
 
-Research in progress. The self-learning pipeline (crt-007/008 neural extraction, col-013 rule-based extraction, confidence evolution, co-access boosting) represents a significant amount of intelligence capability that needs end-to-end validation under real conditions. Goal: confirm the pipeline produces trustworthy, useful knowledge autonomously.
+**Intelligence configuration/tuning:**
+- #50 — episodic augmentation vs co-access overlap (double-counting risk)
+- #118 — status signals underweighted in retrieval (verify crt-010 coverage)
+- #17 — briefing k=3 hardcode, status scan optimization
 
-### petgraph Integration
+**Testing pipeline (new work):**
+- Intelligence pipeline end-to-end validation (research in progress)
+- Confidence calibration testing — are the weights producing the right rankings?
+- Extraction quality validation — are col-013/crt-007/008 producing trustworthy entries?
+
+### Milestone: Graph Enablement
+
+Depends on Intelligence Sharpening. Introduce petgraph for topology-derived scoring and multi-hop traversal.
 
 Research complete (ASS-017, `product/research/ass-017/`). Replace hardcoded deprecation/supersession penalty constants (0.7x/0.5x) with graph-topology-derived scoring. Enables multi-hop supersession traversal, co-access transitivity, connected component analysis for coherence gate, correction chain quality scoring, and cycle detection as integrity check. Three-phase rollout: supersession graph → co-access graph → unified knowledge graph. Technical risk: LOW.
 
+Additional candidates:
+- crt-009: Advanced models (Duplicate Detector, Pattern Merger, optional LLM tier)
+- #34: NLI model integration for conflict heuristic
+
+### Milestone: Platform Hardening & Release
+
+Depends on Graph Enablement. Stabilize the platform for distribution and parallel development workflows.
+
+**Infrastructure debt:**
+- #122 — zombie cargo test processes blocking workspace testing
+- #4 — Box::leak in VectorIndex (hnsw_rs lifetime workaround)
+- #97 — direct transaction coupling in server
+- #131 — detect_project_root fails in git worktrees
+- #66 — UDS spurious warnings on fire-and-forget
+
+**Test infrastructure:**
+- #93 — server reliability integration test suite
+- #71 — col-007 partial test coverage
+- #70 — latency benchmark infrastructure
+
+**Quality-of-life:**
+- #42 — outcome stats computation optimization
+- #91 — text-format retrospective for LLM consumers
+- #89 — OperationalEvent structured logging
+
+**Release enablement:**
+- vnc-005: Config externalization (multi-domain deployment)
+- nan-*: CLI binary, Docker, CI integration, release automation
+- Versioning and distribution automation
+
 ### Future Horizons
 
-Not committed. Directional priorities based on where the product stands today.
+Not committed. Directional priorities after the three milestones above.
 
 | Area | Key Features | Why |
 |------|-------------|-----|
-| **Advanced Models** | crt-009: Duplicate Detector, Pattern Merger, Entry Writer Scorer, optional LLM tier | Completes the self-learning pipeline with sophisticated extraction |
 | **Semantic Routing** | col-011: Prompt→agent matching via embeddings | Advisory agent selection from knowledge, not keywords |
-| **Config Externalization** | vnc-005: `ServerConfig` from TOML | Enables multi-domain deployment without rebuilding |
 | **Thin-Shell Agents** | alc-010/011: Slim agent files, migration assistant | Hooks deliver knowledge at runtime; agent files shed static content |
 | **Real-Time Interface** | mtx-*: Dashboard, knowledge explorer, prompt debugger | Human oversight layer — deprioritized vs delivery features |
 | **Multi-Project** | dsn-*: Project isolation, cross-project knowledge, export/import | Scale to multiple concurrent repos |
-| **Packaging** | nan-*: CLI binary, Docker, CI integration, release automation | Installable product distribution |
 
 ### Research Threads
 
