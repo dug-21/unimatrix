@@ -114,7 +114,8 @@ fn create_tables(conn: &Connection) -> Result<()> {
             feature_cycle   TEXT    NOT NULL DEFAULT '',
             trust_source    TEXT    NOT NULL DEFAULT '',
             helpful_count   INTEGER NOT NULL DEFAULT 0,
-            unhelpful_count INTEGER NOT NULL DEFAULT 0
+            unhelpful_count INTEGER NOT NULL DEFAULT 0,
+            pre_quarantine_status INTEGER
         );
         CREATE TABLE IF NOT EXISTS entry_tags (
             entry_id INTEGER NOT NULL,
@@ -240,7 +241,7 @@ fn create_tables(conn: &Connection) -> Result<()> {
 
     // Initialize counters that other modules expect
     conn.execute_batch(
-        "INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 7);
+        "INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 8);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_entry_id', 1);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_signal_id', 0);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_log_id', 0);

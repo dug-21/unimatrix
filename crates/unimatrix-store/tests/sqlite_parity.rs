@@ -113,6 +113,7 @@ fn test_update_not_found() {
         trust_source: String::new(),
         helpful_count: 0,
         unhelpful_count: 0,
+        pre_quarantine_status: None,
     };
     let result = db.store().update(fake_record);
     assert!(matches!(result, Err(StoreError::EntryNotFound(999))));

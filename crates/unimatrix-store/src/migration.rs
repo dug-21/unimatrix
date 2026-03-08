@@ -15,7 +15,7 @@ use crate::schema::{deserialize_entry, serialize_entry};
 use crate::db::Store;
 
 /// Current schema version.
-pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 7;
+pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 8;
 
 /// Run migration if schema_version is behind CURRENT_SCHEMA_VERSION.
 /// Called from Store::open() after table creation.
@@ -98,6 +98,31 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
                 );
                 CREATE INDEX IF NOT EXISTS idx_observations_session ON observations(session_id);
                 CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts_millis);"
+            ).map_err(StoreError::Sqlite)?;
+        }
+
+        // v7 -> v8: pre_quarantine_status column (vnc-010)
+        if current_version < 8 {
+            // Guard: check if column already exists (handles partial migration re-run)
+            let has_column: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM pragma_table_info('entries') WHERE name = 'pre_quarantine_status'",
+                    [],
+                    |row| Ok(row.get::<_, i64>(0)? > 0),
+                )
+                .unwrap_or(false);
+
+            if !has_column {
+                conn.execute_batch(
+                    "ALTER TABLE entries ADD COLUMN pre_quarantine_status INTEGER;"
+                ).map_err(StoreError::Sqlite)?;
+            }
+
+            // Backfill: existing quarantined entries were quarantined from Active
+            // (old logic only allowed Active->Quarantined)
+            conn.execute(
+                "UPDATE entries SET pre_quarantine_status = 0 WHERE status = 3 AND pre_quarantine_status IS NULL",
+                [],
             ).map_err(StoreError::Sqlite)?;
         }
 
@@ -188,7 +213,8 @@ fn migrate_v5_to_v6(conn: &rusqlite::Connection, db_path: &Path) -> Result<()> {
                 feature_cycle   TEXT    NOT NULL DEFAULT '',
                 trust_source    TEXT    NOT NULL DEFAULT '',
                 helpful_count   INTEGER NOT NULL DEFAULT 0,
-                unhelpful_count INTEGER NOT NULL DEFAULT 0
+                unhelpful_count INTEGER NOT NULL DEFAULT 0,
+                pre_quarantine_status INTEGER
             );
             CREATE TABLE IF NOT EXISTS entry_tags (
                 entry_id INTEGER NOT NULL,

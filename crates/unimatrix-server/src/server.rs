@@ -337,6 +337,7 @@ impl UnimatrixServer {
                 trust_source: entry.trust_source,
                 helpful_count: 0,
                 unhelpful_count: 0,
+                pre_quarantine_status: None,
             };
 
             // INSERT into entries with named params (ADR-004)
@@ -548,6 +549,7 @@ impl UnimatrixServer {
                 trust_source: correction_entry.trust_source,
                 helpful_count: 0,
                 unhelpful_count: 0,
+                pre_quarantine_status: None,
             };
 
             // 6. INSERT correction with named params (ADR-004)
@@ -821,16 +823,23 @@ impl UnimatrixServer {
         ).await
     }
 
-    /// Restore a quarantined entry: set status to Active using direct SQL (nxs-008).
+    /// Restore a quarantined entry to its pre-quarantine status (vnc-010).
+    /// Falls back to Active if pre_quarantine_status is NULL or invalid (ADR-002).
     pub(crate) async fn restore_with_audit(
         &self,
         entry_id: u64,
         reason: Option<String>,
         audit_event: AuditEvent,
     ) -> Result<EntryRecord, ServerError> {
+        // Fetch entry to read pre_quarantine_status
+        let entry = self.entry_store.get(entry_id).await
+            .map_err(ServerError::Core)?;
+        let restore_to = entry.pre_quarantine_status
+            .and_then(|v| unimatrix_store::Status::try_from(v).ok())
+            .unwrap_or(unimatrix_store::Status::Active);
         self.change_status_with_audit(
             entry_id,
-            unimatrix_store::Status::Active,
+            restore_to,
             reason,
             audit_event,
             true, // set modified_by from audit agent_id
@@ -896,23 +905,33 @@ impl UnimatrixServer {
                 .unwrap_or_default()
                 .as_secs();
 
+            // vnc-010: set pre_quarantine_status when quarantining, clear when restoring
+            let old_pre_q = record.pre_quarantine_status;
+            let pre_q_value: Option<i64> = if new_status == unimatrix_store::Status::Quarantined {
+                Some(old_status as u8 as i64)
+            } else {
+                None
+            };
+
             if set_modified_by {
                 conn.execute(
-                    "UPDATE entries SET status = ?1, modified_by = ?2, updated_at = ?3 WHERE id = ?4",
+                    "UPDATE entries SET status = ?1, modified_by = ?2, updated_at = ?3, pre_quarantine_status = ?4 WHERE id = ?5",
                     rusqlite::params![
                         new_status as u8 as i64,
                         &audit_event.agent_id,
                         now as i64,
+                        pre_q_value,
                         entry_id as i64
                     ],
                 ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
                 record.modified_by = audit_event.agent_id.clone();
             } else {
                 conn.execute(
-                    "UPDATE entries SET status = ?1, updated_at = ?2 WHERE id = ?3",
+                    "UPDATE entries SET status = ?1, updated_at = ?2, pre_quarantine_status = ?3 WHERE id = ?4",
                     rusqlite::params![
                         new_status as u8 as i64,
                         now as i64,
+                        pre_q_value,
                         entry_id as i64
                     ],
                 ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
@@ -920,6 +939,7 @@ impl UnimatrixServer {
 
             record.status = new_status;
             record.updated_at = now;
+            record.pre_quarantine_status = pre_q_value.map(|v| v as u8);
 
             // 4. Update status counters
             unimatrix_store::counters::decrement_counter(conn, status_counter_key(old_status), 1)
@@ -927,10 +947,18 @@ impl UnimatrixServer {
             unimatrix_store::counters::increment_counter(conn, status_counter_key(new_status), 1)
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // 5. Write audit event
+            // 5. Write audit event (vnc-010: include pre_quarantine_status)
+            let pre_q_info = if new_status == unimatrix_store::Status::Quarantined {
+                format!(" (pre_quarantine_status={})", old_status as u8)
+            } else if let Some(pq) = old_pre_q {
+                // This is a restore — note what we restored from
+                format!(" (restored from pre_quarantine_status={})", pq)
+            } else {
+                String::new()
+            };
             let detail = match &reason {
-                Some(r) => format!("{action_name} entry #{entry_id}: {r}"),
-                None => format!("{action_name} entry #{entry_id}"),
+                Some(r) => format!("{action_name} entry #{entry_id}{pre_q_info}: {r}"),
+                None => format!("{action_name} entry #{entry_id}{pre_q_info}"),
             };
             let audit_with_detail = AuditEvent {
                 target_ids: vec![entry_id],
@@ -1857,6 +1885,320 @@ mod tests {
             .await;
 
         assert!(result.is_err(), "quarantining nonexistent entry should fail");
+    }
+
+    // -- vnc-010: Quarantine State Restoration tests --
+
+    /// Helper: insert entry and deprecate it, returning the entry id.
+    async fn insert_and_deprecate(server: &UnimatrixServer) -> u64 {
+        let id = insert_test_entry(&server.store);
+        let audit_event = crate::infra::audit::AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: "system".to_string(),
+            operation: "context_deprecate".to_string(),
+            target_ids: vec![],
+            outcome: crate::infra::audit::Outcome::Success,
+            detail: String::new(),
+        };
+        server
+            .deprecate_with_audit(id, None, audit_event)
+            .await
+            .unwrap();
+        assert_eq!(
+            server.store.get(id).unwrap().status,
+            unimatrix_store::Status::Deprecated
+        );
+        id
+    }
+
+    // AC-1: Quarantine from Deprecated status
+    #[tokio::test]
+    async fn test_quarantine_deprecated_entry() {
+        let server = make_server();
+        let id = insert_and_deprecate(&server).await;
+
+        let updated = server
+            .quarantine_with_audit(id, Some("obsolete and harmful".into()), make_audit_event("system"))
+            .await
+            .unwrap();
+
+        assert_eq!(updated.status, unimatrix_store::Status::Quarantined);
+        assert_eq!(updated.pre_quarantine_status, Some(1)); // Deprecated = 1
+
+        let fetched = server.store.get(id).unwrap();
+        assert_eq!(fetched.status, unimatrix_store::Status::Quarantined);
+        assert_eq!(fetched.pre_quarantine_status, Some(1));
+    }
+
+    // AC-3: Quarantine from Active sets pre_quarantine_status=0
+    #[tokio::test]
+    async fn test_quarantine_active_sets_pre_quarantine_status() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        let updated = server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        assert_eq!(updated.status, unimatrix_store::Status::Quarantined);
+        assert_eq!(updated.pre_quarantine_status, Some(0)); // Active = 0
+    }
+
+    // AC-4: Restore to pre-quarantine status (Deprecated round-trip)
+    #[tokio::test]
+    async fn test_restore_to_deprecated() {
+        let server = make_server();
+        let id = insert_and_deprecate(&server).await;
+
+        // Quarantine from Deprecated
+        server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        // Restore -- should go back to Deprecated, not Active
+        let restored = server
+            .restore_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        assert_eq!(restored.status, unimatrix_store::Status::Deprecated);
+        assert_eq!(restored.pre_quarantine_status, None); // cleared after restore
+    }
+
+    // AC-5: Restore with NULL pre_quarantine_status falls back to Active
+    #[tokio::test]
+    async fn test_restore_null_pre_quarantine_falls_back_to_active() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // Quarantine the entry
+        server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        // Manually clear pre_quarantine_status to NULL to simulate pre-migration entry
+        {
+            let conn = server.store.lock_conn();
+            conn.execute(
+                "UPDATE entries SET pre_quarantine_status = NULL WHERE id = ?1",
+                rusqlite::params![id as i64],
+            )
+            .unwrap();
+        }
+
+        // Restore -- should fall back to Active
+        let restored = server
+            .restore_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        assert_eq!(restored.status, unimatrix_store::Status::Active);
+    }
+
+    // AC-8: Counter integrity for Deprecated quarantine round-trip
+    #[tokio::test]
+    async fn test_counter_integrity_deprecated_round_trip() {
+        let server = make_server();
+        let id = insert_and_deprecate(&server).await;
+
+        let before_deprecated = server.store.read_counter("total_deprecated").unwrap();
+        let before_quarantined = server.store.read_counter("total_quarantined").unwrap();
+
+        // Quarantine from Deprecated
+        server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        let mid_deprecated = server.store.read_counter("total_deprecated").unwrap();
+        let mid_quarantined = server.store.read_counter("total_quarantined").unwrap();
+        assert_eq!(mid_deprecated, before_deprecated - 1, "deprecated counter should decrement");
+        assert_eq!(mid_quarantined, before_quarantined + 1, "quarantined counter should increment");
+
+        // Restore to Deprecated
+        server
+            .restore_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        let after_deprecated = server.store.read_counter("total_deprecated").unwrap();
+        let after_quarantined = server.store.read_counter("total_quarantined").unwrap();
+        assert_eq!(after_deprecated, before_deprecated, "deprecated counter should return to initial");
+        assert_eq!(after_quarantined, before_quarantined, "quarantined counter should return to initial");
+    }
+
+    // AC-9: Audit trail includes pre_quarantine_status
+    #[tokio::test]
+    async fn test_quarantine_audit_includes_pre_quarantine_status() {
+        let server = make_server();
+        let id = insert_and_deprecate(&server).await;
+
+        server
+            .quarantine_with_audit(id, Some("harmful".into()), make_audit_event("system"))
+            .await
+            .unwrap();
+
+        let conn = server.store.lock_conn();
+        let detail: String = conn
+            .query_row(
+                "SELECT detail FROM audit_log WHERE operation = 'context_quarantine' ORDER BY event_id DESC LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+
+        assert!(
+            detail.contains("pre_quarantine_status=1"),
+            "audit detail should contain pre_quarantine_status: {detail}"
+        );
+    }
+
+    // AC-10: Restore with invalid pre_quarantine_status falls back to Active
+    #[tokio::test]
+    async fn test_restore_invalid_pre_quarantine_falls_back_to_active() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        // Quarantine the entry
+        server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        // Manually set pre_quarantine_status to invalid value (99)
+        {
+            let conn = server.store.lock_conn();
+            conn.execute(
+                "UPDATE entries SET pre_quarantine_status = 99 WHERE id = ?1",
+                rusqlite::params![id as i64],
+            )
+            .unwrap();
+        }
+
+        // Restore -- should fall back to Active
+        let restored = server
+            .restore_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+
+        assert_eq!(restored.status, unimatrix_store::Status::Active);
+    }
+
+    // AC-7: Migration v7->v8 (tested at store level)
+    #[tokio::test]
+    async fn test_migration_v7_to_v8_backfill() {
+        // Create a database at v7 schema, quarantine an entry, then re-open
+        // (which triggers migration) and verify backfill
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("migrate.db");
+
+        // Create db at current schema (v8)
+        {
+            let store = unimatrix_store::Store::open(&path).unwrap();
+            // Insert an entry and manually quarantine it with old logic (no pre_quarantine_status)
+            let entry = unimatrix_core::NewEntry {
+                title: "Test".to_string(),
+                content: "Content".to_string(),
+                topic: "test".to_string(),
+                category: "convention".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: unimatrix_core::Status::Active,
+                created_by: "system".to_string(),
+                feature_cycle: String::new(),
+                trust_source: String::new(),
+            };
+            let id = store.insert(entry).unwrap();
+
+            // Simulate a v7 quarantine (status=3 but no pre_quarantine_status)
+            let conn = store.lock_conn();
+            conn.execute(
+                "UPDATE entries SET status = 3, pre_quarantine_status = NULL WHERE id = ?1",
+                rusqlite::params![id as i64],
+            )
+            .unwrap();
+
+            // Set schema version back to 7 to trigger migration on next open
+            conn.execute(
+                "UPDATE counters SET value = 7 WHERE name = 'schema_version'",
+                [],
+            )
+            .unwrap();
+        }
+
+        // Re-open -- triggers v7->v8 migration
+        {
+            let store = unimatrix_store::Store::open(&path).unwrap();
+            let conn = store.lock_conn();
+
+            // Verify schema version is now 8
+            let version: i64 = conn
+                .query_row(
+                    "SELECT value FROM counters WHERE name = 'schema_version'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(version, 8);
+
+            // Verify backfill: quarantined entry should have pre_quarantine_status = 0
+            let pre_q: Option<i64> = conn
+                .query_row(
+                    "SELECT pre_quarantine_status FROM entries WHERE status = 3",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(pre_q, Some(0), "backfill should set pre_quarantine_status=0 for quarantined entries");
+        }
+
+        // Re-open again to verify idempotency
+        {
+            let store = unimatrix_store::Store::open(&path).unwrap();
+            let conn = store.lock_conn();
+            let version: i64 = conn
+                .query_row(
+                    "SELECT value FROM counters WHERE name = 'schema_version'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(version, 8, "schema version should remain 8 on re-open");
+        }
+    }
+
+    // R-05: Existing Active->Quarantined->Active path still works identically
+    #[tokio::test]
+    async fn test_active_quarantine_restore_round_trip_still_works() {
+        let server = make_server();
+        let id = insert_test_entry(&server.store);
+
+        let initial_active = server.store.read_counter("total_active").unwrap();
+
+        // Quarantine from Active
+        let quarantined = server
+            .quarantine_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+        assert_eq!(quarantined.status, unimatrix_store::Status::Quarantined);
+        assert_eq!(quarantined.pre_quarantine_status, Some(0));
+
+        // Restore -- should go back to Active
+        let restored = server
+            .restore_with_audit(id, None, make_audit_event("system"))
+            .await
+            .unwrap();
+        assert_eq!(restored.status, unimatrix_store::Status::Active);
+        assert_eq!(restored.pre_quarantine_status, None);
+
+        // Counters should return to initial
+        let final_active = server.store.read_counter("total_active").unwrap();
+        assert_eq!(final_active, initial_active);
     }
 
     // -- PendingEntriesAnalysis tests (R-07) --
