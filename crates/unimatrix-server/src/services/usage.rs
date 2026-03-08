@@ -474,4 +474,58 @@ mod usage_tests {
         ).unwrap();
         assert_eq!(count, 0, "restricted agent feature entry should not be recorded");
     }
+
+    /// T-INT-01: Verify confidence is recomputed after recording MCP usage.
+    /// Exercises the full UsageService -> Store -> confidence recomputation path.
+    #[tokio::test]
+    async fn test_mcp_usage_confidence_recomputed() {
+        let (service, store, _dir) = make_usage_service();
+        let id = insert_test_entry(&store);
+
+        // Before: confidence is 0.0
+        assert_eq!(store.get(id).unwrap().confidence, 0.0);
+
+        service.record_access(&[id], AccessSource::McpTool, UsageContext {
+            session_id: None,
+            agent_id: Some("agent-1".to_string()),
+            helpful: Some(true),
+            feature_cycle: None,
+            trust_level: Some(TrustLevel::Internal),
+        });
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        let entry = store.get(id).expect("get");
+        assert!(entry.confidence > 0.0, "confidence should be recomputed after usage recording");
+        assert_eq!(entry.access_count, 1);
+        assert_eq!(entry.helpful_count, 1);
+    }
+
+    /// T-INT-02: Verify UsageDedup prevents double access_count via UsageService.
+    #[tokio::test]
+    async fn test_mcp_usage_dedup_prevents_double_access() {
+        let (service, store, _dir) = make_usage_service();
+        let id = insert_test_entry(&store);
+
+        // First call: access_count becomes 1
+        service.record_access(&[id], AccessSource::McpTool, UsageContext {
+            session_id: None,
+            agent_id: Some("agent-1".to_string()),
+            helpful: None,
+            feature_cycle: None,
+            trust_level: Some(TrustLevel::Internal),
+        });
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert_eq!(store.get(id).unwrap().access_count, 1);
+
+        // Second call: same agent+entry -> deduped
+        service.record_access(&[id], AccessSource::McpTool, UsageContext {
+            session_id: None,
+            agent_id: Some("agent-1".to_string()),
+            helpful: None,
+            feature_cycle: None,
+            trust_level: Some(TrustLevel::Internal),
+        });
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert_eq!(store.get(id).unwrap().access_count, 1, "dedup should prevent double increment");
+    }
 }

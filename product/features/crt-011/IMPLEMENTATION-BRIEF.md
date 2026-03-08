@@ -88,6 +88,20 @@ Run full test suite: `cargo test --workspace`
 
 ADRs are documented in `product/features/crt-011/architecture/ARCHITECTURE.md`. Unimatrix storage was attempted but MCP server was unavailable; store when server is available.
 
+## Component Map
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| consumer-dedup | pseudocode/consumer-dedup.md | test-plan/consumer-dedup.md |
+| integration-tests | pseudocode/integration-tests.md | test-plan/integration-tests.md |
+
+## Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
 ## Estimated Scope
 
 - **Modified files:** 1 (`uds/listener.rs`)

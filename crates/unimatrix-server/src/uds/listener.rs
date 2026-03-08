@@ -1411,6 +1411,12 @@ pub(crate) async fn run_confidence_consumer(
     // by skipping entries that no longer exist.
 
     // Step 4: Update success_session_count in PendingEntriesAnalysis (FR-06.2b)
+    //
+    // Dedup: each unique (session_id, entry_id) pair increments success_session_count
+    // at most once per drain cycle. Different sessions correctly count separately.
+    // The HashSet persists across all three passes (ADR-001, crt-011).
+    let mut session_counted: HashSet<(String, u64)> = HashSet::new();
+
     // First pass: update existing entries under lock
     let entries_needing_fetch: Vec<u64> = {
         let mut pending_guard = pending.lock().unwrap_or_else(|e| e.into_inner());
@@ -1418,7 +1424,9 @@ pub(crate) async fn run_confidence_consumer(
         for signal in &signals {
             for &entry_id in &signal.entry_ids {
                 if let Some(existing) = pending_guard.entries.get_mut(&entry_id) {
-                    existing.success_session_count += 1;
+                    if session_counted.insert((signal.session_id.clone(), entry_id)) {
+                        existing.success_session_count += 1;
+                    }
                 } else {
                     needing_fetch.push(entry_id);
                 }
@@ -1437,24 +1445,32 @@ pub(crate) async fn run_confidence_consumer(
         fetched.insert(*entry_id, (title, category));
     }
 
-    // Third pass: insert new entries (back under lock)
+    // Third pass: insert new entries or update entries added between passes (back under lock)
     if !fetched.is_empty() {
         let mut pending_guard = pending.lock().unwrap_or_else(|e| e.into_inner());
-        for (entry_id, (title, category)) in fetched {
-            if let Some(existing) = pending_guard.entries.get_mut(&entry_id) {
-                // Added between our first pass and now
-                existing.success_session_count += 1;
-            } else {
-                let analysis = unimatrix_observe::EntryAnalysis {
-                    entry_id,
-                    title,
-                    category,
-                    rework_flag_count: 0,
-                    injection_count: 0,
-                    success_session_count: 1,
-                    rework_session_count: 0,
-                };
-                pending_guard.upsert(analysis);
+        for signal in &signals {
+            for &entry_id in &signal.entry_ids {
+                if let Some((title, category)) = fetched.get(&entry_id) {
+                    if let Some(existing) = pending_guard.entries.get_mut(&entry_id) {
+                        // Entry exists (added between passes or by earlier signal iteration)
+                        if session_counted.insert((signal.session_id.clone(), entry_id)) {
+                            existing.success_session_count += 1;
+                        }
+                    } else {
+                        // New entry — insert with session-aware count
+                        let is_new_session = session_counted.insert((signal.session_id.clone(), entry_id));
+                        let analysis = unimatrix_observe::EntryAnalysis {
+                            entry_id,
+                            title: title.clone(),
+                            category: category.clone(),
+                            rework_flag_count: 0,
+                            injection_count: 0,
+                            success_session_count: if is_new_session { 1 } else { 0 },
+                            rework_session_count: 0,
+                        };
+                        pending_guard.upsert(analysis);
+                    }
+                }
             }
         }
     }
@@ -1502,18 +1518,32 @@ pub(crate) async fn run_retrospective_consumer(
     }
 
     // Step 4: Apply updates to PendingEntriesAnalysis (under lock)
+    //
+    // Dedup: rework_session_count increments at most once per unique
+    // (session_id, entry_id) pair per drain cycle (ADR-001, crt-011).
+    //
+    // rework_flag_count is intentionally NOT deduplicated — it counts
+    // individual rework flagging events (not sessions) and serves as a
+    // severity/priority signal for PendingEntriesAnalysis cap eviction.
+    // Higher values = more problematic = keep for analysis (ADR-002, crt-011).
+    let mut session_counted: HashSet<(String, u64)> = HashSet::new();
     {
         let mut pending_guard = pending.lock().unwrap_or_else(|e| e.into_inner());
         for signal in &signals {
             for &entry_id in &signal.entry_ids {
                 if let Some(existing) = pending_guard.entries.get_mut(&entry_id) {
+                    // rework_flag_count: always increment (event counter, no dedup)
                     existing.rework_flag_count += 1;
-                    existing.rework_session_count += 1;
+                    // rework_session_count: dedup per (session_id, entry_id)
+                    if session_counted.insert((signal.session_id.clone(), entry_id)) {
+                        existing.rework_session_count += 1;
+                    }
                 } else {
                     let (title, category) = fetched
                         .get(&entry_id)
                         .cloned()
                         .unwrap_or_default();
+                    let is_new_session = session_counted.insert((signal.session_id.clone(), entry_id));
                     let analysis = unimatrix_observe::EntryAnalysis {
                         entry_id,
                         title,
@@ -1521,7 +1551,7 @@ pub(crate) async fn run_retrospective_consumer(
                         rework_flag_count: 1,
                         injection_count: 0,
                         success_session_count: 0,
-                        rework_session_count: 1,
+                        rework_session_count: if is_new_session { 1 } else { 0 },
                     };
                     pending_guard.upsert(analysis);
                 }
@@ -2418,5 +2448,125 @@ mod tests {
     #[test]
     fn sanitize_metadata_field_strips_newline() {
         assert_eq!(sanitize_metadata_field("line1\nline2"), "line1line2");
+    }
+
+    // -- crt-011: Consumer dedup tests --
+
+    fn insert_test_entry_for_signal(store: &Store) -> u64 {
+        let entry = unimatrix_store::NewEntry {
+            title: "Test entry".to_string(),
+            content: "Test content for signal consumer".to_string(),
+            topic: "test".to_string(),
+            category: "pattern".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: String::new(),
+            trust_source: "agent".to_string(),
+        };
+        store.insert(entry).expect("insert test entry")
+    }
+
+    fn make_signal(session_id: &str, entry_ids: Vec<u64>, signal_type: SignalType) -> SignalRecord {
+        SignalRecord {
+            signal_id: 0, // assigned by insert_signal
+            session_id: session_id.to_string(),
+            created_at: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            entry_ids,
+            signal_type,
+            signal_source: SignalSource::ImplicitOutcome,
+        }
+    }
+
+    /// T-CON-01: Two Helpful signals with same session_id and overlapping entry_ids
+    /// should increment success_session_count only once per entry.
+    #[tokio::test]
+    async fn test_confidence_consumer_dedup_same_session() {
+        let store = make_store();
+        let pending = make_pending();
+        let (_, entry_store, _) = make_dispatch_deps(&store);
+
+        let entry_id = insert_test_entry_for_signal(&store);
+
+        // Insert two signals with SAME session_id, both referencing entry_id
+        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful)).unwrap();
+        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful)).unwrap();
+
+        run_confidence_consumer(&store, &entry_store, &pending).await;
+
+        let guard = pending.lock().unwrap();
+        let analysis = guard.entries.get(&entry_id).expect("entry should exist in pending");
+        assert_eq!(analysis.success_session_count, 1, "same session should count only once");
+    }
+
+    /// T-CON-02: Two Helpful signals with different session_ids should increment
+    /// success_session_count once per session (total 2).
+    #[tokio::test]
+    async fn test_confidence_consumer_different_sessions_count_separately() {
+        let store = make_store();
+        let pending = make_pending();
+        let (_, entry_store, _) = make_dispatch_deps(&store);
+
+        let entry_id = insert_test_entry_for_signal(&store);
+
+        // Insert two signals with DIFFERENT session_ids
+        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful)).unwrap();
+        store.insert_signal(&make_signal("sess-B", vec![entry_id], SignalType::Helpful)).unwrap();
+
+        run_confidence_consumer(&store, &entry_store, &pending).await;
+
+        let guard = pending.lock().unwrap();
+        let analysis = guard.entries.get(&entry_id).expect("entry should exist in pending");
+        assert_eq!(analysis.success_session_count, 2, "different sessions should each count");
+    }
+
+    /// T-CON-03: Two Flagged signals with same session_id should increment
+    /// rework_session_count only once but rework_flag_count twice.
+    #[tokio::test]
+    async fn test_retrospective_consumer_rework_session_dedup() {
+        let store = make_store();
+        let pending = make_pending();
+        let (_, entry_store, _) = make_dispatch_deps(&store);
+
+        let entry_id = insert_test_entry_for_signal(&store);
+
+        // Insert two Flagged signals with SAME session_id
+        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged)).unwrap();
+        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged)).unwrap();
+
+        run_retrospective_consumer(&store, &pending, &entry_store).await;
+
+        let guard = pending.lock().unwrap();
+        let analysis = guard.entries.get(&entry_id).expect("entry should exist in pending");
+        assert_eq!(analysis.rework_session_count, 1, "same session should count only once");
+        assert_eq!(analysis.rework_flag_count, 2, "flag count should NOT be deduped (ADR-002)");
+    }
+
+    /// T-CON-04: Three Flagged signals with same session_id should increment
+    /// rework_flag_count 3 times (event counter, no dedup per ADR-002) but
+    /// rework_session_count only once.
+    #[tokio::test]
+    async fn test_retrospective_consumer_flag_count_not_deduped() {
+        let store = make_store();
+        let pending = make_pending();
+        let (_, entry_store, _) = make_dispatch_deps(&store);
+
+        let entry_id = insert_test_entry_for_signal(&store);
+
+        // Insert three Flagged signals with SAME session_id
+        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged)).unwrap();
+        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged)).unwrap();
+        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged)).unwrap();
+
+        run_retrospective_consumer(&store, &pending, &entry_store).await;
+
+        let guard = pending.lock().unwrap();
+        let analysis = guard.entries.get(&entry_id).expect("entry should exist in pending");
+        assert_eq!(analysis.rework_flag_count, 3, "every flagging event should count");
+        assert_eq!(analysis.rework_session_count, 1, "only one unique session");
     }
 }
