@@ -228,28 +228,36 @@ impl Store {
         status_filter: Option<SessionLifecycleStatus>,
     ) -> Result<Vec<SessionRecord>> {
         let conn = self.lock_conn();
-        match status_filter {
-            None => self.scan_sessions_by_feature(feature_cycle),
-            Some(status) => {
-                let mut stmt = conn
-                    .prepare(&format!(
-                        "SELECT {} FROM sessions WHERE feature_cycle = ?1 AND status = ?2",
-                        SESSION_COLUMNS
-                    ))
-                    .map_err(StoreError::Sqlite)?;
-                let rows = stmt
-                    .query_map(
-                        rusqlite::params![feature_cycle, status as u8 as i64],
-                        session_from_row,
-                    )
-                    .map_err(StoreError::Sqlite)?;
-                let mut results = Vec::new();
-                for row in rows {
-                    results.push(row.map_err(StoreError::Sqlite)?);
-                }
-                Ok(results)
-            }
+        let mut stmt = match status_filter {
+            None => conn
+                .prepare(&format!(
+                    "SELECT {} FROM sessions WHERE feature_cycle = ?1",
+                    SESSION_COLUMNS
+                ))
+                .map_err(StoreError::Sqlite)?,
+            Some(_) => conn
+                .prepare(&format!(
+                    "SELECT {} FROM sessions WHERE feature_cycle = ?1 AND status = ?2",
+                    SESSION_COLUMNS
+                ))
+                .map_err(StoreError::Sqlite)?,
+        };
+        let rows = match status_filter {
+            None => stmt
+                .query_map(rusqlite::params![feature_cycle], session_from_row)
+                .map_err(StoreError::Sqlite)?,
+            Some(status) => stmt
+                .query_map(
+                    rusqlite::params![feature_cycle, status as u8 as i64],
+                    session_from_row,
+                )
+                .map_err(StoreError::Sqlite)?,
+        };
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row.map_err(StoreError::Sqlite)?);
         }
+        Ok(results)
     }
 
     /// GC sweep: mark old Active sessions as TimedOut; delete very old sessions
