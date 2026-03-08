@@ -31,6 +31,7 @@ pub use schema::{CoAccessRecord, co_access_key};
 pub use schema::{AgentRecord, TrustLevel, Capability, AuditEvent, Outcome};
 pub use hash::compute_content_hash;
 pub use error::{StoreError, Result};
+pub use read::StatusAggregates;
 pub use signal::{SignalRecord, SignalType, SignalSource};
 pub use sessions::{SessionRecord, SessionLifecycleStatus, GcStats, TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS};
 pub use injection_log::InjectionLogRecord;

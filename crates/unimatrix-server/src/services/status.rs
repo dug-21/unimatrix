@@ -11,7 +11,6 @@ use unimatrix_core::{CoreError, EmbedService, Store, VectorAdapter, VectorIndex}
 use unimatrix_core::async_wrappers::AsyncEntryStore;
 use unimatrix_store::rusqlite;
 use unimatrix_store::{EntryRecord, StoreError};
-use unimatrix_store::read::{entry_from_row, load_tags_for_entries, ENTRY_COLUMNS};
 use unimatrix_store::sessions::{TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS};
 
 use unimatrix_adapt::AdaptationService;
@@ -132,84 +131,46 @@ impl StatusService {
                 }
             }
 
-            // Correction chain metrics + security metrics from entries scan
-            let mut stmt = conn.prepare(
-                &format!("SELECT {} FROM entries", ENTRY_COLUMNS)
-            ).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-            let all_entries: Vec<EntryRecord> = stmt
-                .query_map([], entry_from_row)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?
-                .collect::<rusqlite::Result<Vec<_>>>()
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-            // Load tags for all entries (needed for outcome stats)
-            let all_ids: Vec<u64> = all_entries.iter().map(|e| e.id).collect();
-            let tag_map = load_tags_for_entries(&conn, &all_ids)
+            // Correction chain metrics + security metrics via SQL aggregation (crt-013)
+            let aggregates = store.compute_status_aggregates()
                 .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
 
-            let mut entries_with_supersedes = 0u64;
-            let mut entries_with_superseded_by = 0u64;
-            let mut total_correction_count = 0u64;
-            let mut trust_source_dist: BTreeMap<String, u64> = BTreeMap::new();
-            let mut entries_without_attribution = 0u64;
-            let mut active_entries: Vec<EntryRecord> = Vec::new();
+            let entries_with_supersedes = aggregates.supersedes_count;
+            let entries_with_superseded_by = aggregates.superseded_by_count;
+            let total_correction_count = aggregates.total_correction_count;
+            let trust_source_dist: BTreeMap<String, u64> = aggregates.trust_source_distribution;
+            let entries_without_attribution = aggregates.unattributed_count;
 
-            for record in &all_entries {
-                if record.supersedes.is_some() {
-                    entries_with_supersedes += 1;
-                }
-                if record.superseded_by.is_some() {
-                    entries_with_superseded_by += 1;
-                }
-                total_correction_count += record.correction_count as u64;
-                let ts = if record.trust_source.is_empty() {
-                    "(none)".to_string()
-                } else {
-                    record.trust_source.clone()
-                };
-                *trust_source_dist.entry(ts).or_insert(0) += 1;
-                if record.created_by.is_empty() {
-                    entries_without_attribution += 1;
-                }
-                if record.status == unimatrix_store::Status::Active {
-                    let mut entry = record.clone();
-                    if let Some(tags) = tag_map.get(&entry.id) {
-                        entry.tags = tags.clone();
-                    }
-                    active_entries.push(entry);
-                }
-            }
+            // Active entries with tags (for lambda computation)
+            let active_entries = store.load_active_entries_with_tags()
+                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
 
-            // Outcome statistics (entries with category="outcome")
+            // Outcome statistics (targeted query for category="outcome" only)
+            let outcome_entries = store.load_outcome_entries_with_tags()
+                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
+
             let mut total_outcomes = 0u64;
             let mut outcomes_by_type: BTreeMap<String, u64> = BTreeMap::new();
             let mut outcomes_by_result: BTreeMap<String, u64> = BTreeMap::new();
             let mut outcomes_by_feature_cycle: BTreeMap<String, u64> = BTreeMap::new();
 
-            for record in &all_entries {
-                if record.category != "outcome" {
-                    continue;
-                }
+            for record in &outcome_entries {
                 total_outcomes += 1;
 
-                let tags = tag_map.get(&record.id);
-                if let Some(tags) = tags {
-                    for tag in tags {
-                        if let Some((tag_key, tag_value)) = tag.split_once(':') {
-                            match tag_key {
-                                "type" => {
-                                    *outcomes_by_type
-                                        .entry(tag_value.to_string())
-                                        .or_insert(0) += 1;
-                                }
-                                "result" => {
-                                    *outcomes_by_result
-                                        .entry(tag_value.to_string())
-                                        .or_insert(0) += 1;
-                                }
-                                _ => {}
+                for tag in &record.tags {
+                    if let Some((tag_key, tag_value)) = tag.split_once(':') {
+                        match tag_key {
+                            "type" => {
+                                *outcomes_by_type
+                                    .entry(tag_value.to_string())
+                                    .or_insert(0) += 1;
                             }
+                            "result" => {
+                                *outcomes_by_result
+                                    .entry(tag_value.to_string())
+                                    .or_insert(0) += 1;
+                            }
+                            _ => {}
                         }
                     }
                 }

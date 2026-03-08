@@ -1,7 +1,7 @@
 //! AdaptationService: public API orchestrating all adaptation components.
 //!
 //! This is the single entry point the server uses. It owns MicroLoRA,
-//! the training reservoir, EWC state, prototypes, and episodic augmenter.
+//! the training reservoir, EWC state, and prototypes.
 //! Thread-safe via Arc for concurrent use in the async server.
 
 use std::path::Path;
@@ -9,7 +9,6 @@ use std::sync::RwLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::config::AdaptConfig;
-use crate::episodic::EpisodicAugmenter;
 use crate::lora::{LoraConfig, MicroLoRA};
 use crate::persistence;
 use crate::prototypes::PrototypeManager;
@@ -25,7 +24,6 @@ pub struct AdaptationService {
     reservoir: RwLock<TrainingReservoir<TrainingPair>>,
     ewc: RwLock<EwcState>,
     prototypes: RwLock<PrototypeManager>,
-    episodic: EpisodicAugmenter,
     config: AdaptConfig,
     generation: AtomicU64,
     total_steps: AtomicU64,
@@ -34,7 +32,6 @@ pub struct AdaptationService {
 
 // Safety: all fields are either behind RwLock, are Atomic, or are immutable.
 // MicroLoRA internally uses RwLock for its weights.
-// EpisodicAugmenter has no interior mutability (just config values).
 // AdaptConfig is Clone + immutable after construction.
 
 impl AdaptationService {
@@ -60,7 +57,6 @@ impl AdaptationService {
                 config.pull_strength,
                 d,
             )),
-            episodic: EpisodicAugmenter::new(0.02, 3),
             config,
             generation: AtomicU64::new(0),
             total_steps: AtomicU64::new(0),
@@ -236,14 +232,6 @@ impl AdaptationService {
         &self.config
     }
 
-    /// Compute episodic adjustments for search results (currently no-op stub).
-    pub fn episodic_adjustments(
-        &self,
-        result_ids: &[u64],
-        result_scores: &[f64],
-    ) -> Vec<f64> {
-        self.episodic.compute_adjustments(result_ids, result_scores)
-    }
 }
 
 #[cfg(test)]
