@@ -14,7 +14,8 @@ pub const ENTRY_COLUMNS: &str =
      created_at, updated_at, last_accessed_at, access_count, \
      supersedes, superseded_by, correction_count, embedding_dim, \
      created_by, modified_by, content_hash, previous_hash, \
-     version, feature_cycle, trust_source, helpful_count, unhelpful_count";
+     version, feature_cycle, trust_source, helpful_count, unhelpful_count, \
+     pre_quarantine_status";
 
 /// Construct EntryRecord from a SQLite row using column-by-name access.
 /// Tags are set to vec![] -- caller MUST use load_tags_for_entries() (ADR-006, C-10).
@@ -47,6 +48,8 @@ pub fn entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<EntryRecord> 
         trust_source: row.get("trust_source")?,
         helpful_count: row.get::<_, i64>("helpful_count")? as u32,
         unhelpful_count: row.get::<_, i64>("unhelpful_count")? as u32,
+        pre_quarantine_status: row.get::<_, Option<i64>>("pre_quarantine_status")?
+            .map(|v| v as u8),
     })
 }
 

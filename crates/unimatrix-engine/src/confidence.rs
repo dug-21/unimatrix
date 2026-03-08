@@ -534,6 +534,7 @@ mod tests {
             trust_source: trust_source.to_string(),
             helpful_count,
             unhelpful_count,
+            pre_quarantine_status: None,
         }
     }
 

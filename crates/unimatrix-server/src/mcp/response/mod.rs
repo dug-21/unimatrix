@@ -223,6 +223,7 @@ mod tests {
             trust_source: "agent".to_string(),
             helpful_count: 0,
             unhelpful_count: 0,
+            pre_quarantine_status: None,
         }
     }
 

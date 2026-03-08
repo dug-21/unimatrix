@@ -873,15 +873,7 @@ impl UnimatrixServer {
                     ));
                 }
 
-                // Only active entries can be quarantined
-                if entry.status != Status::Active {
-                    return Err(rmcp::ErrorData::from(
-                        crate::error::ServerError::InvalidInput {
-                            field: "id".to_string(),
-                            reason: "only active entries can be quarantined".to_string(),
-                        },
-                    ));
-                }
+                // All non-quarantined statuses (Active, Deprecated, Proposed) are valid
 
                 // Atomic quarantine + audit
                 let audit_event = AuditEvent {

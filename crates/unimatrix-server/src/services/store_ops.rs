@@ -229,6 +229,7 @@ impl StoreService {
                 trust_source: entry.trust_source,
                 helpful_count: 0,
                 unhelpful_count: 0,
+                pre_quarantine_status: None,
             };
 
             // 2. INSERT into entries with named params (ADR-004)

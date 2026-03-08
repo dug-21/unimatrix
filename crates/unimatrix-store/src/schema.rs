@@ -93,6 +93,12 @@ pub struct EntryRecord {
     /// Times this entry was marked unhelpful by agents (deduped per session).
     #[serde(default)]
     pub unhelpful_count: u32,
+    // -- vnc-010: quarantine state restoration (appended after unhelpful_count) --
+    /// The status this entry held before quarantine. None when not quarantined.
+    /// Stored as u8 (0=Active, 1=Deprecated, 2=Proposed). Conversion to/from
+    /// Status happens at the service layer (ADR-001).
+    #[serde(default)]
+    pub pre_quarantine_status: Option<u8>,
 }
 
 // -- NewEntry --
@@ -477,6 +483,7 @@ mod tests {
             trust_source: "agent".to_string(),
             helpful_count: 7,
             unhelpful_count: 3,
+            pre_quarantine_status: None,
         };
 
         let bytes = serialize_entry(&record).expect("serialize");
@@ -513,6 +520,7 @@ mod tests {
             trust_source: String::new(),
             helpful_count: 0,
             unhelpful_count: 0,
+            pre_quarantine_status: None,
         };
 
         let bytes = serialize_entry(&record).expect("serialize");
@@ -717,6 +725,7 @@ mod tests {
             trust_source: String::new(),
             helpful_count: 0,
             unhelpful_count: 0,
+            pre_quarantine_status: None,
         }
     }
 }
