@@ -53,28 +53,26 @@ Agent enrollment tool with protected agents, self-lockout prevention, strict cap
 
 ### Milestone: Intelligence Sharpening
 
-Fix, validate, and tune the self-learning intelligence pipeline before adding new capabilities. Predecessor to graph enablement.
+Fix, validate, and tune the self-learning intelligence pipeline before adding new capabilities. Predecessor to graph enablement. 7 features across 4 phases, executed in 4 waves.
 
-**Bugs affecting intelligence accuracy:**
-- #75 — session count over-counting (corrupts confidence signals)
-- #43 — quarantine from Deprecated status (blocks knowledge cleanup; restore must track pre-quarantine status)
-- #79 — feature ID validation rejects suffixed IDs (breaks feature_cycle linking)
+**Wave 1 — Critical fixes (parallel):**
 
-**Structural debt in intelligence pipeline:**
-- #113 — deduplicate TrainingReservoir/EwcState (crt-007 tech debt)
-- #103 — observation metrics blob normalization (enables SQL analytics on metrics)
-- #51 — reservoir RNG seed hardcoded (affects training reproducibility)
-- #32 — confidence integration tests bypass tool handlers
+- [ ] **crt-011: Confidence Signal Integrity** — Fix session count over-counting (#75) that corrupts all confidence-driven ranking, and add integration tests through tool handlers (#32) to cover the handler→service→store confidence path. Touches unimatrix-observe (session recording), unimatrix-store (session dedup), unimatrix-server (observation service). P0.
+- [ ] **vnc-010: Quarantine State Restoration** — Allow quarantine from Deprecated status (#43) and track pre-quarantine status so restore returns entries to their original state (Active/Deprecated/Proposed). Schema migration v6→v7 adds `pre_quarantine_status` field. Touches unimatrix-store, unimatrix-server. P1.
+- [ ] **col-014: Feature Attribution Fix** — Fix `is_valid_feature_id()` (#79) to accept suffixed feature IDs (e.g., "col-002b", "col-010b") while rejecting invalid input. Currently `splitn(2, '-')` requires all-digit suffix, breaking feature_cycle linking for real features. Touches unimatrix-observe. P1.
 
-**Intelligence configuration/tuning:**
-- #50 — episodic augmentation vs co-access overlap (double-counting risk)
-- #118 — status signals underweighted in retrieval (verify crt-010 coverage)
-- #17 — briefing k=3 hardcode, status scan optimization
+**Wave 2 — Structural debt (parallel):**
 
-**Testing pipeline (new work):**
-- Intelligence pipeline end-to-end validation (research in progress)
-- Confidence calibration testing — are the weights producing the right rankings?
-- Extraction quality validation — are col-013/crt-007/008 producing trustworthy entries?
+- [ ] **crt-012: Neural Pipeline Cleanup** — Deduplicate TrainingReservoir/EwcState (#113) which share running-average state management and seeded RNG patterns in unimatrix-learn. Make reservoir RNG seed configurable (#51) instead of hardcoded, enabling varied sampling across training epochs. Touches unimatrix-learn, unimatrix-adapt. P2.
+- [ ] **nxs-009: Observation Metrics Normalization** — Decompose OBSERVATION_METRICS bincode blob (#103) into SQL columns, enabling direct SQL analytics on per-feature metrics without Rust-side deserialization. Variable-shape MetricVector requires schema design for dynamic metric dimensions. Touches unimatrix-store, unimatrix-observe, unimatrix-server. P2.
+
+**Wave 3 — Retrieval tuning (depends on crt-011):**
+
+- [ ] **crt-013: Retrieval Calibration** — Verify and fix episodic augmentation vs co-access double-counting (#50) where both mechanisms boost from CO_ACCESS data. Validate crt-010 status penalties are effective (#118). Make briefing neighbor count configurable (#17, currently k=3 hardcode) and optimize status scan for scale. Requires correct confidence data from crt-011. Touches unimatrix-adapt, unimatrix-engine, unimatrix-server. P1.
+
+**Wave 4 — Validation gate (depends on all above):**
+
+- [ ] **col-015: Intelligence Pipeline End-to-End Validation** — Build cross-cutting test infrastructure exercising the full pipeline: observation → extraction (col-013/crt-007/008) → quality gate → stored entries. Includes confidence calibration testing (are weights producing correct rankings?) and extraction quality validation (are auto-stored entries trustworthy?). Touches all intelligence crates. P1.
 
 ### Milestone: Graph Enablement
 
