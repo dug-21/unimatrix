@@ -15,5 +15,9 @@ dirs = "6"
 tracing = "0.1"
 nix = { version = "0.31", features = ["socket", "process", "user"] }
 
+[features]
+test-support = []
+
 [dev-dependencies]
 tempfile = "3"
+unimatrix-engine = { path = ".", features = ["test-support"] }

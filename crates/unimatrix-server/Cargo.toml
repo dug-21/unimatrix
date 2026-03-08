@@ -41,6 +41,9 @@ bincode = { version = "2", features = ["serde"] }
 [features]
 default = ["mcp-briefing"]
 mcp-briefing = []
+test-support = ["unimatrix-store/test-support", "unimatrix-engine/test-support"]
 
 [dev-dependencies]
 tempfile = "3"
+tokio = { version = "1", features = ["full", "test-util"] }
+unimatrix-server = { path = ".", features = ["test-support"] }

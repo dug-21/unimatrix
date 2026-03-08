@@ -2886,6 +2886,7 @@ dependencies = [
  "tempfile",
  "tracing",
  "unimatrix-core",
+ "unimatrix-engine",
  "unimatrix-store",
 ]
 
@@ -2940,6 +2941,7 @@ dependencies = [
  "unimatrix-engine",
  "unimatrix-learn",
  "unimatrix-observe",
+ "unimatrix-server",
  "unimatrix-store",
  "unimatrix-vector",
 ]

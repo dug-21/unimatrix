@@ -26,5 +26,8 @@ pub mod error;
 pub mod server;
 pub mod services;
 
+#[cfg(any(test, feature = "test-support"))]
+pub mod test_support;
+
 // Re-exports for external consumers (main.rs, integration tests).
 pub use uds::listener as uds_listener;
