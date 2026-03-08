@@ -327,14 +327,91 @@ impl Store {
         Ok(deleted as u64)
     }
 
-    /// Store observation metrics for a feature cycle.
-    pub fn store_metrics(&self, feature_cycle: &str, data: &[u8]) -> Result<()> {
+    /// Store observation metrics for a feature cycle (nxs-009: typed API).
+    ///
+    /// Writes universal metrics as SQL columns to `observation_metrics`,
+    /// then replaces phase rows in `observation_phase_metrics`.
+    /// All operations within a single transaction (NFR-02).
+    pub fn store_metrics(&self, feature_cycle: &str, mv: &crate::metrics::MetricVector) -> Result<()> {
         let conn = self.lock_conn();
-        conn.execute(
-            "INSERT OR REPLACE INTO observation_metrics (feature_cycle, data) VALUES (?1, ?2)",
-            rusqlite::params![feature_cycle, data],
-        )
-        .map_err(StoreError::Sqlite)?;
-        Ok(())
+        conn.execute_batch("BEGIN IMMEDIATE")
+            .map_err(StoreError::Sqlite)?;
+
+        let result = (|| -> Result<()> {
+            let u = &mv.universal;
+            conn.execute(
+                "INSERT OR REPLACE INTO observation_metrics (
+                    feature_cycle, computed_at,
+                    total_tool_calls, total_duration_secs, session_count,
+                    search_miss_rate, edit_bloat_total_kb, edit_bloat_ratio,
+                    permission_friction_events, bash_for_search_count,
+                    cold_restart_events, coordinator_respawn_count,
+                    parallel_call_rate, context_load_before_first_write_kb,
+                    total_context_loaded_kb, post_completion_work_pct,
+                    follow_up_issues_created, knowledge_entries_stored,
+                    sleep_workaround_count, agent_hotspot_count,
+                    friction_hotspot_count, session_hotspot_count, scope_hotspot_count
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23)",
+                rusqlite::params![
+                    feature_cycle,
+                    mv.computed_at as i64,
+                    u.total_tool_calls as i64,
+                    u.total_duration_secs as i64,
+                    u.session_count as i64,
+                    u.search_miss_rate,
+                    u.edit_bloat_total_kb,
+                    u.edit_bloat_ratio,
+                    u.permission_friction_events as i64,
+                    u.bash_for_search_count as i64,
+                    u.cold_restart_events as i64,
+                    u.coordinator_respawn_count as i64,
+                    u.parallel_call_rate,
+                    u.context_load_before_first_write_kb,
+                    u.total_context_loaded_kb,
+                    u.post_completion_work_pct,
+                    u.follow_up_issues_created as i64,
+                    u.knowledge_entries_stored as i64,
+                    u.sleep_workaround_count as i64,
+                    u.agent_hotspot_count as i64,
+                    u.friction_hotspot_count as i64,
+                    u.session_hotspot_count as i64,
+                    u.scope_hotspot_count as i64,
+                ],
+            ).map_err(StoreError::Sqlite)?;
+
+            // Delete existing phase rows (handles replace case)
+            conn.execute(
+                "DELETE FROM observation_phase_metrics WHERE feature_cycle = ?1",
+                rusqlite::params![feature_cycle],
+            ).map_err(StoreError::Sqlite)?;
+
+            // Insert phase rows
+            for (phase_name, phase) in &mv.phases {
+                conn.execute(
+                    "INSERT INTO observation_phase_metrics (feature_cycle, phase_name, duration_secs, tool_call_count)
+                     VALUES (?1, ?2, ?3, ?4)",
+                    rusqlite::params![
+                        feature_cycle,
+                        phase_name,
+                        phase.duration_secs as i64,
+                        phase.tool_call_count as i64,
+                    ],
+                ).map_err(StoreError::Sqlite)?;
+            }
+
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => {
+                conn.execute_batch("COMMIT")
+                    .map_err(StoreError::Sqlite)?;
+                Ok(())
+            }
+            Err(e) => {
+                let _ = conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
+        }
     }
 }

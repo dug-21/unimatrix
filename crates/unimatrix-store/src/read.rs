@@ -536,35 +536,183 @@ impl Store {
         Ok(pairs)
     }
 
-    /// Retrieve stored observation metrics for a feature cycle.
-    pub fn get_metrics(&self, feature_cycle: &str) -> Result<Option<Vec<u8>>> {
+    /// Retrieve stored observation metrics for a feature cycle (nxs-009: typed API).
+    pub fn get_metrics(&self, feature_cycle: &str) -> Result<Option<crate::metrics::MetricVector>> {
         let conn = self.lock_conn();
-        let val: Option<Vec<u8>> = conn
+
+        // Query parent row
+        let parent = conn
             .query_row(
-                "SELECT data FROM observation_metrics WHERE feature_cycle = ?1",
+                "SELECT computed_at,
+                    total_tool_calls, total_duration_secs, session_count,
+                    search_miss_rate, edit_bloat_total_kb, edit_bloat_ratio,
+                    permission_friction_events, bash_for_search_count,
+                    cold_restart_events, coordinator_respawn_count,
+                    parallel_call_rate, context_load_before_first_write_kb,
+                    total_context_loaded_kb, post_completion_work_pct,
+                    follow_up_issues_created, knowledge_entries_stored,
+                    sleep_workaround_count, agent_hotspot_count,
+                    friction_hotspot_count, session_hotspot_count, scope_hotspot_count
+                 FROM observation_metrics WHERE feature_cycle = ?1",
                 rusqlite::params![feature_cycle],
-                |row| row.get(0),
+                |row| {
+                    Ok(crate::metrics::MetricVector {
+                        computed_at: row.get::<_, i64>(0)? as u64,
+                        universal: crate::metrics::UniversalMetrics {
+                            total_tool_calls: row.get::<_, i64>(1)? as u64,
+                            total_duration_secs: row.get::<_, i64>(2)? as u64,
+                            session_count: row.get::<_, i64>(3)? as u64,
+                            search_miss_rate: row.get(4)?,
+                            edit_bloat_total_kb: row.get(5)?,
+                            edit_bloat_ratio: row.get(6)?,
+                            permission_friction_events: row.get::<_, i64>(7)? as u64,
+                            bash_for_search_count: row.get::<_, i64>(8)? as u64,
+                            cold_restart_events: row.get::<_, i64>(9)? as u64,
+                            coordinator_respawn_count: row.get::<_, i64>(10)? as u64,
+                            parallel_call_rate: row.get(11)?,
+                            context_load_before_first_write_kb: row.get(12)?,
+                            total_context_loaded_kb: row.get(13)?,
+                            post_completion_work_pct: row.get(14)?,
+                            follow_up_issues_created: row.get::<_, i64>(15)? as u64,
+                            knowledge_entries_stored: row.get::<_, i64>(16)? as u64,
+                            sleep_workaround_count: row.get::<_, i64>(17)? as u64,
+                            agent_hotspot_count: row.get::<_, i64>(18)? as u64,
+                            friction_hotspot_count: row.get::<_, i64>(19)? as u64,
+                            session_hotspot_count: row.get::<_, i64>(20)? as u64,
+                            scope_hotspot_count: row.get::<_, i64>(21)? as u64,
+                        },
+                        phases: std::collections::BTreeMap::new(),
+                    })
+                },
             )
             .optional()
             .map_err(StoreError::Sqlite)?;
-        Ok(val)
+
+        let Some(mut mv) = parent else {
+            return Ok(None);
+        };
+
+        // Query phase rows
+        let mut stmt = conn
+            .prepare(
+                "SELECT phase_name, duration_secs, tool_call_count
+                 FROM observation_phase_metrics WHERE feature_cycle = ?1"
+            )
+            .map_err(StoreError::Sqlite)?;
+        let rows = stmt
+            .query_map(rusqlite::params![feature_cycle], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    crate::metrics::PhaseMetrics {
+                        duration_secs: row.get::<_, i64>(1)? as u64,
+                        tool_call_count: row.get::<_, i64>(2)? as u64,
+                    },
+                ))
+            })
+            .map_err(StoreError::Sqlite)?;
+        for row in rows {
+            let (name, phase) = row.map_err(StoreError::Sqlite)?;
+            mv.phases.insert(name, phase);
+        }
+
+        Ok(Some(mv))
     }
 
-    /// List all stored observation metrics.
-    pub fn list_all_metrics(&self) -> Result<Vec<(String, Vec<u8>)>> {
+    /// List all stored observation metrics (nxs-009: typed API).
+    ///
+    /// Uses two queries with single-pass merge (architecture spec).
+    pub fn list_all_metrics(&self) -> Result<Vec<(String, crate::metrics::MetricVector)>> {
         let conn = self.lock_conn();
+
+        // Query 1: all universal metrics
         let mut stmt = conn
-            .prepare("SELECT feature_cycle, data FROM observation_metrics ORDER BY feature_cycle")
+            .prepare(
+                "SELECT feature_cycle, computed_at,
+                    total_tool_calls, total_duration_secs, session_count,
+                    search_miss_rate, edit_bloat_total_kb, edit_bloat_ratio,
+                    permission_friction_events, bash_for_search_count,
+                    cold_restart_events, coordinator_respawn_count,
+                    parallel_call_rate, context_load_before_first_write_kb,
+                    total_context_loaded_kb, post_completion_work_pct,
+                    follow_up_issues_created, knowledge_entries_stored,
+                    sleep_workaround_count, agent_hotspot_count,
+                    friction_hotspot_count, session_hotspot_count, scope_hotspot_count
+                 FROM observation_metrics ORDER BY feature_cycle"
+            )
             .map_err(StoreError::Sqlite)?;
         let rows = stmt
             .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, Vec<u8>>(1)?))
+                Ok((
+                    row.get::<_, String>(0)?,
+                    crate::metrics::MetricVector {
+                        computed_at: row.get::<_, i64>(1)? as u64,
+                        universal: crate::metrics::UniversalMetrics {
+                            total_tool_calls: row.get::<_, i64>(2)? as u64,
+                            total_duration_secs: row.get::<_, i64>(3)? as u64,
+                            session_count: row.get::<_, i64>(4)? as u64,
+                            search_miss_rate: row.get(5)?,
+                            edit_bloat_total_kb: row.get(6)?,
+                            edit_bloat_ratio: row.get(7)?,
+                            permission_friction_events: row.get::<_, i64>(8)? as u64,
+                            bash_for_search_count: row.get::<_, i64>(9)? as u64,
+                            cold_restart_events: row.get::<_, i64>(10)? as u64,
+                            coordinator_respawn_count: row.get::<_, i64>(11)? as u64,
+                            parallel_call_rate: row.get(12)?,
+                            context_load_before_first_write_kb: row.get(13)?,
+                            total_context_loaded_kb: row.get(14)?,
+                            post_completion_work_pct: row.get(15)?,
+                            follow_up_issues_created: row.get::<_, i64>(16)? as u64,
+                            knowledge_entries_stored: row.get::<_, i64>(17)? as u64,
+                            sleep_workaround_count: row.get::<_, i64>(18)? as u64,
+                            agent_hotspot_count: row.get::<_, i64>(19)? as u64,
+                            friction_hotspot_count: row.get::<_, i64>(20)? as u64,
+                            session_hotspot_count: row.get::<_, i64>(21)? as u64,
+                            scope_hotspot_count: row.get::<_, i64>(22)? as u64,
+                        },
+                        phases: std::collections::BTreeMap::new(),
+                    },
+                ))
             })
             .map_err(StoreError::Sqlite)?;
-        let mut results = Vec::new();
+
+        let mut results: Vec<(String, crate::metrics::MetricVector)> = Vec::new();
         for row in rows {
             results.push(row.map_err(StoreError::Sqlite)?);
         }
+
+        // Query 2: all phase metrics, sorted by feature_cycle for single-pass merge
+        let mut stmt = conn
+            .prepare(
+                "SELECT feature_cycle, phase_name, duration_secs, tool_call_count
+                 FROM observation_phase_metrics ORDER BY feature_cycle, phase_name"
+            )
+            .map_err(StoreError::Sqlite)?;
+        let phase_rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    crate::metrics::PhaseMetrics {
+                        duration_secs: row.get::<_, i64>(2)? as u64,
+                        tool_call_count: row.get::<_, i64>(3)? as u64,
+                    },
+                ))
+            })
+            .map_err(StoreError::Sqlite)?;
+
+        // Single-pass merge: both lists ordered by feature_cycle
+        let mut result_idx = 0;
+        for row in phase_rows {
+            let (fc, phase_name, phase) = row.map_err(StoreError::Sqlite)?;
+            // Advance result_idx to find matching feature_cycle
+            while result_idx < results.len() && results[result_idx].0 < fc {
+                result_idx += 1;
+            }
+            if result_idx < results.len() && results[result_idx].0 == fc {
+                results[result_idx].1.phases.insert(phase_name, phase);
+            }
+        }
+
         Ok(results)
     }
 }

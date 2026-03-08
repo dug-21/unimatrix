@@ -1085,12 +1085,8 @@ impl UnimatrixServer {
             .map_err(rmcp::ErrorData::from)?;
 
             match cached {
-                Some(bytes) => {
+                Some(mv) => {
                     // Return cached result (FR-09.6)
-                    let mv = unimatrix_observe::deserialize_metric_vector(&bytes)
-                        .map_err(|e| ServerError::ObservationError(e.to_string()))
-                        .map_err(rmcp::ErrorData::from)?;
-
                     let report = unimatrix_observe::RetrospectiveReport {
                         feature_cycle: feature_cycle.clone(),
                         session_count: 0,
@@ -1130,13 +1126,11 @@ impl UnimatrixServer {
         .map_err(|e| ServerError::Core(CoreError::Store(e)))
         .map_err(rmcp::ErrorData::from)?;
 
-        // 7b. Deserialize historical vectors, excluding current feature
+        // 7b. Collect historical vectors, excluding current feature
         let mut history: Vec<unimatrix_observe::MetricVector> = Vec::new();
-        for (fc, bytes) in &all_metrics {
+        for (fc, mv) in &all_metrics {
             if fc != &feature_cycle {
-                if let Ok(mv) = unimatrix_observe::deserialize_metric_vector(bytes) {
-                    history.push(mv);
-                }
+                history.push(mv.clone());
             }
         }
 
@@ -1156,15 +1150,12 @@ impl UnimatrixServer {
         let metrics =
             unimatrix_observe::compute_metric_vector(&attributed, &hotspots, now);
 
-        // 8. Store MetricVector
-        let mv_bytes = unimatrix_observe::serialize_metric_vector(&metrics)
-            .map_err(|e| ServerError::ObservationError(e.to_string()))
-            .map_err(rmcp::ErrorData::from)?;
-
+        // 8. Store MetricVector (nxs-009: typed API, no bincode serialization)
         tokio::task::spawn_blocking({
             let store = Arc::clone(&store);
             let fc = feature_cycle.clone();
-            move || store.store_metrics(&fc, &mv_bytes)
+            let mv = metrics.clone();
+            move || store.store_metrics(&fc, &mv)
         })
         .await
         .unwrap()

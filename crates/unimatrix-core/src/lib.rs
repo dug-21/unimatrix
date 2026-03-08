@@ -25,6 +25,9 @@ pub use unimatrix_store::{
     DatabaseConfig, EntryRecord, NewEntry, QueryFilter, Status, Store, StoreError, TimeRange,
 };
 
+// Metric types from unimatrix-store (nxs-009 ADR-001)
+pub use unimatrix_store::{MetricVector, UniversalMetrics, PhaseMetrics};
+
 // Domain types from unimatrix-vector
 pub use unimatrix_vector::{SearchResult, VectorConfig, VectorError, VectorIndex};
 

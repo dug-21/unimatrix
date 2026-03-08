@@ -3,13 +3,14 @@
 //! Core observation types (HookType, ObservationRecord, ParsedSession, ObservationStats)
 //! are defined in unimatrix-core and re-exported here for backward compatibility (col-013 ADR-002).
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
-
-use crate::error::{ObserveError, Result};
 
 // Re-export core observation types for backward compatibility (col-013 ADR-002)
 pub use unimatrix_core::{HookType, ObservationRecord, ObservationStats, ParsedSession};
+
+// Re-export metric types from unimatrix-store for backward compatibility (nxs-009 ADR-001)
+pub use unimatrix_store::{MetricVector, UniversalMetrics, PhaseMetrics};
 
 /// Hotspot category.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,83 +59,6 @@ pub struct HotspotFinding {
     pub threshold: f64,
     /// Concrete evidence records.
     pub evidence: Vec<EvidenceRecord>,
-}
-
-/// Universal metrics applicable to any agentic workflow.
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
-pub struct UniversalMetrics {
-    #[serde(default)]
-    pub total_tool_calls: u64,
-    #[serde(default)]
-    pub total_duration_secs: u64,
-    #[serde(default)]
-    pub session_count: u64,
-    #[serde(default)]
-    pub search_miss_rate: f64,
-    #[serde(default)]
-    pub edit_bloat_total_kb: f64,
-    #[serde(default)]
-    pub edit_bloat_ratio: f64,
-    #[serde(default)]
-    pub permission_friction_events: u64,
-    #[serde(default)]
-    pub bash_for_search_count: u64,
-    #[serde(default)]
-    pub cold_restart_events: u64,
-    #[serde(default)]
-    pub coordinator_respawn_count: u64,
-    #[serde(default)]
-    pub parallel_call_rate: f64,
-    #[serde(default)]
-    pub context_load_before_first_write_kb: f64,
-    #[serde(default)]
-    pub total_context_loaded_kb: f64,
-    #[serde(default)]
-    pub post_completion_work_pct: f64,
-    #[serde(default)]
-    pub follow_up_issues_created: u64,
-    #[serde(default)]
-    pub knowledge_entries_stored: u64,
-    #[serde(default)]
-    pub sleep_workaround_count: u64,
-    #[serde(default)]
-    pub agent_hotspot_count: u64,
-    #[serde(default)]
-    pub friction_hotspot_count: u64,
-    #[serde(default)]
-    pub session_hotspot_count: u64,
-    #[serde(default)]
-    pub scope_hotspot_count: u64,
-}
-
-/// Per-phase metrics.
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
-pub struct PhaseMetrics {
-    #[serde(default)]
-    pub duration_secs: u64,
-    #[serde(default)]
-    pub tool_call_count: u64,
-}
-
-/// Structured numeric telemetry for one retrospected feature.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct MetricVector {
-    #[serde(default)]
-    pub computed_at: u64,
-    #[serde(default)]
-    pub universal: UniversalMetrics,
-    #[serde(default)]
-    pub phases: BTreeMap<String, PhaseMetrics>,
-}
-
-impl Default for MetricVector {
-    fn default() -> Self {
-        MetricVector {
-            computed_at: 0,
-            universal: UniversalMetrics::default(),
-            phases: BTreeMap::new(),
-        }
-    }
 }
 
 /// Baseline comparison status for a metric (ADR-003).
@@ -272,70 +196,9 @@ pub struct RetrospectiveReport {
     pub recommendations: Vec<Recommendation>,
 }
 
-/// Serialize a MetricVector to bincode bytes (ADR-002).
-///
-/// Uses `bincode::serde::encode_to_vec` with `standard()` config,
-/// matching the workspace convention from unimatrix-store.
-pub fn serialize_metric_vector(mv: &MetricVector) -> Result<Vec<u8>> {
-    let bytes = bincode::serde::encode_to_vec(mv, bincode::config::standard())?;
-    Ok(bytes)
-}
-
-/// Deserialize a MetricVector from bincode bytes (ADR-002).
-pub fn deserialize_metric_vector(bytes: &[u8]) -> Result<MetricVector> {
-    let (mv, _) =
-        bincode::serde::decode_from_slice::<MetricVector, _>(bytes, bincode::config::standard())
-            .map_err(|e| ObserveError::Serialization(e.to_string()))?;
-    Ok(mv)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_metric_vector_roundtrip() {
-        let mut mv = MetricVector::default();
-        mv.computed_at = 1700000000;
-        mv.universal.total_tool_calls = 42;
-        mv.universal.session_count = 3;
-        mv.phases.insert(
-            "3a".to_string(),
-            PhaseMetrics {
-                duration_secs: 600,
-                tool_call_count: 15,
-            },
-        );
-
-        let bytes = serialize_metric_vector(&mv).expect("serialize");
-        let deserialized = deserialize_metric_vector(&bytes).expect("deserialize");
-        assert_eq!(mv, deserialized);
-    }
-
-    #[test]
-    fn test_metric_vector_all_defaults() {
-        let mv = MetricVector::default();
-        let bytes = serialize_metric_vector(&mv).expect("serialize");
-        let deserialized = deserialize_metric_vector(&bytes).expect("deserialize");
-        assert_eq!(mv, deserialized);
-        assert_eq!(deserialized.computed_at, 0);
-        assert_eq!(deserialized.universal.total_tool_calls, 0);
-        assert!(deserialized.phases.is_empty());
-    }
-
-    #[test]
-    fn test_metric_vector_with_phases() {
-        let mut mv = MetricVector::default();
-        mv.phases.insert("3a".to_string(), PhaseMetrics { duration_secs: 100, tool_call_count: 10 });
-        mv.phases.insert("3b".to_string(), PhaseMetrics { duration_secs: 200, tool_call_count: 20 });
-        mv.phases.insert("3c".to_string(), PhaseMetrics { duration_secs: 50, tool_call_count: 5 });
-
-        let bytes = serialize_metric_vector(&mv).expect("serialize");
-        let deserialized = deserialize_metric_vector(&bytes).expect("deserialize");
-        assert_eq!(deserialized.phases.len(), 3);
-        assert_eq!(deserialized.phases["3a"].duration_secs, 100);
-        assert_eq!(deserialized.phases["3b"].tool_call_count, 20);
-    }
 
     #[test]
     fn test_hooktype_serde_roundtrip() {
