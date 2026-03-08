@@ -21,3 +21,6 @@ pub mod wire;
 pub mod transport;
 pub mod auth;
 pub mod event_queue;
+
+#[cfg(any(test, feature = "test-support"))]
+pub mod test_scenarios;
