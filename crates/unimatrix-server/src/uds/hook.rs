@@ -173,8 +173,16 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
         "SessionStart" => HookRequest::SessionRegister {
             session_id,
             cwd,
-            agent_role: None,
-            feature: None,
+            agent_role: input
+                .extra
+                .get("agent_role")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            feature: input
+                .extra
+                .get("feature_cycle")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
         },
 
         "Stop" | "TaskCompleted" => HookRequest::SessionClose {
@@ -1276,5 +1284,251 @@ mod tests {
             server_version: "0.1.0".to_string(),
         };
         assert!(write_stdout(&response).is_ok());
+    }
+
+    // -- Feature cycle extraction regression tests (#151) --
+    //
+    // These tests guard the critical path: hook input -> build_request -> SessionRegister
+    // with feature_cycle and agent_role attribution preserved. If feature attribution
+    // breaks, ALL observation data becomes orphaned and the retrospective pipeline
+    // returns nothing. These tests MUST catch any future regression.
+
+    #[test]
+    fn build_request_session_start_extracts_feature_cycle() {
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        input.cwd = Some("/workspace".to_string());
+        input.extra = serde_json::json!({
+            "feature_cycle": "col-010"
+        });
+        let req = build_request("SessionStart", &input);
+        match req {
+            HookRequest::SessionRegister { feature, .. } => {
+                assert_eq!(
+                    feature.as_deref(),
+                    Some("col-010"),
+                    "feature_cycle from input.extra must propagate to SessionRegister.feature"
+                );
+            }
+            _ => panic!("expected SessionRegister"),
+        }
+    }
+
+    #[test]
+    fn build_request_session_start_extracts_agent_role() {
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        input.extra = serde_json::json!({
+            "agent_role": "uni-rust-dev"
+        });
+        let req = build_request("SessionStart", &input);
+        match req {
+            HookRequest::SessionRegister { agent_role, .. } => {
+                assert_eq!(
+                    agent_role.as_deref(),
+                    Some("uni-rust-dev"),
+                    "agent_role from input.extra must propagate to SessionRegister.agent_role"
+                );
+            }
+            _ => panic!("expected SessionRegister"),
+        }
+    }
+
+    #[test]
+    fn build_request_session_start_extracts_both_feature_and_role() {
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        input.cwd = Some("/workspace".to_string());
+        input.extra = serde_json::json!({
+            "feature_cycle": "vnc-010",
+            "agent_role": "uni-tester"
+        });
+        let req = build_request("SessionStart", &input);
+        match req {
+            HookRequest::SessionRegister {
+                session_id,
+                cwd,
+                agent_role,
+                feature,
+            } => {
+                assert_eq!(session_id, "sess-1");
+                assert_eq!(cwd, "/workspace");
+                assert_eq!(feature.as_deref(), Some("vnc-010"));
+                assert_eq!(agent_role.as_deref(), Some("uni-tester"));
+            }
+            _ => panic!("expected SessionRegister"),
+        }
+    }
+
+    #[test]
+    fn build_request_session_start_without_feature_cycle_is_none() {
+        // Backward compat: sessions without feature_cycle must still work
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        input.extra = serde_json::json!({});
+        let req = build_request("SessionStart", &input);
+        match req {
+            HookRequest::SessionRegister {
+                agent_role,
+                feature,
+                ..
+            } => {
+                assert!(
+                    feature.is_none(),
+                    "missing feature_cycle must yield None, not panic"
+                );
+                assert!(
+                    agent_role.is_none(),
+                    "missing agent_role must yield None, not panic"
+                );
+            }
+            _ => panic!("expected SessionRegister"),
+        }
+    }
+
+    #[test]
+    fn build_request_session_start_null_extra_is_none() {
+        // extra is serde_json::Value::Null when no extra fields present
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        // test_input() sets extra to Value::Null
+        assert!(input.extra.is_null());
+        let req = build_request("SessionStart", &input);
+        match req {
+            HookRequest::SessionRegister {
+                agent_role,
+                feature,
+                ..
+            } => {
+                assert!(feature.is_none());
+                assert!(agent_role.is_none());
+            }
+            _ => panic!("expected SessionRegister"),
+        }
+    }
+
+    #[test]
+    fn build_request_session_start_non_string_feature_cycle_is_none() {
+        // If feature_cycle is present but not a string, must yield None (not panic)
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        input.extra = serde_json::json!({
+            "feature_cycle": 42,
+            "agent_role": true
+        });
+        let req = build_request("SessionStart", &input);
+        match req {
+            HookRequest::SessionRegister {
+                agent_role,
+                feature,
+                ..
+            } => {
+                assert!(
+                    feature.is_none(),
+                    "non-string feature_cycle must yield None"
+                );
+                assert!(
+                    agent_role.is_none(),
+                    "non-string agent_role must yield None"
+                );
+            }
+            _ => panic!("expected SessionRegister"),
+        }
+    }
+
+    /// End-to-end: parse raw JSON (as Claude Code would send it) -> build_request
+    /// -> verify feature_cycle survives the full pipeline.
+    #[test]
+    fn feature_cycle_survives_full_hook_input_pipeline() {
+        // Simulate the exact JSON Claude Code sends on SessionStart
+        let raw_json = r#"{
+            "hook_event_name": "SessionStart",
+            "session_id": "sess-abc-123",
+            "cwd": "/workspaces/unimatrix",
+            "feature_cycle": "crt-007",
+            "agent_role": "uni-bug-investigator"
+        }"#;
+
+        // Step 1: Parse (same as parse_hook_input)
+        let input: HookInput = serde_json::from_str(raw_json).unwrap();
+        assert_eq!(input.extra["feature_cycle"], "crt-007");
+        assert_eq!(input.extra["agent_role"], "uni-bug-investigator");
+
+        // Step 2: Build request (same as build_request)
+        let req = build_request("SessionStart", &input);
+
+        // Step 3: Verify feature attribution survived
+        match &req {
+            HookRequest::SessionRegister {
+                session_id,
+                feature,
+                agent_role,
+                ..
+            } => {
+                assert_eq!(session_id, "sess-abc-123");
+                assert_eq!(
+                    feature.as_deref(),
+                    Some("crt-007"),
+                    "CRITICAL: feature_cycle must survive from raw JSON to SessionRegister"
+                );
+                assert_eq!(
+                    agent_role.as_deref(),
+                    Some("uni-bug-investigator"),
+                    "CRITICAL: agent_role must survive from raw JSON to SessionRegister"
+                );
+            }
+            _ => panic!("expected SessionRegister"),
+        }
+
+        // Step 4: Verify the request serializes correctly for IPC
+        let wire_bytes = unimatrix_engine::wire::serialize_request(&req).unwrap();
+        let decoded = unimatrix_engine::wire::deserialize_request(&wire_bytes).unwrap();
+        match decoded {
+            HookRequest::SessionRegister {
+                feature,
+                agent_role,
+                ..
+            } => {
+                assert_eq!(
+                    feature.as_deref(),
+                    Some("crt-007"),
+                    "CRITICAL: feature_cycle must survive wire serialization round-trip"
+                );
+                assert_eq!(
+                    agent_role.as_deref(),
+                    Some("uni-bug-investigator"),
+                    "CRITICAL: agent_role must survive wire serialization round-trip"
+                );
+            }
+            _ => panic!("expected SessionRegister after round-trip"),
+        }
+    }
+
+    /// Verify that extra fields besides feature_cycle and agent_role
+    /// do not leak into SessionRegister fields.
+    #[test]
+    fn session_start_ignores_irrelevant_extra_fields() {
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        input.extra = serde_json::json!({
+            "feature_cycle": "col-010",
+            "agent_role": "dev",
+            "irrelevant_field": "should_not_appear",
+            "transcript_version": 3
+        });
+        let req = build_request("SessionStart", &input);
+        match req {
+            HookRequest::SessionRegister {
+                feature,
+                agent_role,
+                ..
+            } => {
+                assert_eq!(feature.as_deref(), Some("col-010"));
+                assert_eq!(agent_role.as_deref(), Some("dev"));
+                // SessionRegister only has session_id, cwd, agent_role, feature
+                // -- no way for irrelevant fields to leak (struct is typed)
+            }
+            _ => panic!("expected SessionRegister"),
+        }
     }
 }
