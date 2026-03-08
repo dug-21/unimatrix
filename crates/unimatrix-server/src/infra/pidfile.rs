@@ -6,9 +6,17 @@
 //!
 //! `PidGuard` provides RAII-based lifecycle management: advisory locking (flock),
 //! PID file write, and cleanup on drop.
+//!
+//! ## Race safety (#146)
+//!
+//! `PidGuard::acquire` uses `OpenOptions` with create+write (no truncate) to
+//! avoid clobbering a PID file that another instance may have just written.
+//! The file content is overwritten only after the flock is acquired, and
+//! `handle_stale_pid_file` no longer removes the PID file -- it leaves it in
+//! place for the incoming server to lock and overwrite via `PidGuard::acquire`.
 
-use std::fs::{self, File};
-use std::io::{self, Write};
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, Seek, Write};
 use std::path::{Path, PathBuf};
 
 use fs2::FileExt;
@@ -28,11 +36,23 @@ pub struct PidGuard {
 impl PidGuard {
     /// Acquire an exclusive advisory lock on the PID file and write the current PID.
     ///
+    /// Opens with create+write (no truncate) to avoid clobbering a file another
+    /// instance may have just written. The flock is acquired first, then the file
+    /// is truncated and the current PID is written. This eliminates the TOCTOU
+    /// race between `handle_stale_pid_file` and `PidGuard::acquire` (#146).
+    ///
     /// Uses non-blocking `flock(LOCK_EX | LOCK_NB)` via the `fs2` crate.
     /// Returns `Err` if the lock is held by another process or on I/O failure.
     pub fn acquire(path: &Path) -> io::Result<Self> {
-        let mut file = File::create(path)?;
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(false)
+            .open(path)?;
         file.try_lock_exclusive()?;
+        // Truncate after lock is held, then write our PID.
+        file.set_len(0)?;
+        file.seek(io::SeekFrom::Start(0))?;
         write!(file, "{}\n", std::process::id())?;
         file.flush()?;
         Ok(PidGuard {
@@ -201,7 +221,8 @@ pub fn terminate_and_wait(_pid: u32, _timeout: std::time::Duration) -> bool {
 /// Handle a stale PID file found at startup.
 ///
 /// If the PID file exists:
-/// - If the recorded process is dead, removes the stale PID file.
+/// - If the recorded process is dead, the PID file is left in place for
+///   `PidGuard::acquire` to lock and overwrite (no TOCTOU race, #146).
 /// - If the recorded process is alive, sends SIGTERM and waits up to
 ///   `terminate_timeout` for it to exit.
 ///
@@ -218,8 +239,9 @@ pub fn handle_stale_pid_file(
     };
 
     if !is_process_alive(pid) {
-        tracing::info!(pid, "removing stale PID file (process is dead)");
-        remove_pid_file(pid_path);
+        tracing::info!(pid, "stale PID file found (process is dead); PidGuard will reclaim");
+        // Do NOT remove the file -- PidGuard::acquire will flock and overwrite it,
+        // eliminating the TOCTOU race (#146).
         return Ok(true);
     }
 
@@ -228,16 +250,16 @@ pub fn handle_stale_pid_file(
     if !is_unimatrix_process(pid) {
         tracing::info!(
             pid,
-            "PID is alive but not unimatrix-server; removing stale PID file"
+            "PID is alive but not unimatrix-server; PidGuard will reclaim"
         );
-        remove_pid_file(pid_path);
+        // Do NOT remove -- same TOCTOU rationale (#146).
         return Ok(true);
     }
 
     tracing::info!(pid, "stale unimatrix-server process detected, sending SIGTERM");
     if terminate_and_wait(pid, terminate_timeout) {
-        tracing::info!(pid, "stale process exited after SIGTERM");
-        remove_pid_file(pid_path);
+        tracing::info!(pid, "stale process exited after SIGTERM; PidGuard will reclaim");
+        // Do NOT remove -- PidGuard::acquire will flock and overwrite (#146).
         Ok(true)
     } else {
         tracing::warn!(pid, "stale process did not exit within timeout");
@@ -334,8 +356,8 @@ mod tests {
         let result =
             handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
         assert!(result);
-        // PID file should have been removed.
-        assert!(!path.exists());
+        // PID file is left in place for PidGuard::acquire to reclaim (#146).
+        assert!(path.exists(), "PID file should remain for PidGuard to reclaim");
     }
 
     #[test]
@@ -444,7 +466,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn test_handle_stale_not_unimatrix_removes_without_sigterm() {
+    fn test_handle_stale_not_unimatrix_resolves_without_sigterm() {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("stale.pid");
         // PID 1 is init — alive but not unimatrix-server.
@@ -453,7 +475,8 @@ mod tests {
         let result =
             handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
         assert!(result, "should resolve stale PID for non-unimatrix process");
-        assert!(!path.exists(), "PID file should be removed");
+        // PID file is left in place for PidGuard::acquire to reclaim (#146).
+        assert!(path.exists(), "PID file should remain for PidGuard to reclaim");
     }
 
     #[test]
@@ -467,6 +490,56 @@ mod tests {
         let result =
             handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
         assert!(result);
+        // PID file remains for PidGuard::acquire to reclaim (#146).
+        assert!(path.exists());
+    }
+
+    // --- #146 race-safety tests ---
+
+    #[test]
+    fn test_pid_guard_acquire_opens_existing_file_without_truncate() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.pid");
+        // Pre-create a PID file with stale content.
+        fs::write(&path, "99999\n").unwrap();
+
+        // PidGuard::acquire should flock then overwrite with current PID.
+        let _guard = PidGuard::acquire(&path).unwrap();
+        let contents = fs::read_to_string(&path).unwrap();
+        let pid: u32 = contents.trim().parse().unwrap();
+        assert_eq!(pid, std::process::id());
+    }
+
+    #[test]
+    fn test_pid_guard_acquire_after_handle_stale_no_remove() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.pid");
+        // Simulate a stale PID file from a dead process.
+        fs::write(&path, "4000000\n").unwrap();
+
+        // handle_stale_pid_file should resolve without removing the file.
+        let resolved =
+            handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
+        assert!(resolved);
+        assert!(path.exists(), "file should remain after handle_stale_pid_file");
+
+        // PidGuard::acquire should succeed on the existing file.
+        let _guard = PidGuard::acquire(&path).unwrap();
+        let contents = fs::read_to_string(&path).unwrap();
+        let pid: u32 = contents.trim().parse().unwrap();
+        assert_eq!(pid, std::process::id());
+    }
+
+    #[test]
+    fn test_pid_guard_acquire_creates_file_if_missing() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("new.pid");
         assert!(!path.exists());
+
+        let _guard = PidGuard::acquire(&path).unwrap();
+        assert!(path.exists());
+        let contents = fs::read_to_string(&path).unwrap();
+        let pid: u32 = contents.trim().parse().unwrap();
+        assert_eq!(pid, std::process::id());
     }
 }
