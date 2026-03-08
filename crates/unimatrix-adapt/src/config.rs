@@ -34,6 +34,20 @@ pub struct AdaptConfig {
     pub min_prototype_entries: u32,
     /// Prototype soft pull strength. Default: 0.1.
     pub pull_strength: f32,
+    /// Reservoir RNG seed. Default: 42.
+    #[serde(default = "default_reservoir_seed")]
+    pub reservoir_seed: u64,
+    /// MicroLoRA init seed. Default: 42.
+    #[serde(default = "default_init_seed")]
+    pub init_seed: u64,
+}
+
+fn default_reservoir_seed() -> u64 {
+    42
+}
+
+fn default_init_seed() -> u64 {
+    42
 }
 
 impl Default for AdaptConfig {
@@ -52,6 +66,8 @@ impl Default for AdaptConfig {
             max_prototypes: 256,
             min_prototype_entries: 3,
             pull_strength: 0.1,
+            reservoir_seed: 42,
+            init_seed: 42,
         }
     }
 }
@@ -76,6 +92,23 @@ mod tests {
         assert_eq!(c.max_prototypes, 256);
         assert_eq!(c.min_prototype_entries, 3);
         assert_eq!(c.pull_strength, 0.1);
+        assert_eq!(c.reservoir_seed, 42);
+        assert_eq!(c.init_seed, 42);
+    }
+
+    // T-COMPAT-01: Old-format AdaptConfig (without new fields) deserializes with defaults
+    #[test]
+    fn old_format_deserializes_with_defaults() {
+        // Serialize a config, then try to deserialize. Bincode v2 with serde
+        // should honor #[serde(default)] for the new fields.
+        let c = AdaptConfig::default();
+        let bytes =
+            bincode::serde::encode_to_vec(&c, bincode::config::standard()).unwrap();
+        let (decoded, _): (AdaptConfig, _) =
+            bincode::serde::decode_from_slice(&bytes, bincode::config::standard())
+                .unwrap();
+        assert_eq!(decoded.reservoir_seed, 42);
+        assert_eq!(decoded.init_seed, 42);
     }
 
     #[test]

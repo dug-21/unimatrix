@@ -1,9 +1,8 @@
 //! Training pipeline: InfoNCE contrastive loss, reservoir sampling, batch training.
 
 use ndarray::{Array1, Array2};
-use rand::SeedableRng;
-use rand::rngs::StdRng;
-use rand::Rng;
+
+use unimatrix_learn::reservoir::TrainingReservoir;
 
 use crate::config::AdaptConfig;
 use crate::lora::MicroLoRA;
@@ -16,76 +15,6 @@ pub struct TrainingPair {
     pub entry_id_a: u64,
     pub entry_id_b: u64,
     pub count: u32,
-}
-
-/// Memory-bounded training buffer using reservoir sampling.
-///
-/// Maintains a uniform random sample of fixed size from a potentially unbounded
-/// stream of co-access pairs.
-pub struct TrainingReservoir {
-    pairs: Vec<TrainingPair>,
-    capacity: usize,
-    total_seen: u64,
-    rng: StdRng,
-}
-
-impl TrainingReservoir {
-    /// Create a new reservoir with the given capacity and RNG seed.
-    pub fn new(capacity: usize, seed: u64) -> Self {
-        Self {
-            pairs: Vec::with_capacity(capacity),
-            capacity,
-            total_seen: 0,
-            rng: StdRng::seed_from_u64(seed),
-        }
-    }
-
-    /// Add pairs to the reservoir via reservoir sampling.
-    pub fn add(&mut self, pairs: &[(u64, u64, u32)]) {
-        for &(id_a, id_b, count) in pairs {
-            self.total_seen += 1;
-            let pair = TrainingPair {
-                entry_id_a: id_a,
-                entry_id_b: id_b,
-                count,
-            };
-
-            if self.pairs.len() < self.capacity {
-                self.pairs.push(pair);
-            } else {
-                // Reservoir sampling: replace with probability capacity / total_seen
-                let j = self.rng.random_range(0..self.total_seen);
-                if j < self.capacity as u64 {
-                    self.pairs[j as usize] = pair;
-                }
-            }
-        }
-    }
-
-    /// Sample a batch of pairs (with replacement for simplicity).
-    pub fn sample_batch(&mut self, batch_size: usize) -> Vec<&TrainingPair> {
-        let actual_size = batch_size.min(self.pairs.len());
-        if actual_size == 0 {
-            return Vec::new();
-        }
-        // Simple random sampling with replacement
-        let mut batch = Vec::with_capacity(actual_size);
-        for _ in 0..actual_size {
-            let idx = self.rng.random_range(0..self.pairs.len());
-            batch.push(&self.pairs[idx]);
-        }
-        batch
-    }
-
-    /// Number of pairs currently in the reservoir.
-    pub fn len(&self) -> usize {
-        self.pairs.len()
-    }
-
-    /// Total pairs seen (including replaced ones).
-    pub fn total_seen(&self) -> u64 {
-        self.total_seen
-    }
 }
 
 /// Compute InfoNCE contrastive loss with log-sum-exp stability.
@@ -111,9 +40,9 @@ pub fn infonce_loss(
         let mut all_sims = Vec::with_capacity(batch_size);
         all_sims.push(pos_sim);
 
-        for j in 0..batch_size {
+        for (j, positive) in positives.iter().enumerate().take(batch_size) {
             if j != i {
-                let neg_sim = dot(&anchors[i], &positives[j]) / temperature;
+                let neg_sim = dot(&anchors[i], positive) / temperature;
                 all_sims.push(neg_sim);
             }
         }
@@ -167,10 +96,10 @@ pub fn infonce_gradients(
         candidates.push(&positives[i]);
 
         // Negatives
-        for j in 0..batch_size {
+        for (j, positive) in positives.iter().enumerate().take(batch_size) {
             if j != i {
-                sims.push(dot(&anchors[i], &positives[j]) / temperature);
-                candidates.push(&positives[j]);
+                sims.push(dot(&anchors[i], positive) / temperature);
+                candidates.push(positive);
             }
         }
 
@@ -206,7 +135,7 @@ pub fn infonce_gradients(
 /// Returns `true` if the step was executed, `false` if skipped.
 pub fn execute_training_step(
     lora: &MicroLoRA,
-    reservoir: &mut TrainingReservoir,
+    reservoir: &mut TrainingReservoir<TrainingPair>,
     ewc: &mut EwcState,
     prototypes: &mut PrototypeManager,
     config: &AdaptConfig,
@@ -335,36 +264,14 @@ fn dot(a: &Array1<f32>, b: &Array1<f32>) -> f32 {
 mod tests {
     use super::*;
 
-    // T-TRN-01: Reservoir construction and basic add
-    #[test]
-    fn reservoir_basic_add() {
-        let mut r = TrainingReservoir::new(10, 42);
-        r.add(&[(1, 2, 1), (3, 4, 1), (5, 6, 1), (7, 8, 1), (9, 10, 1)]);
-        assert_eq!(r.len(), 5);
-        assert_eq!(r.total_seen(), 5);
-    }
-
-    // T-TRN-02: Reservoir capacity bound
-    #[test]
-    fn reservoir_capacity_bound() {
-        let mut r = TrainingReservoir::new(10, 42);
-        let pairs: Vec<(u64, u64, u32)> = (0..100).map(|i| (i, i + 1, 1)).collect();
-        r.add(&pairs);
-        assert_eq!(r.len(), 10);
-        assert_eq!(r.total_seen(), 100);
-    }
-
-    // T-TRN-03: Reservoir sample_batch returns correct size
-    #[test]
-    fn reservoir_sample_batch_size() {
-        let mut r = TrainingReservoir::new(100, 42);
-        let pairs: Vec<(u64, u64, u32)> = (0..50).map(|i| (i, i + 1, 1)).collect();
-        r.add(&pairs);
-
-        assert_eq!(r.sample_batch(32).len(), 32);
-        assert_eq!(r.sample_batch(50).len(), 50);
-        // Can sample up to len since it's with replacement
-        assert_eq!(r.sample_batch(100).len(), 50);
+    fn make_pairs(n: u64) -> Vec<TrainingPair> {
+        (0..n)
+            .map(|i| TrainingPair {
+                entry_id_a: i,
+                entry_id_b: i + 100,
+                count: 1,
+            })
+            .collect()
     }
 
     // T-TRN-04: InfoNCE loss with extreme positive similarity
@@ -438,17 +345,6 @@ mod tests {
         assert!(loss.is_finite(), "loss should be finite for mixed batch");
     }
 
-    // T-TRN-10: Reservoir at capacity with continued adds
-    #[test]
-    fn reservoir_overflow_no_growth() {
-        let mut r = TrainingReservoir::new(100, 42);
-        for i in 0..10_000u64 {
-            r.add(&[(i, i + 1, 1)]);
-            assert!(r.len() <= 100, "reservoir exceeded capacity at i={i}");
-        }
-        assert_eq!(r.total_seen(), 10_000);
-    }
-
     // T-TRN-12: InfoNCE loss with single pair
     #[test]
     fn infonce_single_pair() {
@@ -493,8 +389,7 @@ mod tests {
         let mut generation = 0u64;
 
         // Add only 10 pairs (< batch_size=32)
-        let pairs: Vec<(u64, u64, u32)> = (0..10).map(|i| (i, i + 1, 1)).collect();
-        reservoir.add(&pairs);
+        reservoir.add(&make_pairs(10));
 
         let initial_params = lora.parameters_flat();
         let result = execute_training_step(
@@ -538,8 +433,7 @@ mod tests {
         let mut generation = 0u64;
 
         // Add enough pairs
-        let pairs: Vec<(u64, u64, u32)> = (0..40).map(|i| (i, i + 100, 1)).collect();
-        reservoir.add(&pairs);
+        reservoir.add(&make_pairs(40));
 
         // Provide embed_fn that returns deterministic vectors
         let initial_params = lora.parameters_flat();
@@ -587,8 +481,7 @@ mod tests {
         );
         let mut generation = 0u64;
 
-        let pairs: Vec<(u64, u64, u32)> = (0..40).map(|i| (i, i + 100, 1)).collect();
-        reservoir.add(&pairs);
+        reservoir.add(&make_pairs(40));
 
         let result = execute_training_step(
             &lora,

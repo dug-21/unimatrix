@@ -64,12 +64,20 @@ pub struct SignalClassifier {
 }
 
 impl SignalClassifier {
-    /// Create classifier with baseline weights.
+    /// Create classifier with baseline weights using the default seed (42).
     ///
     /// Xavier/Glorot initialization with deterministic seed.
     /// Output bias: Noise class (index 4) gets +2.0, biasing toward conservative output.
     pub fn new_with_baseline() -> Self {
-        let mut rng = StdRng::seed_from_u64(42);
+        Self::new_with_baseline_seed(42)
+    }
+
+    /// Create classifier with baseline weights using the given seed.
+    ///
+    /// Xavier/Glorot initialization with deterministic seed.
+    /// Output bias: Noise class (index 4) gets +2.0, biasing toward conservative output.
+    pub fn new_with_baseline_seed(seed: u64) -> Self {
+        let mut rng = StdRng::seed_from_u64(seed);
         let w1 = xavier_init(&mut rng, 32, 64);
         let b1 = Array1::zeros(64);
         let w2 = xavier_init(&mut rng, 64, 32);
@@ -562,6 +570,22 @@ mod tests {
                 "param {i} mismatch: {a} vs {b}"
             );
         }
+    }
+
+    // T-SEED-01: baseline_seed(42) == baseline()
+    #[test]
+    fn seed_42_matches_baseline() {
+        let baseline = SignalClassifier::new_with_baseline();
+        let seeded = SignalClassifier::new_with_baseline_seed(42);
+        assert_eq!(baseline.flat_parameters(), seeded.flat_parameters());
+    }
+
+    // T-SEED-03: Different seeds produce different weights
+    #[test]
+    fn different_seeds_different_weights() {
+        let a = SignalClassifier::new_with_baseline_seed(42);
+        let b = SignalClassifier::new_with_baseline_seed(99);
+        assert_ne!(a.flat_parameters(), b.flat_parameters());
     }
 
     // T-MT-05: serialize + deserialize roundtrip

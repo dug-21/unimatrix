@@ -96,13 +96,11 @@ impl VectorIndex {
         }
 
         // Validate dimension
-        if let Some(dim) = dimension {
-            if dim != config.dimension {
-                return Err(VectorError::Persistence(format!(
-                    "dimension mismatch: metadata says {dim}, config says {}",
-                    config.dimension
-                )));
-            }
+        if let Some(dim) = dimension.filter(|&d| d != config.dimension) {
+            return Err(VectorError::Persistence(format!(
+                "dimension mismatch: metadata says {dim}, config says {}",
+                config.dimension
+            )));
         }
 
         // Load hnsw_rs index

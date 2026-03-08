@@ -59,7 +59,7 @@ impl Store {
 
         // Create all tables (idempotent) — safe now that migration has
         // transformed any v5 tables to v6 schema.
-        create_tables(&*store.lock_conn())?;
+        create_tables(&store.lock_conn())?;
 
         Ok(store)
     }

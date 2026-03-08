@@ -34,16 +34,16 @@ pub fn mean_pool(
         for t in 0..seq_len {
             let mask_val = attention_mask[b * seq_len + t] as f32;
             if mask_val > 0.0 {
-                for d in 0..hidden_dim {
+                for (d, p) in pooled.iter_mut().enumerate().take(hidden_dim) {
                     let idx = b * seq_len * hidden_dim + t * hidden_dim + d;
-                    pooled[d] += token_embeddings[idx] * mask_val;
+                    *p += token_embeddings[idx] * mask_val;
                 }
             }
         }
 
         // Divide by mask count to get mean
-        for d in 0..hidden_dim {
-            pooled[d] /= mask_sum;
+        for p in pooled.iter_mut().take(hidden_dim) {
+            *p /= mask_sum;
         }
 
         result.push(pooled);
