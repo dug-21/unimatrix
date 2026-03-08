@@ -47,8 +47,8 @@ impl TrainingService {
             TrainingReservoir::new(config.reservoir_capacity, config.reservoir_seed + 1),
         );
 
-        let classifier_param_count = SignalClassifier::new_with_baseline().flat_parameters().len();
-        let scorer_param_count = ConventionScorer::new_with_baseline().flat_parameters().len();
+        let classifier_param_count = SignalClassifier::new_with_baseline_seed(config.classifier_init_seed).flat_parameters().len();
+        let scorer_param_count = ConventionScorer::new_with_baseline_seed(config.scorer_init_seed).flat_parameters().len();
 
         let mut ewc_states = HashMap::new();
         ewc_states.insert(
@@ -164,16 +164,18 @@ impl TrainingService {
 
         let model_name_owned = model_name.to_string();
         let lr = self.config.training_lr;
+        let classifier_init_seed = self.config.classifier_init_seed;
+        let scorer_init_seed = self.config.scorer_init_seed;
         let registry = self.registry.clone();
         let ewc_states_ref = self.ewc_states_arc();
 
         std::thread::spawn(move || {
             let _guard = LockGuard(lock);
 
-            // Reconstruct model from baseline
+            // Reconstruct model from baseline using configured seeds
             let mut model: Box<dyn NeuralModel> = match model_name_owned.as_str() {
-                "signal_classifier" => Box::new(SignalClassifier::new_with_baseline()),
-                "convention_scorer" => Box::new(ConventionScorer::new_with_baseline()),
+                "signal_classifier" => Box::new(SignalClassifier::new_with_baseline_seed(classifier_init_seed)),
+                "convention_scorer" => Box::new(ConventionScorer::new_with_baseline_seed(scorer_init_seed)),
                 _ => return,
             };
 
@@ -568,6 +570,8 @@ mod tests {
         assert!((config.training_lr - 0.01).abs() < 1e-6);
         assert_eq!(config.reservoir_capacity, 500);
         assert_eq!(config.reservoir_seed, 42);
+        assert_eq!(config.classifier_init_seed, 42);
+        assert_eq!(config.scorer_init_seed, 123);
     }
 
     // T-R05-01: Custom threshold triggers training at configured value

@@ -37,6 +37,10 @@ pub struct LearnConfig {
     pub reservoir_capacity: usize,
     /// Reservoir RNG seed (scorer uses seed + 1).
     pub reservoir_seed: u64,
+    /// Classifier model init seed (deterministic Xavier init).
+    pub classifier_init_seed: u64,
+    /// Scorer model init seed (deterministic Xavier init).
+    pub scorer_init_seed: u64,
 }
 
 impl Default for LearnConfig {
@@ -57,6 +61,8 @@ impl Default for LearnConfig {
             training_lr: 0.01,
             reservoir_capacity: 500,
             reservoir_seed: 42,
+            classifier_init_seed: 42,
+            scorer_init_seed: 123,
         }
     }
 }

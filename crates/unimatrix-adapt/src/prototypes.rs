@@ -74,13 +74,11 @@ impl PrototypeManager {
         // Check category prototype
         if let Some(cat) = category {
             let key = PrototypeKey::Category(cat.to_string());
-            if let Some(proto) = self.prototypes.get(&key) {
-                if proto.entry_count >= self.min_entries {
-                    let sim = cosine_similarity(adapted, proto.centroid.as_slice().unwrap());
-                    if sim > best_sim {
-                        best_sim = sim;
-                        best_proto = Some(proto);
-                    }
+            if let Some(proto) = self.prototypes.get(&key).filter(|p| p.entry_count >= self.min_entries) {
+                let sim = cosine_similarity(adapted, proto.centroid.as_slice().unwrap());
+                if sim > best_sim {
+                    best_sim = sim;
+                    best_proto = Some(proto);
                 }
             }
         }
@@ -88,13 +86,11 @@ impl PrototypeManager {
         // Check topic prototype
         if let Some(top) = topic {
             let key = PrototypeKey::Topic(top.to_string());
-            if let Some(proto) = self.prototypes.get(&key) {
-                if proto.entry_count >= self.min_entries {
-                    let sim = cosine_similarity(adapted, proto.centroid.as_slice().unwrap());
-                    if sim > best_sim {
-                        best_sim = sim;
-                        best_proto = Some(proto);
-                    }
+            if let Some(proto) = self.prototypes.get(&key).filter(|p| p.entry_count >= self.min_entries) {
+                let sim = cosine_similarity(adapted, proto.centroid.as_slice().unwrap());
+                if sim > best_sim {
+                    best_sim = sim;
+                    best_proto = Some(proto);
                 }
             }
         }
@@ -135,8 +131,8 @@ impl PrototypeManager {
         if let Some(proto) = self.prototypes.get_mut(&key) {
             // Online running mean: new = (old * n + new_value) / (n + 1)
             let n = proto.entry_count as f32;
-            for i in 0..self.dimension {
-                proto.centroid[i] = (proto.centroid[i] * n + adapted[i]) / (n + 1.0);
+            for (i, &val) in adapted.iter().enumerate().take(self.dimension) {
+                proto.centroid[i] = (proto.centroid[i] * n + val) / (n + 1.0);
             }
             proto.entry_count += 1;
             proto.last_updated = now;
@@ -173,6 +169,11 @@ impl PrototypeManager {
     /// Number of prototypes currently stored.
     pub fn len(&self) -> usize {
         self.prototypes.len()
+    }
+
+    /// Whether no prototypes are stored.
+    pub fn is_empty(&self) -> bool {
+        self.prototypes.is_empty()
     }
 
     /// Serialize all prototypes for persistence.

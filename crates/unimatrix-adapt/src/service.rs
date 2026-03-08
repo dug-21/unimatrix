@@ -14,14 +14,15 @@ use crate::lora::{LoraConfig, MicroLoRA};
 use crate::persistence;
 use crate::prototypes::PrototypeManager;
 use crate::regularization::EwcState;
-use crate::training::{TrainingReservoir, execute_training_step};
+use crate::training::{TrainingPair, execute_training_step};
+use unimatrix_learn::reservoir::TrainingReservoir;
 
 /// Adaptation service orchestrating the full pipeline.
 ///
 /// Implements `Send + Sync` for `Arc<AdaptationService>` usage.
 pub struct AdaptationService {
     lora: MicroLoRA,
-    reservoir: RwLock<TrainingReservoir>,
+    reservoir: RwLock<TrainingReservoir<TrainingPair>>,
     ewc: RwLock<EwcState>,
     prototypes: RwLock<PrototypeManager>,
     episodic: EpisodicAugmenter,
@@ -50,8 +51,8 @@ impl AdaptationService {
         };
 
         Self {
-            lora: MicroLoRA::new(lora_config),
-            reservoir: RwLock::new(TrainingReservoir::new(config.reservoir_capacity, 42)),
+            lora: MicroLoRA::with_seed(lora_config, config.init_seed),
+            reservoir: RwLock::new(TrainingReservoir::new(config.reservoir_capacity, config.reservoir_seed)),
             ewc: RwLock::new(EwcState::new(param_count, config.ewc_alpha, config.ewc_lambda)),
             prototypes: RwLock::new(PrototypeManager::new(
                 config.max_prototypes,
@@ -98,8 +99,16 @@ impl AdaptationService {
 
     /// Record co-access training pairs into the reservoir.
     pub fn record_training_pairs(&self, pairs: &[(u64, u64, u32)]) {
+        let training_pairs: Vec<TrainingPair> = pairs
+            .iter()
+            .map(|&(entry_id_a, entry_id_b, count)| TrainingPair {
+                entry_id_a,
+                entry_id_b,
+                count,
+            })
+            .collect();
         let mut reservoir = self.reservoir.write().expect("reservoir lock poisoned");
-        reservoir.add(pairs);
+        reservoir.add(&training_pairs);
     }
 
     /// Attempt a training step if the reservoir has enough pairs.

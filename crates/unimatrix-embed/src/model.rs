@@ -2,9 +2,10 @@
 ///
 /// All models produce 384-dimensional embeddings compatible with
 /// nxs-002's `VectorConfig { dimension: 384 }`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EmbeddingModel {
     /// sentence-transformers/all-MiniLM-L6-v2 (default)
+    #[default]
     AllMiniLmL6V2,
     /// sentence-transformers/all-MiniLM-L12-v2
     AllMiniLmL12V2,
@@ -18,12 +19,6 @@ pub enum EmbeddingModel {
     E5SmallV2,
     /// thenlper/gte-small
     GteSmall,
-}
-
-impl Default for EmbeddingModel {
-    fn default() -> Self {
-        Self::AllMiniLmL6V2
-    }
 }
 
 impl EmbeddingModel {

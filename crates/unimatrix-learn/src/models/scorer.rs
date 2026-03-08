@@ -19,12 +19,20 @@ pub struct ConventionScorer {
 }
 
 impl ConventionScorer {
-    /// Create scorer with baseline weights.
+    /// Create scorer with baseline weights using the default seed (123).
     ///
     /// Xavier/Glorot initialization with deterministic seed.
     /// Output bias: -2.0 biases toward low scores (conservative).
     pub fn new_with_baseline() -> Self {
-        let mut rng = StdRng::seed_from_u64(123);
+        Self::new_with_baseline_seed(123)
+    }
+
+    /// Create scorer with baseline weights using the given seed.
+    ///
+    /// Xavier/Glorot initialization with deterministic seed.
+    /// Output bias: -2.0 biases toward low scores (conservative).
+    pub fn new_with_baseline_seed(seed: u64) -> Self {
+        let mut rng = StdRng::seed_from_u64(seed);
         let w1 = xavier_init(&mut rng, 32, 32);
         let b1 = Array1::zeros(32);
         let w2 = xavier_init(&mut rng, 32, 1);
@@ -388,6 +396,22 @@ mod tests {
             grads.len(),
             scorer.flat_parameters().len()
         );
+    }
+
+    // T-SEED-02: baseline_seed(123) == baseline()
+    #[test]
+    fn seed_123_matches_baseline() {
+        let baseline = ConventionScorer::new_with_baseline();
+        let seeded = ConventionScorer::new_with_baseline_seed(123);
+        assert_eq!(baseline.flat_parameters(), seeded.flat_parameters());
+    }
+
+    // T-SEED-04: Different seeds produce different weights
+    #[test]
+    fn different_seeds_different_weights() {
+        let a = ConventionScorer::new_with_baseline_seed(123);
+        let b = ConventionScorer::new_with_baseline_seed(99);
+        assert_ne!(a.flat_parameters(), b.flat_parameters());
     }
 
     // Scorer serialize roundtrip
