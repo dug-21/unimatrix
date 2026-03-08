@@ -271,19 +271,64 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // Wait for session close or signal, then shutdown.
     // Flock-based PidGuard handles zombie cleanup at next startup.
-    let waiting = async { let _ = running.waiting().await; };
+    // Log transport close reason instead of silently discarding (#146).
+    let waiting = async {
+        match running.waiting().await {
+            Ok(reason) => {
+                tracing::info!(?reason, "MCP transport closed");
+            }
+            Err(join_err) => {
+                tracing::error!(error = %join_err, "MCP transport task failed");
+            }
+        }
+    };
     shutdown::graceful_shutdown(lifecycle_handles, waiting).await?;
 
     tracing::info!("unimatrix server exited cleanly");
     Ok(())
 }
 
-/// Open the database store.
+/// Maximum number of database open attempts before giving up.
+const DB_OPEN_MAX_ATTEMPTS: u32 = 3;
+
+/// Base delay between database open retries (doubles each attempt).
+const DB_OPEN_RETRY_BASE_MS: u64 = 1000;
+
+/// Open the database store with retry on lock contention.
+///
+/// Retries up to `DB_OPEN_MAX_ATTEMPTS` times with exponential backoff
+/// (1s, 2s, 4s). This gives a stale process time to release the SQLite
+/// lock after receiving SIGTERM in `handle_stale_pid_file` (#146).
 fn open_store_with_retry(
     db_path: &std::path::Path,
 ) -> Result<Arc<Store>, Box<dyn std::error::Error>> {
-    let store = Store::open(db_path)
-        .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-    Ok(Arc::new(store))
+    let mut last_err = None;
+    for attempt in 1..=DB_OPEN_MAX_ATTEMPTS {
+        match Store::open(db_path) {
+            Ok(store) => {
+                if attempt > 1 {
+                    tracing::info!(attempt, "database opened after retry");
+                }
+                return Ok(Arc::new(store));
+            }
+            Err(e) => {
+                if attempt < DB_OPEN_MAX_ATTEMPTS {
+                    let delay_ms = DB_OPEN_RETRY_BASE_MS * 2u64.pow(attempt - 1);
+                    tracing::warn!(
+                        attempt,
+                        max_attempts = DB_OPEN_MAX_ATTEMPTS,
+                        delay_ms,
+                        error = %e,
+                        "database open failed, retrying"
+                    );
+                    std::thread::sleep(Duration::from_millis(delay_ms));
+                }
+                last_err = Some(e);
+            }
+        }
+    }
+    Err(Box::new(ServerError::Core(CoreError::Store(
+        last_err.expect("at least one attempt was made"),
+    ))))
 }
 
