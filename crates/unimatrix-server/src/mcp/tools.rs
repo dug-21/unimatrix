@@ -891,24 +891,8 @@ impl UnimatrixServer {
                     .await
                     .map_err(rmcp::ErrorData::from)?;
 
-                // Recompute confidence (fire-and-forget)
-                {
-                    let store_for_conf = Arc::clone(&self.store);
-                    let _ = tokio::task::spawn_blocking(move || {
-                        let now = std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_secs();
-                        match store_for_conf.get(entry_id) {
-                            Ok(e) => {
-                                let conf = crate::confidence::compute_confidence(&e, now);
-                                let _ = store_for_conf.update_confidence(entry_id, conf);
-                            }
-                            Err(_) => {}
-                        }
-                    })
-                    .await;
-                }
+                // Recompute confidence (fire-and-forget via ConfidenceService, vnc-010)
+                self.services.confidence.recompute(&[entry_id]);
 
                 Ok(format_quarantine_success(
                     &updated,
@@ -941,24 +925,8 @@ impl UnimatrixServer {
                     .await
                     .map_err(rmcp::ErrorData::from)?;
 
-                // Recompute confidence (fire-and-forget)
-                {
-                    let store_for_conf = Arc::clone(&self.store);
-                    let _ = tokio::task::spawn_blocking(move || {
-                        let now = std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_secs();
-                        match store_for_conf.get(entry_id) {
-                            Ok(e) => {
-                                let conf = crate::confidence::compute_confidence(&e, now);
-                                let _ = store_for_conf.update_confidence(entry_id, conf);
-                            }
-                            Err(_) => {}
-                        }
-                    })
-                    .await;
-                }
+                // Recompute confidence (fire-and-forget via ConfidenceService, vnc-010)
+                self.services.confidence.recompute(&[entry_id]);
 
                 Ok(format_restore_success(
                     &updated,

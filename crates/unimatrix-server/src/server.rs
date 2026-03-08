@@ -687,106 +687,92 @@ impl UnimatrixServer {
             }
         }
 
-        // Step 3: Record usage WITH confidence computation (spawn_blocking)
+        // Steps 3-5: Batch all DB writes into a single spawn_blocking (vnc-010).
+        //
+        // Previously each write (usage+confidence, feature_entries, co_access) was
+        // a separate spawn_blocking, each independently acquiring the Store mutex.
+        // This caused blocking pool saturation under concurrent MCP requests.
         let store = Arc::clone(&self.store);
         let all_ids = entry_ids.to_vec();
-        let access_ids_owned = access_ids;
-        let helpful_owned = helpful_ids;
-        let unhelpful_owned = unhelpful_ids;
-        let dec_helpful_owned = decrement_helpful_ids;
-        let dec_unhelpful_owned = decrement_unhelpful_ids;
+
+        // Pre-compute co-access pairs (in-memory, no lock needed)
+        let (co_access_pairs, pairs_for_adapt) = if entry_ids.len() >= 2 {
+            let pairs =
+                crate::coaccess::generate_pairs(entry_ids, crate::coaccess::MAX_CO_ACCESS_ENTRIES);
+            let new_pairs = self.usage_dedup.filter_co_access_pairs(&pairs);
+            if new_pairs.is_empty() {
+                (None, None)
+            } else {
+                let adapt_pairs: Vec<(u64, u64, u32)> = new_pairs
+                    .iter()
+                    .map(|p| (p.0, p.1, 1u32))
+                    .collect();
+                (Some(new_pairs), Some(adapt_pairs))
+            }
+        } else {
+            (None, None)
+        };
+
+        // Pre-compute feature recording eligibility
+        let feature_recording = feature.and_then(|feature_str| {
+            if matches!(trust_level, TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal) {
+                Some((feature_str.to_string(), entry_ids.to_vec()))
+            } else {
+                None
+            }
+        });
 
         let usage_result = tokio::task::spawn_blocking(move || {
-            store.record_usage_with_confidence(
+            // Single lock acquisition for all DB writes
+            if let Err(e) = store.record_usage_with_confidence(
                 &all_ids,
-                &access_ids_owned,
-                &helpful_owned,
-                &unhelpful_owned,
-                &dec_helpful_owned,
-                &dec_unhelpful_owned,
+                &access_ids,
+                &helpful_ids,
+                &unhelpful_ids,
+                &decrement_helpful_ids,
+                &decrement_unhelpful_ids,
                 Some(&crate::confidence::compute_confidence),
-            )
+            ) {
+                tracing::warn!("usage recording failed: {e}");
+            }
+
+            if let Some((feature_str, ids)) = feature_recording {
+                if let Err(e) = store.record_feature_entries(&feature_str, &ids) {
+                    tracing::warn!("feature entry recording failed: {e}");
+                }
+            }
+
+            if let Some(pairs) = co_access_pairs {
+                if let Err(e) = store.record_co_access_pairs(&pairs) {
+                    tracing::warn!("co-access recording failed: {e}");
+                }
+            }
         }).await;
 
         match usage_result {
-            Ok(Ok(())) => {}
-            Ok(Err(e)) => {
-                tracing::warn!("usage recording failed: {e}");
-            }
+            Ok(()) => {}
             Err(e) => {
                 tracing::warn!("usage recording task failed: {e}");
             }
         }
 
-        // Step 4: Record feature entries if applicable (trust gating)
-        if let Some(feature_str) = feature {
-            if matches!(trust_level, TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal) {
-                let store = Arc::clone(&self.store);
-                let feature_owned = feature_str.to_string();
-                let ids = entry_ids.to_vec();
+        // Step 5b-c: Adaptation training (separate spawn_blocking since it
+        // does embedding work, not just DB writes)
+        if let Some(adapt_pairs) = pairs_for_adapt {
+            self.adapt_service.record_training_pairs(&adapt_pairs);
 
-                let feature_result = tokio::task::spawn_blocking(move || {
-                    store.record_feature_entries(&feature_owned, &ids)
-                }).await;
-
-                match feature_result {
-                    Ok(Ok(())) => {}
-                    Ok(Err(e)) => {
-                        tracing::warn!("feature entry recording failed: {e}");
-                    }
-                    Err(e) => {
-                        tracing::warn!("feature entry recording task failed: {e}");
-                    }
+            let adapt_svc = Arc::clone(&self.adapt_service);
+            let embed_svc = Arc::clone(&self.embed_service);
+            let store_for_train = Arc::clone(&self.store);
+            let _ = tokio::task::spawn_blocking(move || {
+                if let Some(adapter) = embed_svc.try_get_adapter_sync() {
+                    let embed_fn = |entry_id: u64| -> Option<Vec<f32>> {
+                        let entry = store_for_train.get(entry_id).ok()?;
+                        adapter.embed_entry(&entry.title, &entry.content).ok()
+                    };
+                    adapt_svc.try_train_step(&embed_fn);
                 }
-            }
-            // Restricted agents' feature params silently ignored (AC-17)
-        }
-
-        // Step 5: Co-access recording (fire-and-forget, crt-004)
-        if entry_ids.len() >= 2 {
-            let pairs =
-                crate::coaccess::generate_pairs(entry_ids, crate::coaccess::MAX_CO_ACCESS_ENTRIES);
-            let new_pairs = self.usage_dedup.filter_co_access_pairs(&pairs);
-
-            if !new_pairs.is_empty() {
-                let store = Arc::clone(&self.store);
-                let pairs_for_adapt: Vec<(u64, u64, u32)> = new_pairs
-                    .iter()
-                    .map(|p| (p.0, p.1, 1u32))
-                    .collect();
-                let co_access_result = tokio::task::spawn_blocking(move || {
-                    store.record_co_access_pairs(&new_pairs)
-                })
-                .await;
-
-                match co_access_result {
-                    Ok(Ok(())) => {}
-                    Ok(Err(e)) => {
-                        tracing::warn!("co-access recording failed: {e}");
-                    }
-                    Err(e) => {
-                        tracing::warn!("co-access recording task failed: {e}");
-                    }
-                }
-
-                // Step 5b: Feed co-access pairs to adaptation training reservoir (crt-006)
-                self.adapt_service.record_training_pairs(&pairs_for_adapt);
-
-                // Step 5c: Attempt training step if reservoir has enough pairs (fire-and-forget)
-                let adapt_svc = Arc::clone(&self.adapt_service);
-                let embed_svc = Arc::clone(&self.embed_service);
-                let store_for_train = Arc::clone(&self.store);
-                let _ = tokio::task::spawn_blocking(move || {
-                    // Only attempt training if embed model is ready
-                    if let Some(adapter) = embed_svc.try_get_adapter_sync() {
-                        let embed_fn = |entry_id: u64| -> Option<Vec<f32>> {
-                            let entry = store_for_train.get(entry_id).ok()?;
-                            adapter.embed_entry(&entry.title, &entry.content).ok()
-                        };
-                        adapt_svc.try_train_step(&embed_fn);
-                    }
-                });
-            }
+            });
         }
     }
 

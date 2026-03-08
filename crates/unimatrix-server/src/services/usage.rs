@@ -114,11 +114,38 @@ impl UsageService {
             }
         }
 
-        // Step 3: Record usage with confidence (spawn_blocking, fire-and-forget)
+        // Steps 3-5: Batch all DB writes into a single spawn_blocking (vnc-010).
+        //
+        // Previously each write (usage+confidence, feature_entries, co_access) was
+        // a separate spawn_blocking, each independently acquiring the Store mutex.
+        // This caused blocking pool saturation under concurrent MCP requests.
         let store = Arc::clone(&self.store);
         let all_ids = entry_ids.to_vec();
 
+        // Pre-compute co-access pairs (in-memory, no lock needed)
+        let co_access_pairs = if entry_ids.len() >= 2 {
+            let pairs = crate::coaccess::generate_pairs(
+                entry_ids,
+                crate::coaccess::MAX_CO_ACCESS_ENTRIES,
+            );
+            let new_pairs = self.usage_dedup.filter_co_access_pairs(&pairs);
+            if new_pairs.is_empty() { None } else { Some(new_pairs) }
+        } else {
+            None
+        };
+
+        // Pre-compute feature recording eligibility
+        let feature_recording = ctx.feature_cycle.and_then(|feature_str| {
+            let trust = ctx.trust_level.unwrap_or(TrustLevel::Restricted);
+            if matches!(trust, TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal) {
+                Some((feature_str, entry_ids.to_vec()))
+            } else {
+                None
+            }
+        });
+
         let _ = tokio::task::spawn_blocking(move || {
+            // Single lock acquisition for all writes
             if let Err(e) = store.record_usage_with_confidence(
                 &all_ids,
                 &access_ids,
@@ -130,71 +157,62 @@ impl UsageService {
             ) {
                 tracing::warn!("usage recording failed: {e}");
             }
+
+            if let Some((feature_str, ids)) = feature_recording {
+                if let Err(e) = store.record_feature_entries(&feature_str, &ids) {
+                    tracing::warn!("feature entry recording failed: {e}");
+                }
+            }
+
+            if let Some(pairs) = co_access_pairs {
+                if let Err(e) = store.record_co_access_pairs(&pairs) {
+                    tracing::warn!("co-access recording failed: {e}");
+                }
+            }
         });
-
-        // Step 4: Record feature entries if applicable (trust gating)
-        if let Some(feature_str) = ctx.feature_cycle {
-            let trust = ctx.trust_level.unwrap_or(TrustLevel::Restricted);
-            if matches!(trust, TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal) {
-                let store = Arc::clone(&self.store);
-                let ids = entry_ids.to_vec();
-                let _ = tokio::task::spawn_blocking(move || {
-                    if let Err(e) = store.record_feature_entries(&feature_str, &ids) {
-                        tracing::warn!("feature entry recording failed: {e}");
-                    }
-                });
-            }
-        }
-
-        // Step 5: Co-access recording (fire-and-forget, crt-004)
-        if entry_ids.len() >= 2 {
-            let pairs = crate::coaccess::generate_pairs(
-                entry_ids,
-                crate::coaccess::MAX_CO_ACCESS_ENTRIES,
-            );
-            let new_pairs = self.usage_dedup.filter_co_access_pairs(&pairs);
-
-            if !new_pairs.is_empty() {
-                let store = Arc::clone(&self.store);
-                let _ = tokio::task::spawn_blocking(move || {
-                    if let Err(e) = store.record_co_access_pairs(&new_pairs) {
-                        tracing::warn!("co-access recording failed: {e}");
-                    }
-                });
-            }
-        }
     }
 
     /// Hook injection usage: co-access pairs and feature entries.
     ///
     /// Injection log writes remain in listener.rs (need per-entry confidence).
+    /// Batched into a single spawn_blocking (vnc-010).
     fn record_hook_injection(&self, entry_ids: &[u64], ctx: UsageContext) {
-        // Co-access pairs
-        if entry_ids.len() >= 2 {
+        // Pre-compute co-access pairs (in-memory)
+        let co_access_pairs = if entry_ids.len() >= 2 {
             let pairs = crate::coaccess::generate_pairs(entry_ids, entry_ids.len());
-            if !pairs.is_empty() {
-                let store = Arc::clone(&self.store);
-                let _ = tokio::task::spawn_blocking(move || {
-                    if let Err(e) = store.record_co_access_pairs(&pairs) {
-                        tracing::warn!("co-access recording failed: {e}");
-                    }
-                });
-            }
-        }
+            if pairs.is_empty() { None } else { Some(pairs) }
+        } else {
+            None
+        };
 
-        // Feature entries
-        if let Some(feature_str) = ctx.feature_cycle {
+        // Pre-compute feature recording eligibility
+        let feature_recording = ctx.feature_cycle.and_then(|feature_str| {
             let trust = ctx.trust_level.unwrap_or(TrustLevel::Restricted);
             if matches!(trust, TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal) {
-                let store = Arc::clone(&self.store);
-                let ids = entry_ids.to_vec();
-                let _ = tokio::task::spawn_blocking(move || {
-                    if let Err(e) = store.record_feature_entries(&feature_str, &ids) {
-                        tracing::warn!("feature entry recording failed: {e}");
-                    }
-                });
+                Some((feature_str, entry_ids.to_vec()))
+            } else {
+                None
             }
+        });
+
+        // Nothing to write
+        if co_access_pairs.is_none() && feature_recording.is_none() {
+            return;
         }
+
+        let store = Arc::clone(&self.store);
+        let _ = tokio::task::spawn_blocking(move || {
+            if let Some(pairs) = co_access_pairs {
+                if let Err(e) = store.record_co_access_pairs(&pairs) {
+                    tracing::warn!("co-access recording failed: {e}");
+                }
+            }
+            if let Some((feature_str, ids)) = feature_recording {
+                if let Err(e) = store.record_feature_entries(&feature_str, &ids) {
+                    tracing::warn!("feature entry recording failed: {e}");
+                }
+            }
+        });
     }
 
     /// Briefing usage: access count only (no votes, no injection log).

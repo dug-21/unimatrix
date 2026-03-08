@@ -168,66 +168,109 @@ async fn background_tick_loop(
 
     loop {
         interval.tick().await;
-        let tick_start = now_secs();
-        tracing::info!("background tick starting");
 
-        // 1. Maintenance tick
-        let status_svc = StatusService::new(
-            Arc::clone(&store),
-            Arc::clone(&vector_index),
-            Arc::clone(&embed_service),
-            Arc::clone(&adapt_service),
-        );
-        match maintenance_tick(
-            &status_svc,
-            &session_registry,
-            &entry_store,
-            &pending_entries,
-        )
-        .await
-        {
-            Ok(()) => {
-                if let Ok(mut meta) = tick_metadata.lock() {
-                    meta.last_maintenance_run = Some(tick_start);
-                }
-                tracing::info!("maintenance tick complete");
-            }
-            Err(e) => {
-                tracing::warn!("maintenance tick failed: {}", e);
-            }
-        }
-
-        // 2. Extraction tick
-        match extraction_tick(
+        // Wrap the entire tick body in a spawned task (vnc-010).
+        // If any spawn_blocking panics, the JoinError is caught here
+        // instead of killing the background tick loop silently.
+        let tick_result = run_single_tick(
             &store,
             &vector_index,
             &embed_service,
+            &adapt_service,
+            &session_registry,
+            &entry_store,
+            &pending_entries,
+            &tick_metadata,
             &mut extraction_ctx,
             neural_enhancer.as_ref(),
             shadow_evaluator.as_mut(),
         )
-        .await
-        {
-            Ok(stats) => {
-                if let Ok(mut meta) = tick_metadata.lock() {
-                    meta.last_extraction_run = Some(now_secs());
-                    meta.extraction_stats = stats;
-                }
-                tracing::info!("extraction tick complete");
-            }
-            Err(e) => {
-                tracing::warn!("extraction tick failed: {}", e);
-            }
-        }
+        .await;
 
-        // Update next scheduled time
-        if let Ok(mut meta) = tick_metadata.lock() {
-            meta.next_scheduled = Some(now_secs() + TICK_INTERVAL_SECS);
+        if let Err(e) = tick_result {
+            tracing::error!("background tick failed: {e}; continuing to next tick");
         }
-
-        let duration = now_secs() - tick_start;
-        tracing::info!(duration_secs = duration, "background tick complete");
     }
+}
+
+/// Execute a single tick iteration with error recovery (vnc-010).
+///
+/// Catches panics from spawn_blocking tasks via JoinError and logs them
+/// instead of propagating. Returns Err only for fatal issues.
+#[allow(clippy::too_many_arguments)]
+async fn run_single_tick(
+    store: &Arc<Store>,
+    vector_index: &Arc<VectorIndex>,
+    embed_service: &Arc<EmbedServiceHandle>,
+    adapt_service: &Arc<AdaptationService>,
+    session_registry: &SessionRegistry,
+    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    pending_entries: &Arc<Mutex<PendingEntriesAnalysis>>,
+    tick_metadata: &Arc<Mutex<TickMetadata>>,
+    extraction_ctx: &mut ExtractionContext,
+    neural_enhancer: Option<&NeuralEnhancer>,
+    shadow_evaluator: Option<&mut ShadowEvaluator>,
+) -> Result<(), String> {
+    let tick_start = now_secs();
+    tracing::info!("background tick starting");
+
+    // 1. Maintenance tick
+    let status_svc = StatusService::new(
+        Arc::clone(store),
+        Arc::clone(vector_index),
+        Arc::clone(embed_service),
+        Arc::clone(adapt_service),
+    );
+    match maintenance_tick(
+        &status_svc,
+        session_registry,
+        entry_store,
+        pending_entries,
+    )
+    .await
+    {
+        Ok(()) => {
+            if let Ok(mut meta) = tick_metadata.lock() {
+                meta.last_maintenance_run = Some(tick_start);
+            }
+            tracing::info!("maintenance tick complete");
+        }
+        Err(e) => {
+            tracing::warn!("maintenance tick failed: {}", e);
+        }
+    }
+
+    // 2. Extraction tick
+    match extraction_tick(
+        store,
+        vector_index,
+        embed_service,
+        extraction_ctx,
+        neural_enhancer,
+        shadow_evaluator,
+    )
+    .await
+    {
+        Ok(stats) => {
+            if let Ok(mut meta) = tick_metadata.lock() {
+                meta.last_extraction_run = Some(now_secs());
+                meta.extraction_stats = stats;
+            }
+            tracing::info!("extraction tick complete");
+        }
+        Err(e) => {
+            tracing::warn!("extraction tick failed: {}", e);
+        }
+    }
+
+    // Update next scheduled time
+    if let Ok(mut meta) = tick_metadata.lock() {
+        meta.next_scheduled = Some(now_secs() + TICK_INTERVAL_SECS);
+    }
+
+    let duration = now_secs() - tick_start;
+    tracing::info!(duration_secs = duration, "background tick complete");
+    Ok(())
 }
 
 /// Run maintenance operations via StatusService.
