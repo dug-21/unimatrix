@@ -35,6 +35,16 @@ Your spawn prompt includes `MODE: scope-risk` or `MODE: architecture-risk` to in
 - Integration risks with existing system components
 - NOT architecture-level risks (those come later in architecture-risk mode)
 
+### Historical Intelligence (Scope-Risk)
+
+Before generating risks, query Unimatrix for historical context:
+
+1. `/knowledge-search` — `"lesson-learned failures gate rejection"` to find past failures relevant to this feature's domain
+2. `/knowledge-search` — `"outcome rework"` filtered to similar phase prefixes to find features that required rework
+3. `/knowledge-search` — `"risk pattern"` with `category: "pattern"` to find recurring risk patterns you've previously stored
+
+Use what you find to inform your risk identification — not as a template, but as evidence. Reference Unimatrix entry IDs when a historical lesson directly informs a risk.
+
 ### What You Receive (Scope-Risk)
 
 From the Design Leader's spawn prompt:
@@ -109,6 +119,17 @@ Write to `product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md` (at feature ro
 - Coverage requirements per risk
 - Prioritization by severity and likelihood
 - Integration risks, edge cases, failure modes
+
+### Historical Intelligence (Architecture-Risk)
+
+Before generating risks, query Unimatrix for historical context:
+
+1. `/knowledge-search` — `"lesson-learned failures gate rejection"` to find past failures relevant to this feature's components
+2. `/knowledge-lookup` — `category: "outcome"` filtered to features touching similar crates/components to find what went wrong in adjacent work
+3. `/knowledge-search` — `"risk pattern"` with `category: "pattern"` to find recurring risk patterns
+4. `/knowledge-search` — query the specific technology or component names from the architecture doc (e.g., `"SQLite migration"`, `"confidence scoring"`) to surface relevant ADRs and their "Harder:" consequences
+
+Use historical evidence to elevate risk severity/likelihood when past data supports it. Reference Unimatrix entry IDs as evidence.
 
 ### What You Receive (Architecture-Risk)
 
