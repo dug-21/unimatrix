@@ -325,6 +325,8 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                             "tool_name": "MultiEdit",
                             "file_path": file_path,
                             "had_failure": had_failure,
+                            "tool_input": input.extra.get("tool_input"),
+                            "tool_response": input.extra.get("tool_response"),
                         }),
                         topic_signal: topic_signal.clone(),
                     })
@@ -349,6 +351,8 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         "tool_name": tool_name,
                         "file_path": file_path,
                         "had_failure": had_failure,
+                        "tool_input": input.extra.get("tool_input"),
+                        "tool_response": input.extra.get("tool_response"),
                     }),
                     topic_signal,
                 },
@@ -1730,6 +1734,98 @@ mod tests {
             transcript_path: None,
             prompt: None,
             extra,
+        }
+    }
+
+    // -- col-019: Rework payload enhancement tests --
+
+    #[test]
+    fn posttooluse_rework_payload_includes_tool_input_and_response() {
+        // T-12: Edit rework payload includes tool_input and tool_response
+        let input = posttooluse_input(serde_json::json!({
+            "tool_name": "Edit",
+            "tool_input": {"path": "src/foo.rs", "old_string": "a", "new_string": "b"},
+            "tool_response": {"success": true}
+        }));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "post_tool_use_rework_candidate");
+                assert_eq!(event.payload["tool_name"], "Edit");
+                assert_eq!(event.payload["tool_input"]["path"], "src/foo.rs");
+                assert_eq!(event.payload["tool_response"]["success"], true);
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_bash_rework_payload_includes_tool_input_and_response() {
+        // T-12b: Bash rework payload includes tool_input and tool_response
+        let input = posttooluse_input(serde_json::json!({
+            "tool_name": "Bash",
+            "exit_code": 1,
+            "tool_input": {"command": "ls -la"},
+            "tool_response": {"stdout": "file.txt", "stderr": "error"}
+        }));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "post_tool_use_rework_candidate");
+                assert_eq!(event.payload["tool_name"], "Bash");
+                assert_eq!(event.payload["had_failure"], true);
+                assert_eq!(event.payload["tool_input"]["command"], "ls -la");
+                assert_eq!(event.payload["tool_response"]["stdout"], "file.txt");
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_rework_payload_missing_tool_response() {
+        // Missing tool_response in input -> null in payload
+        let input = posttooluse_input(serde_json::json!({
+            "tool_name": "Edit",
+            "tool_input": {"path": "src/foo.rs"}
+        }));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "post_tool_use_rework_candidate");
+                assert!(event.payload["tool_response"].is_null());
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn posttooluse_multiedit_payload_includes_tool_input_and_response() {
+        // T-12c: MultiEdit batch events include tool_input and tool_response
+        let input = posttooluse_input(serde_json::json!({
+            "tool_name": "MultiEdit",
+            "tool_input": {
+                "edits": [
+                    {"path": "src/a.rs", "old_string": "a", "new_string": "b"},
+                    {"path": "src/b.rs", "old_string": "c", "new_string": "d"}
+                ]
+            },
+            "tool_response": {"success": true}
+        }));
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvents { events } => {
+                assert_eq!(events.len(), 2);
+                for event in &events {
+                    assert_eq!(event.event_type, "post_tool_use_rework_candidate");
+                    assert_eq!(event.payload["tool_name"], "MultiEdit");
+                    assert!(event.payload.get("tool_input").is_some());
+                    assert_eq!(event.payload["tool_response"]["success"], true);
+                }
+                // Verify different file paths
+                assert_eq!(events[0].payload["file_path"], "src/a.rs");
+                assert_eq!(events[1].payload["file_path"], "src/b.rs");
+            }
+            _ => panic!("expected RecordEvents"),
         }
     }
 }

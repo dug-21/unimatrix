@@ -563,6 +563,15 @@ async fn dispatch_request(
                 );
             }
 
+            // col-019: Persist rework PostToolUse as observation (fire-and-forget)
+            let store_for_obs = Arc::clone(store);
+            let obs = extract_observation_fields(&event);
+            tokio::task::spawn_blocking(move || {
+                if let Err(e) = insert_observation(&store_for_obs, &obs) {
+                    tracing::error!(error = %e, "rework observation write failed");
+                }
+            });
+
             HookResponse::Ack
         }
 
@@ -1821,17 +1830,13 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
                 .map(|v| serde_json::to_string(v).unwrap_or_default());
             (tool, input, None, None)
         }
-        "PostToolUse" => {
+        "PostToolUse" | "post_tool_use_rework_candidate" => {
             let tool = event.payload.get("tool_name")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
             let input = event.payload.get("tool_input")
                 .map(|v| serde_json::to_string(v).unwrap_or_default());
-            let rs = event.payload.get("response_size")
-                .and_then(|v| v.as_i64());
-            let rsnip = event.payload.get("response_snippet")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
+            let (rs, rsnip) = extract_response_fields(&event.payload);
             (tool, input, rs, rsnip)
         }
         "SubagentStart" => {
@@ -1850,6 +1855,13 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
         }
     };
 
+    // col-019: Normalize rework candidate hook type to PostToolUse for observation consistency
+    let hook = if hook == "post_tool_use_rework_candidate" {
+        "PostToolUse".to_string()
+    } else {
+        hook
+    };
+
     ObservationRow {
         session_id,
         ts_millis,
@@ -1860,6 +1872,30 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
         response_snippet,
         topic_signal: event.topic_signal.clone(),
     }
+}
+
+/// Extract response_size and response_snippet from a PostToolUse event payload.
+///
+/// Tries `tool_response` first (Claude Code's field name), then falls back to
+/// legacy `response_size`/`response_snippet` fields for backward compatibility.
+fn extract_response_fields(payload: &serde_json::Value) -> (Option<i64>, Option<String>) {
+    // Primary: compute from tool_response (Claude Code's actual field)
+    if let Some(response) = payload.get("tool_response") {
+        if !response.is_null() {
+            let serialized = serde_json::to_string(response).unwrap_or_default();
+            let size = serialized.len() as i64;
+            let snippet: String = serialized.chars().take(500).collect();
+            return (Some(size), Some(snippet));
+        }
+    }
+
+    // Fallback: legacy field names (test fixtures, future compatibility)
+    let rs = payload.get("response_size").and_then(|v| v.as_i64());
+    let rsnip = payload
+        .get("response_snippet")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    (rs, rsnip)
 }
 
 /// Insert a single observation row into the observations table.
@@ -2964,5 +3000,202 @@ mod tests {
 
         // Writer must complete without timeout
         writer.join().expect("writer thread should not deadlock");
+    }
+
+    // -- col-019: extract_response_fields tests --
+
+    #[test]
+    fn extract_response_fields_normal_object() {
+        // T-04: tool_response is a normal JSON object -> size and snippet populated
+        let payload = serde_json::json!({
+            "tool_response": {"success": true, "output": "hello world"}
+        });
+        let (size, snippet) = extract_response_fields(&payload);
+        let expected = serde_json::to_string(&serde_json::json!({"success": true, "output": "hello world"})).unwrap();
+        assert_eq!(size, Some(expected.len() as i64));
+        assert_eq!(snippet, Some(expected));
+    }
+
+    #[test]
+    fn extract_response_fields_absent() {
+        // T-05: tool_response is absent -> (None, None)
+        let payload = serde_json::json!({"tool_name": "Read"});
+        let (size, snippet) = extract_response_fields(&payload);
+        assert_eq!(size, None);
+        assert_eq!(snippet, None);
+    }
+
+    #[test]
+    fn extract_response_fields_null() {
+        // T-06: tool_response is JSON null -> (None, None)
+        let payload = serde_json::json!({"tool_response": null});
+        let (size, snippet) = extract_response_fields(&payload);
+        assert_eq!(size, None);
+        assert_eq!(snippet, None);
+    }
+
+    #[test]
+    fn extract_response_fields_empty_object() {
+        // T-07: tool_response is empty object -> size=2, snippet="{}"
+        let payload = serde_json::json!({"tool_response": {}});
+        let (size, snippet) = extract_response_fields(&payload);
+        assert_eq!(size, Some(2));
+        assert_eq!(snippet, Some("{}".to_string()));
+    }
+
+    #[test]
+    fn extract_response_fields_string_value() {
+        // T-08: tool_response is a string value -> correct size and snippet
+        let payload = serde_json::json!({"tool_response": "some output text"});
+        let (size, snippet) = extract_response_fields(&payload);
+        let expected = serde_json::to_string(&serde_json::json!("some output text")).unwrap();
+        assert_eq!(size, Some(expected.len() as i64));
+        assert_eq!(snippet, Some(expected));
+    }
+
+    #[test]
+    fn extract_response_fields_large_response_truncated() {
+        // T-09: tool_response serialized > 500 chars -> snippet truncated at char boundary
+        let long_value = "x".repeat(600);
+        let payload = serde_json::json!({"tool_response": long_value});
+        let (size, snippet) = extract_response_fields(&payload);
+        let serialized = serde_json::to_string(&serde_json::json!(long_value)).unwrap();
+        assert_eq!(size, Some(serialized.len() as i64));
+        let snippet = snippet.unwrap();
+        assert_eq!(snippet.chars().count(), 500);
+        assert!(serialized.starts_with(&snippet));
+    }
+
+    #[test]
+    fn extract_response_fields_legacy_fallback() {
+        // T-08b: legacy response_size/response_snippet fields still work
+        let payload = serde_json::json!({
+            "response_size": 42,
+            "response_snippet": "legacy snippet"
+        });
+        let (size, snippet) = extract_response_fields(&payload);
+        assert_eq!(size, Some(42));
+        assert_eq!(snippet, Some("legacy snippet".to_string()));
+    }
+
+    #[test]
+    fn extract_response_fields_multibyte_utf8_truncation() {
+        // T-13: Multi-byte UTF-8 characters -> snippet truncated at char boundary, no panic
+        // Each emoji is 1 char but multiple bytes
+        let emojis: String = std::iter::repeat('\u{1F600}').take(600).collect();
+        let payload = serde_json::json!({"tool_response": emojis});
+        let (size, snippet) = extract_response_fields(&payload);
+        assert!(size.is_some());
+        let snippet = snippet.unwrap();
+        assert_eq!(snippet.chars().count(), 500);
+        // Verify it's valid UTF-8 (would panic on from_utf8 otherwise)
+        assert!(snippet.is_char_boundary(snippet.len()));
+    }
+
+    // -- col-019: extract_observation_fields with rework candidates --
+
+    #[test]
+    fn extract_observation_fields_rework_candidate_normalized() {
+        // T-09b: post_tool_use_rework_candidate events -> hook="PostToolUse"
+        let event = ImplantEvent {
+            event_type: "post_tool_use_rework_candidate".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({
+                "tool_name": "Edit",
+                "file_path": "src/foo.rs",
+                "had_failure": false,
+                "tool_input": {"path": "src/foo.rs"},
+                "tool_response": {"success": true}
+            }),
+            topic_signal: None,
+        };
+        let obs = extract_observation_fields(&event);
+        assert_eq!(obs.hook, "PostToolUse");
+        assert_eq!(obs.tool, Some("Edit".to_string()));
+        assert!(obs.response_size.is_some());
+        assert!(obs.response_snippet.is_some());
+    }
+
+    #[test]
+    fn extract_observation_fields_rework_candidate_with_tool_response() {
+        // Verify response fields computed from tool_response in rework candidate
+        let event = ImplantEvent {
+            event_type: "post_tool_use_rework_candidate".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({
+                "tool_name": "Bash",
+                "had_failure": true,
+                "tool_input": {"command": "ls"},
+                "tool_response": {"stdout": "file.txt", "exit_code": 1}
+            }),
+            topic_signal: None,
+        };
+        let obs = extract_observation_fields(&event);
+        assert_eq!(obs.hook, "PostToolUse");
+        let expected = serde_json::to_string(&serde_json::json!({"stdout": "file.txt", "exit_code": 1})).unwrap();
+        assert_eq!(obs.response_size, Some(expected.len() as i64));
+        assert_eq!(obs.response_snippet, Some(expected));
+    }
+
+    #[test]
+    fn extract_observation_fields_rework_candidate_preserves_topic_signal() {
+        // T-10: topic_signal flows through to ObservationRow for rework candidates
+        let event = ImplantEvent {
+            event_type: "post_tool_use_rework_candidate".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({
+                "tool_name": "Edit",
+                "file_path": "src/foo.rs",
+                "had_failure": false,
+                "tool_response": {"success": true}
+            }),
+            topic_signal: Some("col-019".to_string()),
+        };
+        let obs = extract_observation_fields(&event);
+        assert_eq!(obs.hook, "PostToolUse");
+        assert_eq!(obs.topic_signal, Some("col-019".to_string()));
+    }
+
+    #[test]
+    fn extract_observation_fields_posttooluse_with_tool_response() {
+        // T-04b: Non-rework PostToolUse with tool_response -> response fields populated
+        let event = ImplantEvent {
+            event_type: "PostToolUse".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({
+                "tool_name": "Read",
+                "tool_input": {"path": "src/main.rs"},
+                "tool_response": {"content": "fn main() {}"}
+            }),
+            topic_signal: None,
+        };
+        let obs = extract_observation_fields(&event);
+        assert_eq!(obs.hook, "PostToolUse");
+        assert_eq!(obs.tool, Some("Read".to_string()));
+        let expected = serde_json::to_string(&serde_json::json!({"content": "fn main() {}"})).unwrap();
+        assert_eq!(obs.response_size, Some(expected.len() as i64));
+        assert_eq!(obs.response_snippet, Some(expected));
+    }
+
+    #[test]
+    fn extract_observation_fields_posttooluse_missing_tool_response() {
+        // T-05b: PostToolUse without tool_response -> None/None (legacy fallback with no legacy fields)
+        let event = ImplantEvent {
+            event_type: "PostToolUse".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({
+                "tool_name": "Read",
+                "tool_input": {"path": "src/main.rs"}
+            }),
+            topic_signal: None,
+        };
+        let obs = extract_observation_fields(&event);
+        assert_eq!(obs.response_size, None);
+        assert_eq!(obs.response_snippet, None);
     }
 }
