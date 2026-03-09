@@ -2,131 +2,101 @@
 
 ## Problem Statement
 
-The `UserPromptSubmit` hook currently dispatches the user prompt text to `ContextSearch` for context injection but **discards it from the observation record**. When a prompt has text, `build_request()` in `hook.rs` returns a `HookRequest::ContextSearch` variant. The server-side `handle_context_search()` performs the search and returns results -- but never writes the prompt to the `observations` table.
+When a `UserPromptSubmit` hook fires with a non-empty prompt, the hook process (`hook.rs:253-268`) maps it exclusively to `HookRequest::ContextSearch`. The server-side dispatch (`listener.rs:635-669`) handles `ContextSearch` by running the search pipeline and returning results. No observation is persisted.
+
+User prompts are the richest topic/intent signal available but are completely discarded from the observation record. Every other hook event type goes through `RecordEvent` and gets persisted to the `observations` table via `insert_observation()`. UserPromptSubmit with a non-empty prompt is the sole exception.
+
+For UserPromptSubmit with an empty prompt, the hook falls through to `generic_record_event()` (hook.rs:257), which does get recorded. So empty prompts are observed but meaningful prompts are not.
+
+## Design Decision: Server-Side Intercept
+
+col-017's scope (line 148-151) explicitly resolved the col-018 design approach:
+
+> col-018 uses a server-side intercept pattern. The observation write happens in the ContextSearch dispatch arm with the prompt text already in-hand. So for UserPromptSubmit events, the server extracts the topic signal from the query text (calling `extract_topic_signal(&query)`) when writing the observation.
 
 This means:
-- The richest signal for topic detection and user intent is lost from the activity data
-- Retrospective analysis cannot see what users actually asked
-- Topic attribution (col-017) loses its most valuable signal source
-- Search quality analysis (Wave 3 crt-019) cannot correlate prompts with search results
+- No wire protocol changes. The hook continues to send `HookRequest::ContextSearch` exactly as today.
+- No hook.rs changes. The `build_request()` UserPromptSubmit arm stays unchanged.
+- Server-side only. The `ContextSearch` dispatch arm in `listener.rs` gains an observation write as a side effect before executing the search pipeline.
+- Server-side topic extraction. The server calls `unimatrix_observe::extract_topic_signal(&query)` on the prompt text to populate `ObservationRow.topic_signal`. This is different from the RecordEvent path where topic extraction happens hook-side.
 
-When the prompt is **empty**, `build_request()` falls back to `generic_record_event()` which does write a `RecordEvent` to observations -- but with no useful content (empty payload).
+### Why server-side intercept (not a new wire variant)
 
-## Current Behavior
+1. col-017 designed the topic attribution system with this split in mind: hook-side extraction for RecordEvent paths (tool use, subagent), server-side extraction for ContextSearch paths (UserPromptSubmit).
+2. No wire protocol coordination needed between col-017 and col-018.
+3. The ContextSearch dispatch arm already has the prompt text (`query` field) in hand -- no additional data needed.
+4. `unimatrix_observe::extract_topic_signal` is already a dependency of `unimatrix-server` and already used in `listener.rs` (line 1385) for retrospective attribution.
 
-```
-UserPromptSubmit (prompt present)
-  hook.rs:build_request() -> HookRequest::ContextSearch { query: prompt, ... }
-  listener.rs:dispatch() -> handle_context_search() -> HookResponse::Entries
-  Result: Search results returned to Claude Code. Prompt NOT stored in observations.
+### Why NOT a new wire variant
 
-UserPromptSubmit (prompt empty)
-  hook.rs:build_request() -> HookRequest::RecordEvent { event: generic }
-  listener.rs:dispatch() -> insert_observation()
-  Result: Empty observation stored. No search performed.
-```
-
-## Desired Behavior
-
-```
-UserPromptSubmit (prompt present)
-  1. Store prompt as observation (hook="UserPromptSubmit", input=prompt text)
-  2. Dispatch ContextSearch and return results to Claude Code
-  Both happen. Neither blocks the other.
-
-UserPromptSubmit (prompt empty)
-  Same as current: generic RecordEvent stored, no search.
-```
+A new `ContextSearchWithObservation` variant would require hook-side changes, wire protocol extension, and coordination that col-017 explicitly designed away. The milestone proposal (ass-018) left both options open, but col-017's scope resolved it to server-side intercept.
 
 ## Scope
 
 ### In Scope
 
-1. **Hook-side change**: Modify `build_request()` to produce a request that carries BOTH the observation data AND the search query, so the server can do both.
-2. **Server-side change**: Modify `dispatch_request()` in `listener.rs` to persist the prompt as an observation AND perform the ContextSearch, returning search results.
-3. **Observation storage**: Store UserPromptSubmit with `hook="UserPromptSubmit"`, `tool=NULL`, `input=<prompt text or JSON>`. The `input` column stores the prompt text for downstream analysis.
-4. **Latency budget**: The 50ms hook budget must be preserved. Observation write is fire-and-forget (spawn_blocking), so it should not add latency to the search response path.
-5. **Tests**: Unit tests for the new build_request behavior. Integration tests for the dual-route dispatch.
+1. **Server-side observation write in ContextSearch dispatch**: Add observation persistence logic to the `HookRequest::ContextSearch` dispatch arm in `listener.rs`. Before executing the search pipeline, construct an `ObservationRow` and persist it via `insert_observation()` in a fire-and-forget `spawn_blocking` task.
+
+2. **Server-side topic extraction**: Call `unimatrix_observe::extract_topic_signal(&query)` on the prompt text to populate `ObservationRow.topic_signal`. The prompt is the richest signal source for topic detection.
+
+3. **Server-side topic signal accumulation**: Call `session_registry.record_topic_signal()` with the extracted topic signal (when present), matching the pattern used in the `RecordEvent` dispatch arm (listener.rs:583-588).
+
+4. **Observation field values**:
+   - `session_id`: from the ContextSearch request's `session_id` field (with fallback)
+   - `ts_millis`: current time (same pattern as `extract_observation_fields`)
+   - `hook`: `"UserPromptSubmit"`
+   - `tool`: `None`
+   - `input`: prompt text (the `query` string, truncated to existing limits)
+   - `response_size`: `None`
+   - `response_snippet`: `None`
+   - `topic_signal`: result of `extract_topic_signal(&query)` -- populated, not None
 
 ### Out of Scope
 
-- **Topic signal extraction from prompts** -- that is col-017's responsibility. col-018 stores the raw prompt; col-017 extracts topic signals from it.
-- **Query logging** -- that is nxs-010 (Wave 2). col-018 stores prompts as observations, not in a query_log table.
-- **Prompt truncation policy** -- prompts can be very long. For MVP, store the full prompt text in `input`. A truncation policy can be added later if storage becomes a concern.
-- **Schema changes** -- no new columns or tables needed. The existing `observations` table schema is sufficient.
-- **Search behavior changes** -- the ContextSearch dispatch remains identical. Only observation persistence is added.
+- Wire protocol changes (no new HookRequest variants)
+- Hook-side changes (hook.rs `build_request()` unchanged)
+- Topic extraction logic changes (col-017 owns `extract_topic_signal`)
+- Schema changes (observations table already has all needed columns at v10)
+- Changes to other hook event types
+- Query logging for the search itself (nxs-010/col-021 territory)
+- Changes to ContextSearch response format or search pipeline behavior
+- MCP tool-originated ContextSearch (MCP tool searches go through `tools.rs`, not the UDS dispatch)
 
-## Technical Analysis
+## Key Constraints
 
-### Approach Options
+1. **No latency impact on search response**: The observation write must be fire-and-forget (`spawn_blocking` with no `.await`). The search pipeline must not block on the observation insert.
 
-**Option A: New wire variant `PromptAndSearch`**
+2. **Session ID availability**: The `ContextSearch` request has `session_id: Option<String>`. The hook-side always populates `session_id` for UserPromptSubmit (hook.rs:261), so in practice it will always be `Some`. When `None`, the observation can use a placeholder or be skipped.
 
-Add a new `HookRequest` variant that carries both the observation event and search parameters. The server dispatches both.
+3. **No schema changes**: Schema is v10 (from col-017). The observations table has 8 columns: `session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal`. All are already present.
 
-- Pro: Clean separation, explicit intent
-- Con: New wire variant = serialization changes, more code, backward compatibility concern
+4. **Existing `insert_observation` reuse**: The existing `insert_observation()` function and `ObservationRow` struct are reused directly. No new persistence functions needed.
 
-**Option B: Server-side intercept in `ContextSearch` handler**
+5. **Discriminating hook vs MCP origin**: Only hook-originated `ContextSearch` requests need observation recording. This is naturally handled because MCP tool searches go through `tools.rs`, not through the UDS dispatch arm. All `ContextSearch` arriving via UDS are hook-originated.
 
-Keep hook.rs producing `ContextSearch` as today. In `dispatch_request()`, when handling `ContextSearch`, also write the query as a UserPromptSubmit observation.
+## Success Criteria
 
-- Pro: No wire protocol change, minimal hook-side change
-- Con: ContextSearch handler gains observation-write responsibility (coupling); other ContextSearch callers (e.g., future Briefing) might not want observation writes
+1. Every `UserPromptSubmit` event with a non-empty prompt creates one row in the `observations` table with `hook = "UserPromptSubmit"` and `input` containing the prompt text.
+2. The `topic_signal` column is populated via server-side `extract_topic_signal(&query)` -- not set to None.
+3. Topic signals from UserPromptSubmit observations are accumulated in the session registry for col-017 attribution (via `record_topic_signal()`).
+4. `ContextSearch` results are still returned to stdout for Claude Code injection (search pipeline unaffected).
+5. The observation write does not add latency to the search response (fire-and-forget).
+6. Empty-prompt UserPromptSubmit continues to work as today (generic RecordEvent via hook fallback).
+7. MCP tool-originated searches are unaffected (different code path via tools.rs).
 
-**Option C: Hook sends TWO requests (RecordEvent + ContextSearch)**
+## Dependencies
 
-Modify hook.rs to produce a `RecordEvents` batch containing the observation, followed by a `ContextSearch`. But the current wire protocol is one-request-one-response.
-
-- Pro: Conceptually clean
-- Con: Wire protocol doesn't support multi-request; would require significant transport changes
-
-**Recommended: Option B** -- server-side intercept in the ContextSearch handler. The observation write is a fire-and-forget `spawn_blocking` call that adds no latency. The coupling is acceptable because UserPromptSubmit is the only hook that routes to ContextSearch, and the intercept can be gated on the presence of a `session_id` (ContextSearch from MCP tools won't have the UDS session context). This is the smallest, safest change.
-
-### Wire Protocol Impact
-
-Option B requires **no wire protocol changes**. The hook continues to produce `HookRequest::ContextSearch` exactly as today. The server-side change is entirely within `dispatch_request()`.
-
-### Observation Record Format
-
-The observation row for a UserPromptSubmit prompt:
-
-| Column | Value |
-|--------|-------|
-| `session_id` | From ContextSearch.session_id |
-| `ts_millis` | Current time (server-side) |
-| `hook` | `"UserPromptSubmit"` |
-| `tool` | `NULL` |
-| `input` | Prompt text (raw string, not JSON-wrapped) |
-| `response_size` | `NULL` |
-| `response_snippet` | `NULL` |
-
-### Latency Impact
-
-None. The observation write uses `tokio::task::spawn_blocking` (fire-and-forget), same pattern as all other observation writes in the dispatch handler. The ContextSearch response is returned immediately; the observation write completes asynchronously.
-
-### Interaction with Wave 1 Siblings
-
-- **col-017 (Topic Attribution)**: col-017 will extract topic signals from observation records including UserPromptSubmit. col-018 ensures the prompt data is available for col-017 to consume. No code dependency -- col-017 reads from the observations table that col-018 writes to.
-- **col-019 (PostToolUse Response Capture)**: Independent. Different hook type, different code path.
-
-## Open Questions
-
-1. **Prompt storage format**: Store as raw text string or JSON-wrapped (`{"prompt": "..."}`)? Raw text is simpler and matches how SubagentStart stores prompt_snippet. JSON-wrapped is more extensible. Recommendation: raw text for consistency with SubagentStart pattern.
-
-2. **Should empty prompts still generate observations?** Currently they fall through to generic_record_event. Should we keep that behavior or skip observation entirely for empty prompts? Recommendation: keep current behavior (generic RecordEvent for empty prompts) for backward compatibility.
-
-## Acceptance Criteria
-
-- AC-01: UserPromptSubmit with non-empty prompt stores an observation row with `hook="UserPromptSubmit"` and `input=<prompt text>`.
-- AC-02: UserPromptSubmit with non-empty prompt still returns ContextSearch results (existing behavior preserved).
-- AC-03: UserPromptSubmit with empty prompt behavior unchanged (generic RecordEvent, no search).
-- AC-04: Observation write does not add latency to the ContextSearch response (fire-and-forget).
-- AC-05: Observation row has correct `session_id` and `ts_millis` values.
-- AC-06: Observation row has `tool=NULL`, `response_size=NULL`, `response_snippet=NULL`.
-- AC-07: No wire protocol changes required (HookRequest/HookResponse enums unchanged).
-- AC-08: Existing hook.rs and listener.rs tests continue to pass.
+- col-017 (merged): topic_signal column on observations, extract_topic_signal in unimatrix-observe, session_registry.record_topic_signal()
+- col-012 (merged): observation persistence infrastructure (insert_observation, ObservationRow)
+- col-007/col-008 (merged): hook handler and ContextSearch pipeline
 
 ## Estimated Complexity
 
-Small. ~30-50 lines of production code changes (mostly in `listener.rs` dispatch handler). ~50-80 lines of new tests. No schema migration. No wire protocol changes.
+Small. Touches 1 file:
+- `crates/unimatrix-server/src/uds/listener.rs` -- add observation write + topic extraction + topic signal accumulation in the ContextSearch dispatch arm
+
+Tests:
+- Unit test: ContextSearch dispatch records observation (verify observation row in DB after dispatch)
+- Unit test: topic_signal populated from prompt text containing feature IDs
+- Unit test: search results still returned correctly with observation side effect
+- Integration test: round-trip UserPromptSubmit with non-empty prompt produces both search results and observation row
