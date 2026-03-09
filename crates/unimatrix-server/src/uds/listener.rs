@@ -553,6 +553,16 @@ async fn dispatch_request(
             };
 
             session_registry.record_rework_event(&event.session_id, rework_event);
+
+            // col-017: Accumulate topic signal from rework candidate events
+            if let Some(ref signal) = event.topic_signal {
+                session_registry.record_topic_signal(
+                    &event.session_id,
+                    signal.clone(),
+                    event.timestamp,
+                );
+            }
+
             HookResponse::Ack
         }
 
@@ -568,6 +578,15 @@ async fn dispatch_request(
                 session_id = event.session_id,
                 "UDS: event recorded"
             );
+
+            // col-017: Accumulate topic signal in session state
+            if let Some(ref signal) = event.topic_signal {
+                session_registry.record_topic_signal(
+                    &event.session_id,
+                    signal.clone(),
+                    event.timestamp,
+                );
+            }
 
             // col-012: Persist observation to SQLite (fire-and-forget)
             let store_for_obs = Arc::clone(store);
@@ -589,6 +608,17 @@ async fn dispatch_request(
                 };
             }
             tracing::info!(count = events.len(), "UDS: batch events recorded");
+
+            // col-017: Accumulate topic signals for all events in batch
+            for event in &events {
+                if let Some(ref signal) = event.topic_signal {
+                    session_registry.record_topic_signal(
+                        &event.session_id,
+                        signal.clone(),
+                        event.timestamp,
+                    );
+                }
+            }
 
             // col-012: Batch persist observations in single transaction (fire-and-forget)
             let store_for_obs = Arc::clone(store);
@@ -1178,18 +1208,23 @@ async fn process_session_close(
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
 ) -> HookResponse {
     // col-010: capture session metadata before drain (state is removed by drain)
-    let (feature_cycle, agent_role, injection_count, compaction_count) = {
+    // col-017: also capture topic_signals for majority vote resolution
+    let (feature_cycle, agent_role, injection_count, compaction_count, topic_signals) = {
         if let Some(state) = session_registry.get_state(session_id) {
             (
                 state.feature.clone(),
                 state.role.clone(),
                 state.injection_history.len() as u32,
                 state.compaction_count,
+                state.topic_signals.clone(),
             )
         } else {
-            (None, None, 0u32, 0u32)
+            (None, None, 0u32, 0u32, std::collections::HashMap::new())
         }
     };
+
+    // col-017: Resolve topic via majority vote before drain (FR-06.1)
+    let resolved_topic = majority_vote(&topic_signals);
 
     // Step 1: Sweep stale sessions first (FR-09.1)
     let stale_outputs = session_registry.sweep_stale_sessions();
@@ -1210,12 +1245,44 @@ async fn process_session_close(
         };
         let is_abandoned = final_status == SessionLifecycleStatus::Abandoned;
 
+        // col-017: Determine final feature_cycle — majority vote wins, else fallback to
+        // content-based attribution, else use the registered feature from SessionStart.
+        let final_feature_cycle = if let Some(ref topic) = resolved_topic {
+            // Majority vote produced a result — use it
+            tracing::info!(
+                session_id,
+                topic = %topic,
+                "col-017: topic resolved via majority vote"
+            );
+            Some(topic.clone())
+        } else {
+            // No hook-side signals — fallback to content-based attribution (FR-06.2)
+            let store_clone = Arc::clone(store);
+            let sid = session_id.to_string();
+            let fallback = tokio::task::spawn_blocking(move || {
+                content_based_attribution_fallback(&store_clone, &sid)
+            })
+            .await
+            .unwrap_or(None);
+
+            if fallback.is_some() {
+                tracing::info!(
+                    session_id,
+                    topic = ?fallback,
+                    "col-017: topic resolved via content-based fallback"
+                );
+            }
+            fallback.or(feature_cycle.clone())
+        };
+
         // col-010: update SESSIONS record (fire-and-forget)
+        // col-017: include resolved feature_cycle
         {
             let sid = session_id.to_string();
             let store_clone = Arc::clone(store);
             let status_clone = final_status.clone();
             let outcome_owned = outcome_str.to_string();
+            let fc = final_feature_cycle.clone();
             spawn_blocking_fire_and_forget(move || {
                 let result = store_clone.update_session(&sid, |r| {
                     r.status = status_clone;
@@ -1223,6 +1290,9 @@ async fn process_session_close(
                     r.outcome = Some(outcome_owned.clone());
                     r.total_injections = injection_count;
                     r.compaction_count = compaction_count;
+                    if let Some(ref topic) = fc {
+                        r.feature_cycle = Some(topic.clone());
+                    }
                 });
                 if let Err(e) = result {
                     tracing::warn!(
@@ -1241,7 +1311,7 @@ async fn process_session_close(
                 session_id,
                 outcome_str,
                 injection_count,
-                feature_cycle.as_deref(),
+                final_feature_cycle.as_deref().or(feature_cycle.as_deref()),
                 agent_role.as_deref(),
             );
         }
@@ -1256,6 +1326,91 @@ async fn process_session_close(
     // If session absent (already cleared): no-op (idempotent — AC-03)
 
     HookResponse::Ack
+}
+
+/// Content-based attribution fallback for SessionClose when no hook-side signals exist (col-017).
+///
+/// Loads observations for the session, runs `attribute_sessions` for each unique
+/// candidate feature, returns the feature with the most attributed observations.
+fn content_based_attribution_fallback(store: &Store, session_id: &str) -> Option<String> {
+    use unimatrix_observe::types::{HookType, ObservationRecord, ParsedSession};
+
+    let conn = store.lock_conn();
+    let mut stmt = conn
+        .prepare(
+            "SELECT session_id, ts_millis, hook, tool, input FROM observations \
+             WHERE session_id = ?1 ORDER BY ts_millis ASC",
+        )
+        .ok()?;
+
+    let records: Vec<ObservationRecord> = stmt
+        .query_map(unimatrix_store::rusqlite::params![session_id], |row| {
+            let session_id: String = row.get(0)?;
+            let ts_millis: i64 = row.get(1)?;
+            let hook_str: String = row.get(2)?;
+            let tool: Option<String> = row.get(3)?;
+            let input_str: Option<String> = row.get(4)?;
+            Ok(ObservationRecord {
+                ts: (ts_millis / 1000) as u64,
+                hook: match hook_str.as_str() {
+                    "PreToolUse" => HookType::PreToolUse,
+                    "PostToolUse" => HookType::PostToolUse,
+                    "SubagentStart" => HookType::SubagentStart,
+                    "SubagentStop" => HookType::SubagentStop,
+                    _ => HookType::PreToolUse,
+                },
+                session_id,
+                tool,
+                input: input_str.map(|s| serde_json::Value::String(s)),
+                response_size: None,
+                response_snippet: None,
+            })
+        })
+        .ok()?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    if records.is_empty() {
+        return None;
+    }
+
+    // Extract all unique candidate features from the records
+    let mut candidates: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for record in &records {
+        if let Some(input) = &record.input {
+            let input_str = match input {
+                serde_json::Value::String(s) => s.clone(),
+                _ => serde_json::to_string(input).unwrap_or_default(),
+            };
+            if let Some(id) = unimatrix_observe::extract_topic_signal(&input_str) {
+                candidates.insert(id);
+            }
+        }
+    }
+
+    if candidates.is_empty() {
+        return None;
+    }
+
+    // Find the candidate with the most attributed observations
+    let session = ParsedSession {
+        session_id: session_id.to_string(),
+        records,
+    };
+    let sessions = vec![session];
+
+    let mut best: Option<(String, usize)> = None;
+    for candidate in &candidates {
+        let attributed = unimatrix_observe::attribute_sessions(&sessions, candidate);
+        let count = attributed.len();
+        if count > 0 {
+            if best.is_none() || count > best.as_ref().map(|(_, c)| *c).unwrap_or(0) {
+                best = Some((candidate.clone(), count));
+            }
+        }
+    }
+
+    best.map(|(feature, _)| feature)
 }
 
 /// Write an auto-generated outcome entry for a session that completed with injections.
@@ -1573,6 +1728,62 @@ async fn write_response(
     Ok(())
 }
 
+// -- col-017: Topic signal majority vote resolution --
+
+use crate::infra::session::TopicTally;
+
+/// Resolve accumulated topic signals to a single feature_cycle via majority vote.
+///
+/// Resolution rules (FR-06.1, ADR-017-002):
+/// 1. If empty → `None`
+/// 2. Find max count. Single winner → return it.
+/// 3. Tie → highest `last_seen`. Still tied → lexicographic smallest (AR-2).
+fn majority_vote(signals: &std::collections::HashMap<String, TopicTally>) -> Option<String> {
+    if signals.is_empty() {
+        return None;
+    }
+
+    let max_count = signals.values().map(|t| t.count).max().unwrap_or(0);
+    let candidates: Vec<&String> = signals
+        .iter()
+        .filter(|(_, t)| t.count == max_count)
+        .map(|(k, _)| k)
+        .collect();
+
+    if candidates.len() == 1 {
+        return Some(candidates[0].clone());
+    }
+
+    // Tie: break by most recent last_seen
+    let max_last_seen = candidates
+        .iter()
+        .map(|k| signals[*k].last_seen)
+        .max()
+        .unwrap_or(0);
+    let recency_candidates: Vec<&String> = candidates
+        .into_iter()
+        .filter(|k| signals[*k].last_seen == max_last_seen)
+        .collect();
+
+    if recency_candidates.len() == 1 {
+        return Some(recency_candidates[0].clone());
+    }
+
+    // Still tied: lexicographic smallest (deterministic fallback, AR-2)
+    recency_candidates.into_iter().min().cloned()
+}
+
+/// Update the feature_cycle column for a session in the sessions table (col-017).
+fn update_session_feature_cycle(
+    store: &Store,
+    session_id: &str,
+    feature_cycle: &str,
+) -> Result<(), unimatrix_store::StoreError> {
+    store.update_session(session_id, |r| {
+        r.feature_cycle = Some(feature_cycle.to_string());
+    })
+}
+
 // -- col-012: Observation persistence helpers --
 
 /// Extracted observation row fields ready for SQL insertion.
@@ -1584,6 +1795,8 @@ struct ObservationRow {
     input: Option<String>,
     response_size: Option<i64>,
     response_snippet: Option<String>,
+    /// Hook-side topic signal for feature attribution (col-017).
+    topic_signal: Option<String>,
 }
 
 /// Extract observation fields from an ImplantEvent for SQL insertion.
@@ -1638,6 +1851,7 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
         input,
         response_size,
         response_snippet,
+        topic_signal: event.topic_signal.clone(),
     }
 }
 
@@ -1645,8 +1859,8 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
 fn insert_observation(store: &Store, obs: &ObservationRow) -> Result<(), unimatrix_store::StoreError> {
     let conn = store.lock_conn();
     conn.execute(
-        "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         unimatrix_store::rusqlite::params![
             obs.session_id,
             obs.ts_millis,
@@ -1655,6 +1869,7 @@ fn insert_observation(store: &Store, obs: &ObservationRow) -> Result<(), unimatr
             obs.input,
             obs.response_size,
             obs.response_snippet,
+            obs.topic_signal,
         ],
     ).map_err(unimatrix_store::StoreError::Sqlite)?;
     Ok(())
@@ -1667,8 +1882,8 @@ fn insert_observations_batch(store: &Store, batch: &[ObservationRow]) -> Result<
     let result = (|| -> Result<(), unimatrix_store::StoreError> {
         for obs in batch {
             conn.execute(
-                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                 unimatrix_store::rusqlite::params![
                     obs.session_id,
                     obs.ts_millis,
@@ -1677,6 +1892,7 @@ fn insert_observations_batch(store: &Store, batch: &[ObservationRow]) -> Result<
                     obs.input,
                     obs.response_size,
                     obs.response_snippet,
+                    obs.topic_signal,
                 ],
             ).map_err(unimatrix_store::StoreError::Sqlite)?;
         }
@@ -1888,6 +2104,7 @@ mod tests {
             session_id: "s1".to_string(),
             timestamp: 0,
             payload: serde_json::json!({}),
+            topic_signal: None,
         };
         let response = dispatch_request(
             HookRequest::RecordEvent { event },
@@ -2569,5 +2786,58 @@ mod tests {
         let analysis = guard.entries.get(&entry_id).expect("entry should exist in pending");
         assert_eq!(analysis.rework_flag_count, 3, "every flagging event should count");
         assert_eq!(analysis.rework_session_count, 1, "only one unique session");
+    }
+
+    // -- col-017: majority_vote tests (T-07) --
+
+    #[test]
+    fn test_majority_vote_clear_winner() {
+        // AC-13
+        let mut signals = std::collections::HashMap::new();
+        signals.insert("col-017".to_string(), TopicTally { count: 5, last_seen: 100 });
+        signals.insert("col-018".to_string(), TopicTally { count: 2, last_seen: 200 });
+        assert_eq!(majority_vote(&signals), Some("col-017".to_string()));
+    }
+
+    #[test]
+    fn test_majority_vote_tie_broken_by_recency() {
+        // AC-14
+        let mut signals = std::collections::HashMap::new();
+        signals.insert("a".to_string(), TopicTally { count: 3, last_seen: 100 });
+        signals.insert("b".to_string(), TopicTally { count: 3, last_seen: 200 });
+        assert_eq!(majority_vote(&signals), Some("b".to_string()));
+    }
+
+    #[test]
+    fn test_majority_vote_deterministic_tie_lexicographic() {
+        // AR-2: same count + same timestamp -> lexicographic smallest
+        let mut signals = std::collections::HashMap::new();
+        signals.insert("b".to_string(), TopicTally { count: 3, last_seen: 100 });
+        signals.insert("a".to_string(), TopicTally { count: 3, last_seen: 100 });
+        assert_eq!(majority_vote(&signals), Some("a".to_string()));
+    }
+
+    #[test]
+    fn test_majority_vote_single_topic() {
+        let mut signals = std::collections::HashMap::new();
+        signals.insert("col-017".to_string(), TopicTally { count: 1, last_seen: 100 });
+        assert_eq!(majority_vote(&signals), Some("col-017".to_string()));
+    }
+
+    #[test]
+    fn test_majority_vote_empty() {
+        // AC-15
+        let signals = std::collections::HashMap::new();
+        assert_eq!(majority_vote(&signals), None);
+    }
+
+    #[test]
+    fn test_majority_vote_multi_topic() {
+        // T-16: 3 topics, highest count wins
+        let mut signals = std::collections::HashMap::new();
+        signals.insert("a".to_string(), TopicTally { count: 10, last_seen: 100 });
+        signals.insert("b".to_string(), TopicTally { count: 8, last_seen: 200 });
+        signals.insert("c".to_string(), TopicTally { count: 2, last_seen: 300 });
+        assert_eq!(majority_vote(&signals), Some("a".to_string()));
     }
 }

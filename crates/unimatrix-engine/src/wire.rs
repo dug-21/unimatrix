@@ -186,6 +186,11 @@ pub struct ImplantEvent {
 
     /// Event-specific data.
     pub payload: serde_json::Value,
+
+    /// Hook-side topic signal extracted from event content (col-017).
+    /// Used for session-level feature attribution via majority vote.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub topic_signal: Option<String>,
 }
 
 // -- EntryPayload (stub for future search results) --
@@ -409,6 +414,7 @@ mod tests {
             session_id: "sess-1".to_string(),
             timestamp: 1700000000,
             payload: serde_json::json!({"tool": "Read"}),
+            topic_signal: None,
         };
         let req = HookRequest::RecordEvent { event };
         let bytes = serialize_request(&req).unwrap();
@@ -431,12 +437,14 @@ mod tests {
                 session_id: "sess-1".to_string(),
                 timestamp: 1700000000,
                 payload: serde_json::json!({}),
+                topic_signal: None,
             },
             ImplantEvent {
                 event_type: "context_read".to_string(),
                 session_id: "sess-1".to_string(),
                 timestamp: 1700000001,
                 payload: serde_json::json!({"entry_id": 42}),
+                topic_signal: None,
             },
         ];
         let req = HookRequest::RecordEvents { events };
@@ -846,6 +854,7 @@ mod tests {
             session_id: "sess-1".to_string(),
             timestamp: 1700000000,
             payload: serde_json::json!({"tool": "Bash", "duration_ms": 150}),
+            topic_signal: None,
         };
         let bytes = serde_json::to_vec(&event).unwrap();
         let decoded: ImplantEvent = serde_json::from_slice(&bytes).unwrap();
@@ -1089,5 +1098,57 @@ mod tests {
             }
             _ => panic!("expected Entries"),
         }
+    }
+
+    // -- col-017: ImplantEvent topic_signal serde tests (T-05) --
+
+    #[test]
+    fn implant_event_without_topic_signal_deserializes_to_none() {
+        // AC-06: backward compat -- old JSON without field
+        let json = r#"{"event_type":"tool_use","session_id":"s1","timestamp":100,"payload":{}}"#;
+        let event: ImplantEvent = serde_json::from_str(json).unwrap();
+        assert!(event.topic_signal.is_none());
+    }
+
+    #[test]
+    fn implant_event_with_topic_signal_deserializes() {
+        // AC-07: new JSON with field
+        let json = r#"{"event_type":"tool_use","session_id":"s1","timestamp":100,"payload":{},"topic_signal":"col-017"}"#;
+        let event: ImplantEvent = serde_json::from_str(json).unwrap();
+        assert_eq!(event.topic_signal.as_deref(), Some("col-017"));
+    }
+
+    #[test]
+    fn implant_event_with_null_topic_signal_deserializes_to_none() {
+        let json = r#"{"event_type":"tool_use","session_id":"s1","timestamp":100,"payload":{},"topic_signal":null}"#;
+        let event: ImplantEvent = serde_json::from_str(json).unwrap();
+        assert!(event.topic_signal.is_none());
+    }
+
+    #[test]
+    fn implant_event_serialize_none_omits_field() {
+        let event = ImplantEvent {
+            event_type: "tool_use".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({}),
+            topic_signal: None,
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(!json.contains("topic_signal"), "None should omit the field: {json}");
+    }
+
+    #[test]
+    fn implant_event_serialize_some_includes_field() {
+        let event = ImplantEvent {
+            event_type: "tool_use".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({}),
+            topic_signal: Some("col-017".to_string()),
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("topic_signal"), "Some should include the field: {json}");
+        assert!(json.contains("col-017"));
     }
 }

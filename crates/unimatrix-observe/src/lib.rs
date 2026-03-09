@@ -16,7 +16,7 @@ pub mod synthesis;
 pub mod types;
 
 // Re-exports for public API
-pub use attribution::attribute_sessions;
+pub use attribution::{attribute_sessions, extract_topic_signal};
 pub use baseline::{compare_to_baseline, compute_baselines};
 pub use detection::{default_rules, detect_hotspots, DetectionRule};
 pub use error::{ObserveError, Result};

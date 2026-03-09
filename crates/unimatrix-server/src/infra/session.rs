@@ -17,6 +17,20 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const STALE_SESSION_THRESHOLD_SECS: u64 = 4 * 3600;
 const REWORK_EDIT_CYCLE_THRESHOLD: usize = 3;
 
+// -- New types (col-017) --
+
+/// Accumulator for topic signal votes within a session (ADR-017-002).
+///
+/// Tracks how many times a topic was seen and when it was last observed,
+/// enabling majority vote resolution on SessionClose.
+#[derive(Clone, Debug)]
+pub struct TopicTally {
+    /// Number of times this topic signal was observed.
+    pub count: u32,
+    /// Unix timestamp of the most recent observation.
+    pub last_seen: u64,
+}
+
 // -- New types (col-009) --
 
 /// A single tool-use event recorded for rework threshold analysis (ADR-002).
@@ -93,6 +107,8 @@ pub struct SessionState {
     pub rework_events: Vec<ReworkEvent>,    // PostToolUse rework observations
     pub agent_actions: Vec<SessionAction>,  // explicit MCP actions (Session Intent Registry)
     pub last_activity_at: u64,             // tracks staleness for sweep
+    // col-017 fields
+    pub topic_signals: HashMap<String, TopicTally>,  // accumulated topic signals for majority vote
 }
 
 /// Thread-safe registry for per-session state.
@@ -133,6 +149,7 @@ impl SessionRegistry {
                 rework_events: Vec::new(),
                 agent_actions: Vec::new(),
                 last_activity_at: now,
+                topic_signals: HashMap::new(),
             },
         );
     }
@@ -192,6 +209,25 @@ impl SessionRegistry {
     pub fn clear_session(&self, session_id: &str) {
         let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
         sessions.remove(session_id);
+    }
+
+    /// Record a topic signal for majority vote resolution on SessionClose (col-017).
+    ///
+    /// Increments the count for the topic and updates `last_seen` if the timestamp
+    /// is newer. O(1) per signal. Silently ignored for unregistered sessions.
+    pub fn record_topic_signal(&self, session_id: &str, signal: String, timestamp: u64) {
+        let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(state) = sessions.get_mut(session_id) {
+            let tally = state.topic_signals.entry(signal).or_insert(TopicTally {
+                count: 0,
+                last_seen: 0,
+            });
+            tally.count += 1;
+            if timestamp > tally.last_seen {
+                tally.last_seen = timestamp;
+            }
+            state.last_activity_at = state.last_activity_at.max(timestamp);
+        }
     }
 
     /// Record a tool-use event for rework threshold analysis (col-009, FR-03.1).
@@ -806,6 +842,7 @@ mod tests {
                 .collect(),
             agent_actions: Vec::new(),
             last_activity_at: 0,
+            topic_signals: HashMap::new(),
         }
     }
 
@@ -1002,5 +1039,83 @@ mod tests {
         let out = reg.drain_and_signal_session("s1", "success").unwrap();
         assert_eq!(out.final_outcome, SessionOutcome::Success);
         assert!(out.helpful_entry_ids.is_empty());
+    }
+
+    // -- col-017: Topic signal accumulation tests (T-06) --
+
+    #[test]
+    fn record_topic_signal_single() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.record_topic_signal("s1", "col-017".to_string(), 1000);
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.topic_signals.len(), 1);
+        let tally = &state.topic_signals["col-017"];
+        assert_eq!(tally.count, 1);
+        assert_eq!(tally.last_seen, 1000);
+    }
+
+    #[test]
+    fn record_topic_signal_same_twice() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.record_topic_signal("s1", "col-017".to_string(), 1000);
+        reg.record_topic_signal("s1", "col-017".to_string(), 2000);
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.topic_signals.len(), 1);
+        let tally = &state.topic_signals["col-017"];
+        assert_eq!(tally.count, 2);
+        assert_eq!(tally.last_seen, 2000);
+    }
+
+    #[test]
+    fn record_topic_signal_different_signals() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.record_topic_signal("s1", "col-017".to_string(), 1000);
+        reg.record_topic_signal("s1", "nxs-001".to_string(), 2000);
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.topic_signals.len(), 2);
+    }
+
+    #[test]
+    fn record_topic_signal_memory_bounded() {
+        // 100 signals for same topic -> still 1 HashMap entry (R2)
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        for i in 0..100 {
+            reg.record_topic_signal("s1", "col-017".to_string(), i);
+        }
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.topic_signals.len(), 1);
+        assert_eq!(state.topic_signals["col-017"].count, 100);
+    }
+
+    #[test]
+    fn record_topic_signal_non_monotonic_timestamp() {
+        // SR-5: out-of-order timestamps — last_seen stays at max
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.record_topic_signal("s1", "col-017".to_string(), 200);
+        reg.record_topic_signal("s1", "col-017".to_string(), 100);
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.topic_signals["col-017"].last_seen, 200);
+    }
+
+    #[test]
+    fn record_topic_signal_unregistered_noop() {
+        let reg = make_registry();
+        reg.record_topic_signal("unknown", "col-017".to_string(), 1000);
+        assert!(reg.get_state("unknown").is_none());
+    }
+
+    #[test]
+    fn record_topic_signal_updates_last_activity() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        let before = reg.get_state("s1").unwrap().last_activity_at;
+        reg.record_topic_signal("s1", "col-017".to_string(), before + 100);
+        let after = reg.get_state("s1").unwrap().last_activity_at;
+        assert_eq!(after, before + 100);
     }
 }
