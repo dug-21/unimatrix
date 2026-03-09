@@ -591,7 +591,7 @@ async fn dispatch_request(
             // col-012: Persist observation to SQLite (fire-and-forget)
             let store_for_obs = Arc::clone(store);
             let obs = extract_observation_fields(&event);
-            tokio::task::spawn_blocking(move || {
+            spawn_blocking_fire_and_forget(move || {
                 if let Err(e) = insert_observation(&store_for_obs, &obs) {
                     tracing::error!(error = %e, "observation write failed");
                 }
@@ -623,7 +623,7 @@ async fn dispatch_request(
             // col-012: Batch persist observations in single transaction (fire-and-forget)
             let store_for_obs = Arc::clone(store);
             let obs_batch: Vec<ObservationRow> = events.iter().map(extract_observation_fields).collect();
-            tokio::task::spawn_blocking(move || {
+            spawn_blocking_fire_and_forget(move || {
                 if let Err(e) = insert_observations_batch(&store_for_obs, &obs_batch) {
                     tracing::error!(error = %e, "batch observation write failed");
                 }
@@ -1335,46 +1335,53 @@ async fn process_session_close(
 fn content_based_attribution_fallback(store: &Store, session_id: &str) -> Option<String> {
     use unimatrix_observe::types::{HookType, ObservationRecord, ParsedSession};
 
-    let conn = store.lock_conn();
-    let mut stmt = conn
-        .prepare(
-            "SELECT session_id, ts_millis, hook, tool, input FROM observations \
-             WHERE session_id = ?1 ORDER BY ts_millis ASC",
-        )
-        .ok()?;
+    // Acquire lock, run query, release lock BEFORE processing.
+    // The lock must not be held during candidate extraction or attribute_sessions()
+    // to avoid blocking other spawn_blocking DB operations (fix for #169).
+    let records: Vec<ObservationRecord> = {
+        let conn = store.lock_conn();
+        let mut stmt = conn
+            .prepare(
+                "SELECT session_id, ts_millis, hook, tool, input FROM observations \
+                 WHERE session_id = ?1 ORDER BY ts_millis ASC",
+            )
+            .ok()?;
 
-    let records: Vec<ObservationRecord> = stmt
-        .query_map(unimatrix_store::rusqlite::params![session_id], |row| {
-            let session_id: String = row.get(0)?;
-            let ts_millis: i64 = row.get(1)?;
-            let hook_str: String = row.get(2)?;
-            let tool: Option<String> = row.get(3)?;
-            let input_str: Option<String> = row.get(4)?;
-            Ok(ObservationRecord {
-                ts: (ts_millis / 1000) as u64,
-                hook: match hook_str.as_str() {
-                    "PreToolUse" => HookType::PreToolUse,
-                    "PostToolUse" => HookType::PostToolUse,
-                    "SubagentStart" => HookType::SubagentStart,
-                    "SubagentStop" => HookType::SubagentStop,
-                    _ => HookType::PreToolUse,
-                },
-                session_id,
-                tool,
-                input: input_str.map(|s| serde_json::Value::String(s)),
-                response_size: None,
-                response_snippet: None,
+        let result: Vec<ObservationRecord> = stmt
+            .query_map(unimatrix_store::rusqlite::params![session_id], |row| {
+                let session_id: String = row.get(0)?;
+                let ts_millis: i64 = row.get(1)?;
+                let hook_str: String = row.get(2)?;
+                let tool: Option<String> = row.get(3)?;
+                let input_str: Option<String> = row.get(4)?;
+                Ok(ObservationRecord {
+                    ts: (ts_millis / 1000) as u64,
+                    hook: match hook_str.as_str() {
+                        "PreToolUse" => HookType::PreToolUse,
+                        "PostToolUse" => HookType::PostToolUse,
+                        "SubagentStart" => HookType::SubagentStart,
+                        "SubagentStop" => HookType::SubagentStop,
+                        _ => HookType::PreToolUse,
+                    },
+                    session_id,
+                    tool,
+                    input: input_str.map(|s| serde_json::Value::String(s)),
+                    response_size: None,
+                    response_snippet: None,
+                })
             })
-        })
-        .ok()?
-        .filter_map(|r| r.ok())
-        .collect();
+            .ok()?
+            .filter_map(|r| r.ok())
+            .collect();
+        result
+        // conn (MutexGuard) dropped here — lock released before processing
+    };
 
     if records.is_empty() {
         return None;
     }
 
-    // Extract all unique candidate features from the records
+    // Extract all unique candidate features from the records (no DB access needed)
     let mut candidates: std::collections::HashSet<String> = std::collections::HashSet::new();
     for record in &records {
         if let Some(input) = &record.input {
@@ -2839,5 +2846,123 @@ mod tests {
         signals.insert("b".to_string(), TopicTally { count: 8, last_seen: 200 });
         signals.insert("c".to_string(), TopicTally { count: 2, last_seen: 300 });
         assert_eq!(majority_vote(&signals), Some("a".to_string()));
+    }
+
+    // -- #169: content_based_attribution_fallback lock scope tests --
+
+    #[test]
+    fn test_attribution_fallback_empty_session_returns_none() {
+        let store = make_store();
+        // No observations inserted — should return None without deadlock
+        let result = content_based_attribution_fallback(&store, "nonexistent-session");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_attribution_fallback_no_topic_signals_returns_none() {
+        let store = make_store();
+        // Insert observation with no feature signal in the input
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            unimatrix_store::rusqlite::params![
+                "sess-169",
+                1000i64,
+                "PreToolUse",
+                "Read",
+                "some random text with no feature IDs",
+            ],
+        ).unwrap();
+        drop(conn);
+
+        let result = content_based_attribution_fallback(&store, "sess-169");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_attribution_fallback_returns_best_topic() {
+        let store = make_store();
+        // Insert observations with feature signals
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            unimatrix_store::rusqlite::params![
+                "sess-169",
+                1000i64,
+                "PreToolUse",
+                "Read",
+                "product/features/col-017/SCOPE.md",
+            ],
+        ).unwrap();
+        conn.execute(
+            "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            unimatrix_store::rusqlite::params![
+                "sess-169",
+                2000i64,
+                "PreToolUse",
+                "Read",
+                "product/features/col-017/IMPL.md",
+            ],
+        ).unwrap();
+        drop(conn);
+
+        let result = content_based_attribution_fallback(&store, "sess-169");
+        assert_eq!(result, Some("col-017".to_string()));
+    }
+
+    #[test]
+    fn test_attribution_fallback_does_not_hold_lock_during_processing() {
+        // Regression test for #169: verify the connection lock is released
+        // before processing begins, so concurrent DB operations don't deadlock.
+        let store = make_store();
+
+        // Insert observations with feature signals
+        {
+            let conn = store.lock_conn();
+            for i in 0..10 {
+                conn.execute(
+                    "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
+                     VALUES (?1, ?2, ?3, ?4, ?5)",
+                    unimatrix_store::rusqlite::params![
+                        "sess-169-lock",
+                        (1000 + i) as i64,
+                        "PreToolUse",
+                        "Read",
+                        format!("product/features/col-017/file{}.md", i),
+                    ],
+                ).unwrap();
+            }
+        }
+
+        // Run attribution fallback on one thread while concurrently writing
+        // to the store on another. If the lock is held during processing,
+        // the concurrent write will block and the test will effectively hang.
+        let store_clone = Arc::clone(&store);
+        let writer = std::thread::spawn(move || {
+            // Small delay to let the fallback start its query
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            // This write must not be blocked by the fallback holding the lock
+            let conn = store_clone.lock_conn();
+            conn.execute(
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                unimatrix_store::rusqlite::params![
+                    "sess-other",
+                    9999i64,
+                    "PreToolUse",
+                    "Write",
+                    "unrelated write",
+                ],
+            ).unwrap();
+        });
+
+        let result = content_based_attribution_fallback(&store, "sess-169-lock");
+        assert_eq!(result, Some("col-017".to_string()));
+
+        // Writer must complete without timeout
+        writer.join().expect("writer thread should not deadlock");
     }
 }
