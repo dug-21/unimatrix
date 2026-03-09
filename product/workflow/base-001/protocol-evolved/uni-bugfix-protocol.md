@@ -9,7 +9,7 @@ Triggers on: bug, fix, bugfix, defect, regression, broken, failing, error, crash
 A single-session workflow that takes a bug report from diagnosis through merge. The session includes a human checkpoint after diagnosis — the human must agree with the root cause analysis before any code changes are made.
 
 ```
-Primary Agent                    uni-scrum-master          Specialist Agents
+Primary Agent                    uni-bugfix-scrum-master          Specialist Agents
 ─────────────                    ──────────────────────          ─────────────────
 read bug report (GH Issue or description)
 spawn bugfix-scrum-master ─────► read protocol + bug report
@@ -260,11 +260,34 @@ On PASS, the Bugfix Manager:
 
 ---
 
-## Phase 4: PR Review
+## Phase 4: Security Review
 
-After the PR is opened, invoke `/review-pr` with the PR number, feature/issue ID, and GH Issue number. This spawns a fresh-context security reviewer and assesses merge readiness.
+**Agent**: uni-security-reviewer (FRESH CONTEXT WINDOW)
 
-For bugfix PRs, the review verifies the single gate report (not three delivery gates).
+After the PR is opened, spawn `uni-security-reviewer` with a fresh context window:
+
+```
+Task(subagent_type: "uni-security-reviewer",
+  prompt: "You are reviewing a bug fix PR for security risks.
+    Your agent ID: {issue-number}-security-reviewer
+
+    PR: #{pr-number} on branch bugfix/{issue-number}-{short-description}
+    Bug report: {bug description or GH Issue URL}
+    Root cause analysis: {path to investigator report}
+
+    Read these:
+    - The git diff: run git diff main...HEAD
+    - The investigator's report from the GH issue
+    - Any relevant ADRs in the affected crate
+
+    Assess security risks, blast radius, and regression potential.
+    Comment findings on the PR via gh CLI.
+
+    Return: risk level (low/medium/high/critical), findings summary,
+    whether any findings are blocking.")
+```
+
+Write results to GH issue
 
 ---
 
@@ -364,7 +387,7 @@ NEVER pipe full cargo output into context.
 ## Quick Reference: Message Map
 
 ```
-BUGFIX MANAGER (uni-scrum-master):
+BUGFIX MANAGER (uni-bugfix-scrum-master):
   Init:       /query-patterns + /knowledge-search — prior knowledge
   Phase 1:    Task(uni-bug-investigator) — diagnose root cause → GH Issue comment
               ...present diagnosis to human...
@@ -377,7 +400,7 @@ BUGFIX MANAGER (uni-scrum-master):
   Gate 3:     Task(uni-validator, bugfix check set) → GH Issue comment
               ...PASS → continue / FAIL → rework or stop...
               git commit + push + gh pr create
-  Phase 4:    /review-pr — security review + merge readiness → GH Issue comment
+  Phase 4:    Task(uni-security-reviewer) — PR security review → GH Issue comment
               ...wait...
   Phase 5:    /record-outcome + /store-lesson (if generalizable)
               Present PR + security assessment to human — SESSION ENDS

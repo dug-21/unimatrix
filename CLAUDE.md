@@ -1,13 +1,13 @@
 # Unimatrix — Non-Negotiable Rules
 
-1. **Feature work uses swarms** — route to the right coordinator:
-   | Intent | Coordinator |
-   |--------|-------------|
-   | Design, scope, spec | `uni-design-scrum-master` |
-   | Implement, build, code | `uni-implementation-scrum-master` |
-   | Bug fix | `uni-bugfix-scrum-master` |
-   | PR review, release | `uni-deploy-scrum-master` |
-   | Retrospective | `uni-retro-scrum-master` |
+1. **Feature work uses swarms** — spawn `uni-scrum-master` with the session type. The SM reads the protocol and executes it.
+   | Intent | Session Type | Protocol |
+   |--------|-------------|----------|
+   | Design, scope, spec | design | `.claude/protocols/uni/uni-design-protocol.md` |
+   | Implement, build, code | delivery | `.claude/protocols/uni/uni-delivery-protocol.md` |
+   | Bug fix | bugfix | `.claude/protocols/uni/uni-bugfix-protocol.md` |
+
+   For PR review: `/review-pr`. For retrospective: `/retro`.
 2. **Anti-stub**: Never leave TODO, `unimplemented!()`, `todo!()`, or placeholder functions. Ask if blocked.
 3. **Never save files to root.** Use project directory structure.
 
@@ -19,6 +19,8 @@
 /crates/unimatrix-{store,vector,embed,core,server}/  - Rust workspace
 /product/features/{phase}-{NNN}/                      - Feature docs per feature
 /.claude/agents/uni/                                  - Agent definitions (active)
+/.claude/protocols/uni/                               - Workflow protocols (design, delivery, bugfix)
+/.claude/skills/                                      - Skills (/review-pr, /retro, /uni-git, etc.)
 /.claude/rules/                                       - Contextual rules
 ```
 
@@ -59,4 +61,4 @@ Knowledge engine (MCP server). **Use it.**
 - `/store-procedure` — when a reusable technique evolves
 - `/store-lesson` — after failures and gate rejections
 
-Do not store workflow choreography in Unimatrix. Protocols live in coordinator agents.
+Do not store workflow choreography in Unimatrix. Protocols live in `.claude/protocols/uni/`.

@@ -8,8 +8,8 @@ All workflows produce PRs. No workflow commits directly to main.
 
 | Context | Pattern | Example | Creator |
 |---------|---------|---------|---------|
-| Feature (design + delivery) | `feature/{phase}-{NNN}` | `feature/crt-009` | uni-design-scrum-master (Session 1 creates, Session 2 continues) |
-| Bug fix | `bugfix/{issue}-{desc}` | `bugfix/52-embed-retry` | uni-bugfix-scrum-master |
+| Feature (design + delivery) | `feature/{phase}-{NNN}` | `feature/crt-009` | uni-scrum-master (Session 1 creates, Session 2 continues) |
+| Bug fix | `bugfix/{issue}-{desc}` | `bugfix/52-embed-retry` | uni-scrum-master (bugfix session) |
 | Ad-hoc docs/config | `docs/{short-desc}` | `docs/update-vision` | Human or primary agent |
 | Workflow/process | `workflow/{desc}` | `workflow/base-002` | Human or primary agent |
 

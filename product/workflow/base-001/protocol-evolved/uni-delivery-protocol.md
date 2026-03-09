@@ -28,7 +28,7 @@ Phase 4: Delivery
 
 **Critical sequence**: Stage 3a produces pseudocode + test plans → Delivery Leader updates the Component Map → Gate 3a validates designs → ONLY THEN does Stage 3b begin. Stage 3b agents each receive their specific component's validated pseudocode and test plan.
 
-**The Delivery Leader runs all stages autonomously.** Human re-enters only on scope/feasibility failures or when rework iterations are exhausted.
+**The Delivery Leader (uni-scrum-master) runs all stages autonomously.** Human re-enters only on scope/feasibility failures or when rework iterations are exhausted.
 
 ### Concurrency Rules
 
@@ -330,7 +330,7 @@ The Delivery Leader:
 1. Commits final artifacts (`test: risk coverage + gate reports (#{issue})`)
 2. Pushes feature branch and opens PR (see `/uni-git` for PR template)
 3. Updates GH Issue with PR link
-4. Invokes `/review-pr` for security review and merge readiness
+4. Spawns `uni-deploy-scrum-master` for automated security review and merge readiness (auto-chain)
 5. Combines impl + deploy results in the return to human
 
 ```bash
@@ -343,13 +343,25 @@ git push -u origin feature/{phase}-{NNN}
 gh pr create --title "[{feature-id}] {title}" --body "..."
 ```
 
-### PR Review (after PR opens)
+### Auto-Chain: Deploy (after PR opens)
 
-Invoke `/review-pr` with the PR number, feature ID, and GH Issue number. This spawns a fresh-context security reviewer and assesses merge readiness.
+Spawn `uni-deploy-scrum-master` with the PR details:
+
+```
+Agent(uni-deploy-scrum-master, "
+  Source: auto-chain from impl-scrum-master
+  PR: #{pr-number}
+  Feature: {feature-id}
+  GH Issue: #{issue-number}
+
+  Run your full review flow (gate verification, security review, merge readiness).
+  Return results for inclusion in the combined session return.")
+```
 
 **Error handling:**
-- Review fails → return delivery results only, note "PR review failed"
-- Review returns BLOCKED → include blocking items in combined return
+- Deploy spawn fails → return impl results only, note "deploy auto-chain failed"
+- Deploy returns BLOCKED → include blocking items in combined return
+- Deploy returns error → return impl results + deploy error, human decides
 
 **Return format:**
 ```
@@ -444,8 +456,8 @@ DELIVERY LEADER (uni-scrum-master):
               Task(uni-validator, Gate 3c)
               ...PASS → continue / FAIL → rework or stop...
   Phase 4:    git commit + push + gh pr create
-              /review-pr — security review + merge readiness
-              Combined return — SESSION 2 ENDS
+              Agent(uni-deploy-scrum-master) — auto-chain security review
+              Combined return (impl + deploy) — SESSION 2 ENDS
 ```
 
 ---
