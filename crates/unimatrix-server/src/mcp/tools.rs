@@ -1024,12 +1024,27 @@ impl UnimatrixServer {
             .map_err(rmcp::ErrorData::from)?;
 
         // 3. Load observations from SQL via ObservationSource (col-012)
+        //    First try direct feature_cycle query (fast path).
+        //    If empty, fall back to content-based attribution (#162).
         let store_for_obs = Arc::clone(&self.store);
         let feature_cycle_for_load = params.feature_cycle.clone();
         let attributed = tokio::task::spawn_blocking(move || -> std::result::Result<Vec<unimatrix_observe::ObservationRecord>, unimatrix_observe::ObserveError> {
             use unimatrix_observe::ObservationSource;
             let source = crate::services::observation::SqlObservationSource::new(store_for_obs);
-            source.load_feature_observations(&feature_cycle_for_load)
+
+            // Fast path: direct feature_cycle query
+            let direct = source.load_feature_observations(&feature_cycle_for_load)?;
+            if !direct.is_empty() {
+                return Ok(direct);
+            }
+
+            // Fallback: content-based attribution for sessions with NULL feature_cycle
+            let unattributed = source.load_unattributed_sessions()?;
+            if unattributed.is_empty() {
+                return Ok(vec![]);
+            }
+
+            Ok(unimatrix_observe::attribute_sessions(&unattributed, &feature_cycle_for_load))
         })
         .await
         .unwrap()
