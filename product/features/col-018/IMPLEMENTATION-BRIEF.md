@@ -84,6 +84,19 @@ Tests should follow the existing patterns in `listener.rs` (the file already has
 
 The `record_topic_signal()` call uses the same API already wired for RecordEvent. The test should verify that after a ContextSearch dispatch with a feature-ID prompt, the session registry reflects the accumulated signal.
 
+## Component Map
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| context-search-observation | pseudocode/context-search-observation.md | test-plan/context-search-observation.md |
+
+## Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
 ## Risk Items for Implementation Attention
 
 1. **Input truncation**: Truncate `query` to 4096 characters before storing in `input` field. Use simple byte-safe truncation (`.chars().take(4096).collect::<String>()` or equivalent).
