@@ -2,7 +2,7 @@
 
 ## Summary
 
-Fix PostToolUse observation pipeline to populate `response_size` and `response_snippet` columns. Two changes: (1) compute response fields from Claude Code's `tool_response` JSON object in `extract_observation_fields()`, and (2) add observation persistence for rework-intercepted PostToolUse events.
+Fix PostToolUse observation pipeline to populate `response_size` and `response_snippet` columns. Two changes: (1) compute response fields from Claude Code's `tool_response` JSON object in `extract_observation_fields()`, and (2) add observation persistence for rework-intercepted PostToolUse events while preserving col-017 topic signal accumulation.
 
 ## Implementation Steps
 
@@ -11,6 +11,7 @@ Fix PostToolUse observation pipeline to populate `response_size` and `response_s
 Create a new function that computes response_size and response_snippet from a tool_response JSON value.
 
 **File**: `crates/unimatrix-server/src/uds/listener.rs`
+**Location**: After `extract_observation_fields()` (after line 1856)
 
 ```rust
 /// Extract response_size and response_snippet from a PostToolUse event payload.
@@ -40,17 +41,24 @@ fn extract_response_fields(payload: &serde_json::Value) -> (Option<i64>, Option<
 
 ### Step 2: Update PostToolUse Branch in extract_observation_fields() (listener.rs)
 
-Replace the direct field lookups with the new helper.
+Replace the direct field lookups with the new helper and add support for rework candidate events.
 
-**File**: `crates/unimatrix-server/src/uds/listener.rs`, lines 1604-1615
+**File**: `crates/unimatrix-server/src/uds/listener.rs`
+**Location**: Lines 1817-1828 in `extract_observation_fields()`
 
-**Before**:
+**Before** (current code on main):
 ```rust
 "PostToolUse" => {
-    let tool = event.payload.get("tool_name")...;
-    let input = event.payload.get("tool_input")...;
-    let rs = event.payload.get("response_size").and_then(|v| v.as_i64());
-    let rsnip = event.payload.get("response_snippet").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let tool = event.payload.get("tool_name")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let input = event.payload.get("tool_input")
+        .map(|v| serde_json::to_string(v).unwrap_or_default());
+    let rs = event.payload.get("response_size")
+        .and_then(|v| v.as_i64());
+    let rsnip = event.payload.get("response_snippet")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
     (tool, input, rs, rsnip)
 }
 ```
@@ -68,9 +76,10 @@ Replace the direct field lookups with the new helper.
 }
 ```
 
-Note: The hook column for rework candidates must be normalized to "PostToolUse". Add override after the match block:
+Also add hook type normalization after the match block. Before constructing ObservationRow:
+
 ```rust
-// Normalize rework candidate events to PostToolUse for observation consistency
+// Normalize rework candidate hook type to PostToolUse for observation consistency (col-019)
 let hook = if hook == "post_tool_use_rework_candidate" {
     "PostToolUse".to_string()
 } else {
@@ -84,9 +93,9 @@ Add `tool_input` and `tool_response` to the rework candidate payload constructio
 
 **File**: `crates/unimatrix-server/src/uds/hook.rs`
 
-For single-tool rework (Bash, Edit, Write), update the payload at lines 266-277:
+**3a: Single-tool rework (Bash, Edit, Write) -- line 348**
 
-**Before**:
+**Before** (current payload construction):
 ```rust
 payload: serde_json::json!({
     "tool_name": tool_name,
@@ -106,15 +115,66 @@ payload: serde_json::json!({
 }),
 ```
 
-For MultiEdit batch (lines 244-253), add the same fields to each event payload.
+**3b: MultiEdit batch -- line 324**
+
+**Before** (current per-event payload):
+```rust
+payload: serde_json::json!({
+    "tool_name": "MultiEdit",
+    "file_path": file_path,
+    "had_failure": had_failure,
+}),
+```
+
+**After**:
+```rust
+payload: serde_json::json!({
+    "tool_name": "MultiEdit",
+    "file_path": file_path,
+    "had_failure": had_failure,
+    "tool_input": input.extra.get("tool_input"),
+    "tool_response": input.extra.get("tool_response"),
+}),
+```
+
+Note: `input.extra.get("tool_input")` and `input.extra.get("tool_response")` return `Option<&Value>`. When serialized into a `serde_json::json!()` macro, `None` becomes `null`, which is correct -- `extract_response_fields()` handles null gracefully.
 
 ### Step 4: Add Observation Persistence in Rework Handler (listener.rs)
 
-In the `post_tool_use_rework_candidate` handler (lines 522-557), add observation write after rework recording.
+In the `post_tool_use_rework_candidate` handler (line 522), add observation write AFTER the existing synchronous operations.
 
-**After** `session_registry.record_rework_event(&event.session_id, rework_event);` (line 555), add:
+**File**: `crates/unimatrix-server/src/uds/listener.rs`
+**Location**: After topic signal accumulation (line 563), before `HookResponse::Ack` (line 566)
 
+**Current code** (lines 555-566):
 ```rust
+session_registry.record_rework_event(&event.session_id, rework_event);
+
+// col-017: Accumulate topic signal from rework candidate events
+if let Some(ref signal) = event.topic_signal {
+    session_registry.record_topic_signal(
+        &event.session_id,
+        signal.clone(),
+        event.timestamp,
+    );
+}
+
+HookResponse::Ack
+```
+
+**After** (insert between topic signal block and HookResponse::Ack):
+```rust
+session_registry.record_rework_event(&event.session_id, rework_event);
+
+// col-017: Accumulate topic signal from rework candidate events
+if let Some(ref signal) = event.topic_signal {
+    session_registry.record_topic_signal(
+        &event.session_id,
+        signal.clone(),
+        event.timestamp,
+    );
+}
+
 // col-019: Persist rework PostToolUse as observation (fire-and-forget)
 let store_for_obs = Arc::clone(store);
 let obs = extract_observation_fields(&event);
@@ -123,79 +183,50 @@ tokio::task::spawn_blocking(move || {
         tracing::error!(error = %e, "rework observation write failed");
     }
 });
+
+HookResponse::Ack
 ```
 
-### Step 5: Add Observation Persistence in RecordEvents Handler (listener.rs)
-
-In the `RecordEvents` handler (lines 584-603), the events are currently ALL treated as rework candidates (MultiEdit only). Add observation batch persistence.
-
-The existing code at line 595 already creates `obs_batch` and writes them. But the rework candidate events in RecordEvents are matched by the RecordEvents handler directly, which already does batch observation writes. Check: does the RecordEvents handler already call `extract_observation_fields`?
-
-Looking at the code (lines 594-600):
-```rust
-let obs_batch: Vec<ObservationRow> = events.iter().map(extract_observation_fields).collect();
-tokio::task::spawn_blocking(move || {
-    if let Err(e) = insert_observations_batch(&store_for_obs, &obs_batch) {
-        tracing::error!(error = %e, "batch observation write failed");
-    }
-});
-```
-
-Wait -- the RecordEvents handler DOES already call extract_observation_fields and insert_observations_batch. But it handles ALL RecordEvents, not just rework candidates. The issue is that for MultiEdit rework candidates, they are routed via RecordEvents and DO go through the batch observation write -- but `extract_observation_fields()` doesn't handle the `post_tool_use_rework_candidate` event_type. Step 2 above fixes this by adding the match arm.
-
-However, looking more carefully: the RecordEvents handler at line 584 matches ALL RecordEvents batches, not just rework candidates. There is no separate rework handler for RecordEvents. So MultiEdit rework events DO get persisted as observations -- but with the wrong event type and NULL response fields (because extract_observation_fields falls through to the default `_ =>` arm for "post_tool_use_rework_candidate").
-
-So Step 2's fix (adding `"post_tool_use_rework_candidate"` to the match arm + hook normalization) is sufficient for MultiEdit too. The RecordEvents handler already persists observations. No additional change needed in Step 5.
-
-**Actually, wait**: Re-reading the dispatch_request flow. The `post_tool_use_rework_candidate` handler at line 522 matches `HookRequest::RecordEvent { ref event }` with the guard. RecordEvents is `HookRequest::RecordEvents { events }` -- a different variant. MultiEdit goes through `build_request()` which returns `HookRequest::RecordEvents { events }`. This means MultiEdit events go to the RecordEvents handler (line 584), NOT the rework handler (line 522). The RecordEvents handler does NOT call `session_registry.record_rework_event()` -- it just writes observations.
-
-This means MultiEdit rework detection is currently broken? Let me re-check...
-
-Actually, looking at the RecordEvents handler more carefully: it just logs and writes observations. It does NOT do rework recording. But MultiEdit is supposed to produce rework candidates. Let me trace this:
-
-1. `build_request("PostToolUse", &input)` for MultiEdit with non-empty edits returns `HookRequest::RecordEvents { events }` where each event has `event_type: "post_tool_use_rework_candidate"`.
-2. In dispatch_request, `HookRequest::RecordEvents { events }` matches the RecordEvents handler at line 584.
-3. The RecordEvents handler calls `extract_observation_fields` on each event and writes to observations table.
-4. The rework handler at line 522 NEVER sees these events because they're in a RecordEvents, not a RecordEvent.
-
-So MultiEdit rework recording via session_registry was never implemented. That is a pre-existing issue, not something col-019 needs to fix. But col-019 DOES need to ensure MultiEdit PostToolUse events get proper response data in their observation rows. Step 2's fix handles this.
-
-**Revised Step 5**: No additional code needed for RecordEvents. Step 2's match arm fix ensures `extract_observation_fields()` correctly handles `post_tool_use_rework_candidate` events in the existing RecordEvents batch write path.
-
-### Step 6: Add Unit Tests
+### Step 5: Add Unit Tests
 
 **File**: `crates/unimatrix-server/src/uds/listener.rs` (test module)
 
-Add tests for `extract_response_fields()` and the updated `extract_observation_fields()`:
-- Normal tool_response object
-- Missing tool_response
-- Null tool_response
-- Empty object tool_response
-- Large response (>500 chars) truncation
+Tests for `extract_response_fields()`:
+- Normal tool_response object -> correct size and snippet
+- Missing tool_response -> (None, None)
+- Null tool_response -> (None, None)
+- Empty object tool_response -> (Some(2), Some("{}"))
+- Large response (>500 chars) -> truncation at char boundary
 - Legacy field name fallback
-- Rework candidate event type -> normalized to PostToolUse
+- Multi-byte UTF-8 -> char-safe truncation
+
+Tests for `extract_observation_fields()` with rework candidates:
+- Rework candidate event type -> normalized hook="PostToolUse"
+- Rework candidate with tool_response -> correct response fields
+- Rework candidate with topic_signal -> preserved in ObservationRow
 
 **File**: `crates/unimatrix-server/src/uds/hook.rs` (test module)
 
-Add tests for enhanced rework payloads:
+Tests for enhanced rework payloads:
 - Edit PostToolUse payload includes tool_input and tool_response
 - Bash PostToolUse payload includes tool_input and tool_response
+- MultiEdit batch payload includes tool_input and tool_response
 - Missing tool_response in input -> null in payload
 
-### Step 7: Run Full Test Suite
+### Step 6: Run Full Test Suite
 
-Verify all existing tests pass, including the 8 rework tests in hook.rs.
+Verify all existing tests pass, including rework tests in hook.rs and all listener.rs tests.
 
 ## File Change Summary
 
 | File | Change Type | Lines (est.) |
 |------|------------|-------------|
-| `crates/unimatrix-server/src/uds/listener.rs` | Modify | ~40 (new helper + match arm update + rework persistence) |
-| `crates/unimatrix-server/src/uds/hook.rs` | Modify | ~15 (payload enhancement for rework candidates) |
-| `crates/unimatrix-server/src/uds/listener.rs` | Add tests | ~80 |
-| `crates/unimatrix-server/src/uds/hook.rs` | Add tests | ~40 |
+| `crates/unimatrix-server/src/uds/listener.rs` | Modify | ~30 (new helper + match arm update + normalization + rework persistence) |
+| `crates/unimatrix-server/src/uds/hook.rs` | Modify | ~10 (payload enhancement for rework candidates) |
+| `crates/unimatrix-server/src/uds/listener.rs` | Add tests | ~100 |
+| `crates/unimatrix-server/src/uds/hook.rs` | Add tests | ~50 |
 
-**Total**: ~175 lines across 2 files.
+**Total**: ~190 lines across 2 files.
 
 ## Dependencies
 
@@ -203,6 +234,7 @@ None. No new crate dependencies. All changes use existing serde_json, tokio, and
 
 ## Risks to Watch During Implementation
 
-1. **R-01 (HIGH)**: Verify all 8 existing rework tests pass after hook.rs payload changes. The payload grows but rework field extraction should be unaffected.
-2. **R-02 (MEDIUM)**: Test with diverse tool_response shapes. The serialization-based approach should handle all cases, but verify with real-world examples.
-3. **MultiEdit rework gap**: MultiEdit events go through RecordEvents, which never calls session_registry.record_rework_event(). This is a pre-existing issue, not in col-019 scope. Document for future fix.
+1. **R-01 (HIGH)**: Verify all existing rework tests pass after hook.rs payload changes. The payload grows but rework field extraction is unaffected (extra JSON fields are ignored).
+2. **R-02 (MEDIUM)**: Test with diverse tool_response shapes. The serialization-based approach handles all cases, but verify with real-world examples.
+3. **R-03 (MEDIUM)**: Verify topic signal accumulation in the rework handler still works after adding observation persistence. The observation write is async (spawn_blocking) and cannot interfere with the synchronous topic signal path.
+4. **MultiEdit rework gap**: MultiEdit events go through RecordEvents, which never calls session_registry.record_rework_event(). This is a pre-existing issue, not in col-019 scope. Document for future fix.
