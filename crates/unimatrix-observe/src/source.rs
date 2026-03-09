@@ -4,7 +4,7 @@
 //! Implemented by SqlObservationSource in unimatrix-server.
 
 use crate::error::Result;
-use crate::types::{ObservationRecord, ObservationStats};
+use crate::types::{ObservationRecord, ObservationStats, ParsedSession};
 
 /// Abstraction over observation data storage.
 ///
@@ -24,6 +24,13 @@ pub trait ObservationSource {
     ///
     /// Returns session IDs from the sessions table where feature_cycle matches.
     fn discover_sessions_for_feature(&self, feature_cycle: &str) -> Result<Vec<String>>;
+
+    /// Load sessions with NULL feature_cycle and their observations.
+    ///
+    /// Returns `ParsedSession` structs (grouped by session_id, sorted by timestamp)
+    /// for sessions where `feature_cycle IS NULL`. Used as a fallback for
+    /// content-based attribution when the direct feature_cycle query returns empty.
+    fn load_unattributed_sessions(&self) -> Result<Vec<ParsedSession>>;
 
     /// Get aggregate observation statistics.
     ///
