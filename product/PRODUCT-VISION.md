@@ -25,11 +25,11 @@ This combination is architectural — it requires commitment from the data model
 
 ## What We've Built
 
-36 features shipped across 5 phases. ~1,600+ tests. 10 MCP tools + 1 retrospective tool + 1 agent enrollment tool. SQLite-backed with in-memory HNSW vector index. Hook-driven delivery pipeline operational.
+42 features shipped across 5 phases. ~1,600+ tests. 12 MCP tools. SQLite-backed with in-memory HNSW vector index. Hook-driven delivery pipeline operational.
 
 ### Storage & Schema (Nexus — `nxs`)
 
-SQLite storage engine with normalized schema (24-column entries table, junction tables, SQL indexes). HNSW vector index (384-dim, all-MiniLM-L6-v2 embeddings). Started on redb, migrated to SQLite for analytical query support. Schema v6. 8 features: nxs-001 through nxs-008.
+SQLite storage engine with normalized schema (24-column entries table, junction tables, SQL indexes). HNSW vector index (384-dim, all-MiniLM-L6-v2 embeddings). Started on redb, migrated to SQLite for analytical query support. Schema v9. 9 features: nxs-001 through nxs-009.
 
 ### MCP Server (Vinculum — `vnc`)
 
@@ -37,11 +37,11 @@ rmcp 0.16 SDK, stdio transport. 12 tools: `context_{search, lookup, get, store, 
 
 ### Learning & Drift (Cortical — `crt`)
 
-Six-factor additive confidence formula (base, usage, freshness, helpfulness, correction, trust — weights sum to 0.92, co-access 0.08 at query time). Wilson score helpfulness with min-5-votes guard. Contradiction detection. Co-access boosting. Coherence gate (lambda health metric from 4 dimensions). Adaptive embedding pipeline (MicroLoRA + prototype adjustment on frozen ONNX). Status-aware retrieval with topology-derived penalties for deprecated/superseded entries. Neural extraction pipeline (Signal Classifier + Convention Scorer MLPs) with continuous self-retraining from utilization feedback. 8 features: crt-001 through crt-008, crt-010.
+Six-factor additive confidence formula (base, usage, freshness, helpfulness, correction, trust — weights sum to 0.92, co-access 0.08 at query time). Wilson score helpfulness with min-5-votes guard. Contradiction detection. Co-access boosting. Coherence gate (lambda health metric from 4 dimensions). Adaptive embedding pipeline (MicroLoRA + prototype adjustment on frozen ONNX). Status-aware retrieval with topology-derived penalties for deprecated/superseded entries, calibrated (crt-013). Neural extraction pipeline (Signal Classifier + Convention Scorer MLPs) with continuous self-retraining from utilization feedback. 10 features: crt-001 through crt-008, crt-010, crt-011, crt-013.
 
 ### Orchestration & Delivery (Collective — `col`)
 
-Hook-driven delivery: automatic context injection on every prompt (UserPromptSubmit), compaction resilience (PreCompact), closed-loop confidence feedback (PostToolUse/Stop), full session lifecycle persistence. Retrospective pipeline with 21 detection rules across 4 hotspot categories and historical baseline comparison. Observation data unified in SQLite. Rule-based knowledge extraction engine (5 rules + 6-check quality gate) with automatic background maintenance. 11 features: col-001, col-002, col-002b, col-006 through col-010, col-010b, col-012, col-013.
+Hook-driven delivery: automatic context injection on every prompt (UserPromptSubmit), compaction resilience (PreCompact), closed-loop confidence feedback (PostToolUse/Stop), full session lifecycle persistence. Retrospective pipeline with 21 detection rules across 4 hotspot categories and historical baseline comparison. Observation data unified in SQLite. Rule-based knowledge extraction engine (5 rules + 6-check quality gate) with automatic background maintenance. Intelligence pipeline end-to-end validated (col-015). 13 features: col-001, col-002, col-002b, col-006 through col-010, col-010b, col-012 through col-015.
 
 ### Agent Integration (Alcove — `alc`)
 
@@ -51,42 +51,60 @@ Agent enrollment tool with protected agents, self-lockout prevention, strict cap
 
 ## What's Next
 
-### Milestone: Intelligence Sharpening
+### Milestone: Intelligence Sharpening — COMPLETE
 
-Fix, validate, and tune the self-learning intelligence pipeline before adding new capabilities. Predecessor to graph enablement. 7 features across 4 phases, executed in 4 waves.
+Fixed, validated, and tuned the self-learning intelligence pipeline. 6/7 features shipped (crt-012 remaining, P2). Confidence signals accurate (crt-011), quarantine state restorable (vnc-010), feature attribution handles suffixed IDs (col-014), metrics normalized to SQL columns (nxs-009), retrieval calibrated (crt-013), full pipeline validated end-to-end (col-015).
 
-**Wave 1 — Critical fixes (parallel):**
+### Milestone: Activity Intelligence
 
-- [ ] **crt-011: Confidence Signal Integrity** — Fix session count over-counting (#75) that corrupts all confidence-driven ranking, and add integration tests through tool handlers (#32) to cover the handler→service→store confidence path. Touches unimatrix-observe (session recording), unimatrix-store (session dedup), unimatrix-server (observation service). P0.
-- [ ] **vnc-010: Quarantine State Restoration** — Allow quarantine from Deprecated status (#43) and track pre-quarantine status so restore returns entries to their original state (Active/Deprecated/Proposed). Schema migration v6→v7 adds `pre_quarantine_status` field. Touches unimatrix-store, unimatrix-server. P1.
-- [ ] **col-014: Feature Attribution Fix** — Fix `is_valid_feature_id()` (#79) to accept suffixed feature IDs (e.g., "col-002b", "col-010b") while rejecting invalid input. Currently `splitn(2, '-')` requires all-digit suffix, breaking feature_cycle linking for real features. Touches unimatrix-observe. P1.
+Connect the observation pipeline to make activity data queryable, attributable, and analyzable. The hook pipeline captures 3,200+ events/day but sessions have no topic attribution, user prompts are discarded, and query text is never stored. This milestone fixes the activity data model and enables cross-session analysis — from restored retrospectives to knowledge effectiveness measurement to embedding tuning data export. Research: `product/research/ass-018/`.
 
-**Wave 2 — Structural debt (parallel):**
+Introduces `topic` as the universal grouping concept — aligning knowledge-side `entries.topic` with activity-side session attribution. Domain-agnostic (works for SDLC features, research areas, operational runbooks).
 
-- [ ] **crt-012: Neural Pipeline Cleanup** — Deduplicate TrainingReservoir/EwcState (#113) which share running-average state management and seeded RNG patterns in unimatrix-learn. Make reservoir RNG seed configurable (#51) instead of hardcoded, enabling varied sampling across training epochs. Touches unimatrix-learn, unimatrix-adapt. P2.
-- [ ] **nxs-009: Observation Metrics Normalization** — Decompose OBSERVATION_METRICS bincode blob (#103) into SQL columns, enabling direct SQL analytics on per-feature metrics without Rust-side deserialization. Variable-shape MetricVector requires schema design for dynamic metric dimensions. Touches unimatrix-store, unimatrix-observe, unimatrix-server. P2.
+**Wave 1 — Fix the data pipeline (parallel):**
 
-**Wave 3 — Retrieval tuning (depends on crt-011):**
+- [ ] **col-017: Hook-Side Topic Attribution** — Hook extracts topic signals from tool inputs per-event (file paths, prompt text). Server accumulates signals per session, resolves dominant topic on SessionClose. Persists attribution results. Retrospective fast path works. New column: `observations.topic_signal`.
+- [ ] **col-018: UserPromptSubmit Dual-Route** — Store user prompts as observations AND dispatch to ContextSearch. Currently prompts are the richest topic/intent signal but are discarded from the observation record.
+- [ ] **col-019: PostToolUse Response Capture** — Fix field name mismatch causing `response_size` and `response_snippet` to be NULL for all 5,136+ PostToolUse rows. Unblocks 8+ detection rules and context-load metrics. (#164)
 
-- [ ] **crt-013: Retrieval Calibration** — Verify and fix episodic augmentation vs co-access double-counting (#50) where both mechanisms boost from CO_ACCESS data. Validate crt-010 status penalties are effective (#118). Make briefing neighbor count configurable (#17, currently k=3 hardcode) and optimize status scan for scale. Requires correct confidence data from crt-011. Touches unimatrix-adapt, unimatrix-engine, unimatrix-server. P1.
+**Wave 2 — Connect & capture (depends on Wave 1):**
 
-**Wave 4 — Validation gate (depends on all above):**
+- [ ] **nxs-010: Activity Schema Evolution** — New `topic_deliveries` table (groups sessions by topic with aggregate counters) and `query_log` table (search query text + result metadata). Schema v10. Backfill existing unattributed sessions.
+- [ ] **col-020: Multi-Session Retrospective** — Retrospective spans all sessions for a topic. New cross-session metrics: context reload rate, knowledge reuse, session efficiency trends, rework session count. Updates topic_deliveries aggregates.
 
-- [ ] **col-015: Intelligence Pipeline End-to-End Validation** — Build cross-cutting test infrastructure exercising the full pipeline: observation → extraction (col-013/crt-007/008) → quality gate → stored entries. Includes confidence calibration testing (are weights producing correct rankings?) and extraction quality validation (are auto-stored entries trustworthy?). Touches all intelligence crates. P1.
+**Wave 3 — Intelligence & export (depends on Wave 2):**
+
+- [ ] **crt-018: Knowledge Effectiveness Analysis** — Per-entry utility scoring from injection_log + session outcomes. Confidence calibration validation. Dead knowledge detection. Surfaces via `context_status`.
+- [ ] **crt-019: Search Quality & Gap Detection** — Zero-result query analysis, query reformulation detection, result utilization rate. Identifies knowledge gaps. Surfaces via `context_status`.
+- [ ] **col-021: Query Data Export** — Export (query, results, outcome) triples for embedding model tuning. New tool or CLI subcommand.
 
 ### Milestone: Graph Enablement
 
-Depends on Intelligence Sharpening. Introduce petgraph for topology-derived scoring and multi-hop traversal.
+Depends on Activity Intelligence. Introduce petgraph for topology-derived scoring and multi-hop traversal. Research complete (ASS-017, `product/research/ass-017/`). Deep analysis in `product/research/ass-017/ANALYSIS.md`. Technical risk: LOW.
 
-Research complete (ASS-017, `product/research/ass-017/`). Replace hardcoded deprecation/supersession penalty constants (0.7x/0.5x) with graph-topology-derived scoring. Enables multi-hop supersession traversal, co-access transitivity, connected component analysis for coherence gate, correction chain quality scoring, and cycle detection as integrity check. Three-phase rollout: supersession graph → co-access graph → unified knowledge graph. Technical risk: LOW.
+Dependency: `petgraph = { version = "0.8", default-features = false, features = ["stable_graph"] }` in `unimatrix-engine`. New module `graph.rs` alongside existing `confidence.rs` and `coaccess.rs`. Graph built per-query from store edges (Option A — always fresh, ~1-2ms at 500 entries). Cached graph (Option B) deferred until profiling shows need.
 
-Additional candidates:
+**Phase 1 — Supersession Graph (replaces hardcoded penalties):**
+
+- [ ] **crt-014: Supersession Graph & Topology-Derived Penalties** — Build directed supersession graph from `supersedes`/`superseded_by` fields. Replace hardcoded `DEPRECATED_PENALTY` (0.7x) and `SUPERSEDED_PENALTY` (0.5x) constants in `confidence.rs:50-57` with `graph_penalty(node, graph) -> f64` that scores based on successor depth, active reachability, fan-out, and leaf status. Enable multi-hop successor resolution in `search.rs:214-262` (replaces ADR-003 single-hop limit — chains A→B→C now resolve to terminal active C). Add cycle detection via `is_cyclic_directed` as integrity check during `maintain=true`. Supersedes ADR-003 (single-hop, #483) and ADR-005 (hardcoded penalties, #485). crt-013 behavior-based tests (ADR-003 #703) designed to survive this transition. Touches unimatrix-engine (new `graph.rs` module, ~200-300 lines), unimatrix-server (search wiring, ~50 lines). P1.
+
+**Phase 2 — Knowledge Topology Metrics (gated on Phase 1 validation + col-015):**
+
+- [ ] **crt-015: Coherence Gate Graph Topology** — Replace HNSW stale-node ratio in coherence gate `graph_quality` dimension (weight 0.30, `coherence.rs:74-80`) with true topological metric from connected component analysis via `petgraph::algo::connected_components`. Knowledge silos (isolated subgraphs) and well-linked clusters become measurable. Requires col-015 validation framework to calibrate λ impact. Touches unimatrix-engine, unimatrix-server (`coherence.rs`). P2.
+- [ ] **crt-016: Co-Access Transitivity** — Build undirected co-access graph from CO_ACCESS table. Transitive boost with decay: direct pair gets full boost, 2-hop gets dampened boost via `petgraph::algo::dijkstra` with co-access count as edge weight. Replaces `compute_search_boost()` in `coaccess.rs:80-95`. ADR-002 (crt-013, #702) explicitly names this as the intended replacement for the scalar boost. Gated on col-015 evaluation of MicroLoRA vs scalar boost signal overlap — if MicroLoRA already captures transitive signal, this may be unnecessary. Risk: noise amplification (analysis warns dampening factor required). Touches unimatrix-engine (`coaccess.rs`). P2.
+- [ ] **crt-017: Contradiction Cluster Detection** — Build undirected graph from contradiction pairs detected by crt-003 heuristic. Connected components reveal contradiction clusters — groups of entries that collectively disagree. More actionable than current pairwise alerts in `contradiction.rs`. Value scales with knowledge base size; currently low contradiction density. Touches unimatrix-server (`contradiction.rs`). P3.
+
+**Phase 3 — Unified Knowledge Graph (gated on Phase 2 validation, entry count >1000):**
+
+Merge supersession + co-access + correction edges into single graph. Enables knowledge decay propagation, semantic neighborhood enrichment for briefing, correction chain quality scoring (chain length, branching, convergence), and Graphviz export via `petgraph::dot::Dot`. Scoped as individual features when Phase 2 validates the approach.
+
+**Additional candidates:**
 - crt-009: Advanced models (Duplicate Detector, Pattern Merger, optional LLM tier)
 - #34: NLI model integration for conflict heuristic
 
 ### Milestone: Platform Hardening & Release
 
-Depends on Graph Enablement. Stabilize the platform for distribution and parallel development workflows.
+Depends on Activity Intelligence + Graph Enablement. Stabilize the platform for distribution and parallel development workflows.
 
 **Infrastructure debt:**
 - #122 — zombie cargo test processes blocking workspace testing
@@ -125,9 +143,10 @@ Not committed. Directional priorities after the three milestones above.
 
 Open questions, not yet features:
 
-- **Code pattern observation** — Can tool call sequences across sessions reveal emergent coding patterns? Fits col-002 retrospective detection rules. Needs spike to validate signal-to-noise. (Unimatrix #549)
+- **Code pattern observation** — Can tool call sequences across sessions reveal emergent coding patterns? Fits col-002 retrospective detection rules. Needs spike to validate signal-to-noise. (Unimatrix #549). Activity Intelligence (col-021 export) enables offline analysis of tool sequences.
 - **Graph visualization** — petgraph exports to Graphviz DOT. Lightweight path to knowledge topology visualization without full mtx-* UI investment.
 - **Competitive positioning** — FastBuilder.ai analysis (Unimatrix #547) confirmed Unimatrix's approach (confidence decay, contradiction detection) is fundamentally stronger than enforcing architectural compliance. No action needed; validates direction.
+- **Activity intelligence deep analysis** — ASS-018 identified 16 use cases across 5 tiers enabled by connected observation data. Tiers 4-5 (predictive signals, proactive knowledge serving, rework early warning) are future candidates beyond the Activity Intelligence milestone. See `product/research/ass-018/USE-CASES.md`.
 
 ---
 
@@ -181,7 +200,7 @@ Phase prefixes (`nxs`, `vnc`, `crt`, `col`, `alc`, `mtx`, `dsn`, `nan`) are used
 
 ### Key Architecture Decisions
 
-- **SQLite** (normalized, schema v6) replaced redb for analytical query support. HNSW stays in-memory — sqlite-vec rejected (brute-force only, no ANN).
+- **SQLite** (normalized, schema v9) replaced redb for analytical query support. HNSW stays in-memory — sqlite-vec rejected (brute-force only, no ANN).
 - **f64 scoring pipeline** end-to-end. Embeddings remain f32 (ONNX boundary). Precision boundary lives in `VectorIndex::map_neighbours_to_results`.
 - **Hook-driven delivery** via `unimatrix-server hook` subcommand. Single binary routes all Claude Code lifecycle events. Unix domain socket transport between hooks and running MCP server.
 - **Service layer** (vnc-006–009) abstracts business logic from transport. All storage access through services, not direct SQL from transport layers.
