@@ -666,6 +666,42 @@ async fn dispatch_request(
                 }
             }
 
+            // col-018: Record UserPromptSubmit observation as a side effect.
+            // The hook maps non-empty UserPromptSubmit to ContextSearch; the
+            // prompt is the richest topic signal but was previously unrecorded.
+            let topic_signal = unimatrix_observe::extract_topic_signal(&query);
+
+            if let Some(ref sid) = session_id {
+                if !query.is_empty() {
+                    if let Some(ref signal) = topic_signal {
+                        session_registry.record_topic_signal(
+                            sid,
+                            signal.clone(),
+                            unix_now_secs(),
+                        );
+                    }
+
+                    let truncated_input: String = query.chars().take(4096).collect();
+                    let obs = ObservationRow {
+                        session_id: sid.clone(),
+                        ts_millis: (unix_now_secs() as i64).saturating_mul(1000),
+                        hook: "UserPromptSubmit".to_string(),
+                        tool: None,
+                        input: Some(truncated_input),
+                        response_size: None,
+                        response_snippet: None,
+                        topic_signal: topic_signal.clone(),
+                    };
+
+                    let store_for_obs = Arc::clone(store);
+                    spawn_blocking_fire_and_forget(move || {
+                        if let Err(e) = insert_observation(&store_for_obs, &obs) {
+                            tracing::error!(error = %e, "col-018: UserPromptSubmit observation write failed");
+                        }
+                    });
+                }
+            }
+
             handle_context_search(
                 query,
                 session_id,
@@ -3197,5 +3233,333 @@ mod tests {
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.response_size, None);
         assert_eq!(obs.response_snippet, None);
+    }
+
+    // -- col-018: UserPromptSubmit observation tests --
+
+    /// Helper: query the observations table for rows matching session_id.
+    fn query_observations(store: &Store, session_id: &str) -> Vec<(String, i64, String, Option<String>, Option<String>, Option<String>)> {
+        let conn = store.lock_conn();
+        let mut stmt = conn.prepare(
+            "SELECT session_id, ts_millis, hook, tool, input, topic_signal FROM observations WHERE session_id = ?1"
+        ).unwrap();
+        stmt.query_map(unimatrix_store::rusqlite::params![session_id], |row| {
+            Ok((
+                row.get::<_, String>(0).unwrap(),
+                row.get::<_, i64>(1).unwrap(),
+                row.get::<_, String>(2).unwrap(),
+                row.get::<_, Option<String>>(3).unwrap(),
+                row.get::<_, Option<String>>(4).unwrap(),
+                row.get::<_, Option<String>>(5).unwrap(),
+            ))
+        }).unwrap().map(|r| r.unwrap()).collect()
+    }
+
+    #[tokio::test]
+    async fn col018_context_search_creates_observation() {
+        // T-01, AC-01: ContextSearch with valid session_id produces observation row
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let _ = dispatch_request(
+            HookRequest::ContextSearch {
+                query: "implement col-018 feature".to_string(),
+                session_id: Some("sess-obs-1".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
+        ).await;
+
+        // Allow spawn_blocking to complete
+        tokio::task::yield_now().await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        let rows = query_observations(&store, "sess-obs-1");
+        assert_eq!(rows.len(), 1, "expected exactly 1 observation row");
+        let (sid, ts, hook, tool, input, topic) = &rows[0];
+        assert_eq!(sid, "sess-obs-1");
+        assert!(ts > &0, "ts_millis should be positive");
+        assert_eq!(hook, "UserPromptSubmit");
+        assert!(tool.is_none(), "tool should be None for UserPromptSubmit");
+        assert_eq!(input.as_deref(), Some("implement col-018 feature"));
+        assert_eq!(topic.as_deref(), Some("col-018"));
+    }
+
+    #[tokio::test]
+    async fn col018_topic_signal_from_feature_id() {
+        // T-03, AC-02: Prompt containing feature ID produces topic_signal
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let _ = dispatch_request(
+            HookRequest::ContextSearch {
+                query: "work on col-018 design".to_string(),
+                session_id: Some("sess-topic-1".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
+        ).await;
+
+        tokio::task::yield_now().await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        let rows = query_observations(&store, "sess-topic-1");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].5.as_deref(), Some("col-018"));
+    }
+
+    #[tokio::test]
+    async fn col018_topic_signal_null_for_generic_prompt() {
+        // T-04, AC-09: Generic prompt has no topic_signal
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let _ = dispatch_request(
+            HookRequest::ContextSearch {
+                query: "help me fix the bug".to_string(),
+                session_id: Some("sess-generic-1".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
+        ).await;
+
+        tokio::task::yield_now().await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        let rows = query_observations(&store, "sess-generic-1");
+        assert_eq!(rows.len(), 1);
+        assert!(rows[0].5.is_none(), "topic_signal should be NULL for generic prompt");
+    }
+
+    #[tokio::test]
+    async fn col018_topic_signal_from_file_path() {
+        // T-05, AC-02: Prompt with file path containing feature ID
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let _ = dispatch_request(
+            HookRequest::ContextSearch {
+                query: "work on product/features/col-018/SCOPE.md".to_string(),
+                session_id: Some("sess-path-1".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
+        ).await;
+
+        tokio::task::yield_now().await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        let rows = query_observations(&store, "sess-path-1");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].5.as_deref(), Some("col-018"));
+    }
+
+    #[tokio::test]
+    async fn col018_long_prompt_truncated() {
+        // T-06, AC-08: Prompt > 4096 chars truncated in observation input
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let long_query = "a".repeat(5000);
+        let _ = dispatch_request(
+            HookRequest::ContextSearch {
+                query: long_query,
+                session_id: Some("sess-trunc-1".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
+        ).await;
+
+        tokio::task::yield_now().await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        let rows = query_observations(&store, "sess-trunc-1");
+        assert_eq!(rows.len(), 1);
+        let input = rows[0].4.as_ref().expect("input should be present");
+        assert_eq!(input.len(), 4096, "input should be truncated to 4096 chars");
+    }
+
+    #[tokio::test]
+    async fn col018_prompt_at_limit_not_truncated() {
+        // T-07, AC-08: Prompt exactly 4096 chars stored fully
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let exact_query = "b".repeat(4096);
+        let _ = dispatch_request(
+            HookRequest::ContextSearch {
+                query: exact_query.clone(),
+                session_id: Some("sess-exact-1".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
+        ).await;
+
+        tokio::task::yield_now().await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        let rows = query_observations(&store, "sess-exact-1");
+        assert_eq!(rows.len(), 1);
+        let input = rows[0].4.as_ref().expect("input should be present");
+        assert_eq!(input.len(), 4096);
+        assert_eq!(input, &exact_query);
+    }
+
+    #[tokio::test]
+    async fn col018_session_id_none_skips_observation() {
+        // T-08, AC-06: No observation when session_id is None
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let response = dispatch_request(
+            HookRequest::ContextSearch {
+                query: "test query with col-018".to_string(),
+                session_id: None,
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
+        ).await;
+
+        tokio::task::yield_now().await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        // No observation written
+        let conn = store.lock_conn();
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM observations", [], |r| r.get(0)).unwrap();
+        assert_eq!(count, 0, "no observation should be written when session_id is None");
+
+        // Search still returns results
+        match response {
+            HookResponse::Entries { .. } => {}
+            other => panic!("expected Entries, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn col018_empty_query_skips_observation() {
+        // T-09, AC-07: No observation when query is empty
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let _ = dispatch_request(
+            HookRequest::ContextSearch {
+                query: String::new(),
+                session_id: Some("sess-empty-1".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
+        ).await;
+
+        tokio::task::yield_now().await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        let rows = query_observations(&store, "sess-empty-1");
+        assert_eq!(rows.len(), 0, "no observation for empty query");
+    }
+
+    #[tokio::test]
+    async fn col018_search_results_unchanged_with_observation() {
+        // T-10/T-11, AC-04: Search results identical with observation side effect
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let response = dispatch_request(
+            HookRequest::ContextSearch {
+                query: "test col-018".to_string(),
+                session_id: Some("sess-search-1".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
+        ).await;
+
+        // Embed not started -> empty results (same behavior as pre-col-018)
+        match response {
+            HookResponse::Entries { items, total_tokens } => {
+                assert!(items.is_empty());
+                assert_eq!(total_tokens, 0);
+            }
+            other => panic!("expected Entries, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn col018_topic_signal_accumulated_in_session_registry() {
+        // T-12, AC-03: Topic signal recorded in session registry
+        let store = make_store();
+        let embed = make_embed_service();
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-reg-1", None, None);
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let _ = dispatch_request(
+            HookRequest::ContextSearch {
+                query: "implement col-018 now".to_string(),
+                session_id: Some("sess-reg-1".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            },
+            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
+        ).await;
+
+        let state = registry.get_state("sess-reg-1").expect("session should exist");
+        assert!(state.topic_signals.contains_key("col-018"), "topic signal 'col-018' should be accumulated");
+        assert_eq!(state.topic_signals["col-018"].count, 1);
     }
 }
