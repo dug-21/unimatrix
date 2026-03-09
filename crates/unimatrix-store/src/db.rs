@@ -249,7 +249,8 @@ fn create_tables(conn: &Connection) -> Result<()> {
             tool            TEXT,
             input           TEXT,
             response_size   INTEGER,
-            response_snippet TEXT
+            response_snippet TEXT,
+            topic_signal    TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_observations_session ON observations(session_id);
         CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts_millis);

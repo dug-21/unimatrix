@@ -67,6 +67,28 @@ fn extract_from_git_checkout(s: &str) -> Option<String> {
     None
 }
 
+/// Extract a topic signal from raw text using a priority chain.
+///
+/// Priority order (first match wins):
+/// 1. File path: `product/features/{id}/...`
+/// 2. Feature ID pattern: word-boundary `{alpha}-{digits}` tokens
+/// 3. Git checkout: `feature/{id}` in git commands
+///
+/// Individual extractors stay private (ADR-017-001). This facade is the
+/// only public entry point for hook-side topic attribution.
+pub fn extract_topic_signal(text: &str) -> Option<String> {
+    // Priority 1: file path (highest confidence)
+    if let Some(id) = extract_from_path(text) {
+        return Some(id);
+    }
+    // Priority 2: feature ID pattern
+    if let Some(id) = extract_feature_id_pattern(text) {
+        return Some(id);
+    }
+    // Priority 3: git checkout pattern (lowest confidence)
+    extract_from_git_checkout(text)
+}
+
 /// Extract a feature signal from a single record.
 fn extract_feature_signal(record: &ObservationRecord) -> Option<String> {
     if let Some(input) = &record.input {
@@ -408,5 +430,87 @@ mod tests {
 
         let result = attribute_sessions(&sessions, "col-010b");
         assert_eq!(result.len(), 2);
+    }
+
+    // -- col-017: extract_topic_signal facade tests (T-01, T-02, T-03) --
+
+    #[test]
+    fn test_extract_topic_signal_from_path() {
+        // AC-01: file path input
+        assert_eq!(
+            extract_topic_signal("editing product/features/col-002/SCOPE.md"),
+            Some("col-002".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_topic_signal_from_pattern() {
+        // AC-02: feature ID pattern
+        assert_eq!(
+            extract_topic_signal("Working on col-002 design"),
+            Some("col-002".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_topic_signal_from_git() {
+        // AC-03: git branch
+        assert_eq!(
+            extract_topic_signal("git checkout -b feature/col-002"),
+            Some("col-002".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_topic_signal_priority_path_over_pattern() {
+        // AC-04: path > pattern priority (AR-1)
+        // Input has both a path and a standalone pattern; path should win
+        let input = "reading product/features/col-002/SCOPE.md while working on nxs-001";
+        assert_eq!(
+            extract_topic_signal(input),
+            Some("col-002".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_topic_signal_priority_pattern_over_git() {
+        // AC-04: pattern > git priority (AR-1)
+        let input = "working on col-002 then git checkout feature/nxs-001";
+        assert_eq!(
+            extract_topic_signal(input),
+            Some("col-002".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_topic_signal_none() {
+        // AC-05: no signal
+        assert_eq!(extract_topic_signal("regular text with no features"), None);
+        assert_eq!(extract_topic_signal(""), None);
+    }
+
+    #[test]
+    fn test_extract_topic_signal_false_positive_awareness() {
+        // T-03: false-positive awareness (R4)
+        // Per ASS-009, is_valid_feature_id is intentionally permissive (domain-agnostic).
+        // Patterns like "utf-8", "x86-64", "sha-256" do pass validation.
+        // Majority vote at session level mitigates: occasional false positives
+        // are outvoted by repeated real signals across a session.
+        assert_eq!(extract_topic_signal("encoding utf-8"), Some("utf-8".to_string()));
+        assert_eq!(extract_topic_signal("architecture x86-64"), Some("x86-64".to_string()));
+        assert_eq!(extract_topic_signal("hash sha-256"), Some("sha-256".to_string()));
+
+        // Strings without hyphens are correctly rejected
+        assert_eq!(extract_topic_signal("just a number 42"), None);
+        assert_eq!(extract_topic_signal("plain text"), None);
+    }
+
+    #[test]
+    fn test_extract_topic_signal_git_only() {
+        // When only git pattern is present
+        assert_eq!(
+            extract_topic_signal("git checkout feature/nxs-001"),
+            Some("nxs-001".to_string())
+        );
     }
 }

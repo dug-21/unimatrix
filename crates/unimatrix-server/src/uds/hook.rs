@@ -14,6 +14,7 @@ use unimatrix_engine::transport::{LocalTransport, Transport};
 use unimatrix_engine::wire::{
     EntryPayload, HookInput, HookRequest, HookResponse, ImplantEvent, TransportError,
 };
+use unimatrix_observe::extract_topic_signal;
 
 /// Default timeout for transport operations: 40ms.
 /// Leaves 10ms margin in the 50ms total budget for process startup + hash computation.
@@ -155,6 +156,62 @@ fn resolve_cwd(input: &HookInput, project_dir: Option<&Path>) -> PathBuf {
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
+/// Extract topic signal text from a hook event based on event type (col-017, ADR-017-001).
+///
+/// Each event type has a specific text source for topic extraction:
+/// - PreToolUse / PostToolUse (non-rework): `input.extra["tool_input"]` stringified
+/// - SubagentStart: `input.extra["prompt_snippet"]` stringified
+/// - UserPromptSubmit (record path): `input.prompt`
+/// - Other (generic_record_event): `serde_json::to_string(&input.extra)`
+///
+/// Pure string scanning only -- no I/O (C-01).
+fn extract_event_topic_signal(event: &str, input: &HookInput) -> Option<String> {
+    match event {
+        "PreToolUse" => {
+            let text = input
+                .extra
+                .get("tool_input")
+                .map(|v| match v {
+                    serde_json::Value::String(s) => s.clone(),
+                    _ => serde_json::to_string(v).unwrap_or_default(),
+                })
+                .unwrap_or_default();
+            extract_topic_signal(&text)
+        }
+        "PostToolUse" => {
+            let text = input
+                .extra
+                .get("tool_input")
+                .map(|v| match v {
+                    serde_json::Value::String(s) => s.clone(),
+                    _ => serde_json::to_string(v).unwrap_or_default(),
+                })
+                .unwrap_or_default();
+            extract_topic_signal(&text)
+        }
+        "SubagentStart" => {
+            let text = input
+                .extra
+                .get("prompt_snippet")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            extract_topic_signal(text)
+        }
+        "UserPromptSubmit" => {
+            let text = input.prompt.as_deref().unwrap_or("");
+            extract_topic_signal(text)
+        }
+        _ => {
+            // Generic: stringify extra, but only if non-null
+            if input.extra.is_null() {
+                return None;
+            }
+            let text = serde_json::to_string(&input.extra).unwrap_or_default();
+            extract_topic_signal(&text)
+        }
+    }
+}
+
 /// Build a `HookRequest` from the event name and parsed input.
 fn build_request(event: &str, input: &HookInput) -> HookRequest {
     // Resolve session_id with fallback to parent PID
@@ -228,16 +285,35 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                 .unwrap_or("")
                 .to_string();
 
+            // col-017: extract topic signal from tool_input for all PostToolUse
+            let topic_signal = extract_event_topic_signal(event, input);
+
             if !is_rework_eligible_tool(&tool_name) {
-                // Non-rework tool: fall through to generic RecordEvent
-                return generic_record_event(event, session_id, input);
+                // Non-rework tool: fall through to generic RecordEvent (with topic signal)
+                return HookRequest::RecordEvent {
+                    event: ImplantEvent {
+                        event_type: event.to_string(),
+                        session_id,
+                        timestamp: now_secs(),
+                        payload: input.extra.clone(),
+                        topic_signal,
+                    },
+                };
             }
 
             // MultiEdit: generate one RecordEvent per path
             if tool_name == "MultiEdit" {
                 let pairs = extract_rework_events_for_multiedit(&input.extra);
                 if pairs.is_empty() {
-                    return generic_record_event(event, session_id, input);
+                    return HookRequest::RecordEvent {
+                        event: ImplantEvent {
+                            event_type: event.to_string(),
+                            session_id,
+                            timestamp: now_secs(),
+                            payload: input.extra.clone(),
+                            topic_signal,
+                        },
+                    };
                 }
                 let events: Vec<ImplantEvent> = pairs
                     .into_iter()
@@ -250,6 +326,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                             "file_path": file_path,
                             "had_failure": had_failure,
                         }),
+                        topic_signal: topic_signal.clone(),
                     })
                     .collect();
                 return HookRequest::RecordEvents { events };
@@ -273,6 +350,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         "file_path": file_path,
                         "had_failure": had_failure,
                     }),
+                    topic_signal,
                 },
             }
         }
@@ -282,13 +360,17 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
 }
 
 /// Build a generic RecordEvent for non-intercepted hook types.
+///
+/// col-017: Extracts topic signal from stringified `input.extra` for all generic events.
 fn generic_record_event(event: &str, session_id: String, input: &HookInput) -> HookRequest {
+    let topic_signal = extract_event_topic_signal(event, input);
     HookRequest::RecordEvent {
         event: ImplantEvent {
             event_type: event.to_string(),
             session_id,
             timestamp: now_secs(),
             payload: input.extra.clone(),
+            topic_signal,
         },
     }
 }
@@ -1529,6 +1611,125 @@ mod tests {
                 // -- no way for irrelevant fields to leak (struct is typed)
             }
             _ => panic!("expected SessionRegister"),
+        }
+    }
+
+    // -- col-017: Hook-side topic extraction tests (T-08, T-09) --
+
+    #[test]
+    fn test_extract_event_topic_signal_pretooluse() {
+        // AC-08: PreToolUse with feature path in tool_input
+        let input = make_hook_input("PreToolUse", serde_json::json!({
+            "tool_input": "reading product/features/col-002/SCOPE.md"
+        }));
+        let signal = extract_event_topic_signal("PreToolUse", &input);
+        assert_eq!(signal, Some("col-002".to_string()));
+    }
+
+    #[test]
+    fn test_extract_event_topic_signal_subagent() {
+        // AC-09: SubagentStart with feature ID in prompt_snippet
+        let input = make_hook_input("SubagentStart", serde_json::json!({
+            "prompt_snippet": "implement col-017 feature"
+        }));
+        let signal = extract_event_topic_signal("SubagentStart", &input);
+        assert_eq!(signal, Some("col-017".to_string()));
+    }
+
+    #[test]
+    fn test_extract_event_topic_signal_user_prompt() {
+        // UserPromptSubmit uses input.prompt
+        let mut input = make_hook_input("UserPromptSubmit", serde_json::json!({}));
+        input.prompt = Some("fix the nxs-002 bug".to_string());
+        let signal = extract_event_topic_signal("UserPromptSubmit", &input);
+        assert_eq!(signal, Some("nxs-002".to_string()));
+    }
+
+    #[test]
+    fn test_extract_event_topic_signal_none() {
+        // AC-10: no feature-identifying content
+        let input = make_hook_input("PreToolUse", serde_json::json!({
+            "tool_input": "ls -la /tmp"
+        }));
+        let signal = extract_event_topic_signal("PreToolUse", &input);
+        assert!(signal.is_none());
+    }
+
+    #[test]
+    fn test_extract_event_topic_signal_generic_with_feature() {
+        // T-09: generic event with feature path in extra
+        let input = make_hook_input("SomeEvent", serde_json::json!({
+            "tool_input": "read product/features/col-017/SCOPE.md"
+        }));
+        let signal = extract_event_topic_signal("SomeEvent", &input);
+        assert_eq!(signal, Some("col-017".to_string()));
+    }
+
+    #[test]
+    fn test_extract_event_topic_signal_generic_false_positive() {
+        // T-09: SR-2 -- generic event with false-positive pattern in URL
+        let input = make_hook_input("SomeEvent", serde_json::json!({
+            "url": "https://api-v2.example.com"
+        }));
+        let signal = extract_event_topic_signal("SomeEvent", &input);
+        // api-v2 is a valid feature ID pattern but it's just a URL segment
+        // Our current extractor may match it; this documents the behavior
+        // The majority vote mechanism handles false positives at the session level
+    }
+
+    #[test]
+    fn test_build_request_pretooluse_sets_topic_signal() {
+        // End-to-end: build_request for PreToolUse with feature path
+        let input = make_hook_input("PreToolUse", serde_json::json!({
+            "tool_input": {"file_path": "product/features/col-002/SCOPE.md"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.topic_signal, Some("col-002".to_string()));
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_generic_sets_topic_signal() {
+        // Generic record event also extracts topic signal
+        let input = make_hook_input("SomeHook", serde_json::json!({
+            "path": "product/features/nxs-001/SCOPE.md"
+        }));
+        let req = build_request("SomeHook", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.topic_signal, Some("nxs-001".to_string()));
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_no_signal() {
+        let input = make_hook_input("SomeHook", serde_json::json!({
+            "key": "value without features"
+        }));
+        let req = build_request("SomeHook", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert!(event.topic_signal.is_none());
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    /// Helper to construct a HookInput for topic signal tests.
+    fn make_hook_input(event_name: &str, extra: serde_json::Value) -> HookInput {
+        HookInput {
+            hook_event_name: event_name.to_string(),
+            session_id: Some("test-session".to_string()),
+            cwd: Some("/workspace".to_string()),
+            transcript_path: None,
+            prompt: None,
+            extra,
         }
     }
 }

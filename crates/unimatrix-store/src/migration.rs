@@ -15,7 +15,7 @@ use crate::schema::{deserialize_entry, serialize_entry};
 use crate::db::Store;
 
 /// Current schema version.
-pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 9;
+pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 10;
 
 /// Run migration if schema_version is behind CURRENT_SCHEMA_VERSION.
 /// Called from Store::open() after table creation.
@@ -124,6 +124,24 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
                 "UPDATE entries SET pre_quarantine_status = 0 WHERE status = 3 AND pre_quarantine_status IS NULL",
                 [],
             ).map_err(StoreError::Sqlite)?;
+        }
+
+        // v9 -> v10: topic_signal column on observations (col-017)
+        if current_version < 10 {
+            // Guard: check if column already exists (handles partial migration re-run)
+            let has_topic_signal: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM pragma_table_info('observations') WHERE name = 'topic_signal'",
+                    [],
+                    |row| Ok(row.get::<_, i64>(0)? > 0),
+                )
+                .unwrap_or(false);
+
+            if !has_topic_signal {
+                conn.execute_batch(
+                    "ALTER TABLE observations ADD COLUMN topic_signal TEXT;"
+                ).map_err(StoreError::Sqlite)?;
+            }
         }
 
         // Update schema version
