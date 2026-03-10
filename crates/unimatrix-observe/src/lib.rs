@@ -11,6 +11,7 @@ pub mod error;
 pub mod extraction;
 pub mod metrics;
 pub mod report;
+pub mod session_metrics;
 pub mod source;
 pub mod synthesis;
 pub mod types;
@@ -18,18 +19,17 @@ pub mod types;
 // Re-exports for public API
 pub use attribution::{attribute_sessions, extract_topic_signal};
 pub use baseline::{compare_to_baseline, compute_baselines};
-pub use detection::{default_rules, detect_hotspots, DetectionRule};
+pub use detection::{DetectionRule, default_rules, detect_hotspots};
 pub use error::{ObserveError, Result};
 pub use metrics::compute_metric_vector;
 pub use report::{build_report, recommendations_for_hotspots};
+pub use session_metrics::{compute_context_reload_pct, compute_session_summaries};
 pub use source::ObservationSource;
 pub use synthesis::synthesize_narratives;
 pub use types::{
-    BaselineComparison, BaselineEntry, BaselineSet, BaselineStatus,
-    EntryAnalysis, EvidenceCluster,
-    EvidenceRecord, HookType, HotspotCategory, HotspotFinding, HotspotNarrative,
-    MetricVector, ObservationRecord,
-    ObservationStats, ParsedSession, PhaseMetrics, Recommendation, RetrospectiveReport,
-    Severity,
+    AttributionMetadata, BaselineComparison, BaselineEntry, BaselineSet, BaselineStatus,
+    EntryAnalysis, EvidenceCluster, EvidenceRecord, HookType, HotspotCategory, HotspotFinding,
+    HotspotNarrative, KnowledgeReuse, MetricVector, ObservationRecord, ObservationStats,
+    ParsedSession, PhaseMetrics, Recommendation, RetrospectiveReport, SessionSummary, Severity,
     UniversalMetrics,
 };

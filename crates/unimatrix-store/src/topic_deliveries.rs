@@ -134,6 +134,41 @@ impl Store {
         Ok(())
     }
 
+    /// Set the counter fields for a topic to absolute values (ADR-002: idempotent).
+    ///
+    /// Unlike `update_topic_delivery_counters` which applies additive deltas,
+    /// this method overwrites the counter fields with the provided values.
+    /// Repeated calls with the same values produce the same result.
+    ///
+    /// Returns an error if the topic does not exist. The caller should ensure
+    /// the record exists (via `upsert_topic_delivery`) before calling this.
+    pub fn set_topic_delivery_counters(
+        &self,
+        topic: &str,
+        total_sessions: i64,
+        total_tool_calls: i64,
+        total_duration_secs: i64,
+    ) -> Result<()> {
+        let conn = self.lock_conn();
+        let rows_affected = conn
+            .execute(
+                "UPDATE topic_deliveries \
+                 SET total_sessions = ?1, \
+                     total_tool_calls = ?2, \
+                     total_duration_secs = ?3 \
+                 WHERE topic = ?4",
+                rusqlite::params![total_sessions, total_tool_calls, total_duration_secs, topic],
+            )
+            .map_err(StoreError::Sqlite)?;
+
+        if rows_affected == 0 {
+            return Err(StoreError::Deserialization(format!(
+                "topic_delivery not found: {topic}"
+            )));
+        }
+        Ok(())
+    }
+
     /// List all topic deliveries ordered by created_at descending (newest first).
     pub fn list_topic_deliveries(&self) -> Result<Vec<TopicDeliveryRecord>> {
         let conn = self.lock_conn();
@@ -365,6 +400,121 @@ mod tests {
         assert_eq!(result[1].topic, "topic-mid");
         assert_eq!(result[2].created_at, 1000);
         assert_eq!(result[2].topic, "topic-old");
+    }
+
+    // -- set_topic_delivery_counters tests (col-020 C4, ADR-002) --
+
+    #[test]
+    fn test_set_topic_delivery_counters_basic() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        store
+            .upsert_topic_delivery(&make_record("test-topic", 1000))
+            .unwrap();
+        store
+            .set_topic_delivery_counters("test-topic", 5, 100, 3600)
+            .unwrap();
+
+        let fetched = store.get_topic_delivery("test-topic").unwrap().unwrap();
+        assert_eq!(fetched.total_sessions, 5);
+        assert_eq!(fetched.total_tool_calls, 100);
+        assert_eq!(fetched.total_duration_secs, 3600);
+    }
+
+    #[test]
+    fn test_set_topic_delivery_counters_idempotent() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        store
+            .upsert_topic_delivery(&make_record("idem-topic", 1000))
+            .unwrap();
+
+        store
+            .set_topic_delivery_counters("idem-topic", 5, 100, 3600)
+            .unwrap();
+        store
+            .set_topic_delivery_counters("idem-topic", 5, 100, 3600)
+            .unwrap();
+
+        let fetched = store.get_topic_delivery("idem-topic").unwrap().unwrap();
+        assert_eq!(fetched.total_sessions, 5);
+        assert_eq!(fetched.total_tool_calls, 100);
+        assert_eq!(fetched.total_duration_secs, 3600);
+    }
+
+    #[test]
+    fn test_set_topic_delivery_counters_overwrite() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        store
+            .upsert_topic_delivery(&make_record("overwrite-topic", 1000))
+            .unwrap();
+
+        store
+            .set_topic_delivery_counters("overwrite-topic", 5, 100, 3600)
+            .unwrap();
+        store
+            .set_topic_delivery_counters("overwrite-topic", 10, 200, 7200)
+            .unwrap();
+
+        let fetched = store
+            .get_topic_delivery("overwrite-topic")
+            .unwrap()
+            .unwrap();
+        // Absolute set, not additive: values should be (10, 200, 7200), not (15, 300, 10800)
+        assert_eq!(fetched.total_sessions, 10);
+        assert_eq!(fetched.total_tool_calls, 200);
+        assert_eq!(fetched.total_duration_secs, 7200);
+    }
+
+    #[test]
+    fn test_set_topic_delivery_counters_missing_record() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let result = store.set_topic_delivery_counters("nonexistent", 1, 1, 1);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("topic_delivery not found"),
+            "expected 'topic_delivery not found' in: {err_msg}"
+        );
+    }
+
+    #[test]
+    fn test_set_topic_delivery_counters_preserves_non_counter_fields() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let record = TopicDeliveryRecord {
+            topic: "preserve-topic".to_string(),
+            created_at: 1000,
+            completed_at: Some(2000),
+            status: "completed".to_string(),
+            github_issue: Some(42),
+            total_sessions: 0,
+            total_tool_calls: 0,
+            total_duration_secs: 0,
+            phases_completed: Some("design,delivery".to_string()),
+        };
+        store.upsert_topic_delivery(&record).unwrap();
+
+        store
+            .set_topic_delivery_counters("preserve-topic", 5, 100, 3600)
+            .unwrap();
+
+        let fetched = store.get_topic_delivery("preserve-topic").unwrap().unwrap();
+        assert_eq!(fetched.status, "completed");
+        assert_eq!(fetched.github_issue, Some(42));
+        assert_eq!(fetched.completed_at, Some(2000));
+        assert_eq!(fetched.phases_completed.as_deref(), Some("design,delivery"));
+        // Counters updated
+        assert_eq!(fetched.total_sessions, 5);
+        assert_eq!(fetched.total_tool_calls, 100);
+        assert_eq!(fetched.total_duration_secs, 3600);
     }
 
     #[test]

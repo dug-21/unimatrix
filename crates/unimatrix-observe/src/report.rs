@@ -2,7 +2,10 @@
 
 use std::collections::HashSet;
 
-use crate::types::{BaselineComparison, EntryAnalysis, HotspotFinding, MetricVector, ObservationRecord, Recommendation, RetrospectiveReport};
+use crate::types::{
+    BaselineComparison, EntryAnalysis, HotspotFinding, MetricVector, ObservationRecord,
+    Recommendation, RetrospectiveReport,
+};
 
 /// Build a self-contained RetrospectiveReport.
 ///
@@ -34,6 +37,11 @@ pub fn build_report(
         entries_analysis,
         narratives: None,
         recommendations: vec![],
+        session_summaries: None,
+        knowledge_reuse: None,
+        rework_session_count: None,
+        context_reload_pct: None,
+        attribution: None,
     }
 }
 
@@ -87,9 +95,7 @@ fn recommendation_for(hotspot: &HotspotFinding) -> Option<Recommendation> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{
-        HookType, HotspotCategory, MetricVector, Severity, UniversalMetrics,
-    };
+    use crate::types::{HookType, HotspotCategory, MetricVector, Severity, UniversalMetrics};
 
     fn make_record(session: &str) -> ObservationRecord {
         ObservationRecord {
@@ -111,14 +117,28 @@ mod tests {
             make_record("s2"),
             make_record("s3"),
         ];
-        let report = build_report("col-002", &records, MetricVector::default(), vec![], None, None);
+        let report = build_report(
+            "col-002",
+            &records,
+            MetricVector::default(),
+            vec![],
+            None,
+            None,
+        );
         assert_eq!(report.session_count, 3);
     }
 
     #[test]
     fn test_build_report_total_records() {
         let records = vec![make_record("s1"), make_record("s1"), make_record("s2")];
-        let report = build_report("col-002", &records, MetricVector::default(), vec![], None, None);
+        let report = build_report(
+            "col-002",
+            &records,
+            MetricVector::default(),
+            vec![],
+            None,
+            None,
+        );
         assert_eq!(report.total_records, 3);
     }
 
@@ -139,7 +159,14 @@ mod tests {
             threshold: 2.0,
             evidence: vec![],
         }];
-        let report = build_report("col-002", &[], MetricVector::default(), hotspots, None, None);
+        let report = build_report(
+            "col-002",
+            &[],
+            MetricVector::default(),
+            hotspots,
+            None,
+            None,
+        );
         assert_eq!(report.hotspots.len(), 1);
         assert_eq!(report.hotspots[0].rule_name, "test");
     }
@@ -217,7 +244,14 @@ mod tests {
             success_session_count: 1,
             rework_session_count: 2,
         }];
-        let report = build_report("col-009", &[], MetricVector::default(), vec![], None, Some(analysis));
+        let report = build_report(
+            "col-009",
+            &[],
+            MetricVector::default(),
+            vec![],
+            None,
+            Some(analysis),
+        );
         let json = serde_json::to_string(&report).expect("serialize");
         assert!(json.contains("entries_analysis"));
         assert!(json.contains("\"entry_id\":42"));
@@ -231,7 +265,14 @@ mod tests {
             rework_flag_count: 5,
             ..Default::default()
         }];
-        let report = build_report("col-009", &[], MetricVector::default(), vec![], None, Some(analysis));
+        let report = build_report(
+            "col-009",
+            &[],
+            MetricVector::default(),
+            vec![],
+            None,
+            Some(analysis),
+        );
         let entries = report.entries_analysis.unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].entry_id, 10);
@@ -396,7 +437,7 @@ mod tests {
 
     #[test]
     fn test_narratives_present_when_some() {
-        use crate::types::{HotspotNarrative, EvidenceCluster};
+        use crate::types::{EvidenceCluster, HotspotNarrative};
         let mut report = build_report("col-010b", &[], MetricVector::default(), vec![], None, None);
         report.narratives = Some(vec![HotspotNarrative {
             hotspot_type: "test".to_string(),

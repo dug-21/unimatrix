@@ -114,6 +114,52 @@ impl Store {
         Ok(())
     }
 
+    /// Scan query log records for multiple sessions, ordered by timestamp ascending.
+    ///
+    /// Session IDs are batched into chunks of 50 to avoid large IN clauses (R-11).
+    /// Returns an empty Vec if `session_ids` is empty or no rows match.
+    pub fn scan_query_log_by_sessions(&self, session_ids: &[&str]) -> Result<Vec<QueryLogRecord>> {
+        if session_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let conn = self.lock_conn();
+        let mut all_results: Vec<QueryLogRecord> = Vec::new();
+
+        for chunk in session_ids.chunks(50) {
+            let placeholders: String = chunk
+                .iter()
+                .enumerate()
+                .map(|(i, _)| format!("?{}", i + 1))
+                .collect::<Vec<_>>()
+                .join(",");
+
+            let sql = format!(
+                "SELECT query_id, session_id, query_text, ts, result_count, \
+                        result_entry_ids, similarity_scores, retrieval_mode, source \
+                 FROM query_log \
+                 WHERE session_id IN ({placeholders}) \
+                 ORDER BY ts ASC"
+            );
+
+            let mut stmt = conn.prepare(&sql).map_err(StoreError::Sqlite)?;
+            let params: Vec<Box<dyn rusqlite::types::ToSql>> = chunk
+                .iter()
+                .map(|id| Box::new(id.to_string()) as Box<dyn rusqlite::types::ToSql>)
+                .collect();
+
+            let rows = stmt
+                .query_map(rusqlite::params_from_iter(params.iter()), row_to_query_log)
+                .map_err(StoreError::Sqlite)?;
+
+            for row in rows {
+                all_results.push(row.map_err(StoreError::Sqlite)?);
+            }
+        }
+
+        Ok(all_results)
+    }
+
     /// Scan all query log records for a given session, ordered by timestamp ascending.
     ///
     /// Returns an empty Vec if no rows match (not an error).
@@ -531,5 +577,83 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert!(rows[0].query_id > 0);
         assert_eq!(rows[0].result_count, 3);
+    }
+
+    // -- scan_query_log_by_sessions tests (col-020 C4) --
+
+    #[test]
+    fn test_scan_query_log_by_sessions_returns_matching() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        // Insert 5 rows across 3 sessions
+        store
+            .insert_query_log(&make_record("s1", "q1", 100, &[1], &[0.9], "strict", "uds"))
+            .unwrap();
+        store
+            .insert_query_log(&make_record("s1", "q2", 200, &[2], &[0.8], "strict", "uds"))
+            .unwrap();
+        store
+            .insert_query_log(&make_record("s2", "q3", 300, &[3], &[0.7], "strict", "mcp"))
+            .unwrap();
+        store
+            .insert_query_log(&make_record(
+                "s3",
+                "q4",
+                400,
+                &[4],
+                &[0.6],
+                "flexible",
+                "uds",
+            ))
+            .unwrap();
+        store
+            .insert_query_log(&make_record(
+                "s3",
+                "q5",
+                500,
+                &[5],
+                &[0.5],
+                "flexible",
+                "mcp",
+            ))
+            .unwrap();
+
+        // Query for s1 and s2 only
+        let rows = store.scan_query_log_by_sessions(&["s1", "s2"]).unwrap();
+        assert_eq!(rows.len(), 3);
+        assert!(
+            rows.iter()
+                .all(|r| r.session_id == "s1" || r.session_id == "s2")
+        );
+        // Verify ordering by ts ascending
+        assert!(rows[0].ts <= rows[1].ts);
+        assert!(rows[1].ts <= rows[2].ts);
+    }
+
+    #[test]
+    fn test_scan_query_log_by_sessions_empty_ids() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        store
+            .insert_query_log(&make_record("s1", "q1", 100, &[], &[], "strict", "uds"))
+            .unwrap();
+
+        let rows = store.scan_query_log_by_sessions(&[]).unwrap();
+        assert!(rows.is_empty());
+    }
+
+    #[test]
+    fn test_scan_query_log_by_sessions_no_matching() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        store
+            .insert_query_log(&make_record("s1", "q1", 100, &[], &[], "strict", "uds"))
+            .unwrap();
+
+        let rows = store.scan_query_log_by_sessions(&["s99"]).unwrap();
+        assert!(rows.is_empty());
     }
 }

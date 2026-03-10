@@ -9,8 +9,7 @@ use crate::db::Store;
 
 /// All SELECT columns for the entries table, in DDL order.
 /// Used by every query that constructs EntryRecord.
-pub const ENTRY_COLUMNS: &str =
-    "id, title, content, topic, category, source, status, confidence, \
+pub const ENTRY_COLUMNS: &str = "id, title, content, topic, category, source, status, confidence, \
      created_at, updated_at, last_accessed_at, access_count, \
      supersedes, superseded_by, correction_count, embedding_dim, \
      created_by, modified_by, content_hash, previous_hash, \
@@ -28,15 +27,16 @@ pub fn entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<EntryRecord> 
         category: row.get("category")?,
         tags: vec![], // populated by load_tags_for_entries
         source: row.get("source")?,
-        status: Status::try_from(row.get::<_, i64>("status")? as u8)
-            .unwrap_or(Status::Active),
+        status: Status::try_from(row.get::<_, i64>("status")? as u8).unwrap_or(Status::Active),
         confidence: row.get("confidence")?,
         created_at: row.get::<_, i64>("created_at")? as u64,
         updated_at: row.get::<_, i64>("updated_at")? as u64,
         last_accessed_at: row.get::<_, i64>("last_accessed_at")? as u64,
         access_count: row.get::<_, i64>("access_count")? as u32,
         supersedes: row.get::<_, Option<i64>>("supersedes")?.map(|v| v as u64),
-        superseded_by: row.get::<_, Option<i64>>("superseded_by")?.map(|v| v as u64),
+        superseded_by: row
+            .get::<_, Option<i64>>("superseded_by")?
+            .map(|v| v as u64),
         correction_count: row.get::<_, i64>("correction_count")? as u32,
         embedding_dim: row.get::<_, i64>("embedding_dim")? as u16,
         created_by: row.get("created_by")?,
@@ -48,7 +48,8 @@ pub fn entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<EntryRecord> 
         trust_source: row.get("trust_source")?,
         helpful_count: row.get::<_, i64>("helpful_count")? as u32,
         unhelpful_count: row.get::<_, i64>("unhelpful_count")? as u32,
-        pre_quarantine_status: row.get::<_, Option<i64>>("pre_quarantine_status")?
+        pre_quarantine_status: row
+            .get::<_, Option<i64>>("pre_quarantine_status")?
             .map(|v| v as u8),
     })
 }
@@ -263,10 +264,7 @@ impl Store {
             .map_err(StoreError::Sqlite)?;
 
         let mut entries: Vec<EntryRecord> = stmt
-            .query_map(
-                rusqlite::params![status as u8 as i64],
-                entry_from_row,
-            )
+            .query_map(rusqlite::params![status as u8 as i64], entry_from_row)
             .map_err(StoreError::Sqlite)?
             .collect::<rusqlite::Result<Vec<_>>>()
             .map_err(StoreError::Sqlite)?;
@@ -516,10 +514,7 @@ impl Store {
                 rusqlite::params![staleness_cutoff as i64, n as i64],
                 |row| {
                     Ok((
-                        (
-                            row.get::<_, i64>(0)? as u64,
-                            row.get::<_, i64>(1)? as u64,
-                        ),
+                        (row.get::<_, i64>(0)? as u64, row.get::<_, i64>(1)? as u64),
                         CoAccessRecord {
                             count: row.get::<_, i64>(2)? as u32,
                             last_updated: row.get::<_, i64>(3)? as u64,
@@ -596,7 +591,7 @@ impl Store {
         let mut stmt = conn
             .prepare(
                 "SELECT phase_name, duration_secs, tool_call_count
-                 FROM observation_phase_metrics WHERE feature_cycle = ?1"
+                 FROM observation_phase_metrics WHERE feature_cycle = ?1",
             )
             .map_err(StoreError::Sqlite)?;
         let rows = stmt
@@ -637,7 +632,7 @@ impl Store {
                     follow_up_issues_created, knowledge_entries_stored,
                     sleep_workaround_count, agent_hotspot_count,
                     friction_hotspot_count, session_hotspot_count, scope_hotspot_count
-                 FROM observation_metrics ORDER BY feature_cycle"
+                 FROM observation_metrics ORDER BY feature_cycle",
             )
             .map_err(StoreError::Sqlite)?;
         let rows = stmt
@@ -684,7 +679,7 @@ impl Store {
         let mut stmt = conn
             .prepare(
                 "SELECT feature_cycle, phase_name, duration_secs, tool_call_count
-                 FROM observation_phase_metrics ORDER BY feature_cycle, phase_name"
+                 FROM observation_phase_metrics ORDER BY feature_cycle, phase_name",
             )
             .map_err(StoreError::Sqlite)?;
         let phase_rows = stmt
@@ -777,6 +772,36 @@ impl Store {
         })
     }
 
+    /// Count active entries grouped by category.
+    ///
+    /// Returns a map of category name to count. Only entries with `status = 0`
+    /// (Active) are counted. Deprecated, Proposed, and Quarantined entries are excluded.
+    /// Returns an empty HashMap if no active entries exist.
+    pub fn count_active_entries_by_category(&self) -> Result<HashMap<String, u64>> {
+        let conn = self.lock_conn();
+        let mut stmt = conn
+            .prepare(
+                "SELECT category, COUNT(*) FROM entries \
+                 WHERE status = 0 \
+                 GROUP BY category",
+            )
+            .map_err(StoreError::Sqlite)?;
+
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)? as u64))
+            })
+            .map_err(StoreError::Sqlite)?;
+
+        let mut result: HashMap<String, u64> = HashMap::new();
+        for row in rows {
+            let (category, count) = row.map_err(StoreError::Sqlite)?;
+            result.insert(category, count);
+        }
+
+        Ok(result)
+    }
+
     /// Load only Active entries with their tags populated.
     ///
     /// More efficient than loading all entries when only active ones are needed (crt-013).
@@ -846,4 +871,61 @@ pub struct StatusAggregates {
     pub trust_source_distribution: BTreeMap<String, u64>,
     /// Number of entries where created_by is empty or NULL.
     pub unattributed_count: u64,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::schema::Status;
+    use crate::test_helpers::{TestDb, TestEntry};
+
+    #[test]
+    fn test_count_active_entries_by_category_basic() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        // Insert 3 active entries: 2 convention, 1 pattern
+        let id1 = store
+            .insert(TestEntry::new("t", "convention").build())
+            .unwrap();
+        let _id2 = store
+            .insert(TestEntry::new("t", "convention").build())
+            .unwrap();
+        let _id3 = store
+            .insert(TestEntry::new("t", "pattern").build())
+            .unwrap();
+
+        // Deprecate one convention
+        store.update_status(id1, Status::Deprecated).unwrap();
+
+        let counts = store.count_active_entries_by_category().unwrap();
+        assert_eq!(counts.get("convention"), Some(&1));
+        assert_eq!(counts.get("pattern"), Some(&1));
+    }
+
+    #[test]
+    fn test_count_active_entries_by_category_excludes_quarantined() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let id1 = store
+            .insert(TestEntry::new("t", "decision").build())
+            .unwrap();
+        let _id2 = store
+            .insert(TestEntry::new("t", "decision").build())
+            .unwrap();
+
+        store.update_status(id1, Status::Quarantined).unwrap();
+
+        let counts = store.count_active_entries_by_category().unwrap();
+        assert_eq!(counts.get("decision"), Some(&1));
+    }
+
+    #[test]
+    fn test_count_active_entries_by_category_empty_store() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let counts = store.count_active_entries_by_category().unwrap();
+        assert!(counts.is_empty());
+    }
 }
