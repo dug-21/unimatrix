@@ -261,8 +261,8 @@ impl UnimatrixServer {
         Parameters(params): Parameters<SearchParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id)?;
-        self.require_cap(&ctx.agent_id, Capability::Search)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id).await?;
+        self.require_cap(&ctx.agent_id, Capability::Search).await?;
 
         // 2. Validation
         validate_search_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -339,8 +339,8 @@ impl UnimatrixServer {
         Parameters(params): Parameters<LookupParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id)?;
-        self.require_cap(&ctx.agent_id, Capability::Read)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id).await?;
+        self.require_cap(&ctx.agent_id, Capability::Read).await?;
 
         // 2. Validation
         validate_lookup_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -386,7 +386,7 @@ impl UnimatrixServer {
 
         // 5. Audit (standalone, best-effort)
         let result_count = target_ids.len();
-        let _ = self.audit.log_event(AuditEvent {
+        self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
@@ -422,8 +422,8 @@ impl UnimatrixServer {
         Parameters(params): Parameters<StoreParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
-        self.require_cap(&ctx.agent_id, Capability::Write)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        self.require_cap(&ctx.agent_id, Capability::Write).await?;
 
         // 2. Validation
         validate_store_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -497,8 +497,8 @@ impl UnimatrixServer {
         Parameters(params): Parameters<GetParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id)?;
-        self.require_cap(&ctx.agent_id, Capability::Read)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id).await?;
+        self.require_cap(&ctx.agent_id, Capability::Read).await?;
 
         // 2. Validation
         validate_get_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -517,7 +517,7 @@ impl UnimatrixServer {
         let result = format_single_entry(&entry, ctx.format);
 
         // 5. Audit (standalone, best-effort)
-        let _ = self.audit.log_event(AuditEvent {
+        self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
@@ -553,8 +553,8 @@ impl UnimatrixServer {
         Parameters(params): Parameters<CorrectParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
-        self.require_cap(&ctx.agent_id, Capability::Write)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        self.require_cap(&ctx.agent_id, Capability::Write).await?;
 
         // 2. Validation (includes original_id range check)
         validate_correct_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -629,8 +629,8 @@ impl UnimatrixServer {
         Parameters(params): Parameters<DeprecateParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
-        self.require_cap(&ctx.agent_id, Capability::Write)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        self.require_cap(&ctx.agent_id, Capability::Write).await?;
 
         // 2. Validation (includes id range check)
         validate_deprecate_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -690,8 +690,8 @@ impl UnimatrixServer {
         Parameters(params): Parameters<StatusParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + capability (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
-        self.require_cap(&ctx.agent_id, Capability::Admin)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        self.require_cap(&ctx.agent_id, Capability::Admin).await?;
 
         // 2. Validation
         validate_status_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -729,7 +729,7 @@ impl UnimatrixServer {
         }
 
         // 5. Audit (standalone, best-effort)
-        let _ = self.audit.log_event(AuditEvent {
+        self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
@@ -767,8 +767,8 @@ impl UnimatrixServer {
         #[cfg(feature = "mcp-briefing")]
         {
             // 1. Identity + format + audit context (vnc-008: ToolContext)
-            let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id)?;
-            self.require_cap(&ctx.agent_id, Capability::Read)?;
+            let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id).await?;
+            self.require_cap(&ctx.agent_id, Capability::Read).await?;
 
             // 2. Validation
             validate_briefing_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -806,7 +806,7 @@ impl UnimatrixServer {
             };
 
             // 6. Audit (transport-specific, best-effort)
-            let _ = self.audit.log_event(AuditEvent {
+            self.audit_fire_and_forget(AuditEvent {
                 event_id: 0,
                 timestamp: 0,
                 session_id: String::new(),
@@ -844,8 +844,8 @@ impl UnimatrixServer {
         Parameters(params): Parameters<QuarantineParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
-        self.require_cap(&ctx.agent_id, Capability::Admin)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        self.require_cap(&ctx.agent_id, Capability::Admin).await?;
 
         // 2. Validation
         validate_quarantine_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -948,8 +948,8 @@ impl UnimatrixServer {
         Parameters(params): Parameters<EnrollParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None)?;
-        self.require_cap(&ctx.agent_id, Capability::Admin)?;
+        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        self.require_cap(&ctx.agent_id, Capability::Admin).await?;
 
         // 2. Input validation
         validate_enroll_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -986,7 +986,7 @@ impl UnimatrixServer {
             )
         };
 
-        let event = AuditEvent {
+        self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),
@@ -995,10 +995,7 @@ impl UnimatrixServer {
             target_ids: vec![],
             outcome: Outcome::Success,
             detail,
-        };
-        self.audit
-            .log_event(event)
-            .map_err(rmcp::ErrorData::from)?;
+        });
 
         Ok(response)
     }
@@ -1017,6 +1014,7 @@ impl UnimatrixServer {
         // 1. Identity resolution (no format param on this handler)
         let identity = self
             .resolve_agent(&params.agent_id)
+            .await
             .map_err(rmcp::ErrorData::from)?;
 
         // 2. Validation
@@ -1204,7 +1202,7 @@ impl UnimatrixServer {
         }
 
         // 11. Audit
-        let _ = self.audit.log_event(AuditEvent {
+        self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
             session_id: String::new(),

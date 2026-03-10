@@ -1556,12 +1556,25 @@ pub(crate) async fn write_signals_to_queue(output: &SignalOutput, store: &Arc<St
         signal_source,
     };
 
-    if let Err(e) = store.insert_signal(&record) {
-        tracing::warn!(
-            session_id = %output.session_id,
-            error = %e,
-            "write_signals_to_queue: failed to insert signal"
-        );
+    // Use spawn_blocking to keep store.lock_conn() off the async runtime (#176).
+    let store = Arc::clone(store);
+    let session_id = output.session_id.clone();
+    match tokio::task::spawn_blocking(move || store.insert_signal(&record)).await {
+        Ok(Ok(_)) => {}
+        Ok(Err(e)) => {
+            tracing::warn!(
+                session_id = %session_id,
+                error = %e,
+                "write_signals_to_queue: failed to insert signal"
+            );
+        }
+        Err(e) => {
+            tracing::warn!(
+                session_id = %session_id,
+                error = %e,
+                "write_signals_to_queue: spawn_blocking failed"
+            );
+        }
     }
 }
 
@@ -1573,11 +1586,19 @@ pub(crate) async fn run_confidence_consumer(
     entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
 ) {
-    // Step 1: Drain all Helpful signals in one transaction
-    let signals = match store.drain_signals(SignalType::Helpful) {
-        Ok(s) => s,
-        Err(e) => {
+    // Step 1: Drain all Helpful signals in one transaction.
+    // Use spawn_blocking to keep store.lock_conn() off the async runtime (#176).
+    let store_drain = Arc::clone(store);
+    let signals = match tokio::task::spawn_blocking(move || {
+        store_drain.drain_signals(SignalType::Helpful)
+    }).await {
+        Ok(Ok(s)) => s,
+        Ok(Err(e)) => {
             tracing::warn!(error = %e, "run_confidence_consumer: drain_signals failed");
+            return;
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "run_confidence_consumer: spawn_blocking failed");
             return;
         }
     };
@@ -1689,11 +1710,19 @@ pub(crate) async fn run_retrospective_consumer(
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
     entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
 ) {
-    // Step 1: Drain all Flagged signals
-    let signals = match store.drain_signals(SignalType::Flagged) {
-        Ok(s) => s,
-        Err(e) => {
+    // Step 1: Drain all Flagged signals.
+    // Use spawn_blocking to keep store.lock_conn() off the async runtime (#176).
+    let store_drain = Arc::clone(store);
+    let signals = match tokio::task::spawn_blocking(move || {
+        store_drain.drain_signals(SignalType::Flagged)
+    }).await {
+        Ok(Ok(s)) => s,
+        Ok(Err(e)) => {
             tracing::warn!(error = %e, "run_retrospective_consumer: drain_signals failed");
+            return;
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "run_retrospective_consumer: spawn_blocking failed");
             return;
         }
     };
