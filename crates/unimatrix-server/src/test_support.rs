@@ -17,7 +17,7 @@ use unimatrix_store::Store;
 use crate::infra::audit::AuditLog;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::usage_dedup::UsageDedup;
-use crate::services::{AuditContext, AuditSource, CallerId, ServiceLayer};
+use crate::services::{AuditContext, AuditSource, CallerId, RateLimitConfig, ServiceLayer};
 use crate::services::search::{RetrievalMode, ServiceSearchParams};
 
 /// A search result from the test harness.
@@ -103,7 +103,13 @@ impl TestHarness {
         let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
         let usage_dedup = Arc::new(UsageDedup::new());
 
-        let layer = ServiceLayer::new(
+        let rate_config = RateLimitConfig {
+            search_limit: u32::MAX,
+            write_limit: u32::MAX,
+            window_secs: 3600,
+        };
+
+        let layer = ServiceLayer::with_rate_config(
             Arc::clone(&store),
             vector_index,
             vector_store,
@@ -112,6 +118,7 @@ impl TestHarness {
             adapt_service,
             audit,
             usage_dedup,
+            rate_config,
         );
 
         Some(TestHarness { layer, store })

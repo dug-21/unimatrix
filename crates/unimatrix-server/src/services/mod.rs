@@ -32,7 +32,7 @@ pub(crate) mod usage;
 
 pub(crate) use briefing::BriefingService;
 pub(crate) use confidence::ConfidenceService;
-pub(crate) use gateway::SecurityGateway;
+pub(crate) use gateway::{RateLimitConfig, SecurityGateway};
 pub(crate) use search::{RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
 pub(crate) use store_ops::StoreService;
@@ -221,7 +221,21 @@ impl ServiceLayer {
         audit: Arc<AuditLog>,
         usage_dedup: Arc<UsageDedup>,
     ) -> Self {
-        let gateway = Arc::new(SecurityGateway::new(Arc::clone(&audit)));
+        Self::with_rate_config(store, vector_index, vector_store, entry_store, embed_service, adapt_service, audit, usage_dedup, RateLimitConfig::default())
+    }
+
+    pub(crate) fn with_rate_config(
+        store: Arc<Store>,
+        vector_index: Arc<VectorIndex>,
+        vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
+        entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+        embed_service: Arc<EmbedServiceHandle>,
+        adapt_service: Arc<AdaptationService>,
+        audit: Arc<AuditLog>,
+        usage_dedup: Arc<UsageDedup>,
+        rate_config: RateLimitConfig,
+    ) -> Self {
+        let gateway = Arc::new(SecurityGateway::with_rate_config(Arc::clone(&audit), rate_config));
 
         let search = SearchService::new(
             Arc::clone(&store),

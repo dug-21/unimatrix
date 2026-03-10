@@ -102,6 +102,30 @@ impl RateLimiter {
 }
 
 // ---------------------------------------------------------------------------
+// RateLimitConfig
+// ---------------------------------------------------------------------------
+
+/// Configuration for rate limiter thresholds.
+///
+/// Production defaults: 300 searches, 60 writes, 3600s window.
+#[derive(Debug, Clone)]
+pub(crate) struct RateLimitConfig {
+    pub search_limit: u32,
+    pub write_limit: u32,
+    pub window_secs: u64,
+}
+
+impl Default for RateLimitConfig {
+    fn default() -> Self {
+        RateLimitConfig {
+            search_limit: 300,
+            write_limit: 60,
+            window_secs: 3600,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // SecurityGateway
 // ---------------------------------------------------------------------------
 
@@ -116,9 +140,13 @@ pub(crate) struct SecurityGateway {
 
 impl SecurityGateway {
     pub(crate) fn new(audit: Arc<AuditLog>) -> Self {
+        Self::with_rate_config(audit, RateLimitConfig::default())
+    }
+
+    pub(crate) fn with_rate_config(audit: Arc<AuditLog>, config: RateLimitConfig) -> Self {
         SecurityGateway {
             audit,
-            rate_limiter: RateLimiter::new(300, 60, 3600),
+            rate_limiter: RateLimiter::new(config.search_limit, config.write_limit, config.window_secs),
         }
     }
 
@@ -680,6 +708,36 @@ mod tests {
 
         // Expired entries evicted on next check
         assert!(gw.check_search_rate(&caller).is_ok(), "should succeed after eviction");
+    }
+
+    #[test]
+    fn with_rate_config_uses_custom_limits() {
+        use unimatrix_store::Store;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = Store::open(dir.path().join("test.db")).expect("store");
+        let audit = Arc::new(AuditLog::new(Arc::new(store)));
+        std::mem::forget(dir);
+
+        let config = RateLimitConfig {
+            search_limit: u32::MAX,
+            write_limit: u32::MAX,
+            window_secs: 3600,
+        };
+        let gw = SecurityGateway::with_rate_config(audit, config);
+        let caller = CallerId::Agent("stress-test".to_string());
+
+        // Should allow far more than the default 60-write limit
+        for _ in 0..200 {
+            gw.check_write_rate(&caller).expect("permissive config should not limit");
+        }
+    }
+
+    #[test]
+    fn default_rate_limit_config_matches_production() {
+        let config = RateLimitConfig::default();
+        assert_eq!(config.search_limit, 300);
+        assert_eq!(config.write_limit, 60);
+        assert_eq!(config.window_secs, 3600);
     }
 
     #[test]
