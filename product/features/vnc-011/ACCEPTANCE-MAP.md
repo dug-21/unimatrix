@@ -1,0 +1,26 @@
+# vnc-011 Acceptance Criteria Map
+
+| AC-ID | Description | Verification Method | Verification Detail | Status |
+|-------|-------------|--------------------|--------------------|--------|
+| AC-01 | `context_retrospective` returns markdown by default (no `format` param) | test | Unit test: call `format_retrospective_markdown` with a populated report, assert output starts with `# Retrospective:` |  PENDING |
+| AC-02 | `format: "json"` returns unchanged JSON output | test | Unit test: build a known report, call existing `format_retrospective_report`, compare output is identical to pre-vnc-011 behavior. Confirm `evidence_limit.unwrap_or(3)` is unchanged on JSON path. | PENDING |
+| AC-03 | Baseline comparisons in markdown include only Outlier and NewSignal status entries | test | Unit test: build report with baseline entries of all 4 statuses (Normal, Outlier, NewSignal, NoVariance), assert markdown contains only Outlier/NewSignal metric names, assert Normal/NoVariance metric names absent | PENDING |
+| AC-04 | Hotspot findings collapsed by `rule_name` with per-entity breakdown | test | Unit test: build report with 4 findings sharing one `rule_name`, assert single F-XX heading with combined event count and per-tool breakdown line | PENDING |
+| AC-05 | k=3 deterministic examples per collapsed finding (earliest by timestamp) | test | Unit test: build report with 10 evidence records with distinct timestamps per finding group, assert exactly 3 example bullets rendered, assert they are the 3 with lowest `ts` values | PENDING |
+| AC-06 | Zero-activity phases suppressed in markdown output | test | Unit test: build report with phase having `tool_call_count=0, duration_secs=0` in phase outlier data, assert phase absent from rendered output | PENDING |
+| AC-07 | Recommendations deduplicated by `hotspot_type` | test | Unit test: build report with 2 recommendations sharing `hotspot_type` but different `action` strings, assert only first action appears; build with 3 distinct types, assert all 3 appear | PENDING |
+| AC-08 | `evidence_limit` default unchanged for JSON path | test | Unit test: deserialize `RetrospectiveParams` with no `evidence_limit`, confirm JSON path still uses `unwrap_or(3)`. Markdown path ignores `evidence_limit` entirely. | PENDING |
+| AC-09 | Session table rendered from `session_summaries` | test | Unit test: build report with 2 `SessionSummary` entries, assert markdown table has 2 data rows with correct columns (Window, Calls, Knowledge, Outcome) | PENDING |
+| AC-10 | Token reduction >= 80% for typical reports | test | Integration test: generate markdown and JSON for same report with 5+ hotspot findings and 20+ baseline comparisons, assert markdown byte count < 20% of JSON byte count | PENDING |
+| AC-11 | All existing tests pass | shell | `cargo test --workspace` exits 0 with no failures | PENDING |
+| AC-12 | Session table omitted when `session_summaries` is None | test | Unit test: build report with `session_summaries: None`, assert `## Sessions` absent from output | PENDING |
+| AC-13 | Attribution quality note rendered when sessions partially attributed | test | Unit test: build report with `attribution: Some(AttributionMetadata { attributed_session_count: 3, total_session_count: 5 })`, assert blockquote `> Note: 3/5 sessions attributed` present | PENDING |
+| AC-14 | Knowledge reuse section rendered from `feature_knowledge_reuse` | test | Unit test: build report with `FeatureKnowledgeReuse` populated, assert `## Knowledge Reuse` present with correct delivery_count and cross_session_count | PENDING |
+| AC-15 | Narrative collapse uses summary + cluster count, preserves sequence_pattern | test | Unit test: build report with narratives containing `sequence_pattern: Some("30s->60s->90s")`, assert pattern appears inline in finding output, assert cluster count present | PENDING |
+| AC-16 | Formatter handles all-None optional fields gracefully | test | Unit test: build minimal report (all Optional fields None, empty hotspots, empty recommendations), assert valid markdown with header line only, no panics | PENDING |
+| AC-17 | `rework_session_count` rendered in markdown when present and > 0 | test | Unit test: build report with `rework_session_count: Some(2)`, assert output contains `2 rework sessions` | PENDING |
+| AC-18 | `context_reload_pct` rendered in markdown when present | test | Unit test: build report with `context_reload_pct: Some(34.5)`, assert output contains `34.5% context reload` | PENDING |
+| AC-19 | `format: Option<String>` field added to `RetrospectiveParams` | grep | `grep -q 'pub format: Option<String>' crates/unimatrix-server/src/mcp/tools.rs` | PENDING |
+| AC-20 | Handler dispatches to markdown formatter by default, JSON formatter when `format: "json"` | test | Unit test: verify dispatch logic routes correctly for None, Some("markdown"), Some("json"), Some("unknown") | PENDING |
+| AC-21 | `retrospective.rs` module exists and is gated behind `mcp-briefing` feature | file-check | `test -f crates/unimatrix-server/src/mcp/response/retrospective.rs` | PENDING |
+| AC-22 | Finding severity ordering: Critical > Warning > Info, then by event count desc | test | Unit test: build report with findings of mixed severities, assert F-01 is Critical group, F-02 is Warning group | PENDING |
