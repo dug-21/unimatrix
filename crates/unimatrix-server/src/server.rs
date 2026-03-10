@@ -2156,7 +2156,7 @@ mod tests {
             let store = unimatrix_store::Store::open(&path).unwrap();
             let conn = store.lock_conn();
 
-            // Verify schema version is now current (10)
+            // Verify schema version is now current (11)
             let version: i64 = conn
                 .query_row(
                     "SELECT value FROM counters WHERE name = 'schema_version'",
@@ -2164,7 +2164,7 @@ mod tests {
                     |row| row.get(0),
                 )
                 .unwrap();
-            assert_eq!(version, 10);
+            assert_eq!(version, 11);
 
             // Verify backfill: quarantined entry should have pre_quarantine_status = 0
             let pre_q: Option<i64> = conn
@@ -2188,7 +2188,7 @@ mod tests {
                     |row| row.get(0),
                 )
                 .unwrap();
-            assert_eq!(version, 10, "schema version should remain 10 on re-open");
+            assert_eq!(version, 11, "schema version should remain 11 on re-open");
         }
     }
 

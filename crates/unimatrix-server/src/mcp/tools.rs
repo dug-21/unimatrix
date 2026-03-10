@@ -13,6 +13,7 @@ use rmcp::tool;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use unimatrix_core::{CoreError, EmbedService, NewEntry, QueryFilter, Status};
+use unimatrix_store::QueryLogRecord;
 
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::registry::Capability;
@@ -326,6 +327,34 @@ impl UnimatrixServer {
                 trust_level: Some(ctx.trust_level),
             },
         );
+
+        // 7. nxs-010: Query log recording (fire-and-forget, ADR-002)
+        {
+            let entry_ids: Vec<u64> = search_results.entries.iter().map(|se| se.entry.id).collect();
+            let scores: Vec<f64> = search_results.entries.iter().map(|se| se.similarity).collect();
+
+            let session_id_for_log = ctx.audit_ctx.session_id.clone().unwrap_or_default();
+
+            let record = QueryLogRecord::new(
+                session_id_for_log,
+                params.query.clone(),
+                &entry_ids,
+                &scores,
+                "flexible",
+                "mcp",
+            );
+
+            let store_clone = Arc::clone(&self.store);
+            let _ = tokio::task::spawn_blocking(move || {
+                if let Err(e) = store_clone.insert_query_log(&record) {
+                    tracing::warn!(
+                        query_len = record.query_text.len(),
+                        error = %e,
+                        "query_log write failed (mcp)"
+                    );
+                }
+            });
+        }
 
         Ok(result)
     }

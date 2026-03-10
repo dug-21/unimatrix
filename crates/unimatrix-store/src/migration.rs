@@ -15,7 +15,7 @@ use crate::schema::{deserialize_entry, serialize_entry};
 use crate::db::Store;
 
 /// Current schema version.
-pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 10;
+pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 11;
 
 /// Run migration if schema_version is behind CURRENT_SCHEMA_VERSION.
 /// Called from Store::open() after table creation.
@@ -142,6 +142,61 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
                     "ALTER TABLE observations ADD COLUMN topic_signal TEXT;"
                 ).map_err(StoreError::Sqlite)?;
             }
+        }
+
+        // v10 -> v11: topic_deliveries + query_log tables (nxs-010)
+        if current_version < 11 {
+            // Step 1: Create topic_deliveries table (idempotent)
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS topic_deliveries (
+                    topic TEXT PRIMARY KEY,
+                    created_at INTEGER NOT NULL,
+                    completed_at INTEGER,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    github_issue INTEGER,
+                    total_sessions INTEGER NOT NULL DEFAULT 0,
+                    total_tool_calls INTEGER NOT NULL DEFAULT 0,
+                    total_duration_secs INTEGER NOT NULL DEFAULT 0,
+                    phases_completed TEXT
+                );"
+            ).map_err(StoreError::Sqlite)?;
+
+            // Step 2: Create query_log table with AUTOINCREMENT (ADR-001)
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS query_log (
+                    query_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT NOT NULL,
+                    query_text TEXT NOT NULL,
+                    ts INTEGER NOT NULL,
+                    result_count INTEGER NOT NULL,
+                    result_entry_ids TEXT,
+                    similarity_scores TEXT,
+                    retrieval_mode TEXT,
+                    source TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_query_log_session ON query_log(session_id);
+                CREATE INDEX IF NOT EXISTS idx_query_log_ts ON query_log(ts);"
+            ).map_err(StoreError::Sqlite)?;
+
+            // Step 3: Backfill topic_deliveries from attributed sessions (ADR-003)
+            // INSERT OR IGNORE ensures idempotency on re-run.
+            // Groups sessions by feature_cycle, computes:
+            //   - created_at = MIN(started_at)
+            //   - status = 'completed' (conservative default)
+            //   - total_sessions = COUNT(*)
+            //   - total_tool_calls = 0 (not backfilled, FR-03.7)
+            //   - total_duration_secs = COALESCE(SUM(ended_at - started_at), 0)
+            //     NULL ended_at rows contribute NULL to (ended_at - started_at),
+            //     which SUM excludes. If ALL are NULL, COALESCE returns 0.
+            conn.execute_batch(
+                "INSERT OR IGNORE INTO topic_deliveries
+                    (topic, created_at, status, total_sessions, total_tool_calls, total_duration_secs)
+                SELECT feature_cycle, MIN(started_at), 'completed', COUNT(*), 0,
+                       COALESCE(SUM(ended_at - started_at), 0)
+                FROM sessions
+                WHERE feature_cycle IS NOT NULL AND feature_cycle != ''
+                GROUP BY feature_cycle;"
+            ).map_err(StoreError::Sqlite)?;
         }
 
         // Update schema version

@@ -19,14 +19,14 @@ pub struct Store {
 impl Store {
     /// Open or create a database at the given path with default configuration.
     ///
-    /// All 18 tables are created if they don't already exist.
+    /// All 20 tables are created if they don't already exist.
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         Self::open_with_config(path, DatabaseConfig::default())
     }
 
     /// Open or create a database at the given path with custom configuration.
     ///
-    /// All 18 tables are created if they don't already exist.
+    /// All 20 tables are created if they don't already exist.
     pub fn open_with_config(path: impl AsRef<Path>, _config: DatabaseConfig) -> Result<Self> {
         let conn = Connection::open(path.as_ref()).map_err(StoreError::Sqlite)?;
 
@@ -46,8 +46,9 @@ impl Store {
             "CREATE TABLE IF NOT EXISTS counters (
                 name TEXT PRIMARY KEY,
                 value INTEGER NOT NULL
-            );"
-        ).map_err(StoreError::Sqlite)?;
+            );",
+        )
+        .map_err(StoreError::Sqlite)?;
 
         let store = Store {
             conn: Mutex::new(conn),
@@ -265,13 +266,37 @@ fn create_tables(conn: &Connection) -> Result<()> {
             rule_accepted     INTEGER NOT NULL,
             digest            BLOB
         );
-        CREATE INDEX IF NOT EXISTS idx_shadow_eval_ts ON shadow_evaluations(timestamp);",
+        CREATE INDEX IF NOT EXISTS idx_shadow_eval_ts ON shadow_evaluations(timestamp);
+        CREATE TABLE IF NOT EXISTS topic_deliveries (
+            topic TEXT PRIMARY KEY,
+            created_at INTEGER NOT NULL,
+            completed_at INTEGER,
+            status TEXT NOT NULL DEFAULT 'active',
+            github_issue INTEGER,
+            total_sessions INTEGER NOT NULL DEFAULT 0,
+            total_tool_calls INTEGER NOT NULL DEFAULT 0,
+            total_duration_secs INTEGER NOT NULL DEFAULT 0,
+            phases_completed TEXT
+        );
+        CREATE TABLE IF NOT EXISTS query_log (
+            query_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            query_text TEXT NOT NULL,
+            ts INTEGER NOT NULL,
+            result_count INTEGER NOT NULL,
+            result_entry_ids TEXT,
+            similarity_scores TEXT,
+            retrieval_mode TEXT,
+            source TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_query_log_session ON query_log(session_id);
+        CREATE INDEX IF NOT EXISTS idx_query_log_ts ON query_log(ts);",
     )
     .map_err(StoreError::Sqlite)?;
 
     // Initialize counters that other modules expect
     conn.execute_batch(
-        "INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 9);
+        "INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 11);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_entry_id', 1);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_signal_id', 0);
          INSERT OR IGNORE INTO counters (name, value) VALUES ('next_log_id', 0);

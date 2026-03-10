@@ -8,8 +8,8 @@
 
 #![cfg(feature = "test-support")]
 
-use unimatrix_store::{QueryFilter, Status, StoreError, TimeRange};
 use unimatrix_store::test_helpers::{TestDb, TestEntry, assert_index_consistent};
+use unimatrix_store::{QueryFilter, Status, StoreError, TimeRange};
 
 fn now_secs() -> u64 {
     std::time::SystemTime::now()
@@ -152,9 +152,18 @@ fn test_delete_not_found() {
 #[test]
 fn test_query_by_topic() {
     let db = TestDb::new();
-    let id1 = db.store().insert(TestEntry::new("auth", "conv").build()).unwrap();
-    let _id2 = db.store().insert(TestEntry::new("logging", "conv").build()).unwrap();
-    let id3 = db.store().insert(TestEntry::new("auth", "pattern").build()).unwrap();
+    let id1 = db
+        .store()
+        .insert(TestEntry::new("auth", "conv").build())
+        .unwrap();
+    let _id2 = db
+        .store()
+        .insert(TestEntry::new("logging", "conv").build())
+        .unwrap();
+    let id3 = db
+        .store()
+        .insert(TestEntry::new("auth", "pattern").build())
+        .unwrap();
 
     let results = db.store().query_by_topic("auth").unwrap();
     let ids: Vec<u64> = results.iter().map(|r| r.id).collect();
@@ -166,8 +175,14 @@ fn test_query_by_topic() {
 #[test]
 fn test_query_by_category() {
     let db = TestDb::new();
-    let id1 = db.store().insert(TestEntry::new("a", "convention").build()).unwrap();
-    let _id2 = db.store().insert(TestEntry::new("b", "decision").build()).unwrap();
+    let id1 = db
+        .store()
+        .insert(TestEntry::new("a", "convention").build())
+        .unwrap();
+    let _id2 = db
+        .store()
+        .insert(TestEntry::new("b", "decision").build())
+        .unwrap();
 
     let results = db.store().query_by_category("convention").unwrap();
     assert_eq!(results.len(), 1);
@@ -177,19 +192,28 @@ fn test_query_by_category() {
 #[test]
 fn test_query_by_tags() {
     let db = TestDb::new();
-    let id1 = db.store().insert(
-        TestEntry::new("a", "b").with_tags(&["rust", "async"]).build()
-    ).unwrap();
-    let _id2 = db.store().insert(
-        TestEntry::new("c", "d").with_tags(&["rust"]).build()
-    ).unwrap();
+    let id1 = db
+        .store()
+        .insert(
+            TestEntry::new("a", "b")
+                .with_tags(&["rust", "async"])
+                .build(),
+        )
+        .unwrap();
+    let _id2 = db
+        .store()
+        .insert(TestEntry::new("c", "d").with_tags(&["rust"]).build())
+        .unwrap();
 
     // Both have "rust"
     let results = db.store().query_by_tags(&["rust".to_string()]).unwrap();
     assert_eq!(results.len(), 2);
 
     // Only id1 has both "rust" AND "async"
-    let results = db.store().query_by_tags(&["rust".to_string(), "async".to_string()]).unwrap();
+    let results = db
+        .store()
+        .query_by_tags(&["rust".to_string(), "async".to_string()])
+        .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].id, id1);
 }
@@ -217,32 +241,53 @@ fn test_query_by_time_range() {
     let now = now_secs();
 
     // Wide range should find it
-    let results = db.store().query_by_time_range(TimeRange {
-        start: now - 10,
-        end: now + 10,
-    }).unwrap();
+    let results = db
+        .store()
+        .query_by_time_range(TimeRange {
+            start: now - 10,
+            end: now + 10,
+        })
+        .unwrap();
     assert!(!results.is_empty());
 
     // Future range should not
-    let results = db.store().query_by_time_range(TimeRange {
-        start: now + 1000,
-        end: now + 2000,
-    }).unwrap();
+    let results = db
+        .store()
+        .query_by_time_range(TimeRange {
+            start: now + 1000,
+            end: now + 2000,
+        })
+        .unwrap();
     assert!(results.is_empty());
 }
 
 #[test]
 fn test_combined_query() {
     let db = TestDb::new();
-    let id1 = db.store().insert(
-        TestEntry::new("auth", "convention").with_tags(&["rust"]).build()
-    ).unwrap();
-    let _id2 = db.store().insert(
-        TestEntry::new("auth", "decision").with_tags(&["rust"]).build()
-    ).unwrap();
-    let _id3 = db.store().insert(
-        TestEntry::new("logging", "convention").with_tags(&["rust"]).build()
-    ).unwrap();
+    let id1 = db
+        .store()
+        .insert(
+            TestEntry::new("auth", "convention")
+                .with_tags(&["rust"])
+                .build(),
+        )
+        .unwrap();
+    let _id2 = db
+        .store()
+        .insert(
+            TestEntry::new("auth", "decision")
+                .with_tags(&["rust"])
+                .build(),
+        )
+        .unwrap();
+    let _id3 = db
+        .store()
+        .insert(
+            TestEntry::new("logging", "convention")
+                .with_tags(&["rust"])
+                .build(),
+        )
+        .unwrap();
 
     let filter = QueryFilter {
         topic: Some("auth".to_string()),
@@ -264,14 +309,18 @@ fn test_record_usage() {
     let id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
 
     // Record usage with helpful vote
-    db.store().record_usage(&[id], &[id], &[id], &[], &[], &[]).unwrap();
+    db.store()
+        .record_usage(&[id], &[id], &[id], &[], &[], &[])
+        .unwrap();
     let record = db.store().get(id).unwrap();
     assert_eq!(record.access_count, 1);
     assert_eq!(record.helpful_count, 1);
     assert!(record.last_accessed_at > 0);
 
     // Record usage with unhelpful vote
-    db.store().record_usage(&[id], &[id], &[], &[id], &[], &[]).unwrap();
+    db.store()
+        .record_usage(&[id], &[id], &[], &[id], &[], &[])
+        .unwrap();
     let record = db.store().get(id).unwrap();
     assert_eq!(record.access_count, 2);
     assert_eq!(record.unhelpful_count, 1);
@@ -283,10 +332,17 @@ fn test_record_usage_with_confidence() {
     let id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
 
     // Use confidence function that returns a fixed value
-    db.store().record_usage_with_confidence(
-        &[id], &[id], &[id], &[], &[], &[],
-        Some(&|_record, _now| 0.85),
-    ).unwrap();
+    db.store()
+        .record_usage_with_confidence(
+            &[id],
+            &[id],
+            &[id],
+            &[],
+            &[],
+            &[],
+            Some(&|_record, _now| 0.85),
+        )
+        .unwrap();
     let record = db.store().get(id).unwrap();
     assert_eq!(record.confidence, 0.85);
     assert_eq!(record.helpful_count, 1);
@@ -324,7 +380,9 @@ fn test_rewrite_vector_map() {
     db.store().put_vector_mapping(1, 100).unwrap();
     db.store().put_vector_mapping(2, 200).unwrap();
 
-    db.store().rewrite_vector_map(&[(10, 1000), (20, 2000)]).unwrap();
+    db.store()
+        .rewrite_vector_map(&[(10, 1000), (20, 2000)])
+        .unwrap();
     assert_eq!(db.store().get_vector_mapping(1).unwrap(), None);
     assert_eq!(db.store().get_vector_mapping(10).unwrap(), Some(1000));
     assert_eq!(db.store().get_vector_mapping(20).unwrap(), Some(2000));
@@ -337,7 +395,9 @@ fn test_record_feature_entries() {
     let db = TestDb::new();
     let id1 = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
     let id2 = db.store().insert(TestEntry::new("c", "d").build()).unwrap();
-    db.store().record_feature_entries("col-001", &[id1, id2]).unwrap();
+    db.store()
+        .record_feature_entries("col-001", &[id1, id2])
+        .unwrap();
     // No panic = success (feature_entries is write-only from Store API)
 }
 
@@ -348,7 +408,9 @@ fn test_co_access_roundtrip() {
     let db = TestDb::new();
     let now = now_secs();
 
-    db.store().record_co_access_pairs(&[(1, 2), (1, 3)]).unwrap();
+    db.store()
+        .record_co_access_pairs(&[(1, 2), (1, 3)])
+        .unwrap();
 
     let partners = db.store().get_co_access_partners(1, 0).unwrap();
     assert_eq!(partners.len(), 2);
@@ -412,14 +474,32 @@ fn test_top_co_access_pairs() {
 // === OBSERVATION METRICS (nxs-009: typed API) ===
 
 use std::collections::BTreeMap;
-use unimatrix_store::{MetricVector, UniversalMetrics, PhaseMetrics, UNIVERSAL_METRICS_FIELDS};
+use unimatrix_store::{MetricVector, PhaseMetrics, UNIVERSAL_METRICS_FIELDS, UniversalMetrics};
 
 /// Build a fully populated MetricVector for testing.
 fn sample_metric_vector() -> MetricVector {
     let mut phases = BTreeMap::new();
-    phases.insert("3a".to_string(), PhaseMetrics { duration_secs: 600, tool_call_count: 15 });
-    phases.insert("3b".to_string(), PhaseMetrics { duration_secs: 300, tool_call_count: 25 });
-    phases.insert("3c".to_string(), PhaseMetrics { duration_secs: 120, tool_call_count: 8 });
+    phases.insert(
+        "3a".to_string(),
+        PhaseMetrics {
+            duration_secs: 600,
+            tool_call_count: 15,
+        },
+    );
+    phases.insert(
+        "3b".to_string(),
+        PhaseMetrics {
+            duration_secs: 300,
+            tool_call_count: 25,
+        },
+    );
+    phases.insert(
+        "3c".to_string(),
+        PhaseMetrics {
+            duration_secs: 120,
+            tool_call_count: 8,
+        },
+    );
 
     MetricVector {
         computed_at: 1700000000,
@@ -470,14 +550,38 @@ fn test_store_metrics_replace_phases() {
 
     let mut mv1 = MetricVector::default();
     mv1.computed_at = 100;
-    mv1.phases.insert("3a".to_string(), PhaseMetrics { duration_secs: 10, tool_call_count: 5 });
-    mv1.phases.insert("3b".to_string(), PhaseMetrics { duration_secs: 20, tool_call_count: 10 });
+    mv1.phases.insert(
+        "3a".to_string(),
+        PhaseMetrics {
+            duration_secs: 10,
+            tool_call_count: 5,
+        },
+    );
+    mv1.phases.insert(
+        "3b".to_string(),
+        PhaseMetrics {
+            duration_secs: 20,
+            tool_call_count: 10,
+        },
+    );
     db.store().store_metrics("col-001", &mv1).unwrap();
 
     let mut mv2 = MetricVector::default();
     mv2.computed_at = 200;
-    mv2.phases.insert("3a".to_string(), PhaseMetrics { duration_secs: 15, tool_call_count: 7 });
-    mv2.phases.insert("3c".to_string(), PhaseMetrics { duration_secs: 30, tool_call_count: 12 });
+    mv2.phases.insert(
+        "3a".to_string(),
+        PhaseMetrics {
+            duration_secs: 15,
+            tool_call_count: 7,
+        },
+    );
+    mv2.phases.insert(
+        "3c".to_string(),
+        PhaseMetrics {
+            duration_secs: 30,
+            tool_call_count: 12,
+        },
+    );
     db.store().store_metrics("col-001", &mv2).unwrap();
 
     let got = db.store().get_metrics("col-001").unwrap().unwrap();
@@ -512,13 +616,31 @@ fn test_list_all_metrics() {
     let mut mv_a = MetricVector::default();
     mv_a.computed_at = 100;
     mv_a.universal.total_tool_calls = 10;
-    mv_a.phases.insert("design".to_string(), PhaseMetrics { duration_secs: 60, tool_call_count: 5 });
+    mv_a.phases.insert(
+        "design".to_string(),
+        PhaseMetrics {
+            duration_secs: 60,
+            tool_call_count: 5,
+        },
+    );
 
     let mut mv_b = MetricVector::default();
     mv_b.computed_at = 200;
     mv_b.universal.total_tool_calls = 20;
-    mv_b.phases.insert("impl".to_string(), PhaseMetrics { duration_secs: 120, tool_call_count: 15 });
-    mv_b.phases.insert("test".to_string(), PhaseMetrics { duration_secs: 30, tool_call_count: 3 });
+    mv_b.phases.insert(
+        "impl".to_string(),
+        PhaseMetrics {
+            duration_secs: 120,
+            tool_call_count: 15,
+        },
+    );
+    mv_b.phases.insert(
+        "test".to_string(),
+        PhaseMetrics {
+            duration_secs: 30,
+            tool_call_count: 3,
+        },
+    );
 
     let mv_c = MetricVector::default(); // no phases
 
@@ -552,9 +674,23 @@ fn test_list_all_metrics_overlapping_phases() {
         let mut mv = MetricVector::default();
         mv.computed_at = i as u64 * 100;
         mv.universal.total_tool_calls = i as u64 * 10;
-        mv.phases.insert("3a".to_string(), PhaseMetrics { duration_secs: i as u64 * 10, tool_call_count: i as u64 });
-        mv.phases.insert("3b".to_string(), PhaseMetrics { duration_secs: i as u64 * 20, tool_call_count: i as u64 * 2 });
-        db.store().store_metrics(&format!("feature-{i:03}"), &mv).unwrap();
+        mv.phases.insert(
+            "3a".to_string(),
+            PhaseMetrics {
+                duration_secs: i as u64 * 10,
+                tool_call_count: i as u64,
+            },
+        );
+        mv.phases.insert(
+            "3b".to_string(),
+            PhaseMetrics {
+                duration_secs: i as u64 * 20,
+                tool_call_count: i as u64 * 2,
+            },
+        );
+        db.store()
+            .store_metrics(&format!("feature-{i:03}"), &mv)
+            .unwrap();
     }
 
     let all = db.store().list_all_metrics().unwrap();
@@ -574,7 +710,13 @@ fn test_delete_cascade_phases() {
     let db = TestDb::new();
 
     let mut mv = sample_metric_vector();
-    mv.phases.insert("extra".to_string(), PhaseMetrics { duration_secs: 50, tool_call_count: 3 });
+    mv.phases.insert(
+        "extra".to_string(),
+        PhaseMetrics {
+            duration_secs: 50,
+            tool_call_count: 3,
+        },
+    );
     db.store().store_metrics("cascade-test", &mv).unwrap();
 
     // Verify phases exist
@@ -584,8 +726,11 @@ fn test_delete_cascade_phases() {
     // Delete parent row directly via SQL
     {
         let conn = db.store().lock_conn();
-        conn.execute("DELETE FROM observation_metrics WHERE feature_cycle = ?1",
-            unimatrix_store::rusqlite::params!["cascade-test"]).unwrap();
+        conn.execute(
+            "DELETE FROM observation_metrics WHERE feature_cycle = ?1",
+            unimatrix_store::rusqlite::params!["cascade-test"],
+        )
+        .unwrap();
     }
 
     // Verify get returns None
@@ -594,11 +739,13 @@ fn test_delete_cascade_phases() {
     // Verify no orphaned phase rows
     {
         let conn = db.store().lock_conn();
-        let count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM observation_phase_metrics WHERE feature_cycle = ?1",
-            unimatrix_store::rusqlite::params!["cascade-test"],
-            |row| row.get(0),
-        ).unwrap();
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM observation_phase_metrics WHERE feature_cycle = ?1",
+                unimatrix_store::rusqlite::params!["cascade-test"],
+                |row| row.get(0),
+            )
+            .unwrap();
         assert_eq!(count, 0, "CASCADE should have removed phase rows");
     }
 }
@@ -609,27 +756,42 @@ fn test_schema_column_count() {
     let db = TestDb::new();
     let conn = db.store().lock_conn();
 
-    let metric_cols: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM pragma_table_info('observation_metrics')",
-        [],
-        |row| row.get(0),
-    ).unwrap();
-    assert_eq!(metric_cols, 23, "observation_metrics should have 23 columns");
+    let metric_cols: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('observation_metrics')",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        metric_cols, 23,
+        "observation_metrics should have 23 columns"
+    );
 
-    let phase_cols: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM pragma_table_info('observation_phase_metrics')",
-        [],
-        |row| row.get(0),
-    ).unwrap();
-    assert_eq!(phase_cols, 4, "observation_phase_metrics should have 4 columns");
+    let phase_cols: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('observation_phase_metrics')",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        phase_cols, 4,
+        "observation_phase_metrics should have 4 columns"
+    );
 
     // Verify no BLOB column
-    let has_blob: bool = conn.query_row(
-        "SELECT COUNT(*) FROM pragma_table_info('observation_metrics') WHERE type = 'BLOB'",
-        [],
-        |row| Ok(row.get::<_, i64>(0)? > 0),
-    ).unwrap();
-    assert!(!has_blob, "observation_metrics should not have a BLOB column");
+    let has_blob: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('observation_metrics') WHERE type = 'BLOB'",
+            [],
+            |row| Ok(row.get::<_, i64>(0)? > 0),
+        )
+        .unwrap();
+    assert!(
+        !has_blob,
+        "observation_metrics should not have a BLOB column"
+    );
 }
 
 #[test]
@@ -639,16 +801,18 @@ fn test_column_field_alignment() {
     let conn = db.store().lock_conn();
 
     // Get column names from SQLite (skip feature_cycle and computed_at which are not in UniversalMetrics)
-    let mut stmt = conn.prepare(
-        "SELECT name FROM pragma_table_info('observation_metrics') ORDER BY cid"
-    ).unwrap();
-    let sql_columns: Vec<String> = stmt.query_map([], |row| row.get(0))
+    let mut stmt = conn
+        .prepare("SELECT name FROM pragma_table_info('observation_metrics') ORDER BY cid")
+        .unwrap();
+    let sql_columns: Vec<String> = stmt
+        .query_map([], |row| row.get(0))
         .unwrap()
         .collect::<rusqlite::Result<_>>()
         .unwrap();
 
     // Skip first two columns (feature_cycle, computed_at)
-    let universal_columns: Vec<&str> = sql_columns.iter()
+    let universal_columns: Vec<&str> = sql_columns
+        .iter()
         .skip(2) // feature_cycle, computed_at
         .map(|s| s.as_str())
         .collect();
@@ -659,9 +823,15 @@ fn test_column_field_alignment() {
         "SQL column count must match UNIVERSAL_METRICS_FIELDS count"
     );
 
-    for (sql_col, rust_field) in universal_columns.iter().zip(UNIVERSAL_METRICS_FIELDS.iter()) {
-        assert_eq!(sql_col, rust_field,
-            "SQL column name '{}' does not match Rust field name '{}'", sql_col, rust_field);
+    for (sql_col, rust_field) in universal_columns
+        .iter()
+        .zip(UNIVERSAL_METRICS_FIELDS.iter())
+    {
+        assert_eq!(
+            sql_col, rust_field,
+            "SQL column name '{}' does not match Rust field name '{}'",
+            sql_col, rust_field
+        );
     }
 }
 
@@ -685,9 +855,11 @@ fn test_sql_analytics_query() {
     let mut stmt = conn.prepare(
         "SELECT feature_cycle, total_tool_calls FROM observation_metrics WHERE session_count > 5"
     ).unwrap();
-    let results: Vec<(String, i64)> = stmt.query_map([], |row| {
-        Ok((row.get(0)?, row.get(1)?))
-    }).unwrap().collect::<rusqlite::Result<_>>().unwrap();
+    let results: Vec<(String, i64)> = stmt
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
 
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].0, "feature-a");
@@ -695,11 +867,11 @@ fn test_sql_analytics_query() {
 }
 
 #[test]
-fn test_schema_version_is_9() {
-    // C-04: Schema version must be exactly 9
+fn test_schema_version_is_11() {
+    // C-04: Schema version must be exactly 11 (nxs-010)
     let db = TestDb::new();
     let version = db.store().read_counter("schema_version").unwrap();
-    assert_eq!(version, 9, "schema version must be 9 after nxs-009");
+    assert_eq!(version, 11, "schema version must be 11 after nxs-010");
 }
 
 // === COUNTERS ===
@@ -720,3 +892,231 @@ fn test_read_counter() {
     assert_eq!(missing, 0);
 }
 
+// === SCHEMA DDL: topic_deliveries and query_log (nxs-010) ===
+
+#[test]
+fn test_create_tables_topic_deliveries_schema() {
+    // AC-01: topic_deliveries has 9 columns with correct names, types, and constraints
+    let db = TestDb::new();
+    let conn = db.store().lock_conn();
+
+    // Collect column info
+    let mut stmt = conn.prepare(
+        "SELECT name, type, \"notnull\", dflt_value, pk FROM pragma_table_info('topic_deliveries') ORDER BY cid"
+    ).unwrap();
+    let columns: Vec<(String, String, i64, Option<String>, i64)> = stmt
+        .query_map([], |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+            ))
+        })
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
+
+    assert_eq!(columns.len(), 9, "topic_deliveries should have 9 columns");
+
+    // Verify column names in order
+    let names: Vec<&str> = columns.iter().map(|c| c.0.as_str()).collect();
+    assert_eq!(
+        names,
+        vec![
+            "topic",
+            "created_at",
+            "completed_at",
+            "status",
+            "github_issue",
+            "total_sessions",
+            "total_tool_calls",
+            "total_duration_secs",
+            "phases_completed",
+        ]
+    );
+
+    // topic is TEXT PRIMARY KEY (pk = 1)
+    assert_eq!(columns[0].1, "TEXT");
+    assert_eq!(columns[0].4, 1, "topic must be primary key");
+
+    // created_at is INTEGER NOT NULL
+    assert_eq!(columns[1].1, "INTEGER");
+    assert_eq!(columns[1].2, 1, "created_at must be NOT NULL");
+
+    // completed_at is nullable
+    assert_eq!(columns[2].2, 0, "completed_at must be nullable");
+
+    // status has default 'active'
+    assert_eq!(columns[3].2, 1, "status must be NOT NULL");
+    assert_eq!(columns[3].3.as_deref(), Some("'active'"));
+
+    // github_issue is nullable
+    assert_eq!(columns[4].2, 0, "github_issue must be nullable");
+
+    // total_sessions, total_tool_calls, total_duration_secs default to 0
+    for i in 5..=7 {
+        assert_eq!(columns[i].2, 1, "{} must be NOT NULL", names[i]);
+        assert_eq!(
+            columns[i].3.as_deref(),
+            Some("0"),
+            "{} must default to 0",
+            names[i]
+        );
+    }
+
+    // phases_completed is nullable
+    assert_eq!(columns[8].2, 0, "phases_completed must be nullable");
+}
+
+#[test]
+fn test_create_tables_query_log_schema() {
+    // AC-02: query_log has 9 columns with correct names, types, and constraints
+    let db = TestDb::new();
+    let conn = db.store().lock_conn();
+
+    let mut stmt = conn.prepare(
+        "SELECT name, type, \"notnull\", dflt_value, pk FROM pragma_table_info('query_log') ORDER BY cid"
+    ).unwrap();
+    let columns: Vec<(String, String, i64, Option<String>, i64)> = stmt
+        .query_map([], |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+            ))
+        })
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
+
+    assert_eq!(columns.len(), 9, "query_log should have 9 columns");
+
+    let names: Vec<&str> = columns.iter().map(|c| c.0.as_str()).collect();
+    assert_eq!(
+        names,
+        vec![
+            "query_id",
+            "session_id",
+            "query_text",
+            "ts",
+            "result_count",
+            "result_entry_ids",
+            "similarity_scores",
+            "retrieval_mode",
+            "source",
+        ]
+    );
+
+    // query_id is INTEGER PRIMARY KEY
+    assert_eq!(columns[0].1, "INTEGER");
+    assert_eq!(columns[0].4, 1, "query_id must be primary key");
+
+    // session_id and query_text are TEXT NOT NULL
+    assert_eq!(columns[1].1, "TEXT");
+    assert_eq!(columns[1].2, 1, "session_id must be NOT NULL");
+    assert_eq!(columns[2].1, "TEXT");
+    assert_eq!(columns[2].2, 1, "query_text must be NOT NULL");
+
+    // source is TEXT NOT NULL
+    assert_eq!(columns[8].1, "TEXT");
+    assert_eq!(columns[8].2, 1, "source must be NOT NULL");
+
+    // result_entry_ids, similarity_scores, retrieval_mode are nullable
+    assert_eq!(columns[5].2, 0, "result_entry_ids must be nullable");
+    assert_eq!(columns[6].2, 0, "similarity_scores must be nullable");
+    assert_eq!(columns[7].2, 0, "retrieval_mode must be nullable");
+}
+
+#[test]
+fn test_create_tables_query_log_indexes() {
+    // AC-03: query_log has idx_query_log_session and idx_query_log_ts indexes
+    let db = TestDb::new();
+    let conn = db.store().lock_conn();
+
+    let mut stmt = conn
+        .prepare("SELECT name FROM pragma_index_list('query_log') WHERE origin != 'pk'")
+        .unwrap();
+    let index_names: Vec<String> = stmt
+        .query_map([], |row| row.get(0))
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
+
+    assert!(
+        index_names.len() >= 2,
+        "query_log should have at least 2 non-pk indexes, got {}",
+        index_names.len()
+    );
+    assert!(
+        index_names.contains(&"idx_query_log_session".to_string()),
+        "missing idx_query_log_session, found: {:?}",
+        index_names
+    );
+    assert!(
+        index_names.contains(&"idx_query_log_ts".to_string()),
+        "missing idx_query_log_ts, found: {:?}",
+        index_names
+    );
+}
+
+#[test]
+fn test_create_tables_query_log_autoincrement() {
+    // R-03: AUTOINCREMENT creates sqlite_sequence table
+    let db = TestDb::new();
+    let conn = db.store().lock_conn();
+
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        count, 1,
+        "sqlite_sequence table must exist (AUTOINCREMENT creates it)"
+    );
+}
+
+#[test]
+fn test_create_tables_idempotent() {
+    // AC-05: Opening the same database twice causes no errors
+    let dir = tempfile::TempDir::new().expect("failed to create temp dir");
+    let path = dir.path().join("test.db");
+
+    let _store1 = unimatrix_store::Store::open(&path).expect("first open should succeed");
+    drop(_store1);
+
+    let store2 = unimatrix_store::Store::open(&path).expect("second open should succeed");
+
+    // Verify tables still exist with correct column counts
+    let conn = store2.lock_conn();
+
+    let td_cols: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('topic_deliveries')",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        td_cols, 9,
+        "topic_deliveries should still have 9 columns after re-open"
+    );
+
+    let ql_cols: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('query_log')",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        ql_cols, 9,
+        "query_log should still have 9 columns after re-open"
+    );
+}
