@@ -9,9 +9,9 @@ Always use `uni-` agents for Unimatrix product work:
 | generic coder | `uni-rust-dev` | Knows Unimatrix Rust patterns, queries `/query-patterns` before implementing |
 | generic architect | `uni-architect` | ADR authority, stores decisions in Unimatrix |
 | generic tester | `uni-tester` | Risk-based testing, dual-phase role |
-| generic planner | `uni-scrum-master` | Protocol-driven, reads the right protocol for the session |
+| generic planner | Design Leader (you) | Protocol-driven, reads the right protocol for the session |
 | generic reviewer | `uni-validator` | Three-gate validation model |
-| generic debugger | `uni-scrum-master` (bugfix session) | Reads bugfix protocol, coordinates diagnosis → fix → review |
+| generic debugger | Bugfix Leader (you) | Reads bugfix protocol, coordinates diagnosis → fix → review |
 | generic security auditor | `uni-security-reviewer` | Fresh-context security review of diffs |
 
 ---
@@ -39,11 +39,9 @@ Every swarm also includes `uni-validator` at gates. Non-negotiable.
 
 ## Complete Agent Roster
 
-### Coordinator (1 agent — reads protocol per session)
+### Coordinator (you — the primary agent)
 
-| Agent | What It Does |
-|-------|-------------|
-| `uni-scrum-master` | Reads the protocol for the session type (design/delivery/bugfix). Spawns agents, manages gates, updates GH Issues. |
+You are the coordinator. Read the protocol for the session type, spawn specialist agents, manage gates, update GH Issues. Read `.claude/agents/uni/coordinator (you).md` for role boundaries and behavioral rules.
 
 ### Validation (1 agent — spawned at every gate)
 
@@ -82,7 +80,7 @@ Every swarm also includes `uni-validator` at gates. Non-negotiable.
 |-------|------|-------|-------------|
 | `uni-security-reviewer` | specialist | review | Fresh-context security review of PR diff, blast radius, OWASP assessment |
 
-**Total: 14 agents** (1 coordinator + 1 validator + 6 design + 3 delivery + 1 bug fix + 1 security + 1 retro-mode architect)
+**Total: 13 specialist agents** (1 validator + 6 design + 3 delivery + 1 bug fix + 1 security + 1 retro-mode architect). You coordinate.
 
 ---
 
@@ -91,7 +89,7 @@ Every swarm also includes `uni-validator` at gates. Non-negotiable.
 ### Design Session
 
 ```
-Coordinator:  uni-scrum-master (reads uni-design-protocol.md)
+Coordinator:  you (read uni-design-protocol.md + coordinator (you).md)
 Phase 1:      uni-researcher (scope exploration with human)
               ★ HUMAN CHECKPOINT — approve SCOPE.md ★
 Phase 1b:     uni-risk-strategist (scope-risk mode)
@@ -106,7 +104,7 @@ Phase 2d:     git commit + push + gh pr create --draft
 ### Delivery Session
 
 ```
-Coordinator:  uni-scrum-master (reads uni-delivery-protocol.md)
+Coordinator:  you (read uni-delivery-protocol.md + coordinator (you).md)
 Init:         Read IMPLEMENTATION-BRIEF.md, create feature branch
 Stage 3a:     uni-pseudocode + uni-tester (test plans)             (parallel)
               UPDATE Component Map in IMPLEMENTATION-BRIEF.md
@@ -123,7 +121,7 @@ Phase 4:      Commit, push, open PR
 ### Bug Fix Session
 
 ```
-Coordinator:  uni-scrum-master (reads uni-bugfix-protocol.md)
+Coordinator:  you (read uni-bugfix-protocol.md + coordinator (you).md)
 Init:         /query-patterns + /knowledge-search — prior knowledge
 Phase 1:      uni-bug-investigator (diagnose root cause)
               ★ HUMAN CHECKPOINT — approve diagnosis ★
@@ -161,11 +159,11 @@ Phase 5:      Summary + outcome recording — RETRO ENDS
 
 ## Composition Rules
 
-1. **Every swarm session**: exactly one `uni-scrum-master`. No exceptions.
-2. **Validation gates**: `uni-validator` spawned at each gate by the coordinator.
+1. **Every swarm session**: you are the coordinator. Read the protocol and SM definition. No exceptions.
+2. **Validation gates**: `uni-validator` spawned at each gate by you.
 3. **Design session**: All six design agents in defined phase order per protocol.
 4. **Delivery session**: pseudocode + tester + rust-dev + validator at three gates per protocol.
-5. **Bug fix**: SM + bug-investigator + rust-dev + tester + validator per protocol.
+5. **Bug fix**: bug-investigator + rust-dev + tester + validator per protocol.
 6. **PR review**: `/review-pr` skill + security-reviewer.
 7. **Retrospective**: `/retro` skill + architect (+ tester if testing lessons needed).
 8. **Skip swarm for**: typos, single-line obvious fixes, config-only changes, docs, exploration.
@@ -179,11 +177,11 @@ Phase 5:      Summary + outcome recording — RETRO ENDS
 |-------|------|-----|
 | `/query-patterns` | BEFORE designing or implementing | uni-architect, uni-pseudocode, uni-rust-dev |
 | `/store-adr` | AFTER each design decision | uni-architect |
-| `/record-outcome` | END of every session | uni-scrum-master, `/review-pr`, `/retro` |
-| `/store-procedure` | After successful sessions (reusable techniques) | uni-scrum-master, uni-bug-investigator |
-| `/store-lesson` | After failures | uni-bug-investigator, uni-validator, uni-scrum-master |
+| `/record-outcome` | END of every session | coordinator (you), `/review-pr`, `/retro` |
+| `/store-procedure` | After successful sessions (reusable techniques) | coordinator (you), uni-bug-investigator |
+| `/store-lesson` | After failures | uni-bug-investigator, uni-validator, coordinator (you) |
 | `/knowledge-search` | Exploring what's known | Any agent |
 | `/knowledge-lookup` | Exact-match retrieval | Any agent |
-| `/uni-git` | Git conventions | uni-scrum-master |
-| `/review-pr` | After PR creation or standalone | uni-scrum-master, human |
+| `/uni-git` | Git conventions | coordinator (you) |
+| `/review-pr` | After PR creation or standalone | coordinator (you), human |
 | `/retro` | After merge | human |

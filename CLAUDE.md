@@ -1,11 +1,13 @@
 # Unimatrix — Non-Negotiable Rules
 
-1. **Feature work uses swarms** — spawn `uni-scrum-master` with the session type. The SM reads the protocol and executes it.
+1. **Feature work uses swarms** — read the protocol for the session type and execute it as Design/Delivery/Bugfix Leader. You ARE the scrum master. Follow the protocol exactly — spawn specialist agents, never generate content yourself.
    | Intent | Session Type | Protocol |
    |--------|-------------|----------|
    | Design, scope, spec | design | `.claude/protocols/uni/uni-design-protocol.md` |
    | Implement, build, code | delivery | `.claude/protocols/uni/uni-delivery-protocol.md` |
    | Bug fix | bugfix | `.claude/protocols/uni/uni-bugfix-protocol.md` |
+
+   Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries and behavioral rules. The protocol defines what to do and when; the SM definition defines how you behave.
 
    For PR review: `/review-pr`. For retrospective: `/retro`.
 2. **Anti-stub**: Never leave TODO, `unimplemented!()`, `todo!()`, or placeholder functions. Ask if blocked.

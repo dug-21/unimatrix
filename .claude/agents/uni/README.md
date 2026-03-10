@@ -8,7 +8,7 @@ Agents for Unimatrix product development. These agents implement the Spec-Driven
 
 **Use `uni-` agents for all Unimatrix product work.** NDP agents in `.claude/agents/ndp/` are retained as reference only.
 
-- Spawn `uni-scrum-master` for feature work (design, delivery, or bugfix). It reads the appropriate protocol and orchestrates the swarm.
+- For feature work (design, delivery, or bugfix): read the protocol and `uni-scrum-master.md`, then act as coordinator — spawn specialist agents, never generate content.
 - Use `/review-pr` for PR security review and merge readiness.
 - Use `/retro` for post-merge knowledge extraction.
 
