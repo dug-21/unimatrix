@@ -151,6 +151,24 @@ cargo clippy --workspace -- -D warnings 2>&1 | head -30
 - Agents return file paths + summaries — NOT file contents
 - Do NOT paste documents into agent prompts — agents read files themselves
 
+### How to Spawn Parallel Agents
+
+When a protocol step says to spawn multiple agents in parallel, use multiple Agent tool calls in a **single message**. Each call is independent and runs concurrently:
+
+```
+# In ONE message, make multiple Agent tool calls:
+
+Agent(subagent_type: "uni-architect", prompt: "Your agent ID: ... <full prompt>")
+Agent(subagent_type: "uni-specification", prompt: "Your agent ID: ... <full prompt>")
+```
+
+**Rules:**
+- Multiple Agent calls in one message = parallel execution
+- Sequential Agent calls across messages = sequential execution
+- The protocol defines WHICH agents to spawn and WHEN — follow it
+- You provide the HOW: multiple tool calls in a single response
+- Wait for all parallel agents to complete before moving to the next phase
+
 ---
 
 ## Exit Gate
