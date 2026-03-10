@@ -8,23 +8,24 @@ Triggers on: specification, architecture, design, research, scope, risk strategy
 
 Session 1 produces three sacred source-of-truth documents, a scope risk assessment, a vision alignment report, an implementation brief, and an acceptance map. All work happens on a `feature/{feature-id}` branch. The session ends by opening a **draft PR** — the human reviews the design artifacts and approves verbally. Session 2 (Implementation) continues on the same branch and converts the draft PR to ready when complete.
 
+**You are the Design Leader.** Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries. You orchestrate — you NEVER generate content. Spawn specialist agents for all work.
+
 ```
-Primary Agent                    uni-scrum-master (Design Leader)    Design Agents
-─────────────                    ────────────────────────────────    ─────────────
-read SCOPE.md (or initiate)
-spawn scrum-master ──────────►   read protocol + SCOPE.md
-                                 spawn researcher (Phase 1)
-                                 ◄──────────────────────────────── SCOPE.md written
-                                 human approves SCOPE.md
-                                 spawn risk strategist (Phase 1b) ► scope risk assessment
-                                 ◄──────────────────────────────── return SR-XX risks
-                                 spawn 2 specialists (Phase 2a) ──► produce arch + spec
-                                 ◄──────────────────────────────── return artifact paths
-                                 spawn risk strategist (Phase 2a+)► produce risk strategy
-                                 ◄──────────────────────────────── return artifact path
-                                 spawn vision guardian (Phase 2b)
-                                 spawn synthesizer (Phase 2c)
-◄──────────────────────────────  return all artifacts to human
+Design Leader (you)                                  Design Agents
+───────────────────                                  ─────────────
+read protocol + SCOPE.md (or initiate)
+spawn researcher (Phase 1) ─────────────────────────► SCOPE.md written
+◄────────────────────────────────────────────────────
+human approves SCOPE.md
+spawn risk strategist (Phase 1b) ───────────────────► scope risk assessment
+◄────────────────────────────────────────────────────
+spawn 2 specialists (Phase 2a) ─────────────────────► produce arch + spec
+◄────────────────────────────────────────────────────
+spawn risk strategist (Phase 2a+) ──────────────────► produce risk strategy
+◄────────────────────────────────────────────────────
+spawn vision guardian (Phase 2b)
+spawn synthesizer (Phase 2c)
+return all artifacts to human
 human reviews and approves
 ```
 
@@ -298,7 +299,7 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 ## Quick Reference: Message Map
 
 ```
-DESIGN LEADER (uni-scrum-master):
+DESIGN LEADER (you):
   Init:       git checkout -b feature/{feature-id}
   Phase 1:    Task(uni-researcher) — scope exploration with human
               ...human approves SCOPE.md...
