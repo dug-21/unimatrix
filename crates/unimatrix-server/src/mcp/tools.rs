@@ -17,28 +17,26 @@ use unimatrix_store::QueryLogRecord;
 
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::registry::Capability;
-use crate::services::ServiceSearchParams;
-use crate::services::usage::{AccessSource, UsageContext};
-use crate::mcp::response::{
-    format_duplicate_found, format_enroll_success, format_lookup_results, format_search_results,
-    format_single_entry, format_store_success, format_store_success_with_note,
-    format_correct_success, format_deprecate_success,
-    format_quarantine_success, format_restore_success,
-    format_status_report,
-};
-#[cfg(feature = "mcp-briefing")]
-use crate::mcp::response::{format_briefing, Briefing};
-use crate::server::UnimatrixServer;
 use crate::infra::validation::{
-    validate_get_params, validate_lookup_params, validate_search_params, validate_store_params,
-    validate_correct_params, validate_deprecate_params, validate_enroll_params,
-    validate_quarantine_params, validate_status_params,
-    validated_id, validated_k, validated_limit,
-    parse_status, parse_quarantine_action, parse_trust_level, parse_capabilities,
-    QuarantineAction, validate_feature, validate_helpful,
+    QuarantineAction, parse_capabilities, parse_quarantine_action, parse_status, parse_trust_level,
+    validate_correct_params, validate_deprecate_params, validate_enroll_params, validate_feature,
+    validate_get_params, validate_helpful, validate_lookup_params, validate_quarantine_params,
+    validate_search_params, validate_status_params, validate_store_params, validated_id,
+    validated_k, validated_limit,
 };
 #[cfg(feature = "mcp-briefing")]
 use crate::infra::validation::{validate_briefing_params, validated_max_tokens};
+#[cfg(feature = "mcp-briefing")]
+use crate::mcp::response::{Briefing, format_briefing};
+use crate::mcp::response::{
+    format_correct_success, format_deprecate_success, format_duplicate_found,
+    format_enroll_success, format_lookup_results, format_quarantine_success,
+    format_restore_success, format_search_results, format_single_entry, format_status_report,
+    format_store_success, format_store_success_with_note,
+};
+use crate::server::UnimatrixServer;
+use crate::services::ServiceSearchParams;
+use crate::services::usage::{AccessSource, UsageContext};
 
 /// Parameters for semantic search.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -262,7 +260,9 @@ impl UnimatrixServer {
         Parameters(params): Parameters<SearchParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id).await?;
+        let ctx = self
+            .build_context(&params.agent_id, &params.format, &params.session_id)
+            .await?;
         self.require_cap(&ctx.agent_id, Capability::Search).await?;
 
         // 2. Validation
@@ -277,9 +277,7 @@ impl UnimatrixServer {
         let service_params = ServiceSearchParams {
             query: params.query.clone(),
             k,
-            filters: if params.topic.is_some()
-                || params.category.is_some()
-                || params.tags.is_some()
+            filters: if params.topic.is_some() || params.category.is_some() || params.tags.is_some()
             {
                 Some(QueryFilter {
                     topic: params.topic.clone(),
@@ -315,7 +313,11 @@ impl UnimatrixServer {
         let result = format_search_results(&results_with_scores, ctx.format);
 
         // 6. Usage recording (fire-and-forget via UsageService)
-        let target_ids: Vec<u64> = search_results.entries.iter().map(|se| se.entry.id).collect();
+        let target_ids: Vec<u64> = search_results
+            .entries
+            .iter()
+            .map(|se| se.entry.id)
+            .collect();
         self.services.usage.record_access(
             &target_ids,
             AccessSource::McpTool,
@@ -330,8 +332,16 @@ impl UnimatrixServer {
 
         // 7. nxs-010: Query log recording (fire-and-forget, ADR-002)
         {
-            let entry_ids: Vec<u64> = search_results.entries.iter().map(|se| se.entry.id).collect();
-            let scores: Vec<f64> = search_results.entries.iter().map(|se| se.similarity).collect();
+            let entry_ids: Vec<u64> = search_results
+                .entries
+                .iter()
+                .map(|se| se.entry.id)
+                .collect();
+            let scores: Vec<f64> = search_results
+                .entries
+                .iter()
+                .map(|se| se.similarity)
+                .collect();
 
             let session_id_for_log = ctx.audit_ctx.session_id.clone().unwrap_or_default();
 
@@ -368,7 +378,9 @@ impl UnimatrixServer {
         Parameters(params): Parameters<LookupParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id).await?;
+        let ctx = self
+            .build_context(&params.agent_id, &params.format, &params.session_id)
+            .await?;
         self.require_cap(&ctx.agent_id, Capability::Read).await?;
 
         // 2. Validation
@@ -451,7 +463,9 @@ impl UnimatrixServer {
         Parameters(params): Parameters<StoreParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        let ctx = self
+            .build_context(&params.agent_id, &params.format, &None)
+            .await?;
         self.require_cap(&ctx.agent_id, Capability::Write).await?;
 
         // 2. Validation
@@ -501,17 +515,27 @@ impl UnimatrixServer {
         // 7. Handle duplicate result
         if insert_result.duplicate_of.is_some() {
             let similarity = insert_result.duplicate_similarity.unwrap_or(1.0);
-            return Ok(format_duplicate_found(&insert_result.entry, similarity, ctx.format));
+            return Ok(format_duplicate_found(
+                &insert_result.entry,
+                similarity,
+                ctx.format,
+            ));
         }
 
         // 8. Seed initial confidence (fire-and-forget, via ConfidenceService)
-        self.services.confidence.recompute(&[insert_result.entry.id]);
+        self.services
+            .confidence
+            .recompute(&[insert_result.entry.id]);
 
         // 9. Format response
         if is_outcome && insert_result.entry.feature_cycle.is_empty() {
             // Append orphan outcome warning to the formatted response
             let warning = "\nNote: outcome not linked to a workflow (no feature_cycle provided)";
-            Ok(format_store_success_with_note(&insert_result.entry, ctx.format, warning))
+            Ok(format_store_success_with_note(
+                &insert_result.entry,
+                ctx.format,
+                warning,
+            ))
         } else {
             Ok(format_store_success(&insert_result.entry, ctx.format))
         }
@@ -526,7 +550,9 @@ impl UnimatrixServer {
         Parameters(params): Parameters<GetParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id).await?;
+        let ctx = self
+            .build_context(&params.agent_id, &params.format, &params.session_id)
+            .await?;
         self.require_cap(&ctx.agent_id, Capability::Read).await?;
 
         // 2. Validation
@@ -582,7 +608,9 @@ impl UnimatrixServer {
         Parameters(params): Parameters<CorrectParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        let ctx = self
+            .build_context(&params.agent_id, &params.format, &None)
+            .await?;
         self.require_cap(&ctx.agent_id, Capability::Write).await?;
 
         // 2. Validation (includes original_id range check)
@@ -609,9 +637,7 @@ impl UnimatrixServer {
         }
 
         // 6. Build title (inherit from original if not provided)
-        let title = params
-            .title
-            .unwrap_or_else(|| original.title.clone());
+        let title = params.title.unwrap_or_else(|| original.title.clone());
 
         // 7. Build NewEntry with inheritance
         let new_entry = NewEntry {
@@ -631,7 +657,13 @@ impl UnimatrixServer {
         let correct_result = self
             .services
             .store_ops
-            .correct(original_id, new_entry, params.reason, &ctx.audit_ctx, &ctx.caller_id)
+            .correct(
+                original_id,
+                new_entry,
+                params.reason,
+                &ctx.audit_ctx,
+                &ctx.caller_id,
+            )
             .await
             .map_err(rmcp::ErrorData::from)?;
 
@@ -658,7 +690,9 @@ impl UnimatrixServer {
         Parameters(params): Parameters<DeprecateParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        let ctx = self
+            .build_context(&params.agent_id, &params.format, &None)
+            .await?;
         self.require_cap(&ctx.agent_id, Capability::Write).await?;
 
         // 2. Validation (includes id range check)
@@ -719,7 +753,9 @@ impl UnimatrixServer {
         Parameters(params): Parameters<StatusParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + capability (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        let ctx = self
+            .build_context(&params.agent_id, &params.format, &None)
+            .await?;
         self.require_cap(&ctx.agent_id, Capability::Admin).await?;
 
         // 2. Validation
@@ -727,7 +763,9 @@ impl UnimatrixServer {
 
         // 3. Compute report via StatusService (vnc-008 extraction)
         let check_embeddings = params.check_embeddings.unwrap_or(false);
-        let (mut report, _active_entries) = self.services.status
+        let (mut report, _active_entries) = self
+            .services
+            .status
             .compute_report(params.topic, params.category, check_embeddings)
             .await
             .map_err(rmcp::ErrorData::from)?;
@@ -737,10 +775,7 @@ impl UnimatrixServer {
         // Read tick metadata for status reporting.
         {
             use crate::mcp::response::status::ExtractionStatsResponse;
-            let tick_meta = self
-                .tick_metadata
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
+            let tick_meta = self.tick_metadata.lock().unwrap_or_else(|e| e.into_inner());
             report.last_maintenance_run = tick_meta.last_maintenance_run;
             report.next_maintenance_scheduled = tick_meta.next_scheduled;
             let stats = &tick_meta.extraction_stats;
@@ -752,7 +787,11 @@ impl UnimatrixServer {
                     entries_extracted_total: stats.entries_extracted_total,
                     entries_rejected_total: stats.entries_rejected_total,
                     last_extraction_run: stats.last_extraction_run,
-                    rules_fired: stats.rules_fired.iter().map(|(k, v)| (k.clone(), *v)).collect(),
+                    rules_fired: stats
+                        .rules_fired
+                        .iter()
+                        .map(|(k, v)| (k.clone(), *v))
+                        .collect(),
                 });
             }
         }
@@ -783,8 +822,7 @@ impl UnimatrixServer {
     )]
     async fn context_briefing(
         &self,
-        #[allow(unused_variables)]
-        Parameters(params): Parameters<BriefingParams>,
+        #[allow(unused_variables)] Parameters(params): Parameters<BriefingParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         #[cfg(not(feature = "mcp-briefing"))]
         {
@@ -796,7 +834,9 @@ impl UnimatrixServer {
         #[cfg(feature = "mcp-briefing")]
         {
             // 1. Identity + format + audit context (vnc-008: ToolContext)
-            let ctx = self.build_context(&params.agent_id, &params.format, &params.session_id).await?;
+            let ctx = self
+                .build_context(&params.agent_id, &params.format, &params.session_id)
+                .await?;
             self.require_cap(&ctx.agent_id, Capability::Read).await?;
 
             // 2. Validation
@@ -873,7 +913,9 @@ impl UnimatrixServer {
         Parameters(params): Parameters<QuarantineParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        let ctx = self
+            .build_context(&params.agent_id, &params.format, &None)
+            .await?;
         self.require_cap(&ctx.agent_id, Capability::Admin).await?;
 
         // 2. Validation
@@ -977,7 +1019,9 @@ impl UnimatrixServer {
         Parameters(params): Parameters<EnrollParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
-        let ctx = self.build_context(&params.agent_id, &params.format, &None).await?;
+        let ctx = self
+            .build_context(&params.agent_id, &params.format, &None)
+            .await?;
         self.require_cap(&ctx.agent_id, Capability::Admin).await?;
 
         // 2. Input validation
@@ -1037,7 +1081,7 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<RetrospectiveParams>,
     ) -> Result<CallToolResult, rmcp::model::ErrorData> {
-        use crate::error::{ServerError, ERROR_NO_OBSERVATION_DATA};
+        use crate::error::{ERROR_NO_OBSERVATION_DATA, ServerError};
         use crate::mcp::response::format_retrospective_report;
 
         // 1. Identity resolution (no format param on this handler)
@@ -1109,7 +1153,7 @@ impl UnimatrixServer {
                         narratives: None,
                         recommendations: vec![],
                         session_summaries: None,
-                        knowledge_reuse: None,
+                        feature_knowledge_reuse: None,
                         rework_session_count: None,
                         context_reload_pct: None,
                         attribution: None,
@@ -1162,8 +1206,7 @@ impl UnimatrixServer {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let metrics =
-            unimatrix_observe::compute_metric_vector(&attributed, &hotspots, now);
+        let metrics = unimatrix_observe::compute_metric_vector(&attributed, &hotspots, now);
 
         // 8. Store MetricVector (nxs-009: typed API, no bincode serialization)
         tokio::task::spawn_blocking({
@@ -1201,9 +1244,16 @@ impl UnimatrixServer {
 
         // 10b. Drain accumulated entry analysis from signal consumers (col-009, FR-10.5)
         let entries_analysis = {
-            let mut pending = self.pending_entries_analysis.lock().unwrap_or_else(|e| e.into_inner());
+            let mut pending = self
+                .pending_entries_analysis
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             let drained = pending.drain_all();
-            if drained.is_empty() { None } else { Some(drained) }
+            if drained.is_empty() {
+                None
+            } else {
+                Some(drained)
+            }
         };
 
         // 10c. Build report with baseline and entries_analysis
@@ -1285,7 +1335,7 @@ impl UnimatrixServer {
 
             // Step 13-14: Knowledge reuse (C3/C4, best-effort)
             match compute_knowledge_reuse_for_sessions(&store, &session_records).await {
-                Ok(reuse) => report.knowledge_reuse = Some(reuse),
+                Ok(reuse) => report.feature_knowledge_reuse = Some(reuse),
                 Err(e) => tracing::warn!("col-020: knowledge reuse computation failed: {e}"),
             }
 
@@ -1430,7 +1480,10 @@ fn build_lesson_learned_content(report: &unimatrix_observe::RetrospectiveReport)
     }
 
     for r in &report.recommendations {
-        content.push_str(&format!("Recommendation ({}): {}\n", r.hotspot_type, r.action));
+        content.push_str(&format!(
+            "Recommendation ({}): {}\n",
+            r.hotspot_type, r.action
+        ));
     }
 
     // R-09 guard: ensure non-empty content
@@ -1471,15 +1524,18 @@ async fn write_lesson_learned(
     let existing = {
         let store = Arc::clone(&server.store);
         let topic_clone = topic.clone();
-        tokio::task::spawn_blocking(move || -> Result<Vec<unimatrix_core::EntryRecord>, crate::error::ServerError> {
-            let filter = unimatrix_core::QueryFilter {
-                topic: Some(topic_clone),
-                category: Some("lesson-learned".to_string()),
-                ..Default::default()
-            };
-            store.query(filter)
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))
-        })
+        tokio::task::spawn_blocking(
+            move || -> Result<Vec<unimatrix_core::EntryRecord>, crate::error::ServerError> {
+                let filter = unimatrix_core::QueryFilter {
+                    topic: Some(topic_clone),
+                    category: Some("lesson-learned".to_string()),
+                    ..Default::default()
+                };
+                store
+                    .query(filter)
+                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))
+            },
+        )
         .await
         .map_err(|e| crate::error::ServerError::Core(CoreError::JoinError(e.to_string())))??
     };
@@ -1619,12 +1675,19 @@ async fn write_lesson_learned(
 async fn compute_knowledge_reuse_for_sessions(
     store: &Arc<unimatrix_store::Store>,
     session_records: &[unimatrix_store::SessionRecord],
-) -> std::result::Result<unimatrix_observe::KnowledgeReuse, Box<dyn std::error::Error + Send + Sync>>
-{
+) -> std::result::Result<
+    unimatrix_observe::FeatureKnowledgeReuse,
+    Box<dyn std::error::Error + Send + Sync>,
+> {
     let session_id_list: Vec<String> = session_records
         .iter()
         .map(|sr| sr.session_id.clone())
         .collect();
+
+    tracing::debug!(
+        "col-020b: knowledge reuse data flow: {} session IDs",
+        session_id_list.len()
+    );
 
     // Load query_log
     let store_ql = Arc::clone(store);
@@ -1635,6 +1698,11 @@ async fn compute_knowledge_reuse_for_sessions(
     })
     .await??;
 
+    tracing::debug!(
+        "col-020b: knowledge reuse data flow: {} query_log records loaded",
+        query_logs.len()
+    );
+
     // Load injection_log
     let store_il = Arc::clone(store);
     let ids_il: Vec<String> = session_id_list.clone();
@@ -1644,10 +1712,20 @@ async fn compute_knowledge_reuse_for_sessions(
     })
     .await??;
 
+    tracing::debug!(
+        "col-020b: knowledge reuse data flow: {} injection_log records loaded",
+        injection_logs.len()
+    );
+
     // Load active category counts
     let store_ac = Arc::clone(store);
     let active_cats =
         tokio::task::spawn_blocking(move || store_ac.count_active_entries_by_category()).await??;
+
+    tracing::debug!(
+        "col-020b: knowledge reuse data flow: {} active categories",
+        active_cats.len()
+    );
 
     // Delegate to C3 knowledge_reuse module for computation
     let store_for_lookup = Arc::clone(store);
@@ -1661,6 +1739,12 @@ async fn compute_knowledge_reuse_for_sessions(
                 .ok()
                 .map(|entry| entry.category)
         },
+    );
+
+    tracing::debug!(
+        "col-020b: knowledge reuse result: delivery_count={}, cross_session_count={}",
+        reuse.delivery_count,
+        reuse.cross_session_count
     );
 
     Ok(reuse)
@@ -2050,7 +2134,7 @@ mod tests {
             narratives: None,
             recommendations: vec![],
             session_summaries: None,
-            knowledge_reuse: None,
+            feature_knowledge_reuse: None,
             rework_session_count: None,
             context_reload_pct: None,
             attribution: None,
@@ -2096,7 +2180,7 @@ mod tests {
                 rationale: "saves time".to_string(),
             }],
             session_summaries: None,
-            knowledge_reuse: None,
+            feature_knowledge_reuse: None,
             rework_session_count: None,
             context_reload_pct: None,
             attribution: None,
@@ -2140,7 +2224,7 @@ mod tests {
                 rationale: "saves time".to_string(),
             }],
             session_summaries: None,
-            knowledge_reuse: None,
+            feature_knowledge_reuse: None,
             rework_session_count: None,
             context_reload_pct: None,
             attribution: None,
@@ -2168,7 +2252,7 @@ mod tests {
             narratives: None,
             recommendations: vec![],
             session_summaries: None,
-            knowledge_reuse: None,
+            feature_knowledge_reuse: None,
             rework_session_count: None,
             context_reload_pct: None,
             attribution: None,

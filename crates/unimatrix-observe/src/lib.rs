@@ -28,8 +28,8 @@ pub use source::ObservationSource;
 pub use synthesis::synthesize_narratives;
 pub use types::{
     AttributionMetadata, BaselineComparison, BaselineEntry, BaselineSet, BaselineStatus,
-    EntryAnalysis, EvidenceCluster, EvidenceRecord, HookType, HotspotCategory, HotspotFinding,
-    HotspotNarrative, KnowledgeReuse, MetricVector, ObservationRecord, ObservationStats,
-    ParsedSession, PhaseMetrics, Recommendation, RetrospectiveReport, SessionSummary, Severity,
-    UniversalMetrics,
+    EntryAnalysis, EvidenceCluster, EvidenceRecord, FeatureKnowledgeReuse, HookType,
+    HotspotCategory, HotspotFinding, HotspotNarrative, MetricVector, ObservationRecord,
+    ObservationStats, ParsedSession, PhaseMetrics, Recommendation, RetrospectiveReport,
+    SessionSummary, Severity, UniversalMetrics,
 };
