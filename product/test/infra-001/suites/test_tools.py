@@ -783,98 +783,92 @@ def test_retrospective_whitespace_feature_cycle_returns_error(server):
 
 # === context_retrospective baseline comparison (col-002b) =================
 
+import hashlib
 import json as _json
 import os
-import shutil
+import sqlite3
+import time
 import uuid
 
 
-def _make_observation_jsonl(feature_id, session_id, num_records=20):
-    """Generate JSONL content for a feature with attributed records.
+def _compute_db_path(project_dir):
+    """Compute the server's SQLite DB path from the project directory.
 
-    Creates records referencing product/features/{feature_id}/ paths
-    so the attribution engine maps them to the feature.
+    Replicates the Rust compute_project_hash logic:
+    SHA256(canonicalized_path) -> first 16 hex chars -> ~/.unimatrix/{hash}/unimatrix.db
     """
-    lines = []
-    base_ts = "2025-01-15T10:00:00.000Z"
-    # Produce records that reference the feature in file paths
-    for i in range(num_records):
-        hour = 10 + (i * 5) // 60
-        minute = (i * 5) % 60
-        ts = f"2025-01-15T{hour:02d}:{minute:02d}:00.000Z"
-
-        if i % 4 == 0:
-            # Read with feature path
-            record = {
-                "ts": ts,
-                "hook": "PreToolUse",
-                "session_id": session_id,
-                "tool": "Read",
-                "input": {"file_path": f"/workspaces/project/product/features/{feature_id}/SCOPE.md"},
-            }
-        elif i % 4 == 1:
-            # Bash command
-            record = {
-                "ts": ts,
-                "hook": "PreToolUse",
-                "session_id": session_id,
-                "tool": "Bash",
-                "input": {"command": f"cargo test -p {feature_id}"},
-            }
-        elif i % 4 == 2:
-            # Write with feature path
-            record = {
-                "ts": ts,
-                "hook": "PreToolUse",
-                "session_id": session_id,
-                "tool": "Write",
-                "input": {"file_path": f"/workspaces/project/product/features/{feature_id}/test.rs"},
-            }
-        else:
-            # PostToolUse
-            record = {
-                "ts": ts,
-                "hook": "PostToolUse",
-                "session_id": session_id,
-                "tool": "Read",
-                "input": None,
-                "response_size": 1024,
-                "response_snippet": "some output",
-            }
-        lines.append(_json.dumps(record))
-
-    return "\n".join(lines) + "\n"
+    canonical = os.path.realpath(project_dir)
+    digest = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    return os.path.join(os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
 
 
-def _setup_observation_data(feature_ids):
-    """Write observation JSONL files for the given feature IDs.
+def _seed_observation_sql(db_path, feature_ids, num_records=20):
+    """Seed observation data directly into the server's SQLite tables.
 
-    Returns the observation directory path and list of created file paths
-    for cleanup.
+    Inserts rows into the `sessions` and `observations` tables so that
+    context_retrospective can find them via SqlObservationSource.
+
+    Returns a list of (feature_id, session_id) tuples for reference.
     """
-    obs_dir = os.path.join(os.path.expanduser("~"), ".unimatrix", "observation")
-    os.makedirs(obs_dir, exist_ok=True)
+    conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    now_secs = int(time.time())
+    now_millis = now_secs * 1000
+    # Use recent timestamps (1 day ago) to stay within 60-day retention window
+    base_ts_millis = now_millis - 86_400_000
 
-    created_files = []
-    for fid in feature_ids:
-        session_id = f"test-{fid}-{uuid.uuid4().hex[:8]}"
-        filename = f"{session_id}.jsonl"
-        filepath = os.path.join(obs_dir, filename)
-        content = _make_observation_jsonl(fid, session_id)
-        with open(filepath, "w") as f:
-            f.write(content)
-        created_files.append(filepath)
+    seeded = []
+    try:
+        for fid in feature_ids:
+            session_id = f"test-{fid}-{uuid.uuid4().hex[:8]}"
 
-    return obs_dir, created_files
+            # Insert session with feature_cycle set
+            conn.execute(
+                "INSERT INTO sessions (session_id, feature_cycle, started_at, status) "
+                "VALUES (?, ?, ?, 0)",
+                (session_id, fid, now_secs),
+            )
 
+            # Insert observation records
+            for i in range(num_records):
+                ts_millis = base_ts_millis + (i * 300_000)  # 5-minute intervals
 
-def _cleanup_observation_files(file_paths):
-    """Remove observation files created during testing."""
-    for fp in file_paths:
-        try:
-            os.remove(fp)
-        except OSError:
-            pass
+                if i % 4 == 0:
+                    hook, tool = "PreToolUse", "Read"
+                    input_json = _json.dumps(
+                        {"file_path": f"/workspaces/project/product/features/{fid}/SCOPE.md"}
+                    )
+                elif i % 4 == 1:
+                    hook, tool = "PreToolUse", "Bash"
+                    input_json = _json.dumps({"command": f"cargo test -p {fid}"})
+                elif i % 4 == 2:
+                    hook, tool = "PreToolUse", "Write"
+                    input_json = _json.dumps(
+                        {"file_path": f"/workspaces/project/product/features/{fid}/test.rs"}
+                    )
+                else:
+                    hook, tool = "PostToolUse", "Read"
+                    input_json = None
+
+                response_size = 1024 if hook == "PostToolUse" else None
+                response_snippet = "some output" if hook == "PostToolUse" else None
+
+                conn.execute(
+                    "INSERT INTO observations "
+                    "(session_id, ts_millis, hook, tool, input, response_size, response_snippet) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (session_id, ts_millis, hook, tool, input_json, response_size, response_snippet),
+                )
+
+            seeded.append((fid, session_id))
+
+        conn.commit()
+        # Force WAL checkpoint so the server's connection sees seeded data
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+
+    return seeded
 
 
 def test_retrospective_baseline_present(server):
@@ -885,41 +879,38 @@ def test_retrospective_baseline_present(server):
     baseline_comparison is present in the response.
     """
     features = ["col-801", "col-802", "col-803", "col-804"]
-    _, created_files = _setup_observation_data(features)
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, features)
 
-    try:
-        # Generate MetricVectors for first 3 features
-        for fid in features[:3]:
-            resp = server.context_retrospective(fid, agent_id="human", format="json", timeout=30.0)
-            result = assert_tool_success(resp)
-
-        # Now run on 4th feature -- should have baseline from 3 prior
-        resp = server.context_retrospective(features[3], agent_id="human", format="json", timeout=30.0)
+    # Generate MetricVectors for first 3 features
+    for fid in features[:3]:
+        resp = server.context_retrospective(fid, agent_id="human", format="json", timeout=30.0)
         result = assert_tool_success(resp)
 
-        # Parse report and check for baseline_comparison
-        if result.parsed and isinstance(result.parsed, dict):
-            report = result.parsed
-        else:
-            report = _json.loads(result.text) if result.text.strip().startswith("{") else {}
+    # Now run on 4th feature -- should have baseline from 3 prior
+    resp = server.context_retrospective(features[3], agent_id="human", format="json", timeout=30.0)
+    result = assert_tool_success(resp)
 
-        assert "baseline_comparison" in report, (
-            f"Expected baseline_comparison in report, got keys: {list(report.keys())}"
-        )
-        baseline = report["baseline_comparison"]
-        assert baseline is not None, "baseline_comparison should not be null with 3 prior MetricVectors"
-        assert isinstance(baseline, list), f"Expected list, got {type(baseline)}"
-        assert len(baseline) > 0, "baseline_comparison should have entries"
+    # Parse report and check for baseline_comparison
+    if result.parsed and isinstance(result.parsed, dict):
+        report = result.parsed
+    else:
+        report = _json.loads(result.text) if result.text.strip().startswith("{") else {}
 
-        # Verify each entry has required fields
-        for entry in baseline:
-            assert "metric_name" in entry, f"Missing 'metric_name' in baseline entry: {entry}"
-            assert "status" in entry, f"Missing 'status' in baseline entry: {entry}"
-            assert "current_value" in entry, f"Missing 'current_value' in baseline entry: {entry}"
-            assert "mean" in entry, f"Missing 'mean' in baseline entry: {entry}"
+    assert "baseline_comparison" in report, (
+        f"Expected baseline_comparison in report, got keys: {list(report.keys())}"
+    )
+    baseline = report["baseline_comparison"]
+    assert baseline is not None, "baseline_comparison should not be null with 3 prior MetricVectors"
+    assert isinstance(baseline, list), f"Expected list, got {type(baseline)}"
+    assert len(baseline) > 0, "baseline_comparison should have entries"
 
-    finally:
-        _cleanup_observation_files(created_files)
+    # Verify each entry has required fields
+    for entry in baseline:
+        assert "metric_name" in entry, f"Missing 'metric_name' in baseline entry: {entry}"
+        assert "status" in entry, f"Missing 'status' in baseline entry: {entry}"
+        assert "current_value" in entry, f"Missing 'current_value' in baseline entry: {entry}"
+        assert "mean" in entry, f"Missing 'mean' in baseline entry: {entry}"
 
 
 def test_retrospective_insufficient_baseline(server):
@@ -930,31 +921,28 @@ def test_retrospective_insufficient_baseline(server):
     baseline_comparison should be null/absent.
     """
     features = ["col-811", "col-812", "col-813"]
-    _, created_files = _setup_observation_data(features)
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, features)
 
-    try:
-        # Generate MetricVectors for only 2 features
-        for fid in features[:2]:
-            resp = server.context_retrospective(fid, agent_id="human", format="json", timeout=30.0)
-            assert_tool_success(resp)
+    # Generate MetricVectors for only 2 features
+    for fid in features[:2]:
+        resp = server.context_retrospective(fid, agent_id="human", format="json", timeout=30.0)
+        assert_tool_success(resp)
 
-        # Run on 3rd feature -- only 2 prior vectors, insufficient for baseline
-        resp = server.context_retrospective(features[2], agent_id="human", format="json", timeout=30.0)
-        result = assert_tool_success(resp)
+    # Run on 3rd feature -- only 2 prior vectors, insufficient for baseline
+    resp = server.context_retrospective(features[2], agent_id="human", format="json", timeout=30.0)
+    result = assert_tool_success(resp)
 
-        if result.parsed and isinstance(result.parsed, dict):
-            report = result.parsed
-        else:
-            report = _json.loads(result.text) if result.text.strip().startswith("{") else {}
+    if result.parsed and isinstance(result.parsed, dict):
+        report = result.parsed
+    else:
+        report = _json.loads(result.text) if result.text.strip().startswith("{") else {}
 
-        # baseline_comparison should be null or absent
-        baseline = report.get("baseline_comparison")
-        assert baseline is None, (
-            f"Expected null baseline_comparison with only 2 prior vectors, got: {baseline}"
-        )
-
-    finally:
-        _cleanup_observation_files(created_files)
+    # baseline_comparison should be null or absent
+    baseline = report.get("baseline_comparison")
+    assert baseline is None, (
+        f"Expected null baseline_comparison with only 2 prior vectors, got: {baseline}"
+    )
 
 
 def test_retrospective_21_rules_active(server):
@@ -966,27 +954,24 @@ def test_retrospective_21_rules_active(server):
     that depends on the observation data patterns.)
     """
     features = ["col-821"]
-    _, created_files = _setup_observation_data(features)
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, features)
 
-    try:
-        resp = server.context_retrospective(features[0], agent_id="human", format="json", timeout=30.0)
-        result = assert_tool_success(resp)
+    resp = server.context_retrospective(features[0], agent_id="human", format="json", timeout=30.0)
+    result = assert_tool_success(resp)
 
-        if result.parsed and isinstance(result.parsed, dict):
-            report = result.parsed
-        else:
-            report = _json.loads(result.text) if result.text.strip().startswith("{") else {}
+    if result.parsed and isinstance(result.parsed, dict):
+        report = result.parsed
+    else:
+        report = _json.loads(result.text) if result.text.strip().startswith("{") else {}
 
-        # Verify hotspots section exists
-        assert "hotspots" in report, f"Expected hotspots in report, got keys: {list(report.keys())}"
-        hotspots = report["hotspots"]
-        assert isinstance(hotspots, list), f"Expected list, got {type(hotspots)}"
+    # Verify hotspots section exists
+    assert "hotspots" in report, f"Expected hotspots in report, got keys: {list(report.keys())}"
+    hotspots = report["hotspots"]
+    assert isinstance(hotspots, list), f"Expected list, got {type(hotspots)}"
 
-        # Verify metrics section exists (proves computation pipeline works)
-        assert "metrics" in report, f"Expected metrics in report"
-
-    finally:
-        _cleanup_observation_files(created_files)
+    # Verify metrics section exists (proves computation pipeline works)
+    assert "metrics" in report, f"Expected metrics in report"
 
 
 # === context_status observation extension (col-002) =======================
