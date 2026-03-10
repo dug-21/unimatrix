@@ -131,6 +131,11 @@ impl StatusService {
                 }
             }
 
+            // Release the connection lock before calling store methods that
+            // re-acquire it. std::sync::Mutex is non-reentrant: holding `conn`
+            // while calling lock_conn() again would deadlock (#176).
+            drop(conn);
+
             // Correction chain metrics + security metrics via SQL aggregation (crt-013)
             let aggregates = store.compute_status_aggregates()
                 .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
