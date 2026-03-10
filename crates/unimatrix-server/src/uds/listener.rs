@@ -21,7 +21,7 @@ use unimatrix_engine::wire::{
     EntryPayload, HookRequest, HookResponse, ERR_INVALID_PAYLOAD, MAX_PAYLOAD_SIZE,
 };
 use unimatrix_store::Store;
-use unimatrix_store::{InjectionLogRecord, SessionLifecycleStatus, SessionRecord, SignalRecord, SignalType, SignalSource};
+use unimatrix_store::{InjectionLogRecord, QueryLogRecord, SessionLifecycleStatus, SessionRecord, SignalRecord, SignalType, SignalSource};
 
 use std::collections::HashSet;
 use std::sync::Mutex;
@@ -900,6 +900,36 @@ async fn handle_context_search(
                         count = records.len(),
                         error = %e,
                         "INJECTION_LOG batch write failed"
+                    );
+                }
+            });
+        }
+    }
+
+    // 10c. nxs-010: Persist query_log row (fire-and-forget, ADR-002)
+    if let Some(ref sid) = session_id {
+        if !sid.is_empty() {
+            let entry_ids: Vec<u64> = filtered.iter().map(|(e, _)| e.id).collect();
+            let scores: Vec<f64> = filtered.iter().map(|(_, sim)| *sim).collect();
+
+            let record = QueryLogRecord::new(
+                sid.clone(),
+                query.clone(),
+                &entry_ids,
+                &scores,
+                "strict",
+                "uds",
+            );
+
+            let store_clone = Arc::clone(store);
+            let sid_clone = sid.clone();
+            spawn_blocking_fire_and_forget(move || {
+                if let Err(e) = store_clone.insert_query_log(&record) {
+                    tracing::warn!(
+                        session_id = %sid_clone,
+                        query_len = record.query_text.len(),
+                        error = %e,
+                        "query_log write failed"
                     );
                 }
             });
