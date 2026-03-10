@@ -20,7 +20,7 @@ From the invoker:
 
 ---
 
-## Phase 1: Data Gathering
+## Phase 1: Data Gathering & Retrospective Analysis
 
 Gather all evidence about the shipped feature:
 
@@ -28,9 +28,37 @@ Gather all evidence about the shipped feature:
    ```
    mcp__unimatrix__context_retrospective(feature_cycle: "{feature-id}")
    ```
-   This returns session telemetry, hotspots, and detection rule results.
+   This returns structured data: metrics, hotspots, baseline comparisons, narratives, and recommendations.
 
-2. **Read feature artifacts**:
+2. **Analyze the retrospective data** — extract actionable findings:
+
+   a. **Hotspots by severity** — Classify each hotspot:
+      - `Warning` hotspots → potential lessons or procedure gaps
+      - `Info` hotspots → note trends, may not need action
+      - Key hotspot types to watch:
+        - `permission_retries` → settings.json allowlist may need updating
+        - `sleep_workarounds` → agents using sleep instead of run_in_background
+        - `cold_restart` → context loss after gaps, agents re-reading files
+        - `coordinator_respawns` → SM lifetime/handoff issues
+        - `post_completion_work` → significant work after task marked done (scope issue?)
+        - `lifespan` → agent running too long (context overflow risk)
+        - `mutation_spread` → touching too many files (coupling/scope creep?)
+        - `file_breadth` / `reread_rate` → agents inefficiently navigating codebase
+
+   b. **Baseline outliers** — Any metric with `status: "Outlier"` deserves attention:
+      - Is it a positive shift (e.g., higher `parallel_call_rate`)? Note as trend.
+      - Is it a problem (e.g., high `post_completion_work`)? Extract lesson.
+      - Is it a `NewSignal`? First time this metric has a non-zero value — note for future tracking.
+
+   c. **Recommendations** — The retrospective returns specific actionable recommendations.
+      Each one maps to either a procedure update or a lesson learned.
+
+   d. **Narratives** — Temporal clustering of events. Look for:
+      - Burst patterns (many events in short window → agent struggling)
+      - Sequence patterns (repeated cycles → inefficient workflow)
+      - Top files (which files caused the most friction)
+
+3. **Read feature artifacts**:
    - `product/features/{id}/architecture/ARCHITECTURE.md`
    - `product/features/{id}/pseudocode/OVERVIEW.md`
    - `product/features/{id}/testing/RISK-COVERAGE-REPORT.md`
@@ -38,9 +66,9 @@ Gather all evidence about the shipped feature:
    - `product/features/{id}/reports/gate-3b-report.md`
    - `product/features/{id}/reports/gate-3c-report.md`
 
-3. **Check for rework signals**: Did any gate fail before passing? Read the gate report for what went wrong.
+4. **Check for rework signals**: Did any gate fail before passing? Read the gate report for what went wrong.
 
-4. **Review the git log** for this feature's branch:
+5. **Review the git log** for this feature's branch:
    ```bash
    git log main..HEAD --oneline
    ```
@@ -49,6 +77,30 @@ Gather all evidence about the shipped feature:
 ---
 
 ## Phase 2: Pattern & Procedure Extraction (MUST be a subagent)
+
+**Before spawning the architect**, prepare a structured retrospective briefing from Phase 1. This replaces the vague "paste summary" — give the architect concrete data to work with.
+
+Build the briefing:
+
+```
+RETROSPECTIVE BRIEFING for {feature-id}
+========================================
+
+Session stats: {session_count} sessions, {total_records} records, {total_tool_calls} tool calls, {total_duration_secs}s
+
+HOTSPOTS ({count} detected):
+{For each hotspot: "- [{severity}] {rule_name}: {claim} (measured: {measured}, threshold: {threshold})"}
+
+BASELINE OUTLIERS:
+{For each baseline entry with status "Outlier" or "NewSignal":
+  "- {metric_name}: {current_value} vs mean {mean} (stddev {stddev}) — {status}"}
+
+RECOMMENDATIONS FROM RETROSPECTIVE:
+{For each recommendation: "- [{hotspot_type}] {action} — {rationale}"}
+
+REWORK SIGNALS:
+{gate failures, rework commits from Phase 1 step 4-5}
+```
 
 Spawn `uni-architect` to review what was built and extract reusable knowledge:
 
@@ -70,8 +122,7 @@ Agent(uni-architect, "
   - product/features/{id}/reports/gate-3c-report.md (risk validation)
   - product/features/{id}/testing/RISK-COVERAGE-REPORT.md
 
-  Retrospective data (if available): {paste retrospective summary}
-  Rework signals: {list any gate failures or rework commits}
+  {paste the RETROSPECTIVE BRIEFING from above}
 
   YOUR TASKS:
 
@@ -94,17 +145,34 @@ Agent(uni-architect, "
      b. Did implementation reveal that an ADR was wrong or incomplete?
         If so: flag for supersession (do NOT supersede without human approval).
 
-  4. LESSON EXTRACTION — From gate failures and rework:
-     a. What went wrong? (root cause, not symptoms)
-     b. Is the lesson generalizable beyond this feature?
-     c. If yes: use /store-lesson.
+  4. LESSON EXTRACTION — Two sources:
+
+     A. From gate failures and rework:
+        a. What went wrong? (root cause, not symptoms)
+        b. Is the lesson generalizable beyond this feature?
+        c. If yes: use /store-lesson.
+
+     B. From retrospective hotspots and recommendations:
+        For each Warning-severity hotspot, ask:
+        - Is this a recurring problem (check baseline — is it consistently above threshold)?
+        - Can it be prevented by a procedure change or config update?
+        - If yes: store as lesson (/store-lesson) or procedure (/store-procedure).
+
+        For each recommendation from the retrospective:
+        - Check if a matching procedure already exists (/query-patterns).
+        - If not, and the recommendation is actionable: store as procedure.
+        - If it updates existing guidance: use context_correct.
+
+     C. From baseline outliers:
+        - Positive outliers (improvements): note what changed and why — may be a new pattern.
+        - Negative outliers (regressions): root-cause and store as lesson if generalizable.
 
   Return:
   1. Patterns: [new entries with IDs, updated entries with IDs, skipped with reason]
   2. Procedures: [new/updated with IDs]
   3. ADR status: [validated ADRs, flagged-for-supersession ADRs with reason]
   4. Lessons: [new entries with IDs]
-  5. Observations: [anything notable about the feature cycle]")
+  5. Retrospective findings: [hotspot-derived lessons, recommendation actions taken, outlier notes]")
 ```
 
 ---
@@ -155,7 +223,7 @@ Use `/record-outcome` with:
 - Type: `retro`
 - Phase: `retro`
 - Result: `pass`
-- Content: `Retrospective complete. {N} patterns, {N} procedures, {N} lessons extracted. {N} ADRs validated.`
+- Content: `Retrospective complete. {N} patterns, {N} procedures, {N} lessons extracted. {N} ADRs validated. Hotspots: {count} ({warning_count} warnings). Outliers: {list outlier metric names}.`
 
 **Return format:**
 ```
@@ -164,10 +232,15 @@ RETROSPECTIVE COMPLETE — Knowledge base updated.
 Feature: {feature-id}
 PR: #{pr-number} (merged)
 
+Retrospective summary:
+- Sessions: {session_count}, Tool calls: {total_tool_calls}, Duration: {duration}
+- Hotspots: {count} ({warning_count} warnings, {info_count} info)
+- Baseline outliers: {list metric names and status}
+
 Knowledge extracted:
 - Patterns: {count} new, {count} updated
 - Procedures: {count} new, {count} updated
-- Lessons learned: {count} new
+- Lessons learned: {count} new ({count} from hotspots, {count} from gate failures)
 - ADRs validated: {count}
 - ADRs superseded: {count}
 
@@ -183,7 +256,8 @@ Not every feature needs a full retro:
 
 | Situation | Action |
 |---|---|
-| Zero gate failures, no rework | Skip lesson extraction. Focus on patterns/procedures only. |
+| Zero gate failures, no rework, zero hotspots | Skip lesson extraction. Focus on patterns/procedures only. |
 | Minor enhancement (1-2 components) | Check for pattern drift only, skip procedure review. |
 | New infrastructure introduced | Full retro — high likelihood of new patterns and procedures. |
 | Multiple SCOPE FAILs or heavy rework | Full retro — prioritize lesson extraction. |
+| Many Warning hotspots or baseline outliers | Full retro — prioritize hotspot-driven lessons and procedure updates. |
