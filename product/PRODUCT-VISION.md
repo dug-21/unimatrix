@@ -74,6 +74,7 @@ Introduces `topic` as the universal grouping concept — aligning knowledge-side
 
 **Wave 3 — Intelligence & export (depends on Wave 2):**
 
+- [ ] **vnc-011: Retrospective ReportFormatter** — Markdown-format retrospective output for LLM consumers. Session table, finding collapse (related hotspots → single finding), actionability tagging (`[actionable]`/`[expected]`/`[informational]`), narrative collapse, baseline filtering to outliers only. ~80% token reduction from current JSON default. JSON preserved via `format: "json"`. No dependencies on Wave 1/2. (#91)
 - [ ] **crt-018: Knowledge Effectiveness Analysis** — Per-entry utility scoring from injection_log + session outcomes. Confidence calibration validation. Dead knowledge detection. Surfaces via `context_status`.
 - [ ] **crt-019: Search Quality & Gap Detection** — Zero-result query analysis, query reformulation detection, result utilization rate. Identifies knowledge gaps. Surfaces via `context_status`.
 - [ ] **col-021: Query Data Export** — Export (query, results, outcome) triples for embedding model tuning. New tool or CLI subcommand.
@@ -120,7 +121,6 @@ Depends on Activity Intelligence + Graph Enablement. Stabilize the platform for 
 
 **Quality-of-life:**
 - #42 — outcome stats computation optimization
-- #91 — text-format retrospective for LLM consumers
 - #89 — OperationalEvent structured logging
 
 **Release enablement:**
