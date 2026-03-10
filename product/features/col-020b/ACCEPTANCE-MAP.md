@@ -1,0 +1,20 @@
+# col-020b Acceptance Criteria Map
+
+| AC-ID | Description | Verification Method | Verification Detail | Status |
+|-------|-------------|--------------------|--------------------|--------|
+| AC-01 | normalize_tool_name strips mcp__unimatrix__ prefix; passes through non-MCP tools | test | Unit test: `normalize_tool_name("mcp__unimatrix__context_search")` returns `"context_search"`; `normalize_tool_name("Read")` returns `"Read"` | PENDING |
+| AC-02 | classify_tool maps MCP-prefixed tool names to correct categories (search, store, curate) and bare names continue to work | test | Unit test covering all entries in FR-02.1 table for both bare and `mcp__unimatrix__`-prefixed variants | PENDING |
+| AC-03 | knowledge_served counts PreToolUse events for context_search, context_lookup, context_get (both bare and MCP-prefixed) | test | Unit test with mixed bare and prefixed tool names; sum equals total count of search/lookup/get events | PENDING |
+| AC-04 | knowledge_stored counts PreToolUse events for context_store (both bare and MCP-prefixed) | test | Unit test with prefixed `context_store` events; count is non-zero | PENDING |
+| AC-05 | knowledge_curated counts PreToolUse events for context_correct, context_deprecate, context_quarantine (both bare and MCP-prefixed) | test | Unit test with all three curation tools in both prefix forms | PENDING |
+| AC-06 | SessionSummary fields renamed from knowledge_in/knowledge_out to knowledge_served/knowledge_stored with serde aliases for backward compat | test | Unit test deserializing JSON with `"knowledge_in": 5` into SessionSummary; assert `knowledge_served == 5` | PENDING |
+| AC-07 | FeatureKnowledgeReuse.delivery_count reflects ALL unique entries delivered to agents (any session, including single-session) | test | Unit test with entries in only 1 session; `delivery_count > 0`, `cross_session_count == 0` | PENDING |
+| AC-08 | FeatureKnowledgeReuse.cross_session_count reflects entries appearing in 2+ distinct sessions | test | Unit test with mix of single-session and multi-session entries; `cross_session_count < delivery_count` | PENDING |
+| AC-09 | FeatureKnowledgeReuse.by_category reflects delivery counts (all entries, not just cross-session) | test | Unit test with single-session entries; `by_category` is non-empty | PENDING |
+| AC-10 | FeatureKnowledgeReuse.category_gaps identifies categories with active entries but zero delivery | test | Unit test with active categories where some have delivery and some do not | PENDING |
+| AC-11 | RetrospectiveReport.feature_knowledge_reuse replaces knowledge_reuse with serde alias for backward compat | test | Unit test deserializing JSON with `"knowledge_reuse": {...}` into RetrospectiveReport; assert `feature_knowledge_reuse` is populated | PENDING |
+| AC-12 | knowledge_curated has serde(default) for backward compat with pre-col-020b data | test | Unit test deserializing SessionSummary JSON without `knowledge_curated` field; assert `knowledge_curated == 0` | PENDING |
+| AC-13 | Existing unit tests updated to reflect renamed fields and new categories | shell | `cargo test -p unimatrix-observe -p unimatrix-server` passes with all tests green | PENDING |
+| AC-14 | New tests cover MCP-prefixed tool names in classify_tool, knowledge flow counters, and tool distribution | test | Tests using `"mcp__unimatrix__context_search"`, `"mcp__unimatrix__context_store"`, `"mcp__unimatrix__context_correct"` as inputs | PENDING |
+| AC-15 | New tests cover FeatureKnowledgeReuse computation with delivery_count > 0 for single-session data (regression for 2+ sessions filter bug) | test | Unit test in knowledge_reuse.rs with single-session data; `delivery_count > 0`, `cross_session_count == 0` | PENDING |
+| AC-16 | Debug tracing added at data flow boundaries in compute_knowledge_reuse_for_sessions | grep | `grep -n 'tracing::debug!' crates/unimatrix-server/src/mcp/tools.rs` shows log points after query_log load, injection_log load, active_cats load, and result summary | PENDING |
