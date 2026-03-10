@@ -8,26 +8,27 @@ Triggers on: bug, fix, bugfix, defect, regression, broken, failing, error, crash
 
 A single-session workflow that takes a bug report from diagnosis through merge. The session includes a human checkpoint after diagnosis — the human must agree with the root cause analysis before any code changes are made.
 
+**You are the Bugfix Leader.** Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries. You orchestrate — you NEVER generate content. Spawn specialist agents for all work.
+
 ```
-Primary Agent                    uni-scrum-master          Specialist Agents
-─────────────                    ──────────────────────          ─────────────────
-read bug report (GH Issue or description)
-spawn bugfix-scrum-master ─────► read protocol + bug report
-                                 spawn investigator (Phase 1)
-                                 ◄──────────────────────────── diagnosis + proposed fix
-                                 present diagnosis to human
-                                 ★ HUMAN CHECKPOINT ★
-                                 human approves diagnosis
-                                 create branch (Phase 2)
-                                 spawn rust-dev ─────────────► implement fix + tests
-                                 ◄──────────────────────────── changed files + test results
-                                 spawn tester (Phase 3)
-                                 ◄──────────────────────────── full test suite results
-                                 spawn validator (Gate 3) ───► validate fix
-                                 ◄──────────────────────────── PASS / REWORKABLE FAIL / SCOPE FAIL
-                                 on PASS: open PR
-                                 spawn security-reviewer ────► review PR diff (fresh context)
-                                 ◄──────────────────────────── security assessment
+Bugfix Leader (you)                                  Specialist Agents
+───────────────────                                  ─────────────────
+read protocol + bug report
+spawn investigator (Phase 1) ───────────────────────► diagnosis + proposed fix
+◄────────────────────────────────────────────────────
+present diagnosis to human
+★ HUMAN CHECKPOINT ★
+human approves diagnosis
+create branch (Phase 2)
+spawn rust-dev ─────────────────────────────────────► implement fix + tests
+◄────────────────────────────────────────────────────
+spawn tester (Phase 3) ─────────────────────────────► full test suite results
+◄────────────────────────────────────────────────────
+spawn validator (Gate 3) ───────────────────────────► validate fix
+◄──────────────────────────────────────────────────── PASS / REWORKABLE FAIL / SCOPE FAIL
+on PASS: open PR
+spawn security-reviewer ────────────────────────────► review PR diff (fresh context)
+◄────────────────────────────────────────────────────
 ◄──────────────────────────────  present PR + security assessment
 human reviews and merges
 ```
@@ -194,7 +195,7 @@ Task(subagent_type: "uni-tester",
     5. Integration suites relevant to the bug area (see USAGE-PROTOCOL.md suite table)
 
     INTEGRATION TEST FAILURE TRIAGE (CRITICAL):
-    - CAUSED BY THIS BUG FIX → Report back to bugfix-scrum-master for rework.
+    - CAUSED BY THIS BUG FIX → Report back to Bugfix Leader for rework.
     - PRE-EXISTING / UNRELATED → Do NOT fix. File a GH Issue, mark the test
       @pytest.mark.xfail(reason='Pre-existing: GH#NNN — description').
     - BAD TEST ASSERTION → Fix the test. Document in results.
@@ -364,7 +365,7 @@ NEVER pipe full cargo output into context.
 ## Quick Reference: Message Map
 
 ```
-BUGFIX MANAGER (uni-scrum-master):
+BUGFIX LEADER (you):
   Init:       /query-patterns + /knowledge-search — prior knowledge
   Phase 1:    Task(uni-bug-investigator) — diagnose root cause → GH Issue comment
               ...present diagnosis to human...

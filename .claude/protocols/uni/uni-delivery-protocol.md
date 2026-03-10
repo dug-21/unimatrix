@@ -28,7 +28,7 @@ Phase 4: Delivery
 
 **Critical sequence**: Stage 3a produces pseudocode + test plans → Delivery Leader updates the Component Map → Gate 3a validates designs → ONLY THEN does Stage 3b begin. Stage 3b agents each receive their specific component's validated pseudocode and test plan.
 
-**The Delivery Leader runs all stages autonomously.** Human re-enters only on scope/feasibility failures or when rework iterations are exhausted.
+**You are the Delivery Leader.** Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries. You orchestrate — you NEVER generate content. Spawn specialist agents for all work. Run all stages autonomously. Human re-enters only on scope/feasibility failures or when rework iterations are exhausted.
 
 ### Concurrency Rules
 
@@ -426,7 +426,7 @@ NEVER pipe full cargo output into context.
 ## Quick Reference: Message Map
 
 ```
-DELIVERY LEADER (uni-scrum-master):
+DELIVERY LEADER (you):
   Init:       Read IMPLEMENTATION-BRIEF.md + ACCEPTANCE-MAP.md
   Stage 3a:   Task(uni-pseudocode) + Task(uni-tester) — parallel, ONE message
               ...wait for both to complete...
@@ -454,7 +454,7 @@ DELIVERY LEADER (uni-scrum-master):
 
 **Authoritative reference**: `product/test/infra-001/USAGE-PROTOCOL.md` — contains commands, suite descriptions, failure triage decision tree, GH Issue templates, and xfail workflow.
 
-The uni-tester agent has full integration harness knowledge (suite selection, triage rules, commands). The delivery protocol does not duplicate those details. Key rules for the scrum master:
+The uni-tester agent has full integration harness knowledge (suite selection, triage rules, commands). The delivery protocol does not duplicate those details. Key rules for the Design Leader:
 
 - **uni-rust-dev** (Stage 3b): Do NOT run or modify integration tests. Stage 3c handles this.
 - **uni-tester** (Stage 3a): Include integration harness plan in test-plan/OVERVIEW.md — which suites apply, new tests needed.
