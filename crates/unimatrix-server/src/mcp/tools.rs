@@ -1108,6 +1108,11 @@ impl UnimatrixServer {
                         entries_analysis: None,
                         narratives: None,
                         recommendations: vec![],
+                        session_summaries: None,
+                        knowledge_reuse: None,
+                        rework_session_count: None,
+                        context_reload_pct: None,
+                        attribution: None,
                     };
 
                     return Ok(format_retrospective_report(&report));
@@ -1228,6 +1233,157 @@ impl UnimatrixServer {
                     tracing::warn!("lesson-learned write failed for {}: {}", fc_for_ll, e);
                 }
             });
+        }
+
+        // col-020: Multi-session retrospective steps (best-effort, all fields default to None)
+        // Steps 11-17 depend on session_records from step 11. If step 11 fails, all are skipped.
+        let session_data: Option<(
+            Vec<unimatrix_observe::SessionSummary>,
+            Vec<unimatrix_store::SessionRecord>,
+        )> = match (|| async {
+            // Step 11: Compute session summaries (C1)
+            let mut summaries = unimatrix_observe::compute_session_summaries(&attributed);
+
+            // Enrich with outcome from SessionRecord
+            let session_records = {
+                let store_c = Arc::clone(&store);
+                let fc = feature_cycle.clone();
+                tokio::task::spawn_blocking(move || store_c.scan_sessions_by_feature(&fc))
+                    .await
+                    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
+                    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
+            };
+
+            // Build session_id -> outcome map
+            let outcome_map: std::collections::HashMap<String, Option<String>> = session_records
+                .iter()
+                .map(|sr| (sr.session_id.clone(), sr.outcome.clone()))
+                .collect();
+
+            // Attach outcomes to summaries
+            for summary in &mut summaries {
+                if let Some(outcome) = outcome_map.get(&summary.session_id) {
+                    summary.outcome = outcome.clone();
+                }
+            }
+
+            Ok::<_, Box<dyn std::error::Error + Send + Sync>>((summaries, session_records))
+        })()
+        .await
+        {
+            Ok(data) => Some(data),
+            Err(e) => {
+                tracing::warn!("col-020: session summaries failed: {e}");
+                None
+            }
+        };
+
+        if let Some((summaries, session_records)) = session_data {
+            // Step 12: Context reload percentage (C1, best-effort)
+            let reload_pct = unimatrix_observe::compute_context_reload_pct(&summaries, &attributed);
+            report.context_reload_pct = Some(reload_pct);
+
+            // Step 13-14: Knowledge reuse (C3/C4, best-effort)
+            match compute_knowledge_reuse_for_sessions(&store, &session_records).await {
+                Ok(reuse) => report.knowledge_reuse = Some(reuse),
+                Err(e) => tracing::warn!("col-020: knowledge reuse computation failed: {e}"),
+            }
+
+            // Step 15: Rework session count (case-insensitive substring match per human override)
+            let rework_count = session_records
+                .iter()
+                .filter(|sr| {
+                    if let Some(outcome) = &sr.outcome {
+                        let lower = outcome.to_lowercase();
+                        lower.contains("result:rework") || lower.contains("result:failed")
+                    } else {
+                        false
+                    }
+                })
+                .count() as u64;
+            report.rework_session_count = Some(rework_count);
+
+            // Step 16: Attribution metadata (ADR-003)
+            match (|| async {
+                let store_for_discover = Arc::clone(&store);
+                let fc_for_discover = feature_cycle.clone();
+                let discovered_ids = tokio::task::spawn_blocking(move || {
+                    use unimatrix_observe::ObservationSource;
+                    let source =
+                        crate::services::observation::SqlObservationSource::new(store_for_discover);
+                    source.discover_sessions_for_feature(&fc_for_discover)
+                })
+                .await
+                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
+                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
+
+                let attributed_count = session_records
+                    .iter()
+                    .filter(|sr| sr.feature_cycle.as_deref() == Some(&feature_cycle))
+                    .count();
+                let total_count = discovered_ids.len();
+
+                Ok::<_, Box<dyn std::error::Error + Send + Sync>>(
+                    unimatrix_observe::AttributionMetadata {
+                        attributed_session_count: attributed_count,
+                        total_session_count: total_count,
+                    },
+                )
+            })()
+            .await
+            {
+                Ok(meta) => report.attribution = Some(meta),
+                Err(e) => tracing::warn!("col-020: attribution metadata failed: {e}"),
+            }
+
+            // Step 17: Idempotent counter update (ADR-002, best-effort)
+            {
+                let total_sessions = session_records.len() as i64;
+                let total_tool_calls = report.metrics.universal.total_tool_calls as i64;
+                let total_duration_secs = report.metrics.universal.total_duration_secs as i64;
+                let store_for_counters = Arc::clone(&store);
+                let topic_for_counters = feature_cycle.clone();
+                match tokio::task::spawn_blocking(move || {
+                    // Ensure record exists before setting counters
+                    if store_for_counters
+                        .get_topic_delivery(&topic_for_counters)?
+                        .is_none()
+                    {
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+                        store_for_counters.upsert_topic_delivery(
+                            &unimatrix_store::TopicDeliveryRecord {
+                                topic: topic_for_counters.clone(),
+                                created_at: now,
+                                completed_at: None,
+                                status: "active".to_string(),
+                                github_issue: None,
+                                total_sessions: 0,
+                                total_tool_calls: 0,
+                                total_duration_secs: 0,
+                                phases_completed: None,
+                            },
+                        )?;
+                    }
+                    store_for_counters.set_topic_delivery_counters(
+                        &topic_for_counters,
+                        total_sessions,
+                        total_tool_calls,
+                        total_duration_secs,
+                    )
+                })
+                .await
+                {
+                    Ok(Ok(())) => {}
+                    Ok(Err(e)) => tracing::warn!("col-020: counter update failed: {e}"),
+                    Err(e) => tracing::warn!("col-020: counter update task failed: {e}"),
+                }
+            }
+
+            // Assign session summaries to report
+            report.session_summaries = Some(summaries);
         }
 
         // 11. Audit
@@ -1454,6 +1610,60 @@ async fn write_lesson_learned(
     }
 
     Ok(())
+}
+
+/// Compute Tier 1 cross-session knowledge reuse (col-020 C3, ADR-001).
+///
+/// Loads query_log + injection_log for the given sessions, then delegates to the
+/// knowledge_reuse module for the actual computation.
+async fn compute_knowledge_reuse_for_sessions(
+    store: &Arc<unimatrix_store::Store>,
+    session_records: &[unimatrix_store::SessionRecord],
+) -> std::result::Result<unimatrix_observe::KnowledgeReuse, Box<dyn std::error::Error + Send + Sync>>
+{
+    let session_id_list: Vec<String> = session_records
+        .iter()
+        .map(|sr| sr.session_id.clone())
+        .collect();
+
+    // Load query_log
+    let store_ql = Arc::clone(store);
+    let ids_ql: Vec<String> = session_id_list.clone();
+    let query_logs = tokio::task::spawn_blocking(move || {
+        let refs: Vec<&str> = ids_ql.iter().map(|s| s.as_str()).collect();
+        store_ql.scan_query_log_by_sessions(&refs)
+    })
+    .await??;
+
+    // Load injection_log
+    let store_il = Arc::clone(store);
+    let ids_il: Vec<String> = session_id_list.clone();
+    let injection_logs = tokio::task::spawn_blocking(move || {
+        let refs: Vec<&str> = ids_il.iter().map(|s| s.as_str()).collect();
+        store_il.scan_injection_log_by_sessions(&refs)
+    })
+    .await??;
+
+    // Load active category counts
+    let store_ac = Arc::clone(store);
+    let active_cats =
+        tokio::task::spawn_blocking(move || store_ac.count_active_entries_by_category()).await??;
+
+    // Delegate to C3 knowledge_reuse module for computation
+    let store_for_lookup = Arc::clone(store);
+    let reuse = crate::mcp::knowledge_reuse::compute_knowledge_reuse(
+        &query_logs,
+        &injection_logs,
+        &active_cats,
+        move |entry_id| {
+            store_for_lookup
+                .get(entry_id)
+                .ok()
+                .map(|entry| entry.category)
+        },
+    );
+
+    Ok(reuse)
 }
 
 #[cfg(test)]
@@ -1839,6 +2049,11 @@ mod tests {
             entries_analysis: None,
             narratives: None,
             recommendations: vec![],
+            session_summaries: None,
+            knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
         };
 
         // Clone and truncate
@@ -1880,6 +2095,11 @@ mod tests {
                 action: "Add to allowlist".to_string(),
                 rationale: "saves time".to_string(),
             }],
+            session_summaries: None,
+            knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
         };
 
         let content = build_lesson_learned_content(&report);
@@ -1919,6 +2139,11 @@ mod tests {
                 action: "Add to allowlist".to_string(),
                 rationale: "saves time".to_string(),
             }],
+            session_summaries: None,
+            knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
         };
 
         let content = build_lesson_learned_content(&report);
@@ -1942,6 +2167,11 @@ mod tests {
             entries_analysis: None,
             narratives: None,
             recommendations: vec![],
+            session_summaries: None,
+            knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
         };
 
         let content = build_lesson_learned_content(&report);
