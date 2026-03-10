@@ -72,9 +72,9 @@ def test_store_invalid_category(server):
 
 
 def test_store_empty_content(server):
-    """T-06: Store with empty content accepted (server allows empty content)."""
+    """T-06: Store with empty content rejected by gateway validation."""
     resp = server.context_store("", "testing", "convention", agent_id="human")
-    assert_tool_success(resp)
+    assert_tool_error(resp, "content")
 
 
 def test_store_empty_topic(server):

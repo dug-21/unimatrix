@@ -171,7 +171,7 @@ impl From<ServiceError> for ServerError {
                 }
             }
             ServiceError::ValidationFailed(msg) => ServerError::InvalidInput {
-                field: "service".to_string(),
+                field: "input".to_string(),
                 reason: msg,
             },
             ServiceError::Core(e) => ServerError::Core(e),
