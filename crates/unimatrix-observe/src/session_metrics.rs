@@ -154,20 +154,44 @@ fn build_session_summary(
     }
 
     // Knowledge flow: PreToolUse events only
-    let knowledge_in = session_records
+    let knowledge_served = session_records
         .iter()
         .filter(|r| {
             r.hook == HookType::PreToolUse
-                && matches!(
-                    r.tool.as_deref(),
-                    Some("context_search") | Some("context_lookup") | Some("context_get")
-                )
+                && r.tool
+                    .as_deref()
+                    .map(normalize_tool_name)
+                    .map_or(false, |t| {
+                        matches!(t, "context_search" | "context_lookup" | "context_get")
+                    })
         })
         .count() as u64;
 
-    let knowledge_out = session_records
+    let knowledge_stored = session_records
         .iter()
-        .filter(|r| r.hook == HookType::PreToolUse && r.tool.as_deref() == Some("context_store"))
+        .filter(|r| {
+            r.hook == HookType::PreToolUse
+                && r.tool
+                    .as_deref()
+                    .map(normalize_tool_name)
+                    .map_or(false, |t| t == "context_store")
+        })
+        .count() as u64;
+
+    let knowledge_curated = session_records
+        .iter()
+        .filter(|r| {
+            r.hook == HookType::PreToolUse
+                && r.tool
+                    .as_deref()
+                    .map(normalize_tool_name)
+                    .map_or(false, |t| {
+                        matches!(
+                            t,
+                            "context_correct" | "context_deprecate" | "context_quarantine"
+                        )
+                    })
+        })
         .count() as u64;
 
     SessionSummary {
@@ -177,20 +201,30 @@ fn build_session_summary(
         tool_distribution,
         top_file_zones,
         agents_spawned,
-        knowledge_in,
-        knowledge_out,
+        knowledge_served,
+        knowledge_stored,
+        knowledge_curated,
         outcome: None, // populated by handler from SessionRecord
     }
 }
 
+/// Strip MCP server prefix from tool names.
+/// Returns the bare tool name for Unimatrix MCP tools,
+/// or the input unchanged for Claude-native tools.
+fn normalize_tool_name(tool: &str) -> &str {
+    tool.strip_prefix("mcp__unimatrix__").unwrap_or(tool)
+}
+
 /// Classify a tool name into a category for tool distribution.
 fn classify_tool(tool: &str) -> &'static str {
-    match tool {
+    let normalized = normalize_tool_name(tool);
+    match normalized {
         "Read" | "Glob" | "Grep" => "read",
         "Edit" | "Write" => "write",
         "Bash" => "execute",
         "context_search" | "context_lookup" | "context_get" => "search",
         "context_store" => "store",
+        "context_correct" | "context_deprecate" | "context_quarantine" => "curate",
         "SubagentStart" => "spawn",
         _ => "other",
     }
@@ -367,7 +401,7 @@ mod tests {
     }
 
     #[test]
-    fn test_session_summaries_knowledge_in_out() {
+    fn test_session_summaries_knowledge_served_stored() {
         let records = vec![
             pre_tool("s1", 1000, "context_search"),
             pre_tool("s1", 1001, "context_search"),
@@ -382,8 +416,8 @@ mod tests {
             pre_tool("s1", 1010, "context_store"),
         ];
         let summaries = compute_session_summaries(&records);
-        assert_eq!(summaries[0].knowledge_in, 8);
-        assert_eq!(summaries[0].knowledge_out, 3);
+        assert_eq!(summaries[0].knowledge_served, 8);
+        assert_eq!(summaries[0].knowledge_stored, 3);
     }
 
     #[test]
@@ -489,6 +523,144 @@ mod tests {
         assert_eq!(summaries[0].duration_secs, 4); // (5000 - 1000) / 1000
     }
 
+    // ---- normalize_tool_name tests ----
+
+    #[test]
+    fn test_normalize_tool_name_standard_prefix() {
+        assert_eq!(
+            normalize_tool_name("mcp__unimatrix__context_search"),
+            "context_search"
+        );
+    }
+
+    #[test]
+    fn test_normalize_tool_name_passthrough_bare() {
+        assert_eq!(normalize_tool_name("context_search"), "context_search");
+    }
+
+    #[test]
+    fn test_normalize_tool_name_passthrough_claude_native() {
+        assert_eq!(normalize_tool_name("Read"), "Read");
+    }
+
+    #[test]
+    fn test_normalize_tool_name_double_prefix() {
+        assert_eq!(
+            normalize_tool_name("mcp__unimatrix__mcp__unimatrix__context_search"),
+            "mcp__unimatrix__context_search"
+        );
+    }
+
+    #[test]
+    fn test_normalize_tool_name_prefix_only() {
+        assert_eq!(normalize_tool_name("mcp__unimatrix__"), "");
+    }
+
+    #[test]
+    fn test_normalize_tool_name_empty_string() {
+        assert_eq!(normalize_tool_name(""), "");
+    }
+
+    #[test]
+    fn test_normalize_tool_name_case_sensitive() {
+        assert_eq!(
+            normalize_tool_name("MCP__UNIMATRIX__context_search"),
+            "MCP__UNIMATRIX__context_search"
+        );
+    }
+
+    #[test]
+    fn test_normalize_tool_name_different_server() {
+        assert_eq!(
+            normalize_tool_name("mcp__other_server__context_search"),
+            "mcp__other_server__context_search"
+        );
+    }
+
+    // ---- classify_tool tests (extended) ----
+
+    #[test]
+    fn test_classify_tool_mcp_prefixed() {
+        assert_eq!(classify_tool("mcp__unimatrix__context_search"), "search");
+        assert_eq!(classify_tool("mcp__unimatrix__context_lookup"), "search");
+        assert_eq!(classify_tool("mcp__unimatrix__context_get"), "search");
+        assert_eq!(classify_tool("mcp__unimatrix__context_store"), "store");
+        assert_eq!(classify_tool("mcp__unimatrix__context_correct"), "curate");
+        assert_eq!(classify_tool("mcp__unimatrix__context_deprecate"), "curate");
+        assert_eq!(
+            classify_tool("mcp__unimatrix__context_quarantine"),
+            "curate"
+        );
+    }
+
+    #[test]
+    fn test_classify_tool_admin_tools_are_other() {
+        assert_eq!(classify_tool("context_briefing"), "other");
+        assert_eq!(classify_tool("context_status"), "other");
+        assert_eq!(classify_tool("context_enroll"), "other");
+        assert_eq!(classify_tool("context_retrospective"), "other");
+        assert_eq!(classify_tool("mcp__unimatrix__context_briefing"), "other");
+        assert_eq!(classify_tool("mcp__unimatrix__context_status"), "other");
+    }
+
+    // ---- knowledge curated counter tests ----
+
+    #[test]
+    fn test_session_summaries_mcp_prefixed_knowledge_flow() {
+        let records = vec![
+            pre_tool("s1", 1000, "mcp__unimatrix__context_search"),
+            pre_tool("s1", 1001, "mcp__unimatrix__context_search"),
+            pre_tool("s1", 1002, "mcp__unimatrix__context_lookup"),
+            pre_tool("s1", 1003, "mcp__unimatrix__context_get"),
+            pre_tool("s1", 1004, "mcp__unimatrix__context_store"),
+            pre_tool("s1", 1005, "mcp__unimatrix__context_store"),
+            pre_tool("s1", 1006, "mcp__unimatrix__context_correct"),
+            pre_tool("s1", 1007, "mcp__unimatrix__context_deprecate"),
+            pre_tool("s1", 1008, "mcp__unimatrix__context_quarantine"),
+        ];
+        let summaries = compute_session_summaries(&records);
+        assert_eq!(summaries[0].knowledge_served, 4);
+        assert_eq!(summaries[0].knowledge_stored, 2);
+        assert_eq!(summaries[0].knowledge_curated, 3);
+    }
+
+    #[test]
+    fn test_session_summaries_mixed_bare_and_prefixed() {
+        let records = vec![
+            pre_tool("s1", 1000, "context_search"),
+            pre_tool("s1", 1001, "mcp__unimatrix__context_search"),
+            pre_tool("s1", 1002, "context_store"),
+            pre_tool("s1", 1003, "mcp__unimatrix__context_store"),
+            pre_tool("s1", 1004, "context_correct"),
+            pre_tool("s1", 1005, "mcp__unimatrix__context_correct"),
+        ];
+        let summaries = compute_session_summaries(&records);
+        assert_eq!(summaries[0].knowledge_served, 2);
+        assert_eq!(summaries[0].knowledge_stored, 2);
+        assert_eq!(summaries[0].knowledge_curated, 2);
+    }
+
+    #[test]
+    fn test_session_summaries_curate_in_tool_distribution() {
+        let records = vec![
+            pre_tool("s1", 1000, "mcp__unimatrix__context_correct"),
+            pre_tool("s1", 1001, "mcp__unimatrix__context_deprecate"),
+        ];
+        let summaries = compute_session_summaries(&records);
+        assert_eq!(summaries[0].tool_distribution.get("curate"), Some(&2));
+    }
+
+    #[test]
+    fn test_session_summaries_no_curate_without_curation_tools() {
+        let records = vec![
+            pre_tool("s1", 1000, "Read"),
+            pre_tool("s1", 1001, "context_search"),
+        ];
+        let summaries = compute_session_summaries(&records);
+        assert_eq!(summaries[0].tool_distribution.get("curate"), None);
+        assert_eq!(summaries[0].knowledge_curated, 0);
+    }
+
     // ---- extract_file_path tests ----
 
     #[test]
@@ -562,6 +734,9 @@ mod tests {
         assert_eq!(classify_tool("context_lookup"), "search");
         assert_eq!(classify_tool("context_get"), "search");
         assert_eq!(classify_tool("context_store"), "store");
+        assert_eq!(classify_tool("context_correct"), "curate");
+        assert_eq!(classify_tool("context_deprecate"), "curate");
+        assert_eq!(classify_tool("context_quarantine"), "curate");
         assert_eq!(classify_tool("SubagentStart"), "spawn");
         assert_eq!(classify_tool("anything_else"), "other");
         assert_eq!(classify_tool(""), "other");

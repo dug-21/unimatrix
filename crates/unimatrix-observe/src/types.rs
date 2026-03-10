@@ -181,22 +181,31 @@ pub struct SessionSummary {
     /// Names of agents spawned in this session.
     pub agents_spawned: Vec<String>,
     /// Count of knowledge retrieval tool calls (context_search, context_lookup, context_get).
-    pub knowledge_in: u64,
-    /// Count of knowledge store tool calls (context_store).
-    pub knowledge_out: u64,
+    #[serde(alias = "knowledge_in")]
+    pub knowledge_served: u64,
+    /// Count of knowledge creation tool calls (context_store).
+    #[serde(alias = "knowledge_out")]
+    pub knowledge_stored: u64,
+    /// Count of knowledge curation tool calls (context_correct, context_deprecate, context_quarantine).
+    #[serde(default)]
+    pub knowledge_curated: u64,
     /// Session outcome from SessionRecord, populated by handler.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outcome: Option<String>,
 }
 
-/// Cross-session knowledge reuse measurement (col-020).
+/// Feature-scoped knowledge delivery measurement (col-020b).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct KnowledgeReuse {
-    /// Distinct entry IDs reused across sessions (Tier 1).
-    pub tier1_reuse_count: u64,
-    /// Reuse counts grouped by entry category.
+pub struct FeatureKnowledgeReuse {
+    /// Total unique entry IDs delivered to agents for this feature.
+    #[serde(alias = "tier1_reuse_count")]
+    pub delivery_count: u64,
+    /// Entries appearing in 2+ distinct sessions (sub-metric of delivery_count).
+    #[serde(default)]
+    pub cross_session_count: u64,
+    /// Delivery counts grouped by entry category.
     pub by_category: HashMap<String, u64>,
-    /// Categories with active entries but zero reuse.
+    /// Categories with active entries but zero delivery.
     pub category_gaps: Vec<String>,
 }
 
@@ -242,8 +251,12 @@ pub struct RetrospectiveReport {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_summaries: Option<Vec<SessionSummary>>,
     /// Cross-session knowledge reuse measurement (col-020).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub knowledge_reuse: Option<KnowledgeReuse>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "knowledge_reuse"
+    )]
+    pub feature_knowledge_reuse: Option<FeatureKnowledgeReuse>,
     /// Number of sessions with rework/failed outcomes (col-020).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rework_session_count: Option<u64>,
@@ -342,8 +355,9 @@ mod tests {
                 ("crates/unimatrix-core".to_string(), 4),
             ],
             agents_spawned: vec!["coder-1".to_string()],
-            knowledge_in: 7,
-            knowledge_out: 2,
+            knowledge_served: 7,
+            knowledge_stored: 2,
+            knowledge_curated: 1,
             outcome: Some("success".to_string()),
         };
 
@@ -356,10 +370,14 @@ mod tests {
         assert_eq!(back.tool_distribution.get("read"), Some(&5));
         assert_eq!(back.tool_distribution.get("write"), Some(&3));
         assert_eq!(back.top_file_zones.len(), 2);
-        assert_eq!(back.top_file_zones[0], ("crates/unimatrix-store".to_string(), 10));
+        assert_eq!(
+            back.top_file_zones[0],
+            ("crates/unimatrix-store".to_string(), 10)
+        );
         assert_eq!(back.agents_spawned, vec!["coder-1".to_string()]);
-        assert_eq!(back.knowledge_in, 7);
-        assert_eq!(back.knowledge_out, 2);
+        assert_eq!(back.knowledge_served, 7);
+        assert_eq!(back.knowledge_stored, 2);
+        assert_eq!(back.knowledge_curated, 1);
         assert_eq!(back.outcome, Some("success".to_string()));
     }
 
@@ -372,8 +390,9 @@ mod tests {
             tool_distribution: HashMap::new(),
             top_file_zones: vec![],
             agents_spawned: vec![],
-            knowledge_in: 0,
-            knowledge_out: 0,
+            knowledge_served: 0,
+            knowledge_stored: 0,
+            knowledge_curated: 0,
             outcome: None,
         };
 
@@ -385,21 +404,23 @@ mod tests {
     }
 
     #[test]
-    fn test_knowledge_reuse_serde_roundtrip() {
+    fn test_feature_knowledge_reuse_serde_roundtrip() {
         let mut by_cat = HashMap::new();
         by_cat.insert("convention".to_string(), 3);
         by_cat.insert("pattern".to_string(), 2);
 
-        let reuse = KnowledgeReuse {
-            tier1_reuse_count: 5,
+        let reuse = FeatureKnowledgeReuse {
+            delivery_count: 5,
+            cross_session_count: 2,
             by_category: by_cat,
             category_gaps: vec!["procedure".to_string()],
         };
 
         let json = serde_json::to_string(&reuse).expect("serialize");
-        let back: KnowledgeReuse = serde_json::from_str(&json).expect("deserialize");
+        let back: FeatureKnowledgeReuse = serde_json::from_str(&json).expect("deserialize");
 
-        assert_eq!(back.tier1_reuse_count, 5);
+        assert_eq!(back.delivery_count, 5);
+        assert_eq!(back.cross_session_count, 2);
         assert_eq!(back.by_category.get("convention"), Some(&3));
         assert_eq!(back.by_category.get("pattern"), Some(&2));
         assert_eq!(back.category_gaps, vec!["procedure".to_string()]);
@@ -437,7 +458,7 @@ mod tests {
 
         assert_eq!(report.feature_cycle, "old-feature");
         assert!(report.session_summaries.is_none());
-        assert!(report.knowledge_reuse.is_none());
+        assert!(report.feature_knowledge_reuse.is_none());
         assert!(report.rework_session_count.is_none());
         assert!(report.context_reload_pct.is_none());
         assert!(report.attribution.is_none());
@@ -457,18 +478,33 @@ mod tests {
             narratives: None,
             recommendations: vec![],
             session_summaries: None,
-            knowledge_reuse: None,
+            feature_knowledge_reuse: None,
             rework_session_count: None,
             context_reload_pct: None,
             attribution: None,
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
-        assert!(!json.contains("session_summaries"), "session_summaries should be omitted");
-        assert!(!json.contains("knowledge_reuse"), "knowledge_reuse should be omitted");
-        assert!(!json.contains("rework_session_count"), "rework_session_count should be omitted");
-        assert!(!json.contains("context_reload_pct"), "context_reload_pct should be omitted");
-        assert!(!json.contains("attribution"), "attribution should be omitted");
+        assert!(
+            !json.contains("session_summaries"),
+            "session_summaries should be omitted"
+        );
+        assert!(
+            !json.contains("feature_knowledge_reuse"),
+            "feature_knowledge_reuse should be omitted"
+        );
+        assert!(
+            !json.contains("rework_session_count"),
+            "rework_session_count should be omitted"
+        );
+        assert!(
+            !json.contains("context_reload_pct"),
+            "context_reload_pct should be omitted"
+        );
+        assert!(
+            !json.contains("attribution"),
+            "attribution should be omitted"
+        );
     }
 
     #[test]
@@ -494,12 +530,14 @@ mod tests {
                 tool_distribution: HashMap::new(),
                 top_file_zones: vec![],
                 agents_spawned: vec![],
-                knowledge_in: 1,
-                knowledge_out: 0,
+                knowledge_served: 1,
+                knowledge_stored: 0,
+                knowledge_curated: 0,
                 outcome: None,
             }]),
-            knowledge_reuse: Some(KnowledgeReuse {
-                tier1_reuse_count: 3,
+            feature_knowledge_reuse: Some(FeatureKnowledgeReuse {
+                delivery_count: 3,
+                cross_session_count: 0,
                 by_category: by_cat,
                 category_gaps: vec!["procedure".to_string()],
             }),
@@ -518,8 +556,24 @@ mod tests {
         assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].session_id, "s1");
 
-        let reuse = back.knowledge_reuse.expect("knowledge_reuse present");
-        assert_eq!(reuse.tier1_reuse_count, 3);
+        let json_str = serde_json::to_string(&report).expect("serialize");
+        assert!(
+            json_str.contains("feature_knowledge_reuse"),
+            "serialized JSON should use new field name"
+        );
+        assert!(
+            json_str.contains("delivery_count"),
+            "serialized JSON should use new field name"
+        );
+        assert!(
+            json_str.contains("knowledge_served"),
+            "serialized JSON should use new field name"
+        );
+
+        let reuse = back
+            .feature_knowledge_reuse
+            .expect("feature_knowledge_reuse present");
+        assert_eq!(reuse.delivery_count, 3);
         assert_eq!(reuse.by_category.get("convention"), Some(&2));
         assert_eq!(reuse.category_gaps, vec!["procedure"]);
 
@@ -558,13 +612,122 @@ mod tests {
         let report: RetrospectiveReport =
             serde_json::from_str(json).expect("partial new fields should deserialize");
 
-        let summaries = report.session_summaries.expect("session_summaries populated");
+        let summaries = report
+            .session_summaries
+            .expect("session_summaries populated");
         assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].session_id, "sp1");
 
-        assert!(report.knowledge_reuse.is_none());
+        assert!(report.feature_knowledge_reuse.is_none());
         assert!(report.rework_session_count.is_none());
         assert!(report.context_reload_pct.is_none());
         assert!(report.attribution.is_none());
+    }
+
+    // ── C4 backward compatibility tests (col-020b) ──────────────────────
+
+    #[test]
+    fn test_session_summary_deserialize_pre_col020b() {
+        let json = r#"{
+            "session_id": "s1",
+            "started_at": 0,
+            "duration_secs": 0,
+            "tool_distribution": {},
+            "top_file_zones": [],
+            "agents_spawned": [],
+            "knowledge_in": 5,
+            "knowledge_out": 3
+        }"#;
+
+        let result: SessionSummary =
+            serde_json::from_str(json).expect("old field names should deserialize via alias");
+
+        assert_eq!(result.knowledge_served, 5);
+        assert_eq!(result.knowledge_stored, 3);
+        assert_eq!(result.knowledge_curated, 0);
+    }
+
+    #[test]
+    fn test_session_summary_knowledge_curated_default() {
+        let json = r#"{
+            "session_id": "s1",
+            "started_at": 0,
+            "duration_secs": 0,
+            "tool_distribution": {},
+            "top_file_zones": [],
+            "agents_spawned": [],
+            "knowledge_served": 2,
+            "knowledge_stored": 1
+        }"#;
+
+        let result: SessionSummary =
+            serde_json::from_str(json).expect("missing knowledge_curated should default");
+
+        assert_eq!(result.knowledge_served, 2);
+        assert_eq!(result.knowledge_stored, 1);
+        assert_eq!(result.knowledge_curated, 0);
+    }
+
+    #[test]
+    fn test_session_summary_knowledge_curated_present() {
+        let json = r#"{
+            "session_id": "s1",
+            "started_at": 0,
+            "duration_secs": 0,
+            "tool_distribution": {},
+            "top_file_zones": [],
+            "agents_spawned": [],
+            "knowledge_served": 2,
+            "knowledge_stored": 1,
+            "knowledge_curated": 5
+        }"#;
+
+        let result: SessionSummary =
+            serde_json::from_str(json).expect("knowledge_curated present should deserialize");
+
+        assert_eq!(result.knowledge_curated, 5);
+    }
+
+    #[test]
+    fn test_feature_knowledge_reuse_deserialize_from_old() {
+        let json = r#"{
+            "tier1_reuse_count": 7,
+            "by_category": {"convention": 4},
+            "category_gaps": ["procedure"]
+        }"#;
+
+        let result: FeatureKnowledgeReuse =
+            serde_json::from_str(json).expect("old tier1_reuse_count should deserialize via alias");
+
+        assert_eq!(result.delivery_count, 7);
+        assert_eq!(result.cross_session_count, 0);
+        assert_eq!(result.by_category.get("convention"), Some(&4));
+        assert_eq!(result.category_gaps, vec!["procedure"]);
+    }
+
+    #[test]
+    fn test_retrospective_report_deserialize_old_knowledge_reuse_field() {
+        let json = r#"{
+            "feature_cycle": "feat-old",
+            "session_count": 2,
+            "total_records": 10,
+            "metrics": {"computed_at": 0, "universal": {}, "phases": {}},
+            "hotspots": [],
+            "is_cached": false,
+            "knowledge_reuse": {
+                "tier1_reuse_count": 3,
+                "by_category": {},
+                "category_gaps": []
+            }
+        }"#;
+
+        let report: RetrospectiveReport = serde_json::from_str(json)
+            .expect("old knowledge_reuse field should deserialize via alias");
+
+        let reuse = report
+            .feature_knowledge_reuse
+            .expect("should be Some via alias");
+        assert_eq!(reuse.delivery_count, 3);
+        assert_eq!(reuse.cross_session_count, 0);
     }
 }

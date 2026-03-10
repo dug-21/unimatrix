@@ -38,7 +38,7 @@ pub fn build_report(
         narratives: None,
         recommendations: vec![],
         session_summaries: None,
-        knowledge_reuse: None,
+        feature_knowledge_reuse: None,
         rework_session_count: None,
         context_reload_pct: None,
         attribution: None,
