@@ -288,8 +288,19 @@ impl SecurityGateway {
     }
 
     /// S5: Emit an audit event (fire-and-forget, never blocks caller).
+    ///
+    /// Uses `spawn_blocking` to keep `store.lock_conn()` off the async
+    /// runtime thread (#176). Falls back to a direct call when no tokio
+    /// runtime is available (e.g., unit tests).
     pub(crate) fn emit_audit(&self, event: AuditEvent) {
-        let _ = self.audit.log_event(event);
+        if tokio::runtime::Handle::try_current().is_ok() {
+            let audit = Arc::clone(&self.audit);
+            let _ = tokio::task::spawn_blocking(move || {
+                let _ = audit.log_event(event);
+            });
+        } else {
+            let _ = self.audit.log_event(event);
+        }
     }
 
     /// Create a permissive gateway for unit tests (no-op audit, unlimited rate).

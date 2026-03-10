@@ -195,13 +195,19 @@ impl UnimatrixServer {
 
     /// Resolve an agent identity from tool parameters.
     ///
-    /// Convenience method combining extraction and resolution.
-    pub fn resolve_agent(
+    /// Uses `spawn_blocking` to avoid holding the Store mutex on an async
+    /// runtime thread (#176).
+    pub async fn resolve_agent(
         &self,
         agent_id: &Option<String>,
     ) -> Result<ResolvedIdentity, ServerError> {
         let extracted = identity::extract_agent_id(agent_id);
-        identity::resolve_identity(&self.registry, &extracted)
+        let registry = Arc::clone(&self.registry);
+        tokio::task::spawn_blocking(move || {
+            identity::resolve_identity(&registry, &extracted)
+        })
+        .await
+        .map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))?
     }
 
     /// Resolve identity, parse format, build audit context with optional session ID.
@@ -209,7 +215,10 @@ impl UnimatrixServer {
     /// Replaces the 15-25 line ceremony in each MCP handler with a single call.
     /// Capability checking is separate via `require_cap()` (ADR-002).
     /// Session ID is validated (S3) and prefixed with "mcp::" when present.
-    pub(crate) fn build_context(
+    ///
+    /// Uses `spawn_blocking` internally to keep Store mutex off the async
+    /// runtime (#176).
+    pub(crate) async fn build_context(
         &self,
         agent_id: &Option<String>,
         format: &Option<String>,
@@ -218,7 +227,7 @@ impl UnimatrixServer {
         use crate::mcp::context::ToolContext;
         use crate::services::{AuditContext, AuditSource, CallerId, prefix_session_id};
 
-        let identity = self.resolve_agent(agent_id)
+        let identity = self.resolve_agent(agent_id).await
             .map_err(rmcp::ErrorData::from)?;
         let format = crate::mcp::response::parse_format(format)
             .map_err(rmcp::ErrorData::from)?;
@@ -272,13 +281,37 @@ impl UnimatrixServer {
     }
 
     /// Check a capability for the given agent.
-    pub(crate) fn require_cap(
+    ///
+    /// Uses `spawn_blocking` to avoid holding the Store mutex on an async
+    /// runtime thread (#176).
+    pub(crate) async fn require_cap(
         &self,
         agent_id: &str,
         cap: crate::infra::registry::Capability,
     ) -> Result<(), rmcp::ErrorData> {
-        self.registry.require_capability(agent_id, cap)
-            .map_err(rmcp::ErrorData::from)
+        let registry = Arc::clone(&self.registry);
+        let agent_id = agent_id.to_string();
+        tokio::task::spawn_blocking(move || {
+            registry.require_capability(&agent_id, cap)
+        })
+        .await
+        .map_err(|e| rmcp::ErrorData::from(ServerError::Core(CoreError::JoinError(e.to_string()))))?
+        .map_err(rmcp::ErrorData::from)
+    }
+
+    /// Fire-and-forget audit event via `spawn_blocking`.
+    ///
+    /// Replaces direct `self.audit.log_event()` calls which would block the
+    /// async runtime thread on `store.lock_conn()` (#176).
+    pub(crate) fn audit_fire_and_forget(&self, event: AuditEvent) {
+        if tokio::runtime::Handle::try_current().is_ok() {
+            let audit = Arc::clone(&self.audit);
+            let _ = tokio::task::spawn_blocking(move || {
+                let _ = audit.log_event(event);
+            });
+        } else {
+            let _ = self.audit.log_event(event);
+        }
     }
 
     /// Insert a new entry and write an audit event in a single write transaction.
@@ -1054,20 +1087,21 @@ mod tests {
         let _clone = server.clone();
     }
 
-    #[test]
-    fn test_resolve_agent_with_id() {
+    #[tokio::test]
+    async fn test_resolve_agent_with_id() {
         let server = make_server();
         let identity = server
             .resolve_agent(&Some("human".to_string()))
+            .await
             .unwrap();
         assert_eq!(identity.agent_id, "human");
         assert_eq!(identity.trust_level, crate::infra::registry::TrustLevel::Privileged);
     }
 
-    #[test]
-    fn test_resolve_agent_without_id() {
+    #[tokio::test]
+    async fn test_resolve_agent_without_id() {
         let server = make_server();
-        let identity = server.resolve_agent(&None).unwrap();
+        let identity = server.resolve_agent(&None).await.unwrap();
         assert_eq!(identity.agent_id, "anonymous");
     }
 
