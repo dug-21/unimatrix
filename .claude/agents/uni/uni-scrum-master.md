@@ -161,7 +161,7 @@ Before returning "complete" to the primary agent, verify the protocol's exit che
 
 ## Swarm Participation
 
-**Activates ONLY when your spawn prompt includes `Your agent ID: <id>`.**
+**Activates ONLY when your spawn prompt includes `Your agent ID: <agent_name>`.**
 
 When part of a swarm, write your agent report to `product/features/{feature-id}/agents/{agent-id}-report.md` on completion.
 
