@@ -14,13 +14,14 @@
 //! - `auth` — peer credential extraction and authentication
 //! - `event_queue` — graceful degradation event queue
 
-pub mod project;
-pub mod confidence;
-pub mod coaccess;
-pub mod wire;
-pub mod transport;
 pub mod auth;
+pub mod coaccess;
+pub mod confidence;
+pub mod effectiveness;
 pub mod event_queue;
+pub mod project;
+pub mod transport;
+pub mod wire;
 
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_scenarios;
