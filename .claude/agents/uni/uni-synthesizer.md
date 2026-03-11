@@ -115,6 +115,10 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 
 ---
 
+## Knowledge Stewardship
+
+Exempt — no storage or query expected. This agent compiles existing artifacts into implementation deliverables without generating new knowledge.
+
 ## Self-Check (Run Before Returning Results)
 
 - [ ] IMPLEMENTATION-BRIEF.md contains Source Document Links table

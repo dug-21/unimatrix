@@ -67,6 +67,18 @@ Write to `product/features/{feature-id}/specification/SPECIFICATION.md`:
 
 When part of a swarm, write your agent report to `product/features/{feature-id}/agents/{agent-id}-report.md` on completion.
 
+## Knowledge Stewardship
+
+Read-only tier — no storage expected. Spec decisions are feature-specific, not generalizable patterns. The retro can promote any interpretation that turns out to generalize.
+
+Query `/query-patterns` for the feature's domain before writing to find established conventions and AC patterns from prior features.
+
+### Report Block
+```markdown
+## Knowledge Stewardship
+- Queried: /query-patterns for {domain} -- {findings summary or "no results"}
+```
+
 ## Self-Check (Run Before Returning Results)
 
 - [ ] SPECIFICATION.md covers all acceptance criteria from SCOPE.md (every AC-ID present)
@@ -76,3 +88,4 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 - [ ] NOT in scope section is explicit
 - [ ] Output file is in `product/features/{feature-id}/specification/` only
 - [ ] No placeholder or TBD sections — flag unknowns as open questions
+- [ ] Knowledge Stewardship report block included

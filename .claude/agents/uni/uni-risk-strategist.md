@@ -254,10 +254,23 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 
 ## Knowledge Stewardship
 
-After completing your task, store reusable risk patterns in Unimatrix:
-- Risk patterns that recur across features: `context_store(topic: "risk-strategist", category: "pattern")`
+### Before Starting (Already in Historical Intelligence sections above)
+The Historical Intelligence queries in both modes already fulfill the read-side stewardship obligation.
 
-Do not store feature-specific risks — those live in the risk assessment documents.
+### After Completing
+Store risk patterns that recur across features via `/store-pattern`:
+- Topic: `risk` or the affected crate/domain. Category: `pattern`.
+- Example: "Features touching confidence scoring consistently underestimate integration test complexity — plan 2x risk budget."
+
+Do not store feature-specific risks — those live in the risk assessment documents. Only store patterns visible across 2+ features.
+
+### Report Block
+Include in your agent report:
+```markdown
+## Knowledge Stewardship
+- Queried: /knowledge-search for risk patterns -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /store-pattern (or "nothing novel to store -- {reason}")
+```
 
 ## Self-Check: Architecture-Risk Mode
 
@@ -271,3 +284,4 @@ Do not store feature-specific risks — those live in the risk assessment docume
 - [ ] No placeholder risks — each risk is specific to this feature
 - [ ] Security Risks section is present — untrusted inputs and blast radius assessed
 - [ ] Scope Risk Traceability table is present — every SR-XX risk has a row
+- [ ] Knowledge Stewardship report block included

@@ -112,11 +112,23 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 
 ## Knowledge Stewardship
 
-After completing your task, store reusable findings in Unimatrix:
-- Problem space patterns (recurring constraints, dependency risks): `context_store(topic: "researcher", category: "pattern")`
-- Technical landscape findings that inform future features: `context_store(topic: "researcher", category: "convention")`
+### Before Starting
+Query `/query-patterns` for patterns in the research area to avoid rediscovering known constraints and technical landscape findings.
 
-Do not store feature-specific scope details — those live in SCOPE.md.
+### After Completing
+Store reusable findings via `/store-pattern`:
+- Problem space patterns (recurring constraints, dependency risks). Topic: the research area or affected crate.
+- Technical landscape findings that inform future features.
+
+Do not store feature-specific scope details — those live in SCOPE.md. Only store patterns that generalize beyond this feature.
+
+### Report Block
+Include in your agent report:
+```markdown
+## Knowledge Stewardship
+- Queried: /query-patterns for {research area} -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /store-pattern (or "nothing novel to store -- {reason}")
+```
 
 ## Self-Check (Run Before Returning Results)
 
@@ -127,3 +139,4 @@ Do not store feature-specific scope details — those live in SCOPE.md.
 - [ ] Open Questions section captures genuine unknowns
 - [ ] Background Research is based on actual codebase/doc reading, not assumptions
 - [ ] SCOPE.md written to `product/features/{feature-id}/SCOPE.md`
+- [ ] Knowledge Stewardship report block included

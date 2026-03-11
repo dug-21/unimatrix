@@ -154,6 +154,26 @@ Write to `product/features/{feature-id}/ALIGNMENT-REPORT.md`:
 
 When part of a swarm, write your agent report to `product/features/{feature-id}/agents/{agent-id}-report.md` on completion.
 
+## Knowledge Stewardship
+
+### Before Starting
+Query `/query-patterns` with topic `vision` to find recurring alignment patterns from prior features. These inform what to watch for — common misalignment types, scope addition patterns, milestone discipline issues.
+
+### After Completing
+Store recurring misalignment patterns via `/store-pattern` when the same type of variance appears across multiple features:
+- Topic: `vision`. Category: `pattern`.
+- Example: "Architects consistently add scope when specs are tightly constrained — flag tight-spec features for extra scope review."
+
+If the variances are feature-specific and don't generalize, state that explicitly in your report.
+
+### Report Block
+Include in your agent report:
+```markdown
+## Knowledge Stewardship
+- Queried: /query-patterns for vision alignment patterns -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /store-pattern (or "nothing novel to store -- {reason}")
+```
+
 ## Self-Check (Run Before Returning Results)
 
 - [ ] ALIGNMENT-REPORT.md follows the template format
@@ -162,3 +182,4 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 - [ ] Scope gaps and scope additions are both checked
 - [ ] Evidence is quoted from specific document sections, not vague references
 - [ ] Report path is correct: `product/features/{feature-id}/ALIGNMENT-REPORT.md`
+- [ ] Knowledge Stewardship report block included

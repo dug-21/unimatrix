@@ -119,7 +119,7 @@ The standard stewardship section for agent definitions follows three blocks. The
 ### After Completing (MANDATORY)
 - Store {what} via {which skill} with topic: "{topic convention}", category: "{category}"
 - Content must follow {template reference} -- the skill enforces this
-- If nothing novel was discovered, note "nothing novel to store" in your report
+- If nothing novel was discovered, note "nothing novel to store" in your report, but do not add this note to knowledge base
 
 ### Report
 Include a `## Knowledge Stewardship` section in your agent report (see format below).

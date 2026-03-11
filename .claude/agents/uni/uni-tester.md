@@ -268,6 +268,27 @@ NEVER pipe full cargo output into context.
 
 When part of a swarm, write your agent report to `product/features/{feature-id}/agents/{agent-id}-report.md` on completion.
 
+## Knowledge Stewardship
+
+### Before Starting
+Query `/knowledge-search` (category: "procedure") for testing procedures relevant to your task. Also query `/query-patterns` for the crate(s) being tested — patterns often reveal edge cases worth testing.
+
+### After Completing
+Store new test infrastructure patterns via `/store-pattern` or `/store-procedure`:
+- New fixture patterns, test helper utilities, or harness techniques discovered
+- Integration test patterns specific to a crate or feature type
+- Topic: `testing` or the specific crate name. Category: `pattern` or `procedure`.
+
+If nothing novel was discovered, state that explicitly in your report with a reason.
+
+### Report Block
+Include in your agent report:
+```markdown
+## Knowledge Stewardship
+- Queried: /knowledge-search for testing procedures -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /store-pattern (or "nothing novel to store -- {reason}")
+```
+
 ## Self-Check (Run Before Returning Results)
 
 ### Stage 3a (Test Plans)
@@ -277,6 +298,7 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 - [ ] Every high-priority risk has at least one specific test expectation
 - [ ] Integration tests defined for component boundaries
 - [ ] All output files within `product/features/{feature-id}/test-plan/`
+- [ ] Knowledge Stewardship report block included
 
 ### Stage 3c (Test Execution)
 - [ ] Unit tests executed (`cargo test --workspace` summary captured)
@@ -289,3 +311,4 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 - [ ] Gaps section lists any uncovered risks (or states "none")
 - [ ] AC verification section covers all AC-IDs from ACCEPTANCE-MAP.md
 - [ ] Report written to `product/features/{feature-id}/testing/RISK-COVERAGE-REPORT.md`
+- [ ] Knowledge Stewardship report block included

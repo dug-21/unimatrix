@@ -133,11 +133,28 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 
 ## Knowledge Stewardship
 
-After completing your task, store reusable findings in Unimatrix:
-- Debugging insights and root cause patterns: `/store-lesson` — e.g., "bincode positional encoding breaks when fields are added without migration" or "HNSW stale count grows silently after context_correct; check vector_map consistency"
-- If an existing lesson covers the same area but is incomplete: use `context_correct` to supersede it with the updated version (see `/store-lesson` for details)
+### Before Starting (Already in "Before You Investigate" section above)
+The Unimatrix queries in the investigation section already fulfill the read-side obligation.
+
+### After Completing
+Store generalizable debugging insights via `/store-lesson`:
+- Root cause patterns: "bincode positional encoding breaks when fields are added without migration"
+- Crate-specific traps: "HNSW stale count grows silently after context_correct; check vector_map consistency"
+- Topic: the affected crate name. Category: `lesson-learned`.
+
+If an existing lesson covers the same area but is incomplete, use `context_correct` to supersede it (see `/store-lesson`).
+
+**Causal feature linkage**: When the bug was caused by a specific feature's implementation, tag the lesson with `caused_by_feature:{feature-id}`. Also note what could have been done during that feature's design phase to prevent the bug.
 
 Only store generalizable insights — the specific bug diagnosis lives on the GH Issue, not in Unimatrix.
+
+### Report Block
+Include in your agent report:
+```markdown
+## Knowledge Stewardship
+- Queried: /query-patterns for {crate} -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /store-lesson (or "nothing novel to store -- {reason}")
+```
 
 ## Self-Check (Run Before Returning Results)
 
@@ -150,3 +167,4 @@ Only store generalizable insights — the specific bug diagnosis lives on the GH
 - [ ] Confidence level stated honestly
 - [ ] Missing test identified — describes what test should have caught this
 - [ ] Diagnosis posted as GH Issue comment (not written to filesystem)
+- [ ] Knowledge Stewardship report block included

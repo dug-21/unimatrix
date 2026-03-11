@@ -76,6 +76,39 @@ Gather all evidence about the shipped feature:
 
 ---
 
+## Phase 1b: Stewardship Quality Review
+
+Before extracting new patterns, review the quality of entries agents stored during this feature cycle.
+
+1. **Query entries stored during the feature**:
+   ```
+   mcp__unimatrix__context_search(
+     query: "{feature-id}",
+     k: 20
+   )
+   ```
+   Also search by feature_cycle tag if available. Use content/title matching as fallback — not all agents tag consistently.
+
+2. **Assess each entry against its category template**:
+   - **Patterns**: Has what/why/scope structure? Is "why" substantive (not "it works")?
+   - **Lessons**: Has what-happened/root-cause/takeaway? Is takeaway actionable?
+   - **Procedures**: Has numbered steps? Are steps specific (not generic)?
+
+3. **Curate**:
+   - **Low-quality entries** (missing structure, no substantive "why", API docs disguised as patterns): deprecate via `context_deprecate` with reason.
+   - **High-quality entries** confirmed by successful delivery: note for the architect to validate during pattern extraction.
+   - **Miscategorized entries** (lesson stored as pattern, or vice versa): note for correction.
+
+4. **Report** the stewardship review results before proceeding to Phase 2:
+   ```
+   Stewardship Quality Review:
+   - Entries found: {N}
+   - Quality: {N} good, {N} deprecated (low quality), {N} flagged for recategorization
+   - Details: {list each entry with assessment}
+   ```
+
+---
+
 ## Phase 2: Pattern & Procedure Extraction (MUST be a subagent)
 
 **Before spawning the architect**, prepare a structured retrospective briefing from Phase 1. This replaces the vague "paste summary" — give the architect concrete data to work with.
