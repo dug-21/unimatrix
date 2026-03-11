@@ -332,7 +332,12 @@ pub fn validate_enroll_params(params: &EnrollParams) -> Result<(), ServerError> 
             reason: "required".to_string(),
         });
     }
-    validate_string_field("target_agent_id", &params.target_agent_id, MAX_AGENT_ID_LEN, false)?;
+    validate_string_field(
+        "target_agent_id",
+        &params.target_agent_id,
+        MAX_AGENT_ID_LEN,
+        false,
+    )?;
     Ok(())
 }
 
@@ -398,7 +403,7 @@ pub fn parse_capabilities(caps: &[String]) -> Result<Vec<Capability>, ServerErro
                     reason: format!(
                         "unknown capability '{cap_str}'. Valid: read, write, search, admin"
                     ),
-                })
+                });
             }
         };
 
@@ -1021,10 +1026,7 @@ mod tests {
 
     #[test]
     fn test_parse_trust_level_internal() {
-        assert_eq!(
-            parse_trust_level("internal").unwrap(),
-            TrustLevel::Internal
-        );
+        assert_eq!(parse_trust_level("internal").unwrap(), TrustLevel::Internal);
     }
 
     #[test]
@@ -1190,6 +1192,7 @@ mod tests {
             feature_cycle: "col-002".to_string(),
             agent_id: None,
             evidence_limit: None,
+            format: None,
         };
         assert!(validate_retrospective_params(&params).is_ok());
     }
@@ -1200,6 +1203,7 @@ mod tests {
             feature_cycle: "".to_string(),
             agent_id: None,
             evidence_limit: None,
+            format: None,
         };
         assert!(validate_retrospective_params(&params).is_err());
     }
@@ -1210,6 +1214,7 @@ mod tests {
             feature_cycle: "   ".to_string(),
             agent_id: None,
             evidence_limit: None,
+            format: None,
         };
         assert!(validate_retrospective_params(&params).is_err());
     }

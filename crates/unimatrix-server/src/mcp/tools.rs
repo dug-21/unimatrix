@@ -245,8 +245,10 @@ pub struct RetrospectiveParams {
     pub feature_cycle: String,
     /// Agent making the request.
     pub agent_id: Option<String>,
-    /// Maximum evidence items per hotspot (default: 3, 0 = unlimited). (col-010b)
+    /// Maximum evidence items per hotspot (default: 3, JSON path only). (col-010b)
     pub evidence_limit: Option<usize>,
+    /// Output format: "markdown" (default) or "json". (vnc-011)
+    pub format: Option<String>,
 }
 
 #[rmcp::tool_router(vis = "pub(crate)")]
@@ -1081,7 +1083,8 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<RetrospectiveParams>,
     ) -> Result<CallToolResult, rmcp::model::ErrorData> {
-        use crate::error::{ERROR_NO_OBSERVATION_DATA, ServerError};
+        use crate::error::{ERROR_INVALID_PARAMS, ERROR_NO_OBSERVATION_DATA, ServerError};
+        use crate::mcp::response::format_retrospective_markdown;
         use crate::mcp::response::format_retrospective_report;
 
         // 1. Identity resolution (no format param on this handler)
@@ -1159,7 +1162,20 @@ impl UnimatrixServer {
                         attribution: None,
                     };
 
-                    return Ok(format_retrospective_report(&report));
+                    // Cached path also respects format (vnc-011)
+                    let format = params.format.as_deref().unwrap_or("markdown");
+                    return match format {
+                        "markdown" | "summary" => Ok(format_retrospective_markdown(&report)),
+                        "json" => Ok(format_retrospective_report(&report)),
+                        _ => Err(rmcp::model::ErrorData::new(
+                            ERROR_INVALID_PARAMS,
+                            format!(
+                                "Unknown format '{}'. Valid values: \"markdown\", \"json\".",
+                                format
+                            ),
+                            None,
+                        )),
+                    };
                 }
                 None => {
                     // No data, no cache (FR-09.7)
@@ -1448,16 +1464,38 @@ impl UnimatrixServer {
             detail: format!("retrospective for {}", feature_cycle),
         });
 
-        // 12. col-010b: Clone-and-truncate for serialization (ADR-001)
-        let evidence_limit = params.evidence_limit.unwrap_or(3);
-        if evidence_limit > 0 {
-            let mut truncated = report.clone();
-            for hotspot in &mut truncated.hotspots {
-                hotspot.evidence.truncate(evidence_limit);
+        // 12. vnc-011: Dispatch to format-specific output path
+        let format = params.format.as_deref().unwrap_or("markdown");
+        match format {
+            "markdown" | "summary" => {
+                // Markdown path: formatter controls its own evidence selection (k=3 by timestamp).
+                // evidence_limit is irrelevant here.
+                Ok(format_retrospective_markdown(&report))
             }
-            Ok(format_retrospective_report(&truncated))
-        } else {
-            Ok(format_retrospective_report(&report))
+            "json" => {
+                // JSON path: keep existing evidence_limit default of 3 (col-010b ADR-001)
+                let evidence_limit = params.evidence_limit.unwrap_or(3);
+                if evidence_limit > 0 {
+                    let mut truncated = report.clone();
+                    for hotspot in &mut truncated.hotspots {
+                        hotspot.evidence.truncate(evidence_limit);
+                    }
+                    Ok(format_retrospective_report(&truncated))
+                } else {
+                    Ok(format_retrospective_report(&report))
+                }
+            }
+            _ => {
+                // Unrecognized format: return error
+                Err(rmcp::model::ErrorData::new(
+                    ERROR_INVALID_PARAMS,
+                    format!(
+                        "Unknown format '{}'. Valid values: \"markdown\", \"json\".",
+                        format
+                    ),
+                    None,
+                ))
+            }
         }
     }
 }
@@ -2069,6 +2107,7 @@ mod tests {
         assert_eq!(params.feature_cycle, "col-002");
         assert!(params.agent_id.is_none());
         assert!(params.evidence_limit.is_none());
+        assert!(params.format.is_none());
     }
 
     #[test]
@@ -2100,6 +2139,46 @@ mod tests {
         let params: RetrospectiveParams =
             serde_json::from_str(r#"{"feature_cycle": "test"}"#).unwrap();
         assert_eq!(params.evidence_limit.unwrap_or(3), 3);
+    }
+
+    // -- vnc-011: format field tests --
+
+    #[test]
+    fn test_retrospective_params_format_markdown() {
+        let json = r#"{"feature_cycle": "test", "format": "markdown"}"#;
+        let params: RetrospectiveParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.format, Some("markdown".to_string()));
+    }
+
+    #[test]
+    fn test_retrospective_params_format_json() {
+        let json = r#"{"feature_cycle": "test", "format": "json"}"#;
+        let params: RetrospectiveParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.format, Some("json".to_string()));
+    }
+
+    #[test]
+    fn test_retrospective_params_format_absent() {
+        let json = r#"{"feature_cycle": "test"}"#;
+        let params: RetrospectiveParams = serde_json::from_str(json).unwrap();
+        assert!(params.format.is_none());
+    }
+
+    #[test]
+    fn test_retrospective_params_format_unknown() {
+        let json = r#"{"feature_cycle": "test", "format": "xml"}"#;
+        let params: RetrospectiveParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.format, Some("xml".to_string()));
+    }
+
+    #[test]
+    fn test_retrospective_params_all_fields() {
+        let json = r#"{"feature_cycle": "col-002", "agent_id": "agent-1", "evidence_limit": 5, "format": "json"}"#;
+        let params: RetrospectiveParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.feature_cycle, "col-002");
+        assert_eq!(params.agent_id, Some("agent-1".to_string()));
+        assert_eq!(params.evidence_limit, Some(5));
+        assert_eq!(params.format, Some("json".to_string()));
     }
 
     // -- col-010b: clone-and-truncate tests --
