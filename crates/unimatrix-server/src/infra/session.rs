@@ -11,7 +11,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-
 // -- Constants (ADR-002, ADR-003) --
 
 const STALE_SESSION_THRESHOLD_SECS: u64 = 4 * 3600;
@@ -62,6 +61,7 @@ pub enum AgentActionType {
 /// The computed output from a drain-and-signal operation.
 ///
 /// Caller writes SignalRecords to the queue for each non-empty list.
+#[derive(Debug)]
 pub struct SignalOutput {
     pub session_id: String,
     pub helpful_entry_ids: Vec<u64>,
@@ -103,12 +103,12 @@ pub struct SessionState {
     pub coaccess_seen: HashSet<Vec<u64>>,
     pub compaction_count: u32,
     // col-009 fields
-    pub signaled_entries: HashSet<u64>,     // entries that already got an implicit signal
-    pub rework_events: Vec<ReworkEvent>,    // PostToolUse rework observations
-    pub agent_actions: Vec<SessionAction>,  // explicit MCP actions (Session Intent Registry)
-    pub last_activity_at: u64,             // tracks staleness for sweep
+    pub signaled_entries: HashSet<u64>, // entries that already got an implicit signal
+    pub rework_events: Vec<ReworkEvent>, // PostToolUse rework observations
+    pub agent_actions: Vec<SessionAction>, // explicit MCP actions (Session Intent Registry)
+    pub last_activity_at: u64,          // tracks staleness for sweep
     // col-017 fields
-    pub topic_signals: HashMap<String, TopicTally>,  // accumulated topic signals for majority vote
+    pub topic_signals: HashMap<String, TopicTally>, // accumulated topic signals for majority vote
 }
 
 /// Thread-safe registry for per-session state.
@@ -211,6 +211,58 @@ impl SessionRegistry {
         sessions.remove(session_id);
     }
 
+    /// Set `feature` on a session if it is currently `None` (#198, Part 1).
+    ///
+    /// Returns `true` if the feature was set (was absent), `false` if already set
+    /// or session not registered. Enables early attribution from event payloads.
+    pub fn set_feature_if_absent(&self, session_id: &str, feature: &str) -> bool {
+        let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(state) = sessions.get_mut(session_id) {
+            if state.feature.is_none() {
+                state.feature = Some(feature.to_string());
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Check if a session's leading topic signal meets the eager attribution threshold (#198, Part 2).
+    ///
+    /// Returns `Some(winner)` if:
+    /// - The session has no `feature` set yet
+    /// - The leading candidate has count >= 3
+    /// - The leading candidate has > 60% share of total signal count
+    ///
+    /// This is a threshold-based check, not a full majority vote.
+    pub fn check_eager_attribution(&self, session_id: &str) -> Option<String> {
+        let sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        let state = sessions.get(session_id)?;
+
+        // Only run if feature is not yet resolved
+        if state.feature.is_some() {
+            return None;
+        }
+
+        if state.topic_signals.is_empty() {
+            return None;
+        }
+
+        let total_count: u32 = state.topic_signals.values().map(|t| t.count).sum();
+
+        // Find the leader
+        let (leader_topic, leader_tally) = state
+            .topic_signals
+            .iter()
+            .max_by_key(|(_, t)| t.count)?;
+
+        // Threshold: 3+ count AND >60% share
+        if leader_tally.count >= 3 && (leader_tally.count as f64 / total_count as f64) > 0.6 {
+            Some(leader_topic.clone())
+        } else {
+            None
+        }
+    }
+
     /// Record a topic signal for majority vote resolution on SessionClose (col-017).
     ///
     /// Increments the count for the topic and updates `last_seen` if the timestamp
@@ -280,7 +332,11 @@ impl SessionRegistry {
     /// Single lock acquisition. Sessions with last_activity_at older than
     /// STALE_SESSION_THRESHOLD_SECS are removed. Stale sessions with empty
     /// injection_history are silently evicted (FR-09.4).
-    pub fn sweep_stale_sessions(&self) -> Vec<(String, SignalOutput)> {
+    ///
+    /// (#198, Part 3): Before eviction, runs majority vote on topic_signals
+    /// to resolve feature_cycle. Returns the resolved feature alongside the
+    /// signal output so callers can persist it.
+    pub fn sweep_stale_sessions(&self) -> Vec<SweepResult> {
         let now = now_secs();
         let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -295,11 +351,19 @@ impl SessionRegistry {
         let mut results = Vec::new();
         for session_id in stale_ids {
             if let Some(state) = sessions.remove(&session_id) {
+                // (#198): Resolve feature_cycle via majority vote before eviction
+                let resolved_feature = majority_vote_internal(&state.topic_signals)
+                    .or_else(|| state.feature.clone());
+
                 // Stale sessions default to "success" outcome (orphaned — best effort)
                 // If injection_history is empty: silent eviction (FR-09.4)
                 if !state.injection_history.is_empty() {
                     let output = build_signal_output_from_state(state, "success");
-                    results.push((session_id, output));
+                    results.push(SweepResult {
+                        session_id,
+                        output,
+                        resolved_feature,
+                    });
                 }
             }
         }
@@ -310,11 +374,66 @@ impl SessionRegistry {
     /// Return the number of currently tracked sessions (used in tests).
     #[cfg(any(test, feature = "test-support"))]
     pub fn session_count(&self) -> usize {
-        self.sessions.lock().unwrap_or_else(|e| e.into_inner()).len()
+        self.sessions
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .len()
     }
 }
 
+/// Result of sweeping a single stale session (#198).
+///
+/// Includes the resolved feature_cycle so callers can persist it.
+#[derive(Debug)]
+pub struct SweepResult {
+    pub session_id: String,
+    pub output: SignalOutput,
+    pub resolved_feature: Option<String>,
+}
+
 // -- Internal helpers --
+
+/// Internal majority vote over topic signals (#198).
+///
+/// Same algorithm as listener.rs `majority_vote` but usable from session.rs.
+/// Resolution rules:
+/// 1. Empty → None
+/// 2. Single winner by count → return it
+/// 3. Tie → highest last_seen. Still tied → lexicographic smallest.
+fn majority_vote_internal(signals: &HashMap<String, TopicTally>) -> Option<String> {
+    if signals.is_empty() {
+        return None;
+    }
+
+    let max_count = signals.values().map(|t| t.count).max().unwrap_or(0);
+    let candidates: Vec<&String> = signals
+        .iter()
+        .filter(|(_, t)| t.count == max_count)
+        .map(|(k, _)| k)
+        .collect();
+
+    if candidates.len() == 1 {
+        return Some(candidates[0].clone());
+    }
+
+    // Tie: break by most recent last_seen
+    let max_last_seen = candidates
+        .iter()
+        .map(|k| signals[*k].last_seen)
+        .max()
+        .unwrap_or(0);
+    let recency_candidates: Vec<&String> = candidates
+        .into_iter()
+        .filter(|k| signals[*k].last_seen == max_last_seen)
+        .collect();
+
+    if recency_candidates.len() == 1 {
+        return Some(recency_candidates[0].clone());
+    }
+
+    // Still tied: lexicographic smallest
+    recency_candidates.into_iter().min().cloned()
+}
 
 /// Build a SignalOutput from a removed SessionState.
 ///
@@ -396,9 +515,7 @@ fn has_crossed_rework_threshold(state: &SessionState) -> bool {
 
         for event in &state.rework_events {
             match event.tool_name.as_str() {
-                "Edit" | "Write" | "MultiEdit"
-                    if event.file_path.as_deref() == Some(path) =>
-                {
+                "Edit" | "Write" | "MultiEdit" if event.file_path.as_deref() == Some(path) => {
                     if last_was_edit && failure_since_last_edit {
                         cycle_count += 1;
                         if cycle_count >= REWORK_EDIT_CYCLE_THRESHOLD {
@@ -426,7 +543,6 @@ fn now_secs() -> u64 {
         .unwrap_or_default()
         .as_secs()
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -848,9 +964,7 @@ mod tests {
 
     #[test]
     fn rework_threshold_not_crossed_zero_cycles() {
-        let state = make_state_with_rework(vec![
-            ("Edit", Some("/foo.rs"), false),
-        ]);
+        let state = make_state_with_rework(vec![("Edit", Some("/foo.rs"), false)]);
         assert!(!has_crossed_rework_threshold(&state));
     }
 
@@ -954,7 +1068,7 @@ mod tests {
         }
         let results = reg.sweep_stale_sessions();
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].0, "s1");
+        assert_eq!(results[0].session_id, "s1");
         assert!(reg.get_state("s1").is_none());
     }
 
@@ -976,7 +1090,8 @@ mod tests {
         {
             let mut sessions = reg.sessions.lock().unwrap();
             if let Some(state) = sessions.get_mut("s1") {
-                state.last_activity_at = now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
+                state.last_activity_at =
+                    now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
             }
         }
         let results = reg.sweep_stale_sessions();
@@ -999,8 +1114,13 @@ mod tests {
         {
             let mut sessions = reg.sessions.lock().unwrap();
             if let Some(state) = sessions.get_mut("s1") {
-                state.last_activity_at = now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
-                state.injection_history.push(InjectionRecord { entry_id: 1, confidence: 0.9, timestamp: 0 });
+                state.last_activity_at =
+                    now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
+                state.injection_history.push(InjectionRecord {
+                    entry_id: 1,
+                    confidence: 0.9,
+                    timestamp: 0,
+                });
             }
         }
 
@@ -1015,7 +1135,7 @@ mod tests {
 
         // s1 in sweep exactly once
         assert_eq!(swept.len(), 1);
-        assert_eq!(swept[0].0, "s1");
+        assert_eq!(swept[0].session_id, "s1");
 
         // s2 in drain exactly once
         assert!(drained.is_some());
@@ -1026,7 +1146,7 @@ mod tests {
         assert!(reg.get_state("s2").is_none());
 
         // Neither session appears in the opposite output
-        assert!(swept.iter().all(|(id, _)| id != "s2"));
+        assert!(swept.iter().all(|r| r.session_id != "s2"));
     }
 
     // -- Empty session no signal test (R-13, AC-05) --
@@ -1117,5 +1237,241 @@ mod tests {
         reg.record_topic_signal("s1", "col-017".to_string(), before + 100);
         let after = reg.get_state("s1").unwrap().last_activity_at;
         assert_eq!(after, before + 100);
+    }
+
+    // -- #198: set_feature_if_absent tests --
+
+    #[test]
+    fn test_set_feature_if_absent_sets_when_absent() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        assert!(reg.set_feature_if_absent("s1", "col-020"));
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.feature.as_deref(), Some("col-020"));
+    }
+
+    #[test]
+    fn test_set_feature_if_absent_returns_false_when_already_set() {
+        let reg = make_registry();
+        reg.register_session("s1", None, Some("col-017".to_string()));
+        assert!(!reg.set_feature_if_absent("s1", "col-020"));
+        // Original feature preserved
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.feature.as_deref(), Some("col-017"));
+    }
+
+    #[test]
+    fn test_set_feature_if_absent_unregistered_returns_false() {
+        let reg = make_registry();
+        assert!(!reg.set_feature_if_absent("unknown", "col-020"));
+    }
+
+    #[test]
+    fn test_set_feature_if_absent_idempotent() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        assert!(reg.set_feature_if_absent("s1", "col-020"));
+        // Second call: feature already set
+        assert!(!reg.set_feature_if_absent("s1", "col-021"));
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.feature.as_deref(), Some("col-020"));
+    }
+
+    // -- #198: check_eager_attribution tests --
+
+    #[test]
+    fn test_eager_attribution_returns_none_below_count_threshold() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        // Only 2 signals (need 3)
+        reg.record_topic_signal("s1", "col-020".to_string(), 100);
+        reg.record_topic_signal("s1", "col-020".to_string(), 200);
+        assert!(reg.check_eager_attribution("s1").is_none());
+    }
+
+    #[test]
+    fn test_eager_attribution_returns_none_below_share_threshold() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        // 3 signals for col-020, but 2 for col-021 = 60% share (not >60%)
+        for i in 0..3 {
+            reg.record_topic_signal("s1", "col-020".to_string(), i);
+        }
+        for i in 0..2 {
+            reg.record_topic_signal("s1", "col-021".to_string(), 100 + i);
+        }
+        // 3/5 = 60%, need >60%
+        assert!(reg.check_eager_attribution("s1").is_none());
+    }
+
+    #[test]
+    fn test_eager_attribution_returns_winner_above_threshold() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        // 4 signals for col-020, 1 for col-021 = 80% share
+        for i in 0..4 {
+            reg.record_topic_signal("s1", "col-020".to_string(), i);
+        }
+        reg.record_topic_signal("s1", "col-021".to_string(), 100);
+        let result = reg.check_eager_attribution("s1");
+        assert_eq!(result, Some("col-020".to_string()));
+    }
+
+    #[test]
+    fn test_eager_attribution_returns_none_when_feature_already_set() {
+        let reg = make_registry();
+        reg.register_session("s1", None, Some("col-017".to_string()));
+        // Even with enough signals, should return None because feature is set
+        for i in 0..5 {
+            reg.record_topic_signal("s1", "col-020".to_string(), i);
+        }
+        assert!(reg.check_eager_attribution("s1").is_none());
+    }
+
+    #[test]
+    fn test_eager_attribution_returns_none_for_unregistered() {
+        let reg = make_registry();
+        assert!(reg.check_eager_attribution("unknown").is_none());
+    }
+
+    #[test]
+    fn test_eager_attribution_returns_none_for_empty_signals() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        assert!(reg.check_eager_attribution("s1").is_none());
+    }
+
+    // -- #198: sweep_stale_sessions with majority vote --
+
+    #[test]
+    fn sweep_stale_sessions_resolves_feature_via_majority_vote() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        // Backdate + add injections + topic signals
+        {
+            let mut sessions = reg.sessions.lock().unwrap();
+            if let Some(state) = sessions.get_mut("s1") {
+                let stale_time = now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
+                state.last_activity_at = stale_time;
+                state.injection_history.push(InjectionRecord {
+                    entry_id: 10,
+                    confidence: 0.9,
+                    timestamp: stale_time,
+                });
+                state.topic_signals.insert(
+                    "col-020".to_string(),
+                    TopicTally {
+                        count: 5,
+                        last_seen: 1000,
+                    },
+                );
+                state.topic_signals.insert(
+                    "nxs-001".to_string(),
+                    TopicTally {
+                        count: 2,
+                        last_seen: 900,
+                    },
+                );
+            }
+        }
+        let results = reg.sweep_stale_sessions();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].session_id, "s1");
+        assert_eq!(
+            results[0].resolved_feature,
+            Some("col-020".to_string())
+        );
+    }
+
+    #[test]
+    fn sweep_stale_sessions_falls_back_to_registered_feature() {
+        let reg = make_registry();
+        reg.register_session("s1", None, Some("col-017".to_string()));
+        {
+            let mut sessions = reg.sessions.lock().unwrap();
+            if let Some(state) = sessions.get_mut("s1") {
+                let stale_time = now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
+                state.last_activity_at = stale_time;
+                state.injection_history.push(InjectionRecord {
+                    entry_id: 10,
+                    confidence: 0.9,
+                    timestamp: stale_time,
+                });
+                // No topic signals — should fall back to registered feature
+            }
+        }
+        let results = reg.sweep_stale_sessions();
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].resolved_feature,
+            Some("col-017".to_string())
+        );
+    }
+
+    #[test]
+    fn sweep_stale_sessions_none_feature_when_no_signals_or_registration() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        {
+            let mut sessions = reg.sessions.lock().unwrap();
+            if let Some(state) = sessions.get_mut("s1") {
+                let stale_time = now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
+                state.last_activity_at = stale_time;
+                state.injection_history.push(InjectionRecord {
+                    entry_id: 10,
+                    confidence: 0.9,
+                    timestamp: stale_time,
+                });
+            }
+        }
+        let results = reg.sweep_stale_sessions();
+        assert_eq!(results.len(), 1);
+        assert!(results[0].resolved_feature.is_none());
+    }
+
+    // -- #198: majority_vote_internal tests --
+
+    #[test]
+    fn test_majority_vote_internal_empty() {
+        assert!(majority_vote_internal(&HashMap::new()).is_none());
+    }
+
+    #[test]
+    fn test_majority_vote_internal_single() {
+        let mut signals = HashMap::new();
+        signals.insert(
+            "col-020".to_string(),
+            TopicTally {
+                count: 3,
+                last_seen: 100,
+            },
+        );
+        assert_eq!(
+            majority_vote_internal(&signals),
+            Some("col-020".to_string())
+        );
+    }
+
+    #[test]
+    fn test_majority_vote_internal_clear_winner() {
+        let mut signals = HashMap::new();
+        signals.insert(
+            "col-020".to_string(),
+            TopicTally {
+                count: 5,
+                last_seen: 100,
+            },
+        );
+        signals.insert(
+            "nxs-001".to_string(),
+            TopicTally {
+                count: 2,
+                last_seen: 200,
+            },
+        );
+        assert_eq!(
+            majority_vote_internal(&signals),
+            Some("col-020".to_string())
+        );
     }
 }
