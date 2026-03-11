@@ -974,6 +974,49 @@ def test_retrospective_21_rules_active(server):
     assert "metrics" in report, f"Expected metrics in report"
 
 
+# === context_retrospective format dispatch (vnc-011) =======================
+
+
+def test_retrospective_markdown_default(server):
+    """T-R07 (vnc-011): Default format (no format param) returns markdown output.
+
+    Seeds observation data, runs retrospective with no format param, and verifies
+    response starts with the markdown header '# Retrospective:'.
+    """
+    features = ["col-831"]
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, features)
+
+    resp = server.context_retrospective(features[0], agent_id="human", timeout=30.0)
+    result = assert_tool_success(resp)
+    assert result.text.strip().startswith("# Retrospective:"), (
+        f"Expected markdown header, got: {result.text[:100]}"
+    )
+
+
+def test_retrospective_json_explicit(server):
+    """T-R08 (vnc-011): format='json' returns valid JSON output."""
+    features = ["col-832"]
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, features)
+
+    resp = server.context_retrospective(features[0], agent_id="human", format="json", timeout=30.0)
+    result = assert_tool_success(resp)
+    parsed = _json.loads(result.text)
+    assert isinstance(parsed, dict), f"Expected JSON object, got {type(parsed)}"
+    assert "feature_cycle" in parsed, f"Expected feature_cycle in JSON, got keys: {list(parsed.keys())}"
+
+
+def test_retrospective_format_invalid(server):
+    """T-R09 (vnc-011): Invalid format returns error with descriptive message."""
+    features = ["col-833"]
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, features)
+
+    resp = server.context_retrospective(features[0], agent_id="human", format="xml", timeout=30.0)
+    assert_tool_error(resp, "Unknown format")
+
+
 # === context_status observation extension (col-002) =======================
 
 
