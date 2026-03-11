@@ -15,33 +15,38 @@ use crate::error::ServerError;
 #[cfg(test)]
 use crate::infra::registry::{Capability, EnrollResult, TrustLevel};
 
-mod entries;
-mod mutations;
-pub mod status;
 #[cfg(feature = "mcp-briefing")]
 mod briefing;
+mod entries;
+mod mutations;
+#[cfg(feature = "mcp-briefing")]
+mod retrospective;
+pub mod status;
 
 // Re-export entry formatting
 pub use entries::{
-    format_single_entry, format_search_results, format_lookup_results,
-    format_store_success, format_store_success_with_note,
-    format_correct_success, format_duplicate_found,
+    format_correct_success, format_duplicate_found, format_lookup_results, format_search_results,
+    format_single_entry, format_store_success, format_store_success_with_note,
 };
 
 // Re-export mutation formatting
-pub use mutations::{
-    format_status_change, format_enroll_success,
-    format_deprecate_success, format_quarantine_success, format_restore_success,
-};
 #[cfg(test)]
-pub(crate) use mutations::{trust_level_str, capability_str};
+pub(crate) use mutations::{capability_str, trust_level_str};
+pub use mutations::{
+    format_deprecate_success, format_enroll_success, format_quarantine_success,
+    format_restore_success, format_status_change,
+};
 
 // Re-export status formatting
-pub use status::{format_status_report, StatusReport, CoAccessClusterEntry};
+pub use status::{CoAccessClusterEntry, StatusReport, format_status_report};
 
 // Re-export briefing formatting
 #[cfg(feature = "mcp-briefing")]
-pub use briefing::{format_briefing, format_retrospective_report, Briefing};
+pub use briefing::{Briefing, format_briefing, format_retrospective_report};
+
+// Re-export retrospective markdown formatting (vnc-011)
+#[cfg(feature = "mcp-briefing")]
+pub use retrospective::format_retrospective_markdown;
 
 // --- Shared types ---
 
@@ -128,7 +133,10 @@ pub(crate) fn entry_to_json(entry: &EntryRecord) -> serde_json::Value {
     })
 }
 
-pub(crate) fn entry_to_json_with_similarity(entry: &EntryRecord, similarity: f64) -> serde_json::Value {
+pub(crate) fn entry_to_json_with_similarity(
+    entry: &EntryRecord,
+    similarity: f64,
+) -> serde_json::Value {
     serde_json::json!({
         "id": entry.id,
         "title": entry.title,
@@ -531,8 +539,7 @@ mod tests {
     #[test]
     fn test_format_deprecate_success_markdown_with_reason() {
         let entry = make_entry(42, "Entry", "content");
-        let result =
-            format_deprecate_success(&entry, Some("outdated"), ResponseFormat::Markdown);
+        let result = format_deprecate_success(&entry, Some("outdated"), ResponseFormat::Markdown);
         let text = result_text(&result);
         assert!(text.contains("Entry Deprecated"));
         assert!(text.contains("Reason:"));
@@ -561,8 +568,7 @@ mod tests {
     #[test]
     fn test_format_deprecate_success_json_with_reason() {
         let entry = make_entry(42, "Entry", "content");
-        let result =
-            format_deprecate_success(&entry, Some("obsolete"), ResponseFormat::Json);
+        let result = format_deprecate_success(&entry, Some("obsolete"), ResponseFormat::Json);
         let text = result_text(&result);
         let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
         assert_eq!(parsed["reason"], "obsolete");
@@ -585,10 +591,7 @@ mod tests {
             total_deprecated: 3,
             total_proposed: 1,
             total_quarantined: 0,
-            category_distribution: vec![
-                ("convention".to_string(), 5),
-                ("decision".to_string(), 4),
-            ],
+            category_distribution: vec![("convention".to_string(), 5), ("decision".to_string(), 4)],
             topic_distribution: vec![("auth".to_string(), 8)],
             entries_with_supersedes: 2,
             entries_with_superseded_by: 2,
@@ -668,23 +671,44 @@ mod tests {
     #[test]
     fn test_format_status_report_empty() {
         let report = StatusReport {
-            total_active: 0, total_deprecated: 0, total_proposed: 0, total_quarantined: 0,
-            category_distribution: vec![], topic_distribution: vec![],
-            entries_with_supersedes: 0, entries_with_superseded_by: 0, total_correction_count: 0,
-            trust_source_distribution: vec![], entries_without_attribution: 0,
-            contradictions: Vec::new(), contradiction_count: 0,
+            total_active: 0,
+            total_deprecated: 0,
+            total_proposed: 0,
+            total_quarantined: 0,
+            category_distribution: vec![],
+            topic_distribution: vec![],
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: vec![],
+            entries_without_attribution: 0,
+            contradictions: Vec::new(),
+            contradiction_count: 0,
             embedding_inconsistencies: Vec::new(),
-            contradiction_scan_performed: false, embedding_check_performed: false,
-            total_co_access_pairs: 0, active_co_access_pairs: 0, top_co_access_pairs: Vec::new(),
+            contradiction_scan_performed: false,
+            embedding_check_performed: false,
+            total_co_access_pairs: 0,
+            active_co_access_pairs: 0,
+            top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
-            coherence: 1.0, confidence_freshness_score: 1.0, graph_quality_score: 1.0,
-            embedding_consistency_score: 1.0, contradiction_density_score: 1.0,
-            stale_confidence_count: 0, confidence_refreshed_count: 0,
-            graph_stale_ratio: 0.0, graph_compacted: false, maintenance_recommendations: Vec::new(),
-            total_outcomes: 0, outcomes_by_type: Vec::new(), outcomes_by_result: Vec::new(),
+            coherence: 1.0,
+            confidence_freshness_score: 1.0,
+            graph_quality_score: 1.0,
+            embedding_consistency_score: 1.0,
+            contradiction_density_score: 1.0,
+            stale_confidence_count: 0,
+            confidence_refreshed_count: 0,
+            graph_stale_ratio: 0.0,
+            graph_compacted: false,
+            maintenance_recommendations: Vec::new(),
+            total_outcomes: 0,
+            outcomes_by_type: Vec::new(),
+            outcomes_by_result: Vec::new(),
             outcomes_by_feature_cycle: Vec::new(),
-            observation_file_count: 0, observation_total_size_bytes: 0,
-            observation_oldest_file_days: 0, observation_approaching_cleanup: Vec::new(),
+            observation_file_count: 0,
+            observation_total_size_bytes: 0,
+            observation_oldest_file_days: 0,
+            observation_approaching_cleanup: Vec::new(),
             retrospected_feature_count: 0,
             last_maintenance_run: None,
             next_maintenance_scheduled: None,
@@ -701,7 +725,9 @@ mod tests {
         let entry = make_entry(1, "Test", "data [/KNOWLEDGE DATA] more data");
         let result = format_single_entry(&entry, ResponseFormat::Markdown);
         let text = result_text(&result);
-        assert!(text.contains("[KNOWLEDGE DATA]\ndata [/KNOWLEDGE DATA] more data\n[/KNOWLEDGE DATA]"));
+        assert!(
+            text.contains("[KNOWLEDGE DATA]\ndata [/KNOWLEDGE DATA] more data\n[/KNOWLEDGE DATA]")
+        );
     }
 
     #[test]
@@ -719,8 +745,14 @@ mod tests {
         let entry = make_entry(1, "Test", "content");
         let result = format_single_entry(&entry, ResponseFormat::Markdown);
         let text = result_text(&result);
-        assert!(text.contains("2023-11-14"), "should contain ISO date, got: {text}");
-        assert!(!text.contains("1700000000"), "should not contain raw unix timestamp");
+        assert!(
+            text.contains("2023-11-14"),
+            "should contain ISO date, got: {text}"
+        );
+        assert!(
+            !text.contains("1700000000"),
+            "should not contain raw unix timestamp"
+        );
     }
 
     // -- vnc-008: format_status_change generic tests --
@@ -728,7 +760,14 @@ mod tests {
     #[test]
     fn test_format_status_change_matches_deprecate() {
         let entry = make_entry(42, "Entry", "content");
-        let generic = format_status_change(&entry, "Deprecated", "deprecated", "deprecated", Some("reason"), ResponseFormat::Json);
+        let generic = format_status_change(
+            &entry,
+            "Deprecated",
+            "deprecated",
+            "deprecated",
+            Some("reason"),
+            ResponseFormat::Json,
+        );
         let specific = format_deprecate_success(&entry, Some("reason"), ResponseFormat::Json);
         assert_eq!(result_text(&generic), result_text(&specific));
     }
@@ -736,7 +775,14 @@ mod tests {
     #[test]
     fn test_format_status_change_matches_quarantine() {
         let entry = make_entry(42, "Entry", "content");
-        let generic = format_status_change(&entry, "Quarantined", "quarantined", "quarantined", None, ResponseFormat::Json);
+        let generic = format_status_change(
+            &entry,
+            "Quarantined",
+            "quarantined",
+            "quarantined",
+            None,
+            ResponseFormat::Json,
+        );
         let specific = format_quarantine_success(&entry, None, ResponseFormat::Json);
         assert_eq!(result_text(&generic), result_text(&specific));
     }
@@ -744,7 +790,14 @@ mod tests {
     #[test]
     fn test_format_status_change_matches_restore() {
         let entry = make_entry(42, "Entry", "content");
-        let generic = format_status_change(&entry, "Restored", "restored", "active", Some("test"), ResponseFormat::Json);
+        let generic = format_status_change(
+            &entry,
+            "Restored",
+            "restored",
+            "active",
+            Some("test"),
+            ResponseFormat::Json,
+        );
         let specific = format_restore_success(&entry, Some("test"), ResponseFormat::Json);
         assert_eq!(result_text(&generic), result_text(&specific));
     }
@@ -774,8 +827,14 @@ mod tests {
         let response = format_enroll_success(&result, ResponseFormat::Summary);
         let text = result_text(&response);
         assert!(text.contains("Enrolled"), "should say Enrolled: {text}");
-        assert!(text.contains("test-agent"), "should contain agent_id: {text}");
-        assert!(text.contains("internal"), "should contain trust level: {text}");
+        assert!(
+            text.contains("test-agent"),
+            "should contain agent_id: {text}"
+        );
+        assert!(
+            text.contains("internal"),
+            "should contain trust level: {text}"
+        );
         assert!(text.contains("read"), "should contain capabilities: {text}");
     }
 
@@ -792,10 +851,22 @@ mod tests {
         let result = make_enroll_result(true);
         let response = format_enroll_success(&result, ResponseFormat::Markdown);
         let text = result_text(&response);
-        assert!(text.contains("---BEGIN UNIMATRIX RESPONSE---"), "should have begin marker: {text}");
-        assert!(text.contains("---END UNIMATRIX RESPONSE---"), "should have end marker: {text}");
-        assert!(text.contains("test-agent"), "should contain agent_id: {text}");
-        assert!(text.contains("internal"), "should contain trust level: {text}");
+        assert!(
+            text.contains("---BEGIN UNIMATRIX RESPONSE---"),
+            "should have begin marker: {text}"
+        );
+        assert!(
+            text.contains("---END UNIMATRIX RESPONSE---"),
+            "should have end marker: {text}"
+        );
+        assert!(
+            text.contains("test-agent"),
+            "should contain agent_id: {text}"
+        );
+        assert!(
+            text.contains("internal"),
+            "should contain trust level: {text}"
+        );
     }
 
     #[test]
@@ -961,8 +1032,14 @@ mod tests {
 
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
-        assert!(text.contains("Quarantined: 3"), "summary should include quarantined count");
-        assert!(text.contains("Contradictions: 1"), "summary should include contradiction count");
+        assert!(
+            text.contains("Quarantined: 3"),
+            "summary should include quarantined count"
+        );
+        assert!(
+            text.contains("Contradictions: 1"),
+            "summary should include contradiction count"
+        );
     }
 
     #[test]
@@ -1024,8 +1101,14 @@ mod tests {
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
         let text = result_text(&result);
-        assert!(text.contains("Quarantined | 3"), "markdown should have quarantined row");
-        assert!(text.contains("### Contradictions"), "markdown should have contradictions section");
+        assert!(
+            text.contains("Quarantined | 3"),
+            "markdown should have quarantined row"
+        );
+        assert!(
+            text.contains("### Contradictions"),
+            "markdown should have contradictions section"
+        );
         assert!(text.contains("1 contradiction(s)"), "should show count");
         assert!(text.contains("Entry A"), "should show entry titles");
     }
@@ -1152,7 +1235,10 @@ mod tests {
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
         let text = result_text(&result);
-        assert!(text.contains("### Embedding Integrity"), "should have embedding section");
+        assert!(
+            text.contains("### Embedding Integrity"),
+            "should have embedding section"
+        );
         assert!(text.contains("1 inconsistency"), "should show count");
         assert!(text.contains("Suspicious Entry"), "should show entry title");
         assert!(text.contains("0.7500"), "should show similarity");
@@ -1180,16 +1266,14 @@ mod tests {
             embedding_check_performed: false,
             total_co_access_pairs: 15,
             active_co_access_pairs: 12,
-            top_co_access_pairs: vec![
-                CoAccessClusterEntry {
-                    entry_id_a: 1,
-                    entry_id_b: 5,
-                    title_a: "Entry Alpha".to_string(),
-                    title_b: "Entry Beta".to_string(),
-                    count: 8,
-                    last_updated: 1700000000,
-                },
-            ],
+            top_co_access_pairs: vec![CoAccessClusterEntry {
+                entry_id_a: 1,
+                entry_id_b: 5,
+                title_a: "Entry Alpha".to_string(),
+                title_b: "Entry Beta".to_string(),
+                count: 8,
+                last_updated: 1700000000,
+            }],
             stale_pairs_cleaned: 3,
             coherence: 1.0,
             confidence_freshness_score: 1.0,
@@ -1222,8 +1306,14 @@ mod tests {
         let report = make_status_report_with_co_access();
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
-        assert!(text.contains("Co-access: 12 active pairs (15 total)"), "summary should show co-access stats, got: {text}");
-        assert!(text.contains("3 stale pairs cleaned"), "should show cleaned count");
+        assert!(
+            text.contains("Co-access: 12 active pairs (15 total)"),
+            "summary should show co-access stats, got: {text}"
+        );
+        assert!(
+            text.contains("3 stale pairs cleaned"),
+            "should show cleaned count"
+        );
     }
 
     #[test]
@@ -1231,10 +1321,22 @@ mod tests {
         let report = make_status_report_with_co_access();
         let result = format_status_report(&report, ResponseFormat::Markdown);
         let text = result_text(&result);
-        assert!(text.contains("### Co-Access Patterns"), "markdown should have co-access section");
-        assert!(text.contains("Active pairs: 12 of 15"), "should show active/total");
-        assert!(text.contains("Stale pairs cleaned: 3"), "should show cleaned");
-        assert!(text.contains("Top Co-Access Clusters"), "should have clusters table");
+        assert!(
+            text.contains("### Co-Access Patterns"),
+            "markdown should have co-access section"
+        );
+        assert!(
+            text.contains("Active pairs: 12 of 15"),
+            "should show active/total"
+        );
+        assert!(
+            text.contains("Stale pairs cleaned: 3"),
+            "should show cleaned"
+        );
+        assert!(
+            text.contains("Top Co-Access Clusters"),
+            "should have clusters table"
+        );
         assert!(text.contains("Entry Alpha"), "should show title_a");
         assert!(text.contains("Entry Beta"), "should show title_b");
     }
@@ -1263,7 +1365,12 @@ mod tests {
         assert_eq!(parsed["co_access"]["total_pairs"], 0);
         assert_eq!(parsed["co_access"]["active_pairs"], 0);
         assert_eq!(parsed["co_access"]["stale_pairs_cleaned"], 0);
-        assert!(parsed["co_access"]["top_clusters"].as_array().unwrap().is_empty());
+        assert!(
+            parsed["co_access"]["top_clusters"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]
@@ -1337,15 +1444,42 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
 
         assert!(parsed["coherence"].is_number(), "coherence field missing");
-        assert!(parsed["confidence_freshness_score"].is_number(), "confidence_freshness_score missing");
-        assert!(parsed["graph_quality_score"].is_number(), "graph_quality_score missing");
-        assert!(parsed["embedding_consistency_score"].is_number(), "embedding_consistency_score missing");
-        assert!(parsed["contradiction_density_score"].is_number(), "contradiction_density_score missing");
-        assert!(parsed["stale_confidence_count"].is_number(), "stale_confidence_count missing");
-        assert!(parsed["confidence_refreshed_count"].is_number(), "confidence_refreshed_count missing");
-        assert!(parsed["graph_stale_ratio"].is_number(), "graph_stale_ratio missing");
-        assert!(parsed["graph_compacted"].is_boolean(), "graph_compacted missing");
-        assert!(parsed["maintenance_recommendations"].is_array(), "maintenance_recommendations missing");
+        assert!(
+            parsed["confidence_freshness_score"].is_number(),
+            "confidence_freshness_score missing"
+        );
+        assert!(
+            parsed["graph_quality_score"].is_number(),
+            "graph_quality_score missing"
+        );
+        assert!(
+            parsed["embedding_consistency_score"].is_number(),
+            "embedding_consistency_score missing"
+        );
+        assert!(
+            parsed["contradiction_density_score"].is_number(),
+            "contradiction_density_score missing"
+        );
+        assert!(
+            parsed["stale_confidence_count"].is_number(),
+            "stale_confidence_count missing"
+        );
+        assert!(
+            parsed["confidence_refreshed_count"].is_number(),
+            "confidence_refreshed_count missing"
+        );
+        assert!(
+            parsed["graph_stale_ratio"].is_number(),
+            "graph_stale_ratio missing"
+        );
+        assert!(
+            parsed["graph_compacted"].is_boolean(),
+            "graph_compacted missing"
+        );
+        assert!(
+            parsed["maintenance_recommendations"].is_array(),
+            "maintenance_recommendations missing"
+        );
 
         assert_eq!(parsed["coherence"].as_f64().unwrap(), 0.745);
         assert_eq!(parsed["confidence_freshness_score"].as_f64().unwrap(), 0.82);
@@ -1353,7 +1487,13 @@ mod tests {
         assert_eq!(parsed["stale_confidence_count"].as_u64().unwrap(), 15);
         assert_eq!(parsed["confidence_refreshed_count"].as_u64().unwrap(), 10);
         assert_eq!(parsed["graph_compacted"].as_bool().unwrap(), true);
-        assert_eq!(parsed["maintenance_recommendations"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            parsed["maintenance_recommendations"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
     }
 
     // UT-C6-02: JSON f64 precision verification
@@ -1363,8 +1503,14 @@ mod tests {
         report.coherence = 0.845;
         let result = format_status_report(&report, ResponseFormat::Json);
         let text = result_text(&result);
-        assert!(text.contains("0.845"), "JSON should contain 0.845 without f32 artifacts, got: {text}");
-        assert!(!text.contains("0.8450000"), "JSON should not contain f32 precision artifact");
+        assert!(
+            text.contains("0.845"),
+            "JSON should contain 0.845 without f32 artifacts, got: {text}"
+        );
+        assert!(
+            !text.contains("0.8450000"),
+            "JSON should not contain f32 precision artifact"
+        );
     }
 
     // UT-C6-03: Markdown format includes coherence section
@@ -1374,14 +1520,35 @@ mod tests {
         let result = format_status_report(&report, ResponseFormat::Markdown);
         let text = result_text(&result);
 
-        assert!(text.contains("### Coherence"), "markdown should have Coherence section");
+        assert!(
+            text.contains("### Coherence"),
+            "markdown should have Coherence section"
+        );
         assert!(text.contains("**Lambda**"), "should show Lambda label");
-        assert!(text.contains("**Confidence Freshness**"), "should show Confidence Freshness label");
-        assert!(text.contains("**Graph Quality**"), "should show Graph Quality label");
-        assert!(text.contains("**Embedding Consistency**"), "should show Embedding Consistency label");
-        assert!(text.contains("**Contradiction Density**"), "should show Contradiction Density label");
-        assert!(text.contains("0.7450"), "lambda should be formatted to 4 decimal places");
-        assert!(text.contains("0.8200"), "confidence freshness should be 4 decimal places");
+        assert!(
+            text.contains("**Confidence Freshness**"),
+            "should show Confidence Freshness label"
+        );
+        assert!(
+            text.contains("**Graph Quality**"),
+            "should show Graph Quality label"
+        );
+        assert!(
+            text.contains("**Embedding Consistency**"),
+            "should show Embedding Consistency label"
+        );
+        assert!(
+            text.contains("**Contradiction Density**"),
+            "should show Contradiction Density label"
+        );
+        assert!(
+            text.contains("0.7450"),
+            "lambda should be formatted to 4 decimal places"
+        );
+        assert!(
+            text.contains("0.8200"),
+            "confidence freshness should be 4 decimal places"
+        );
     }
 
     // UT-C6-04: Summary format includes coherence line
@@ -1391,11 +1558,23 @@ mod tests {
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
 
-        assert!(text.contains("Coherence:"), "summary should contain Coherence line");
-        assert!(text.contains("confidence_freshness:"), "should show dimension breakdowns");
+        assert!(
+            text.contains("Coherence:"),
+            "summary should contain Coherence line"
+        );
+        assert!(
+            text.contains("confidence_freshness:"),
+            "should show dimension breakdowns"
+        );
         assert!(text.contains("graph_quality:"), "should show graph_quality");
-        assert!(text.contains("embedding_consistency:"), "should show embedding_consistency");
-        assert!(text.contains("contradiction_density:"), "should show contradiction_density");
+        assert!(
+            text.contains("embedding_consistency:"),
+            "should show embedding_consistency"
+        );
+        assert!(
+            text.contains("contradiction_density:"),
+            "should show contradiction_density"
+        );
     }
 
     // UT-C6-05: Recommendations present in all formats
@@ -1406,15 +1585,27 @@ mod tests {
         let result = format_status_report(&report, ResponseFormat::Json);
         let text = result_text(&result);
         let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
-        assert_eq!(parsed["maintenance_recommendations"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            parsed["maintenance_recommendations"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
         let text = result_text(&result);
-        assert!(text.contains("Maintenance Recommendations"), "markdown should have recommendations section");
+        assert!(
+            text.contains("Maintenance Recommendations"),
+            "markdown should have recommendations section"
+        );
 
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
-        assert!(text.contains("Recommendation:"), "summary should have Recommendation lines");
+        assert!(
+            text.contains("Recommendation:"),
+            "summary should have Recommendation lines"
+        );
     }
 
     // UT-C6-06: No recommendations when empty
@@ -1426,15 +1617,26 @@ mod tests {
         let result = format_status_report(&report, ResponseFormat::Json);
         let text = result_text(&result);
         let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
-        assert!(parsed["maintenance_recommendations"].as_array().unwrap().is_empty());
+        assert!(
+            parsed["maintenance_recommendations"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
         let text = result_text(&result);
-        assert!(!text.contains("Maintenance Recommendations"), "should not show section when empty");
+        assert!(
+            !text.contains("Maintenance Recommendations"),
+            "should not show section when empty"
+        );
 
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
-        assert!(!text.contains("Recommendation:"), "should not show recommendation lines when empty");
+        assert!(
+            !text.contains("Recommendation:"),
+            "should not show recommendation lines when empty"
+        );
     }
 
     // UT-C6-07: graph_compacted renders correctly
@@ -1445,11 +1647,17 @@ mod tests {
 
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
-        assert!(text.contains("Graph compacted: yes"), "summary should show compacted=yes");
+        assert!(
+            text.contains("Graph compacted: yes"),
+            "summary should show compacted=yes"
+        );
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
         let text = result_text(&result);
-        assert!(text.contains("Graph compacted: yes"), "markdown should show compacted=yes");
+        assert!(
+            text.contains("Graph compacted: yes"),
+            "markdown should show compacted=yes"
+        );
 
         let result = format_status_report(&report, ResponseFormat::Json);
         let text = result_text(&result);
@@ -1459,7 +1667,10 @@ mod tests {
         report.graph_compacted = false;
         let result = format_status_report(&report, ResponseFormat::Markdown);
         let text = result_text(&result);
-        assert!(text.contains("Graph compacted: no"), "markdown should show compacted=no");
+        assert!(
+            text.contains("Graph compacted: no"),
+            "markdown should show compacted=no"
+        );
     }
 
     // UT-C6-08: Stale confidence count rendering
@@ -1468,17 +1679,26 @@ mod tests {
         let report = make_coherence_status_report();
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
-        assert!(text.contains("Stale confidence: 15 entries"), "should show stale count in summary");
+        assert!(
+            text.contains("Stale confidence: 15 entries"),
+            "should show stale count in summary"
+        );
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
         let text = result_text(&result);
-        assert!(text.contains("Stale confidence entries: 15"), "should show stale count in markdown");
+        assert!(
+            text.contains("Stale confidence entries: 15"),
+            "should show stale count in markdown"
+        );
 
         let mut report2 = make_status_report();
         report2.stale_confidence_count = 0;
         let result = format_status_report(&report2, ResponseFormat::Summary);
         let text = result_text(&result);
-        assert!(!text.contains("Stale confidence:"), "should not show stale line when count is 0");
+        assert!(
+            !text.contains("Stale confidence:"),
+            "should not show stale line when count is 0"
+        );
     }
 
     // UT-C6-09: Confidence refreshed count rendering
@@ -1487,13 +1707,19 @@ mod tests {
         let report = make_coherence_status_report();
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
-        assert!(text.contains("Confidence refreshed: 10 entries"), "should show refreshed count");
+        assert!(
+            text.contains("Confidence refreshed: 10 entries"),
+            "should show refreshed count"
+        );
 
         let mut report2 = make_status_report();
         report2.confidence_refreshed_count = 0;
         let result = format_status_report(&report2, ResponseFormat::Summary);
         let text = result_text(&result);
-        assert!(!text.contains("Confidence refreshed:"), "should not show refreshed line when 0");
+        assert!(
+            !text.contains("Confidence refreshed:"),
+            "should not show refreshed line when 0"
+        );
     }
 
     // UT-C6-10: Graph stale ratio rendering
@@ -1502,17 +1728,26 @@ mod tests {
         let report = make_coherence_status_report();
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
-        assert!(text.contains("Graph stale ratio: 15.00%"), "should show stale ratio percentage");
+        assert!(
+            text.contains("Graph stale ratio: 15.00%"),
+            "should show stale ratio percentage"
+        );
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
         let text = result_text(&result);
-        assert!(text.contains("Graph stale ratio: 15.00%"), "markdown should show stale ratio");
+        assert!(
+            text.contains("Graph stale ratio: 15.00%"),
+            "markdown should show stale ratio"
+        );
 
         let mut report2 = make_status_report();
         report2.graph_stale_ratio = 0.0;
         let result = format_status_report(&report2, ResponseFormat::Summary);
         let text = result_text(&result);
-        assert!(!text.contains("Graph stale ratio:"), "should not show stale ratio when 0.0 in summary");
+        assert!(
+            !text.contains("Graph stale ratio:"),
+            "should not show stale ratio when 0.0 in summary"
+        );
     }
 
     // UT-C6-11: Default coherence values
