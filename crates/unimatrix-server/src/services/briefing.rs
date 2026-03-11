@@ -7,8 +7,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use unimatrix_core::{EntryRecord, QueryFilter, Status, StoreAdapter};
 use unimatrix_core::async_wrappers::AsyncEntryStore;
+use unimatrix_core::{EntryRecord, QueryFilter, Status, StoreAdapter};
 
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::services::gateway::SecurityGateway;
@@ -223,7 +223,8 @@ impl BriefingService {
                         match (a_has, b_has) {
                             (true, false) => std::cmp::Ordering::Less,
                             (false, true) => std::cmp::Ordering::Greater,
-                            _ => b.confidence
+                            _ => b
+                                .confidence
                                 .partial_cmp(&a.confidence)
                                 .unwrap_or(std::cmp::Ordering::Equal),
                         }
@@ -271,7 +272,11 @@ impl BriefingService {
                 // Use a synthetic UDS caller_id for rate limiting when no caller is provided
                 let default_caller = CallerId::UdsSession("briefing-internal".to_string());
                 let effective_caller = caller_id.unwrap_or(&default_caller);
-                match self.search.search(search_params, audit_ctx, effective_caller).await {
+                match self
+                    .search
+                    .search(search_params, audit_ctx, effective_caller)
+                    .await
+                {
                     Ok(results) => {
                         for scored_entry in results.entries {
                             let entry_chars = scored_entry.entry.title.len()
@@ -304,10 +309,7 @@ impl BriefingService {
         self.gateway.emit_audit(AuditEvent {
             event_id: 0,
             timestamp: 0,
-            session_id: audit_ctx
-                .session_id
-                .clone()
-                .unwrap_or_default(),
+            session_id: audit_ctx.session_id.clone().unwrap_or_default(),
             agent_id: audit_ctx.caller_id.clone(),
             operation: "briefing_service".to_string(),
             target_ids: all_entry_ids.clone(),
@@ -335,9 +337,7 @@ impl BriefingService {
         // Step 1: Deduplicate — keep highest confidence per entry_id
         let mut best_confidence: HashMap<u64, f64> = HashMap::new();
         for record in history {
-            let entry = best_confidence
-                .entry(record.entry_id)
-                .or_insert(0.0);
+            let entry = best_confidence.entry(record.entry_id).or_insert(0.0);
             if record.confidence > *entry {
                 *entry = record.confidence;
             }
@@ -369,18 +369,9 @@ impl BriefingService {
         }
 
         // Step 3: Sort each group by confidence descending
-        decisions.sort_by(|a, b| {
-            b.1.partial_cmp(&a.1)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-        injections.sort_by(|a, b| {
-            b.1.partial_cmp(&a.1)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-        conventions.sort_by(|a, b| {
-            b.1.partial_cmp(&a.1)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        decisions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        injections.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        conventions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Step 4: Proportional budget allocation (per ADR-003)
         // Header: 5%, Decisions: 40%, Injections: 30%, Conventions: 20%, Buffer: 5%
@@ -482,8 +473,8 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    use unimatrix_core::{NewEntry, Store, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex};
     use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+    use unimatrix_core::{NewEntry, Store, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex};
 
     use crate::infra::audit::AuditLog;
     use crate::infra::embed_handle::EmbedServiceHandle;
@@ -493,9 +484,7 @@ mod tests {
 
     fn make_test_store() -> (tempfile::TempDir, Arc<Store>) {
         let dir = tempfile::tempdir().expect("tempdir");
-        let store = Arc::new(
-            Store::open(dir.path().join("test.db")).expect("open store"),
-        );
+        let store = Arc::new(Store::open(dir.path().join("test.db")).expect("open store"));
         (dir, store)
     }
 
@@ -579,12 +568,22 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let id1 = store_entry(
-            &store, "Conv 1", "Always use trait objects",
-            "convention", "architect", vec![], Status::Active,
+            &store,
+            "Conv 1",
+            "Always use trait objects",
+            "convention",
+            "architect",
+            vec![],
+            Status::Active,
         );
         let id2 = store_entry(
-            &store, "Conv 2", "Write ADRs for decisions",
-            "convention", "architect", vec![], Status::Active,
+            &store,
+            "Conv 2",
+            "Write ADRs for decisions",
+            "convention",
+            "architect",
+            vec![],
+            Status::Active,
         );
 
         let params = BriefingParams {
@@ -597,7 +596,10 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         assert_eq!(result.conventions.len(), 2);
         assert!(result.injection_sections.decisions.is_empty());
         assert!(result.injection_sections.injections.is_empty());
@@ -616,8 +618,13 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let _id = store_entry(
-            &store, "Conv", "content",
-            "convention", "dev", vec![], Status::Active,
+            &store,
+            "Conv",
+            "content",
+            "convention",
+            "dev",
+            vec![],
+            Status::Active,
         );
 
         let params = BriefingParams {
@@ -630,7 +637,10 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         assert!(result.conventions.is_empty());
     }
 
@@ -642,8 +652,13 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let _id = store_entry(
-            &store, "Conv", "content",
-            "convention", "dev", vec![], Status::Active,
+            &store,
+            "Conv",
+            "content",
+            "convention",
+            "dev",
+            vec![],
+            Status::Active,
         );
 
         let params = BriefingParams {
@@ -656,7 +671,10 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         assert!(result.conventions.is_empty());
     }
 
@@ -678,7 +696,10 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         assert!(result.relevant_context.is_empty());
         // search_available stays true (not attempted, not failed)
         assert!(result.search_available);
@@ -692,8 +713,13 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let _id = store_entry(
-            &store, "Conv", "content",
-            "convention", "dev", vec![], Status::Active,
+            &store,
+            "Conv",
+            "content",
+            "convention",
+            "dev",
+            vec![],
+            Status::Active,
         );
 
         // Embed service not started — will trigger EmbedNotReady
@@ -707,7 +733,10 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         assert!(!result.search_available);
         assert!(result.relevant_context.is_empty());
         // Conventions still populated
@@ -722,16 +751,31 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let id_dec = store_entry(
-            &store, "ADR-001", "Use redb for storage",
-            "decision", "architecture", vec![], Status::Active,
+            &store,
+            "ADR-001",
+            "Use redb for storage",
+            "decision",
+            "architecture",
+            vec![],
+            Status::Active,
         );
         let id_conv = store_entry(
-            &store, "Coding Convention", "Use Result<T,E>",
-            "convention", "rust", vec![], Status::Active,
+            &store,
+            "Coding Convention",
+            "Use Result<T,E>",
+            "convention",
+            "rust",
+            vec![],
+            Status::Active,
         );
         let id_pat = store_entry(
-            &store, "Error Handling", "Pattern for errors",
-            "pattern", "rust", vec![], Status::Active,
+            &store,
+            "Error Handling",
+            "Pattern for errors",
+            "pattern",
+            "rust",
+            vec![],
+            Status::Active,
         );
 
         let params = BriefingParams {
@@ -742,13 +786,25 @@ mod tests {
             include_conventions: false,
             include_semantic: false,
             injection_history: Some(vec![
-                InjectionEntry { entry_id: id_dec, confidence: 0.8 },
-                InjectionEntry { entry_id: id_conv, confidence: 0.7 },
-                InjectionEntry { entry_id: id_pat, confidence: 0.9 },
+                InjectionEntry {
+                    entry_id: id_dec,
+                    confidence: 0.8,
+                },
+                InjectionEntry {
+                    entry_id: id_conv,
+                    confidence: 0.7,
+                },
+                InjectionEntry {
+                    entry_id: id_pat,
+                    confidence: 0.9,
+                },
             ]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         assert_eq!(result.injection_sections.decisions.len(), 1);
         assert_eq!(result.injection_sections.decisions[0].0.id, id_dec);
         assert_eq!(result.injection_sections.conventions.len(), 1);
@@ -766,8 +822,13 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let id = store_entry(
-            &store, "Entry", "content",
-            "pattern", "test", vec![], Status::Active,
+            &store,
+            "Entry",
+            "content",
+            "pattern",
+            "test",
+            vec![],
+            Status::Active,
         );
 
         let params = BriefingParams {
@@ -778,13 +839,25 @@ mod tests {
             include_conventions: false,
             include_semantic: false,
             injection_history: Some(vec![
-                InjectionEntry { entry_id: id, confidence: 0.3 },
-                InjectionEntry { entry_id: id, confidence: 0.9 },
-                InjectionEntry { entry_id: id, confidence: 0.5 },
+                InjectionEntry {
+                    entry_id: id,
+                    confidence: 0.3,
+                },
+                InjectionEntry {
+                    entry_id: id,
+                    confidence: 0.9,
+                },
+                InjectionEntry {
+                    entry_id: id,
+                    confidence: 0.5,
+                },
             ]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         // Entry appears exactly once
         let total = result.injection_sections.injections.len();
         assert_eq!(total, 1);
@@ -800,12 +873,22 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let id_active = store_entry(
-            &store, "Active", "content",
-            "pattern", "test", vec![], Status::Active,
+            &store,
+            "Active",
+            "content",
+            "pattern",
+            "test",
+            vec![],
+            Status::Active,
         );
         let id_quarantined = store_entry(
-            &store, "Quarantined", "bad content",
-            "pattern", "test", vec![], Status::Quarantined,
+            &store,
+            "Quarantined",
+            "bad content",
+            "pattern",
+            "test",
+            vec![],
+            Status::Quarantined,
         );
 
         let params = BriefingParams {
@@ -816,12 +899,21 @@ mod tests {
             include_conventions: false,
             include_semantic: false,
             injection_history: Some(vec![
-                InjectionEntry { entry_id: id_active, confidence: 0.8 },
-                InjectionEntry { entry_id: id_quarantined, confidence: 0.9 },
+                InjectionEntry {
+                    entry_id: id_active,
+                    confidence: 0.8,
+                },
+                InjectionEntry {
+                    entry_id: id_quarantined,
+                    confidence: 0.9,
+                },
             ]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         assert_eq!(result.injection_sections.injections.len(), 1);
         assert_eq!(result.injection_sections.injections[0].0.id, id_active);
         assert!(!result.entry_ids.contains(&id_quarantined));
@@ -835,8 +927,13 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let id = store_entry(
-            &store, "Exists", "content",
-            "pattern", "test", vec![], Status::Active,
+            &store,
+            "Exists",
+            "content",
+            "pattern",
+            "test",
+            vec![],
+            Status::Active,
         );
         // Entry 99999 does not exist
 
@@ -848,12 +945,21 @@ mod tests {
             include_conventions: false,
             include_semantic: false,
             injection_history: Some(vec![
-                InjectionEntry { entry_id: id, confidence: 0.8 },
-                InjectionEntry { entry_id: 99999, confidence: 0.5 },
+                InjectionEntry {
+                    entry_id: id,
+                    confidence: 0.8,
+                },
+                InjectionEntry {
+                    entry_id: 99999,
+                    confidence: 0.5,
+                },
             ]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         assert_eq!(result.injection_sections.injections.len(), 1);
     }
 
@@ -865,8 +971,13 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let id = store_entry(
-            &store, "Deprecated", "old content",
-            "pattern", "test", vec![], Status::Deprecated,
+            &store,
+            "Deprecated",
+            "old content",
+            "pattern",
+            "test",
+            vec![],
+            Status::Deprecated,
         );
 
         let params = BriefingParams {
@@ -876,12 +987,16 @@ mod tests {
             max_tokens: 3000,
             include_conventions: false,
             include_semantic: false,
-            injection_history: Some(vec![
-                InjectionEntry { entry_id: id, confidence: 0.8 },
-            ]),
+            injection_history: Some(vec![InjectionEntry {
+                entry_id: id,
+                confidence: 0.8,
+            }]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         // crt-010: deprecated entries are now excluded from injection history (AC-11)
         assert_eq!(result.injection_sections.injections.len(), 0);
     }
@@ -896,16 +1011,31 @@ mod tests {
         // Each entry ~350 chars (title + content + 50)
         let big_content = "x".repeat(300);
         let _id1 = store_entry(
-            &store, "Conv 1", &big_content,
-            "convention", "dev", vec![], Status::Active,
+            &store,
+            "Conv 1",
+            &big_content,
+            "convention",
+            "dev",
+            vec![],
+            Status::Active,
         );
         let _id2 = store_entry(
-            &store, "Conv 2", &big_content,
-            "convention", "dev", vec![], Status::Active,
+            &store,
+            "Conv 2",
+            &big_content,
+            "convention",
+            "dev",
+            vec![],
+            Status::Active,
         );
         let _id3 = store_entry(
-            &store, "Conv 3", &big_content,
-            "convention", "dev", vec![], Status::Active,
+            &store,
+            "Conv 3",
+            &big_content,
+            "convention",
+            "dev",
+            vec![],
+            Status::Active,
         );
 
         // Budget: 500 tokens * 4 = 2000 chars. Each entry ~356 chars. Max ~5 entries.
@@ -920,7 +1050,10 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         // All 3 should fit at 2000 char budget
         assert!(result.conventions.len() <= 3);
         assert!(!result.conventions.is_empty());
@@ -937,20 +1070,35 @@ mod tests {
         let mut ids = Vec::new();
         for _i in 0..3 {
             ids.push(store_entry(
-                &store, "Decision", "Decision content here",
-                "decision", "arch", vec![], Status::Active,
+                &store,
+                "Decision",
+                "Decision content here",
+                "decision",
+                "arch",
+                vec![],
+                Status::Active,
             ));
         }
         for _i in 0..3 {
             ids.push(store_entry(
-                &store, "Pattern", "Pattern content here",
-                "pattern", "arch", vec![], Status::Active,
+                &store,
+                "Pattern",
+                "Pattern content here",
+                "pattern",
+                "arch",
+                vec![],
+                Status::Active,
             ));
         }
         for _i in 0..3 {
             ids.push(store_entry(
-                &store, "Conv", "Convention content here",
-                "convention", "arch", vec![], Status::Active,
+                &store,
+                "Conv",
+                "Convention content here",
+                "convention",
+                "arch",
+                vec![],
+                Status::Active,
             ));
         }
 
@@ -973,7 +1121,10 @@ mod tests {
             injection_history: Some(history),
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         // Entries should be present in sections
         assert!(!result.injection_sections.decisions.is_empty());
         assert!(!result.injection_sections.injections.is_empty());
@@ -988,8 +1139,13 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let id = store_entry(
-            &store, "Entry", "content",
-            "pattern", "test", vec![], Status::Active,
+            &store,
+            "Entry",
+            "content",
+            "pattern",
+            "test",
+            vec![],
+            Status::Active,
         );
 
         let params = BriefingParams {
@@ -999,13 +1155,17 @@ mod tests {
             max_tokens: 500, // minimum
             include_conventions: false,
             include_semantic: false,
-            injection_history: Some(vec![
-                InjectionEntry { entry_id: id, confidence: 0.8 },
-            ]),
+            injection_history: Some(vec![InjectionEntry {
+                entry_id: id,
+                confidence: 0.8,
+            }]),
         };
 
         // Should not panic
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         // Entry is small enough to fit
         assert!(result.injection_sections.injections.len() <= 1);
     }
@@ -1027,7 +1187,10 @@ mod tests {
             injection_history: None,
         };
 
-        let err = service.assemble(params, &test_audit_ctx(), None).await.unwrap_err();
+        let err = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .unwrap_err();
         assert!(matches!(err, ServiceError::ValidationFailed(msg) if msg.contains("role")));
     }
 
@@ -1048,7 +1211,10 @@ mod tests {
             injection_history: None,
         };
 
-        let err = service.assemble(params, &test_audit_ctx(), None).await.unwrap_err();
+        let err = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .unwrap_err();
         assert!(matches!(err, ServiceError::ValidationFailed(msg) if msg.contains("task")));
     }
 
@@ -1069,7 +1235,10 @@ mod tests {
             injection_history: None,
         };
 
-        let err = service.assemble(params, &test_audit_ctx(), None).await.unwrap_err();
+        let err = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .unwrap_err();
         assert!(matches!(err, ServiceError::ValidationFailed(msg) if msg.contains("max_tokens")));
     }
 
@@ -1088,7 +1257,10 @@ mod tests {
             injection_history: None,
         };
 
-        let err = service.assemble(params, &test_audit_ctx(), None).await.unwrap_err();
+        let err = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .unwrap_err();
         assert!(matches!(err, ServiceError::ValidationFailed(msg) if msg.contains("max_tokens")));
     }
 
@@ -1109,7 +1281,10 @@ mod tests {
             injection_history: None,
         };
 
-        let err = service.assemble(params, &test_audit_ctx(), None).await.unwrap_err();
+        let err = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .unwrap_err();
         assert!(matches!(err, ServiceError::ValidationFailed(msg) if msg.contains("control")));
     }
 
@@ -1130,7 +1305,10 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         assert!(result.conventions.is_empty());
         assert!(result.entry_ids.is_empty());
     }
@@ -1143,12 +1321,22 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let _id_general = store_entry(
-            &store, "General Conv", "general content",
-            "convention", "dev", vec![], Status::Active,
+            &store,
+            "General Conv",
+            "general content",
+            "convention",
+            "dev",
+            vec![],
+            Status::Active,
         );
         let id_feature = store_entry(
-            &store, "Feature Conv", "feature content",
-            "convention", "dev", vec!["vnc-007".to_string()], Status::Active,
+            &store,
+            "Feature Conv",
+            "feature content",
+            "convention",
+            "dev",
+            vec!["vnc-007".to_string()],
+            Status::Active,
         );
 
         let params = BriefingParams {
@@ -1161,9 +1349,15 @@ mod tests {
             injection_history: None,
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         assert_eq!(result.conventions.len(), 2);
-        assert_eq!(result.conventions[0].id, id_feature, "feature-tagged entry should be first");
+        assert_eq!(
+            result.conventions[0].id, id_feature,
+            "feature-tagged entry should be first"
+        );
     }
 
     // -- T-BS-20: All injection entries quarantined --
@@ -1174,13 +1368,31 @@ mod tests {
         let (service, _es) = make_briefing_service(&store);
 
         let id1 = store_entry(
-            &store, "Q1", "content", "pattern", "test", vec![], Status::Quarantined,
+            &store,
+            "Q1",
+            "content",
+            "pattern",
+            "test",
+            vec![],
+            Status::Quarantined,
         );
         let id2 = store_entry(
-            &store, "Q2", "content", "decision", "test", vec![], Status::Quarantined,
+            &store,
+            "Q2",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Quarantined,
         );
         let id3 = store_entry(
-            &store, "Q3", "content", "convention", "test", vec![], Status::Quarantined,
+            &store,
+            "Q3",
+            "content",
+            "convention",
+            "test",
+            vec![],
+            Status::Quarantined,
         );
 
         let params = BriefingParams {
@@ -1191,13 +1403,25 @@ mod tests {
             include_conventions: false,
             include_semantic: false,
             injection_history: Some(vec![
-                InjectionEntry { entry_id: id1, confidence: 0.8 },
-                InjectionEntry { entry_id: id2, confidence: 0.7 },
-                InjectionEntry { entry_id: id3, confidence: 0.6 },
+                InjectionEntry {
+                    entry_id: id1,
+                    confidence: 0.8,
+                },
+                InjectionEntry {
+                    entry_id: id2,
+                    confidence: 0.7,
+                },
+                InjectionEntry {
+                    entry_id: id3,
+                    confidence: 0.6,
+                },
             ]),
         };
 
-        let result = service.assemble(params, &test_audit_ctx(), None).await.expect("assemble");
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
         assert!(result.injection_sections.decisions.is_empty());
         assert!(result.injection_sections.injections.is_empty());
         assert!(result.injection_sections.conventions.is_empty());

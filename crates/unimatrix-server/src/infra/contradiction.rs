@@ -10,9 +10,9 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 use unimatrix_core::{CoreError, EmbedService, VectorStore};
+use unimatrix_store::read::{ENTRY_COLUMNS, entry_from_row, load_tags_for_entries};
 use unimatrix_store::rusqlite;
 use unimatrix_store::{EntryRecord, Status, Store, StoreError};
-use unimatrix_store::read::{entry_from_row, load_tags_for_entries, ENTRY_COLUMNS};
 
 use crate::error::ServerError;
 
@@ -170,7 +170,8 @@ pub fn scan_contradictions(
         };
 
         // Search HNSW for neighbors
-        let neighbors = match vector_store.search(&embedding, config.neighbors_per_entry, EF_SEARCH) {
+        let neighbors = match vector_store.search(&embedding, config.neighbors_per_entry, EF_SEARCH)
+        {
             Ok(n) => n,
             Err(_) => continue,
         };
@@ -265,8 +266,8 @@ fn read_active_entries(store: &Store) -> Result<Vec<EntryRecord>, ServerError> {
 
     // Load tags for all entries
     let ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
-    let tag_map = load_tags_for_entries(&conn, &ids)
-        .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+    let tag_map =
+        load_tags_for_entries(&conn, &ids).map_err(|e| ServerError::Core(CoreError::Store(e)))?;
     for entry in &mut entries {
         if let Some(tags) = tag_map.get(&entry.id) {
             entry.tags = tags.clone();
@@ -348,11 +349,7 @@ pub fn check_embedding_consistency(
 /// Combines three weighted signals: negation opposition (0.6), incompatible
 /// directives (0.3), and opposing sentiment (0.1). Returns `(score, explanation)`
 /// where score is 0.0 if below the sensitivity threshold.
-pub fn conflict_heuristic(
-    content_a: &str,
-    content_b: &str,
-    sensitivity: f32,
-) -> (f32, String) {
+pub fn conflict_heuristic(content_a: &str, content_b: &str, sensitivity: f32) -> (f32, String) {
     let mut signals: Vec<(&str, f32)> = Vec::new();
     let mut explanations: Vec<String> = Vec::new();
 
@@ -543,10 +540,7 @@ fn check_opposing_sentiment(content_a: &str, content_b: &str) -> f32 {
 
 /// Extract the first N words from a string.
 fn first_n_words(s: &str, n: usize) -> String {
-    s.split_whitespace()
-        .take(n)
-        .collect::<Vec<_>>()
-        .join(" ")
+    s.split_whitespace().take(n).collect::<Vec<_>>().join(" ")
 }
 
 #[cfg(test)]
@@ -564,7 +558,10 @@ mod tests {
 
     #[test]
     fn test_first_n_words_normal() {
-        assert_eq!(first_n_words("hello world foo bar baz", 4), "hello world foo bar");
+        assert_eq!(
+            first_n_words("hello world foo bar baz", 4),
+            "hello world foo bar"
+        );
     }
 
     #[test]
@@ -643,7 +640,10 @@ mod tests {
         let a = "Use bincode for serialization.";
         let b = "Avoid bincode for serialization.";
         let score = check_negation_opposition(a, b);
-        assert!(score > 0.0, "should detect negation opposition, got {score}");
+        assert!(
+            score > 0.0,
+            "should detect negation opposition, got {score}"
+        );
     }
 
     #[test]
@@ -651,10 +651,7 @@ mod tests {
         let a = "Use bincode for serialization.";
         let b = "Must use bincode for storage.";
         let score = check_negation_opposition(a, b);
-        assert!(
-            score == 0.0,
-            "same polarity should not flag, got {score}"
-        );
+        assert!(score == 0.0, "same polarity should not flag, got {score}");
     }
 
     #[test]
@@ -674,10 +671,7 @@ mod tests {
         let b = "Prefer bincode for serialization.";
         let score = check_incompatible_directives(a, b);
         // Both have "bincode for serialization" as subject -- exact match
-        assert!(
-            score == 0.0,
-            "same subject should not flag, got {score}"
-        );
+        assert!(score == 0.0, "same subject should not flag, got {score}");
     }
 
     #[test]
@@ -696,10 +690,7 @@ mod tests {
         let a = "This approach is recommended.";
         let b = "This approach is preferred and ideal.";
         let score = check_opposing_sentiment(a, b);
-        assert!(
-            score == 0.0,
-            "same sentiment should score 0.0, got {score}"
-        );
+        assert!(score == 0.0, "same sentiment should score 0.0, got {score}");
     }
 
     #[test]
@@ -718,10 +709,7 @@ mod tests {
         let a = "Set timeout to 30 seconds.";
         let b = "Configure logging level to debug.";
         let (score, explanation) = conflict_heuristic(a, b, 0.5);
-        assert!(
-            score == 0.0,
-            "no conflict should score 0.0, got {score}"
-        );
+        assert!(score == 0.0, "no conflict should score 0.0, got {score}");
         assert!(explanation.is_empty());
     }
 
@@ -734,10 +722,7 @@ mod tests {
             score > 0.0,
             "strong conflict should have positive score, got {score}"
         );
-        assert!(
-            !explanation.is_empty(),
-            "should have explanation"
-        );
+        assert!(!explanation.is_empty(), "should have explanation");
     }
 
     #[test]

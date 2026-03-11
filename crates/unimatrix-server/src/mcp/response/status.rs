@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use rmcp::model::{CallToolResult, Content};
 use serde::Serialize;
 
-use super::{format_timestamp, ResponseFormat};
+use super::{ResponseFormat, format_timestamp};
 
 /// Aggregated health metrics for format_status_report.
 pub struct StatusReport {
@@ -140,7 +140,10 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 report.total_correction_count
             );
             if report.contradiction_scan_performed {
-                text.push_str(&format!(" | Contradictions: {}", report.contradiction_count));
+                text.push_str(&format!(
+                    " | Contradictions: {}",
+                    report.contradiction_count
+                ));
             }
             text.push_str(&format!(
                 "\nCoherence: {:.4} (confidence_freshness: {:.4}, graph_quality: {:.4}, embedding_consistency: {:.4}, contradiction_density: {:.4})",
@@ -209,7 +212,9 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 ));
             }
             if !report.coherence_by_source.is_empty() {
-                let pairs: Vec<String> = report.coherence_by_source.iter()
+                let pairs: Vec<String> = report
+                    .coherence_by_source
+                    .iter()
                     .map(|(s, l)| format!("{}={:.4}", s, l))
                     .collect();
                 text.push_str(&format!("\nCoherence by source: {}", pairs.join(", ")));
@@ -223,7 +228,10 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             text.push_str(&format!("| Active | {} |\n", report.total_active));
             text.push_str(&format!("| Deprecated | {} |\n", report.total_deprecated));
             text.push_str(&format!("| Proposed | {} |\n", report.total_proposed));
-            text.push_str(&format!("| Quarantined | {} |\n\n", report.total_quarantined));
+            text.push_str(&format!(
+                "| Quarantined | {} |\n\n",
+                report.total_quarantined
+            ));
 
             text.push_str("### Category Distribution\n");
             text.push_str("| Category | Count |\n|----------|-------|\n");
@@ -270,14 +278,21 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                         "{} contradiction(s) found:\n\n",
                         report.contradiction_count
                     ));
-                    text.push_str("| Entry A | Entry B | Similarity | Conflict Score | Explanation |\n");
-                    text.push_str("|---------|---------|-----------|---------------|-------------|\n");
+                    text.push_str(
+                        "| Entry A | Entry B | Similarity | Conflict Score | Explanation |\n",
+                    );
+                    text.push_str(
+                        "|---------|---------|-----------|---------------|-------------|\n",
+                    );
                     for pair in &report.contradictions {
                         text.push_str(&format!(
                             "| #{} {} | #{} {} | {:.2} | {:.2} | {} |\n",
-                            pair.entry_id_a, pair.title_a,
-                            pair.entry_id_b, pair.title_b,
-                            pair.similarity, pair.conflict_score,
+                            pair.entry_id_a,
+                            pair.title_a,
+                            pair.entry_id_b,
+                            pair.title_b,
+                            pair.similarity,
+                            pair.conflict_score,
                             pair.explanation,
                         ));
                     }
@@ -361,8 +376,10 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 for cluster in &report.top_co_access_pairs {
                     text.push_str(&format!(
                         "| {} (#{}) | {} (#{}) | {} | {} |\n",
-                        cluster.title_a, cluster.entry_id_a,
-                        cluster.title_b, cluster.entry_id_b,
+                        cluster.title_a,
+                        cluster.entry_id_a,
+                        cluster.title_b,
+                        cluster.entry_id_b,
                         cluster.count,
                         format_timestamp(cluster.last_updated),
                     ));
@@ -426,16 +443,10 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             {
                 text.push_str("\n### Background Tick\n\n");
                 if let Some(ts) = report.last_maintenance_run {
-                    text.push_str(&format!(
-                        "- Last maintenance: {}\n",
-                        format_timestamp(ts)
-                    ));
+                    text.push_str(&format!("- Last maintenance: {}\n", format_timestamp(ts)));
                 }
                 if let Some(ts) = report.next_maintenance_scheduled {
-                    text.push_str(&format!(
-                        "- Next scheduled: {}\n",
-                        format_timestamp(ts)
-                    ));
+                    text.push_str(&format!("- Next scheduled: {}\n", format_timestamp(ts)));
                 }
                 if let Some(ref stats) = report.extraction_stats {
                     text.push_str(&format!(
@@ -447,10 +458,7 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                         stats.entries_rejected_total
                     ));
                     if let Some(ts) = stats.last_extraction_run {
-                        text.push_str(&format!(
-                            "- Last extraction: {}\n",
-                            format_timestamp(ts)
-                        ));
+                        text.push_str(&format!("- Last extraction: {}\n", format_timestamp(ts)));
                     }
                     if !stats.rules_fired.is_empty() {
                         text.push_str("\n#### Rules Fired\n");
@@ -692,7 +700,9 @@ impl From<&StatusReport> for StatusReportJson {
             last_maintenance_run: r.last_maintenance_run,
             next_maintenance_scheduled: r.next_maintenance_scheduled,
             extraction_stats: r.extraction_stats.clone(),
-            coherence_by_source: r.coherence_by_source.iter()
+            coherence_by_source: r
+                .coherence_by_source
+                .iter()
                 .map(|(s, l)| CoherenceBySourceEntry {
                     source: s.clone(),
                     lambda: *l,

@@ -6,7 +6,7 @@
 use rmcp::model::{CallToolResult, Content};
 use unimatrix_store::EntryRecord;
 
-use super::{entry_to_json, ResponseFormat};
+use super::{ResponseFormat, entry_to_json};
 use crate::infra::registry::{Capability, EnrollResult, TrustLevel};
 
 /// Generic status change formatter (ADR-003).
@@ -56,7 +56,14 @@ pub fn format_deprecate_success(
     reason: Option<&str>,
     format: ResponseFormat,
 ) -> CallToolResult {
-    format_status_change(entry, "Deprecated", "deprecated", "deprecated", reason, format)
+    format_status_change(
+        entry,
+        "Deprecated",
+        "deprecated",
+        "deprecated",
+        reason,
+        format,
+    )
 }
 
 /// Backward-compatible thin wrapper for quarantine.
@@ -65,7 +72,14 @@ pub fn format_quarantine_success(
     reason: Option<&str>,
     format: ResponseFormat,
 ) -> CallToolResult {
-    format_status_change(entry, "Quarantined", "quarantined", "quarantined", reason, format)
+    format_status_change(
+        entry,
+        "Quarantined",
+        "quarantined",
+        "quarantined",
+        reason,
+        format,
+    )
 }
 
 /// Backward-compatible thin wrapper for restore.

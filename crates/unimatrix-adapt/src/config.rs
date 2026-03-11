@@ -102,11 +102,9 @@ mod tests {
         // Serialize a config, then try to deserialize. Bincode v2 with serde
         // should honor #[serde(default)] for the new fields.
         let c = AdaptConfig::default();
-        let bytes =
-            bincode::serde::encode_to_vec(&c, bincode::config::standard()).unwrap();
+        let bytes = bincode::serde::encode_to_vec(&c, bincode::config::standard()).unwrap();
         let (decoded, _): (AdaptConfig, _) =
-            bincode::serde::decode_from_slice(&bytes, bincode::config::standard())
-                .unwrap();
+            bincode::serde::decode_from_slice(&bytes, bincode::config::standard()).unwrap();
         assert_eq!(decoded.reservoir_seed, 42);
         assert_eq!(decoded.init_seed, 42);
     }
@@ -114,11 +112,9 @@ mod tests {
     #[test]
     fn config_serde_roundtrip() {
         let c = AdaptConfig::default();
-        let bytes =
-            bincode::serde::encode_to_vec(&c, bincode::config::standard()).unwrap();
+        let bytes = bincode::serde::encode_to_vec(&c, bincode::config::standard()).unwrap();
         let (decoded, _): (AdaptConfig, _) =
-            bincode::serde::decode_from_slice(&bytes, bincode::config::standard())
-                .unwrap();
+            bincode::serde::decode_from_slice(&bytes, bincode::config::standard()).unwrap();
         assert_eq!(decoded.rank, c.rank);
         assert_eq!(decoded.dimension, c.dimension);
     }

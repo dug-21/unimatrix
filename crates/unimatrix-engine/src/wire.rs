@@ -104,7 +104,6 @@ pub enum HookRequest {
     RecordEvents { events: Vec<ImplantEvent> },
 
     // -- Stubs for future features (col-007+) --
-
     /// Search context entries.
     ContextSearch {
         query: String,
@@ -164,10 +163,7 @@ pub enum HookResponse {
     },
 
     /// Briefing content (compaction defense or role briefing).
-    BriefingContent {
-        content: String,
-        token_count: u32,
-    },
+    BriefingContent { content: String, token_count: u32 },
 }
 
 // -- ImplantEvent --
@@ -1091,7 +1087,10 @@ mod tests {
         let bytes = serialize_response(&resp).unwrap();
         let decoded = deserialize_response(&bytes).unwrap();
         match decoded {
-            HookResponse::Entries { items, total_tokens } => {
+            HookResponse::Entries {
+                items,
+                total_tokens,
+            } => {
                 assert_eq!(items.len(), 1);
                 assert_eq!(items[0].id, 1);
                 assert_eq!(total_tokens, 10);
@@ -1135,7 +1134,10 @@ mod tests {
             topic_signal: None,
         };
         let json = serde_json::to_string(&event).unwrap();
-        assert!(!json.contains("topic_signal"), "None should omit the field: {json}");
+        assert!(
+            !json.contains("topic_signal"),
+            "None should omit the field: {json}"
+        );
     }
 
     #[test]
@@ -1148,7 +1150,10 @@ mod tests {
             topic_signal: Some("col-017".to_string()),
         };
         let json = serde_json::to_string(&event).unwrap();
-        assert!(json.contains("topic_signal"), "Some should include the field: {json}");
+        assert!(
+            json.contains("topic_signal"),
+            "Some should include the field: {json}"
+        );
         assert!(json.contains("col-017"));
     }
 }

@@ -6,8 +6,8 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use unimatrix_store::rusqlite::{self, OptionalExtension};
 use unimatrix_store::Store;
+use unimatrix_store::rusqlite::{self, OptionalExtension};
 
 // Re-export types so existing `use crate::infra::registry::*` imports keep working.
 pub use unimatrix_store::{AgentRecord, Capability, TrustLevel};
@@ -60,14 +60,12 @@ impl AgentRegistry {
                 .unwrap_or(false);
 
             if !exists {
-                let caps_json = serde_json::to_string(
-                    &[
-                        Capability::Read as u8,
-                        Capability::Write as u8,
-                        Capability::Search as u8,
-                        Capability::Admin as u8,
-                    ],
-                )
+                let caps_json = serde_json::to_string(&[
+                    Capability::Read as u8,
+                    Capability::Write as u8,
+                    Capability::Search as u8,
+                    Capability::Admin as u8,
+                ])
                 .map_err(|e| ServerError::Registry(e.to_string()))?;
                 conn.execute(
                     "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
@@ -95,14 +93,12 @@ impl AgentRegistry {
                 .unwrap_or(false);
 
             if !exists {
-                let caps_json = serde_json::to_string(
-                    &[
-                        Capability::Read as u8,
-                        Capability::Write as u8,
-                        Capability::Search as u8,
-                        Capability::Admin as u8,
-                    ],
-                )
+                let caps_json = serde_json::to_string(&[
+                    Capability::Read as u8,
+                    Capability::Write as u8,
+                    Capability::Search as u8,
+                    Capability::Admin as u8,
+                ])
                 .map_err(|e| ServerError::Registry(e.to_string()))?;
                 conn.execute(
                     "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
@@ -130,10 +126,9 @@ impl AgentRegistry {
                 .unwrap_or(false);
 
             if !exists {
-                let caps_json = serde_json::to_string(
-                    &[Capability::Read as u8, Capability::Search as u8],
-                )
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
+                let caps_json =
+                    serde_json::to_string(&[Capability::Read as u8, Capability::Search as u8])
+                        .map_err(|e| ServerError::Registry(e.to_string()))?;
                 conn.execute(
                     "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
                         allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
@@ -188,9 +183,8 @@ impl AgentRegistry {
 
         // Not found: auto-enroll as Restricted
         let now = current_unix_seconds();
-        let caps_json =
-            serde_json::to_string(&[Capability::Read as u8, Capability::Search as u8])
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
+        let caps_json = serde_json::to_string(&[Capability::Read as u8, Capability::Search as u8])
+            .map_err(|e| ServerError::Registry(e.to_string()))?;
 
         conn.execute(
             "INSERT OR IGNORE INTO agent_registry (agent_id, trust_level, capabilities,
@@ -237,11 +231,7 @@ impl AgentRegistry {
     ///
     /// Returns `Ok(())` if the agent has the capability, or
     /// `Err(ServerError::CapabilityDenied)` if not.
-    pub fn require_capability(
-        &self,
-        agent_id: &str,
-        cap: Capability,
-    ) -> Result<(), ServerError> {
+    pub fn require_capability(&self, agent_id: &str, cap: Capability) -> Result<(), ServerError> {
         if !self.has_capability(agent_id, cap)? {
             return Err(ServerError::CapabilityDenied {
                 agent_id: agent_id.to_string(),
@@ -310,12 +300,7 @@ impl AgentRegistry {
                 conn.execute(
                     "UPDATE agent_registry SET trust_level = ?1, capabilities = ?2,
                         last_seen_at = ?3 WHERE agent_id = ?4",
-                    rusqlite::params![
-                        trust_level as u8 as i64,
-                        &caps_json,
-                        now as i64,
-                        target_id
-                    ],
+                    rusqlite::params![trust_level as u8 as i64, &caps_json, now as i64, target_id],
                 )
                 .map_err(|e| ServerError::Registry(e.to_string()))?;
 
@@ -337,12 +322,7 @@ impl AgentRegistry {
                     "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
                         allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
                      VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4, 1)",
-                    rusqlite::params![
-                        target_id,
-                        trust_level as u8 as i64,
-                        &caps_json,
-                        now as i64
-                    ],
+                    rusqlite::params![target_id, trust_level as u8 as i64, &caps_json, now as i64],
                 )
                 .map_err(|e| ServerError::Registry(e.to_string()))?;
 
@@ -408,8 +388,7 @@ fn agent_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AgentRecord> {
 /// Serialize capabilities as JSON array of u8 discriminants.
 fn serialize_capabilities(capabilities: &[Capability]) -> Result<String, ServerError> {
     let cap_ints: Vec<u8> = capabilities.iter().map(|c| *c as u8).collect();
-    serde_json::to_string(&cap_ints)
-        .map_err(|e| ServerError::Registry(e.to_string()))
+    serde_json::to_string(&cap_ints).map_err(|e| ServerError::Registry(e.to_string()))
 }
 
 #[cfg(test)]
@@ -468,7 +447,10 @@ mod tests {
 
         let agent = registry.resolve_or_enroll("unknown-agent-123").unwrap();
         assert_eq!(agent.trust_level, TrustLevel::Restricted);
-        assert_eq!(agent.capabilities, vec![Capability::Read, Capability::Search]);
+        assert_eq!(
+            agent.capabilities,
+            vec![Capability::Read, Capability::Search]
+        );
     }
 
     #[test]
@@ -524,7 +506,11 @@ mod tests {
         let registry = AgentRegistry::new(store).unwrap();
 
         registry.resolve_or_enroll("agent-x").unwrap();
-        assert!(!registry.has_capability("agent-x", Capability::Write).unwrap());
+        assert!(
+            !registry
+                .has_capability("agent-x", Capability::Write)
+                .unwrap()
+        );
     }
 
     #[test]
@@ -533,7 +519,11 @@ mod tests {
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
-        assert!(registry.require_capability("human", Capability::Write).is_ok());
+        assert!(
+            registry
+                .require_capability("human", Capability::Write)
+                .is_ok()
+        );
     }
 
     #[test]
@@ -543,10 +533,7 @@ mod tests {
 
         registry.resolve_or_enroll("agent-x").unwrap();
         let result = registry.require_capability("agent-x", Capability::Write);
-        assert!(matches!(
-            result,
-            Err(ServerError::CapabilityDenied { .. })
-        ));
+        assert!(matches!(result, Err(ServerError::CapabilityDenied { .. })));
     }
 
     #[test]
@@ -573,7 +560,10 @@ mod tests {
 
         let agent = registry.resolve_or_enroll("anonymous").unwrap();
         assert_eq!(agent.trust_level, TrustLevel::Restricted);
-        assert_eq!(agent.capabilities, vec![Capability::Read, Capability::Search]);
+        assert_eq!(
+            agent.capabilities,
+            vec![Capability::Read, Capability::Search]
+        );
     }
 
     // -- alc-002: enroll_agent --
@@ -705,10 +695,7 @@ mod tests {
             TrustLevel::Internal,
             vec![Capability::Read],
         );
-        assert!(matches!(
-            result,
-            Err(ServerError::ProtectedAgent { .. })
-        ));
+        assert!(matches!(result, Err(ServerError::ProtectedAgent { .. })));
     }
 
     #[test]
@@ -733,10 +720,7 @@ mod tests {
             TrustLevel::Internal,
             vec![Capability::Read],
         );
-        assert!(matches!(
-            result,
-            Err(ServerError::ProtectedAgent { .. })
-        ));
+        assert!(matches!(result, Err(ServerError::ProtectedAgent { .. })));
     }
 
     #[test]

@@ -174,7 +174,10 @@ mod tests {
     fn test_check_votes_first_call_new_vote() {
         let dedup = UsageDedup::new();
         let result = dedup.check_votes("agent-1", &[1, 2], true);
-        assert_eq!(result, vec![(1, VoteAction::NewVote), (2, VoteAction::NewVote)]);
+        assert_eq!(
+            result,
+            vec![(1, VoteAction::NewVote), (2, VoteAction::NewVote)]
+        );
     }
 
     #[test]
@@ -311,10 +314,13 @@ mod tests {
         dedup.check_votes("agent-1", &[1, 2, 3], true);
         // Now vote unhelpful on entries 2,3,4 (4 is new)
         let result = dedup.check_votes("agent-1", &[2, 3, 4], false);
-        assert_eq!(result, vec![
-            (2, VoteAction::CorrectedVote),
-            (3, VoteAction::CorrectedVote),
-            (4, VoteAction::NewVote),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                (2, VoteAction::CorrectedVote),
+                (3, VoteAction::CorrectedVote),
+                (4, VoteAction::NewVote),
+            ]
+        );
     }
 }

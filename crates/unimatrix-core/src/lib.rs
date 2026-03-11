@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 
-mod error;
-mod traits;
 mod adapters;
+mod error;
 pub mod observation;
+mod traits;
 
 #[cfg(feature = "async")]
 pub mod async_wrappers;
@@ -26,7 +26,7 @@ pub use unimatrix_store::{
 };
 
 // Metric types from unimatrix-store (nxs-009 ADR-001)
-pub use unimatrix_store::{MetricVector, UniversalMetrics, PhaseMetrics};
+pub use unimatrix_store::{MetricVector, PhaseMetrics, UniversalMetrics};
 
 // Domain types from unimatrix-vector
 pub use unimatrix_vector::{SearchResult, VectorConfig, VectorError, VectorIndex};

@@ -164,7 +164,10 @@ mod tests {
     #[test]
     fn agent_entry_no_signal() {
         let result = vote_signal(1, "convention", "agent", true, test_digest());
-        assert!(result.is_none(), "agent trust_source should not generate signal");
+        assert!(
+            result.is_none(),
+            "agent trust_source should not generate signal"
+        );
     }
 
     // T-R04-02: Helpful vote on auto entry DOES generate signal
@@ -182,7 +185,10 @@ mod tests {
     #[test]
     fn neural_entry_deprecation_signal() {
         let result = deprecation_signal(2, "convention", "neural", test_digest());
-        assert!(result.is_some(), "neural trust_source should generate signal");
+        assert!(
+            result.is_some(),
+            "neural trust_source should generate signal"
+        );
         match result.unwrap() {
             FeedbackSignal::Deprecation { entry_id, .. } => assert_eq!(entry_id, 2),
             _ => panic!("expected Deprecation"),
@@ -208,7 +214,12 @@ mod tests {
     #[test]
     fn outcome_signal_filters_entries() {
         let entries = vec![
-            (1, "convention".to_string(), "auto".to_string(), test_digest()),
+            (
+                1,
+                "convention".to_string(),
+                "auto".to_string(),
+                test_digest(),
+            ),
             (2, "pattern".to_string(), "agent".to_string(), test_digest()),
             (3, "gap".to_string(), "neural".to_string(), test_digest()),
         ];
@@ -224,9 +235,12 @@ mod tests {
 
     #[test]
     fn outcome_signal_empty_when_no_trainable() {
-        let entries = vec![
-            (1, "convention".to_string(), "agent".to_string(), test_digest()),
-        ];
+        let entries = vec![(
+            1,
+            "convention".to_string(),
+            "agent".to_string(),
+            test_digest(),
+        )];
         assert!(outcome_signal("test-cycle", OutcomeResult::Success, &entries).is_none());
     }
 }

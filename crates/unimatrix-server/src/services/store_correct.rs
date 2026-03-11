@@ -5,17 +5,13 @@
 
 use std::sync::Arc;
 
-use unimatrix_core::{
-    CoreError, EmbedService, EntryRecord, NewEntry,
-};
+use unimatrix_core::{CoreError, EmbedService, EntryRecord, NewEntry};
+use unimatrix_store::read::{ENTRY_COLUMNS, entry_from_row, load_tags_for_entries};
 use unimatrix_store::rusqlite::{self, OptionalExtension};
-use unimatrix_store::{
-    compute_content_hash, status_counter_key, StoreError,
-};
-use unimatrix_store::read::{entry_from_row, load_tags_for_entries, ENTRY_COLUMNS};
+use unimatrix_store::{StoreError, compute_content_hash, status_counter_key};
 
-use crate::infra::audit::{AuditEvent, Outcome};
 use crate::error::ServerError;
+use crate::infra::audit::{AuditEvent, Outcome};
 use crate::services::{AuditContext, CallerId, ServiceError};
 
 use super::store_ops::{CorrectResult, StoreService};
@@ -170,8 +166,7 @@ impl StoreService {
                 original.updated_at = now;
 
                 // 5. Build correction EntryRecord
-                let content_hash =
-                    compute_content_hash(&corrected.title, &corrected.content);
+                let content_hash = compute_content_hash(&corrected.title, &corrected.content);
                 let correction = EntryRecord {
                     id: new_id,
                     title: corrected.title,
@@ -243,21 +238,24 @@ impl StoreService {
                         ":helpful_count": correction.helpful_count as i64,
                         ":unhelpful_count": correction.unhelpful_count as i64,
                     },
-                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                )
+                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
 
                 // 7. Insert tags for correction
                 for tag in &correction.tags {
                     conn.execute(
                         "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
                         rusqlite::params![new_id as i64, tag],
-                    ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                    )
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
                 }
 
                 // 8. Insert vector mapping
                 conn.execute(
                     "INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)",
                     rusqlite::params![new_id as i64, data_id as i64],
-                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                )
+                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
 
                 // 9. Status counter for correction
                 unimatrix_store::counters::increment_counter(
@@ -286,9 +284,7 @@ impl StoreService {
         .map_err(|e| -> ServiceError {
             match e {
                 ServerError::Core(ce) => ServiceError::Core(ce),
-                ServerError::InvalidInput { reason, .. } => {
-                    ServiceError::ValidationFailed(reason)
-                }
+                ServerError::InvalidInput { reason, .. } => ServiceError::ValidationFailed(reason),
                 other => ServiceError::EmbeddingFailed(format!("{other}")),
             }
         })?;

@@ -6,26 +6,24 @@
 use std::fmt;
 use std::sync::Arc;
 
-use unimatrix_core::{
-    CoreError, Store, StoreAdapter, VectorAdapter, VectorIndex,
-};
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+use unimatrix_core::{CoreError, Store, StoreAdapter, VectorAdapter, VectorIndex};
 use unimatrix_store::StoreError;
 
 use unimatrix_adapt::AdaptationService;
 
+use crate::error::ServerError;
 use crate::infra::audit::AuditLog;
 use crate::infra::embed_handle::EmbedServiceHandle;
-use crate::error::ServerError;
 use crate::infra::registry::TrustLevel;
 use crate::infra::usage_dedup::UsageDedup;
 
 pub(crate) mod briefing;
 pub(crate) mod confidence;
 pub(crate) mod gateway;
+pub(crate) mod observation;
 pub(crate) mod search;
 pub(crate) mod status;
-pub(crate) mod observation;
 pub(crate) mod store_correct;
 pub(crate) mod store_ops;
 pub(crate) mod usage;
@@ -117,9 +115,16 @@ pub(crate) enum AuditSource {
 #[allow(dead_code)]
 pub(crate) enum ServiceError {
     /// S1: Content scan rejection (writes only).
-    ContentRejected { category: String, description: String },
+    ContentRejected {
+        category: String,
+        description: String,
+    },
     /// S2: Rate limit exceeded.
-    RateLimited { limit: u32, window_secs: u64, retry_after_secs: u64 },
+    RateLimited {
+        limit: u32,
+        window_secs: u64,
+        retry_after_secs: u64,
+    },
     /// S3: Input validation failure.
     ValidationFailed(String),
     /// Core/store error.
@@ -137,8 +142,15 @@ impl fmt::Display for ServiceError {
                 category,
                 description,
             } => write!(f, "content rejected ({category}): {description}"),
-            ServiceError::RateLimited { limit, window_secs, retry_after_secs } => {
-                write!(f, "rate limited: {limit} requests per {window_secs}s, retry after {retry_after_secs}s")
+            ServiceError::RateLimited {
+                limit,
+                window_secs,
+                retry_after_secs,
+            } => {
+                write!(
+                    f,
+                    "rate limited: {limit} requests per {window_secs}s, retry after {retry_after_secs}s"
+                )
             }
             ServiceError::ValidationFailed(msg) => write!(f, "validation failed: {msg}"),
             ServiceError::Core(e) => write!(f, "core error: {e}"),
@@ -164,20 +176,22 @@ impl From<ServiceError> for ServerError {
                 category,
                 description,
             },
-            ServiceError::RateLimited { limit, window_secs, retry_after_secs } => {
-                ServerError::InvalidInput {
-                    field: "rate_limit".to_string(),
-                    reason: format!("rate limited: {limit} per {window_secs}s, retry after {retry_after_secs}s"),
-                }
-            }
+            ServiceError::RateLimited {
+                limit,
+                window_secs,
+                retry_after_secs,
+            } => ServerError::InvalidInput {
+                field: "rate_limit".to_string(),
+                reason: format!(
+                    "rate limited: {limit} per {window_secs}s, retry after {retry_after_secs}s"
+                ),
+            },
             ServiceError::ValidationFailed(msg) => ServerError::InvalidInput {
                 field: "input".to_string(),
                 reason: msg,
             },
             ServiceError::Core(e) => ServerError::Core(e),
-            ServiceError::EmbeddingFailed(msg) => {
-                ServerError::EmbedFailed(msg)
-            }
+            ServiceError::EmbeddingFailed(msg) => ServerError::EmbedFailed(msg),
             ServiceError::NotFound(id) => {
                 ServerError::Core(CoreError::Store(StoreError::EntryNotFound(id)))
             }
@@ -221,7 +235,17 @@ impl ServiceLayer {
         audit: Arc<AuditLog>,
         usage_dedup: Arc<UsageDedup>,
     ) -> Self {
-        Self::with_rate_config(store, vector_index, vector_store, entry_store, embed_service, adapt_service, audit, usage_dedup, RateLimitConfig::default())
+        Self::with_rate_config(
+            store,
+            vector_index,
+            vector_store,
+            entry_store,
+            embed_service,
+            adapt_service,
+            audit,
+            usage_dedup,
+            RateLimitConfig::default(),
+        )
     }
 
     pub(crate) fn with_rate_config(
@@ -235,7 +259,10 @@ impl ServiceLayer {
         usage_dedup: Arc<UsageDedup>,
         rate_config: RateLimitConfig,
     ) -> Self {
-        let gateway = Arc::new(SecurityGateway::with_rate_config(Arc::clone(&audit), rate_config));
+        let gateway = Arc::new(SecurityGateway::with_rate_config(
+            Arc::clone(&audit),
+            rate_config,
+        ));
 
         let search = SearchService::new(
             Arc::clone(&store),
@@ -330,7 +357,10 @@ mod tests {
             description: "email detected".to_string(),
         };
         let server_err: ServerError = err.into();
-        assert!(matches!(server_err, ServerError::ContentScanRejected { .. }));
+        assert!(matches!(
+            server_err,
+            ServerError::ContentScanRejected { .. }
+        ));
     }
 
     #[test]
@@ -344,6 +374,9 @@ mod tests {
     fn service_error_to_server_error_not_found() {
         let err = ServiceError::NotFound(99);
         let server_err: ServerError = err.into();
-        assert!(matches!(server_err, ServerError::Core(CoreError::Store(StoreError::EntryNotFound(99)))));
+        assert!(matches!(
+            server_err,
+            ServerError::Core(CoreError::Store(StoreError::EntryNotFound(99)))
+        ));
     }
 }

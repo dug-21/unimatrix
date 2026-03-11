@@ -5,8 +5,8 @@
 
 use unimatrix_engine::coaccess::MAX_CO_ACCESS_BOOST;
 use unimatrix_engine::confidence::{
-    rerank_score, DEPRECATED_PENALTY, PROVENANCE_BOOST, SEARCH_SIMILARITY_WEIGHT,
-    SUPERSEDED_PENALTY,
+    DEPRECATED_PENALTY, PROVENANCE_BOOST, SEARCH_SIMILARITY_WEIGHT, SUPERSEDED_PENALTY,
+    rerank_score,
 };
 
 // ---------------------------------------------------------------------------

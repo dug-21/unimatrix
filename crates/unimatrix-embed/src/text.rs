@@ -56,7 +56,10 @@ mod tests {
 
     #[test]
     fn test_prepare_text_both_present() {
-        assert_eq!(prepare_text("JWT", "Validate exp", ": "), "JWT: Validate exp");
+        assert_eq!(
+            prepare_text("JWT", "Validate exp", ": "),
+            "JWT: Validate exp"
+        );
     }
 
     #[test]

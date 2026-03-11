@@ -92,29 +92,17 @@ impl ModelRegistry {
 
     /// Get the production model version.
     pub fn get_production(&self, model_name: &str) -> Option<&ModelVersion> {
-        self.state
-            .models
-            .get(model_name)?
-            .production
-            .as_ref()
+        self.state.models.get(model_name)?.production.as_ref()
     }
 
     /// Get the shadow model version.
     pub fn get_shadow(&self, model_name: &str) -> Option<&ModelVersion> {
-        self.state
-            .models
-            .get(model_name)?
-            .shadow
-            .as_ref()
+        self.state.models.get(model_name)?.shadow.as_ref()
     }
 
     /// Get the previous model version.
     pub fn get_previous(&self, model_name: &str) -> Option<&ModelVersion> {
-        self.state
-            .models
-            .get(model_name)?
-            .previous
-            .as_ref()
+        self.state.models.get(model_name)?.previous.as_ref()
     }
 
     /// Register a new model version in the Shadow slot.
@@ -128,11 +116,7 @@ impl ModelRegistry {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let slots = self
-            .state
-            .models
-            .entry(model_name.to_string())
-            .or_default();
+        let slots = self.state.models.entry(model_name.to_string()).or_default();
         slots.shadow = Some(ModelVersion {
             generation,
             timestamp: now,
@@ -150,10 +134,7 @@ impl ModelRegistry {
             .models
             .get_mut(model_name)
             .ok_or(RegistryError::NoShadowModel)?;
-        let shadow = slots
-            .shadow
-            .take()
-            .ok_or(RegistryError::NoShadowModel)?;
+        let shadow = slots.shadow.take().ok_or(RegistryError::NoShadowModel)?;
 
         // Move production -> previous
         slots.previous = slots.production.take().map(|mut v| {
@@ -221,9 +202,7 @@ impl ModelRegistry {
 
     /// Model file path for a given model name and slot.
     pub fn model_path(&self, model_name: &str, slot: ModelSlot) -> PathBuf {
-        self.models_dir
-            .join(model_name)
-            .join(format!("{slot}.bin"))
+        self.models_dir.join(model_name).join(format!("{slot}.bin"))
     }
 
     /// Save a model's bytes to the appropriate slot path.
@@ -264,11 +243,9 @@ impl ModelRegistry {
     fn persist(&self) -> Result<(), RegistryError> {
         let json = serde_json::to_string_pretty(&self.state)
             .map_err(|e| RegistryError::Serialization(e.to_string()))?;
-        std::fs::create_dir_all(&self.models_dir)
-            .map_err(|e| RegistryError::Io(e.to_string()))?;
+        std::fs::create_dir_all(&self.models_dir).map_err(|e| RegistryError::Io(e.to_string()))?;
         let path = self.models_dir.join("registry.json");
-        std::fs::write(&path, json.as_bytes())
-            .map_err(|e| RegistryError::Io(e.to_string()))
+        std::fs::write(&path, json.as_bytes()).map_err(|e| RegistryError::Io(e.to_string()))
     }
 }
 

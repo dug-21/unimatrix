@@ -8,17 +8,19 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use unimatrix_core::{EntryRecord, QueryFilter, StoreAdapter, VectorAdapter, VectorIndex, VectorConfig};
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-use unimatrix_embed::EmbedConfig;
 use unimatrix_adapt::AdaptationService;
+use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+use unimatrix_core::{
+    EntryRecord, QueryFilter, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex,
+};
+use unimatrix_embed::EmbedConfig;
 use unimatrix_store::Store;
 
 use crate::infra::audit::AuditLog;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::usage_dedup::UsageDedup;
-use crate::services::{AuditContext, AuditSource, CallerId, RateLimitConfig, ServiceLayer};
 use crate::services::search::{RetrievalMode, ServiceSearchParams};
+use crate::services::{AuditContext, AuditSource, CallerId, RateLimitConfig, ServiceLayer};
 
 /// A search result from the test harness.
 #[derive(Debug)]
@@ -130,11 +132,7 @@ impl TestHarness {
     }
 
     /// Execute a search query through the full pipeline.
-    pub async fn search(
-        &self,
-        query: &str,
-        k: usize,
-    ) -> Result<Vec<TestSearchResult>, String> {
+    pub async fn search(&self, query: &str, k: usize) -> Result<Vec<TestSearchResult>, String> {
         let params = ServiceSearchParams {
             query: query.to_string(),
             k,

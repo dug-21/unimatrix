@@ -225,15 +225,17 @@ mod tests {
     #[test]
     fn test_hash_lowercase_hex() {
         let hash = compute_project_hash(Path::new("/test"));
-        assert!(hash.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()));
+        assert!(
+            hash.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+        );
     }
 
     #[test]
     fn test_ensure_creates_dirs() {
         let project_dir = tempfile::TempDir::new().unwrap();
         let base_dir = tempfile::TempDir::new().unwrap();
-        let paths =
-            ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
+        let paths = ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
 
         assert!(paths.data_dir.exists());
         assert!(paths.vector_dir.exists());
@@ -242,7 +244,12 @@ mod tests {
         assert!(paths.db_path.to_string_lossy().ends_with("unimatrix.db"));
         assert!(paths.vector_dir.to_string_lossy().ends_with("vector"));
         assert!(paths.pid_path.to_string_lossy().ends_with("unimatrix.pid"));
-        assert!(paths.socket_path.to_string_lossy().ends_with("unimatrix.sock"));
+        assert!(
+            paths
+                .socket_path
+                .to_string_lossy()
+                .ends_with("unimatrix.sock")
+        );
     }
 
     #[test]
@@ -274,8 +281,7 @@ mod tests {
     fn test_socket_path_in_data_dir() {
         let project_dir = tempfile::TempDir::new().unwrap();
         let base_dir = tempfile::TempDir::new().unwrap();
-        let paths =
-            ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
+        let paths = ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
         assert_eq!(paths.socket_path, paths.data_dir.join("unimatrix.sock"));
     }
 
@@ -382,8 +388,7 @@ mod tests {
         let base_dir = tempfile::TempDir::new().unwrap();
         let main_paths =
             ensure_data_directory(Some(main_repo.path()), Some(base_dir.path())).unwrap();
-        let wt_paths =
-            ensure_data_directory(Some(worktree.path()), Some(base_dir.path())).unwrap();
+        let wt_paths = ensure_data_directory(Some(worktree.path()), Some(base_dir.path())).unwrap();
 
         assert_eq!(main_paths.project_hash, wt_paths.project_hash);
         assert_eq!(main_paths.db_path, wt_paths.db_path);
@@ -394,8 +399,7 @@ mod tests {
     fn test_ensure_no_dirs_leak_outside_base() {
         let project_dir = tempfile::TempDir::new().unwrap();
         let base_dir = tempfile::TempDir::new().unwrap();
-        let paths =
-            ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
+        let paths = ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
 
         // All created directories must be inside base_dir, not ~/.unimatrix/
         assert!(paths.data_dir.starts_with(base_dir.path()));

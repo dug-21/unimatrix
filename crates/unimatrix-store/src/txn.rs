@@ -1,7 +1,7 @@
 //! Transaction wrapper for atomic write operations (ADR-001, nxs-008).
 
-use std::sync::MutexGuard;
 use rusqlite::Connection;
+use std::sync::MutexGuard;
 
 /// Write transaction wrapper (ADR-001).
 ///
@@ -20,7 +20,10 @@ impl<'a> SqliteWriteTransaction<'a> {
         guard
             .execute_batch("BEGIN IMMEDIATE")
             .map_err(crate::error::StoreError::Sqlite)?;
-        Ok(Self { guard, committed: false })
+        Ok(Self {
+            guard,
+            committed: false,
+        })
     }
 
     /// Commit the transaction.

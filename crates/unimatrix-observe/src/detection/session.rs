@@ -9,7 +9,7 @@ use crate::types::{
     EvidenceRecord, HookType, HotspotCategory, HotspotFinding, ObservationRecord, Severity,
 };
 
-use super::{find_completion_boundary, input_to_file_path, DetectionRule};
+use super::{DetectionRule, find_completion_boundary, input_to_file_path};
 
 // -- Rule 1: SessionTimeoutRule (moved from col-002 detection.rs) --
 
@@ -323,8 +323,7 @@ impl DetectionRule for ReworkEventsRule {
 
                     if let Some(status) = status {
                         let prev = task_states.get(task_id);
-                        if prev.map(|s| s.as_str()) == Some("completed")
-                            && status == "in_progress"
+                        if prev.map(|s| s.as_str()) == Some("completed") && status == "in_progress"
                         {
                             rework_evidence.push(EvidenceRecord {
                                 description: "Task rework: completed -> in_progress".to_string(),
@@ -468,8 +467,8 @@ mod tests {
             make_read_with_path(1000, "/tmp/a.rs"),
             make_read_with_path(2000, "/tmp/b.rs"),
             // Gap from ts=2000 to ts=1000+gap = (gap-1000) ms
-            make_read_with_path(1000 + gap, "/tmp/a.rs"),   // re-read
-            make_read_with_path(2000 + gap, "/tmp/b.rs"),   // re-read
+            make_read_with_path(1000 + gap, "/tmp/a.rs"), // re-read
+            make_read_with_path(2000 + gap, "/tmp/b.rs"), // re-read
         ];
         let rule = ColdRestartRule;
         let findings = rule.detect(&records);
@@ -558,9 +557,8 @@ mod tests {
     #[test]
     fn test_post_completion_fires() {
         // 80 records before completion, 20 after = 20%
-        let mut records: Vec<ObservationRecord> = (0..80)
-            .map(|i| make_pre(i * 100, "Read"))
-            .collect();
+        let mut records: Vec<ObservationRecord> =
+            (0..80).map(|i| make_pre(i * 100, "Read")).collect();
         records.push(make_task_update(8000, "1", "completed"));
         for i in 0..20 {
             records.push(make_pre(8100 + i * 100, "Read"));
@@ -573,9 +571,8 @@ mod tests {
 
     #[test]
     fn test_post_completion_silent() {
-        let mut records: Vec<ObservationRecord> = (0..98)
-            .map(|i| make_pre(i * 100, "Read"))
-            .collect();
+        let mut records: Vec<ObservationRecord> =
+            (0..98).map(|i| make_pre(i * 100, "Read")).collect();
         records.push(make_task_update(9800, "1", "completed"));
         records.push(make_pre(9900, "Read"));
         let rule = PostCompletionWorkRule;
@@ -584,9 +581,7 @@ mod tests {
 
     #[test]
     fn test_post_completion_no_task_update() {
-        let records: Vec<ObservationRecord> = (0..10)
-            .map(|i| make_pre(i * 100, "Read"))
-            .collect();
+        let records: Vec<ObservationRecord> = (0..10).map(|i| make_pre(i * 100, "Read")).collect();
         let rule = PostCompletionWorkRule;
         assert!(rule.detect(&records).is_empty());
     }

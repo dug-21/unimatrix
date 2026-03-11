@@ -4,8 +4,8 @@
 //! for standard scenarios, and that each signal contributes meaningfully.
 
 use unimatrix_engine::confidence::{
-    self, base_score, compute_confidence, correction_score, freshness_score, helpfulness_score,
-    rerank_score, trust_score, usage_score, W_BASE, W_CORR, W_FRESH, W_HELP, W_TRUST, W_USAGE,
+    self, W_BASE, W_CORR, W_FRESH, W_HELP, W_TRUST, W_USAGE, base_score, compute_confidence,
+    correction_score, freshness_score, helpfulness_score, rerank_score, trust_score, usage_score,
 };
 use unimatrix_engine::test_scenarios::*;
 
@@ -141,8 +141,7 @@ fn test_weight_sensitivity() {
                 })
                 .collect();
             perturbed_scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-            let perturbed_ranking: Vec<u64> =
-                perturbed_scored.iter().map(|(id, _)| *id).collect();
+            let perturbed_ranking: Vec<u64> = perturbed_scored.iter().map(|(id, _)| *id).collect();
 
             let tau = kendall_tau(&original_ranking, &perturbed_ranking);
             assert!(
@@ -286,5 +285,8 @@ fn test_boundary_all_max() {
         (0.0..=1.0).contains(&conf),
         "all-max confidence {conf} out of range"
     );
-    assert!(conf > 0.7, "all-max should have high confidence, got {conf}");
+    assert!(
+        conf > 0.7,
+        "all-max should have high confidence, got {conf}"
+    );
 }

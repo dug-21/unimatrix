@@ -77,7 +77,9 @@ type MetricExtractor = (&'static str, fn(&MetricVector) -> f64);
 
 fn universal_metric_extractors() -> Vec<MetricExtractor> {
     vec![
-        ("total_tool_calls", |mv| mv.universal.total_tool_calls as f64),
+        ("total_tool_calls", |mv| {
+            mv.universal.total_tool_calls as f64
+        }),
         ("total_duration_secs", |mv| {
             mv.universal.total_duration_secs as f64
         }),
@@ -171,8 +173,7 @@ fn compute_phase_baselines(
         }
         if let Some(tool_calls) = phase_tool_calls.get(phase_name) {
             if tool_calls.len() >= MIN_HISTORY {
-                phase_baselines
-                    .insert("tool_call_count".to_string(), compute_entry(tool_calls));
+                phase_baselines.insert("tool_call_count".to_string(), compute_entry(tool_calls));
             }
         }
 
@@ -188,11 +189,7 @@ fn compute_entry(values: &[f64]) -> BaselineEntry {
     let n = values.len() as f64;
     let mean = values.iter().sum::<f64>() / n;
     let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n;
-    let stddev = if variance > 0.0 {
-        variance.sqrt()
-    } else {
-        0.0
-    };
+    let stddev = if variance > 0.0 { variance.sqrt() } else { 0.0 };
 
     BaselineEntry {
         mean,

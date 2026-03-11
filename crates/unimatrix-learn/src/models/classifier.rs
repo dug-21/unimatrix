@@ -269,8 +269,8 @@ impl NeuralModel for SignalClassifier {
         offset += 32;
 
         let s = 32 * 5;
-        self.w3 = Array2::from_shape_vec((32, 5), params[offset..offset + s].to_vec())
-            .expect("w3 shape");
+        self.w3 =
+            Array2::from_shape_vec((32, 5), params[offset..offset + s].to_vec()).expect("w3 shape");
         offset += s;
 
         self.b3 = Array1::from(params[offset..offset + 5].to_vec());
@@ -303,11 +303,7 @@ fn relu(x: f32) -> f32 {
 }
 
 fn relu_derivative(x: f32) -> f32 {
-    if x > 0.0 {
-        1.0
-    } else {
-        0.0
-    }
+    if x > 0.0 { 1.0 } else { 0.0 }
 }
 
 fn softmax_array(z: &Array1<f32>) -> Array1<f32> {
@@ -319,7 +315,9 @@ fn softmax_array(z: &Array1<f32>) -> Array1<f32> {
 
 fn xavier_init(rng: &mut StdRng, fan_in: usize, fan_out: usize) -> Array2<f32> {
     let scale = (2.0 / (fan_in + fan_out) as f32).sqrt();
-    Array2::from_shape_fn((fan_in, fan_out), |_| rng.random::<f32>() * 2.0 * scale - scale)
+    Array2::from_shape_fn((fan_in, fan_out), |_| {
+        rng.random::<f32>() * 2.0 * scale - scale
+    })
 }
 
 #[cfg(test)]
@@ -343,8 +341,7 @@ mod tests {
     #[test]
     fn non_degenerate_typical_digest() {
         let clf = SignalClassifier::new_with_baseline();
-        let digest =
-            SignalDigest::from_fields(0.7, 3, 500, "convention", "knowledge-gap", 50, 2);
+        let digest = SignalDigest::from_fields(0.7, 3, 500, "convention", "knowledge-gap", 50, 2);
         let result = clf.classify(&digest);
 
         let sum: f32 = result.probabilities.iter().sum();
@@ -372,10 +369,7 @@ mod tests {
         let output = clf.forward(&[0.5; 32]);
         assert_eq!(output.len(), 5);
         for &v in &output {
-            assert!(
-                (0.0..=1.0).contains(&v),
-                "output {v} not in [0,1]"
-            );
+            assert!((0.0..=1.0).contains(&v), "output {v} not in [0,1]");
         }
         let sum: f32 = output.iter().sum();
         assert!((sum - 1.0).abs() < 1e-4, "sum = {sum}");
@@ -499,10 +493,7 @@ mod tests {
         let params_b = clf_b.flat_parameters();
         assert_eq!(params_a.len(), params_b.len());
         for (i, (a, b)) in params_a.iter().zip(params_b.iter()).enumerate() {
-            assert!(
-                (a - b).abs() < 1e-6,
-                "param {i} mismatch: {a} vs {b}"
-            );
+            assert!((a - b).abs() < 1e-6, "param {i} mismatch: {a} vs {b}");
         }
     }
 
@@ -518,10 +509,7 @@ mod tests {
             (0..32).map(|i| 1.0 - i as f32 * 0.03).collect(),
         ];
 
-        let preds_before: Vec<Vec<f32>> = test_inputs
-            .iter()
-            .map(|inp| clf.forward(inp))
-            .collect();
+        let preds_before: Vec<Vec<f32>> = test_inputs.iter().map(|inp| clf.forward(inp)).collect();
 
         let params = clf.flat_parameters();
         clf.set_parameters(&params);
@@ -529,10 +517,7 @@ mod tests {
         for (i, inp) in test_inputs.iter().enumerate() {
             let pred = clf.forward(inp);
             for (j, (a, b)) in preds_before[i].iter().zip(pred.iter()).enumerate() {
-                assert!(
-                    (a - b).abs() < 1e-6,
-                    "input {i} output {j}: {a} vs {b}"
-                );
+                assert!((a - b).abs() < 1e-6, "input {i} output {j}: {a} vs {b}");
             }
         }
     }
@@ -565,10 +550,7 @@ mod tests {
 
         assert_eq!(params1.len(), params2.len());
         for (i, (a, b)) in params1.iter().zip(params2.iter()).enumerate() {
-            assert!(
-                (a - b).abs() < 1e-6,
-                "param {i} mismatch: {a} vs {b}"
-            );
+            assert!((a - b).abs() < 1e-6, "param {i} mismatch: {a} vs {b}");
         }
     }
 
@@ -600,10 +582,7 @@ mod tests {
         let out2 = clf2.forward(&input);
 
         for (i, (a, b)) in out1.iter().zip(out2.iter()).enumerate() {
-            assert!(
-                (a - b).abs() < 1e-6,
-                "output {i} mismatch: {a} vs {b}"
-            );
+            assert!((a - b).abs() < 1e-6, "output {i} mismatch: {a} vs {b}");
         }
     }
 }

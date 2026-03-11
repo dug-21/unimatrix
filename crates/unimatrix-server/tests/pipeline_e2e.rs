@@ -3,7 +3,7 @@
 //! These tests require the ONNX model to be available. They skip gracefully
 //! when the model is absent (ADR-005).
 
-use unimatrix_server::test_support::{skip_if_no_model, TestHarness};
+use unimatrix_server::test_support::{TestHarness, skip_if_no_model};
 use unimatrix_store::{EntryRecord, NewEntry, Status};
 
 /// Helper to create a NewEntry for testing.
@@ -34,7 +34,10 @@ async fn test_harness_construction() {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("test.db");
     let harness = TestHarness::new(&path).await;
-    assert!(harness.is_some(), "TestHarness should construct with valid model");
+    assert!(
+        harness.is_some(),
+        "TestHarness should construct with valid model"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -70,7 +73,10 @@ async fn test_active_above_deprecated() {
     );
 
     let active_id = harness.store().insert(active_entry).expect("insert active");
-    let deprecated_id = harness.store().insert(deprecated_entry).expect("insert deprecated");
+    let deprecated_id = harness
+        .store()
+        .insert(deprecated_entry)
+        .expect("insert deprecated");
 
     // Deprecate the second entry
     harness
@@ -82,7 +88,10 @@ async fn test_active_above_deprecated() {
     rebuild_embeddings(&harness, &[active_id, deprecated_id]).await;
 
     // Search
-    let results = harness.search("error handling in Rust", 10).await.expect("search");
+    let results = harness
+        .search("error handling in Rust", 10)
+        .await
+        .expect("search");
 
     if results.len() >= 2 {
         let active_pos = results.iter().position(|r| r.entry.id == active_id);
@@ -132,15 +141,24 @@ async fn test_supersession_injection() {
     let successor_id = harness.store().insert(successor).expect("insert successor");
 
     // Set supersession relationship: deprecate and set superseded_by via update
-    harness.store().update_status(original_id, Status::Deprecated).expect("deprecate");
+    harness
+        .store()
+        .update_status(original_id, Status::Deprecated)
+        .expect("deprecate");
     let mut original_record: EntryRecord = harness.store().get(original_id).expect("get original");
     original_record.superseded_by = Some(successor_id);
-    harness.store().update(original_record).expect("update superseded_by");
+    harness
+        .store()
+        .update(original_record)
+        .expect("update superseded_by");
 
     rebuild_embeddings(&harness, &[original_id, successor_id]).await;
 
     // Search for content matching the original
-    let results = harness.search("database connection pooling r2d2 SQLite", 10).await.expect("search");
+    let results = harness
+        .search("database connection pooling r2d2 SQLite", 10)
+        .await
+        .expect("search");
 
     // The successor should appear in results even if it wasn't in the original HNSW result set
     let successor_present = results.iter().any(|r| r.entry.id == successor_id);
@@ -180,11 +198,17 @@ async fn test_provenance_boost() {
     );
 
     let lesson_id = harness.store().insert(lesson).expect("insert lesson");
-    let convention_id = harness.store().insert(convention).expect("insert convention");
+    let convention_id = harness
+        .store()
+        .insert(convention)
+        .expect("insert convention");
 
     rebuild_embeddings(&harness, &[lesson_id, convention_id]).await;
 
-    let results = harness.search("deployment rollback database migration", 10).await.expect("search");
+    let results = harness
+        .search("deployment rollback database migration", 10)
+        .await
+        .expect("search");
 
     // With similar content, lesson-learned should get a provenance boost
     let lesson_pos = results.iter().position(|r| r.entry.id == lesson_id);
@@ -238,14 +262,26 @@ async fn test_co_access_boost() {
     let id3 = harness.store().insert(entry3).expect("insert 3");
 
     // Record co-access between entries 1 and 2 (multiple times to build signal)
-    harness.store().record_co_access_pairs(&[(id1, id2)]).expect("co-access");
-    harness.store().record_co_access_pairs(&[(id1, id2)]).expect("co-access 2");
-    harness.store().record_co_access_pairs(&[(id1, id2)]).expect("co-access 3");
+    harness
+        .store()
+        .record_co_access_pairs(&[(id1, id2)])
+        .expect("co-access");
+    harness
+        .store()
+        .record_co_access_pairs(&[(id1, id2)])
+        .expect("co-access 2");
+    harness
+        .store()
+        .record_co_access_pairs(&[(id1, id2)])
+        .expect("co-access 3");
 
     rebuild_embeddings(&harness, &[id1, id2, id3]).await;
 
     // Search for content matching entry 1
-    let results = harness.search("async runtime selection tokio", 10).await.expect("search");
+    let results = harness
+        .search("async runtime selection tokio", 10)
+        .await
+        .expect("search");
 
     // Entry 2 should get a co-access boost relative to entry 3
     let pos2 = results.iter().position(|r| r.entry.id == id2);
@@ -277,11 +313,36 @@ async fn test_golden_regression() {
 
     // Create a fixed set of entries
     let entries = vec![
-        test_entry("Rust ownership and borrowing", "Complete guide to Rust ownership, borrowing, and lifetimes for memory safety", "convention", Status::Active),
-        test_entry("Cargo workspace setup", "How to structure a multi-crate Rust workspace with Cargo", "convention", Status::Active),
-        test_entry("Trait object patterns", "Using trait objects and dynamic dispatch in Rust for polymorphism", "pattern", Status::Active),
-        test_entry("Error handling with thiserror", "Using thiserror crate for deriving Error trait implementations", "convention", Status::Active),
-        test_entry("Async programming with tokio", "Guide to async programming in Rust with the tokio runtime", "convention", Status::Active),
+        test_entry(
+            "Rust ownership and borrowing",
+            "Complete guide to Rust ownership, borrowing, and lifetimes for memory safety",
+            "convention",
+            Status::Active,
+        ),
+        test_entry(
+            "Cargo workspace setup",
+            "How to structure a multi-crate Rust workspace with Cargo",
+            "convention",
+            Status::Active,
+        ),
+        test_entry(
+            "Trait object patterns",
+            "Using trait objects and dynamic dispatch in Rust for polymorphism",
+            "pattern",
+            Status::Active,
+        ),
+        test_entry(
+            "Error handling with thiserror",
+            "Using thiserror crate for deriving Error trait implementations",
+            "convention",
+            Status::Active,
+        ),
+        test_entry(
+            "Async programming with tokio",
+            "Guide to async programming in Rust with the tokio runtime",
+            "convention",
+            Status::Active,
+        ),
     ];
 
     let mut ids = Vec::new();
@@ -293,7 +354,10 @@ async fn test_golden_regression() {
     rebuild_embeddings(&harness, &ids).await;
 
     // Search for "Rust ownership borrowing lifetimes"
-    let results = harness.search("Rust ownership borrowing lifetimes", 5).await.expect("search");
+    let results = harness
+        .search("Rust ownership borrowing lifetimes", 5)
+        .await
+        .expect("search");
 
     // The first result should be the ownership entry (most relevant)
     if !results.is_empty() {

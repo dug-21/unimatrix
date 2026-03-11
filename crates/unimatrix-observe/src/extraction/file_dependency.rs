@@ -7,8 +7,8 @@ use std::collections::{HashMap, HashSet};
 
 use unimatrix_store::Store;
 
+use super::{ExtractionRule, ProposedEntry, extract_file_path, is_read_tool, is_write_tool};
 use crate::types::ObservationRecord;
-use super::{extract_file_path, is_read_tool, is_write_tool, ExtractionRule, ProposedEntry};
 
 pub struct FileDependencyRule;
 
@@ -90,10 +90,7 @@ impl ExtractionRule for FileDependencyRule {
                 ),
                 category: "pattern".to_string(),
                 topic: "workflow".to_string(),
-                tags: vec![
-                    "auto-extracted".to_string(),
-                    "file-dependency".to_string(),
-                ],
+                tags: vec!["auto-extracted".to_string(), "file-dependency".to_string()],
                 source_rule: "file-dependency".to_string(),
                 source_features: features,
                 extraction_confidence: confidence,

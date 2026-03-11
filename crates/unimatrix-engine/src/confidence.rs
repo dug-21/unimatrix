@@ -209,12 +209,7 @@ pub fn compute_confidence(entry: &EntryRecord, now: u64) -> f64 {
     let c = correction_score(entry.correction_count);
     let t = trust_score(&entry.trust_source);
 
-    let composite = W_BASE * b
-        + W_USAGE * u
-        + W_FRESH * f
-        + W_HELP * h
-        + W_CORR * c
-        + W_TRUST * t;
+    let composite = W_BASE * b + W_USAGE * u + W_FRESH * f + W_HELP * h + W_CORR * c + W_TRUST * t;
 
     composite.clamp(0.0, 1.0)
 }
@@ -443,7 +438,10 @@ mod tests {
         let auto = trust_score("auto");
         let agent = trust_score("agent");
         let fallback = trust_score("unknown");
-        assert!(auto > fallback, "auto ({auto}) should be > fallback ({fallback})");
+        assert!(
+            auto > fallback,
+            "auto ({auto}) should be > fallback ({fallback})"
+        );
         assert!(auto < agent, "auto ({auto}) should be < agent ({agent})");
     }
 
@@ -460,7 +458,10 @@ mod tests {
         let agent = trust_score("agent");
         let auto = trust_score("auto");
         assert!(neural > auto, "neural ({neural}) should be > auto ({auto})");
-        assert!(neural < agent, "neural ({neural}) should be < agent ({agent})");
+        assert!(
+            neural < agent,
+            "neural ({neural}) should be < agent ({agent})"
+        );
     }
 
     // -- T-09: compute_confidence composite (AC-01, AC-02, R-05) --
@@ -510,8 +511,7 @@ mod tests {
     fn compute_confidence_all_defaults() {
         let entry = make_test_entry(Status::Active, 0, 0, 0, 0, 0, 0, "");
         let result = compute_confidence(&entry, 1_000_000);
-        let expected =
-            0.18 * 0.5 + 0.14 * 0.0 + 0.18 * 0.0 + 0.14 * 0.5 + 0.14 * 0.5 + 0.14 * 0.3;
+        let expected = 0.18 * 0.5 + 0.14 * 0.0 + 0.18 * 0.0 + 0.14 * 0.5 + 0.14 * 0.5 + 0.14 * 0.3;
         assert!(
             (result - expected).abs() < 0.001,
             "expected ~{expected}, got {result}"
@@ -540,8 +540,16 @@ mod tests {
     #[test]
     fn compute_confidence_range_deprecated_max_values() {
         let now = 1_000_000u64;
-        let entry =
-            make_test_entry(Status::Deprecated, u32::MAX, now, now, u32::MAX, 0, 100, "human");
+        let entry = make_test_entry(
+            Status::Deprecated,
+            u32::MAX,
+            now,
+            now,
+            u32::MAX,
+            0,
+            100,
+            "human",
+        );
         let result = compute_confidence(&entry, now);
         assert!(result >= 0.0);
         assert!(result <= 1.0);
@@ -619,7 +627,10 @@ mod tests {
             "agent",
         );
         let confidence = compute_confidence(&entry, now);
-        assert!(confidence >= 0.0 && confidence <= 1.0, "confidence out of range: {confidence}");
+        assert!(
+            confidence >= 0.0 && confidence <= 1.0,
+            "confidence out of range: {confidence}"
+        );
         let as_f32 = confidence as f32;
         let back_to_f64 = as_f32 as f64;
         let _: f64 = confidence;
@@ -629,36 +640,27 @@ mod tests {
     #[test]
     fn compute_confidence_high_inputs_in_range() {
         let now = 1_000_000u64;
-        let entry = make_test_entry(
-            Status::Active,
-            1000,
-            now,
-            now,
-            100,
-            0,
-            1,
-            "human",
-        );
+        let entry = make_test_entry(Status::Active, 1000, now, now, 100, 0, 1, "human");
         let confidence = compute_confidence(&entry, now);
-        assert!(confidence >= 0.0 && confidence <= 1.0, "confidence out of range: {confidence}");
-        assert!(confidence > 0.5, "high inputs should give confidence > 0.5, got {confidence}");
+        assert!(
+            confidence >= 0.0 && confidence <= 1.0,
+            "confidence out of range: {confidence}"
+        );
+        assert!(
+            confidence > 0.5,
+            "high inputs should give confidence > 0.5, got {confidence}"
+        );
     }
 
     #[test]
     fn compute_confidence_minimal_inputs_positive() {
         let now = 1_000_000u64;
-        let entry = make_test_entry(
-            Status::Active,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            "",
-        );
+        let entry = make_test_entry(Status::Active, 0, 0, 0, 0, 0, 0, "");
         let confidence = compute_confidence(&entry, now);
-        assert!(confidence >= 0.0 && confidence <= 1.0, "confidence out of range: {confidence}");
+        assert!(
+            confidence >= 0.0 && confidence <= 1.0,
+            "confidence out of range: {confidence}"
+        );
         let _: f64 = confidence;
     }
 
@@ -668,7 +670,10 @@ mod tests {
         let conf = 0.987654321098765_f64;
         let result = rerank_score(sim, conf);
         let expected = SEARCH_SIMILARITY_WEIGHT * sim + (1.0 - SEARCH_SIMILARITY_WEIGHT) * conf;
-        assert_eq!(result, expected, "rerank_score should return precise f64 result");
+        assert_eq!(
+            result, expected,
+            "rerank_score should return precise f64 result"
+        );
         let as_f32 = result as f32;
         let back_to_f64 = as_f32 as f64;
         let _ = back_to_f64;
@@ -676,7 +681,10 @@ mod tests {
 
     #[test]
     fn search_similarity_weight_is_f64() {
-        assert_eq!(SEARCH_SIMILARITY_WEIGHT, 0.85_f64, "should be exactly 0.85 f64");
+        assert_eq!(
+            SEARCH_SIMILARITY_WEIGHT, 0.85_f64,
+            "should be exactly 0.85 f64"
+        );
         let _: f64 = SEARCH_SIMILARITY_WEIGHT;
     }
 
@@ -821,6 +829,9 @@ mod tests {
         let a = vec![1e10_f32, 1e10];
         let b = vec![1e10_f32, 1e10];
         let result = cosine_similarity(&a, &b);
-        assert!(result >= 0.0 && result <= 1.0, "result should be clamped, got {result}");
+        assert!(
+            result >= 0.0 && result <= 1.0,
+            "result should be clamped, got {result}"
+        );
     }
 }

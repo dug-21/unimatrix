@@ -49,8 +49,15 @@ impl AdaptationService {
 
         Self {
             lora: MicroLoRA::with_seed(lora_config, config.init_seed),
-            reservoir: RwLock::new(TrainingReservoir::new(config.reservoir_capacity, config.reservoir_seed)),
-            ewc: RwLock::new(EwcState::new(param_count, config.ewc_alpha, config.ewc_lambda)),
+            reservoir: RwLock::new(TrainingReservoir::new(
+                config.reservoir_capacity,
+                config.reservoir_seed,
+            )),
+            ewc: RwLock::new(EwcState::new(
+                param_count,
+                config.ewc_alpha,
+                config.ewc_lambda,
+            )),
             prototypes: RwLock::new(PrototypeManager::new(
                 config.max_prototypes,
                 config.min_prototype_entries,
@@ -145,12 +152,7 @@ impl AdaptationService {
     }
 
     /// Update prototypes with an adapted embedding (called during store/correct).
-    pub fn update_prototypes(
-        &self,
-        adapted: &[f32],
-        category: Option<&str>,
-        topic: Option<&str>,
-    ) {
+    pub fn update_prototypes(&self, adapted: &[f32], category: Option<&str>, topic: Option<&str>) {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -231,7 +233,6 @@ impl AdaptationService {
     pub fn config(&self) -> &AdaptConfig {
         &self.config
     }
-
 }
 
 #[cfg(test)]
@@ -317,7 +318,9 @@ mod tests {
 
         // Trigger training on main thread
         svc.try_train_step(&|id| {
-            let v: Vec<f32> = (0..16).map(|i| ((id as f32 + i as f32) * 0.1).sin()).collect();
+            let v: Vec<f32> = (0..16)
+                .map(|i| ((id as f32 + i as f32) * 0.1).sin())
+                .collect();
             Some(v)
         });
 
@@ -335,7 +338,9 @@ mod tests {
         svc.record_training_pairs(&pairs);
 
         svc.try_train_step(&|id| {
-            let v: Vec<f32> = (0..16).map(|i| ((id as f32 + i as f32) * 0.1).sin()).collect();
+            let v: Vec<f32> = (0..16)
+                .map(|i| ((id as f32 + i as f32) * 0.1).sin())
+                .collect();
             Some(v)
         });
 
@@ -380,7 +385,9 @@ mod tests {
         let pairs: Vec<(u64, u64, u32)> = (0..40).map(|i| (i, i + 100, 1)).collect();
         svc.record_training_pairs(&pairs);
         svc.try_train_step(&|id| {
-            let v: Vec<f32> = (0..16).map(|i| ((id as f32 + i as f32) * 0.1).sin()).collect();
+            let v: Vec<f32> = (0..16)
+                .map(|i| ((id as f32 + i as f32) * 0.1).sin())
+                .collect();
             Some(v)
         });
 

@@ -21,10 +21,7 @@ impl VectorIndex {
     pub fn dump(&self, dir: &Path) -> Result<()> {
         // Create directory if needed
         std::fs::create_dir_all(dir).map_err(|e| {
-            VectorError::Persistence(format!(
-                "failed to create directory {}: {e}",
-                dir.display()
-            ))
+            VectorError::Persistence(format!("failed to create directory {}: {e}", dir.display()))
         })?;
 
         // Dump hnsw_rs index (read lock)
@@ -72,11 +69,7 @@ impl VectorIndex {
     ///
     /// Reads the metadata file, loads hnsw_rs graph and data files,
     /// and rebuilds the IdMap from VECTOR_MAP in unimatrix-store.
-    pub fn load(
-        store: Arc<Store>,
-        config: VectorConfig,
-        dir: &Path,
-    ) -> Result<VectorIndex> {
+    pub fn load(store: Arc<Store>, config: VectorConfig, dir: &Path) -> Result<VectorIndex> {
         // Read and parse metadata file
         let meta_path = dir.join(METADATA_FILENAME);
         let meta_content = std::fs::read_to_string(&meta_path).map_err(|e| {
@@ -86,8 +79,7 @@ impl VectorIndex {
             ))
         })?;
 
-        let (basename, point_count, dimension, next_data_id) =
-            parse_metadata(&meta_content)?;
+        let (basename, point_count, dimension, next_data_id) = parse_metadata(&meta_content)?;
 
         // Empty index: meta exists but no graph/data files were written.
         // Return a fresh index instead of failing on missing files.
@@ -147,9 +139,7 @@ impl VectorIndex {
 }
 
 /// Parse the metadata file into (basename, point_count, dimension, next_data_id).
-fn parse_metadata(
-    contents: &str,
-) -> Result<(String, Option<usize>, Option<usize>, u64)> {
+fn parse_metadata(contents: &str) -> Result<(String, Option<usize>, Option<usize>, u64)> {
     let mut basename = None;
     let mut point_count = None;
     let mut dimension = None;
@@ -181,9 +171,8 @@ fn parse_metadata(
 
     let basename = basename
         .ok_or_else(|| VectorError::Persistence("missing 'basename' in metadata".into()))?;
-    let next_data_id = next_data_id.ok_or_else(|| {
-        VectorError::Persistence("missing 'next_data_id' in metadata".into())
-    })?;
+    let next_data_id = next_data_id
+        .ok_or_else(|| VectorError::Persistence("missing 'next_data_id' in metadata".into()))?;
 
     Ok((basename, point_count, dimension, next_data_id))
 }
@@ -191,9 +180,7 @@ fn parse_metadata(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_helpers::{
-        random_normalized_embedding, seed_vectors, TestVectorIndex,
-    };
+    use crate::test_helpers::{TestVectorIndex, random_normalized_embedding, seed_vectors};
 
     // -- AC-09: Dump Produces Index Files --
 
@@ -216,8 +203,7 @@ mod tests {
         let dump_dir = tvi.dir().join("index");
         tvi.vi().dump(&dump_dir).unwrap();
 
-        let meta =
-            std::fs::read_to_string(dump_dir.join("unimatrix-vector.meta")).unwrap();
+        let meta = std::fs::read_to_string(dump_dir.join("unimatrix-vector.meta")).unwrap();
         assert!(meta.contains("basename=unimatrix"));
         assert!(meta.contains("point_count=10"));
         assert!(meta.contains("dimension=384"));
@@ -244,12 +230,8 @@ mod tests {
         assert!(!dump_dir.join("unimatrix.hnsw.data").exists());
 
         // Load should succeed — returns a fresh empty index
-        let loaded = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        )
-        .unwrap();
+        let loaded =
+            VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir).unwrap();
         assert_eq!(loaded.point_count(), 0);
     }
 
@@ -261,8 +243,7 @@ mod tests {
         let _ids = seed_vectors(tvi.vi(), tvi.store(), 50);
 
         // Record search results
-        let queries: Vec<Vec<f32>> =
-            (0..5).map(|_| random_normalized_embedding(384)).collect();
+        let queries: Vec<Vec<f32>> = (0..5).map(|_| random_normalized_embedding(384)).collect();
         let original_results: Vec<Vec<_>> = queries
             .iter()
             .map(|q| tvi.vi().search(q, 10, 32).unwrap())
@@ -273,12 +254,8 @@ mod tests {
         tvi.vi().dump(&dump_dir).unwrap();
 
         // Load
-        let loaded = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        )
-        .unwrap();
+        let loaded =
+            VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir).unwrap();
 
         // Verify same results
         for (query, original) in queries.iter().zip(original_results.iter()) {
@@ -305,12 +282,8 @@ mod tests {
         let dump_dir = tvi.dir().join("index");
         tvi.vi().dump(&dump_dir).unwrap();
 
-        let loaded = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        )
-        .unwrap();
+        let loaded =
+            VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir).unwrap();
         assert_eq!(loaded.point_count(), original_count);
     }
 
@@ -321,12 +294,8 @@ mod tests {
         let dump_dir = tvi.dir().join("index");
         tvi.vi().dump(&dump_dir).unwrap();
 
-        let loaded = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        )
-        .unwrap();
+        let loaded =
+            VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir).unwrap();
 
         for id in &ids {
             assert!(loaded.contains(*id));
@@ -345,11 +314,7 @@ mod tests {
 
         std::fs::remove_file(dump_dir.join("unimatrix-vector.meta")).unwrap();
 
-        let result = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        );
+        let result = VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir);
         assert!(matches!(result, Err(VectorError::Persistence(_))));
     }
 
@@ -362,11 +327,7 @@ mod tests {
 
         std::fs::remove_file(dump_dir.join("unimatrix.hnsw.graph")).unwrap();
 
-        let result = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        );
+        let result = VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir);
         assert!(matches!(result, Err(VectorError::Persistence(_))));
     }
 
@@ -379,11 +340,7 @@ mod tests {
 
         std::fs::remove_file(dump_dir.join("unimatrix.hnsw.data")).unwrap();
 
-        let result = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        );
+        let result = VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir);
         assert!(matches!(result, Err(VectorError::Persistence(_))));
     }
 
@@ -392,11 +349,7 @@ mod tests {
         let tvi = TestVectorIndex::new();
         let dump_dir = tvi.dir().join("does_not_exist");
 
-        let result = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        );
+        let result = VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir);
         assert!(matches!(result, Err(VectorError::Persistence(_))));
     }
 
@@ -406,11 +359,7 @@ mod tests {
         let dump_dir = tvi.dir().join("empty_index");
         std::fs::create_dir_all(&dump_dir).unwrap();
 
-        let result = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        );
+        let result = VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir);
         assert!(matches!(result, Err(VectorError::Persistence(_))));
     }
 
@@ -436,12 +385,8 @@ mod tests {
         seed_vectors(tvi.vi(), tvi.store(), 10);
         let dump_dir = tvi.dir().join("index");
         tvi.vi().dump(&dump_dir).unwrap();
-        let loaded = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        )
-        .unwrap();
+        let loaded =
+            VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir).unwrap();
 
         // Cycle 2: insert more + dump + load
         for i in 0..10 {
@@ -464,12 +409,8 @@ mod tests {
         }
 
         loaded.dump(&dump_dir).unwrap();
-        let loaded2 = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        )
-        .unwrap();
+        let loaded2 =
+            VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir).unwrap();
 
         assert_eq!(loaded2.point_count(), 20);
     }
@@ -490,12 +431,8 @@ mod tests {
         // Dump and load
         let dump_dir = tvi.dir().join("index");
         tvi.vi().dump(&dump_dir).unwrap();
-        let loaded = VectorIndex::load(
-            tvi.store().clone(),
-            VectorConfig::default(),
-            &dump_dir,
-        )
-        .unwrap();
+        let loaded =
+            VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir).unwrap();
 
         // Verify after load
         for id in &ids {
@@ -523,8 +460,7 @@ mod tests {
         seed_vectors(tvi.vi(), tvi.store(), 10);
 
         // Create fresh index with same store
-        let new_vi =
-            VectorIndex::new(tvi.store().clone(), VectorConfig::default()).unwrap();
+        let new_vi = VectorIndex::new(tvi.store().clone(), VectorConfig::default()).unwrap();
         assert_eq!(new_vi.point_count(), 0);
         assert!(!new_vi.contains(1));
 

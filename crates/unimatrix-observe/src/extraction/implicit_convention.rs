@@ -7,8 +7,8 @@ use std::collections::{HashMap, HashSet};
 
 use unimatrix_store::Store;
 
+use super::{ExtractionRule, ProposedEntry, extract_file_path, is_file_tool};
 use crate::types::ObservationRecord;
-use super::{extract_file_path, is_file_tool, ExtractionRule, ProposedEntry};
 
 pub struct ImplicitConventionRule;
 
@@ -18,10 +18,8 @@ impl ExtractionRule for ImplicitConventionRule {
     }
 
     fn evaluate(&self, observations: &[ObservationRecord], _store: &Store) -> Vec<ProposedEntry> {
-        let all_sessions: HashSet<String> = observations
-            .iter()
-            .map(|o| o.session_id.clone())
-            .collect();
+        let all_sessions: HashSet<String> =
+            observations.iter().map(|o| o.session_id.clone()).collect();
 
         if all_sessions.len() < 3 {
             return vec![];
@@ -138,9 +136,21 @@ mod tests {
     fn convention_from_three_sessions() {
         let store = make_store();
         let observations = vec![
-            make_file_obs("s1", "Read", "/workspaces/unimatrix/product/features/col-013/SCOPE.md"),
-            make_file_obs("s2", "Read", "/workspaces/unimatrix/product/features/col-014/SCOPE.md"),
-            make_file_obs("s3", "Read", "/workspaces/unimatrix/product/features/col-015/SCOPE.md"),
+            make_file_obs(
+                "s1",
+                "Read",
+                "/workspaces/unimatrix/product/features/col-013/SCOPE.md",
+            ),
+            make_file_obs(
+                "s2",
+                "Read",
+                "/workspaces/unimatrix/product/features/col-014/SCOPE.md",
+            ),
+            make_file_obs(
+                "s3",
+                "Read",
+                "/workspaces/unimatrix/product/features/col-015/SCOPE.md",
+            ),
         ];
         let rule = ImplicitConventionRule;
         let proposals = rule.evaluate(&observations, &store);

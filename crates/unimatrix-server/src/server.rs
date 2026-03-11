@@ -6,28 +6,26 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
-use unimatrix_core::{
-    CoreError, EmbedService, EntryRecord, NewEntry, StoreAdapter, Store, VectorAdapter, VectorIndex,
-};
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-use unimatrix_store::rusqlite;
-use unimatrix_store::{
-    compute_content_hash, status_counter_key, StoreError,
+use unimatrix_core::{
+    CoreError, EmbedService, EntryRecord, NewEntry, Store, StoreAdapter, VectorAdapter, VectorIndex,
 };
-use unimatrix_store::read::{entry_from_row, load_tags_for_entries, ENTRY_COLUMNS};
+use unimatrix_store::read::{ENTRY_COLUMNS, entry_from_row, load_tags_for_entries};
+use unimatrix_store::rusqlite;
+use unimatrix_store::{StoreError, compute_content_hash, status_counter_key};
 
 use unimatrix_adapt::AdaptationService;
 
+use crate::background::TickMetadata;
+use crate::error::ServerError;
 use crate::infra::audit::{AuditEvent, AuditLog};
 use crate::infra::categories::CategoryAllowlist;
 use crate::infra::embed_handle::EmbedServiceHandle;
-use crate::error::ServerError;
-use crate::mcp::identity::{self, ResolvedIdentity};
 use crate::infra::registry::{AgentRegistry, TrustLevel};
-use crate::services::ServiceLayer;
 use crate::infra::session::SessionRegistry;
-use crate::background::TickMetadata;
 use crate::infra::usage_dedup::{UsageDedup, VoteAction};
+use crate::mcp::identity::{self, ResolvedIdentity};
+use crate::services::ServiceLayer;
 
 // -- col-009: PendingEntriesAnalysis --
 
@@ -151,9 +149,7 @@ impl UnimatrixServer {
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 ..Default::default()
             },
-            capabilities: ServerCapabilities::builder()
-                .enable_tools()
-                .build(),
+            capabilities: ServerCapabilities::builder().enable_tools().build(),
             instructions: Some(SERVER_INSTRUCTIONS.to_string()),
             ..Default::default()
         };
@@ -203,11 +199,9 @@ impl UnimatrixServer {
     ) -> Result<ResolvedIdentity, ServerError> {
         let extracted = identity::extract_agent_id(agent_id);
         let registry = Arc::clone(&self.registry);
-        tokio::task::spawn_blocking(move || {
-            identity::resolve_identity(&registry, &extracted)
-        })
-        .await
-        .map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))?
+        tokio::task::spawn_blocking(move || identity::resolve_identity(&registry, &extracted))
+            .await
+            .map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))?
     }
 
     /// Resolve identity, parse format, build audit context with optional session ID.
@@ -227,10 +221,11 @@ impl UnimatrixServer {
         use crate::mcp::context::ToolContext;
         use crate::services::{AuditContext, AuditSource, CallerId, prefix_session_id};
 
-        let identity = self.resolve_agent(agent_id).await
+        let identity = self
+            .resolve_agent(agent_id)
+            .await
             .map_err(rmcp::ErrorData::from)?;
-        let format = crate::mcp::response::parse_format(format)
-            .map_err(rmcp::ErrorData::from)?;
+        let format = crate::mcp::response::parse_format(format).map_err(rmcp::ErrorData::from)?;
 
         // Session ID: validate (S3) and prefix with mcp::
         let prefixed_session = if let Some(sid) = session_id {
@@ -291,12 +286,12 @@ impl UnimatrixServer {
     ) -> Result<(), rmcp::ErrorData> {
         let registry = Arc::clone(&self.registry);
         let agent_id = agent_id.to_string();
-        tokio::task::spawn_blocking(move || {
-            registry.require_capability(&agent_id, cap)
-        })
-        .await
-        .map_err(|e| rmcp::ErrorData::from(ServerError::Core(CoreError::JoinError(e.to_string()))))?
-        .map_err(rmcp::ErrorData::from)
+        tokio::task::spawn_blocking(move || registry.require_capability(&agent_id, cap))
+            .await
+            .map_err(|e| {
+                rmcp::ErrorData::from(ServerError::Core(CoreError::JoinError(e.to_string())))
+            })?
+            .map_err(rmcp::ErrorData::from)
     }
 
     /// Fire-and-forget audit event via `spawn_blocking`.
@@ -329,53 +324,55 @@ impl UnimatrixServer {
         let data_id = self.vector_index.allocate_data_id();
         let embedding_dim = embedding.len() as u16;
 
-        let (entry_id, record) = tokio::task::spawn_blocking(move || -> Result<(u64, EntryRecord), ServerError> {
-            let txn = store.begin_write()
-                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            let conn = &*txn.guard;
+        let (entry_id, record) =
+            tokio::task::spawn_blocking(move || -> Result<(u64, EntryRecord), ServerError> {
+                let txn = store
+                    .begin_write()
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                let conn = &*txn.guard;
 
-            let id = unimatrix_store::counters::next_entry_id(conn)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+                let id = unimatrix_store::counters::next_entry_id(conn)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            let content_hash = compute_content_hash(&entry.title, &entry.content);
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
+                let content_hash = compute_content_hash(&entry.title, &entry.content);
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
 
-            let record = EntryRecord {
-                id,
-                title: entry.title,
-                content: entry.content,
-                topic: entry.topic,
-                category: entry.category,
-                tags: entry.tags,
-                source: entry.source,
-                status: entry.status,
-                confidence: 0.0,
-                created_at: now,
-                updated_at: now,
-                last_accessed_at: 0,
-                access_count: 0,
-                supersedes: None,
-                superseded_by: None,
-                correction_count: 0,
-                embedding_dim,
-                created_by: entry.created_by.clone(),
-                modified_by: entry.created_by,
-                content_hash,
-                previous_hash: String::new(),
-                version: 1,
-                feature_cycle: entry.feature_cycle,
-                trust_source: entry.trust_source,
-                helpful_count: 0,
-                unhelpful_count: 0,
-                pre_quarantine_status: None,
-            };
+                let record = EntryRecord {
+                    id,
+                    title: entry.title,
+                    content: entry.content,
+                    topic: entry.topic,
+                    category: entry.category,
+                    tags: entry.tags,
+                    source: entry.source,
+                    status: entry.status,
+                    confidence: 0.0,
+                    created_at: now,
+                    updated_at: now,
+                    last_accessed_at: 0,
+                    access_count: 0,
+                    supersedes: None,
+                    superseded_by: None,
+                    correction_count: 0,
+                    embedding_dim,
+                    created_by: entry.created_by.clone(),
+                    modified_by: entry.created_by,
+                    content_hash,
+                    previous_hash: String::new(),
+                    version: 1,
+                    feature_cycle: entry.feature_cycle,
+                    trust_source: entry.trust_source,
+                    helpful_count: 0,
+                    unhelpful_count: 0,
+                    pre_quarantine_status: None,
+                };
 
-            // INSERT into entries with named params (ADR-004)
-            conn.execute(
-                "INSERT INTO entries (id, title, content, topic, category, source,
+                // INSERT into entries with named params (ADR-004)
+                conn.execute(
+                    "INSERT INTO entries (id, title, content, topic, category, source,
                     status, confidence, created_at, updated_at, last_accessed_at,
                     access_count, supersedes, superseded_by, correction_count,
                     embedding_dim, created_by, modified_by, content_hash,
@@ -387,75 +384,85 @@ impl UnimatrixServer {
                     :embedding_dim, :created_by, :modified_by, :content_hash,
                     :previous_hash, :version, :feature_cycle, :trust_source,
                     :helpful_count, :unhelpful_count)",
-                rusqlite::named_params! {
-                    ":id": id as i64,
-                    ":title": &record.title,
-                    ":content": &record.content,
-                    ":topic": &record.topic,
-                    ":category": &record.category,
-                    ":source": &record.source,
-                    ":status": record.status as u8 as i64,
-                    ":confidence": record.confidence,
-                    ":created_at": record.created_at as i64,
-                    ":updated_at": record.updated_at as i64,
-                    ":last_accessed_at": record.last_accessed_at as i64,
-                    ":access_count": record.access_count as i64,
-                    ":supersedes": record.supersedes.map(|v| v as i64),
-                    ":superseded_by": record.superseded_by.map(|v| v as i64),
-                    ":correction_count": record.correction_count as i64,
-                    ":embedding_dim": record.embedding_dim as i64,
-                    ":created_by": &record.created_by,
-                    ":modified_by": &record.modified_by,
-                    ":content_hash": &record.content_hash,
-                    ":previous_hash": &record.previous_hash,
-                    ":version": record.version as i64,
-                    ":feature_cycle": &record.feature_cycle,
-                    ":trust_source": &record.trust_source,
-                    ":helpful_count": record.helpful_count as i64,
-                    ":unhelpful_count": record.unhelpful_count as i64,
-                },
-            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                    rusqlite::named_params! {
+                        ":id": id as i64,
+                        ":title": &record.title,
+                        ":content": &record.content,
+                        ":topic": &record.topic,
+                        ":category": &record.category,
+                        ":source": &record.source,
+                        ":status": record.status as u8 as i64,
+                        ":confidence": record.confidence,
+                        ":created_at": record.created_at as i64,
+                        ":updated_at": record.updated_at as i64,
+                        ":last_accessed_at": record.last_accessed_at as i64,
+                        ":access_count": record.access_count as i64,
+                        ":supersedes": record.supersedes.map(|v| v as i64),
+                        ":superseded_by": record.superseded_by.map(|v| v as i64),
+                        ":correction_count": record.correction_count as i64,
+                        ":embedding_dim": record.embedding_dim as i64,
+                        ":created_by": &record.created_by,
+                        ":modified_by": &record.modified_by,
+                        ":content_hash": &record.content_hash,
+                        ":previous_hash": &record.previous_hash,
+                        ":version": record.version as i64,
+                        ":feature_cycle": &record.feature_cycle,
+                        ":trust_source": &record.trust_source,
+                        ":helpful_count": record.helpful_count as i64,
+                        ":unhelpful_count": record.unhelpful_count as i64,
+                    },
+                )
+                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
 
-            // Insert tags
-            for tag in &record.tags {
+                // Insert tags
+                for tag in &record.tags {
+                    conn.execute(
+                        "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
+                        rusqlite::params![id as i64, tag],
+                    )
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                }
+
+                // Insert vector mapping
                 conn.execute(
-                    "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
-                    rusqlite::params![id as i64, tag],
-                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-            }
+                    "INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)",
+                    rusqlite::params![id as i64, data_id as i64],
+                )
+                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
 
-            // Insert vector mapping
-            conn.execute(
-                "INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)",
-                rusqlite::params![id as i64, data_id as i64],
-            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-            // Outcome index (if applicable)
-            if record.category == "outcome" && !record.feature_cycle.is_empty() {
-                conn.execute(
+                // Outcome index (if applicable)
+                if record.category == "outcome" && !record.feature_cycle.is_empty() {
+                    conn.execute(
                     "INSERT OR IGNORE INTO outcome_index (feature_cycle, entry_id) VALUES (?1, ?2)",
                     rusqlite::params![&record.feature_cycle, id as i64],
                 ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-            }
+                }
 
-            // Status counter
-            unimatrix_store::counters::increment_counter(conn, status_counter_key(record.status), 1)
+                // Status counter
+                unimatrix_store::counters::increment_counter(
+                    conn,
+                    status_counter_key(record.status),
+                    1,
+                )
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // Audit event
-            let audit_event_with_target = AuditEvent {
-                target_ids: vec![id],
-                ..audit_event
-            };
-            audit_log.write_in_txn(&txn, audit_event_with_target)?;
+                // Audit event
+                let audit_event_with_target = AuditEvent {
+                    target_ids: vec![id],
+                    ..audit_event
+                };
+                audit_log.write_in_txn(&txn, audit_event_with_target)?;
 
-            txn.commit()
-                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            Ok((id, record))
-        }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
+                txn.commit()
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                Ok((id, record))
+            })
+            .await
+            .map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
 
         if !embedding.is_empty() {
-            self.vector_index.insert_hnsw_only(entry_id, data_id, &embedding)
+            self.vector_index
+                .insert_hnsw_only(entry_id, data_id, &embedding)
                 .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
         }
 
@@ -478,116 +485,128 @@ impl UnimatrixServer {
         let data_id = self.vector_index.allocate_data_id();
         let embedding_dim = embedding.len() as u16;
 
-        let (deprecated_original, new_correction) = tokio::task::spawn_blocking(move || -> Result<(EntryRecord, EntryRecord), ServerError> {
-            let txn = store.begin_write()
-                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            let conn = &*txn.guard;
+        let (deprecated_original, new_correction) = tokio::task::spawn_blocking(
+            move || -> Result<(EntryRecord, EntryRecord), ServerError> {
+                let txn = store
+                    .begin_write()
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                let conn = &*txn.guard;
 
-            // 1. Read original entry via entry_from_row
-            use unimatrix_store::rusqlite::OptionalExtension;
-            let mut original: EntryRecord = conn
-                .query_row(
-                    &format!("SELECT {} FROM entries WHERE id = ?1", ENTRY_COLUMNS),
-                    rusqlite::params![original_id as i64],
-                    entry_from_row,
-                )
-                .optional()
-                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?
-                .ok_or(ServerError::Core(CoreError::Store(
-                    StoreError::EntryNotFound(original_id),
-                )))?;
+                // 1. Read original entry via entry_from_row
+                use unimatrix_store::rusqlite::OptionalExtension;
+                let mut original: EntryRecord = conn
+                    .query_row(
+                        &format!("SELECT {} FROM entries WHERE id = ?1", ENTRY_COLUMNS),
+                        rusqlite::params![original_id as i64],
+                        entry_from_row,
+                    )
+                    .optional()
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?
+                    .ok_or(ServerError::Core(CoreError::Store(
+                        StoreError::EntryNotFound(original_id),
+                    )))?;
 
-            // Load tags for original
-            let tag_map = load_tags_for_entries(conn, &[original_id])
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            if let Some(tags) = tag_map.get(&original_id) {
-                original.tags = tags.clone();
-            }
+                // Load tags for original
+                let tag_map = load_tags_for_entries(conn, &[original_id])
+                    .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+                if let Some(tags) = tag_map.get(&original_id) {
+                    original.tags = tags.clone();
+                }
 
-            // 2. Verify original is not already deprecated or quarantined
-            if original.status == unimatrix_store::Status::Deprecated {
-                return Err(ServerError::InvalidInput {
-                    field: "original_id".to_string(),
-                    reason: "cannot correct a deprecated entry".to_string(),
-                });
-            }
-            if original.status == unimatrix_store::Status::Quarantined {
-                return Err(ServerError::InvalidInput {
-                    field: "original_id".to_string(),
-                    reason: "cannot correct quarantined entry; restore first".to_string(),
-                });
-            }
+                // 2. Verify original is not already deprecated or quarantined
+                if original.status == unimatrix_store::Status::Deprecated {
+                    return Err(ServerError::InvalidInput {
+                        field: "original_id".to_string(),
+                        reason: "cannot correct a deprecated entry".to_string(),
+                    });
+                }
+                if original.status == unimatrix_store::Status::Quarantined {
+                    return Err(ServerError::InvalidInput {
+                        field: "original_id".to_string(),
+                        reason: "cannot correct quarantined entry; restore first".to_string(),
+                    });
+                }
 
-            // 3. Generate new entry ID
-            let new_id = unimatrix_store::counters::next_entry_id(conn)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+                // 3. Generate new entry ID
+                let new_id = unimatrix_store::counters::next_entry_id(conn)
+                    .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // 4. Deprecate original (direct column UPDATE)
-            let old_status = original.status;
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
+                // 4. Deprecate original (direct column UPDATE)
+                let old_status = original.status;
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
 
-            conn.execute(
-                "UPDATE entries SET status = ?1, superseded_by = ?2, \
+                conn.execute(
+                    "UPDATE entries SET status = ?1, superseded_by = ?2, \
                  correction_count = correction_count + 1, updated_at = ?3 \
                  WHERE id = ?4",
-                rusqlite::params![
-                    unimatrix_store::Status::Deprecated as u8 as i64,
-                    new_id as i64,
-                    now as i64,
-                    original_id as i64
-                ],
-            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                    rusqlite::params![
+                        unimatrix_store::Status::Deprecated as u8 as i64,
+                        new_id as i64,
+                        now as i64,
+                        original_id as i64
+                    ],
+                )
+                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
 
-            // Update status counters
-            unimatrix_store::counters::decrement_counter(conn, status_counter_key(old_status), 1)
+                // Update status counters
+                unimatrix_store::counters::decrement_counter(
+                    conn,
+                    status_counter_key(old_status),
+                    1,
+                )
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            unimatrix_store::counters::increment_counter(conn, status_counter_key(unimatrix_store::Status::Deprecated), 1)
+                unimatrix_store::counters::increment_counter(
+                    conn,
+                    status_counter_key(unimatrix_store::Status::Deprecated),
+                    1,
+                )
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // Update original record for return value
-            original.status = unimatrix_store::Status::Deprecated;
-            original.superseded_by = Some(new_id);
-            original.correction_count += 1;
-            original.updated_at = now;
+                // Update original record for return value
+                original.status = unimatrix_store::Status::Deprecated;
+                original.superseded_by = Some(new_id);
+                original.correction_count += 1;
+                original.updated_at = now;
 
-            // 5. Build correction EntryRecord
-            let content_hash = compute_content_hash(&correction_entry.title, &correction_entry.content);
-            let correction = EntryRecord {
-                id: new_id,
-                title: correction_entry.title,
-                content: correction_entry.content,
-                topic: correction_entry.topic,
-                category: correction_entry.category,
-                tags: correction_entry.tags,
-                source: correction_entry.source,
-                status: correction_entry.status,
-                confidence: 0.0,
-                created_at: now,
-                updated_at: now,
-                last_accessed_at: 0,
-                access_count: 0,
-                supersedes: Some(original_id),
-                superseded_by: None,
-                correction_count: 0,
-                embedding_dim,
-                created_by: correction_entry.created_by.clone(),
-                modified_by: correction_entry.created_by,
-                content_hash,
-                previous_hash: String::new(),
-                version: 1,
-                feature_cycle: correction_entry.feature_cycle,
-                trust_source: correction_entry.trust_source,
-                helpful_count: 0,
-                unhelpful_count: 0,
-                pre_quarantine_status: None,
-            };
+                // 5. Build correction EntryRecord
+                let content_hash =
+                    compute_content_hash(&correction_entry.title, &correction_entry.content);
+                let correction = EntryRecord {
+                    id: new_id,
+                    title: correction_entry.title,
+                    content: correction_entry.content,
+                    topic: correction_entry.topic,
+                    category: correction_entry.category,
+                    tags: correction_entry.tags,
+                    source: correction_entry.source,
+                    status: correction_entry.status,
+                    confidence: 0.0,
+                    created_at: now,
+                    updated_at: now,
+                    last_accessed_at: 0,
+                    access_count: 0,
+                    supersedes: Some(original_id),
+                    superseded_by: None,
+                    correction_count: 0,
+                    embedding_dim,
+                    created_by: correction_entry.created_by.clone(),
+                    modified_by: correction_entry.created_by,
+                    content_hash,
+                    previous_hash: String::new(),
+                    version: 1,
+                    feature_cycle: correction_entry.feature_cycle,
+                    trust_source: correction_entry.trust_source,
+                    helpful_count: 0,
+                    unhelpful_count: 0,
+                    pre_quarantine_status: None,
+                };
 
-            // 6. INSERT correction with named params (ADR-004)
-            conn.execute(
-                "INSERT INTO entries (id, title, content, topic, category, source,
+                // 6. INSERT correction with named params (ADR-004)
+                conn.execute(
+                    "INSERT INTO entries (id, title, content, topic, category, source,
                     status, confidence, created_at, updated_at, last_accessed_at,
                     access_count, supersedes, superseded_by, correction_count,
                     embedding_dim, created_by, modified_by, content_hash,
@@ -599,70 +618,81 @@ impl UnimatrixServer {
                     :embedding_dim, :created_by, :modified_by, :content_hash,
                     :previous_hash, :version, :feature_cycle, :trust_source,
                     :helpful_count, :unhelpful_count)",
-                rusqlite::named_params! {
-                    ":id": correction.id as i64,
-                    ":title": &correction.title,
-                    ":content": &correction.content,
-                    ":topic": &correction.topic,
-                    ":category": &correction.category,
-                    ":source": &correction.source,
-                    ":status": correction.status as u8 as i64,
-                    ":confidence": correction.confidence,
-                    ":created_at": correction.created_at as i64,
-                    ":updated_at": correction.updated_at as i64,
-                    ":last_accessed_at": correction.last_accessed_at as i64,
-                    ":access_count": correction.access_count as i64,
-                    ":supersedes": correction.supersedes.map(|v| v as i64),
-                    ":superseded_by": correction.superseded_by.map(|v| v as i64),
-                    ":correction_count": correction.correction_count as i64,
-                    ":embedding_dim": correction.embedding_dim as i64,
-                    ":created_by": &correction.created_by,
-                    ":modified_by": &correction.modified_by,
-                    ":content_hash": &correction.content_hash,
-                    ":previous_hash": &correction.previous_hash,
-                    ":version": correction.version as i64,
-                    ":feature_cycle": &correction.feature_cycle,
-                    ":trust_source": &correction.trust_source,
-                    ":helpful_count": correction.helpful_count as i64,
-                    ":unhelpful_count": correction.unhelpful_count as i64,
-                },
-            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                    rusqlite::named_params! {
+                        ":id": correction.id as i64,
+                        ":title": &correction.title,
+                        ":content": &correction.content,
+                        ":topic": &correction.topic,
+                        ":category": &correction.category,
+                        ":source": &correction.source,
+                        ":status": correction.status as u8 as i64,
+                        ":confidence": correction.confidence,
+                        ":created_at": correction.created_at as i64,
+                        ":updated_at": correction.updated_at as i64,
+                        ":last_accessed_at": correction.last_accessed_at as i64,
+                        ":access_count": correction.access_count as i64,
+                        ":supersedes": correction.supersedes.map(|v| v as i64),
+                        ":superseded_by": correction.superseded_by.map(|v| v as i64),
+                        ":correction_count": correction.correction_count as i64,
+                        ":embedding_dim": correction.embedding_dim as i64,
+                        ":created_by": &correction.created_by,
+                        ":modified_by": &correction.modified_by,
+                        ":content_hash": &correction.content_hash,
+                        ":previous_hash": &correction.previous_hash,
+                        ":version": correction.version as i64,
+                        ":feature_cycle": &correction.feature_cycle,
+                        ":trust_source": &correction.trust_source,
+                        ":helpful_count": correction.helpful_count as i64,
+                        ":unhelpful_count": correction.unhelpful_count as i64,
+                    },
+                )
+                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
 
-            // 7. Insert tags for correction
-            for tag in &correction.tags {
+                // 7. Insert tags for correction
+                for tag in &correction.tags {
+                    conn.execute(
+                        "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
+                        rusqlite::params![new_id as i64, tag],
+                    )
+                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
+                }
+
+                // 8. Insert vector mapping
                 conn.execute(
-                    "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
-                    rusqlite::params![new_id as i64, tag],
-                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-            }
+                    "INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)",
+                    rusqlite::params![new_id as i64, data_id as i64],
+                )
+                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
 
-            // 8. Insert vector mapping
-            conn.execute(
-                "INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)",
-                rusqlite::params![new_id as i64, data_id as i64],
-            ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-            // 9. Status counter for correction
-            unimatrix_store::counters::increment_counter(conn, status_counter_key(correction.status), 1)
+                // 9. Status counter for correction
+                unimatrix_store::counters::increment_counter(
+                    conn,
+                    status_counter_key(correction.status),
+                    1,
+                )
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // 10. Write audit event with both IDs
-            let audit_with_ids = AuditEvent {
-                target_ids: vec![original_id, new_id],
-                ..audit_event
-            };
-            audit_log.write_in_txn(&txn, audit_with_ids)?;
+                // 10. Write audit event with both IDs
+                let audit_with_ids = AuditEvent {
+                    target_ids: vec![original_id, new_id],
+                    ..audit_event
+                };
+                audit_log.write_in_txn(&txn, audit_with_ids)?;
 
-            // 11. Commit
-            txn.commit()
-                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
+                // 11. Commit
+                txn.commit()
+                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
 
-            Ok((original, correction))
-        }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
+                Ok((original, correction))
+            },
+        )
+        .await
+        .map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
 
         // HNSW insert for the correction (after commit)
         if !embedding.is_empty() {
-            self.vector_index.insert_hnsw_only(new_correction.id, data_id, &embedding)
+            self.vector_index
+                .insert_hnsw_only(new_correction.id, data_id, &embedding)
                 .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
         }
 
@@ -694,7 +724,9 @@ impl UnimatrixServer {
         let mut decrement_unhelpful_ids = Vec::new();
 
         if let Some(helpful_value) = helpful {
-            let vote_actions = self.usage_dedup.check_votes(agent_id, entry_ids, helpful_value);
+            let vote_actions = self
+                .usage_dedup
+                .check_votes(agent_id, entry_ids, helpful_value);
             for (id, action) in vote_actions {
                 match action {
                     VoteAction::NewVote => {
@@ -736,10 +768,8 @@ impl UnimatrixServer {
             if new_pairs.is_empty() {
                 (None, None)
             } else {
-                let adapt_pairs: Vec<(u64, u64, u32)> = new_pairs
-                    .iter()
-                    .map(|p| (p.0, p.1, 1u32))
-                    .collect();
+                let adapt_pairs: Vec<(u64, u64, u32)> =
+                    new_pairs.iter().map(|p| (p.0, p.1, 1u32)).collect();
                 (Some(new_pairs), Some(adapt_pairs))
             }
         } else {
@@ -748,7 +778,10 @@ impl UnimatrixServer {
 
         // Pre-compute feature recording eligibility
         let feature_recording = feature.and_then(|feature_str| {
-            if matches!(trust_level, TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal) {
+            if matches!(
+                trust_level,
+                TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal
+            ) {
                 Some((feature_str.to_string(), entry_ids.to_vec()))
             } else {
                 None
@@ -780,7 +813,8 @@ impl UnimatrixServer {
                     tracing::warn!("co-access recording failed: {e}");
                 }
             }
-        }).await;
+        })
+        .await;
 
         match usage_result {
             Ok(()) => {}
@@ -823,7 +857,8 @@ impl UnimatrixServer {
             reason,
             audit_event,
             false, // do not set modified_by
-        ).await
+        )
+        .await
     }
 
     /// Quarantine an entry: set status to Quarantined using direct SQL (nxs-008).
@@ -839,7 +874,8 @@ impl UnimatrixServer {
             reason,
             audit_event,
             true, // set modified_by from audit agent_id
-        ).await
+        )
+        .await
     }
 
     /// Restore a quarantined entry to its pre-quarantine status (vnc-010).
@@ -851,9 +887,13 @@ impl UnimatrixServer {
         audit_event: AuditEvent,
     ) -> Result<EntryRecord, ServerError> {
         // Fetch entry to read pre_quarantine_status
-        let entry = self.entry_store.get(entry_id).await
+        let entry = self
+            .entry_store
+            .get(entry_id)
+            .await
             .map_err(ServerError::Core)?;
-        let restore_to = entry.pre_quarantine_status
+        let restore_to = entry
+            .pre_quarantine_status
             .and_then(|v| unimatrix_store::Status::try_from(v).ok())
             .unwrap_or(unimatrix_store::Status::Active);
         self.change_status_with_audit(
@@ -862,7 +902,8 @@ impl UnimatrixServer {
             reason,
             audit_event,
             true, // set modified_by from audit agent_id
-        ).await
+        )
+        .await
     }
 
     /// Shared implementation for status-change operations (deprecate, quarantine, restore).
@@ -1019,9 +1060,8 @@ mod tests {
 
         // Use a minimal VectorIndex
         let vector_config = unimatrix_core::VectorConfig::default();
-        let vector_index = Arc::new(
-            unimatrix_core::VectorIndex::new(Arc::clone(&store), vector_config).unwrap(),
-        );
+        let vector_index =
+            Arc::new(unimatrix_core::VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
         let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
         let vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
@@ -1078,7 +1118,10 @@ mod tests {
     fn test_get_info_has_tools_capability() {
         let server = make_server();
         let info = rmcp::ServerHandler::get_info(&server);
-        assert!(info.capabilities.tools.is_some(), "tools capability must be advertised");
+        assert!(
+            info.capabilities.tools.is_some(),
+            "tools capability must be advertised"
+        );
     }
 
     #[test]
@@ -1095,7 +1138,10 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(identity.agent_id, "human");
-        assert_eq!(identity.trust_level, crate::infra::registry::TrustLevel::Privileged);
+        assert_eq!(
+            identity.trust_level,
+            crate::infra::registry::TrustLevel::Privileged
+        );
     }
 
     #[tokio::test]
@@ -1129,13 +1175,7 @@ mod tests {
         let id = insert_test_entry(&server.store);
 
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                None,
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
 
         let r = server.store.get(id).unwrap();
@@ -1148,13 +1188,7 @@ mod tests {
         let server = make_server();
         // Should return immediately without error
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[],
-                None,
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[], None, None)
             .await;
     }
 
@@ -1165,37 +1199,19 @@ mod tests {
 
         // First call: access_count increments
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                None,
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
         assert_eq!(server.store.get(id).unwrap().access_count, 1);
 
         // Second call: same agent, same entry -> deduped (access_count stays 1)
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                None,
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
         assert_eq!(server.store.get(id).unwrap().access_count, 1);
 
         // Different agent: access_count increments again
         server
-            .record_usage_for_entries(
-                "other-agent",
-                TrustLevel::Internal,
-                &[id],
-                None,
-                None,
-            )
+            .record_usage_for_entries("other-agent", TrustLevel::Internal, &[id], None, None)
             .await;
         assert_eq!(server.store.get(id).unwrap().access_count, 2);
     }
@@ -1206,13 +1222,7 @@ mod tests {
         let id = insert_test_entry(&server.store);
 
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                Some(true),
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], Some(true), None)
             .await;
 
         let r = server.store.get(id).unwrap();
@@ -1226,13 +1236,7 @@ mod tests {
         let id = insert_test_entry(&server.store);
 
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                Some(false),
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], Some(false), None)
             .await;
 
         let r = server.store.get(id).unwrap();
@@ -1246,13 +1250,7 @@ mod tests {
         let id = insert_test_entry(&server.store);
 
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                None,
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
 
         let r = server.store.get(id).unwrap();
@@ -1267,25 +1265,13 @@ mod tests {
 
         // First: vote unhelpful
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                Some(false),
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], Some(false), None)
             .await;
         assert_eq!(server.store.get(id).unwrap().unhelpful_count, 1);
 
         // Correction: vote helpful (should flip)
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                Some(true),
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], Some(true), None)
             .await;
         let r = server.store.get(id).unwrap();
         assert_eq!(r.helpful_count, 1);
@@ -1311,7 +1297,9 @@ mod tests {
         let conn = server.store.lock_conn();
         let found: Vec<u64> = {
             let mut stmt = conn
-                .prepare("SELECT entry_id FROM feature_entries WHERE feature_id = ?1 ORDER BY entry_id")
+                .prepare(
+                    "SELECT entry_id FROM feature_entries WHERE feature_id = ?1 ORDER BY entry_id",
+                )
                 .unwrap();
             stmt.query_map(rusqlite::params!["crt-001"], |row| {
                 Ok(row.get::<_, i64>(0)? as u64)
@@ -1383,24 +1371,12 @@ mod tests {
 
         // First: access only (no helpful param)
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                None,
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
 
         // Second: vote helpful (separate from access dedup)
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                Some(true),
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], Some(true), None)
             .await;
 
         let r = server.store.get(id).unwrap();
@@ -1420,18 +1396,15 @@ mod tests {
 
         // Trigger retrieval
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                None,
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
 
         // After retrieval: confidence > 0.0
         let r = server.store.get(id).unwrap();
-        assert!(r.confidence > 0.0, "confidence should be updated after retrieval");
+        assert!(
+            r.confidence > 0.0,
+            "confidence should be updated after retrieval"
+        );
     }
 
     #[tokio::test]
@@ -1440,13 +1413,7 @@ mod tests {
         let id = insert_test_entry(&server.store);
 
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                None,
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
 
         let entry = server.store.get(id).unwrap();
@@ -1466,30 +1433,21 @@ mod tests {
 
         // First retrieval
         server
-            .record_usage_for_entries(
-                "agent-a",
-                TrustLevel::Internal,
-                &[id],
-                None,
-                None,
-            )
+            .record_usage_for_entries("agent-a", TrustLevel::Internal, &[id], None, None)
             .await;
         let after_first = server.store.get(id).unwrap().confidence;
 
         // Second retrieval (different agent to avoid access dedup)
         server
-            .record_usage_for_entries(
-                "agent-b",
-                TrustLevel::Internal,
-                &[id],
-                None,
-                None,
-            )
+            .record_usage_for_entries("agent-b", TrustLevel::Internal, &[id], None, None)
             .await;
         let after_second = server.store.get(id).unwrap().confidence;
 
         // Confidence should change (access_count went from 1 to 2)
-        assert_ne!(after_first, after_second, "confidence should evolve with retrievals");
+        assert_ne!(
+            after_first, after_second,
+            "confidence should evolve with retrievals"
+        );
     }
 
     // -- crt-002: Confidence on mutation paths (T-24 through T-28) --
@@ -1552,13 +1510,7 @@ mod tests {
 
         // First retrieval to give it some confidence
         server
-            .record_usage_for_entries(
-                "test-agent",
-                TrustLevel::Internal,
-                &[id],
-                None,
-                None,
-            )
+            .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
 
         let before_deprecation = server.store.get(id).unwrap().confidence;
@@ -1632,7 +1584,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_quarantine_updates_status_index() {
-
         let server = make_server();
         let id = insert_test_entry(&server.store);
 
@@ -1672,7 +1623,11 @@ mod tests {
         let after_active = server.store.read_counter("total_active").unwrap();
         let after_quarantined = server.store.read_counter("total_quarantined").unwrap();
 
-        assert_eq!(after_active, before_active - 1, "active counter should decrement");
+        assert_eq!(
+            after_active,
+            before_active - 1,
+            "active counter should decrement"
+        );
         assert_eq!(
             after_quarantined,
             before_quarantined + 1,
@@ -1702,7 +1657,10 @@ mod tests {
             .unwrap();
 
         assert_eq!(updated.status, unimatrix_store::Status::Active);
-        assert_eq!(server.store.get(id).unwrap().status, unimatrix_store::Status::Active);
+        assert_eq!(
+            server.store.get(id).unwrap().status,
+            unimatrix_store::Status::Active
+        );
     }
 
     #[tokio::test]
@@ -1728,13 +1686,18 @@ mod tests {
         let final_active = server.store.read_counter("total_active").unwrap();
         let final_quarantined = server.store.read_counter("total_quarantined").unwrap();
 
-        assert_eq!(final_active, initial_active, "active counter should return to initial");
-        assert_eq!(final_quarantined, 0, "quarantined counter should return to 0");
+        assert_eq!(
+            final_active, initial_active,
+            "active counter should return to initial"
+        );
+        assert_eq!(
+            final_quarantined, 0,
+            "quarantined counter should return to 0"
+        );
     }
 
     #[tokio::test]
     async fn test_restore_updates_status_index() {
-
         let server = make_server();
         let id = insert_test_entry(&server.store);
 
@@ -1780,9 +1743,7 @@ mod tests {
         // Verify audit log has an entry
         let conn = server.store.lock_conn();
         let mut stmt = conn
-            .prepare(
-                "SELECT operation, target_ids, detail FROM audit_log WHERE operation = ?1",
-            )
+            .prepare("SELECT operation, target_ids, detail FROM audit_log WHERE operation = ?1")
             .unwrap();
         let mut found = false;
         let mut rows = stmt.query(rusqlite::params!["context_quarantine"]).unwrap();
@@ -1904,7 +1865,10 @@ mod tests {
             .quarantine_with_audit(99999, None, make_audit_event("system"))
             .await;
 
-        assert!(result.is_err(), "quarantining nonexistent entry should fail");
+        assert!(
+            result.is_err(),
+            "quarantining nonexistent entry should fail"
+        );
     }
 
     // -- vnc-010: Quarantine State Restoration tests --
@@ -1940,7 +1904,11 @@ mod tests {
         let id = insert_and_deprecate(&server).await;
 
         let updated = server
-            .quarantine_with_audit(id, Some("obsolete and harmful".into()), make_audit_event("system"))
+            .quarantine_with_audit(
+                id,
+                Some("obsolete and harmful".into()),
+                make_audit_event("system"),
+            )
             .await
             .unwrap();
 
@@ -2037,8 +2005,16 @@ mod tests {
 
         let mid_deprecated = server.store.read_counter("total_deprecated").unwrap();
         let mid_quarantined = server.store.read_counter("total_quarantined").unwrap();
-        assert_eq!(mid_deprecated, before_deprecated - 1, "deprecated counter should decrement");
-        assert_eq!(mid_quarantined, before_quarantined + 1, "quarantined counter should increment");
+        assert_eq!(
+            mid_deprecated,
+            before_deprecated - 1,
+            "deprecated counter should decrement"
+        );
+        assert_eq!(
+            mid_quarantined,
+            before_quarantined + 1,
+            "quarantined counter should increment"
+        );
 
         // Restore to Deprecated
         server
@@ -2048,8 +2024,14 @@ mod tests {
 
         let after_deprecated = server.store.read_counter("total_deprecated").unwrap();
         let after_quarantined = server.store.read_counter("total_quarantined").unwrap();
-        assert_eq!(after_deprecated, before_deprecated, "deprecated counter should return to initial");
-        assert_eq!(after_quarantined, before_quarantined, "quarantined counter should return to initial");
+        assert_eq!(
+            after_deprecated, before_deprecated,
+            "deprecated counter should return to initial"
+        );
+        assert_eq!(
+            after_quarantined, before_quarantined,
+            "quarantined counter should return to initial"
+        );
     }
 
     // AC-9: Audit trail includes pre_quarantine_status
@@ -2174,7 +2156,11 @@ mod tests {
                     |row| row.get(0),
                 )
                 .unwrap();
-            assert_eq!(pre_q, Some(0), "backfill should set pre_quarantine_status=0 for quarantined entries");
+            assert_eq!(
+                pre_q,
+                Some(0),
+                "backfill should set pre_quarantine_status=0 for quarantined entries"
+            );
         }
 
         // Re-open again to verify idempotency
@@ -2280,9 +2266,15 @@ mod tests {
         assert_eq!(pending.entries.len(), 1000, "cap should be enforced");
 
         // Entry 1 (rework_flag_count=1) should have been dropped (it was the minimum)
-        assert!(!pending.entries.contains_key(&1), "lowest rework entry should be dropped");
+        assert!(
+            !pending.entries.contains_key(&1),
+            "lowest rework entry should be dropped"
+        );
         // Entry 1001 should be present
-        assert!(pending.entries.contains_key(&1001), "new entry should be inserted");
+        assert!(
+            pending.entries.contains_key(&1001),
+            "new entry should be inserted"
+        );
     }
 
     #[test]
@@ -2346,8 +2338,14 @@ mod tests {
             detail: "test".to_string(),
         };
 
-        let (_id, record) = server.insert_with_audit(entry, embedding, audit).await.unwrap();
-        assert_eq!(record.embedding_dim, 384, "embedding_dim must match embedding vector length");
+        let (_id, record) = server
+            .insert_with_audit(entry, embedding, audit)
+            .await
+            .unwrap();
+        assert_eq!(
+            record.embedding_dim, 384,
+            "embedding_dim must match embedding vector length"
+        );
     }
 
     #[tokio::test]
@@ -2380,9 +2378,15 @@ mod tests {
             detail: "test".to_string(),
         };
 
-        let (id, record) = server.insert_with_audit(entry, embedding, audit).await.unwrap();
+        let (id, record) = server
+            .insert_with_audit(entry, embedding, audit)
+            .await
+            .unwrap();
         assert!(id > 0, "entry should be written to store");
-        assert_eq!(record.embedding_dim, 0, "empty embedding means embedding_dim = 0");
+        assert_eq!(
+            record.embedding_dim, 0,
+            "empty embedding means embedding_dim = 0"
+        );
     }
 
     #[tokio::test]
@@ -2412,7 +2416,10 @@ mod tests {
             outcome: crate::infra::audit::Outcome::Success,
             detail: "test".to_string(),
         };
-        let (original_id, _) = server.insert_with_audit(entry, embedding, audit).await.unwrap();
+        let (original_id, _) = server
+            .insert_with_audit(entry, embedding, audit)
+            .await
+            .unwrap();
 
         // Now correct it with a new embedding
         let correction_entry = NewEntry {
@@ -2447,6 +2454,9 @@ mod tests {
             )
             .await
             .unwrap();
-        assert_eq!(new_correction.embedding_dim, 384, "correction embedding_dim must match embedding vector length");
+        assert_eq!(
+            new_correction.embedding_dim, 384,
+            "correction embedding_dim must match embedding vector length"
+        );
     }
 }

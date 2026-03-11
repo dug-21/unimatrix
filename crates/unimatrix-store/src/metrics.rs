@@ -4,8 +4,8 @@
 //! in the store crate (ADR-001) following the `EntryRecord` pattern.
 //! Re-exported by `unimatrix-observe` and `unimatrix-core` for backward compatibility.
 
-use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// SQL column names for `UniversalMetrics`, in declaration order.
 /// Used by the column-field alignment structural test (R-03, C-06).

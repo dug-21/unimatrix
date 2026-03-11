@@ -10,8 +10,8 @@ use unimatrix_adapt::AdaptationService;
 use unimatrix_store::Store;
 use unimatrix_vector::VectorIndex;
 
-use crate::infra::audit::AuditLog;
 use crate::error::ServerError;
+use crate::infra::audit::AuditLog;
 use crate::infra::registry::AgentRegistry;
 use crate::services::ServiceLayer;
 use crate::uds::listener::SocketGuard;
@@ -205,8 +205,8 @@ mod tests {
     #[test]
     fn test_shutdown_drops_release_all_store_refs() {
         use unimatrix_adapt::{AdaptConfig, AdaptationService};
-        use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
         use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+        use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
 
         use crate::infra::audit::AuditLog;
         use crate::infra::embed_handle::EmbedServiceHandle;
@@ -220,9 +220,7 @@ mod tests {
 
         let store = Arc::new(Store::open(&db_path).unwrap());
         let vector_config = VectorConfig::default();
-        let vector_index = Arc::new(
-            VectorIndex::new(Arc::clone(&store), vector_config).unwrap(),
-        );
+        let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
 
         // Build all the components that hold Arc<Store>, mirroring main.rs
         let registry = Arc::new(AgentRegistry::new(Arc::clone(&store)).unwrap());
@@ -289,8 +287,8 @@ mod tests {
     #[test]
     fn test_shutdown_fails_without_service_layer_drop() {
         use unimatrix_adapt::{AdaptConfig, AdaptationService};
-        use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
         use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+        use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
 
         use crate::infra::audit::AuditLog;
         use crate::infra::embed_handle::EmbedServiceHandle;
@@ -304,9 +302,7 @@ mod tests {
 
         let store = Arc::new(Store::open(&db_path).unwrap());
         let vector_config = VectorConfig::default();
-        let vector_index = Arc::new(
-            VectorIndex::new(Arc::clone(&store), vector_config).unwrap(),
-        );
+        let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
 
         let registry = Arc::new(AgentRegistry::new(Arc::clone(&store)).unwrap());
         let audit = Arc::new(AuditLog::new(Arc::clone(&store)));

@@ -50,10 +50,7 @@ pub struct ProposedEntry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QualityGateResult {
     Accept,
-    Reject {
-        reason: String,
-        check_name: String,
-    },
+    Reject { reason: String, check_name: String },
 }
 
 /// Mutable context shared across the extraction pipeline within a tick.
@@ -119,13 +116,7 @@ impl ExtractionContext {
 }
 
 /// Categories allowed for auto-extracted entries.
-const ALLOWED_CATEGORIES: &[&str] = &[
-    "convention",
-    "pattern",
-    "lesson-learned",
-    "gap",
-    "decision",
-];
+const ALLOWED_CATEGORIES: &[&str] = &["convention", "pattern", "lesson-learned", "gap", "decision"];
 
 /// Minimum source features required per rule for cross-feature validation.
 fn min_features_for_rule(rule_name: &str) -> usize {
@@ -244,10 +235,7 @@ pub(crate) fn is_read_tool(tool: &str) -> bool {
 
 /// Check if a tool name is a file-writing/editing tool.
 pub(crate) fn is_write_tool(tool: &str) -> bool {
-    tool == "Write"
-        || tool == "Edit"
-        || tool.ends_with("__Write")
-        || tool.ends_with("__Edit")
+    tool == "Write" || tool == "Edit" || tool.ends_with("__Write") || tool.ends_with("__Edit")
 }
 
 /// Check if a tool name is any file access tool.

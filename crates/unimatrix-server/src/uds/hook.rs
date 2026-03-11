@@ -28,10 +28,7 @@ const MAX_INJECTION_BYTES: usize = 1400;
 /// This is the entry point from `main()` for the `hook` subcommand.
 /// No tokio runtime is initialized. Returns `Ok(())` for all expected
 /// conditions -- exit code is always 0 per FR-03.7.
-pub fn run(
-    event: String,
-    project_dir: Option<PathBuf>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(event: String, project_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Read stdin
     let stdin_content = read_stdin();
 
@@ -40,8 +37,7 @@ pub fn run(
 
     // Step 3: Determine working directory and detect project root
     let cwd = resolve_cwd(&hook_input, project_dir.as_deref());
-    let project_root = unimatrix_engine::project::detect_project_root(Some(&cwd))
-        .unwrap_or(cwd);
+    let project_root = unimatrix_engine::project::detect_project_root(Some(&cwd)).unwrap_or(cwd);
     let project_hash = compute_project_hash(&project_root);
 
     // Step 4: Compute socket path
@@ -801,7 +797,9 @@ mod tests {
         input.session_id = Some("sess-1".to_string());
         let req = build_request("UserPromptSubmit", &input);
         match req {
-            HookRequest::ContextSearch { session_id, query, .. } => {
+            HookRequest::ContextSearch {
+                session_id, query, ..
+            } => {
                 assert_eq!(query, "query");
                 assert_eq!(session_id.as_deref(), Some("sess-1"));
             }
@@ -945,7 +943,10 @@ mod tests {
                 assert_eq!(events.len(), 2);
                 assert_eq!(events[0].event_type, "post_tool_use_rework_candidate");
                 assert_eq!(events[0].payload["tool_name"], "MultiEdit");
-                let paths: Vec<_> = events.iter().map(|e| e.payload["file_path"].as_str().unwrap()).collect();
+                let paths: Vec<_> = events
+                    .iter()
+                    .map(|e| e.payload["file_path"].as_str().unwrap())
+                    .collect();
                 assert!(paths.contains(&"a.rs"));
                 assert!(paths.contains(&"b.rs"));
             }
@@ -1036,19 +1037,27 @@ mod tests {
 
     #[test]
     fn is_bash_failure_interrupted() {
-        assert!(is_bash_failure(&serde_json::json!({"exit_code": 0, "interrupted": true})));
+        assert!(is_bash_failure(
+            &serde_json::json!({"exit_code": 0, "interrupted": true})
+        ));
     }
 
     #[test]
     fn extract_file_path_edit() {
         let extra = serde_json::json!({"tool_input": {"path": "/src/lib.rs"}});
-        assert_eq!(extract_file_path(&extra, "Edit"), Some("/src/lib.rs".to_string()));
+        assert_eq!(
+            extract_file_path(&extra, "Edit"),
+            Some("/src/lib.rs".to_string())
+        );
     }
 
     #[test]
     fn extract_file_path_write() {
         let extra = serde_json::json!({"tool_input": {"file_path": "/src/main.rs"}});
-        assert_eq!(extract_file_path(&extra, "Write"), Some("/src/main.rs".to_string()));
+        assert_eq!(
+            extract_file_path(&extra, "Write"),
+            Some("/src/main.rs".to_string())
+        );
     }
 
     #[test]
@@ -1623,9 +1632,12 @@ mod tests {
     #[test]
     fn test_extract_event_topic_signal_pretooluse() {
         // AC-08: PreToolUse with feature path in tool_input
-        let input = make_hook_input("PreToolUse", serde_json::json!({
-            "tool_input": "reading product/features/col-002/SCOPE.md"
-        }));
+        let input = make_hook_input(
+            "PreToolUse",
+            serde_json::json!({
+                "tool_input": "reading product/features/col-002/SCOPE.md"
+            }),
+        );
         let signal = extract_event_topic_signal("PreToolUse", &input);
         assert_eq!(signal, Some("col-002".to_string()));
     }
@@ -1633,9 +1645,12 @@ mod tests {
     #[test]
     fn test_extract_event_topic_signal_subagent() {
         // AC-09: SubagentStart with feature ID in prompt_snippet
-        let input = make_hook_input("SubagentStart", serde_json::json!({
-            "prompt_snippet": "implement col-017 feature"
-        }));
+        let input = make_hook_input(
+            "SubagentStart",
+            serde_json::json!({
+                "prompt_snippet": "implement col-017 feature"
+            }),
+        );
         let signal = extract_event_topic_signal("SubagentStart", &input);
         assert_eq!(signal, Some("col-017".to_string()));
     }
@@ -1652,9 +1667,12 @@ mod tests {
     #[test]
     fn test_extract_event_topic_signal_none() {
         // AC-10: no feature-identifying content
-        let input = make_hook_input("PreToolUse", serde_json::json!({
-            "tool_input": "ls -la /tmp"
-        }));
+        let input = make_hook_input(
+            "PreToolUse",
+            serde_json::json!({
+                "tool_input": "ls -la /tmp"
+            }),
+        );
         let signal = extract_event_topic_signal("PreToolUse", &input);
         assert!(signal.is_none());
     }
@@ -1662,9 +1680,12 @@ mod tests {
     #[test]
     fn test_extract_event_topic_signal_generic_with_feature() {
         // T-09: generic event with feature path in extra
-        let input = make_hook_input("SomeEvent", serde_json::json!({
-            "tool_input": "read product/features/col-017/SCOPE.md"
-        }));
+        let input = make_hook_input(
+            "SomeEvent",
+            serde_json::json!({
+                "tool_input": "read product/features/col-017/SCOPE.md"
+            }),
+        );
         let signal = extract_event_topic_signal("SomeEvent", &input);
         assert_eq!(signal, Some("col-017".to_string()));
     }
@@ -1672,9 +1693,12 @@ mod tests {
     #[test]
     fn test_extract_event_topic_signal_generic_false_positive() {
         // T-09: SR-2 -- generic event with false-positive pattern in URL
-        let input = make_hook_input("SomeEvent", serde_json::json!({
-            "url": "https://api-v2.example.com"
-        }));
+        let input = make_hook_input(
+            "SomeEvent",
+            serde_json::json!({
+                "url": "https://api-v2.example.com"
+            }),
+        );
         let signal = extract_event_topic_signal("SomeEvent", &input);
         // api-v2 is a valid feature ID pattern but it's just a URL segment
         // Our current extractor may match it; this documents the behavior
@@ -1684,9 +1708,12 @@ mod tests {
     #[test]
     fn test_build_request_pretooluse_sets_topic_signal() {
         // End-to-end: build_request for PreToolUse with feature path
-        let input = make_hook_input("PreToolUse", serde_json::json!({
-            "tool_input": {"file_path": "product/features/col-002/SCOPE.md"}
-        }));
+        let input = make_hook_input(
+            "PreToolUse",
+            serde_json::json!({
+                "tool_input": {"file_path": "product/features/col-002/SCOPE.md"}
+            }),
+        );
         let req = build_request("PreToolUse", &input);
         match req {
             HookRequest::RecordEvent { event } => {
@@ -1699,9 +1726,12 @@ mod tests {
     #[test]
     fn test_build_request_generic_sets_topic_signal() {
         // Generic record event also extracts topic signal
-        let input = make_hook_input("SomeHook", serde_json::json!({
-            "path": "product/features/nxs-001/SCOPE.md"
-        }));
+        let input = make_hook_input(
+            "SomeHook",
+            serde_json::json!({
+                "path": "product/features/nxs-001/SCOPE.md"
+            }),
+        );
         let req = build_request("SomeHook", &input);
         match req {
             HookRequest::RecordEvent { event } => {
@@ -1713,9 +1743,12 @@ mod tests {
 
     #[test]
     fn test_build_request_no_signal() {
-        let input = make_hook_input("SomeHook", serde_json::json!({
-            "key": "value without features"
-        }));
+        let input = make_hook_input(
+            "SomeHook",
+            serde_json::json!({
+                "key": "value without features"
+            }),
+        );
         let req = build_request("SomeHook", &input);
         match req {
             HookRequest::RecordEvent { event } => {

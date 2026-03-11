@@ -6,19 +6,21 @@ use std::time::Duration;
 
 use clap::{Parser, Subcommand};
 use rmcp::ServiceExt;
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-use unimatrix_core::{CoreError, EmbedConfig, StoreAdapter, Store, VectorAdapter, VectorConfig, VectorIndex};
 use unimatrix_adapt::{AdaptConfig, AdaptationService};
+use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+use unimatrix_core::{
+    CoreError, EmbedConfig, Store, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex,
+};
+use unimatrix_server::error::ServerError;
 use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
-use unimatrix_server::error::ServerError;
 use unimatrix_server::infra::pidfile;
-use unimatrix_server::project;
 use unimatrix_server::infra::registry::AgentRegistry;
-use unimatrix_server::infra::usage_dedup::UsageDedup;
-use unimatrix_server::server::{PendingEntriesAnalysis, UnimatrixServer};
 use unimatrix_server::infra::shutdown::{self, LifecycleHandles};
+use unimatrix_server::infra::usage_dedup::UsageDedup;
+use unimatrix_server::project;
+use unimatrix_server::server::{PendingEntriesAnalysis, UnimatrixServer};
 use unimatrix_server::uds_listener;
 
 /// Timeout for waiting on a stale process to exit after SIGTERM.
@@ -348,4 +350,3 @@ fn open_store_with_retry(
         last_err.expect("at least one attempt was made"),
     ))))
 }
-

@@ -179,8 +179,13 @@ fn extract_file_paths(text: &str) -> Vec<String> {
     let mut paths = Vec::new();
     for token in text.split_whitespace() {
         // Remove trailing punctuation
-        let cleaned = token.trim_end_matches(|c: char| c == ',' || c == '.' || c == ';' || c == ':' || c == ')');
-        if cleaned.contains('/') || cleaned.ends_with(".rs") || cleaned.ends_with(".toml") || cleaned.ends_with(".md") {
+        let cleaned = token
+            .trim_end_matches(|c: char| c == ',' || c == '.' || c == ';' || c == ':' || c == ')');
+        if cleaned.contains('/')
+            || cleaned.ends_with(".rs")
+            || cleaned.ends_with(".toml")
+            || cleaned.ends_with(".md")
+        {
             paths.push(cleaned.to_string());
         }
     }
@@ -253,10 +258,10 @@ mod tests {
     fn test_cluster_evidence_groups_by_window() {
         let evidence = vec![
             make_evidence(1000, "event a"),
-            make_evidence(10_000, "event b"),      // within 30s of 1000
-            make_evidence(20_000, "event c"),       // within 30s of 1000
-            make_evidence(60_000_000, "event d"),   // far away
-            make_evidence(60_010_000, "event e"),   // within 30s of d
+            make_evidence(10_000, "event b"), // within 30s of 1000
+            make_evidence(20_000, "event c"), // within 30s of 1000
+            make_evidence(60_000_000, "event d"), // far away
+            make_evidence(60_010_000, "event e"), // within 30s of d
         ];
         let clusters = cluster_evidence(&evidence);
         assert_eq!(clusters.len(), 2);
@@ -284,7 +289,10 @@ mod tests {
         ];
         let hotspot = make_hotspot("sleep_workarounds", evidence);
         let pattern = extract_sequence_pattern(&hotspot);
-        assert_eq!(pattern, Some("30s\u{2192}60s\u{2192}90s\u{2192}120s".to_string()));
+        assert_eq!(
+            pattern,
+            Some("30s\u{2192}60s\u{2192}90s\u{2192}120s".to_string())
+        );
     }
 
     // -- T-ES-05: non-monotone returns None (AC-04) --

@@ -48,10 +48,7 @@ pub fn infonce_loss(
         }
 
         // Log-sum-exp for numerical stability
-        let max_sim = all_sims
-            .iter()
-            .cloned()
-            .fold(f32::NEG_INFINITY, f32::max);
+        let max_sim = all_sims.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
         let log_sum_exp = max_sim
             + all_sims
                 .iter()
@@ -204,13 +201,7 @@ pub fn execute_training_step(
 
     // 7. Add EWC gradient contribution
     let ewc_grad = ewc.gradient_contribution(&lora.parameters_flat());
-    add_ewc_gradient(
-        &mut total_grad_a,
-        &mut total_grad_b,
-        &ewc_grad,
-        d,
-        r,
-    );
+    add_ewc_gradient(&mut total_grad_a, &mut total_grad_b, &ewc_grad, d, r);
 
     // 8. Update weights (LoRA+ learning rates)
     let lr_a = config.lr_a;
@@ -331,7 +322,9 @@ mod tests {
         let norm: f32 = v.iter().map(|x| x * x).sum::<f32>().sqrt();
         let v_norm: Vec<f32> = v.iter().map(|x| x / norm).collect();
         anchors.push(Array1::from(v_norm.clone()));
-        positives.push(Array1::from(v_norm.iter().map(|x| x + 0.01).collect::<Vec<_>>()));
+        positives.push(Array1::from(
+            v_norm.iter().map(|x| x + 0.01).collect::<Vec<_>>(),
+        ));
 
         // Low similarity pair
         let mut a = vec![0.0_f32; dim];
@@ -352,7 +345,10 @@ mod tests {
         let p = Array1::from(vec![1.0, 0.0, 0.0, 0.0]);
         let loss = infonce_loss(&[a], &[p], 0.07).unwrap();
         // Single pair: only one element in softmax, so loss = -log(1) = 0
-        assert!(loss.abs() < 1e-6, "single pair loss should be ~0, got {loss}");
+        assert!(
+            loss.abs() < 1e-6,
+            "single pair loss should be ~0, got {loss}"
+        );
     }
 
     // T-TRN-13: InfoNCE loss with empty batch
@@ -444,7 +440,9 @@ mod tests {
             &mut prototypes,
             &config,
             &|id| {
-                let v: Vec<f32> = (0..16).map(|i| ((id as f32 + i as f32) * 0.1).sin()).collect();
+                let v: Vec<f32> = (0..16)
+                    .map(|i| ((id as f32 + i as f32) * 0.1).sin())
+                    .collect();
                 Some(v)
             },
             &mut generation,

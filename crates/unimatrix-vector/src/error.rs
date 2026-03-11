@@ -88,7 +88,10 @@ mod tests {
         let store_err = unimatrix_store::StoreError::EntryNotFound(42);
         let err = VectorError::Store(store_err);
         let msg = err.to_string();
-        assert!(msg.contains("store error"), "expected 'store error' in: {msg}");
+        assert!(
+            msg.contains("store error"),
+            "expected 'store error' in: {msg}"
+        );
     }
 
     #[test]
@@ -123,7 +126,10 @@ mod tests {
     fn test_index_error_display() {
         let err = VectorError::Index("hnsw internal error".into());
         let msg = err.to_string();
-        assert!(msg.contains("index error"), "expected 'index error' in: {msg}");
+        assert!(
+            msg.contains("index error"),
+            "expected 'index error' in: {msg}"
+        );
     }
 
     #[test]

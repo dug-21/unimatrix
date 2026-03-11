@@ -4,7 +4,7 @@
 //! forcing the developer to verify the new behavior is correct.
 
 use unimatrix_engine::confidence::{
-    compute_confidence, W_BASE, W_CORR, W_FRESH, W_HELP, W_TRUST, W_USAGE,
+    W_BASE, W_CORR, W_FRESH, W_HELP, W_TRUST, W_USAGE, compute_confidence,
 };
 use unimatrix_engine::test_scenarios::*;
 

@@ -11,10 +11,7 @@ const RECOGNIZED_KEYS: &[&str] = &["type", "gate", "phase", "result", "agent", "
 
 /// Valid workflow type values for the required `type` tag.
 const VALID_TYPES: &[&str] = &[
-    "feature",
-    "bugfix",
-    "incident",
-    "process",
+    "feature", "bugfix", "incident", "process",
     "session", // col-010: auto-generated session lifecycle outcomes
 ];
 
@@ -153,10 +150,7 @@ fn validate_tag_key_value(key: &str, value: &str) -> Result<(), ServerError> {
             if value.parse::<u32>().is_err() {
                 return Err(ServerError::InvalidInput {
                     field: "tags".to_string(),
-                    reason: format!(
-                        "wave value '{}' must be a non-negative integer",
-                        value
-                    ),
+                    reason: format!("wave value '{}' must be a non-negative integer", value),
                 });
             }
         }
@@ -250,7 +244,10 @@ mod tests {
     fn test_gate_accepts_any_nonempty_string() {
         for gate in &["3a", "custom-gate", "1b", "\u{6d4b}\u{8bd5}"] {
             let t = tags(&["type:feature", &format!("gate:{gate}")]);
-            assert!(validate_outcome_tags(&t).is_ok(), "gate:{gate} should be accepted");
+            assert!(
+                validate_outcome_tags(&t).is_ok(),
+                "gate:{gate} should be accepted"
+            );
         }
     }
 
@@ -271,7 +268,10 @@ mod tests {
     fn test_wave_accepts_valid_integers() {
         for wave in &["0", "2", "99"] {
             let t = tags(&["type:feature", &format!("wave:{wave}")]);
-            assert!(validate_outcome_tags(&t).is_ok(), "wave:{wave} should be accepted");
+            assert!(
+                validate_outcome_tags(&t).is_ok(),
+                "wave:{wave} should be accepted"
+            );
         }
     }
 
@@ -289,9 +289,18 @@ mod tests {
 
     #[test]
     fn test_phase_all_values() {
-        for phase in &["research", "design", "implementation", "testing", "validation"] {
+        for phase in &[
+            "research",
+            "design",
+            "implementation",
+            "testing",
+            "validation",
+        ] {
             let t = tags(&["type:feature", &format!("phase:{phase}")]);
-            assert!(validate_outcome_tags(&t).is_ok(), "phase:{phase} should be accepted");
+            assert!(
+                validate_outcome_tags(&t).is_ok(),
+                "phase:{phase} should be accepted"
+            );
         }
     }
 

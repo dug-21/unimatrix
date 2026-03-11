@@ -71,7 +71,10 @@ mod tests {
         let err = StoreError::EntryNotFound(42);
         let msg = err.to_string();
         assert!(msg.contains("42"), "expected '42' in: {msg}");
-        assert!(msg.contains("entry not found"), "expected 'entry not found' in: {msg}");
+        assert!(
+            msg.contains("entry not found"),
+            "expected 'entry not found' in: {msg}"
+        );
     }
 
     #[test]
@@ -79,7 +82,10 @@ mod tests {
         let err = StoreError::InvalidStatus(99);
         let msg = err.to_string();
         assert!(msg.contains("99"), "expected '99' in: {msg}");
-        assert!(msg.contains("invalid status byte"), "expected 'invalid status byte' in: {msg}");
+        assert!(
+            msg.contains("invalid status byte"),
+            "expected 'invalid status byte' in: {msg}"
+        );
     }
 
     #[test]

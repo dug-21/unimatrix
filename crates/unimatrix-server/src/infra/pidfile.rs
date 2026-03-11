@@ -239,7 +239,10 @@ pub fn handle_stale_pid_file(
     };
 
     if !is_process_alive(pid) {
-        tracing::info!(pid, "stale PID file found (process is dead); PidGuard will reclaim");
+        tracing::info!(
+            pid,
+            "stale PID file found (process is dead); PidGuard will reclaim"
+        );
         // Do NOT remove the file -- PidGuard::acquire will flock and overwrite it,
         // eliminating the TOCTOU race (#146).
         return Ok(true);
@@ -256,9 +259,15 @@ pub fn handle_stale_pid_file(
         return Ok(true);
     }
 
-    tracing::info!(pid, "stale unimatrix-server process detected, sending SIGTERM");
+    tracing::info!(
+        pid,
+        "stale unimatrix-server process detected, sending SIGTERM"
+    );
     if terminate_and_wait(pid, terminate_timeout) {
-        tracing::info!(pid, "stale process exited after SIGTERM; PidGuard will reclaim");
+        tracing::info!(
+            pid,
+            "stale process exited after SIGTERM; PidGuard will reclaim"
+        );
         // Do NOT remove -- PidGuard::acquire will flock and overwrite (#146).
         Ok(true)
     } else {
@@ -341,8 +350,7 @@ mod tests {
     fn test_handle_stale_pid_file_no_file() {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("no.pid");
-        let result =
-            handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
+        let result = handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
         assert!(result);
     }
 
@@ -353,11 +361,13 @@ mod tests {
         // Write a PID that definitely doesn't exist.
         fs::write(&path, "4000000\n").unwrap();
 
-        let result =
-            handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
+        let result = handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
         assert!(result);
         // PID file is left in place for PidGuard::acquire to reclaim (#146).
-        assert!(path.exists(), "PID file should remain for PidGuard to reclaim");
+        assert!(
+            path.exists(),
+            "PID file should remain for PidGuard to reclaim"
+        );
     }
 
     #[test]
@@ -366,8 +376,7 @@ mod tests {
         let path = dir.path().join("bad.pid");
         fs::write(&path, "garbage\n").unwrap();
 
-        let result =
-            handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
+        let result = handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
         assert!(result);
     }
 
@@ -472,11 +481,13 @@ mod tests {
         // PID 1 is init — alive but not unimatrix-server.
         fs::write(&path, "1\n").unwrap();
 
-        let result =
-            handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
+        let result = handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
         assert!(result, "should resolve stale PID for non-unimatrix process");
         // PID file is left in place for PidGuard::acquire to reclaim (#146).
-        assert!(path.exists(), "PID file should remain for PidGuard to reclaim");
+        assert!(
+            path.exists(),
+            "PID file should remain for PidGuard to reclaim"
+        );
     }
 
     #[test]
@@ -487,8 +498,7 @@ mod tests {
         // adding identity check.
         fs::write(&path, "4000000\n").unwrap();
 
-        let result =
-            handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
+        let result = handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
         assert!(result);
         // PID file remains for PidGuard::acquire to reclaim (#146).
         assert!(path.exists());
@@ -518,10 +528,12 @@ mod tests {
         fs::write(&path, "4000000\n").unwrap();
 
         // handle_stale_pid_file should resolve without removing the file.
-        let resolved =
-            handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
+        let resolved = handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
         assert!(resolved);
-        assert!(path.exists(), "file should remain after handle_stale_pid_file");
+        assert!(
+            path.exists(),
+            "file should remain after handle_stale_pid_file"
+        );
 
         // PidGuard::acquire should succeed on the existing file.
         let _guard = PidGuard::acquire(&path).unwrap();

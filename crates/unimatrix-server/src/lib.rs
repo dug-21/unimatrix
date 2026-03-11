@@ -14,17 +14,17 @@
 //! The `confidence`, `coaccess`, and `project` modules are re-exported from
 //! `unimatrix-engine` for backward compatibility (col-006 extraction).
 
-pub use unimatrix_engine::confidence;
 pub use unimatrix_engine::coaccess;
+pub use unimatrix_engine::confidence;
 pub use unimatrix_engine::project;
 
 pub mod background;
+pub mod error;
 pub mod infra;
 pub mod mcp;
-pub mod uds;
-pub mod error;
 pub mod server;
 pub mod services;
+pub mod uds;
 
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;

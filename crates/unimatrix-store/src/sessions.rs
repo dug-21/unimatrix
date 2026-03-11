@@ -93,8 +93,7 @@ fn session_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRecord> 
     })
 }
 
-const SESSION_COLUMNS: &str =
-    "session_id, feature_cycle, agent_role, started_at, ended_at, \
+const SESSION_COLUMNS: &str = "session_id, feature_cycle, agent_role, started_at, ended_at, \
      status, compaction_count, outcome, total_injections";
 
 // -- Store methods (SQLite backend) --
@@ -141,7 +140,10 @@ impl Store {
         let result = (|| -> Result<()> {
             let mut record: SessionRecord = conn
                 .query_row(
-                    &format!("SELECT {} FROM sessions WHERE session_id = ?1", SESSION_COLUMNS),
+                    &format!(
+                        "SELECT {} FROM sessions WHERE session_id = ?1",
+                        SESSION_COLUMNS
+                    ),
                     rusqlite::params![session_id],
                     session_from_row,
                 )
@@ -176,8 +178,7 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -320,8 +321,7 @@ impl Store {
 
         match result {
             Ok(stats) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(stats)
             }
             Err(e) => {

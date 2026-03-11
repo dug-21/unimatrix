@@ -60,11 +60,9 @@ impl ShadowEvaluator {
             .as_secs();
 
         let neural_cat = prediction.classification.category.to_string();
-        let digest_bytes = bincode::serde::encode_to_vec(
-            &prediction.digest,
-            bincode::config::standard(),
-        )
-        .unwrap_or_default();
+        let digest_bytes =
+            bincode::serde::encode_to_vec(&prediction.digest, bincode::config::standard())
+                .unwrap_or_default();
 
         self.evaluations.push(ShadowLogEntry {
             timestamp: now,
@@ -179,8 +177,7 @@ mod tests {
     fn make_test_entry(category: &str) -> ProposedEntry {
         ProposedEntry {
             title: "Valid title that is long enough".to_string(),
-            content: "This is valid content with enough length for quality gate checks"
-                .to_string(),
+            content: "This is valid content with enough length for quality gate checks".to_string(),
             category: category.to_string(),
             topic: "test".to_string(),
             tags: vec!["auto-extracted".to_string()],
@@ -267,8 +264,7 @@ mod tests {
             let mut pred = enhancer.enhance(&entry);
             // Force neural category to match for accuracy simulation
             if i < 4 {
-                pred.classification.category =
-                    unimatrix_learn::models::SignalCategory::Convention;
+                pred.classification.category = unimatrix_learn::models::SignalCategory::Convention;
             }
             evaluator.log_prediction(&entry, &pred, true);
         }
@@ -289,8 +285,7 @@ mod tests {
             let entry = make_test_entry(if i < 3 { "convention" } else { "pattern" });
             let mut pred = enhancer.enhance(&entry);
             if i < 3 {
-                pred.classification.category =
-                    unimatrix_learn::models::SignalCategory::Convention;
+                pred.classification.category = unimatrix_learn::models::SignalCategory::Convention;
             }
             evaluator.log_prediction(&entry, &pred, true);
         }

@@ -119,9 +119,7 @@ impl VectorIndex {
     fn validate_embedding(&self, embedding: &[f32]) -> Result<()> {
         for (i, &val) in embedding.iter().enumerate() {
             if val.is_nan() {
-                return Err(VectorError::InvalidEmbedding(format!(
-                    "NaN at index {i}"
-                )));
+                return Err(VectorError::InvalidEmbedding(format!("NaN at index {i}")));
             }
             if val.is_infinite() {
                 return Err(VectorError::InvalidEmbedding(format!(
@@ -229,9 +227,7 @@ impl VectorIndex {
             let id_map = self.id_map.read().unwrap_or_else(|e| e.into_inner());
             allowed_data_ids = allowed_entry_ids
                 .iter()
-                .filter_map(|&eid| {
-                    id_map.entry_to_data.get(&eid).map(|&did| did as usize)
-                })
+                .filter_map(|&eid| id_map.entry_to_data.get(&eid).map(|&did| did as usize))
                 .collect::<Vec<usize>>();
         }
 
@@ -255,10 +251,7 @@ impl VectorIndex {
     }
 
     /// Map hnsw_rs Neighbour results to SearchResult via IdMap.
-    fn map_neighbours_to_results(
-        &self,
-        neighbours: &[Neighbour],
-    ) -> Result<Vec<SearchResult>> {
+    fn map_neighbours_to_results(&self, neighbours: &[Neighbour]) -> Result<Vec<SearchResult>> {
         let id_map = self.id_map.read().unwrap_or_else(|e| e.into_inner());
 
         let mut results = Vec::with_capacity(neighbours.len());
@@ -340,9 +333,7 @@ impl VectorIndex {
     }
 
     /// Get the hnsw_rs read lock (for persistence dump).
-    pub(crate) fn hnsw_read(
-        &self,
-    ) -> std::sync::RwLockReadGuard<'_, Hnsw<'static, f32, DistDot>> {
+    pub(crate) fn hnsw_read(&self) -> std::sync::RwLockReadGuard<'_, Hnsw<'static, f32, DistDot>> {
         self.hnsw.read().unwrap_or_else(|e| e.into_inner())
     }
 
@@ -427,12 +418,7 @@ impl VectorIndex {
     ///
     /// Skips the VECTOR_MAP write (caller already wrote it in a combined
     /// transaction). The `data_id` must have been allocated via [`allocate_data_id`].
-    pub fn insert_hnsw_only(
-        &self,
-        entry_id: u64,
-        data_id: u64,
-        embedding: &[f32],
-    ) -> Result<()> {
+    pub fn insert_hnsw_only(&self, entry_id: u64, data_id: u64, embedding: &[f32]) -> Result<()> {
         self.validate_dimension(embedding)?;
         self.validate_embedding(embedding)?;
 
@@ -460,8 +446,8 @@ impl VectorIndex {
 mod tests {
     use super::*;
     use crate::test_helpers::{
-        assert_results_sorted, assert_search_contains, assert_search_excludes,
-        random_normalized_embedding, seed_vectors, TestVectorIndex,
+        TestVectorIndex, assert_results_sorted, assert_search_contains, assert_search_excludes,
+        random_normalized_embedding, seed_vectors,
     };
 
     // -- Priority 1: R-02 Dimension Mismatch (FIRST) --
@@ -1147,7 +1133,10 @@ mod tests {
             let new_emb = random_normalized_embedding(dim);
             tvi.vi().insert(id, &new_emb).unwrap();
         }
-        assert!(tvi.vi().stale_count() > 0, "should have stale nodes after reembedding");
+        assert!(
+            tvi.vi().stale_count() > 0,
+            "should have stale nodes after reembedding"
+        );
 
         // Collect current embeddings for all 10 entries
         let embeddings: Vec<(u64, Vec<f32>)> = ids
@@ -1158,8 +1147,16 @@ mod tests {
         // Compact
         tvi.vi().compact(embeddings).unwrap();
 
-        assert_eq!(tvi.vi().stale_count(), 0, "stale_count should be 0 after compact");
-        assert_eq!(tvi.vi().point_count(), 10, "point_count should equal active entries");
+        assert_eq!(
+            tvi.vi().stale_count(),
+            0,
+            "stale_count should be 0 after compact"
+        );
+        assert_eq!(
+            tvi.vi().point_count(),
+            10,
+            "point_count should equal active entries"
+        );
     }
 
     // IT-C3-02: Search results consistent before and after compaction
@@ -1201,7 +1198,10 @@ mod tests {
         let results_after = tvi.vi().search(&query, 5, 32).unwrap();
         let ids_after: HashSet<u64> = results_after.iter().map(|r| r.entry_id).collect();
 
-        assert_eq!(ids_before, ids_after, "search results should return same entry_ids after compaction");
+        assert_eq!(
+            ids_before, ids_after,
+            "search results should return same entry_ids after compaction"
+        );
     }
 
     // IT-C3-03: VECTOR_MAP updated after compaction
@@ -1222,7 +1222,11 @@ mod tests {
         // Verify VECTOR_MAP has sequential data_ids
         for (idx, &entry_id) in ids.iter().enumerate() {
             let data_id = tvi.store().get_vector_mapping(entry_id).unwrap();
-            assert_eq!(data_id, Some(idx as u64), "data_id should be sequential starting from 0");
+            assert_eq!(
+                data_id,
+                Some(idx as u64),
+                "data_id should be sequential starting from 0"
+            );
         }
     }
 
@@ -1235,7 +1239,9 @@ mod tests {
         // Insert 10, create 5 stale
         let ids = seed_vectors(tvi.vi(), tvi.store(), 10);
         for &id in &ids[0..5] {
-            tvi.vi().insert(id, &random_normalized_embedding(dim)).unwrap();
+            tvi.vi()
+                .insert(id, &random_normalized_embedding(dim))
+                .unwrap();
         }
         // point_count includes stale nodes
         assert!(tvi.vi().point_count() > 10);
@@ -1268,10 +1274,17 @@ mod tests {
         assert!(result.is_err(), "compact with wrong dimension should fail");
 
         // Old index should still work
-        assert_eq!(tvi.vi().stale_count(), old_stale, "stale_count unchanged after failed compact");
+        assert_eq!(
+            tvi.vi().stale_count(),
+            old_stale,
+            "stale_count unchanged after failed compact"
+        );
         let query = random_normalized_embedding(dim);
         let results = tvi.vi().search(&query, 5, 32).unwrap();
-        assert!(!results.is_empty(), "search should still work after failed compact");
+        assert!(
+            !results.is_empty(),
+            "search should still work after failed compact"
+        );
     }
 
     // IT-C3-06: Insert after compact works correctly
@@ -1292,11 +1305,18 @@ mod tests {
         // Insert 3 new entries
         let new_ids = seed_vectors(tvi.vi(), tvi.store(), 3);
 
-        assert_eq!(tvi.vi().point_count(), 8, "should have 5 + 3 = 8 after compact then insert");
+        assert_eq!(
+            tvi.vi().point_count(),
+            8,
+            "should have 5 + 3 = 8 after compact then insert"
+        );
 
         // All entries findable
         for &id in &ids {
-            assert!(tvi.vi().contains(id), "original entry {id} should still be present");
+            assert!(
+                tvi.vi().contains(id),
+                "original entry {id} should still be present"
+            );
         }
         for &id in &new_ids {
             assert!(tvi.vi().contains(id), "new entry {id} should be present");

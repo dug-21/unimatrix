@@ -83,10 +83,7 @@ impl EventQueue {
     /// `HookRequest`, and sends via `fire_and_forget`. Malformed lines
     /// are skipped (not treated as errors). Files are deleted after
     /// processing. Returns the count of successfully replayed events.
-    pub fn replay(
-        &self,
-        transport: &mut dyn crate::transport::Transport,
-    ) -> io::Result<usize> {
+    pub fn replay(&self, transport: &mut dyn crate::transport::Transport) -> io::Result<usize> {
         if !self.queue_dir.exists() {
             return Ok(0);
         }
@@ -246,10 +243,7 @@ impl EventQueue {
 
     /// Check if a path matches the queue file naming pattern.
     fn is_queue_file(&self, path: &Path) -> bool {
-        let name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("");
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
         name.starts_with(FILE_PREFIX) && name.ends_with(FILE_EXTENSION)
     }
 }
@@ -485,11 +479,14 @@ mod tests {
             .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap().to_string())
             .collect();
-        assert_eq!(names, vec![
-            "pending-001.jsonl",
-            "pending-002.jsonl",
-            "pending-003.jsonl",
-        ]);
+        assert_eq!(
+            names,
+            vec![
+                "pending-001.jsonl",
+                "pending-002.jsonl",
+                "pending-003.jsonl",
+            ]
+        );
     }
 
     #[test]
