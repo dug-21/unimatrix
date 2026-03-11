@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use rusqlite::OptionalExtension;
 
@@ -856,6 +856,158 @@ impl Store {
 
         Ok(entries)
     }
+
+    /// Compute effectiveness aggregates via SQL joins (crt-018: ADR-001).
+    ///
+    /// Executes 4 sequential queries under a single `lock_conn()` to prevent
+    /// GC race conditions (R-07). Returns pre-aggregated data for the
+    /// effectiveness engine to classify.
+    ///
+    /// Query 1: Entry injection stats (injection_log JOIN sessions, GROUP BY entry_id)
+    /// Query 2: Active topics (DISTINCT feature_cycle from sessions)
+    /// Query 3: Calibration rows (per-injection confidence + outcome)
+    /// Query 4: Data window (session count, min/max started_at)
+    pub fn compute_effectiveness_aggregates(&self) -> Result<EffectivenessAggregates> {
+        let conn = self.lock_conn();
+
+        // Query 1: Entry injection stats
+        // Deduplicate injection_log per (entry_id, session_id) first to prevent
+        // duplicate inflation of outcome counts (R-03). Multiple injection_log rows
+        // for the same (entry, session) pair count as one injection.
+        let mut stmt = conn
+            .prepare(
+                "SELECT ds.entry_id, \
+                        COUNT(*) as injection_count, \
+                        COALESCE(SUM(CASE WHEN s.outcome = 'success' THEN 1 ELSE 0 END), 0), \
+                        COALESCE(SUM(CASE WHEN s.outcome = 'rework' THEN 1 ELSE 0 END), 0), \
+                        COALESCE(SUM(CASE WHEN s.outcome = 'abandoned' THEN 1 ELSE 0 END), 0) \
+                 FROM (SELECT DISTINCT entry_id, session_id FROM injection_log) ds \
+                 JOIN sessions s ON ds.session_id = s.session_id \
+                 WHERE s.outcome IS NOT NULL \
+                 GROUP BY ds.entry_id",
+            )
+            .map_err(StoreError::Sqlite)?;
+
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(EntryInjectionStats {
+                    entry_id: row.get::<_, i64>(0)? as u64,
+                    injection_count: row.get::<_, i64>(1)? as u32,
+                    success_count: row.get::<_, i64>(2)? as u32,
+                    rework_count: row.get::<_, i64>(3)? as u32,
+                    abandoned_count: row.get::<_, i64>(4)? as u32,
+                })
+            })
+            .map_err(StoreError::Sqlite)?;
+
+        let mut entry_stats = Vec::new();
+        for row in rows {
+            entry_stats.push(row.map_err(StoreError::Sqlite)?);
+        }
+
+        // Query 2: Active topics (ADR-002: NULL/empty feature_cycle excluded)
+        let mut stmt = conn
+            .prepare(
+                "SELECT DISTINCT feature_cycle FROM sessions \
+                 WHERE feature_cycle IS NOT NULL AND feature_cycle != ''",
+            )
+            .map_err(StoreError::Sqlite)?;
+
+        let rows = stmt
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(StoreError::Sqlite)?;
+
+        let mut active_topics = HashSet::new();
+        for row in rows {
+            active_topics.insert(row.map_err(StoreError::Sqlite)?);
+        }
+
+        // Query 3: Calibration rows (one per injection_log record with outcome)
+        let mut stmt = conn
+            .prepare(
+                "SELECT il.confidence, (s.outcome = 'success') as succeeded \
+                 FROM injection_log il \
+                 JOIN sessions s ON il.session_id = s.session_id \
+                 WHERE s.outcome IS NOT NULL",
+            )
+            .map_err(StoreError::Sqlite)?;
+
+        let rows = stmt
+            .query_map([], |row| {
+                let confidence: f64 = row.get(0)?;
+                let succeeded: bool = row.get::<_, i64>(1)? != 0;
+                Ok((confidence, succeeded))
+            })
+            .map_err(StoreError::Sqlite)?;
+
+        let mut calibration_rows = Vec::new();
+        for row in rows {
+            calibration_rows.push(row.map_err(StoreError::Sqlite)?);
+        }
+
+        // Query 4: Data window
+        let (session_count, earliest_session_at, latest_session_at) = conn
+            .query_row(
+                "SELECT COUNT(*), MIN(started_at), MAX(started_at) \
+                 FROM sessions WHERE outcome IS NOT NULL",
+                [],
+                |row| {
+                    let count = row.get::<_, i64>(0)? as u32;
+                    let earliest = row.get::<_, Option<i64>>(1)?.map(|v| v as u64);
+                    let latest = row.get::<_, Option<i64>>(2)?.map(|v| v as u64);
+                    Ok((count, earliest, latest))
+                },
+            )
+            .map_err(StoreError::Sqlite)?;
+
+        Ok(EffectivenessAggregates {
+            entry_stats,
+            active_topics,
+            calibration_rows,
+            session_count,
+            earliest_session_at,
+            latest_session_at,
+        })
+    }
+
+    /// Load entry metadata for effectiveness classification (crt-018).
+    ///
+    /// Returns metadata for all active entries (status = 0). NULL/empty topic
+    /// is mapped to "(unattributed)" in SQL (ADR-002, AC-16).
+    pub fn load_entry_classification_meta(&self) -> Result<Vec<EntryClassificationMeta>> {
+        let conn = self.lock_conn();
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, title, \
+                        CASE WHEN topic IS NULL OR topic = '' THEN '(unattributed)' ELSE topic END, \
+                        COALESCE(trust_source, ''), \
+                        helpful_count, unhelpful_count \
+                 FROM entries \
+                 WHERE status = 0",
+            )
+            .map_err(StoreError::Sqlite)?;
+
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(EntryClassificationMeta {
+                    entry_id: row.get::<_, i64>(0)? as u64,
+                    title: row.get::<_, String>(1)?,
+                    topic: row.get::<_, String>(2)?,
+                    trust_source: row.get::<_, String>(3)?,
+                    helpful_count: row.get::<_, i64>(4)? as u32,
+                    unhelpful_count: row.get::<_, i64>(5)? as u32,
+                })
+            })
+            .map_err(StoreError::Sqlite)?;
+
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row.map_err(StoreError::Sqlite)?);
+        }
+
+        Ok(result)
+    }
 }
 
 /// Aggregated status metrics computed via SQL (crt-013: ADR-004).
@@ -873,9 +1025,53 @@ pub struct StatusAggregates {
     pub unattributed_count: u64,
 }
 
+/// Raw effectiveness data aggregated by SQL (crt-018: ADR-001).
+///
+/// Returned by `Store::compute_effectiveness_aggregates()`. The server
+/// constructs `DataWindow` from the raw scalar fields to avoid a
+/// store -> engine dependency.
+#[derive(Debug, Clone)]
+pub struct EffectivenessAggregates {
+    /// Per-entry injection and outcome stats from injection_log JOIN sessions.
+    pub entry_stats: Vec<EntryInjectionStats>,
+    /// Topics (feature_cycle values) that have at least one session in the retained window.
+    pub active_topics: HashSet<String>,
+    /// Per-injection confidence and outcome for calibration bucketing.
+    pub calibration_rows: Vec<(f64, bool)>,
+    /// Number of sessions with a non-NULL outcome.
+    pub session_count: u32,
+    /// Earliest `started_at` among sessions with outcomes.
+    pub earliest_session_at: Option<u64>,
+    /// Latest `started_at` among sessions with outcomes.
+    pub latest_session_at: Option<u64>,
+}
+
+/// Per-entry aggregated injection + outcome data.
+#[derive(Debug, Clone)]
+pub struct EntryInjectionStats {
+    pub entry_id: u64,
+    pub injection_count: u32,
+    pub success_count: u32,
+    pub rework_count: u32,
+    pub abandoned_count: u32,
+}
+
+/// Metadata about entries needed for classification (from entries table).
+#[derive(Debug, Clone)]
+pub struct EntryClassificationMeta {
+    pub entry_id: u64,
+    pub title: String,
+    pub topic: String,
+    pub trust_source: String,
+    pub helpful_count: u32,
+    pub unhelpful_count: u32,
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::injection_log::InjectionLogRecord;
     use crate::schema::Status;
+    use crate::sessions::{SessionLifecycleStatus, SessionRecord};
     use crate::test_helpers::{TestDb, TestEntry};
 
     #[test]
@@ -883,7 +1079,6 @@ mod tests {
         let db = TestDb::new();
         let store = db.store();
 
-        // Insert 3 active entries: 2 convention, 1 pattern
         let id1 = store
             .insert(TestEntry::new("t", "convention").build())
             .unwrap();
@@ -894,7 +1089,6 @@ mod tests {
             .insert(TestEntry::new("t", "pattern").build())
             .unwrap();
 
-        // Deprecate one convention
         store.update_status(id1, Status::Deprecated).unwrap();
 
         let counts = store.count_active_entries_by_category().unwrap();
@@ -927,5 +1121,533 @@ mod tests {
 
         let counts = store.count_active_entries_by_category().unwrap();
         assert!(counts.is_empty());
+    }
+
+    // -- crt-018: effectiveness-store tests --
+
+    /// Helper to create a session with given parameters.
+    fn make_session(
+        session_id: &str,
+        feature_cycle: Option<&str>,
+        outcome: Option<&str>,
+        started_at: u64,
+    ) -> SessionRecord {
+        SessionRecord {
+            session_id: session_id.to_string(),
+            feature_cycle: feature_cycle.map(|s| s.to_string()),
+            agent_role: None,
+            started_at,
+            ended_at: None,
+            status: if outcome.is_some() {
+                SessionLifecycleStatus::Completed
+            } else {
+                SessionLifecycleStatus::Active
+            },
+            compaction_count: 0,
+            outcome: outcome.map(|s| s.to_string()),
+            total_injections: 0,
+        }
+    }
+
+    /// Helper to create injection log records.
+    fn make_injections(
+        session_id: &str,
+        entry_id: u64,
+        count: usize,
+        confidence: f64,
+    ) -> Vec<InjectionLogRecord> {
+        (0..count)
+            .map(|i| InjectionLogRecord {
+                log_id: 0,
+                session_id: session_id.to_string(),
+                entry_id,
+                confidence,
+                timestamp: 1000 + i as u64,
+            })
+            .collect()
+    }
+
+    // S-01: COUNT DISTINCT session deduplication (R-03)
+    #[test]
+    fn test_effectiveness_count_distinct_session_dedup() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let eid = store
+            .insert(TestEntry::new("auth", "convention").build())
+            .unwrap();
+        store
+            .insert_session(&make_session("s1", Some("crt-018"), Some("success"), 1000))
+            .unwrap();
+
+        // 3 injection_log records for same (entry, session) with different confidence
+        let records: Vec<InjectionLogRecord> = vec![0.3, 0.5, 0.8]
+            .into_iter()
+            .enumerate()
+            .map(|(i, conf)| InjectionLogRecord {
+                log_id: 0,
+                session_id: "s1".to_string(),
+                entry_id: eid,
+                confidence: conf,
+                timestamp: 1000 + i as u64,
+            })
+            .collect();
+        store.insert_injection_log_batch(&records).unwrap();
+
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        assert_eq!(agg.entry_stats.len(), 1);
+        assert_eq!(agg.entry_stats[0].injection_count, 1); // distinct sessions, not records
+        assert_eq!(agg.entry_stats[0].success_count, 1);
+    }
+
+    // S-02: Multiple distinct sessions counted correctly (R-03)
+    #[test]
+    fn test_effectiveness_multiple_distinct_sessions() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let eid = store
+            .insert(TestEntry::new("auth", "convention").build())
+            .unwrap();
+
+        store
+            .insert_session(&make_session("s1", Some("crt-018"), Some("success"), 1000))
+            .unwrap();
+        store
+            .insert_session(&make_session("s2", Some("crt-018"), Some("rework"), 2000))
+            .unwrap();
+        store
+            .insert_session(&make_session(
+                "s3",
+                Some("crt-018"),
+                Some("abandoned"),
+                3000,
+            ))
+            .unwrap();
+
+        for sid in &["s1", "s2", "s3"] {
+            store
+                .insert_injection_log_batch(&make_injections(sid, eid, 1, 0.9))
+                .unwrap();
+        }
+
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        assert_eq!(agg.entry_stats.len(), 1);
+        let stats = &agg.entry_stats[0];
+        assert_eq!(stats.injection_count, 3);
+        assert_eq!(stats.success_count, 1);
+        assert_eq!(stats.rework_count, 1);
+        assert_eq!(stats.abandoned_count, 1);
+    }
+
+    // S-03: Sessions with NULL outcome excluded (R-03)
+    #[test]
+    fn test_effectiveness_null_outcome_excluded() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let eid = store
+            .insert(TestEntry::new("auth", "convention").build())
+            .unwrap();
+
+        store
+            .insert_session(&make_session("s1", Some("crt-018"), Some("success"), 1000))
+            .unwrap();
+        // s2 has no outcome (active session)
+        store
+            .insert_session(&make_session("s2", Some("crt-018"), None, 2000))
+            .unwrap();
+
+        store
+            .insert_injection_log_batch(&make_injections("s1", eid, 1, 0.9))
+            .unwrap();
+        store
+            .insert_injection_log_batch(&make_injections("s2", eid, 1, 0.8))
+            .unwrap();
+
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        assert_eq!(agg.entry_stats.len(), 1);
+        assert_eq!(agg.entry_stats[0].injection_count, 1);
+        assert_eq!(agg.entry_stats[0].success_count, 1);
+    }
+
+    // S-04: Multiple entries with mixed outcomes
+    #[test]
+    fn test_effectiveness_multiple_entries_mixed_outcomes() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let e1 = store
+            .insert(TestEntry::new("auth", "convention").build())
+            .unwrap();
+        let e2 = store
+            .insert(TestEntry::new("logging", "pattern").build())
+            .unwrap();
+        let e3 = store
+            .insert(TestEntry::new("api", "decision").build())
+            .unwrap();
+
+        store
+            .insert_session(&make_session("s1", Some("f1"), Some("success"), 1000))
+            .unwrap();
+        store
+            .insert_session(&make_session("s2", Some("f1"), Some("rework"), 2000))
+            .unwrap();
+        store
+            .insert_session(&make_session("s3", Some("f2"), Some("abandoned"), 3000))
+            .unwrap();
+
+        // e1 injected into s1 and s2
+        store
+            .insert_injection_log_batch(&make_injections("s1", e1, 1, 0.9))
+            .unwrap();
+        store
+            .insert_injection_log_batch(&make_injections("s2", e1, 1, 0.8))
+            .unwrap();
+        // e2 injected into s2 only
+        store
+            .insert_injection_log_batch(&make_injections("s2", e2, 1, 0.7))
+            .unwrap();
+        // e3 injected into s3 only
+        store
+            .insert_injection_log_batch(&make_injections("s3", e3, 1, 0.6))
+            .unwrap();
+
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        assert_eq!(agg.entry_stats.len(), 3);
+
+        let find = |id: u64| agg.entry_stats.iter().find(|s| s.entry_id == id).unwrap();
+
+        let s1 = find(e1);
+        assert_eq!(s1.injection_count, 2);
+        assert_eq!(s1.success_count, 1);
+        assert_eq!(s1.rework_count, 1);
+
+        let s2 = find(e2);
+        assert_eq!(s2.injection_count, 1);
+        assert_eq!(s2.rework_count, 1);
+
+        let s3 = find(e3);
+        assert_eq!(s3.injection_count, 1);
+        assert_eq!(s3.abandoned_count, 1);
+    }
+
+    // S-05: NULL feature_cycle excluded from active_topics (R-02)
+    #[test]
+    fn test_effectiveness_null_feature_cycle_excluded() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        store
+            .insert_session(&make_session("s1", Some("crt-018"), Some("success"), 1000))
+            .unwrap();
+        store
+            .insert_session(&make_session("s2", None, Some("success"), 2000))
+            .unwrap();
+
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        assert!(agg.active_topics.contains("crt-018"));
+        assert_eq!(agg.active_topics.len(), 1);
+    }
+
+    // S-06: Empty string feature_cycle excluded (R-02)
+    #[test]
+    fn test_effectiveness_empty_feature_cycle_excluded() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        store
+            .insert_session(&make_session("s1", Some(""), Some("success"), 1000))
+            .unwrap();
+
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        assert!(agg.active_topics.is_empty());
+    }
+
+    // S-07: Multiple distinct feature_cycles (R-02)
+    #[test]
+    fn test_effectiveness_distinct_feature_cycles() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        store
+            .insert_session(&make_session("s1", Some("crt-018"), Some("success"), 1000))
+            .unwrap();
+        store
+            .insert_session(&make_session("s2", Some("crt-018"), Some("rework"), 2000))
+            .unwrap();
+        store
+            .insert_session(&make_session("s3", Some("vnc-001"), Some("success"), 3000))
+            .unwrap();
+
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        assert_eq!(agg.active_topics.len(), 2);
+        assert!(agg.active_topics.contains("crt-018"));
+        assert!(agg.active_topics.contains("vnc-001"));
+    }
+
+    // S-08: NULL feature_cycle session still contributes to injection stats (R-02)
+    #[test]
+    fn test_effectiveness_null_fc_contributes_to_injection_stats() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let eid = store
+            .insert(TestEntry::new("auth", "convention").build())
+            .unwrap();
+
+        // Session with NULL feature_cycle but has outcome
+        store
+            .insert_session(&make_session("s1", None, Some("success"), 1000))
+            .unwrap();
+        store
+            .insert_injection_log_batch(&make_injections("s1", eid, 1, 0.9))
+            .unwrap();
+
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        assert_eq!(agg.entry_stats.len(), 1);
+        assert_eq!(agg.entry_stats[0].success_count, 1);
+        assert!(agg.active_topics.is_empty());
+    }
+
+    // S-09: Calibration rows include all injection records (R-06)
+    #[test]
+    fn test_effectiveness_calibration_rows_all_records() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let eid = store
+            .insert(TestEntry::new("auth", "convention").build())
+            .unwrap();
+
+        store
+            .insert_session(&make_session("s1", Some("crt-018"), Some("success"), 1000))
+            .unwrap();
+
+        // 3 injection records with different confidence values
+        let records: Vec<InjectionLogRecord> = vec![0.3, 0.5, 0.8]
+            .into_iter()
+            .enumerate()
+            .map(|(i, conf)| InjectionLogRecord {
+                log_id: 0,
+                session_id: "s1".to_string(),
+                entry_id: eid,
+                confidence: conf,
+                timestamp: 1000 + i as u64,
+            })
+            .collect();
+        store.insert_injection_log_batch(&records).unwrap();
+
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        // Calibration has 3 rows (one per injection), not 1 (distinct session)
+        assert_eq!(agg.calibration_rows.len(), 3);
+        assert!(agg.calibration_rows.iter().all(|&(_, succeeded)| succeeded));
+    }
+
+    // S-10: Data window from sessions with outcomes
+    #[test]
+    fn test_effectiveness_data_window() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        store
+            .insert_session(&make_session("s1", Some("f1"), Some("success"), 1000))
+            .unwrap();
+        store
+            .insert_session(&make_session("s2", Some("f1"), Some("rework"), 2000))
+            .unwrap();
+        // s3 has no outcome -- should not be counted
+        store
+            .insert_session(&make_session("s3", Some("f1"), None, 3000))
+            .unwrap();
+
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        assert_eq!(agg.session_count, 2);
+        assert_eq!(agg.earliest_session_at, Some(1000));
+        assert_eq!(agg.latest_session_at, Some(2000));
+    }
+
+    // S-12: Active entries only
+    #[test]
+    fn test_classification_meta_active_only() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let _e1 = store
+            .insert(TestEntry::new("auth", "convention").build())
+            .unwrap();
+        let e2 = store
+            .insert(TestEntry::new("logging", "pattern").build())
+            .unwrap();
+
+        store.update_status(e2, Status::Deprecated).unwrap();
+
+        let meta = store.load_entry_classification_meta().unwrap();
+        assert_eq!(meta.len(), 1);
+        assert_eq!(meta[0].entry_id, _e1);
+    }
+
+    // S-13: NULL/empty topic mapped to "(unattributed)" (R-02)
+    #[test]
+    fn test_classification_meta_empty_topic_unattributed() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        // Insert entry with empty topic
+        let eid = store
+            .insert(TestEntry::new("", "convention").build())
+            .unwrap();
+
+        let meta = store.load_entry_classification_meta().unwrap();
+        assert_eq!(meta.len(), 1);
+        assert_eq!(meta[0].entry_id, eid);
+        assert_eq!(meta[0].topic, "(unattributed)");
+    }
+
+    // S-14: Fields correctly populated
+    #[test]
+    fn test_classification_meta_fields_populated() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let eid = store
+            .insert(
+                TestEntry::new("auth", "convention")
+                    .with_title("My Title")
+                    .with_trust_source("auto")
+                    .build(),
+            )
+            .unwrap();
+
+        // Set helpful_count and unhelpful_count via direct SQL
+        {
+            let conn = store.lock_conn();
+            conn.execute(
+                "UPDATE entries SET helpful_count = 5, unhelpful_count = 2 WHERE id = ?1",
+                rusqlite::params![eid as i64],
+            )
+            .unwrap();
+        }
+
+        let meta = store.load_entry_classification_meta().unwrap();
+        assert_eq!(meta.len(), 1);
+        let m = &meta[0];
+        assert_eq!(m.entry_id, eid);
+        assert_eq!(m.title, "My Title");
+        assert_eq!(m.topic, "auth");
+        assert_eq!(m.trust_source, "auto");
+        assert_eq!(m.helpful_count, 5);
+        assert_eq!(m.unhelpful_count, 2);
+    }
+
+    // S-15: Entry with no helpful/unhelpful counts
+    #[test]
+    fn test_classification_meta_zero_counts() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        store
+            .insert(TestEntry::new("auth", "convention").build())
+            .unwrap();
+
+        let meta = store.load_entry_classification_meta().unwrap();
+        assert_eq!(meta.len(), 1);
+        assert_eq!(meta[0].helpful_count, 0);
+        assert_eq!(meta[0].unhelpful_count, 0);
+    }
+
+    // S-16: Empty database returns empty aggregates
+    #[test]
+    fn test_effectiveness_empty_db() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        assert!(agg.entry_stats.is_empty());
+        assert!(agg.active_topics.is_empty());
+        assert!(agg.calibration_rows.is_empty());
+        assert_eq!(agg.session_count, 0);
+        assert_eq!(agg.earliest_session_at, None);
+        assert_eq!(agg.latest_session_at, None);
+    }
+
+    // S-17: Empty entry_classification_meta on empty DB
+    #[test]
+    fn test_classification_meta_empty_db() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        let meta = store.load_entry_classification_meta().unwrap();
+        assert!(meta.is_empty());
+    }
+
+    // S-18: Performance at scale (R-06)
+    #[test]
+    fn test_effectiveness_performance_at_scale() {
+        let db = TestDb::new();
+        let store = db.store();
+
+        // Insert 500 entries
+        let entry_ids: Vec<u64> = (0..500)
+            .map(|i| {
+                store
+                    .insert(
+                        TestEntry::new(&format!("topic-{}", i % 10), "convention")
+                            .with_title(&format!("Entry {i}"))
+                            .build(),
+                    )
+                    .unwrap()
+            })
+            .collect();
+
+        // Insert 200 sessions with outcomes
+        for i in 0..200 {
+            let outcome = match i % 3 {
+                0 => "success",
+                1 => "rework",
+                _ => "abandoned",
+            };
+            store
+                .insert_session(&make_session(
+                    &format!("s{i}"),
+                    Some(&format!("fc-{}", i % 5)),
+                    Some(outcome),
+                    1000 + i as u64,
+                ))
+                .unwrap();
+        }
+
+        // Insert 10,000 injection_log rows distributed across entries and sessions
+        let mut batch = Vec::new();
+        for i in 0..10_000 {
+            batch.push(InjectionLogRecord {
+                log_id: 0,
+                session_id: format!("s{}", i % 200),
+                entry_id: entry_ids[i % 500],
+                confidence: (i % 100) as f64 / 100.0,
+                timestamp: 2000 + i as u64,
+            });
+            // Insert in batches of 500 to avoid enormous single transactions
+            if batch.len() == 500 {
+                store.insert_injection_log_batch(&batch).unwrap();
+                batch.clear();
+            }
+        }
+        if !batch.is_empty() {
+            store.insert_injection_log_batch(&batch).unwrap();
+        }
+
+        let start = std::time::Instant::now();
+        let agg = store.compute_effectiveness_aggregates().unwrap();
+        let elapsed = start.elapsed();
+
+        assert!(
+            elapsed.as_millis() < 500,
+            "compute_effectiveness_aggregates took {}ms (budget: 500ms)",
+            elapsed.as_millis()
+        );
+        assert!(!agg.entry_stats.is_empty());
+        assert!(!agg.calibration_rows.is_empty());
+        assert!(agg.session_count > 0);
     }
 }
