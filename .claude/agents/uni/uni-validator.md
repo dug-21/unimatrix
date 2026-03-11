@@ -52,6 +52,12 @@ Your spawn prompt tells you which gate you're running. Read it carefully.
    - Data flow between components is coherent
    - No contradictions between component pseudocode files
 
+5. **Knowledge stewardship compliance** — Did design-phase agents fulfill stewardship obligations?
+   - Agent reports contain a `## Knowledge Stewardship` section
+   - Active-storage agents (architect, risk-strategist) have `Stored:` or `Declined:` entries
+   - Read-only agents (pseudocode) have `Queried:` entries
+   - Missing stewardship block = REWORKABLE FAIL. Present but no reason after "nothing novel" = WARN.
+
 ---
 
 ## Gate 3b: Code Review
@@ -91,6 +97,12 @@ Your spawn prompt tells you which gate you're running. Read it carefully.
    - Serialization/deserialization validates input — malformed data must not panic or corrupt state
    - `cargo audit` passes (no known CVEs in dependencies)
 
+7. **Knowledge stewardship compliance** — Did implementation agents fulfill stewardship obligations?
+   - Each rust-dev agent report contains a `## Knowledge Stewardship` section
+   - Reports have `Queried:` entries (evidence of /query-patterns before implementing)
+   - Reports have `Stored:` or "nothing novel to store -- {reason}" entries
+   - Missing stewardship block = REWORKABLE FAIL. Present but no reason after "nothing novel" = WARN.
+
 ---
 
 ## Gate 3c: Final Risk-Based Validation
@@ -116,6 +128,12 @@ Your spawn prompt tells you which gate you're running. Read it carefully.
    - Component structure matches architecture design
    - Integration points work as specified
    - No architectural drift from approved design
+
+5. **Knowledge stewardship compliance** — Did test-phase agents fulfill stewardship obligations?
+   - Tester agent report contains a `## Knowledge Stewardship` section
+   - Report has `Queried:` entries (evidence of procedure/pattern queries)
+   - Report has `Stored:` or "nothing novel to store -- {reason}" entries
+   - Missing stewardship block = REWORKABLE FAIL. Present but no reason after "nothing novel" = WARN.
 
 ---
 
@@ -243,11 +261,19 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 
 ## Knowledge Stewardship
 
-After completing your task, store reusable findings in Unimatrix:
-- Recurring gate failure patterns: `context_store(topic: "validator", category: "lesson-learned")`
-- Quality issues that appear across features: `context_store(topic: "validator", category: "pattern")`
+### After Completing
+Store recurring gate failure patterns via `/store-lesson`:
+- Patterns that appear across features (not one-off failures). Topic: `validation`. Category: `lesson-learned`.
+- Quality patterns that indicate systemic issues. Topic: `validation`. Category: `pattern` via `/store-pattern`.
 
 Do not store feature-specific gate results — those live in gate reports.
+
+### Report Block
+Include in your agent report:
+```markdown
+## Knowledge Stewardship
+- Stored: entry #{id} "{title}" via /store-lesson (or "nothing novel to store -- {reason}")
+```
 
 ## Self-Check (Run Before Returning Results)
 
@@ -257,3 +283,4 @@ Do not store feature-specific gate results — those live in gate reports.
 - [ ] Every FAIL includes specific evidence and fix recommendation
 - [ ] Cargo output was truncated (Gate 3b only)
 - [ ] Gate result accurately reflects findings (not artificially PASS when issues exist)
+- [ ] Knowledge Stewardship report block included

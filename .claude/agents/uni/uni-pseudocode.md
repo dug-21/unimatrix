@@ -110,6 +110,17 @@ Each component file is self-contained and includes:
 
 When part of a swarm, write your agent report to `product/features/{feature-id}/agents/{agent-id}-report.md` on completion.
 
+## Knowledge Stewardship
+
+Read-only tier — no storage expected. Query `/query-patterns` for affected crates before designing (already in MANDATORY section above). Report deviations from established patterns in your agent report.
+
+### Report Block
+```markdown
+## Knowledge Stewardship
+- Queried: /query-patterns for {crate} -- {findings summary or "no results"}
+- Deviations from established patterns: {list or "none"}
+```
+
 ## Self-Check (Run Before Returning Results)
 
 - [ ] Architecture output was read before writing any pseudocode
@@ -119,3 +130,4 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 - [ ] No TODO, placeholder functions, or TBD sections — gaps flagged explicitly
 - [ ] Shared types defined in OVERVIEW.md match usage in component files
 - [ ] All output files within `product/features/{feature-id}/pseudocode/`
+- [ ] Knowledge Stewardship report block included

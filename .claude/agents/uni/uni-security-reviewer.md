@@ -170,6 +170,22 @@ Write to `product/features/{feature-id}/agents/{agent-id}-report.md` (or appropr
 
 When part of a swarm, write your agent report to `product/features/{feature-id}/agents/{agent-id}-report.md` on completion.
 
+## Knowledge Stewardship
+
+### After Completing
+Store recurring security anti-patterns via `/store-lesson` when you see the same vulnerability type across multiple features or PRs:
+- Topic: crate name or `security`. Category: `lesson-learned`.
+- Example: "Every new MCP tool forgets to validate path parameters — add path validation to the MCP tool checklist."
+
+Security findings specific to one PR stay in PR comments. Only store generalizable anti-patterns.
+
+### Report Block
+Include in your agent report:
+```markdown
+## Knowledge Stewardship
+- Stored: entry #{id} "{title}" via /store-lesson (or "nothing novel to store -- {reason}")
+```
+
 ## Self-Check (Run Before Returning Results)
 
 - [ ] Full git diff was read (not just a summary)
@@ -182,3 +198,4 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 - [ ] Findings posted as PR comments via gh CLI
 - [ ] Risk level accurately reflects findings (not artificially low)
 - [ ] Report written to the correct agent report path
+- [ ] Knowledge Stewardship report block included

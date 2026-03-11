@@ -238,6 +238,7 @@ Task(subagent_type: "uni-validator",
     - Integration smoke tests passed
     - Any xfail markers added have corresponding GH Issues
     - If bug was discovered by integration test, that test's xfail marker was removed
+    - Knowledge stewardship: investigator and rust-dev reports contain ## Knowledge Stewardship block with Queried/Stored/Declined entries
 
     Bug report: {bug description}
     Root cause diagnosis: {from approved diagnosis}
@@ -390,8 +391,15 @@ BUGFIX LEADER (you):
 
 After presenting the PR to the human, record the bugfix outcome using Unimatrix skills:
 
-1. **Always**: `/record-outcome` — record the bugfix result (pass/fail, root cause summary, PR link)
-2. **If root cause is generalizable**: `/store-lesson` — persist the root cause pattern so future investigators find it via `/knowledge-search`
+1. **Always**: `/record-outcome` — record the bugfix result (pass/fail, root cause summary, PR link). Include `caused_by_feature:{feature-id}` tag when the originating feature is known.
+2. **If root cause is generalizable**: `/store-lesson` — persist the root cause pattern so future investigators find it via `/knowledge-search`. Tag with `caused_by_feature:{feature-id}` when applicable. Include what could have been done during the originating feature's design phase to prevent the bug.
 3. **If diagnostic/repair sequence is reproducible**: `/store-procedure` — store the technique so future agents can find it
+
+### Stewardship Compliance
+
+The bugfix gate validator checks stewardship compliance for investigator and rust-dev agents:
+- Investigator report must include `## Knowledge Stewardship` with `Queried:` and `Stored:`/`Declined:` entries
+- Rust-dev report must include `## Knowledge Stewardship` with `Queried:` and `Stored:`/`Declined:` entries
+- Missing stewardship block = REWORKABLE FAIL
 
 All phase outputs (diagnosis, fix summary, gate results, security review) are posted as **GH Issue comments** — never written to the filesystem.

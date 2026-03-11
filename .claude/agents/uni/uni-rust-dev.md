@@ -105,6 +105,29 @@ Commit your work before returning: `impl({component}): {description} (#{issue})`
 
 When part of a swarm, write your agent report to `product/features/{feature-id}/agents/{agent-id}-report.md` on completion.
 
+## Knowledge Stewardship
+
+### Before Starting
+Query `/query-patterns` for the crate(s) you're implementing in. Look for gotchas, traps, and conventions specific to the affected crate. Apply what you find — don't rediscover known patterns.
+
+### After Completing
+Store implementation patterns you discovered via `/store-pattern`. Focus on gotchas invisible in source code — things that compile but break at runtime, non-obvious integration requirements, crate-specific traps. Use the crate name as topic (e.g., `unimatrix-store`).
+
+Examples of what to store:
+- "Don't hold `lock_conn()` across await points — deadlocks under concurrent requests"
+- "redb transactions must be committed before `TableDefinition` reference drops"
+- "`#[serde(default)]` required on all new `EntryRecord` fields or migration breaks silently"
+
+If nothing novel was discovered, state that explicitly in your report with a reason.
+
+### Report Block
+Include in your agent report:
+```markdown
+## Knowledge Stewardship
+- Queried: /query-patterns for {crate} -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /store-pattern (or "nothing novel to store -- {reason}")
+```
+
 ## Self-Check (Run Before Returning Results)
 
 - [ ] `cargo build --workspace` passes (zero errors)
@@ -116,3 +139,4 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 - [ ] Code follows validated pseudocode — no silent deviations
 - [ ] Test cases match component test plan expectations
 - [ ] No source file exceeds 500 lines — split into modules if needed
+- [ ] Knowledge Stewardship report block included with Queried and Stored/Declined entries
