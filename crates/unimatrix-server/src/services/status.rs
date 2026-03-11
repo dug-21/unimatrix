@@ -3,7 +3,7 @@
 //! Rewritten for nxs-008: direct SQL queries replace compat layer.
 //! Uses SQL aggregation where possible.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -269,6 +269,7 @@ impl StatusService {
                     next_maintenance_scheduled: None,
                     extraction_stats: None,
                     coherence_by_source: Vec::new(),
+                    effectiveness: None,
                 };
                 Ok((report, active_entries))
             },
@@ -521,6 +522,84 @@ impl StatusService {
         .unwrap_or_else(|_| vec![]);
         report.retrospected_feature_count = retrospected.len() as u64;
 
+        // Phase 8: Effectiveness analysis (crt-018)
+        let store_for_eff = Arc::clone(&self.store);
+        let effectiveness = match tokio::task::spawn_blocking(move || {
+            let aggregates = store_for_eff.compute_effectiveness_aggregates()?;
+            let entry_meta = store_for_eff.load_entry_classification_meta()?;
+            Ok::<_, StoreError>((aggregates, entry_meta))
+        })
+        .await
+        {
+            Ok(Ok((aggregates, entry_meta))) => {
+                use unimatrix_engine::effectiveness::{
+                    NOISY_TRUST_SOURCES, build_report, classify_entry,
+                };
+
+                let stats_map: HashMap<u64, &unimatrix_store::read::EntryInjectionStats> =
+                    aggregates
+                        .entry_stats
+                        .iter()
+                        .map(|s| (s.entry_id, s))
+                        .collect();
+
+                let classifications: Vec<unimatrix_engine::effectiveness::EntryEffectiveness> =
+                    entry_meta
+                        .iter()
+                        .map(|meta| {
+                            let (inj_count, success, rework, abandoned) =
+                                match stats_map.get(&meta.entry_id) {
+                                    Some(stats) => (
+                                        stats.injection_count,
+                                        stats.success_count,
+                                        stats.rework_count,
+                                        stats.abandoned_count,
+                                    ),
+                                    None => (0, 0, 0, 0),
+                                };
+
+                            let topic_has_sessions = aggregates.active_topics.contains(&meta.topic);
+
+                            classify_entry(
+                                meta.entry_id,
+                                &meta.title,
+                                &meta.topic,
+                                &meta.trust_source,
+                                meta.helpful_count,
+                                meta.unhelpful_count,
+                                inj_count,
+                                success,
+                                rework,
+                                abandoned,
+                                topic_has_sessions,
+                                NOISY_TRUST_SOURCES,
+                            )
+                        })
+                        .collect();
+
+                let data_window = unimatrix_engine::effectiveness::DataWindow {
+                    session_count: aggregates.session_count,
+                    earliest_session_at: aggregates.earliest_session_at,
+                    latest_session_at: aggregates.latest_session_at,
+                };
+
+                Some(build_report(
+                    classifications,
+                    &aggregates.calibration_rows,
+                    data_window,
+                ))
+            }
+            Ok(Err(e)) => {
+                tracing::warn!("Effectiveness query failed: {e}");
+                None
+            }
+            Err(join_err) => {
+                tracing::warn!("Effectiveness task panicked: {join_err}");
+                None
+            }
+        };
+        report.effectiveness = effectiveness;
+
         Ok((report, active_entries))
     }
 
@@ -699,10 +778,16 @@ impl StatusService {
                     let sid = sweep_result.session_id.clone();
                     let fc_owned = fc.clone();
                     let _ = tokio::task::spawn_blocking(move || {
-                        crate::uds::listener::update_session_feature_cycle_pub(&store_fc, &sid, &fc_owned)
+                        crate::uds::listener::update_session_feature_cycle_pub(
+                            &store_fc, &sid, &fc_owned,
+                        )
                     });
                 }
-                crate::uds::listener::write_signals_to_queue(&sweep_result.output, &store_for_sweep).await;
+                crate::uds::listener::write_signals_to_queue(
+                    &sweep_result.output,
+                    &store_for_sweep,
+                )
+                .await;
             }
             crate::uds::listener::run_confidence_consumer(
                 &store_for_sweep,

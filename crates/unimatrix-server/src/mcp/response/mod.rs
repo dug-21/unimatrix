@@ -630,6 +630,7 @@ mod tests {
             next_maintenance_scheduled: None,
             extraction_stats: None,
             coherence_by_source: Vec::new(),
+            effectiveness: None,
         }
     }
 
@@ -714,6 +715,7 @@ mod tests {
             next_maintenance_scheduled: None,
             extraction_stats: None,
             coherence_by_source: Vec::new(),
+            effectiveness: None,
         };
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
@@ -1028,6 +1030,7 @@ mod tests {
             next_maintenance_scheduled: None,
             extraction_stats: None,
             coherence_by_source: Vec::new(),
+            effectiveness: None,
         };
 
         let result = format_status_report(&report, ResponseFormat::Summary);
@@ -1097,6 +1100,7 @@ mod tests {
             next_maintenance_scheduled: None,
             extraction_stats: None,
             coherence_by_source: Vec::new(),
+            effectiveness: None,
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1168,6 +1172,7 @@ mod tests {
             next_maintenance_scheduled: None,
             extraction_stats: None,
             coherence_by_source: Vec::new(),
+            effectiveness: None,
         };
 
         let result = format_status_report(&report, ResponseFormat::Json);
@@ -1231,6 +1236,7 @@ mod tests {
             next_maintenance_scheduled: None,
             extraction_stats: None,
             coherence_by_source: Vec::new(),
+            effectiveness: None,
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1298,6 +1304,7 @@ mod tests {
             next_maintenance_scheduled: None,
             extraction_stats: None,
             coherence_by_source: Vec::new(),
+            effectiveness: None,
         }
     }
 
@@ -1432,6 +1439,7 @@ mod tests {
             next_maintenance_scheduled: None,
             extraction_stats: None,
             coherence_by_source: Vec::new(),
+            effectiveness: None,
         }
     }
 

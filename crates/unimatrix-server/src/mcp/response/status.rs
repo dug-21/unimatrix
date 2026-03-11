@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use rmcp::model::{CallToolResult, Content};
 use serde::Serialize;
 
-use super::{format_timestamp, ResponseFormat};
+use super::{ResponseFormat, format_timestamp};
 
 /// Aggregated health metrics for format_status_report.
 pub struct StatusReport {
@@ -95,6 +95,8 @@ pub struct StatusReport {
     pub extraction_stats: Option<ExtractionStatsResponse>,
     /// Per-trust-source coherence lambda scores.
     pub coherence_by_source: Vec<(String, f64)>,
+    /// Effectiveness analysis results (None if no injection data or query failure).
+    pub effectiveness: Option<unimatrix_engine::effectiveness::EffectivenessReport>,
 }
 
 /// Extraction pipeline statistics for status reporting (col-013).
@@ -140,7 +142,10 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 report.total_correction_count
             );
             if report.contradiction_scan_performed {
-                text.push_str(&format!(" | Contradictions: {}", report.contradiction_count));
+                text.push_str(&format!(
+                    " | Contradictions: {}",
+                    report.contradiction_count
+                ));
             }
             text.push_str(&format!(
                 "\nCoherence: {:.4} (confidence_freshness: {:.4}, graph_quality: {:.4}, embedding_consistency: {:.4}, contradiction_density: {:.4})",
@@ -209,10 +214,40 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 ));
             }
             if !report.coherence_by_source.is_empty() {
-                let pairs: Vec<String> = report.coherence_by_source.iter()
+                let pairs: Vec<String> = report
+                    .coherence_by_source
+                    .iter()
                     .map(|(s, l)| format!("{}={:.4}", s, l))
                     .collect();
                 text.push_str(&format!("\nCoherence by source: {}", pairs.join(", ")));
+            }
+            // Effectiveness line (crt-018, FR-05)
+            match &report.effectiveness {
+                Some(eff) => {
+                    use unimatrix_engine::effectiveness::EffectivenessCategory;
+                    let mut effective = 0u32;
+                    let mut settled = 0u32;
+                    let mut unmatched = 0u32;
+                    let mut ineffective = 0u32;
+                    let mut noisy = 0u32;
+                    for (cat, count) in &eff.by_category {
+                        match cat {
+                            EffectivenessCategory::Effective => effective = *count,
+                            EffectivenessCategory::Settled => settled = *count,
+                            EffectivenessCategory::Unmatched => unmatched = *count,
+                            EffectivenessCategory::Ineffective => ineffective = *count,
+                            EffectivenessCategory::Noisy => noisy = *count,
+                        }
+                    }
+                    text.push_str(&format!(
+                        "\nEffectiveness: {} effective, {} settled, {} unmatched, {} ineffective, {} noisy ({} sessions analyzed)",
+                        effective, settled, unmatched, ineffective, noisy,
+                        eff.data_window.session_count
+                    ));
+                }
+                None => {
+                    text.push_str("\nEffectiveness: no injection data");
+                }
             }
             CallToolResult::success(vec![Content::text(text)])
         }
@@ -223,7 +258,10 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             text.push_str(&format!("| Active | {} |\n", report.total_active));
             text.push_str(&format!("| Deprecated | {} |\n", report.total_deprecated));
             text.push_str(&format!("| Proposed | {} |\n", report.total_proposed));
-            text.push_str(&format!("| Quarantined | {} |\n\n", report.total_quarantined));
+            text.push_str(&format!(
+                "| Quarantined | {} |\n\n",
+                report.total_quarantined
+            ));
 
             text.push_str("### Category Distribution\n");
             text.push_str("| Category | Count |\n|----------|-------|\n");
@@ -270,14 +308,21 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                         "{} contradiction(s) found:\n\n",
                         report.contradiction_count
                     ));
-                    text.push_str("| Entry A | Entry B | Similarity | Conflict Score | Explanation |\n");
-                    text.push_str("|---------|---------|-----------|---------------|-------------|\n");
+                    text.push_str(
+                        "| Entry A | Entry B | Similarity | Conflict Score | Explanation |\n",
+                    );
+                    text.push_str(
+                        "|---------|---------|-----------|---------------|-------------|\n",
+                    );
                     for pair in &report.contradictions {
                         text.push_str(&format!(
                             "| #{} {} | #{} {} | {:.2} | {:.2} | {} |\n",
-                            pair.entry_id_a, pair.title_a,
-                            pair.entry_id_b, pair.title_b,
-                            pair.similarity, pair.conflict_score,
+                            pair.entry_id_a,
+                            pair.title_a,
+                            pair.entry_id_b,
+                            pair.title_b,
+                            pair.similarity,
+                            pair.conflict_score,
                             pair.explanation,
                         ));
                     }
@@ -361,8 +406,10 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 for cluster in &report.top_co_access_pairs {
                     text.push_str(&format!(
                         "| {} (#{}) | {} (#{}) | {} | {} |\n",
-                        cluster.title_a, cluster.entry_id_a,
-                        cluster.title_b, cluster.entry_id_b,
+                        cluster.title_a,
+                        cluster.entry_id_a,
+                        cluster.title_b,
+                        cluster.entry_id_b,
                         cluster.count,
                         format_timestamp(cluster.last_updated),
                     ));
@@ -426,16 +473,10 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             {
                 text.push_str("\n### Background Tick\n\n");
                 if let Some(ts) = report.last_maintenance_run {
-                    text.push_str(&format!(
-                        "- Last maintenance: {}\n",
-                        format_timestamp(ts)
-                    ));
+                    text.push_str(&format!("- Last maintenance: {}\n", format_timestamp(ts)));
                 }
                 if let Some(ts) = report.next_maintenance_scheduled {
-                    text.push_str(&format!(
-                        "- Next scheduled: {}\n",
-                        format_timestamp(ts)
-                    ));
+                    text.push_str(&format!("- Next scheduled: {}\n", format_timestamp(ts)));
                 }
                 if let Some(ref stats) = report.extraction_stats {
                     text.push_str(&format!(
@@ -447,10 +488,7 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                         stats.entries_rejected_total
                     ));
                     if let Some(ts) = stats.last_extraction_run {
-                        text.push_str(&format!(
-                            "- Last extraction: {}\n",
-                            format_timestamp(ts)
-                        ));
+                        text.push_str(&format!("- Last extraction: {}\n", format_timestamp(ts)));
                     }
                     if !stats.rules_fired.is_empty() {
                         text.push_str("\n#### Rules Fired\n");
@@ -468,6 +506,116 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 text.push_str("| Source | Lambda |\n|--------|--------|\n");
                 for (source, lambda) in &report.coherence_by_source {
                     text.push_str(&format!("| {} | {:.4} |\n", source, lambda));
+                }
+            }
+
+            // Effectiveness section (crt-018, FR-06)
+            match &report.effectiveness {
+                Some(eff) => {
+                    let span = match (
+                        eff.data_window.earliest_session_at,
+                        eff.data_window.latest_session_at,
+                    ) {
+                        (Some(e), Some(l)) if l > e => format!("{} days", (l - e) / 86400),
+                        _ => "< 1 day".to_string(),
+                    };
+                    text.push_str(&format!(
+                        "\n### Effectiveness Analysis\n\nAnalysis covers {} sessions over {}.\n\n",
+                        eff.data_window.session_count, span
+                    ));
+
+                    // Category table
+                    text.push_str(
+                        "| Category | Count | % of Active |\n|----------|-------|-------------|\n",
+                    );
+                    let total: u32 = eff.by_category.iter().map(|(_, c)| c).sum();
+                    for (cat, count) in &eff.by_category {
+                        let pct = if total > 0 {
+                            (*count as f64 / total as f64) * 100.0
+                        } else {
+                            0.0
+                        };
+                        text.push_str(&format!("| {:?} | {} | {:.1}% |\n", cat, count, pct));
+                    }
+
+                    // Per-source table
+                    text.push_str(
+                        "\n| Source | Effective | Settled | Unmatched | Ineffective | Noisy | Utility |\n",
+                    );
+                    text.push_str(
+                        "|--------|-----------|---------|-----------|-------------|-------|---------|\n",
+                    );
+                    for s in &eff.by_source {
+                        text.push_str(&format!(
+                            "| {} | {} | {} | {} | {} | {} | {:.2} |\n",
+                            s.trust_source,
+                            s.effective_count,
+                            s.settled_count,
+                            s.unmatched_count,
+                            s.ineffective_count,
+                            s.noisy_count,
+                            s.aggregate_utility
+                        ));
+                    }
+
+                    // Calibration table
+                    text.push_str("\n| Confidence | Injections | Actual Success | Expected |\n");
+                    text.push_str("|------------|------------|----------------|----------|\n");
+                    for b in &eff.calibration {
+                        let expected = (b.confidence_lower + b.confidence_upper) / 2.0;
+                        text.push_str(&format!(
+                            "| {:.1}-{:.1} | {} | {:.2} | {:.2} |\n",
+                            b.confidence_lower,
+                            b.confidence_upper,
+                            b.entry_count,
+                            b.actual_success_rate,
+                            expected
+                        ));
+                    }
+
+                    // Top ineffective entries (R-12: up to 10 with entry_id, title)
+                    if !eff.top_ineffective.is_empty() {
+                        text.push_str("\n**Top Ineffective Entries:**\n\n");
+                        text.push_str(
+                            "| ID | Title | Injections | Success Rate |\n|----|-------|------------|-------------|\n",
+                        );
+                        for e in &eff.top_ineffective {
+                            let safe_title = e.title.replace('|', "/").replace('\n', " ");
+                            text.push_str(&format!(
+                                "| {} | {} | {} | {:.2} |\n",
+                                e.entry_id, safe_title, e.injection_count, e.success_rate
+                            ));
+                        }
+                    }
+
+                    // Noisy entries
+                    if !eff.noisy_entries.is_empty() {
+                        text.push_str("\n**Noisy Entries:**\n\n");
+                        text.push_str("| ID | Title |\n|----|-------|\n");
+                        for e in &eff.noisy_entries {
+                            let safe_title = e.title.replace('|', "/").replace('\n', " ");
+                            text.push_str(&format!("| {} | {} |\n", e.entry_id, safe_title));
+                        }
+                    }
+
+                    // Unmatched entries (up to 10)
+                    if !eff.unmatched_entries.is_empty() {
+                        text.push_str("\n**Unmatched Entries:**\n\n");
+                        text.push_str("| ID | Title | Topic |\n|----|-------|-------|\n");
+                        for e in &eff.unmatched_entries {
+                            let safe_title = e.title.replace('|', "/").replace('\n', " ");
+                            let safe_topic = e.topic.replace('|', "/").replace('\n', " ");
+                            text.push_str(&format!(
+                                "| {} | {} | {} |\n",
+                                e.entry_id, safe_title, safe_topic
+                            ));
+                        }
+                    }
+                }
+                None => {
+                    text.push_str(
+                        "\n### Effectiveness Analysis\n\nInsufficient injection data for analysis.\n",
+                    );
                 }
             }
 
@@ -527,6 +675,8 @@ struct StatusReportJson {
     extraction_stats: Option<ExtractionStatsResponse>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     coherence_by_source: Vec<CoherenceBySourceEntry>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    effectiveness: Option<EffectivenessReportJson>,
 }
 
 #[derive(Serialize)]
@@ -593,6 +743,74 @@ struct ObservationJson {
     retrospected_feature_count: u64,
 }
 
+// ---------------------------------------------------------------------------
+// Effectiveness JSON types (crt-018)
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+struct EffectivenessReportJson {
+    by_category: Vec<CategoryCount>,
+    by_source: Vec<SourceEffectivenessJson>,
+    calibration_buckets: Vec<CalibrationBucketJson>,
+    ineffective_entries: Vec<IneffectiveEntryJson>,
+    noisy_entries: Vec<NoisyEntryJson>,
+    unmatched_entries: Vec<UnmatchedEntryJson>,
+    data_window: DataWindowJson,
+}
+
+#[derive(Serialize)]
+struct CategoryCount {
+    category: String,
+    count: u32,
+}
+
+#[derive(Serialize)]
+struct SourceEffectivenessJson {
+    trust_source: String,
+    effective: u32,
+    settled: u32,
+    unmatched: u32,
+    ineffective: u32,
+    noisy: u32,
+    utility_ratio: f64,
+}
+
+#[derive(Serialize)]
+struct CalibrationBucketJson {
+    range_low: f64,
+    range_high: f64,
+    injection_count: u32,
+    actual_success_rate: f64,
+    expected_success_rate: f64,
+}
+
+#[derive(Serialize)]
+struct IneffectiveEntryJson {
+    entry_id: u64,
+    title: String,
+    injection_count: u32,
+    success_rate: f64,
+}
+
+#[derive(Serialize)]
+struct NoisyEntryJson {
+    entry_id: u64,
+    title: String,
+}
+
+#[derive(Serialize)]
+struct UnmatchedEntryJson {
+    entry_id: u64,
+    title: String,
+    topic: String,
+}
+
+#[derive(Serialize)]
+struct DataWindowJson {
+    session_count: u32,
+    span_days: u64,
+}
+
 impl From<&StatusReport> for StatusReportJson {
     fn from(r: &StatusReport) -> Self {
         let contradictions = if r.contradiction_scan_performed {
@@ -646,6 +864,95 @@ impl From<&StatusReport> for StatusReportJson {
             None
         };
 
+        // Effectiveness mapping (crt-018)
+        let effectiveness = r.effectiveness.as_ref().map(|eff| {
+            let by_category = eff
+                .by_category
+                .iter()
+                .map(|(cat, count)| CategoryCount {
+                    category: format!("{:?}", cat).to_lowercase(),
+                    count: *count,
+                })
+                .collect();
+
+            let by_source = eff
+                .by_source
+                .iter()
+                .map(|s| SourceEffectivenessJson {
+                    trust_source: s.trust_source.clone(),
+                    effective: s.effective_count,
+                    settled: s.settled_count,
+                    unmatched: s.unmatched_count,
+                    ineffective: s.ineffective_count,
+                    noisy: s.noisy_count,
+                    utility_ratio: s.aggregate_utility,
+                })
+                .collect();
+
+            let calibration_buckets = eff
+                .calibration
+                .iter()
+                .map(|b| CalibrationBucketJson {
+                    range_low: b.confidence_lower,
+                    range_high: b.confidence_upper,
+                    injection_count: b.entry_count,
+                    actual_success_rate: b.actual_success_rate,
+                    expected_success_rate: (b.confidence_lower + b.confidence_upper) / 2.0,
+                })
+                .collect();
+
+            let ineffective_entries = eff
+                .top_ineffective
+                .iter()
+                .map(|e| IneffectiveEntryJson {
+                    entry_id: e.entry_id,
+                    title: e.title.clone(),
+                    injection_count: e.injection_count,
+                    success_rate: e.success_rate,
+                })
+                .collect();
+
+            let noisy_entries = eff
+                .noisy_entries
+                .iter()
+                .map(|e| NoisyEntryJson {
+                    entry_id: e.entry_id,
+                    title: e.title.clone(),
+                })
+                .collect();
+
+            let unmatched_entries = eff
+                .unmatched_entries
+                .iter()
+                .map(|e| UnmatchedEntryJson {
+                    entry_id: e.entry_id,
+                    title: e.title.clone(),
+                    topic: e.topic.clone(),
+                })
+                .collect();
+
+            let span_days = match (
+                eff.data_window.earliest_session_at,
+                eff.data_window.latest_session_at,
+            ) {
+                (Some(earliest), Some(latest)) if latest > earliest => (latest - earliest) / 86400,
+                _ => 0,
+            };
+
+            EffectivenessReportJson {
+                by_category,
+                by_source,
+                calibration_buckets,
+                ineffective_entries,
+                noisy_entries,
+                unmatched_entries,
+                data_window: DataWindowJson {
+                    session_count: eff.data_window.session_count,
+                    span_days,
+                },
+            }
+        });
+
         StatusReportJson {
             total_active: r.total_active,
             total_deprecated: r.total_deprecated,
@@ -692,12 +999,15 @@ impl From<&StatusReport> for StatusReportJson {
             last_maintenance_run: r.last_maintenance_run,
             next_maintenance_scheduled: r.next_maintenance_scheduled,
             extraction_stats: r.extraction_stats.clone(),
-            coherence_by_source: r.coherence_by_source.iter()
+            coherence_by_source: r
+                .coherence_by_source
+                .iter()
                 .map(|(s, l)| CoherenceBySourceEntry {
                     source: s.clone(),
                     lambda: *l,
                 })
                 .collect(),
+            effectiveness,
         }
     }
 }
