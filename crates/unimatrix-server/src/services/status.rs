@@ -7,11 +7,11 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use unimatrix_core::{CoreError, EmbedService, Store, VectorAdapter, VectorIndex};
 use unimatrix_core::async_wrappers::AsyncEntryStore;
+use unimatrix_core::{CoreError, EmbedService, Store, VectorAdapter, VectorIndex};
 use unimatrix_store::rusqlite;
+use unimatrix_store::sessions::{DELETE_THRESHOLD_SECS, TIMED_OUT_THRESHOLD_SECS};
 use unimatrix_store::{EntryRecord, StoreError};
-use unimatrix_store::sessions::{TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS};
 
 use unimatrix_adapt::AdaptationService;
 
@@ -19,7 +19,7 @@ use crate::infra::coherence;
 use crate::infra::contradiction;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::session::SessionRegistry;
-use crate::mcp::response::status::{StatusReport, CoAccessClusterEntry};
+use crate::mcp::response::status::{CoAccessClusterEntry, StatusReport};
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
 
@@ -50,7 +50,12 @@ impl StatusService {
         embed_service: Arc<EmbedServiceHandle>,
         adapt_service: Arc<AdaptationService>,
     ) -> Self {
-        StatusService { store, vector_index, embed_service, adapt_service }
+        StatusService {
+            store,
+            vector_index,
+            embed_service,
+            adapt_service,
+        }
     }
 
     /// Compute the full status report using direct SQL queries.
@@ -64,183 +69,211 @@ impl StatusService {
     ) -> Result<(StatusReport, Vec<EntryRecord>), ServiceError> {
         // Phase 1: SQL queries (spawn_blocking)
         let store = Arc::clone(&self.store);
-        let report_result = tokio::task::spawn_blocking(move || -> Result<(StatusReport, Vec<EntryRecord>), crate::error::ServerError> {
-            let conn = store.lock_conn();
+        let report_result = tokio::task::spawn_blocking(
+            move || -> Result<(StatusReport, Vec<EntryRecord>), crate::error::ServerError> {
+                let conn = store.lock_conn();
 
-            // Status counters from counters table
-            let total_active = unimatrix_store::counters::read_counter(&conn, "total_active")
-                .unwrap_or(0);
-            let total_deprecated = unimatrix_store::counters::read_counter(&conn, "total_deprecated")
-                .unwrap_or(0);
-            let total_proposed = unimatrix_store::counters::read_counter(&conn, "total_proposed")
-                .unwrap_or(0);
-            let total_quarantined = unimatrix_store::counters::read_counter(&conn, "total_quarantined")
-                .unwrap_or(0);
+                // Status counters from counters table
+                let total_active =
+                    unimatrix_store::counters::read_counter(&conn, "total_active").unwrap_or(0);
+                let total_deprecated =
+                    unimatrix_store::counters::read_counter(&conn, "total_deprecated").unwrap_or(0);
+                let total_proposed =
+                    unimatrix_store::counters::read_counter(&conn, "total_proposed").unwrap_or(0);
+                let total_quarantined =
+                    unimatrix_store::counters::read_counter(&conn, "total_quarantined")
+                        .unwrap_or(0);
 
-            // Category distribution via SQL aggregation
-            let mut category_distribution: BTreeMap<String, u64> = BTreeMap::new();
-            if let Some(ref filter_cat) = category_filter {
-                let count: i64 = conn.query_row(
-                    "SELECT COUNT(*) FROM entries WHERE category = ?1",
-                    rusqlite::params![filter_cat],
-                    |row| row.get::<_, i64>(0),
-                ).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                if count > 0 {
-                    category_distribution.insert(filter_cat.clone(), count as u64);
-                }
-            } else {
-                let mut stmt = conn.prepare(
-                    "SELECT category, COUNT(*) FROM entries GROUP BY category"
-                ).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                let rows = stmt.query_map([], |row| {
-                    let cat: String = row.get(0)?;
-                    let count: i64 = row.get(1)?;
-                    Ok((cat, count as u64))
-                }).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                for item in rows {
-                    let (cat, count): (String, u64) = item
-                        .map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                    category_distribution.insert(cat, count);
-                }
-            }
-
-            // Topic distribution via SQL aggregation
-            let mut topic_distribution: BTreeMap<String, u64> = BTreeMap::new();
-            if let Some(ref filter_topic) = topic_filter {
-                let count: i64 = conn.query_row(
-                    "SELECT COUNT(*) FROM entries WHERE topic = ?1",
-                    rusqlite::params![filter_topic],
-                    |row| row.get::<_, i64>(0),
-                ).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                if count > 0 {
-                    topic_distribution.insert(filter_topic.clone(), count as u64);
-                }
-            } else {
-                let mut stmt = conn.prepare(
-                    "SELECT topic, COUNT(*) FROM entries GROUP BY topic"
-                ).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                let rows = stmt.query_map([], |row| {
-                    let topic: String = row.get(0)?;
-                    let count: i64 = row.get(1)?;
-                    Ok((topic, count as u64))
-                }).map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                for item in rows {
-                    let (topic, count): (String, u64) = item
-                        .map_err(|e| crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                    topic_distribution.insert(topic, count);
-                }
-            }
-
-            // Release the connection lock before calling store methods that
-            // re-acquire it. std::sync::Mutex is non-reentrant: holding `conn`
-            // while calling lock_conn() again would deadlock (#176).
-            drop(conn);
-
-            // Correction chain metrics + security metrics via SQL aggregation (crt-013)
-            let aggregates = store.compute_status_aggregates()
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-
-            let entries_with_supersedes = aggregates.supersedes_count;
-            let entries_with_superseded_by = aggregates.superseded_by_count;
-            let total_correction_count = aggregates.total_correction_count;
-            let trust_source_dist: BTreeMap<String, u64> = aggregates.trust_source_distribution;
-            let entries_without_attribution = aggregates.unattributed_count;
-
-            // Active entries with tags (for lambda computation)
-            let active_entries = store.load_active_entries_with_tags()
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-
-            // Outcome statistics (targeted query for category="outcome" only)
-            let outcome_entries = store.load_outcome_entries_with_tags()
-                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
-
-            let mut total_outcomes = 0u64;
-            let mut outcomes_by_type: BTreeMap<String, u64> = BTreeMap::new();
-            let mut outcomes_by_result: BTreeMap<String, u64> = BTreeMap::new();
-            let mut outcomes_by_feature_cycle: BTreeMap<String, u64> = BTreeMap::new();
-
-            for record in &outcome_entries {
-                total_outcomes += 1;
-
-                for tag in &record.tags {
-                    if let Some((tag_key, tag_value)) = tag.split_once(':') {
-                        match tag_key {
-                            "type" => {
-                                *outcomes_by_type
-                                    .entry(tag_value.to_string())
-                                    .or_insert(0) += 1;
-                            }
-                            "result" => {
-                                *outcomes_by_result
-                                    .entry(tag_value.to_string())
-                                    .or_insert(0) += 1;
-                            }
-                            _ => {}
-                        }
+                // Category distribution via SQL aggregation
+                let mut category_distribution: BTreeMap<String, u64> = BTreeMap::new();
+                if let Some(ref filter_cat) = category_filter {
+                    let count: i64 = conn
+                        .query_row(
+                            "SELECT COUNT(*) FROM entries WHERE category = ?1",
+                            rusqlite::params![filter_cat],
+                            |row| row.get::<_, i64>(0),
+                        )
+                        .map_err(|e| {
+                            crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e)))
+                        })?;
+                    if count > 0 {
+                        category_distribution.insert(filter_cat.clone(), count as u64);
+                    }
+                } else {
+                    let mut stmt = conn
+                        .prepare("SELECT category, COUNT(*) FROM entries GROUP BY category")
+                        .map_err(|e| {
+                            crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e)))
+                        })?;
+                    let rows = stmt
+                        .query_map([], |row| {
+                            let cat: String = row.get(0)?;
+                            let count: i64 = row.get(1)?;
+                            Ok((cat, count as u64))
+                        })
+                        .map_err(|e| {
+                            crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e)))
+                        })?;
+                    for item in rows {
+                        let (cat, count): (String, u64) = item.map_err(|e| {
+                            crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e)))
+                        })?;
+                        category_distribution.insert(cat, count);
                     }
                 }
 
-                if !record.feature_cycle.is_empty() {
-                    *outcomes_by_feature_cycle
-                        .entry(record.feature_cycle.clone())
-                        .or_insert(0) += 1;
+                // Topic distribution via SQL aggregation
+                let mut topic_distribution: BTreeMap<String, u64> = BTreeMap::new();
+                if let Some(ref filter_topic) = topic_filter {
+                    let count: i64 = conn
+                        .query_row(
+                            "SELECT COUNT(*) FROM entries WHERE topic = ?1",
+                            rusqlite::params![filter_topic],
+                            |row| row.get::<_, i64>(0),
+                        )
+                        .map_err(|e| {
+                            crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e)))
+                        })?;
+                    if count > 0 {
+                        topic_distribution.insert(filter_topic.clone(), count as u64);
+                    }
+                } else {
+                    let mut stmt = conn
+                        .prepare("SELECT topic, COUNT(*) FROM entries GROUP BY topic")
+                        .map_err(|e| {
+                            crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e)))
+                        })?;
+                    let rows = stmt
+                        .query_map([], |row| {
+                            let topic: String = row.get(0)?;
+                            let count: i64 = row.get(1)?;
+                            Ok((topic, count as u64))
+                        })
+                        .map_err(|e| {
+                            crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e)))
+                        })?;
+                    for item in rows {
+                        let (topic, count): (String, u64) = item.map_err(|e| {
+                            crate::error::ServerError::Core(CoreError::Store(StoreError::Sqlite(e)))
+                        })?;
+                        topic_distribution.insert(topic, count);
+                    }
                 }
-            }
 
-            // Sort feature cycles by count descending, take top 10
-            let mut fc_sorted: Vec<(String, u64)> =
-                outcomes_by_feature_cycle.into_iter().collect();
-            fc_sorted.sort_by(|a, b| b.1.cmp(&a.1));
-            fc_sorted.truncate(10);
+                // Release the connection lock before calling store methods that
+                // re-acquire it. std::sync::Mutex is non-reentrant: holding `conn`
+                // while calling lock_conn() again would deadlock (#176).
+                drop(conn);
 
-            // Build StatusReport
-            let report = StatusReport {
-                total_active,
-                total_deprecated,
-                total_proposed,
-                total_quarantined,
-                category_distribution: category_distribution.into_iter().collect(),
-                topic_distribution: topic_distribution.into_iter().collect(),
-                entries_with_supersedes,
-                entries_with_superseded_by,
-                total_correction_count,
-                trust_source_distribution: trust_source_dist.into_iter().collect(),
-                entries_without_attribution,
-                contradictions: Vec::new(),
-                contradiction_count: 0,
-                embedding_inconsistencies: Vec::new(),
-                contradiction_scan_performed: false,
-                embedding_check_performed: false,
-                total_co_access_pairs: 0,
-                active_co_access_pairs: 0,
-                top_co_access_pairs: Vec::new(),
-                stale_pairs_cleaned: 0,
-                coherence: 1.0,
-                confidence_freshness_score: 1.0,
-                graph_quality_score: 1.0,
-                embedding_consistency_score: 1.0,
-                contradiction_density_score: 1.0,
-                stale_confidence_count: 0,
-                confidence_refreshed_count: 0,
-                graph_stale_ratio: 0.0,
-                graph_compacted: false,
-                maintenance_recommendations: Vec::new(),
-                total_outcomes,
-                outcomes_by_type: outcomes_by_type.into_iter().collect(),
-                outcomes_by_result: outcomes_by_result.into_iter().collect(),
-                outcomes_by_feature_cycle: fc_sorted,
-                observation_file_count: 0,
-                observation_total_size_bytes: 0,
-                observation_oldest_file_days: 0,
-                observation_approaching_cleanup: Vec::new(),
-                retrospected_feature_count: 0,
-                last_maintenance_run: None,
-                next_maintenance_scheduled: None,
-                extraction_stats: None,
-                coherence_by_source: Vec::new(),
-            };
-            Ok((report, active_entries))
-        }).await
+                // Correction chain metrics + security metrics via SQL aggregation (crt-013)
+                let aggregates = store
+                    .compute_status_aggregates()
+                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
+
+                let entries_with_supersedes = aggregates.supersedes_count;
+                let entries_with_superseded_by = aggregates.superseded_by_count;
+                let total_correction_count = aggregates.total_correction_count;
+                let trust_source_dist: BTreeMap<String, u64> = aggregates.trust_source_distribution;
+                let entries_without_attribution = aggregates.unattributed_count;
+
+                // Active entries with tags (for lambda computation)
+                let active_entries = store
+                    .load_active_entries_with_tags()
+                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
+
+                // Outcome statistics (targeted query for category="outcome" only)
+                let outcome_entries = store
+                    .load_outcome_entries_with_tags()
+                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?;
+
+                let mut total_outcomes = 0u64;
+                let mut outcomes_by_type: BTreeMap<String, u64> = BTreeMap::new();
+                let mut outcomes_by_result: BTreeMap<String, u64> = BTreeMap::new();
+                let mut outcomes_by_feature_cycle: BTreeMap<String, u64> = BTreeMap::new();
+
+                for record in &outcome_entries {
+                    total_outcomes += 1;
+
+                    for tag in &record.tags {
+                        if let Some((tag_key, tag_value)) = tag.split_once(':') {
+                            match tag_key {
+                                "type" => {
+                                    *outcomes_by_type.entry(tag_value.to_string()).or_insert(0) +=
+                                        1;
+                                }
+                                "result" => {
+                                    *outcomes_by_result
+                                        .entry(tag_value.to_string())
+                                        .or_insert(0) += 1;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    if !record.feature_cycle.is_empty() {
+                        *outcomes_by_feature_cycle
+                            .entry(record.feature_cycle.clone())
+                            .or_insert(0) += 1;
+                    }
+                }
+
+                // Sort feature cycles by count descending, take top 10
+                let mut fc_sorted: Vec<(String, u64)> =
+                    outcomes_by_feature_cycle.into_iter().collect();
+                fc_sorted.sort_by(|a, b| b.1.cmp(&a.1));
+                fc_sorted.truncate(10);
+
+                // Build StatusReport
+                let report = StatusReport {
+                    total_active,
+                    total_deprecated,
+                    total_proposed,
+                    total_quarantined,
+                    category_distribution: category_distribution.into_iter().collect(),
+                    topic_distribution: topic_distribution.into_iter().collect(),
+                    entries_with_supersedes,
+                    entries_with_superseded_by,
+                    total_correction_count,
+                    trust_source_distribution: trust_source_dist.into_iter().collect(),
+                    entries_without_attribution,
+                    contradictions: Vec::new(),
+                    contradiction_count: 0,
+                    embedding_inconsistencies: Vec::new(),
+                    contradiction_scan_performed: false,
+                    embedding_check_performed: false,
+                    total_co_access_pairs: 0,
+                    active_co_access_pairs: 0,
+                    top_co_access_pairs: Vec::new(),
+                    stale_pairs_cleaned: 0,
+                    coherence: 1.0,
+                    confidence_freshness_score: 1.0,
+                    graph_quality_score: 1.0,
+                    embedding_consistency_score: 1.0,
+                    contradiction_density_score: 1.0,
+                    stale_confidence_count: 0,
+                    confidence_refreshed_count: 0,
+                    graph_stale_ratio: 0.0,
+                    graph_compacted: false,
+                    maintenance_recommendations: Vec::new(),
+                    total_outcomes,
+                    outcomes_by_type: outcomes_by_type.into_iter().collect(),
+                    outcomes_by_result: outcomes_by_result.into_iter().collect(),
+                    outcomes_by_feature_cycle: fc_sorted,
+                    observation_file_count: 0,
+                    observation_total_size_bytes: 0,
+                    observation_oldest_file_days: 0,
+                    observation_approaching_cleanup: Vec::new(),
+                    retrospected_feature_count: 0,
+                    last_maintenance_run: None,
+                    next_maintenance_scheduled: None,
+                    extraction_stats: None,
+                    coherence_by_source: Vec::new(),
+                };
+                Ok((report, active_entries))
+            },
+        )
+        .await
         .map_err(|e| ServiceError::Core(CoreError::JoinError(e.to_string())))?
         .map_err(|e| {
             let core_err: CoreError = match e {
@@ -267,7 +300,9 @@ impl StatusService {
                     &*adapter_for_scan,
                     &config_for_scan,
                 )
-            }).await {
+            })
+            .await
+            {
                 Ok(Ok(contradictions)) => {
                     report.contradiction_count = contradictions.len();
                     report.contradictions = contradictions;
@@ -293,7 +328,9 @@ impl StatusService {
                         &*adapter_for_embed,
                         &config_for_embed,
                     )
-                }).await {
+                })
+                .await
+                {
                     Ok(Ok(inconsistencies)) => {
                         report.embedding_inconsistencies = inconsistencies;
                         report.embedding_check_performed = true;
@@ -320,10 +357,12 @@ impl StatusService {
 
                 let mut clusters = Vec::new();
                 for ((id_a, id_b), record) in &top_pairs {
-                    let title_a = store_for_coaccess.get(*id_a)
+                    let title_a = store_for_coaccess
+                        .get(*id_a)
                         .map(|e| e.title.clone())
                         .unwrap_or_else(|_| format!("#{id_a}"));
-                    let title_b = store_for_coaccess.get(*id_b)
+                    let title_b = store_for_coaccess
+                        .get(*id_b)
                         .map(|e| e.title.clone())
                         .unwrap_or_else(|_| format!("#{id_b}"));
                     clusters.push(CoAccessClusterEntry {
@@ -337,7 +376,8 @@ impl StatusService {
                 }
 
                 Ok::<_, unimatrix_store::StoreError>((total, active, clusters))
-            }).await;
+            })
+            .await;
 
             match co_access_result {
                 Ok(Ok((total, active, clusters))) => {
@@ -375,22 +415,24 @@ impl StatusService {
         } else {
             graph_stale_count as f64 / graph_point_count as f64
         };
-        report.graph_quality_score = coherence::graph_quality_score(graph_stale_count, graph_point_count);
+        report.graph_quality_score =
+            coherence::graph_quality_score(graph_stale_count, graph_point_count);
         report.graph_stale_ratio = graph_stale_ratio;
 
         let embed_dim = if report.embedding_check_performed {
             let total_checked = active_entries.len();
             let inconsistent_count = report.embedding_inconsistencies.len();
-            Some(coherence::embedding_consistency_score(inconsistent_count, total_checked))
+            Some(coherence::embedding_consistency_score(
+                inconsistent_count,
+                total_checked,
+            ))
         } else {
             None
         };
         report.embedding_consistency_score = embed_dim.unwrap_or(1.0);
 
-        report.contradiction_density_score = coherence::contradiction_density_score(
-            report.total_quarantined,
-            report.total_active,
-        );
+        report.contradiction_density_score =
+            coherence::contradiction_density_score(report.total_quarantined, report.total_active);
 
         // Lambda computation + recommendations
         let oldest_stale = coherence::oldest_stale_age(
@@ -509,7 +551,9 @@ impl StatusService {
         let store_for_cleanup = Arc::clone(&self.store);
         let stale_pairs_cleaned = match tokio::task::spawn_blocking(move || {
             store_for_cleanup.cleanup_stale_co_access(staleness_cutoff)
-        }).await {
+        })
+        .await
+        {
             Ok(Ok(cleaned)) => {
                 report.stale_pairs_cleaned = cleaned;
                 cleaned
@@ -523,7 +567,8 @@ impl StatusService {
             let staleness_threshold = coherence::DEFAULT_STALENESS_THRESHOLD_SECS;
             let batch_cap = coherence::MAX_CONFIDENCE_REFRESH_BATCH;
 
-            let mut stale_entries: Vec<&EntryRecord> = active_entries.iter()
+            let mut stale_entries: Vec<&EntryRecord> = active_entries
+                .iter()
                 .filter(|e| {
                     let ref_ts = e.updated_at.max(e.last_accessed_at);
                     if ref_ts == 0 {
@@ -541,7 +586,8 @@ impl StatusService {
             stale_entries.truncate(batch_cap);
 
             if !stale_entries.is_empty() {
-                let ids_and_confs: Vec<(u64, f64)> = stale_entries.iter()
+                let ids_and_confs: Vec<(u64, f64)> = stale_entries
+                    .iter()
                     .map(|e| (e.id, crate::confidence::compute_confidence(e, now_ts)))
                     .collect();
 
@@ -557,7 +603,8 @@ impl StatusService {
                         }
                     }
                     refreshed
-                }).await;
+                })
+                .await;
 
                 match refresh_result {
                     Ok(count) => {
@@ -575,13 +622,15 @@ impl StatusService {
         let mut graph_compacted = false;
         if report.graph_stale_ratio > coherence::DEFAULT_STALE_RATIO_TRIGGER {
             if let Ok(adapter) = self.embed_service.get_adapter().await {
-                let pairs: Vec<(String, String)> = active_entries.iter()
+                let pairs: Vec<(String, String)> = active_entries
+                    .iter()
                     .map(|e| (e.title.clone(), e.content.clone()))
                     .collect();
 
                 match adapter.embed_entries(&pairs) {
                     Ok(embeddings) => {
-                        let compact_input: Vec<(u64, Vec<f32>)> = active_entries.iter()
+                        let compact_input: Vec<(u64, Vec<f32>)> = active_entries
+                            .iter()
                             .zip(embeddings.into_iter())
                             .map(|(entry, raw_emb)| {
                                 let adapted = self.adapt_service.adapt_embedding(
@@ -596,7 +645,9 @@ impl StatusService {
                         let vi_for_compact = Arc::clone(&self.vector_index);
                         match tokio::task::spawn_blocking(move || {
                             vi_for_compact.compact(compact_input)
-                        }).await {
+                        })
+                        .await
+                        {
                             Ok(Ok(())) => {
                                 report.graph_compacted = true;
                                 graph_compacted = true;
@@ -630,27 +681,50 @@ impl StatusService {
                 "DELETE FROM observations WHERE ts_millis < ?1",
                 unimatrix_store::rusqlite::params![cutoff],
             );
-        }).await;
+        })
+        .await;
 
         // 5. Stale session sweep (col-009, FR-09.2)
+        // #198 Part 3: Sweep now resolves feature_cycle via majority vote before eviction
         let stale_outputs = session_registry.sweep_stale_sessions();
         if !stale_outputs.is_empty() {
             let store_for_sweep = Arc::clone(&self.store);
             let entry_store_for_sweep = Arc::clone(entry_store);
             let pending_for_sweep = Arc::clone(pending_entries_analysis);
-            for (stale_session_id, stale_output) in stale_outputs {
-                tracing::info!(session_id = %stale_session_id, "status: sweeping stale session");
-                crate::uds::listener::write_signals_to_queue(&stale_output, &store_for_sweep).await;
+            for sweep_result in &stale_outputs {
+                tracing::info!(session_id = %sweep_result.session_id, "status: sweeping stale session");
+                // #198: Persist resolved feature_cycle for stale session
+                if let Some(ref fc) = sweep_result.resolved_feature {
+                    let store_fc = Arc::clone(&store_for_sweep);
+                    let sid = sweep_result.session_id.clone();
+                    let fc_owned = fc.clone();
+                    let _ = tokio::task::spawn_blocking(move || {
+                        crate::uds::listener::update_session_feature_cycle_pub(&store_fc, &sid, &fc_owned)
+                    });
+                }
+                crate::uds::listener::write_signals_to_queue(&sweep_result.output, &store_for_sweep).await;
             }
-            crate::uds::listener::run_confidence_consumer(&store_for_sweep, &entry_store_for_sweep, &pending_for_sweep).await;
-            crate::uds::listener::run_retrospective_consumer(&store_for_sweep, &pending_for_sweep, &entry_store_for_sweep).await;
+            crate::uds::listener::run_confidence_consumer(
+                &store_for_sweep,
+                &entry_store_for_sweep,
+                &pending_for_sweep,
+            )
+            .await;
+            crate::uds::listener::run_retrospective_consumer(
+                &store_for_sweep,
+                &pending_for_sweep,
+                &entry_store_for_sweep,
+            )
+            .await;
         }
 
         // 6. Session GC (timeout + delete thresholds)
         let store_gc = Arc::clone(&self.store);
         match tokio::task::spawn_blocking(move || {
             store_gc.gc_sessions(TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS)
-        }).await {
+        })
+        .await
+        {
             Ok(Ok(stats)) => {
                 tracing::info!(
                     timed_out = %stats.timed_out_count,

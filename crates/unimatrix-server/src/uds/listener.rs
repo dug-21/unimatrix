@@ -18,10 +18,13 @@ use unimatrix_engine::auth;
 use unimatrix_engine::coaccess::generate_pairs;
 use unimatrix_engine::confidence::rerank_score;
 use unimatrix_engine::wire::{
-    EntryPayload, HookRequest, HookResponse, ERR_INVALID_PAYLOAD, MAX_PAYLOAD_SIZE,
+    ERR_INVALID_PAYLOAD, EntryPayload, HookRequest, HookResponse, MAX_PAYLOAD_SIZE,
 };
 use unimatrix_store::Store;
-use unimatrix_store::{InjectionLogRecord, QueryLogRecord, SessionLifecycleStatus, SessionRecord, SignalRecord, SignalType, SignalSource};
+use unimatrix_store::{
+    InjectionLogRecord, QueryLogRecord, SessionLifecycleStatus, SessionRecord, SignalRecord,
+    SignalSource, SignalType,
+};
 
 use std::collections::HashSet;
 use std::sync::Mutex;
@@ -30,8 +33,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::registry::Capability;
-use crate::server::PendingEntriesAnalysis;
 use crate::infra::session::{ReworkEvent, SessionOutcome, SessionRegistry, SignalOutput};
+use crate::server::PendingEntriesAnalysis;
 use crate::uds::uds_has_capability;
 
 // -- col-010 helpers --
@@ -447,7 +450,11 @@ async fn dispatch_request(
             );
 
             // Register session in registry (col-008)
-            session_registry.register_session(&session_id, clean_role.clone(), clean_feature.clone());
+            session_registry.register_session(
+                &session_id,
+                clean_role.clone(),
+                clean_feature.clone(),
+            );
 
             // col-010: Persist SessionRecord to SESSIONS table (fire-and-forget)
             {
@@ -588,6 +595,28 @@ async fn dispatch_request(
                 "UDS: event recorded"
             );
 
+            // #198 Part 1: Extract explicit feature_cycle from event payload
+            if let Some(fc) = event.payload.get("feature_cycle").and_then(|v| v.as_str()) {
+                let fc_clean = sanitize_metadata_field(fc);
+                if !fc_clean.is_empty()
+                    && session_registry.set_feature_if_absent(&event.session_id, &fc_clean)
+                {
+                    tracing::info!(
+                        session_id = %event.session_id,
+                        feature_cycle = %fc_clean,
+                        "#198: feature_cycle set from event payload"
+                    );
+                    let store_fc = Arc::clone(store);
+                    let sid = event.session_id.clone();
+                    let fc_owned = fc_clean;
+                    spawn_blocking_fire_and_forget(move || {
+                        if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc_owned) {
+                            tracing::warn!(error = %e, "#198: feature_cycle persist failed");
+                        }
+                    });
+                }
+            }
+
             // col-017: Accumulate topic signal in session state
             if let Some(ref signal) = event.topic_signal {
                 session_registry.record_topic_signal(
@@ -595,6 +624,29 @@ async fn dispatch_request(
                     signal.clone(),
                     event.timestamp,
                 );
+
+                // #198 Part 2: Check eager attribution after signal accumulation
+                if let Some(winner) = session_registry.check_eager_attribution(&event.session_id) {
+                    if session_registry.set_feature_if_absent(&event.session_id, &winner) {
+                        tracing::info!(
+                            session_id = %event.session_id,
+                            feature_cycle = %winner,
+                            "#198: feature_cycle set via eager attribution"
+                        );
+                        let store_eager = Arc::clone(store);
+                        let sid = event.session_id.clone();
+                        spawn_blocking_fire_and_forget(move || {
+                            if let Err(e) =
+                                update_session_feature_cycle(&store_eager, &sid, &winner)
+                            {
+                                tracing::warn!(
+                                    error = %e,
+                                    "#198: eager attribution persist failed"
+                                );
+                            }
+                        });
+                    }
+                }
             }
 
             // col-012: Persist observation to SQLite (fire-and-forget)
@@ -618,6 +670,39 @@ async fn dispatch_request(
             }
             tracing::info!(count = events.len(), "UDS: batch events recorded");
 
+            // #198 Part 1: Extract explicit feature_cycle from batch event payloads
+            // Track which sessions got eager attribution to avoid redundant checks
+            let mut eager_resolved: std::collections::HashSet<String> =
+                std::collections::HashSet::new();
+            for event in &events {
+                if let Some(fc) = event.payload.get("feature_cycle").and_then(|v| v.as_str()) {
+                    let fc_clean = sanitize_metadata_field(fc);
+                    if !fc_clean.is_empty()
+                        && session_registry.set_feature_if_absent(&event.session_id, &fc_clean)
+                    {
+                        tracing::info!(
+                            session_id = %event.session_id,
+                            feature_cycle = %fc_clean,
+                            "#198: feature_cycle set from batch event payload"
+                        );
+                        let store_fc = Arc::clone(store);
+                        let sid = event.session_id.clone();
+                        let fc_owned = fc_clean;
+                        spawn_blocking_fire_and_forget(move || {
+                            if let Err(e) =
+                                update_session_feature_cycle(&store_fc, &sid, &fc_owned)
+                            {
+                                tracing::warn!(
+                                    error = %e,
+                                    "#198: feature_cycle persist failed"
+                                );
+                            }
+                        });
+                        eager_resolved.insert(event.session_id.clone());
+                    }
+                }
+            }
+
             // col-017: Accumulate topic signals for all events in batch
             for event in &events {
                 if let Some(ref signal) = event.topic_signal {
@@ -629,9 +714,44 @@ async fn dispatch_request(
                 }
             }
 
+            // #198 Part 2: Check eager attribution for sessions that accumulated signals
+            // Collect unique session IDs that had topic signals
+            let signal_sessions: std::collections::HashSet<&str> = events
+                .iter()
+                .filter(|e| e.topic_signal.is_some())
+                .map(|e| e.session_id.as_str())
+                .collect();
+            for sid in signal_sessions {
+                if eager_resolved.contains(sid) {
+                    continue;
+                }
+                if let Some(winner) = session_registry.check_eager_attribution(sid) {
+                    if session_registry.set_feature_if_absent(sid, &winner) {
+                        tracing::info!(
+                            session_id = %sid,
+                            feature_cycle = %winner,
+                            "#198: feature_cycle set via eager attribution (batch)"
+                        );
+                        let store_eager = Arc::clone(store);
+                        let sid_owned = sid.to_string();
+                        spawn_blocking_fire_and_forget(move || {
+                            if let Err(e) =
+                                update_session_feature_cycle(&store_eager, &sid_owned, &winner)
+                            {
+                                tracing::warn!(
+                                    error = %e,
+                                    "#198: eager attribution persist failed"
+                                );
+                            }
+                        });
+                    }
+                }
+            }
+
             // col-012: Batch persist observations in single transaction (fire-and-forget)
             let store_for_obs = Arc::clone(store);
-            let obs_batch: Vec<ObservationRow> = events.iter().map(extract_observation_fields).collect();
+            let obs_batch: Vec<ObservationRow> =
+                events.iter().map(extract_observation_fields).collect();
             spawn_blocking_fire_and_forget(move || {
                 if let Err(e) = insert_observations_batch(&store_for_obs, &obs_batch) {
                     tracing::error!(error = %e, "batch observation write failed");
@@ -674,11 +794,7 @@ async fn dispatch_request(
             if let Some(ref sid) = session_id {
                 if !query.is_empty() {
                     if let Some(ref signal) = topic_signal {
-                        session_registry.record_topic_signal(
-                            sid,
-                            signal.clone(),
-                            unix_now_secs(),
-                        );
+                        session_registry.record_topic_signal(sid, signal.clone(), unix_now_secs());
                     }
 
                     let truncated_input: String = query.chars().take(4096).collect();
@@ -702,15 +818,7 @@ async fn dispatch_request(
                 }
             }
 
-            handle_context_search(
-                query,
-                session_id,
-                k,
-                store,
-                session_registry,
-                services,
-            )
-            .await
+            handle_context_search(query, session_id, k, store, session_registry, services).await
         }
 
         HookRequest::CompactPayload {
@@ -760,9 +868,7 @@ async fn dispatch_request(
                 feature_cycle: None,
             };
 
-            let effective_max_tokens = max_tokens
-                .map(|v| v as usize)
-                .unwrap_or(3000);
+            let effective_max_tokens = max_tokens.map(|v| v as usize).unwrap_or(3000);
 
             let briefing_params = crate::services::briefing::BriefingParams {
                 role: Some(role),
@@ -774,7 +880,11 @@ async fn dispatch_request(
                 injection_history: None,
             };
 
-            match services.briefing.assemble(briefing_params, &audit_ctx, None).await {
+            match services
+                .briefing
+                .assemble(briefing_params, &audit_ctx, None)
+                .await
+            {
                 Ok(result) => {
                     let mut content = String::new();
                     if !result.conventions.is_empty() {
@@ -794,7 +904,10 @@ async fn dispatch_request(
                         }
                     }
                     let token_count = (content.len() / 4) as u32;
-                    HookResponse::BriefingContent { content, token_count }
+                    HookResponse::BriefingContent {
+                        content,
+                        token_count,
+                    }
                 }
                 Err(e) => HookResponse::Error {
                     code: ERR_INVALID_PAYLOAD,
@@ -848,7 +961,11 @@ async fn handle_context_search(
     let uds_caller = crate::services::CallerId::UdsSession(
         session_id.clone().unwrap_or_else(|| "uds-anon".to_string()),
     );
-    let search_results = match services.search.search(service_params, &audit_ctx, &uds_caller).await {
+    let search_results = match services
+        .search
+        .search(service_params, &audit_ctx, &uds_caller)
+        .await
+    {
         Ok(results) => results,
         Err(e) => {
             tracing::warn!("search service error: {e}");
@@ -1007,10 +1124,7 @@ async fn handle_compact_payload(
 
     // 2. Session state resolution (transport concern)
     let session_state = session_registry.get_state(session_id);
-    let effective_role = session_state
-        .as_ref()
-        .and_then(|s| s.role.clone())
-        .or(role);
+    let effective_role = session_state.as_ref().and_then(|s| s.role.clone()).or(role);
     let effective_feature = session_state
         .as_ref()
         .and_then(|s| s.feature.clone())
@@ -1061,12 +1175,16 @@ async fn handle_compact_payload(
         feature: effective_feature.clone(),
         max_tokens,
         include_conventions: !has_injection_history, // fallback includes conventions
-        include_semantic: false, // CRITICAL: no embedding, no vector search
+        include_semantic: false,                     // CRITICAL: no embedding, no vector search
         injection_history,
     };
 
     // 7. Delegate to BriefingService
-    let result = match services.briefing.assemble(briefing_params, &audit_ctx, None).await {
+    let result = match services
+        .briefing
+        .assemble(briefing_params, &audit_ctx, None)
+        .await
+    {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!("compact payload assembly failed: {e}");
@@ -1108,10 +1226,7 @@ async fn handle_compact_payload(
     // 10. Increment compaction count (transport concern)
     session_registry.increment_compaction(session_id);
 
-    let token_count = content
-        .as_ref()
-        .map(|c| (c.len() / 4) as u32)
-        .unwrap_or(0);
+    let token_count = content.as_ref().map(|c| (c.len() / 4) as u32).unwrap_or(0);
 
     HookResponse::BriefingContent {
         content: content.unwrap_or_default(),
@@ -1162,17 +1277,32 @@ fn format_compaction_payload(
     // Decisions section
     let remaining = max_bytes.saturating_sub(bytes_used);
     let decision_budget = DECISION_BUDGET_BYTES.min(remaining);
-    bytes_used += format_category_section(&mut output, "Decisions", &categories.decisions, decision_budget);
+    bytes_used += format_category_section(
+        &mut output,
+        "Decisions",
+        &categories.decisions,
+        decision_budget,
+    );
 
     // Injections section
     let remaining = max_bytes.saturating_sub(bytes_used);
     let injection_budget = INJECTION_BUDGET_BYTES.min(remaining);
-    bytes_used += format_category_section(&mut output, "Key Context", &categories.injections, injection_budget);
+    bytes_used += format_category_section(
+        &mut output,
+        "Key Context",
+        &categories.injections,
+        injection_budget,
+    );
 
     // Conventions section
     let remaining = max_bytes.saturating_sub(bytes_used);
     let convention_budget = CONVENTION_BUDGET_BYTES.min(remaining);
-    let _ = format_category_section(&mut output, "Conventions", &categories.conventions, convention_budget);
+    let _ = format_category_section(
+        &mut output,
+        "Conventions",
+        &categories.conventions,
+        convention_budget,
+    );
 
     // Hard ceiling check
     if output.len() > max_bytes {
@@ -1302,10 +1432,22 @@ async fn process_session_close(
     let resolved_topic = majority_vote(&topic_signals);
 
     // Step 1: Sweep stale sessions first (FR-09.1)
+    // #198 Part 3: Sweep now resolves feature_cycle via majority vote before eviction
     let stale_outputs = session_registry.sweep_stale_sessions();
-    for (stale_session_id, stale_output) in stale_outputs {
-        tracing::info!(session_id = %stale_session_id, "UDS: sweeping stale session");
-        write_signals_to_queue(&stale_output, store).await;
+    for sweep_result in &stale_outputs {
+        tracing::info!(session_id = %sweep_result.session_id, "UDS: sweeping stale session");
+        // #198: Persist resolved feature_cycle for stale session
+        if let Some(ref fc) = sweep_result.resolved_feature {
+            let store_fc = Arc::clone(store);
+            let sid = sweep_result.session_id.clone();
+            let fc_owned = fc.clone();
+            spawn_blocking_fire_and_forget(move || {
+                if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc_owned) {
+                    tracing::warn!(error = %e, "#198: stale session feature_cycle persist failed");
+                }
+            });
+        }
+        write_signals_to_queue(&sweep_result.output, store).await;
     }
 
     // Step 2: Generate signals for the closing session (atomic — ADR-003)
@@ -1314,8 +1456,8 @@ async fn process_session_close(
     if let Some(ref output) = maybe_output {
         // col-010: resolve final status and outcome string
         let (final_status, outcome_str) = match output.final_outcome {
-            SessionOutcome::Success  => (SessionLifecycleStatus::Completed, "success"),
-            SessionOutcome::Rework   => (SessionLifecycleStatus::Completed, "rework"),
+            SessionOutcome::Success => (SessionLifecycleStatus::Completed, "success"),
+            SessionOutcome::Rework => (SessionLifecycleStatus::Completed, "rework"),
             SessionOutcome::Abandoned => (SessionLifecycleStatus::Abandoned, "abandoned"),
         };
         let is_abandoned = final_status == SessionLifecycleStatus::Abandoned;
@@ -1502,7 +1644,7 @@ fn content_based_attribution_fallback(store: &Store, session_id: &str) -> Option
 fn write_auto_outcome_entry(
     store: &Arc<Store>,
     session_id: &str,
-    outcome_str: &str,   // "success" | "rework"
+    outcome_str: &str, // "success" | "rework"
     injection_count: u32,
     feature_cycle: Option<&str>,
     agent_role: Option<&str>,
@@ -1534,22 +1676,20 @@ fn write_auto_outcome_entry(
 
     let store_clone = Arc::clone(store);
     let sid = session_id.to_string();
-    spawn_blocking_fire_and_forget(move || {
-        match store_clone.insert(entry) {
-            Ok(entry_id) => {
-                tracing::debug!(
-                    session_id = %sid,
-                    entry_id = %entry_id,
-                    "Auto-outcome entry written"
-                );
-            }
-            Err(e) => {
-                tracing::warn!(
-                    session_id = %sid,
-                    error = %e,
-                    "Auto-outcome write failed"
-                );
-            }
+    spawn_blocking_fire_and_forget(move || match store_clone.insert(entry) {
+        Ok(entry_id) => {
+            tracing::debug!(
+                session_id = %sid,
+                entry_id = %entry_id,
+                "Auto-outcome entry written"
+            );
+        }
+        Err(e) => {
+            tracing::warn!(
+                session_id = %sid,
+                error = %e,
+                "Auto-outcome write failed"
+            );
         }
     });
 }
@@ -1619,19 +1759,20 @@ pub(crate) async fn run_confidence_consumer(
     // Step 1: Drain all Helpful signals in one transaction.
     // Use spawn_blocking to keep store.lock_conn() off the async runtime (#176).
     let store_drain = Arc::clone(store);
-    let signals = match tokio::task::spawn_blocking(move || {
-        store_drain.drain_signals(SignalType::Helpful)
-    }).await {
-        Ok(Ok(s)) => s,
-        Ok(Err(e)) => {
-            tracing::warn!(error = %e, "run_confidence_consumer: drain_signals failed");
-            return;
-        }
-        Err(e) => {
-            tracing::warn!(error = %e, "run_confidence_consumer: spawn_blocking failed");
-            return;
-        }
-    };
+    let signals =
+        match tokio::task::spawn_blocking(move || store_drain.drain_signals(SignalType::Helpful))
+            .await
+        {
+            Ok(Ok(s)) => s,
+            Ok(Err(e)) => {
+                tracing::warn!(error = %e, "run_confidence_consumer: drain_signals failed");
+                return;
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "run_confidence_consumer: spawn_blocking failed");
+                return;
+            }
+        };
 
     if signals.is_empty() {
         return;
@@ -1694,7 +1835,8 @@ pub(crate) async fn run_confidence_consumer(
     };
 
     // Second pass: fetch metadata for new entries (outside lock — async I/O)
-    let mut fetched: std::collections::HashMap<u64, (String, String)> = std::collections::HashMap::new();
+    let mut fetched: std::collections::HashMap<u64, (String, String)> =
+        std::collections::HashMap::new();
     for entry_id in &entries_needing_fetch {
         let (title, category) = match entry_store.get(*entry_id).await {
             Ok(record) => (record.title.clone(), record.category.clone()),
@@ -1716,7 +1858,8 @@ pub(crate) async fn run_confidence_consumer(
                         }
                     } else {
                         // New entry — insert with session-aware count
-                        let is_new_session = session_counted.insert((signal.session_id.clone(), entry_id));
+                        let is_new_session =
+                            session_counted.insert((signal.session_id.clone(), entry_id));
                         let analysis = unimatrix_observe::EntryAnalysis {
                             entry_id,
                             title: title.clone(),
@@ -1743,19 +1886,20 @@ pub(crate) async fn run_retrospective_consumer(
     // Step 1: Drain all Flagged signals.
     // Use spawn_blocking to keep store.lock_conn() off the async runtime (#176).
     let store_drain = Arc::clone(store);
-    let signals = match tokio::task::spawn_blocking(move || {
-        store_drain.drain_signals(SignalType::Flagged)
-    }).await {
-        Ok(Ok(s)) => s,
-        Ok(Err(e)) => {
-            tracing::warn!(error = %e, "run_retrospective_consumer: drain_signals failed");
-            return;
-        }
-        Err(e) => {
-            tracing::warn!(error = %e, "run_retrospective_consumer: spawn_blocking failed");
-            return;
-        }
-    };
+    let signals =
+        match tokio::task::spawn_blocking(move || store_drain.drain_signals(SignalType::Flagged))
+            .await
+        {
+            Ok(Ok(s)) => s,
+            Ok(Err(e)) => {
+                tracing::warn!(error = %e, "run_retrospective_consumer: drain_signals failed");
+                return;
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "run_retrospective_consumer: spawn_blocking failed");
+                return;
+            }
+        };
 
     if signals.is_empty() {
         return;
@@ -1774,7 +1918,8 @@ pub(crate) async fn run_retrospective_consumer(
     };
 
     // Step 3: Fetch metadata for new entries (outside lock — async I/O)
-    let mut fetched: std::collections::HashMap<u64, (String, String)> = std::collections::HashMap::new();
+    let mut fetched: std::collections::HashMap<u64, (String, String)> =
+        std::collections::HashMap::new();
     for entry_id in entries_needing_fetch {
         let (title, category) = match entry_store.get(entry_id).await {
             Ok(record) => (record.title.clone(), record.category.clone()),
@@ -1805,11 +1950,9 @@ pub(crate) async fn run_retrospective_consumer(
                         existing.rework_session_count += 1;
                     }
                 } else {
-                    let (title, category) = fetched
-                        .get(&entry_id)
-                        .cloned()
-                        .unwrap_or_default();
-                    let is_new_session = session_counted.insert((signal.session_id.clone(), entry_id));
+                    let (title, category) = fetched.get(&entry_id).cloned().unwrap_or_default();
+                    let is_new_session =
+                        session_counted.insert((signal.session_id.clone(), entry_id));
                     let analysis = unimatrix_observe::EntryAnalysis {
                         entry_id,
                         title,
@@ -1895,6 +2038,17 @@ fn update_session_feature_cycle(
     })
 }
 
+/// Public wrapper for `update_session_feature_cycle` (#198).
+///
+/// Needed by status.rs to persist feature_cycle for stale sessions resolved during sweep.
+pub(crate) fn update_session_feature_cycle_pub(
+    store: &Store,
+    session_id: &str,
+    feature_cycle: &str,
+) -> Result<(), unimatrix_store::StoreError> {
+    update_session_feature_cycle(store, session_id, feature_cycle)
+}
+
 // -- col-012: Observation persistence helpers --
 
 /// Extracted observation row fields ready for SQL insertion.
@@ -1918,36 +2072,46 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
 
     let (tool, input, response_size, response_snippet) = match hook.as_str() {
         "PreToolUse" => {
-            let tool = event.payload.get("tool_name")
+            let tool = event
+                .payload
+                .get("tool_name")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
-            let input = event.payload.get("tool_input")
+            let input = event
+                .payload
+                .get("tool_input")
                 .map(|v| serde_json::to_string(v).unwrap_or_default());
             (tool, input, None, None)
         }
         "PostToolUse" | "post_tool_use_rework_candidate" => {
-            let tool = event.payload.get("tool_name")
+            let tool = event
+                .payload
+                .get("tool_name")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
-            let input = event.payload.get("tool_input")
+            let input = event
+                .payload
+                .get("tool_input")
                 .map(|v| serde_json::to_string(v).unwrap_or_default());
             let (rs, rsnip) = extract_response_fields(&event.payload);
             (tool, input, rs, rsnip)
         }
         "SubagentStart" => {
-            let tool = event.payload.get("agent_type")
+            let tool = event
+                .payload
+                .get("agent_type")
                 .and_then(|v| v.as_str())
                 .filter(|s| !s.is_empty())
                 .map(|s| s.to_string());
-            let input = event.payload.get("prompt_snippet")
+            let input = event
+                .payload
+                .get("prompt_snippet")
                 .and_then(|v| v.as_str())
                 .filter(|s| !s.is_empty())
                 .map(|s| s.to_string());
             (tool, input, None, None)
         }
-        "SubagentStop" | _ => {
-            (None, None, None, None)
-        }
+        "SubagentStop" | _ => (None, None, None, None),
     };
 
     // col-019: Normalize rework candidate hook type to PostToolUse for observation consistency
@@ -1994,7 +2158,10 @@ fn extract_response_fields(payload: &serde_json::Value) -> (Option<i64>, Option<
 }
 
 /// Insert a single observation row into the observations table.
-fn insert_observation(store: &Store, obs: &ObservationRow) -> Result<(), unimatrix_store::StoreError> {
+fn insert_observation(
+    store: &Store,
+    obs: &ObservationRow,
+) -> Result<(), unimatrix_store::StoreError> {
     let conn = store.lock_conn();
     conn.execute(
         "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal)
@@ -2014,9 +2181,13 @@ fn insert_observation(store: &Store, obs: &ObservationRow) -> Result<(), unimatr
 }
 
 /// Insert a batch of observations in a single transaction.
-fn insert_observations_batch(store: &Store, batch: &[ObservationRow]) -> Result<(), unimatrix_store::StoreError> {
+fn insert_observations_batch(
+    store: &Store,
+    batch: &[ObservationRow],
+) -> Result<(), unimatrix_store::StoreError> {
     let conn = store.lock_conn();
-    conn.execute_batch("BEGIN").map_err(unimatrix_store::StoreError::Sqlite)?;
+    conn.execute_batch("BEGIN")
+        .map_err(unimatrix_store::StoreError::Sqlite)?;
     let result = (|| -> Result<(), unimatrix_store::StoreError> {
         for obs in batch {
             conn.execute(
@@ -2038,7 +2209,8 @@ fn insert_observations_batch(store: &Store, batch: &[ObservationRow]) -> Result<
     })();
     match result {
         Ok(()) => {
-            conn.execute_batch("COMMIT").map_err(unimatrix_store::StoreError::Sqlite)?;
+            conn.execute_batch("COMMIT")
+                .map_err(unimatrix_store::StoreError::Sqlite)?;
             Ok(())
         }
         Err(e) => {
@@ -2071,7 +2243,9 @@ mod tests {
         Arc::new(Mutex::new(PendingEntriesAnalysis::new()))
     }
 
-    fn make_dispatch_deps(store: &Arc<Store>) -> (
+    fn make_dispatch_deps(
+        store: &Arc<Store>,
+    ) -> (
         Arc<AsyncVectorStore<VectorAdapter>>,
         Arc<AsyncEntryStore<StoreAdapter>>,
         Arc<AdaptationService>,
@@ -2087,7 +2261,9 @@ mod tests {
         let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
         let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
         let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
-        let adapt_service = Arc::new(AdaptationService::new(unimatrix_adapt::AdaptConfig::default()));
+        let adapt_service = Arc::new(AdaptationService::new(
+            unimatrix_adapt::AdaptConfig::default(),
+        ));
         (async_vector_store, async_entry_store, adapt_service)
     }
 
@@ -2174,8 +2350,17 @@ mod tests {
 
         let response = dispatch_request(
             HookRequest::Ping,
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
         match response {
             HookResponse::Pong { server_version } => assert_eq!(server_version, "0.1.0"),
             _ => panic!("expected Pong"),
@@ -2196,8 +2381,17 @@ mod tests {
                 agent_role: Some("dev".to_string()),
                 feature: Some("col-008".to_string()),
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
         assert!(matches!(response, HookResponse::Ack));
 
         // col-008: verify session registered
@@ -2222,8 +2416,17 @@ mod tests {
                 outcome: Some("success".to_string()),
                 duration_secs: 60,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
         assert!(matches!(response, HookResponse::Ack));
 
         // col-008: verify session cleared
@@ -2246,8 +2449,17 @@ mod tests {
         };
         let response = dispatch_request(
             HookRequest::RecordEvent { event },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
         assert!(matches!(response, HookResponse::Ack));
     }
 
@@ -2268,8 +2480,17 @@ mod tests {
                 feature: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
         match response {
             HookResponse::BriefingContent { .. } => {}
             other => panic!("expected BriefingContent, got {other:?}"),
@@ -2293,10 +2514,22 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
         match response {
-            HookResponse::Entries { items, total_tokens } => {
+            HookResponse::Entries {
+                items,
+                total_tokens,
+            } => {
                 assert!(items.is_empty());
                 assert_eq!(total_tokens, 0);
             }
@@ -2322,8 +2555,17 @@ mod tests {
                 outcome: None,
                 duration_secs: 0,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         // After clear + re-register, same set should be considered new
         registry.register_session("s1", None, None);
@@ -2347,10 +2589,22 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
         match response {
-            HookResponse::BriefingContent { content, token_count } => {
+            HookResponse::BriefingContent {
+                content,
+                token_count,
+            } => {
                 // No session, no entries in KB -> empty content
                 assert!(content.is_empty());
                 assert_eq!(token_count, 0);
@@ -2376,15 +2630,30 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         assert_eq!(registry.get_state("s1").unwrap().compaction_count, 1);
     }
 
     // -- format_compaction_payload unit tests --
 
-    fn make_entry(id: u64, title: &str, content: &str, category: &str, confidence: f64) -> unimatrix_store::EntryRecord {
+    fn make_entry(
+        id: u64,
+        title: &str,
+        content: &str,
+        category: &str,
+        confidence: f64,
+    ) -> unimatrix_store::EntryRecord {
         unimatrix_store::EntryRecord {
             id,
             title: title.to_string(),
@@ -2423,7 +2692,9 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        assert!(format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).is_none());
+        assert!(
+            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).is_none()
+        );
     }
 
     #[test]
@@ -2433,7 +2704,8 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        let result = format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        let result =
+            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
         assert!(result.starts_with("--- Unimatrix Compaction Context ---\n"));
     }
 
@@ -2444,7 +2716,8 @@ mod tests {
             injections: vec![(make_entry(2, "Pattern", "pcontent", "pattern", 0.8), 0.8)],
             conventions: vec![],
         };
-        let result = format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        let result =
+            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
         let dec_pos = result.find("[Decision]").unwrap();
         let inj_pos = result.find("[Pattern]").unwrap();
         assert!(dec_pos < inj_pos, "decisions must appear before injections");
@@ -2461,10 +2734,14 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        let result = format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        let result =
+            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
         let high_pos = result.find("[High]").expect("High entry missing");
         let low_pos = result.find("[Low]").expect("Low entry missing");
-        assert!(high_pos < low_pos, "high-confidence entry must appear before low-confidence entry");
+        assert!(
+            high_pos < low_pos,
+            "high-confidence entry must appear before low-confidence entry"
+        );
     }
 
     #[test]
@@ -2478,8 +2755,14 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        let result = format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
-        assert!(result.len() <= MAX_COMPACTION_BYTES, "output {} exceeds budget {}", result.len(), MAX_COMPACTION_BYTES);
+        let result =
+            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        assert!(
+            result.len() <= MAX_COMPACTION_BYTES,
+            "output {} exceeds budget {}",
+            result.len(),
+            MAX_COMPACTION_BYTES
+        );
     }
 
     #[test]
@@ -2508,7 +2791,8 @@ mod tests {
             Some("col-008"),
             2,
             MAX_COMPACTION_BYTES,
-        ).unwrap();
+        )
+        .unwrap();
         assert!(result.contains("Role: developer"));
         assert!(result.contains("Feature: col-008"));
         assert!(result.contains("Compaction: #3"));
@@ -2523,7 +2807,8 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        let result = format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        let result =
+            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
         assert!(result.contains("[deprecated]"));
     }
 
@@ -2534,7 +2819,8 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        let result = format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        let result =
+            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
         assert!(result.contains("<!-- id:42 -->"));
     }
 
@@ -2624,7 +2910,11 @@ mod tests {
         let id2 = store.insert(entry2).unwrap();
 
         // Register session and record injections
-        registry.register_session("s1", Some("developer".to_string()), Some("col-008".to_string()));
+        registry.register_session(
+            "s1",
+            Some("developer".to_string()),
+            Some("col-008".to_string()),
+        );
         registry.record_injection("s1", &[(id1, 0.92), (id2, 0.75)]);
 
         let response = dispatch_request(
@@ -2635,20 +2925,44 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         match response {
-            HookResponse::BriefingContent { content, token_count } => {
-                assert!(!content.is_empty(), "primary path should produce non-empty content");
+            HookResponse::BriefingContent {
+                content,
+                token_count,
+            } => {
+                assert!(
+                    !content.is_empty(),
+                    "primary path should produce non-empty content"
+                );
                 assert!(token_count > 0);
                 // Verify entries from injection history appear in output
-                assert!(content.contains("[ADR-Important]"), "decision entry missing");
-                assert!(content.contains("[Coding Convention]"), "convention entry missing");
+                assert!(
+                    content.contains("[ADR-Important]"),
+                    "decision entry missing"
+                );
+                assert!(
+                    content.contains("[Coding Convention]"),
+                    "convention entry missing"
+                );
                 // Verify decisions appear before conventions (priority ordering)
                 let dec_pos = content.find("[ADR-Important]").unwrap();
                 let conv_pos = content.find("[Coding Convention]").unwrap();
-                assert!(dec_pos < conv_pos, "decisions must appear before conventions");
+                assert!(
+                    dec_pos < conv_pos,
+                    "decisions must appear before conventions"
+                );
                 // Verify session context
                 assert!(content.contains("Role: developer"));
                 assert!(content.contains("Feature: col-008"));
@@ -2703,14 +3017,26 @@ mod tests {
                 feature: None,
                 token_limit: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         match response {
             HookResponse::BriefingContent { content, .. } => {
                 let high_pos = content.find("[HighConf]").expect("HighConf missing");
                 let low_pos = content.find("[LowConf]").expect("LowConf missing");
-                assert!(high_pos < low_pos, "high-confidence entry must appear before low-confidence");
+                assert!(
+                    high_pos < low_pos,
+                    "high-confidence entry must appear before low-confidence"
+                );
             }
             _ => panic!("expected BriefingContent"),
         }
@@ -2758,7 +3084,10 @@ mod tests {
     #[test]
     fn sanitize_session_id_rejects_exclamation() {
         let err = sanitize_session_id("abc!def").unwrap_err();
-        assert!(err.contains("invalid character"), "expected 'invalid character', got: {err}");
+        assert!(
+            err.contains("invalid character"),
+            "expected 'invalid character', got: {err}"
+        );
     }
 
     #[test]
@@ -2779,7 +3108,10 @@ mod tests {
     #[test]
     fn sanitize_session_id_rejects_empty() {
         let err = sanitize_session_id("").unwrap_err();
-        assert!(err.contains("must not be empty"), "expected 'must not be empty', got: {err}");
+        assert!(
+            err.contains("must not be empty"),
+            "expected 'must not be empty', got: {err}"
+        );
     }
 
     // -- col-010: sanitize_metadata_field tests (SEC-02) --
@@ -2849,14 +3181,24 @@ mod tests {
         let entry_id = insert_test_entry_for_signal(&store);
 
         // Insert two signals with SAME session_id, both referencing entry_id
-        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful)).unwrap();
-        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful)).unwrap();
+        store
+            .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful))
+            .unwrap();
+        store
+            .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful))
+            .unwrap();
 
         run_confidence_consumer(&store, &entry_store, &pending).await;
 
         let guard = pending.lock().unwrap();
-        let analysis = guard.entries.get(&entry_id).expect("entry should exist in pending");
-        assert_eq!(analysis.success_session_count, 1, "same session should count only once");
+        let analysis = guard
+            .entries
+            .get(&entry_id)
+            .expect("entry should exist in pending");
+        assert_eq!(
+            analysis.success_session_count, 1,
+            "same session should count only once"
+        );
     }
 
     /// T-CON-02: Two Helpful signals with different session_ids should increment
@@ -2870,14 +3212,24 @@ mod tests {
         let entry_id = insert_test_entry_for_signal(&store);
 
         // Insert two signals with DIFFERENT session_ids
-        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful)).unwrap();
-        store.insert_signal(&make_signal("sess-B", vec![entry_id], SignalType::Helpful)).unwrap();
+        store
+            .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful))
+            .unwrap();
+        store
+            .insert_signal(&make_signal("sess-B", vec![entry_id], SignalType::Helpful))
+            .unwrap();
 
         run_confidence_consumer(&store, &entry_store, &pending).await;
 
         let guard = pending.lock().unwrap();
-        let analysis = guard.entries.get(&entry_id).expect("entry should exist in pending");
-        assert_eq!(analysis.success_session_count, 2, "different sessions should each count");
+        let analysis = guard
+            .entries
+            .get(&entry_id)
+            .expect("entry should exist in pending");
+        assert_eq!(
+            analysis.success_session_count, 2,
+            "different sessions should each count"
+        );
     }
 
     /// T-CON-03: Two Flagged signals with same session_id should increment
@@ -2891,15 +3243,28 @@ mod tests {
         let entry_id = insert_test_entry_for_signal(&store);
 
         // Insert two Flagged signals with SAME session_id
-        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged)).unwrap();
-        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged)).unwrap();
+        store
+            .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
+            .unwrap();
+        store
+            .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
+            .unwrap();
 
         run_retrospective_consumer(&store, &pending, &entry_store).await;
 
         let guard = pending.lock().unwrap();
-        let analysis = guard.entries.get(&entry_id).expect("entry should exist in pending");
-        assert_eq!(analysis.rework_session_count, 1, "same session should count only once");
-        assert_eq!(analysis.rework_flag_count, 2, "flag count should NOT be deduped (ADR-002)");
+        let analysis = guard
+            .entries
+            .get(&entry_id)
+            .expect("entry should exist in pending");
+        assert_eq!(
+            analysis.rework_session_count, 1,
+            "same session should count only once"
+        );
+        assert_eq!(
+            analysis.rework_flag_count, 2,
+            "flag count should NOT be deduped (ADR-002)"
+        );
     }
 
     /// T-CON-04: Three Flagged signals with same session_id should increment
@@ -2914,15 +3279,27 @@ mod tests {
         let entry_id = insert_test_entry_for_signal(&store);
 
         // Insert three Flagged signals with SAME session_id
-        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged)).unwrap();
-        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged)).unwrap();
-        store.insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged)).unwrap();
+        store
+            .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
+            .unwrap();
+        store
+            .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
+            .unwrap();
+        store
+            .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
+            .unwrap();
 
         run_retrospective_consumer(&store, &pending, &entry_store).await;
 
         let guard = pending.lock().unwrap();
-        let analysis = guard.entries.get(&entry_id).expect("entry should exist in pending");
-        assert_eq!(analysis.rework_flag_count, 3, "every flagging event should count");
+        let analysis = guard
+            .entries
+            .get(&entry_id)
+            .expect("entry should exist in pending");
+        assert_eq!(
+            analysis.rework_flag_count, 3,
+            "every flagging event should count"
+        );
         assert_eq!(analysis.rework_session_count, 1, "only one unique session");
     }
 
@@ -2932,8 +3309,20 @@ mod tests {
     fn test_majority_vote_clear_winner() {
         // AC-13
         let mut signals = std::collections::HashMap::new();
-        signals.insert("col-017".to_string(), TopicTally { count: 5, last_seen: 100 });
-        signals.insert("col-018".to_string(), TopicTally { count: 2, last_seen: 200 });
+        signals.insert(
+            "col-017".to_string(),
+            TopicTally {
+                count: 5,
+                last_seen: 100,
+            },
+        );
+        signals.insert(
+            "col-018".to_string(),
+            TopicTally {
+                count: 2,
+                last_seen: 200,
+            },
+        );
         assert_eq!(majority_vote(&signals), Some("col-017".to_string()));
     }
 
@@ -2941,8 +3330,20 @@ mod tests {
     fn test_majority_vote_tie_broken_by_recency() {
         // AC-14
         let mut signals = std::collections::HashMap::new();
-        signals.insert("a".to_string(), TopicTally { count: 3, last_seen: 100 });
-        signals.insert("b".to_string(), TopicTally { count: 3, last_seen: 200 });
+        signals.insert(
+            "a".to_string(),
+            TopicTally {
+                count: 3,
+                last_seen: 100,
+            },
+        );
+        signals.insert(
+            "b".to_string(),
+            TopicTally {
+                count: 3,
+                last_seen: 200,
+            },
+        );
         assert_eq!(majority_vote(&signals), Some("b".to_string()));
     }
 
@@ -2950,15 +3351,33 @@ mod tests {
     fn test_majority_vote_deterministic_tie_lexicographic() {
         // AR-2: same count + same timestamp -> lexicographic smallest
         let mut signals = std::collections::HashMap::new();
-        signals.insert("b".to_string(), TopicTally { count: 3, last_seen: 100 });
-        signals.insert("a".to_string(), TopicTally { count: 3, last_seen: 100 });
+        signals.insert(
+            "b".to_string(),
+            TopicTally {
+                count: 3,
+                last_seen: 100,
+            },
+        );
+        signals.insert(
+            "a".to_string(),
+            TopicTally {
+                count: 3,
+                last_seen: 100,
+            },
+        );
         assert_eq!(majority_vote(&signals), Some("a".to_string()));
     }
 
     #[test]
     fn test_majority_vote_single_topic() {
         let mut signals = std::collections::HashMap::new();
-        signals.insert("col-017".to_string(), TopicTally { count: 1, last_seen: 100 });
+        signals.insert(
+            "col-017".to_string(),
+            TopicTally {
+                count: 1,
+                last_seen: 100,
+            },
+        );
         assert_eq!(majority_vote(&signals), Some("col-017".to_string()));
     }
 
@@ -2973,9 +3392,27 @@ mod tests {
     fn test_majority_vote_multi_topic() {
         // T-16: 3 topics, highest count wins
         let mut signals = std::collections::HashMap::new();
-        signals.insert("a".to_string(), TopicTally { count: 10, last_seen: 100 });
-        signals.insert("b".to_string(), TopicTally { count: 8, last_seen: 200 });
-        signals.insert("c".to_string(), TopicTally { count: 2, last_seen: 300 });
+        signals.insert(
+            "a".to_string(),
+            TopicTally {
+                count: 10,
+                last_seen: 100,
+            },
+        );
+        signals.insert(
+            "b".to_string(),
+            TopicTally {
+                count: 8,
+                last_seen: 200,
+            },
+        );
+        signals.insert(
+            "c".to_string(),
+            TopicTally {
+                count: 2,
+                last_seen: 300,
+            },
+        );
         assert_eq!(majority_vote(&signals), Some("a".to_string()));
     }
 
@@ -3004,7 +3441,8 @@ mod tests {
                 "Read",
                 "some random text with no feature IDs",
             ],
-        ).unwrap();
+        )
+        .unwrap();
         drop(conn);
 
         let result = content_based_attribution_fallback(&store, "sess-169");
@@ -3026,7 +3464,8 @@ mod tests {
                 "Read",
                 "product/features/col-017/SCOPE.md",
             ],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute(
             "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
              VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -3037,7 +3476,8 @@ mod tests {
                 "Read",
                 "product/features/col-017/IMPL.md",
             ],
-        ).unwrap();
+        )
+        .unwrap();
         drop(conn);
 
         let result = content_based_attribution_fallback(&store, "sess-169");
@@ -3064,7 +3504,8 @@ mod tests {
                         "Read",
                         format!("product/features/col-017/file{}.md", i),
                     ],
-                ).unwrap();
+                )
+                .unwrap();
             }
         }
 
@@ -3087,7 +3528,8 @@ mod tests {
                     "Write",
                     "unrelated write",
                 ],
-            ).unwrap();
+            )
+            .unwrap();
         });
 
         let result = content_based_attribution_fallback(&store, "sess-169-lock");
@@ -3106,7 +3548,9 @@ mod tests {
             "tool_response": {"success": true, "output": "hello world"}
         });
         let (size, snippet) = extract_response_fields(&payload);
-        let expected = serde_json::to_string(&serde_json::json!({"success": true, "output": "hello world"})).unwrap();
+        let expected =
+            serde_json::to_string(&serde_json::json!({"success": true, "output": "hello world"}))
+                .unwrap();
         assert_eq!(size, Some(expected.len() as i64));
         assert_eq!(snippet, Some(expected));
     }
@@ -3229,7 +3673,9 @@ mod tests {
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, "PostToolUse");
-        let expected = serde_json::to_string(&serde_json::json!({"stdout": "file.txt", "exit_code": 1})).unwrap();
+        let expected =
+            serde_json::to_string(&serde_json::json!({"stdout": "file.txt", "exit_code": 1}))
+                .unwrap();
         assert_eq!(obs.response_size, Some(expected.len() as i64));
         assert_eq!(obs.response_snippet, Some(expected));
     }
@@ -3271,7 +3717,8 @@ mod tests {
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, "PostToolUse");
         assert_eq!(obs.tool, Some("Read".to_string()));
-        let expected = serde_json::to_string(&serde_json::json!({"content": "fn main() {}"})).unwrap();
+        let expected =
+            serde_json::to_string(&serde_json::json!({"content": "fn main() {}"})).unwrap();
         assert_eq!(obs.response_size, Some(expected.len() as i64));
         assert_eq!(obs.response_snippet, Some(expected));
     }
@@ -3297,7 +3744,17 @@ mod tests {
     // -- col-018: UserPromptSubmit observation tests --
 
     /// Helper: query the observations table for rows matching session_id.
-    fn query_observations(store: &Store, session_id: &str) -> Vec<(String, i64, String, Option<String>, Option<String>, Option<String>)> {
+    fn query_observations(
+        store: &Store,
+        session_id: &str,
+    ) -> Vec<(
+        String,
+        i64,
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    )> {
         let conn = store.lock_conn();
         let mut stmt = conn.prepare(
             "SELECT session_id, ts_millis, hook, tool, input, topic_signal FROM observations WHERE session_id = ?1"
@@ -3311,7 +3768,10 @@ mod tests {
                 row.get::<_, Option<String>>(4).unwrap(),
                 row.get::<_, Option<String>>(5).unwrap(),
             ))
-        }).unwrap().map(|r| r.unwrap()).collect()
+        })
+        .unwrap()
+        .map(|r| r.unwrap())
+        .collect()
     }
 
     #[tokio::test]
@@ -3332,8 +3792,17 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         // Allow spawn_blocking to complete
         tokio::task::yield_now().await;
@@ -3368,8 +3837,17 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
@@ -3397,15 +3875,27 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
 
         let rows = query_observations(&store, "sess-generic-1");
         assert_eq!(rows.len(), 1);
-        assert!(rows[0].5.is_none(), "topic_signal should be NULL for generic prompt");
+        assert!(
+            rows[0].5.is_none(),
+            "topic_signal should be NULL for generic prompt"
+        );
     }
 
     #[tokio::test]
@@ -3426,8 +3916,17 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
@@ -3456,8 +3955,17 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
@@ -3487,8 +3995,17 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
@@ -3518,16 +4035,30 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
 
         // No observation written
         let conn = store.lock_conn();
-        let count: i64 = conn.query_row("SELECT COUNT(*) FROM observations", [], |r| r.get(0)).unwrap();
-        assert_eq!(count, 0, "no observation should be written when session_id is None");
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM observations", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(
+            count, 0,
+            "no observation should be written when session_id is None"
+        );
 
         // Search still returns results
         match response {
@@ -3554,8 +4085,17 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
@@ -3582,12 +4122,24 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
         // Embed not started -> empty results (same behavior as pre-col-018)
         match response {
-            HookResponse::Entries { items, total_tokens } => {
+            HookResponse::Entries {
+                items,
+                total_tokens,
+            } => {
                 assert!(items.is_empty());
                 assert_eq!(total_tokens, 0);
             }
@@ -3614,11 +4166,25 @@ mod tests {
                 k: None,
                 max_tokens: None,
             },
-            &store, &embed, &vs, &es, &adapt, "0.1.0", &registry, &make_pending(), &make_services(&store, &embed, &vs, &es, &adapt),
-        ).await;
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
 
-        let state = registry.get_state("sess-reg-1").expect("session should exist");
-        assert!(state.topic_signals.contains_key("col-018"), "topic signal 'col-018' should be accumulated");
+        let state = registry
+            .get_state("sess-reg-1")
+            .expect("session should exist");
+        assert!(
+            state.topic_signals.contains_key("col-018"),
+            "topic signal 'col-018' should be accumulated"
+        );
         assert_eq!(state.topic_signals["col-018"].count, 1);
     }
 }
