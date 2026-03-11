@@ -504,13 +504,37 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    /// Helper: create a fresh database in a temp directory and return (store, temp_dir).
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    /// Create a fresh database in a temp directory and return (store, temp_dir).
     fn setup_test_db() -> (Store, TempDir) {
         let tmp = TempDir::new().expect("create temp dir");
         let db_path = tmp.path().join("unimatrix.db");
         let store = Store::open(&db_path).expect("open store");
         (store, tmp)
     }
+
+    /// Parse the first non-empty line from a buffer as JSON.
+    fn parse_line(buf: &[u8]) -> Value {
+        let s = std::str::from_utf8(buf).unwrap();
+        let line = s.lines().next().unwrap();
+        serde_json::from_str(line).unwrap()
+    }
+
+    /// Parse all non-empty lines from a buffer as JSON values.
+    fn parse_lines(buf: &[u8]) -> Vec<Value> {
+        let s = std::str::from_utf8(buf).unwrap();
+        s.lines()
+            .filter(|l| !l.is_empty())
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect()
+    }
+
+    // -----------------------------------------------------------------------
+    // Export-module agent tests (header, orchestration)
+    // -----------------------------------------------------------------------
 
     #[test]
     fn test_write_header_fields_correct() {
@@ -533,7 +557,6 @@ mod tests {
         assert!(obj.get("exported_at").expect("exported_at").is_number());
         assert_eq!(obj.get("entry_count"), Some(&Value::Number(0.into())));
         assert_eq!(obj.get("format_version"), Some(&Value::Number(1.into())));
-        // Exactly 5 keys
         assert_eq!(obj.len(), 5);
     }
 
@@ -573,10 +596,8 @@ mod tests {
         let output = String::from_utf8(buf).expect("utf8");
         let lines: Vec<&str> = output.lines().collect();
 
-        // At minimum, the header line should be present
         assert!(!lines.is_empty(), "should have at least a header line");
 
-        // First line is a valid header
         let header: Value = serde_json::from_str(lines[0]).expect("parse header");
         assert_eq!(header["_header"], Value::Bool(true));
         assert_eq!(header["entry_count"], Value::Number(0.into()));
@@ -599,13 +620,7 @@ mod tests {
 
     #[test]
     fn test_run_export_to_file() {
-        let tmp = TempDir::new().expect("create temp dir");
-        let db_path = tmp.path().join("unimatrix.db");
-        let _store = Store::open(&db_path).expect("open store");
-        drop(_store);
-
-        let output_path = tmp.path().join("export.jsonl");
-
+        let _tmp = TempDir::new().expect("create temp dir");
         // run_export needs ensure_data_directory which uses project root detection.
         // For unit tests, we test do_export directly. File output is tested via
         // integration tests that set up proper project directories.
@@ -623,7 +638,6 @@ mod tests {
         let val: Value = serde_json::from_str(output.trim()).expect("parse json");
         let obj = val.as_object().expect("object");
 
-        // With preserve_order, keys should be in insertion order
         let keys: Vec<&String> = obj.keys().collect();
         assert_eq!(
             keys,
@@ -634,6 +648,752 @@ mod tests {
                 "entry_count",
                 "format_version"
             ]
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-01: All 26 entry columns present with correct values
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_all_26_columns_present() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (
+                id, title, content, topic, category, source, status, confidence,
+                created_at, updated_at, last_accessed_at, access_count,
+                supersedes, superseded_by, correction_count, embedding_dim,
+                created_by, modified_by, content_hash, previous_hash,
+                version, feature_cycle, trust_source,
+                helpful_count, unhelpful_count, pre_quarantine_status
+            ) VALUES (
+                42, 'Test Entry', 'Content here', 'testing', 'pattern', 'unit-test', 1, 0.87654321,
+                1700000000, 1700000001, 1700000002, 15,
+                10, 50, 3, 384,
+                'agent-x', 'agent-y', 'abc123', 'def456',
+                7, 'crt-002', 'human',
+                12, 2, 0
+            )",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+
+        let obj = row.as_object().unwrap();
+        assert_eq!(obj.len(), 27); // 26 columns + _table
+        assert_eq!(obj["_table"], "entries");
+        assert_eq!(obj["id"], 42);
+        assert_eq!(obj["title"], "Test Entry");
+        assert_eq!(obj["content"], "Content here");
+        assert_eq!(obj["topic"], "testing");
+        assert_eq!(obj["category"], "pattern");
+        assert_eq!(obj["source"], "unit-test");
+        assert_eq!(obj["status"], 1);
+        assert_eq!(obj["created_at"], 1_700_000_000i64);
+        assert_eq!(obj["updated_at"], 1_700_000_001i64);
+        assert_eq!(obj["last_accessed_at"], 1_700_000_002i64);
+        assert_eq!(obj["access_count"], 15);
+        assert_eq!(obj["supersedes"], 10);
+        assert_eq!(obj["superseded_by"], 50);
+        assert_eq!(obj["correction_count"], 3);
+        assert_eq!(obj["embedding_dim"], 384);
+        assert_eq!(obj["created_by"], "agent-x");
+        assert_eq!(obj["modified_by"], "agent-y");
+        assert_eq!(obj["content_hash"], "abc123");
+        assert_eq!(obj["previous_hash"], "def456");
+        assert_eq!(obj["version"], 7);
+        assert_eq!(obj["feature_cycle"], "crt-002");
+        assert_eq!(obj["trust_source"], "human");
+        assert_eq!(obj["helpful_count"], 12);
+        assert_eq!(obj["unhelpful_count"], 2);
+        assert_eq!(obj["pre_quarantine_status"], 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-03: Per-table key counts
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_counters_key_count_and_values() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+
+        let mut buf = Vec::new();
+        export_counters(&conn, &mut buf).unwrap();
+        let rows = parse_lines(&buf);
+        // counters table has schema_version from Store::open migration
+        assert!(!rows.is_empty());
+        for row in &rows {
+            assert_eq!(row.as_object().unwrap().len(), 3);
+            assert_eq!(row["_table"], "counters");
+        }
+    }
+
+    #[test]
+    fn test_export_entry_tags_key_count() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (id, title, content, topic, category, source, created_at, updated_at)
+             VALUES (1, 't', 'c', 't', 'p', 's', 1, 1)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'rust')",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entry_tags(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+        assert_eq!(row.as_object().unwrap().len(), 3);
+        assert_eq!(row["_table"], "entry_tags");
+    }
+
+    #[test]
+    fn test_export_co_access_key_count() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated)
+             VALUES (1, 2, 5, 1700000000)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_co_access(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+        assert_eq!(row.as_object().unwrap().len(), 5);
+        assert_eq!(row["_table"], "co_access");
+        assert_eq!(row["entry_id_a"], 1);
+        assert_eq!(row["entry_id_b"], 2);
+        assert_eq!(row["count"], 5);
+        assert_eq!(row["last_updated"], 1_700_000_000i64);
+    }
+
+    #[test]
+    fn test_export_feature_entries_key_count() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO feature_entries (feature_id, entry_id) VALUES ('nxs-001', 42)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_feature_entries(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+        assert_eq!(row.as_object().unwrap().len(), 3);
+        assert_eq!(row["feature_id"], "nxs-001");
+        assert_eq!(row["entry_id"], 42);
+    }
+
+    #[test]
+    fn test_export_outcome_index_key_count() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO outcome_index (feature_cycle, entry_id) VALUES ('crt-001', 7)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_outcome_index(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+        assert_eq!(row.as_object().unwrap().len(), 3);
+        assert_eq!(row["feature_cycle"], "crt-001");
+        assert_eq!(row["entry_id"], 7);
+    }
+
+    #[test]
+    fn test_export_agent_registry_key_count() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
+             allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
+             VALUES ('bot-1', 2, '[\"Admin\"]', '[\"security\"]', '[\"decision\"]', 1700000000, 1700000001, 1)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_agent_registry(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+        assert_eq!(row.as_object().unwrap().len(), 9);
+        assert_eq!(row["_table"], "agent_registry");
+    }
+
+    #[test]
+    fn test_export_audit_log_key_count() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO audit_log (event_id, timestamp, session_id, agent_id,
+             operation, target_ids, outcome, detail)
+             VALUES (1, 1700000000, 'sess-1', 'bot-1', 'store', '[1,2]', 0, 'ok')",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_audit_log(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+        assert_eq!(row.as_object().unwrap().len(), 9);
+        assert_eq!(row["_table"], "audit_log");
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-04: f64 confidence round-trip fidelity
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_f64_precision() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        let values = [0.0, 1.0, 0.123456789012345, f64::MIN_POSITIVE, 0.1 + 0.2];
+
+        for (i, &v) in values.iter().enumerate() {
+            let id = (i as i64) + 1;
+            conn.execute(
+                "INSERT INTO entries (
+                    id, title, content, topic, category, source, status, confidence,
+                    created_at, updated_at
+                ) VALUES (?1, 'test', 'c', 't', 'p', 's', 0, ?2, 1, 1)",
+                rusqlite::params![id, v],
+            )
+            .unwrap();
+        }
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        let rows = parse_lines(&buf);
+        assert_eq!(rows.len(), values.len());
+
+        for (row, &expected) in rows.iter().zip(values.iter()) {
+            let parsed = row["confidence"].as_f64().unwrap();
+            assert_eq!(
+                parsed.to_bits(),
+                expected.to_bits(),
+                "f64 mismatch for {expected}: got {parsed}"
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-05: JSON-in-TEXT columns emitted as raw strings
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_agent_registry_json_in_text_as_string() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
+             allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
+             VALUES ('bot-1', 2, '[\"Admin\",\"Read\"]', '[\"security\"]', '[\"decision\"]', 1, 1, 1)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
+             allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
+             VALUES ('bot-2', 1, '[]', NULL, NULL, 2, 2, 1)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_agent_registry(&conn, &mut buf).unwrap();
+        let rows = parse_lines(&buf);
+        assert_eq!(rows.len(), 2);
+
+        // bot-1: JSON-in-TEXT are strings, NOT parsed arrays
+        let r1 = &rows[0];
+        assert!(r1["capabilities"].is_string());
+        assert_eq!(r1["capabilities"].as_str().unwrap(), "[\"Admin\",\"Read\"]");
+        assert!(r1["allowed_topics"].is_string());
+        assert_eq!(r1["allowed_topics"].as_str().unwrap(), "[\"security\"]");
+        assert!(r1["allowed_categories"].is_string());
+        assert_eq!(
+            r1["allowed_categories"].as_str().unwrap(),
+            "[\"decision\"]"
+        );
+
+        // bot-2: empty array as string, nullable fields as null
+        let r2 = &rows[1];
+        assert!(r2["capabilities"].is_string());
+        assert_eq!(r2["capabilities"].as_str().unwrap(), "[]");
+        assert!(r2["allowed_topics"].is_null());
+        assert!(r2["allowed_categories"].is_null());
+    }
+
+    #[test]
+    fn test_export_audit_log_json_in_text_target_ids() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO audit_log (event_id, timestamp, session_id, agent_id,
+             operation, target_ids, outcome, detail)
+             VALUES (1, 100, 's1', 'a1', 'op', '[1,2,3]', 0, 'detail')",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_audit_log(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+
+        assert!(row["target_ids"].is_string());
+        assert_eq!(row["target_ids"].as_str().unwrap(), "[1,2,3]");
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-06: NULL columns serialized as JSON null
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_null_handling() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (
+                id, title, content, topic, category, source, status, confidence,
+                created_at, updated_at, supersedes, superseded_by, pre_quarantine_status
+            ) VALUES (1, 'test', 'c', 't', 'p', 's', 0, 0.5, 1, 1, NULL, NULL, NULL)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+
+        assert!(row.as_object().unwrap().contains_key("supersedes"));
+        assert!(row["supersedes"].is_null());
+        assert!(row.as_object().unwrap().contains_key("superseded_by"));
+        assert!(row["superseded_by"].is_null());
+        assert!(
+            row.as_object()
+                .unwrap()
+                .contains_key("pre_quarantine_status")
+        );
+        assert!(row["pre_quarantine_status"].is_null());
+        assert_eq!(row.as_object().unwrap().len(), 27);
+    }
+
+    #[test]
+    fn test_export_agent_registry_null_handling() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
+             allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
+             VALUES ('bot-null', 0, '[]', NULL, NULL, 1, 1, 1)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_agent_registry(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+
+        assert!(row.as_object().unwrap().contains_key("allowed_topics"));
+        assert!(row["allowed_topics"].is_null());
+        assert!(row.as_object().unwrap().contains_key("allowed_categories"));
+        assert!(row["allowed_categories"].is_null());
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-06b: Empty strings are NOT null
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_empty_string_not_null() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (
+                id, title, content, topic, category, source, status, confidence,
+                created_at, updated_at, created_by, content_hash, feature_cycle
+            ) VALUES (1, 'test', 'c', 't', 'p', 's', 0, 0.0, 1, 1, '', '', '')",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+
+        assert!(row["created_by"].is_string());
+        assert_eq!(row["created_by"].as_str().unwrap(), "");
+        assert!(row["content_hash"].is_string());
+        assert_eq!(row["content_hash"].as_str().unwrap(), "");
+        assert!(row["feature_cycle"].is_string());
+        assert_eq!(row["feature_cycle"].as_str().unwrap(), "");
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-07: _table is first key, columns follow DDL declaration order
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_key_ordering() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (
+                id, title, content, topic, category, source, status, confidence,
+                created_at, updated_at
+            ) VALUES (1, 'test', 'content', 'topic', 'cat', 'src', 0, 0.5, 1, 1)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+
+        let raw = std::str::from_utf8(&buf).unwrap();
+        let line = raw.lines().next().unwrap();
+
+        // _table must be first key in raw JSON
+        assert!(
+            line.starts_with("{\"_table\":"),
+            "Expected _table as first key, got: {}",
+            &line[..50.min(line.len())]
+        );
+
+        // Verify full key order via preserve_order map
+        let v: Value = serde_json::from_str(line).unwrap();
+        let keys: Vec<&String> = v.as_object().unwrap().keys().collect();
+        let expected_keys = [
+            "_table",
+            "id",
+            "title",
+            "content",
+            "topic",
+            "category",
+            "source",
+            "status",
+            "confidence",
+            "created_at",
+            "updated_at",
+            "last_accessed_at",
+            "access_count",
+            "supersedes",
+            "superseded_by",
+            "correction_count",
+            "embedding_dim",
+            "created_by",
+            "modified_by",
+            "content_hash",
+            "previous_hash",
+            "version",
+            "feature_cycle",
+            "trust_source",
+            "helpful_count",
+            "unhelpful_count",
+            "pre_quarantine_status",
+        ];
+        assert_eq!(keys.len(), expected_keys.len());
+        for (got, expected) in keys.iter().zip(expected_keys.iter()) {
+            assert_eq!(got.as_str(), *expected);
+        }
+    }
+
+    #[test]
+    fn test_export_counters_table_key_first() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+
+        let mut buf = Vec::new();
+        export_counters(&conn, &mut buf).unwrap();
+        // counters has at least schema_version from migration
+        let raw = std::str::from_utf8(&buf).unwrap();
+        if let Some(line) = raw.lines().next() {
+            assert!(line.starts_with("{\"_table\":"));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-09: Unicode content preserved
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_unicode_cjk_and_emoji() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (
+                id, title, content, topic, category, source, status, confidence,
+                created_at, updated_at
+            ) VALUES (1, '\u{77E5}\u{8B58}', 'Status: \u{2705} approved', 't', 'p', 's', 0, 0.0, 1, 1)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+
+        assert_eq!(row["title"].as_str().unwrap(), "\u{77E5}\u{8B58}");
+        assert_eq!(
+            row["content"].as_str().unwrap(),
+            "Status: \u{2705} approved"
+        );
+    }
+
+    #[test]
+    fn test_export_entry_tags_unicode_accented() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (id, title, content, topic, category, source, created_at, updated_at)
+             VALUES (1, 't', 'c', 't', 'p', 's', 1, 1)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'resume\u{0301}')",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entry_tags(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+        assert_eq!(row["tag"].as_str().unwrap(), "resume\u{0301}");
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-10: Large integer values preserved
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_large_integers() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (
+                id, title, content, topic, category, source, status, confidence,
+                created_at, updated_at, version, access_count
+            ) VALUES (1, 't', 'c', 't', 'p', 's', 0, 0.0, 9999999999, 1, 2147483647, 1000000)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+
+        assert_eq!(row["created_at"].as_i64().unwrap(), 9_999_999_999i64);
+        assert_eq!(row["version"].as_i64().unwrap(), 2_147_483_647i64);
+        assert_eq!(row["access_count"].as_i64().unwrap(), 1_000_000i64);
+    }
+
+    #[test]
+    fn test_export_counters_i64_max() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT OR REPLACE INTO counters (name, value) VALUES ('big', 9223372036854775807)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_counters(&conn, &mut buf).unwrap();
+        let rows = parse_lines(&buf);
+        let big_row = rows.iter().find(|r| r["name"] == "big").unwrap();
+        assert_eq!(big_row["value"].as_i64().unwrap(), i64::MAX);
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-11: Entry with all nullable fields NULL simultaneously
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_all_nullable_null() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (
+                id, title, content, topic, category, source, created_at, updated_at,
+                supersedes, superseded_by, pre_quarantine_status
+            ) VALUES (1, 't', 'c', 't', 'p', 's', 1, 1, NULL, NULL, NULL)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+
+        assert!(row["supersedes"].is_null());
+        assert!(row["superseded_by"].is_null());
+        assert!(row["pre_quarantine_status"].is_null());
+        assert_eq!(row.as_object().unwrap().len(), 27);
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-12: Timestamp of 0 is not treated as NULL
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_zero_timestamp_not_null() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (
+                id, title, content, topic, category, source, created_at, updated_at,
+                last_accessed_at
+            ) VALUES (1, 't', 'c', 't', 'p', 's', 0, 0, 0)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+
+        assert_eq!(row["created_at"].as_i64().unwrap(), 0);
+        assert_eq!(row["last_accessed_at"].as_i64().unwrap(), 0);
+        assert!(!row["created_at"].is_null());
+    }
+
+    // -----------------------------------------------------------------------
+    // T-RS-13: JSONL line integrity -- no raw newlines in output lines
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_newline_in_content_escaped() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (
+                id, title, content, topic, category, source, created_at, updated_at
+            ) VALUES (1, 't', 'line1\nline2\nline3', 't', 'p', 's', 1, 1)",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        let raw = std::str::from_utf8(&buf).unwrap();
+
+        let lines: Vec<&str> = raw.lines().filter(|l| !l.is_empty()).collect();
+        assert_eq!(lines.len(), 1, "Multi-line content must not break JSONL");
+
+        let row: Value = serde_json::from_str(lines[0]).unwrap();
+        assert_eq!(row["content"].as_str().unwrap(), "line1\nline2\nline3");
+    }
+
+    // -----------------------------------------------------------------------
+    // Row ordering tests
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_ordered_by_id() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        for id in [5, 2, 8] {
+            conn.execute(
+                "INSERT INTO entries (id, title, content, topic, category, source, created_at, updated_at)
+                 VALUES (?1, 't', 'c', 't', 'p', 's', 1, 1)",
+                [id],
+            )
+            .unwrap();
+        }
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        let rows = parse_lines(&buf);
+        let ids: Vec<i64> = rows.iter().map(|r| r["id"].as_i64().unwrap()).collect();
+        assert_eq!(ids, vec![2, 5, 8]);
+    }
+
+    #[test]
+    fn test_export_entry_tags_ordered() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            "INSERT INTO entries (id, title, content, topic, category, source, created_at, updated_at)
+             VALUES (1, 't', 'c', 't', 'p', 's', 1, 1)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'z')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'a')",
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entry_tags(&conn, &mut buf).unwrap();
+        let rows = parse_lines(&buf);
+        let tags: Vec<&str> = rows.iter().map(|r| r["tag"].as_str().unwrap()).collect();
+        assert_eq!(tags, vec!["a", "z"]);
+    }
+
+    // -----------------------------------------------------------------------
+    // Empty tables produce no output
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_empty_tables_no_output() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        assert!(buf.is_empty());
+
+        buf.clear();
+        export_entry_tags(&conn, &mut buf).unwrap();
+        assert!(buf.is_empty());
+
+        buf.clear();
+        export_co_access(&conn, &mut buf).unwrap();
+        assert!(buf.is_empty());
+
+        buf.clear();
+        export_feature_entries(&conn, &mut buf).unwrap();
+        assert!(buf.is_empty());
+
+        buf.clear();
+        export_outcome_index(&conn, &mut buf).unwrap();
+        assert!(buf.is_empty());
+
+        buf.clear();
+        export_agent_registry(&conn, &mut buf).unwrap();
+        assert!(buf.is_empty());
+
+        buf.clear();
+        export_audit_log(&conn, &mut buf).unwrap();
+        assert!(buf.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // JSON-special characters in content
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_export_entries_json_special_chars_in_content() {
+        let (store, _tmp) = setup_test_db();
+        let conn = store.lock_conn();
+        conn.execute(
+            r#"INSERT INTO entries (
+                id, title, content, topic, category, source, created_at, updated_at
+            ) VALUES (1, 't', 'He said "hello" and used a \backslash', 't', 'p', 's', 1, 1)"#,
+            [],
+        )
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_entries(&conn, &mut buf).unwrap();
+        let row = parse_line(&buf);
+        assert_eq!(
+            row["content"].as_str().unwrap(),
+            r#"He said "hello" and used a \backslash"#
         );
     }
 }
