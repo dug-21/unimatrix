@@ -66,6 +66,25 @@ enum Command {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+
+    /// Import a knowledge base from a JSONL export file.
+    ///
+    /// Reads a nan-001 export dump, restores all 8 tables via direct SQL,
+    /// re-embeds entries with the current ONNX model, and builds a fresh
+    /// HNSW vector index. Synchronous path, no tokio runtime.
+    Import {
+        /// Input JSONL file path (required).
+        #[arg(short, long)]
+        input: PathBuf,
+
+        /// Skip content hash and chain integrity validation.
+        #[arg(long)]
+        skip_hash_validation: bool,
+
+        /// Drop all existing data before import.
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 /// Entry point: branches between hook subcommand (sync) and server (async).
@@ -101,6 +120,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Command::Export { output }) => {
             // Sync path: NO tokio, like Hook
             unimatrix_server::export::run_export(cli.project_dir.as_deref(), output.as_deref())
+        }
+        Some(Command::Import {
+            input,
+            skip_hash_validation,
+            force,
+        }) => {
+            // Sync path: NO tokio, like Hook and Export
+            unimatrix_server::import::run_import(
+                cli.project_dir.as_deref(),
+                &input,
+                skip_hash_validation,
+                force,
+            )
         }
         None => {
             // Async path: full server with tokio runtime
