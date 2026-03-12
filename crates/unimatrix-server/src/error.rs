@@ -241,7 +241,7 @@ impl From<ServerError> for ErrorData {
             ServerError::DatabaseLocked(path) => ErrorData::new(
                 ERROR_INTERNAL,
                 format!(
-                    "Database is locked by another process at {}. Kill the other unimatrix-server process, or run: lsof {}",
+                    "Database is locked by another process at {}. Kill the other unimatrix process, or run: lsof {}",
                     path.display(),
                     path.display()
                 ),

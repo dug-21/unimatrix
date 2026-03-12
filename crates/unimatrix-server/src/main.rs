@@ -1,4 +1,4 @@
-//! Unimatrix MCP knowledge server entry point.
+//! Unimatrix knowledge engine entry point.
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -27,9 +27,9 @@ use unimatrix_server::uds_listener;
 /// Increased from 5s to 10s to accommodate heavier shutdown since vnc-006 (#92).
 const STALE_PROCESS_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// Unimatrix MCP knowledge server.
+/// Unimatrix knowledge engine.
 #[derive(Parser)]
-#[command(name = "unimatrix-server", about = "Unimatrix MCP knowledge server")]
+#[command(name = "unimatrix", about = "Unimatrix knowledge engine")]
 struct Cli {
     /// Override project root directory.
     #[arg(long)]
@@ -39,13 +39,13 @@ struct Cli {
     #[arg(long, short)]
     verbose: bool,
 
-    /// Subcommand (hook, or none for server mode).
+    /// Subcommand (hook, version, model-download, or none for server mode).
     #[command(subcommand)]
     command: Option<Command>,
 }
 
-/// Subcommands for the unimatrix-server binary.
-#[derive(Subcommand)]
+/// Subcommands for the unimatrix binary.
+#[derive(Debug, Subcommand)]
 enum Command {
     /// Handle a Claude Code lifecycle hook event.
     ///
@@ -85,6 +85,17 @@ enum Command {
         #[arg(long)]
         force: bool,
     },
+
+    /// Print version and exit.
+    ///
+    /// Synchronous path, no tokio runtime.
+    Version,
+
+    /// Download the ONNX model to cache.
+    ///
+    /// Used by npm postinstall to pre-download the embedding model.
+    /// Synchronous path, no tokio runtime.
+    ModelDownload,
 }
 
 /// Entry point: branches between hook subcommand (sync) and server (async).
@@ -133,6 +144,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 skip_hash_validation,
                 force,
             )
+        }
+        Some(Command::Version) => {
+            // Sync path: NO tokio
+            handle_version(cli.project_dir)
+        }
+        Some(Command::ModelDownload) => {
+            // Sync path: NO tokio
+            handle_model_download()
         }
         None => {
             // Async path: full server with tokio runtime
@@ -354,6 +373,45 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// Print version string to stdout and exit.
+///
+/// When `--project-dir` is provided, also pre-creates the data directory and
+/// database (used by `npx unimatrix init` to ensure DB exists before first run).
+fn handle_version(project_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(dir) = project_dir {
+        let paths = project::ensure_data_directory(Some(&dir), None)
+            .map_err(|e| ServerError::ProjectInit(e.to_string()))?;
+        let _store = Store::open(&paths.db_path)?;
+        eprintln!("database initialized at {}", paths.db_path.display());
+    }
+
+    println!("unimatrix {}", env!("CARGO_PKG_VERSION"));
+    Ok(())
+}
+
+/// Download the ONNX embedding model to cache.
+///
+/// Uses `EmbedConfig::default()` to resolve the cache directory, then calls
+/// `ensure_model()` synchronously. Progress messages go to stderr (stdout
+/// is reserved for structured output / MCP protocol).
+fn handle_model_download() -> Result<(), Box<dyn std::error::Error>> {
+    let config = EmbedConfig::default();
+    let cache_dir = config.resolve_cache_dir();
+
+    eprintln!("Downloading ONNX model to {}...", cache_dir.display());
+
+    match unimatrix_embed::ensure_model(config.model, &cache_dir) {
+        Ok(model_dir) => {
+            eprintln!("Model ready: {}", model_dir.display());
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Model download failed: {e}");
+            Err(Box::new(e))
+        }
+    }
+}
+
 /// Maximum number of database open attempts before giving up.
 const DB_OPEN_MAX_ATTEMPTS: u32 = 3;
 
@@ -397,3 +455,7 @@ fn open_store_with_retry(
         last_err.expect("at least one attempt was made"),
     ))))
 }
+
+#[cfg(test)]
+#[path = "main_tests.rs"]
+mod tests;

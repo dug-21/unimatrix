@@ -1,0 +1,186 @@
+name: Release
+"on":
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.89
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-x64-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: linux-x64-release-
+
+      - name: Verify patched dependencies
+        run: |
+          if [ ! -d "patches/anndists" ]; then
+            echo "ERROR: patches/anndists directory missing"
+            exit 1
+          fi
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Strip binary
+        run: strip target/release/unimatrix
+
+      - name: Check shared libraries
+        run: |
+          ldd target/release/unimatrix
+          if ldd target/release/unimatrix 2>&1 | grep -q "not found"; then
+            echo "ERROR: Binary has missing shared library dependencies"
+            exit 1
+          fi
+
+      - name: Smoke test
+        run: |
+          OUTPUT=$(target/release/unimatrix version)
+          echo "$OUTPUT"
+          if ! echo "$OUTPUT" | grep -q "^unimatrix "; then
+            echo "ERROR: Unexpected version output: $OUTPUT"
+            exit 1
+          fi
+
+      - name: Test
+        run: cargo test --release
+
+      - name: Binary size
+        run: ls -lh target/release/unimatrix
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unimatrix-linux-x64
+          path: target/release/unimatrix
+          retention-days: 1
+
+  package-npm:
+    needs: build-linux-x64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: unimatrix-linux-x64
+          path: packages/unimatrix-linux-x64/bin/
+
+      - name: Set permissions
+        run: chmod +x packages/unimatrix-linux-x64/bin/unimatrix
+
+      - name: Bundle skills
+        run: |
+          mkdir -p packages/unimatrix/skills
+          for dir in .claude/skills/*/; do
+            if [ -f "${dir}SKILL.md" ]; then
+              cp -r "$dir" packages/unimatrix/skills/
+            fi
+          done
+
+      - name: Validate versions
+        run: |
+          CARGO_VERSION=$(grep -A5 '^\[workspace\.package\]' Cargo.toml | grep '^version' | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          TAG_VERSION=${GITHUB_REF_NAME#v}
+
+          echo "Cargo.toml version: $CARGO_VERSION"
+          echo "Tag version: $TAG_VERSION"
+
+          if [ "$CARGO_VERSION" != "$TAG_VERSION" ]; then
+            echo "ERROR: Cargo.toml version ($CARGO_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+
+          for pkg in packages/*/package.json; do
+            NPM_VERSION=$(node -e "console.log(require('./$pkg').version)")
+            if [ "$NPM_VERSION" != "$CARGO_VERSION" ]; then
+              echo "ERROR: $pkg version ($NPM_VERSION) does not match Cargo.toml ($CARGO_VERSION)"
+              exit 1
+            fi
+          done
+
+      - name: Publish @dug-21/unimatrix-linux-x64
+        working-directory: packages/unimatrix-linux-x64
+        run: npm publish --access restricted
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @dug-21/unimatrix
+        working-directory: packages/unimatrix
+        run: npm publish --access restricted
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  create-release:
+    needs: package-npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..HEAD"
+          else
+            RANGE=""
+          fi
+
+          BODY=""
+
+          FEATURES=$(git log $RANGE --format="%s" | grep "^feat:" | sed "s/^feat: //" || true)
+          if [ -n "$FEATURES" ]; then
+            BODY="${BODY}### Features\n"
+            while IFS= read -r line; do
+              BODY="${BODY}- ${line}\n"
+            done <<< "$FEATURES"
+            BODY="${BODY}\n"
+          fi
+
+          FIXES=$(git log $RANGE --format="%s" | grep "^fix:" | sed "s/^fix: //" || true)
+          if [ -n "$FIXES" ]; then
+            BODY="${BODY}### Fixes\n"
+            while IFS= read -r line; do
+              BODY="${BODY}- ${line}\n"
+            done <<< "$FIXES"
+            BODY="${BODY}\n"
+          fi
+
+          {
+            echo "body<<EOF"
+            echo -e "$BODY"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.body }}
+          draft: false
+          prerelease: false

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix-server hook SessionStart"
+            "command": "unimatrix hook SessionStart"
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix-server hook Stop"
+            "command": "unimatrix hook Stop"
           }
         ]
       }
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix-server hook UserPromptSubmit | tee -a ~/.unimatrix/injections/hooks.log"
+            "command": "unimatrix hook UserPromptSubmit"
           }
         ]
       }
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix-server hook PreToolUse"
+            "command": "unimatrix hook PreToolUse"
           }
         ]
       }
@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix-server hook PostToolUse"
+            "command": "unimatrix hook PostToolUse"
           }
         ]
       }
@@ -61,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix-server hook SubagentStart"
+            "command": "unimatrix hook SubagentStart"
           }
         ]
       }
@@ -72,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix-server hook SubagentStop"
+            "command": "unimatrix hook SubagentStop"
           }
         ]
       }
