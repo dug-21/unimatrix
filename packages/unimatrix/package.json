@@ -1,0 +1,31 @@
+{
+  "name": "@dug-21/unimatrix",
+  "version": "0.5.0",
+  "description": "Unimatrix knowledge engine for multi-agent development",
+  "bin": {
+    "unimatrix": "bin/unimatrix.js"
+  },
+  "scripts": {
+    "postinstall": "node postinstall.js"
+  },
+  "optionalDependencies": {
+    "@dug-21/unimatrix-linux-x64": "0.5.0"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "skills/",
+    "postinstall.js"
+  ],
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anthropics/unimatrix"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}
