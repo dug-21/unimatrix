@@ -132,9 +132,8 @@ pub fn run_import(
     // Phase 10: Drop the MutexGuard before embedding (embedding needs store access)
     drop(conn);
 
-    // Phase 11: Re-embed and build vector index
-    // This call site is for the embedding-reconstruction component.
-    // reconstruct_embeddings(&store, &paths)?;
+    // Phase 11: Re-embed and build vector index (ADR-004: after DB commit)
+    crate::embed_reconstruct::reconstruct_embeddings(&store, &paths.vector_dir)?;
 
     // Phase 12: Record provenance
     record_provenance(&store, input, &counts)?;
