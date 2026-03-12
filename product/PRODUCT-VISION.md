@@ -25,7 +25,7 @@ This combination is architectural — it requires commitment from the data model
 
 ## What We've Built
 
-42 features shipped across 5 phases. ~1,600+ tests. 12 MCP tools. SQLite-backed with in-memory HNSW vector index. Hook-driven delivery pipeline operational.
+44 features shipped across 5 phases. ~1,700+ tests. 12 MCP tools. SQLite-backed with in-memory HNSW vector index. Hook-driven delivery pipeline operational.
 
 ### Storage & Schema (Nexus — `nxs`)
 
@@ -33,11 +33,11 @@ SQLite storage engine with normalized schema (24-column entries table, junction 
 
 ### MCP Server (Vinculum — `vnc`)
 
-rmcp 0.16 SDK, stdio transport. 12 tools: `context_{search, lookup, get, store, correct, deprecate, status, briefing, quarantine, enroll, retrospective}`. Unified service layer (SearchService, StoreService, BriefingService, ConfidenceService) with SecurityGateway (S1-S5). Content scanning (~50 injection + PII patterns). Agent registry with trust levels and capability checks. PID lifecycle hardening. 9 features: vnc-001 through vnc-009.
+rmcp 0.16 SDK, stdio transport. 12 tools: `context_{search, lookup, get, store, correct, deprecate, status, briefing, quarantine, enroll, retrospective}`. Unified service layer (SearchService, StoreService, BriefingService, ConfidenceService) with SecurityGateway (S1-S5). Content scanning (~50 injection + PII patterns). Agent registry with trust levels and capability checks. PID lifecycle hardening. Retrospective ReportFormatter with markdown output, finding collapse, actionability tagging, and ~80% token reduction (vnc-011). 10 features: vnc-001 through vnc-009, vnc-011.
 
 ### Learning & Drift (Cortical — `crt`)
 
-Six-factor additive confidence formula (base, usage, freshness, helpfulness, correction, trust — weights sum to 0.92, co-access 0.08 at query time). Wilson score helpfulness with min-5-votes guard. Contradiction detection. Co-access boosting. Coherence gate (lambda health metric from 4 dimensions). Adaptive embedding pipeline (MicroLoRA + prototype adjustment on frozen ONNX). Status-aware retrieval with topology-derived penalties for deprecated/superseded entries, calibrated (crt-013). Neural extraction pipeline (Signal Classifier + Convention Scorer MLPs) with continuous self-retraining from utilization feedback. 10 features: crt-001 through crt-008, crt-010, crt-011, crt-013.
+Six-factor additive confidence formula (base, usage, freshness, helpfulness, correction, trust — weights sum to 0.92, co-access 0.08 at query time). Wilson score helpfulness with min-5-votes guard. Contradiction detection. Co-access boosting. Coherence gate (lambda health metric from 4 dimensions). Adaptive embedding pipeline (MicroLoRA + prototype adjustment on frozen ONNX). Status-aware retrieval with topology-derived penalties for deprecated/superseded entries, calibrated (crt-013). Neural extraction pipeline (Signal Classifier + Convention Scorer MLPs) with continuous self-retraining from utilization feedback. Knowledge effectiveness analysis with per-entry utility scoring, confidence calibration validation, and dead knowledge detection (crt-018). 11 features: crt-001 through crt-008, crt-010, crt-011, crt-013, crt-018.
 
 ### Orchestration & Delivery (Collective — `col`)
 
@@ -55,7 +55,7 @@ Agent enrollment tool with protected agents, self-lockout prevention, strict cap
 
 Fixed, validated, and tuned the self-learning intelligence pipeline. 6/7 features shipped (crt-012 remaining, P2). Confidence signals accurate (crt-011), quarantine state restorable (vnc-010), feature attribution handles suffixed IDs (col-014), metrics normalized to SQL columns (nxs-009), retrieval calibrated (crt-013), full pipeline validated end-to-end (col-015).
 
-### Milestone: Activity Intelligence
+### Milestone: Activity Intelligence — IN PROGRESS
 
 Connect the observation pipeline to make activity data queryable, attributable, and analyzable. The hook pipeline captures 3,200+ events/day but sessions have no topic attribution, user prompts are discarded, and query text is never stored. This milestone fixes the activity data model and enables cross-session analysis — from restored retrospectives to knowledge effectiveness measurement to embedding tuning data export. Research: `product/research/ass-018/`.
 
@@ -63,25 +63,58 @@ Introduces `topic` as the universal grouping concept — aligning knowledge-side
 
 **Wave 1 — Fix the data pipeline (parallel):**
 
-- [ ] **col-017: Hook-Side Topic Attribution** — Hook extracts topic signals from tool inputs per-event (file paths, prompt text). Server accumulates signals per session, resolves dominant topic on SessionClose. Persists attribution results. Retrospective fast path works. New column: `observations.topic_signal`.
-- [ ] **col-018: UserPromptSubmit Dual-Route** — Store user prompts as observations AND dispatch to ContextSearch. Currently prompts are the richest topic/intent signal but are discarded from the observation record.
-- [ ] **col-019: PostToolUse Response Capture** — Fix field name mismatch causing `response_size` and `response_snippet` to be NULL for all 5,136+ PostToolUse rows. Unblocks 8+ detection rules and context-load metrics. (#164)
+- [x] **col-017: Hook-Side Topic Attribution** — Hook extracts topic signals from tool inputs per-event (file paths, prompt text). Server accumulates signals per session, resolves dominant topic on SessionClose. Persists attribution results. Retrospective fast path works. New column: `observations.topic_signal`.
+- [x] **col-018: UserPromptSubmit Dual-Route** — Store user prompts as observations AND dispatch to ContextSearch. Currently prompts are the richest topic/intent signal but are discarded from the observation record.
+- [x] **col-019: PostToolUse Response Capture** — Fix field name mismatch causing `response_size` and `response_snippet` to be NULL for all 5,136+ PostToolUse rows. Unblocks 8+ detection rules and context-load metrics. (#164)
 
 **Wave 2 — Connect & capture (depends on Wave 1):**
 
-- [ ] **nxs-010: Activity Schema Evolution** — New `topic_deliveries` table (groups sessions by topic with aggregate counters) and `query_log` table (search query text + result metadata). Schema v10. Backfill existing unattributed sessions.
-- [ ] **col-020: Multi-Session Retrospective** — Retrospective spans all sessions for a topic. New cross-session metrics: context reload rate, knowledge reuse, session efficiency trends, rework session count. Updates topic_deliveries aggregates.
+- [x] **nxs-010: Activity Schema Evolution** — New `topic_deliveries` table (groups sessions by topic with aggregate counters) and `query_log` table (search query text + result metadata). Schema v10. Backfill existing unattributed sessions.
+- [x] **col-020: Multi-Session Retrospective** — Retrospective spans all sessions for a topic. New cross-session metrics: context reload rate, knowledge reuse, session efficiency trends, rework session count. Updates topic_deliveries aggregates.
 
 **Wave 3 — Intelligence & export (depends on Wave 2):**
 
-- [ ] **vnc-011: Retrospective ReportFormatter** — Markdown-format retrospective output for LLM consumers. Session table, finding collapse (related hotspots → single finding), actionability tagging (`[actionable]`/`[expected]`/`[informational]`), narrative collapse, baseline filtering to outliers only. ~80% token reduction from current JSON default. JSON preserved via `format: "json"`. No dependencies on Wave 1/2. (#91)
-- [ ] **crt-018: Knowledge Effectiveness Analysis** — Per-entry utility scoring from injection_log + session outcomes. Confidence calibration validation. Dead knowledge detection. Surfaces via `context_status`.
-- [ ] **crt-019: Search Quality & Gap Detection** — Zero-result query analysis, query reformulation detection, result utilization rate. Identifies knowledge gaps. Surfaces via `context_status`.
-- [ ] **col-021: Query Data Export** — Export (query, results, outcome) triples for embedding model tuning. New tool or CLI subcommand.
+- [x] **vnc-011: Retrospective ReportFormatter** — COMPLETE. Markdown-format retrospective output for LLM consumers. ~80% token reduction. JSON preserved via `format: "json"`. (#91)
+- [x] **crt-018: Knowledge Effectiveness Analysis** — COMPLETE. Per-entry utility scoring from injection_log + session outcomes. Confidence calibration validation. Dead knowledge detection. (#205, PR #207)
+- [ ] **col-021: Query Data Export** — Export (query, results, outcome) triples for embedding model tuning. New tool or CLI subcommand. Deferred to post-Platform Hardening.
+
+**Deferred:**
+- **crt-019: Search Quality & Gap Detection** — Deferred. Detection without a closing mechanism (no actuator for identified gaps). Will revisit when there's a design for automated gap response.
+
+### Milestone: Platform Hardening & Release — NEXT
+
+Accelerated ahead of Graph Enablement. Unimatrix works — now make it shippable. First multi-repo deployments require backup/restore, initialization, packaging, and documentation. npm/npx distribution for Rust binary.
+
+**Release features:**
+
+- [ ] **nan-001: Knowledge Export** — Full knowledge base dump: entries, correction chains, hash history, co-access pairs, audit log. Text-only (no embeddings — they're derived data). Format preserves the full data model for lossless restore. CLI subcommand.
+- [ ] **nan-002: Knowledge Import** — Restore from export dump. Re-embed all entries on import (guarantees consistency with current model). Hash chain integrity validation. Schema version compatibility check. CLI subcommand.
+- [ ] **nan-003: Onboarding Skills** — Two skills for new repo onboarding. `/unimatrix-init`: appends Unimatrix block to CLAUDE.md (skill inventory, category conventions, usage instructions), scans agent defs and recommends concrete changes (skill references, orientation). `/unimatrix-seed`: optional conversational repo exploration — auto-scans structure at Level 0, human-directed deeper dives at Level 1+, stores foundational knowledge entries. Assumes MCP server already wired.
+- [ ] **nan-004: Versioning & Packaging** — npm/npx distribution of Rust binary. Platform-specific binary compilation (linux x64, darwin arm64/x64). npm package that downloads the right binary (esbuild/turbo pattern). Schema migration on startup. Semantic versioning. Includes mechanical wiring: settings.json (MCP server + hooks), ONNX model pre-download, schema pre-creation, skill file installation.
+- [ ] **nan-005: Documentation & Onboarding** — Comprehensive README: features, capabilities, MCP tool reference (how/why to use each), benefits, constraints (e.g., new sessions per feature), workflow guidance (phase names with colons), skills reference. Documentation agent added to protocols — automatically updates docs with new features, capabilities, and tips after each shipped feature.
+
+**Infrastructure debt:**
+- #122 — zombie cargo test processes blocking workspace testing
+- #4 — Box::leak in VectorIndex (hnsw_rs lifetime workaround)
+- #97 — direct transaction coupling in server
+- #131 — detect_project_root fails in git worktrees
+- #66 — UDS spurious warnings on fire-and-forget
+
+**Test infrastructure:**
+- #93 — server reliability integration test suite
+- #71 — col-007 partial test coverage
+- #70 — latency benchmark infrastructure
+
+**Quality-of-life:**
+- #42 — outcome stats computation optimization
+- #89 — OperationalEvent structured logging
+
+**Additional release enablement:**
+- vnc-005: Config externalization (multi-domain deployment)
 
 ### Milestone: Graph Enablement
 
-Depends on Activity Intelligence. Introduce petgraph for topology-derived scoring and multi-hop traversal. Research complete (ASS-017, `product/research/ass-017/`). Deep analysis in `product/research/ass-017/ANALYSIS.md`. Technical risk: LOW.
+Depends on Platform Hardening. Introduce petgraph for topology-derived scoring and multi-hop traversal. Research complete (ASS-017, `product/research/ass-017/`). Deep analysis in `product/research/ass-017/ANALYSIS.md`. Technical risk: LOW.
 
 Dependency: `petgraph = { version = "0.8", default-features = false, features = ["stable_graph"] }` in `unimatrix-engine`. New module `graph.rs` alongside existing `confidence.rs` and `coaccess.rs`. Graph built per-query from store edges (Option A — always fresh, ~1-2ms at 500 entries). Cached graph (Option B) deferred until profiling shows need.
 
@@ -102,31 +135,6 @@ Merge supersession + co-access + correction edges into single graph. Enables kno
 **Additional candidates:**
 - crt-009: Advanced models (Duplicate Detector, Pattern Merger, optional LLM tier)
 - #34: NLI model integration for conflict heuristic
-
-### Milestone: Platform Hardening & Release
-
-Depends on Activity Intelligence + Graph Enablement. Stabilize the platform for distribution and parallel development workflows.
-
-**Infrastructure debt:**
-- #122 — zombie cargo test processes blocking workspace testing
-- #4 — Box::leak in VectorIndex (hnsw_rs lifetime workaround)
-- #97 — direct transaction coupling in server
-- #131 — detect_project_root fails in git worktrees
-- #66 — UDS spurious warnings on fire-and-forget
-
-**Test infrastructure:**
-- #93 — server reliability integration test suite
-- #71 — col-007 partial test coverage
-- #70 — latency benchmark infrastructure
-
-**Quality-of-life:**
-- #42 — outcome stats computation optimization
-- #89 — OperationalEvent structured logging
-
-**Release enablement:**
-- vnc-005: Config externalization (multi-domain deployment)
-- nan-*: CLI binary, Docker, CI integration, release automation
-- Versioning and distribution automation
 
 ### Future Horizons
 
