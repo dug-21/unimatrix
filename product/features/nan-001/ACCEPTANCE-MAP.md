@@ -1,0 +1,22 @@
+# nan-001 Acceptance Criteria Map
+
+| AC-ID | Description | Verification Method | Verification Detail | Status |
+|-------|-------------|--------------------|--------------------|--------|
+| AC-01 | `unimatrix-server export` CLI subcommand exists and produces JSONL output to stdout by default | test | Integration test: invoke binary with no --output, capture stdout, parse each line as valid JSON |
+| AC-02 | `unimatrix-server export --output <path>` writes to the specified file instead of stdout | test | Integration test: invoke with --output, verify file exists, content matches stdout export |
+| AC-03 | First line is a header with `_header`, `schema_version`, `exported_at`, `entry_count`, `format_version` (=1) | test | Integration test: parse first line, assert `_header: true`, all 4 metadata fields present with correct types |
+| AC-04 | Every non-header line contains a `_table` field identifying the source table | test | Integration test: parse all lines after header, assert `_table` key present on every line |
+| AC-05 | All 8 tables exported with all columns preserved (entries, entry_tags, co_access, feature_entries, outcome_index, agent_registry, audit_log, counters) | test | Integration test: create database with data in all 8 tables, export, verify all 8 `_table` values appear with correct row counts |
+| AC-06 | Entries table includes all 26 columns with confidence, helpful_count, unhelpful_count, access_count preserved exactly | test | Integration test: insert entry with non-default values for all 26 columns, export, verify each field in JSONL row matches inserted values |
+| AC-07 | Rows within each table are ordered by primary key ascending | test | Integration test: insert entries with IDs out of order (5, 2, 8), verify export orders them 2, 5, 8; repeat for composite-key tables |
+| AC-08 | Tables emitted in dependency order: entries before entry_tags | test | Integration test: collect `_table` values in order, verify entries appears before entry_tags, counters appears first |
+| AC-09 | Null SQL values represented as JSON `null` (not empty string, not omitted) | test | Unit test: insert entry with supersedes=NULL, superseded_by=NULL, pre_quarantine_status=NULL; export; verify JSON has `"supersedes": null` etc. |
+| AC-10 | Empty database produces valid JSONL with header and counter rows only | test | Integration test: open fresh database, export, verify header + counter rows present, zero rows for other tables, all lines valid JSON |
+| AC-11 | Export of 500 entries completes in under 5 seconds | test | Benchmark test: populate 500 entries with tags and co-access pairs, measure wall-clock export time, assert < 5s |
+| AC-12 | Export subcommand does not require a running MCP server | test | Integration test: export with no server running (just database file), verify success exit code and valid output |
+| AC-13 | `--project-dir` flag respected by the export subcommand | test | Integration test: create database in non-default directory with distinct data, invoke with --project-dir, verify exported data matches that database |
+| AC-14 | Output is deterministic: two exports produce byte-identical output (excluding exported_at) | test | Integration test: export twice with fixed/mocked timestamp, compare output byte-for-byte |
+| AC-15 | Exit code 0 on success, non-zero on error; errors to stderr | test | Integration test: verify exit code 0 on success; invoke with invalid path, verify non-zero exit and stderr contains error message |
+| AC-16 | Unit tests verify JSONL serialization for each table type including edge cases (null fields, empty strings, unicode, max integers) | test | Unit tests in export module: null optional fields, empty strings, CJK/emoji unicode, i64::MAX timestamps, JSON-in-TEXT columns |
+| AC-17 | Integration test creates database with representative data across all 8 tables, exports, verifies valid JSONL with correct row counts and field values | test | Integration test: populate all 8 tables with representative data, export, parse every line, verify row counts and spot-check field values |
+| AC-18 | Excluded tables (sessions, observations, injection_log, signal_queue, query_log, observation_metrics, observation_phase_metrics, shadow_evaluations, topic_deliveries, vector_map) NOT present in output | test | Integration test: populate excluded tables with data, export, collect all `_table` values, assert none from the excluded set appear |
