@@ -231,6 +231,10 @@ The hook configuration in `.claude/settings.json` must be merged, not overwritte
 4. **Build strategy**: RESOLVED — Native build on linux-x64 CI runner (no cross-compilation needed). Dev environment is Docker on Mac, target is the same linux container environment. Multi-platform builds deferred.
 5. **Hook command paths**: RESOLVED — PATH-based via `node_modules/.bin/` (standard npm bin behavior). `npx unimatrix init` writes hook commands using bare `unimatrix` name.
 6. **Which skills to bundle**: RESOLVED — All 13 skill directories.
+7. **ONNX linking**: RESOLVED — Architect decides static vs dynamic based on CI build validation.
+8. **UserPromptSubmit tee**: RESOLVED — Drop tee for distribution. Hook command is plain `unimatrix hook UserPromptSubmit` without tee pipeline.
+9. **Version output**: RESOLVED — Plain text only (`unimatrix 0.5.0`). No `--json` flag.
+10. **NPM_TOKEN**: RESOLVED — Already configured as GitHub repository secret for Actions.
 
 ## Tracking
 
