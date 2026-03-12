@@ -144,7 +144,7 @@ SessionStart, Stop, UserPromptSubmit, PreToolUse, PostToolUse, SubagentStart, Su
 }
 ```
 
-Special case: `UserPromptSubmit` appends `| tee -a ~/.unimatrix/injections/hooks.log`.
+No special cases — all hooks use the same format (tee pipeline dropped for distribution).
 
 ## Function Signatures
 
@@ -247,10 +247,10 @@ The architect overrode the scope's original "PATH-based via `node_modules/.bin/`
 | Wave 3 — Init Command | C4 (Init), C5 (Settings merge), C6 (Postinstall) | Wave 2 |
 | Wave 4 — Release Infrastructure | C10 (CI pipeline), C11 (Release skill) | Waves 1-3 |
 
-## Open Questions (for delivery)
+## Resolved Delivery Questions
 
-1. **ONNX shared library bundling**: Is `ort` statically linked into the binary or does it produce a separate `.so`? Validate with `ldd target/release/unimatrix` on CI build. If separate, platform package must bundle both files.
-2. **Binary size**: SCOPE estimates ~20 MB. ONNX runtime may inflate this. If >50 MB, document as known trade-off.
-3. **npm registry authentication**: CI needs `NPM_TOKEN` secret. Scoped to publish only. Use `npm publish --access restricted`.
-4. **`unimatrix version` output format**: Architecture recommends `unimatrix 0.5.0` (human-readable). Consider `--json` for structured output.
-5. **UserPromptSubmit tee command**: The existing hook pipes through `tee -a ~/.unimatrix/injections/hooks.log`. Architecture retains this. Confirm this is production behavior, not a debug artifact.
+1. **ONNX shared library bundling**: Architect decides static vs dynamic based on `ldd` validation during CI build. If separate `.so`, platform package bundles both files.
+2. **Binary size**: ~20 MB estimate. If >50 MB due to ONNX runtime, document as known trade-off.
+3. **npm registry authentication**: `NPM_TOKEN` configured as GitHub repository secret. Use `npm publish --access restricted`.
+4. **`unimatrix version` output**: Plain text only — `unimatrix 0.5.0`. No `--json`.
+5. **UserPromptSubmit tee**: Dropped for distribution. All hooks use plain `unimatrix hook <event>` format.

@@ -48,6 +48,11 @@ Design architecture for nan-004 (Versioning & Packaging) — npm/npx distributio
 
 All 5 ADR store attempts failed with `-32003: Agent lacks Write capability`. ADRs exist as files only. The Design Leader must store these in Unimatrix using a privileged agent or direct invocation.
 
+## Knowledge Stewardship
+- Queried: /query-patterns for unimatrix-server (CLI subcommand patterns, binary naming) -- found entries #1102, #1104, #1160 documenting sync CLI subcommand pattern
+- Stored: 5 ADR store attempts failed (-32003: Agent lacks Write capability) -- ADR-001 through ADR-005 exist as files only; Design Leader must store via privileged agent
+- Deviations from established patterns: none -- new npm distribution domain with no prior patterns to deviate from
+
 ## Self-Check
 
 - [x] ARCHITECTURE.md contains System Overview, Component Breakdown, Interactions, Integration Surface
