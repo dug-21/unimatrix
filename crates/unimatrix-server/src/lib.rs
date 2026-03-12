@@ -19,8 +19,11 @@ pub use unimatrix_engine::confidence;
 pub use unimatrix_engine::project;
 
 pub mod background;
+pub mod embed_reconstruct;
 pub mod error;
 pub mod export;
+pub mod format;
+pub mod import;
 pub mod infra;
 pub mod mcp;
 pub mod server;
