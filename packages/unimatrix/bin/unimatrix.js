@@ -9,7 +9,12 @@ function main() {
   // Route "init" to JS implementation (ADR-003)
   if (args[0] === "init") {
     const { init } = require("../lib/init.js");
-    init({ dryRun: args.includes("--dry-run") })
+    const projectDirIdx = args.indexOf("--project-dir");
+    const projectDir =
+      projectDirIdx >= 0 && projectDirIdx + 1 < args.length
+        ? args[projectDirIdx + 1]
+        : undefined;
+    init({ dryRun: args.includes("--dry-run"), projectDir })
       .then(() => {
         process.exitCode = 0;
       })
