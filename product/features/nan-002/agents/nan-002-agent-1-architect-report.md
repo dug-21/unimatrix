@@ -47,5 +47,21 @@ Design architecture for nan-002 (Knowledge Import) -- CLI subcommand to restore 
 
 2. **Feature_entries/outcome_index DDL**: Implementation agents should verify exact column names from `schema.rs` before writing INSERT statements for these tables.
 
+## Knowledge Stewardship
+
+Stored:
+- #1143: ADR-001 nan-002 (Shared Format Types)
+- #1144: ADR-002 nan-002 (Direct SQL Insert)
+- #1145: ADR-003 nan-002 (Force Flag Safety)
+- #1146: ADR-004 nan-002 (Embedding After Commit)
+
+Queried:
+- #1098: ADR-002 nan-001 (Explicit Column-to-JSON Mapping)
+- #336: ADR-004 nxs-006 (Import Uses Store::open() Then Raw SQL)
+- #344: Store::open() + Raw SQL Hybrid pattern
+- #1102: Sync CLI Subcommand Pattern
+- #1104: Procedure for adding sync CLI subcommand
+- #1097: ADR-001 nan-001 (Snapshot Isolation)
+
 ## Status
 Complete.

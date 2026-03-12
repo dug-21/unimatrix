@@ -23,6 +23,14 @@
 - **FeatureEntryRow field name error**: Architecture says `feature_cycle`, DDL and export say `feature_id`. Documented in brief.
 - All other alignment checks passed. No blocking issues for implementation.
 
+## Knowledge Stewardship
+
+Queried:
+- All 10 source artifacts read directly (fresh context window)
+- DDL ground truth verified in `crates/unimatrix-store/src/db.rs`
+
+Stored: Nothing novel — synthesizer compiles existing artifacts, does not produce new knowledge entries.
+
 ## Status
 
 Complete.
