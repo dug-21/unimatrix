@@ -84,7 +84,7 @@ pub fn run_import(
     }
     if header.schema_version > db_schema_version {
         return Err(format!(
-            "export schema_version ({}) is newer than this binary's schema_version ({}). Upgrade unimatrix-server.",
+            "export schema_version ({}) is newer than this binary's schema_version ({}). Upgrade unimatrix.",
             header.schema_version, db_schema_version
         )
         .into());

@@ -131,10 +131,10 @@ pub fn is_process_alive(_pid: u32) -> bool {
     false
 }
 
-/// Check whether a PID belongs to a unimatrix-server process.
+/// Check whether a PID belongs to a unimatrix process.
 ///
 /// On Linux: reads `/proc/{pid}/cmdline` and checks if any argument's
-/// filename is `unimatrix-server`.
+/// filename is `unimatrix` or `unimatrix-server` (legacy name).
 /// On non-Linux Unix: falls back to `kill -0` (existence check only).
 /// Returns `false` for non-existent processes.
 #[cfg(target_os = "linux")]
@@ -156,9 +156,9 @@ pub fn is_unimatrix_process(pid: u32) -> bool {
             continue;
         }
         // Extract the filename component from the argument (handles full paths
-        // like /usr/bin/unimatrix-server).
+        // like /usr/bin/unimatrix or /usr/bin/unimatrix-server).
         if let Some(name) = Path::new(arg).file_name() {
-            if name == "unimatrix-server" {
+            if name == "unimatrix" || name == "unimatrix-server" {
                 return true;
             }
         }
@@ -245,18 +245,18 @@ pub fn handle_stale_pid_file(
         return Ok(true);
     }
 
-    // Process is alive — verify it is actually a unimatrix-server instance
+    // Process is alive — verify it is actually a unimatrix instance
     // before sending SIGTERM. If it is not, treat the PID file as stale.
     if !is_unimatrix_process(pid) {
         tracing::info!(
             pid,
-            "PID is alive but not unimatrix-server; PidGuard will reclaim"
+            "PID is alive but not unimatrix; PidGuard will reclaim"
         );
         // Do NOT remove -- same TOCTOU rationale (#146).
         return Ok(true);
     }
 
-    tracing::info!(pid, "stale unimatrix-server process detected, sending SIGTERM");
+    tracing::info!(pid, "stale unimatrix process detected, sending SIGTERM");
     if terminate_and_wait(pid, terminate_timeout) {
         tracing::info!(pid, "stale process exited after SIGTERM; PidGuard will reclaim");
         // Do NOT remove -- PidGuard::acquire will flock and overwrite (#146).
@@ -451,14 +451,14 @@ mod tests {
 
     #[test]
     fn test_is_unimatrix_process_pid_zero() {
-        // PID 0 is kernel — not unimatrix-server.
+        // PID 0 is kernel — not unimatrix.
         assert!(!is_unimatrix_process(0));
     }
 
     #[cfg(target_os = "linux")]
     #[test]
     fn test_is_unimatrix_process_pid_one() {
-        // PID 1 is init/systemd — definitely not unimatrix-server.
+        // PID 1 is init/systemd — definitely not unimatrix.
         assert!(!is_unimatrix_process(1));
     }
 
@@ -469,7 +469,7 @@ mod tests {
     fn test_handle_stale_not_unimatrix_resolves_without_sigterm() {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("stale.pid");
-        // PID 1 is init — alive but not unimatrix-server.
+        // PID 1 is init — alive but not unimatrix.
         fs::write(&path, "1\n").unwrap();
 
         let result =
