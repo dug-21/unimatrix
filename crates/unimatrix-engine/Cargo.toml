@@ -1,6 +1,6 @@
 [package]
 name = "unimatrix-engine"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 description = "Unimatrix shared business logic: confidence, co-access, project discovery, wire protocol, transport"
