@@ -22,17 +22,13 @@
 
 | Type | Item | Details |
 |------|------|---------|
-| Consistency Issue | Entry column list mismatch | Architecture EntryRow has `source`, `correction_count`, `embedding_dim`; Specification FR-06 has `allowed_topics`, `allowed_categories`, `target_ids` instead. Both claim 26 columns. Only one can be correct per the actual DDL. |
+| Consistency Issue | Entry column list mismatch — **RESOLVED** | Specification FR-06 had `allowed_topics`, `allowed_categories`, `target_ids` (agent_registry columns) instead of `source`, `correction_count`, `embedding_dim` (actual entry columns per DDL). Specification corrected to match DDL ground truth. Architecture was correct. |
 | Simplification | No confirmation prompt for --force | SCOPE-RISK-ASSESSMENT SR-04 recommended `--force --yes` double-opt-in. Architecture ADR-003 chose stderr warning only. Spec explicitly defers double-opt-in to future iteration. Rationale documented. |
 | Simplification | No --skip-embedding dry-run mode | SCOPE-RISK-ASSESSMENT SR-01 suggested this. Spec explicitly lists it under "NOT in Scope" with rationale. Acceptable. |
 
 ## Variances Requiring Approval
 
-1. **What**: Architecture `format::EntryRow` (ARCHITECTURE.md line 154) defines 26 fields including `source: String`, `correction_count: i64`, `embedding_dim: i64` but excludes `allowed_topics`, `allowed_categories`, `target_ids`. Specification FR-06 (SPECIFICATION.md line 66) defines 26 columns including `allowed_topics`, `allowed_categories`, `target_ids` but excludes `source`, `correction_count`, `embedding_dim`.
-
-   **Why it matters**: The import module must INSERT into the exact columns defined by the entries DDL. If the Architecture's EntryRow struct is wrong, deserialization will fail at runtime or silently drop columns. If the Specification's column list is wrong, implementation agents will target the wrong schema. This is a contract-level disagreement between two source documents that both claim authority over the same data structure. The actual DDL in `schema.rs` is the ground truth, and exactly one of these lists is wrong.
-
-   **Recommendation**: Resolve before implementation. Query `PRAGMA table_info(entries)` or read `schema.rs` to determine the actual 26 columns. Update the incorrect document. This is a blocking issue for implementation correctness -- the shared `format.rs` types must match the DDL exactly. Classification: VARIANCE (not FAIL, because the error is in documentation, not in shipped code, and the round-trip test AC-15 would catch it during implementation).
+1. ~~Entry column list mismatch~~ — **RESOLVED**. Specification FR-06 corrected: `allowed_topics`, `allowed_categories`, `target_ids` replaced with `source`, `correction_count`, `embedding_dim` to match the actual entries DDL in `crates/unimatrix-store/src/db.rs:93-120`. Architecture was correct. No remaining variances require approval.
 
 ## Detailed Findings
 

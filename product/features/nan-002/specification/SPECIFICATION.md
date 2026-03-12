@@ -63,7 +63,7 @@ Tables are inserted in the dependency order emitted by nan-001 export (counters,
 ### FR-06: Entry Field Preservation
 
 All 26 entry columns must be preserved exactly as exported:
-`id`, `title`, `content`, `category`, `topic`, `status`, `confidence`, `version`, `created_at`, `updated_at`, `last_accessed_at`, `created_by`, `modified_by`, `trust_source`, `content_hash`, `previous_hash`, `supersedes`, `superseded_by`, `helpful_count`, `unhelpful_count`, `access_count`, `feature_cycle`, `pre_quarantine_status`, `allowed_topics`, `allowed_categories`, `target_ids`.
+`id`, `title`, `content`, `topic`, `category`, `source`, `status`, `confidence`, `created_at`, `updated_at`, `last_accessed_at`, `access_count`, `supersedes`, `superseded_by`, `correction_count`, `embedding_dim`, `created_by`, `modified_by`, `content_hash`, `previous_hash`, `version`, `feature_cycle`, `trust_source`, `helpful_count`, `unhelpful_count`, `pre_quarantine_status`.
 
 No column may be auto-generated, defaulted, or transformed during import.
 
