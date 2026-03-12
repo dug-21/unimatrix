@@ -20,22 +20,22 @@ BINARY_PATH: str | None = None
 
 
 def _resolve_binary() -> str:
-    """Find the unimatrix-server binary."""
+    """Find the unimatrix binary."""
     env_path = os.environ.get("UNIMATRIX_BINARY")
     if env_path and os.path.isfile(env_path):
         return env_path
 
     workspace_root = Path(__file__).resolve().parent.parent.parent.parent.parent
     candidates = [
-        workspace_root / "target" / "release" / "unimatrix-server",
-        workspace_root / "target" / "debug" / "unimatrix-server",
+        workspace_root / "target" / "release" / "unimatrix",
+        workspace_root / "target" / "debug" / "unimatrix",
     ]
     for candidate in candidates:
         if candidate.is_file():
             return str(candidate)
 
     raise RuntimeError(
-        "Cannot find unimatrix-server binary. "
+        "Cannot find unimatrix binary. "
         "Set UNIMATRIX_BINARY env var or build with: cargo build --release"
     )
 
