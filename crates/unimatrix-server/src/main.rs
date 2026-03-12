@@ -6,19 +6,21 @@ use std::time::Duration;
 
 use clap::{Parser, Subcommand};
 use rmcp::ServiceExt;
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-use unimatrix_core::{CoreError, EmbedConfig, StoreAdapter, Store, VectorAdapter, VectorConfig, VectorIndex};
 use unimatrix_adapt::{AdaptConfig, AdaptationService};
+use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+use unimatrix_core::{
+    CoreError, EmbedConfig, Store, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex,
+};
+use unimatrix_server::error::ServerError;
 use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
-use unimatrix_server::error::ServerError;
 use unimatrix_server::infra::pidfile;
-use unimatrix_server::project;
 use unimatrix_server::infra::registry::AgentRegistry;
-use unimatrix_server::infra::usage_dedup::UsageDedup;
-use unimatrix_server::server::{PendingEntriesAnalysis, UnimatrixServer};
 use unimatrix_server::infra::shutdown::{self, LifecycleHandles};
+use unimatrix_server::infra::usage_dedup::UsageDedup;
+use unimatrix_server::project;
+use unimatrix_server::server::{PendingEntriesAnalysis, UnimatrixServer};
 use unimatrix_server::uds_listener;
 
 /// Timeout for waiting on a stale process to exit after SIGTERM.
@@ -53,6 +55,17 @@ enum Command {
         /// The hook event name (e.g., SessionStart, Stop, Ping).
         event: String,
     },
+
+    /// Export the knowledge base to JSONL format.
+    ///
+    /// Reads the database directly (no running server required) and writes
+    /// all long-term knowledge to a portable JSONL file. Synchronous path,
+    /// no tokio runtime.
+    Export {
+        /// Output file path. Defaults to stdout.
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 /// Entry point: branches between hook subcommand (sync) and server (async).
@@ -84,6 +97,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Sync path: NO tokio, NO tracing init, NO database open
             // Minimal startup for <50ms budget
             unimatrix_server::uds::hook::run(event, cli.project_dir)
+        }
+        Some(Command::Export { output }) => {
+            // Sync path: NO tokio, like Hook
+            unimatrix_server::export::run_export(cli.project_dir.as_deref(), output.as_deref())
         }
         None => {
             // Async path: full server with tokio runtime
@@ -348,4 +365,3 @@ fn open_store_with_retry(
         last_err.expect("at least one attempt was made"),
     ))))
 }
-

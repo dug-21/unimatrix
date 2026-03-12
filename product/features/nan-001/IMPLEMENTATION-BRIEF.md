@@ -18,7 +18,7 @@
 | export-module | pseudocode/export-module.md | test-plan/export-module.md |
 | row-serialization | pseudocode/row-serialization.md | test-plan/row-serialization.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|

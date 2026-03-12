@@ -46,6 +46,6 @@ Design the architecture for nan-001 (Knowledge Export) — CLI subcommand that e
 1. **Schema column list drift (SR-02, SR-04)**: Hardcoded column lists are acceptable for v1 given schema v11 stability assumption. Shared definition (const array or macro) is a future enhancement.
 2. **preserve_order feature interaction**: Implementation agent should verify that enabling `serde_json`'s `preserve_order` feature does not break existing tests in unimatrix-server. If it does, fall back to default BTreeMap (lexicographic) ordering — still deterministic, just less readable.
 
-## Unimatrix Knowledge Storage
+## Knowledge Stewardship
 
-ADR storage in Unimatrix via `/store-adr` was not completed because MCP tools (`mcp__unimatrix__context_search`, `mcp__unimatrix__context_store`) were not available as callable tools in this agent session. The three ADR files exist on disk and should be stored in Unimatrix in a subsequent session.
+Declined: ADR storage in Unimatrix via `/store-adr` was not completed because MCP tools were not available in the agent session. The three ADR files (ADR-001, ADR-002, ADR-003) exist on disk and should be stored in Unimatrix in a follow-up session by the coordinator.
