@@ -230,7 +230,7 @@ async function init(options) {
   // Step 6: Pre-create database (exec Rust binary)
   if (!dryRun) {
     try {
-      execFileSync(binaryPath, ["version", "--project-dir", projectRoot], {
+      execFileSync(binaryPath, ["--project-dir", projectRoot, "version"], {
         stdio: "pipe",
         env: binaryEnv,
       });

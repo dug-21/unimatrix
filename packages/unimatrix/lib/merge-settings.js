@@ -107,8 +107,9 @@ function mergeSettings(filePath, binaryPath, options) {
   }
 
   // Step 3: For each hook event, merge the unimatrix entry
+  const binDir = path.dirname(binaryPath);
   for (const event of HOOK_EVENTS) {
-    const hookCommand = binaryPath + " hook " + event;
+    const hookCommand = "LD_LIBRARY_PATH=" + binDir + " " + binaryPath + " hook " + event;
     const matcher = EVENT_MATCHERS[event];
 
     const newHookEntry = {
