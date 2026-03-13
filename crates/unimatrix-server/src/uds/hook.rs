@@ -16,6 +16,10 @@ use unimatrix_engine::wire::{
 };
 use unimatrix_observe::extract_topic_signal;
 
+use crate::infra::validation::{
+    CYCLE_START_EVENT, CYCLE_STOP_EVENT, CycleType, validate_cycle_params,
+};
+
 /// Default timeout for transport operations: 40ms.
 /// Leaves 10ms margin in the 50ms total budget for process startup + hash computation.
 const HOOK_TIMEOUT: Duration = Duration::from_millis(40);
@@ -28,10 +32,7 @@ const MAX_INJECTION_BYTES: usize = 1400;
 /// This is the entry point from `main()` for the `hook` subcommand.
 /// No tokio runtime is initialized. Returns `Ok(())` for all expected
 /// conditions -- exit code is always 0 per FR-03.7.
-pub fn run(
-    event: String,
-    project_dir: Option<PathBuf>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(event: String, project_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Read stdin
     let stdin_content = read_stdin();
 
@@ -40,8 +41,7 @@ pub fn run(
 
     // Step 3: Determine working directory and detect project root
     let cwd = resolve_cwd(&hook_input, project_dir.as_deref());
-    let project_root = unimatrix_engine::project::detect_project_root(Some(&cwd))
-        .unwrap_or(cwd);
+    let project_root = unimatrix_engine::project::detect_project_root(Some(&cwd)).unwrap_or(cwd);
     let project_hash = compute_project_hash(&project_root);
 
     // Step 4: Compute socket path
@@ -359,7 +359,116 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
             }
         }
 
+        // col-022: Intercept PreToolUse for context_cycle tool calls
+        "PreToolUse" => build_cycle_event_or_fallthrough(event, session_id, input),
+
         _ => generic_record_event(event, session_id, input),
+    }
+}
+
+/// Detect `context_cycle` in PreToolUse events and build a specialized
+/// RecordEvent with `event_type: "cycle_start"` or `"cycle_stop"` (ADR-001).
+///
+/// Falls through to `generic_record_event` if this is not a `context_cycle`
+/// tool call, or if validation fails. The hook must never fail (FR-03.7).
+fn build_cycle_event_or_fallthrough(
+    event: &str,
+    session_id: String,
+    input: &HookInput,
+) -> HookRequest {
+    // Step 1: Check if this is a context_cycle tool call
+    let tool_name = input
+        .extra
+        .get("tool_name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    // Match by "context_cycle" substring in tool_name.
+    // Claude Code sends tool_name as "mcp__unimatrix__context_cycle"
+    // (server prefix + tool name). Use .contains("context_cycle") to match
+    // regardless of prefix format.
+    if !tool_name.contains("context_cycle") {
+        return generic_record_event(event, session_id, input);
+    }
+
+    // R-09 mitigation: verify the prefix contains "unimatrix" to avoid
+    // matching a tool from a different MCP server named "context_cycle".
+    // If tool_name is exactly "context_cycle" (no prefix), allow it (direct MCP call).
+    if tool_name != "context_cycle" && !tool_name.contains("unimatrix") {
+        return generic_record_event(event, session_id, input);
+    }
+
+    // Step 2: Extract parameters from tool_input
+    let tool_input = match input.extra.get("tool_input") {
+        Some(v) => v,
+        None => {
+            eprintln!("unimatrix: context_cycle PreToolUse missing tool_input");
+            return generic_record_event(event, session_id, input);
+        }
+    };
+
+    let type_str = tool_input
+        .get("type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    let topic_str = tool_input
+        .get("topic")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    let keywords_opt: Option<Vec<String>> = tool_input
+        .get("keywords")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|item| item.as_str().map(|s| s.to_string()))
+                .collect()
+        });
+
+    // Step 3: Validate using shared function (ADR-004)
+    let validated = match validate_cycle_params(type_str, topic_str, keywords_opt.as_deref()) {
+        Ok(v) => v,
+        Err(msg) => {
+            // Hook must never fail (FR-03.7). Log warning, fall through.
+            eprintln!(
+                "unimatrix: context_cycle validation failed in hook: {msg} (tool_name={tool_name})"
+            );
+            return generic_record_event(event, session_id, input);
+        }
+    };
+
+    // Step 4: Build specialized RecordEvent
+    let event_type = match validated.cycle_type {
+        CycleType::Start => CYCLE_START_EVENT.to_string(),
+        CycleType::Stop => CYCLE_STOP_EVENT.to_string(),
+    };
+
+    // Build payload with feature_cycle and keywords.
+    // The feature_cycle key in payload is what the #198 extraction path and
+    // the new cycle_start handler both look for.
+    let mut payload = serde_json::json!({
+        "feature_cycle": validated.topic,
+    });
+
+    if !validated.keywords.is_empty() {
+        let keywords_json =
+            serde_json::to_string(&validated.keywords).unwrap_or_else(|_| "[]".to_string());
+        payload["keywords"] = serde_json::Value::String(keywords_json);
+    }
+
+    // Set topic_signal to the topic value -- strong signal for eager attribution
+    // as a secondary attribution path.
+    let topic_signal = Some(validated.topic.clone());
+
+    HookRequest::RecordEvent {
+        event: ImplantEvent {
+            event_type,
+            session_id,
+            timestamp: now_secs(),
+            payload,
+            topic_signal,
+        },
     }
 }
 
@@ -801,7 +910,9 @@ mod tests {
         input.session_id = Some("sess-1".to_string());
         let req = build_request("UserPromptSubmit", &input);
         match req {
-            HookRequest::ContextSearch { session_id, query, .. } => {
+            HookRequest::ContextSearch {
+                session_id, query, ..
+            } => {
                 assert_eq!(query, "query");
                 assert_eq!(session_id.as_deref(), Some("sess-1"));
             }
@@ -945,7 +1056,10 @@ mod tests {
                 assert_eq!(events.len(), 2);
                 assert_eq!(events[0].event_type, "post_tool_use_rework_candidate");
                 assert_eq!(events[0].payload["tool_name"], "MultiEdit");
-                let paths: Vec<_> = events.iter().map(|e| e.payload["file_path"].as_str().unwrap()).collect();
+                let paths: Vec<_> = events
+                    .iter()
+                    .map(|e| e.payload["file_path"].as_str().unwrap())
+                    .collect();
                 assert!(paths.contains(&"a.rs"));
                 assert!(paths.contains(&"b.rs"));
             }
@@ -1036,19 +1150,27 @@ mod tests {
 
     #[test]
     fn is_bash_failure_interrupted() {
-        assert!(is_bash_failure(&serde_json::json!({"exit_code": 0, "interrupted": true})));
+        assert!(is_bash_failure(
+            &serde_json::json!({"exit_code": 0, "interrupted": true})
+        ));
     }
 
     #[test]
     fn extract_file_path_edit() {
         let extra = serde_json::json!({"tool_input": {"path": "/src/lib.rs"}});
-        assert_eq!(extract_file_path(&extra, "Edit"), Some("/src/lib.rs".to_string()));
+        assert_eq!(
+            extract_file_path(&extra, "Edit"),
+            Some("/src/lib.rs".to_string())
+        );
     }
 
     #[test]
     fn extract_file_path_write() {
         let extra = serde_json::json!({"tool_input": {"file_path": "/src/main.rs"}});
-        assert_eq!(extract_file_path(&extra, "Write"), Some("/src/main.rs".to_string()));
+        assert_eq!(
+            extract_file_path(&extra, "Write"),
+            Some("/src/main.rs".to_string())
+        );
     }
 
     #[test]
@@ -1623,9 +1745,12 @@ mod tests {
     #[test]
     fn test_extract_event_topic_signal_pretooluse() {
         // AC-08: PreToolUse with feature path in tool_input
-        let input = make_hook_input("PreToolUse", serde_json::json!({
-            "tool_input": "reading product/features/col-002/SCOPE.md"
-        }));
+        let input = make_hook_input(
+            "PreToolUse",
+            serde_json::json!({
+                "tool_input": "reading product/features/col-002/SCOPE.md"
+            }),
+        );
         let signal = extract_event_topic_signal("PreToolUse", &input);
         assert_eq!(signal, Some("col-002".to_string()));
     }
@@ -1633,9 +1758,12 @@ mod tests {
     #[test]
     fn test_extract_event_topic_signal_subagent() {
         // AC-09: SubagentStart with feature ID in prompt_snippet
-        let input = make_hook_input("SubagentStart", serde_json::json!({
-            "prompt_snippet": "implement col-017 feature"
-        }));
+        let input = make_hook_input(
+            "SubagentStart",
+            serde_json::json!({
+                "prompt_snippet": "implement col-017 feature"
+            }),
+        );
         let signal = extract_event_topic_signal("SubagentStart", &input);
         assert_eq!(signal, Some("col-017".to_string()));
     }
@@ -1652,9 +1780,12 @@ mod tests {
     #[test]
     fn test_extract_event_topic_signal_none() {
         // AC-10: no feature-identifying content
-        let input = make_hook_input("PreToolUse", serde_json::json!({
-            "tool_input": "ls -la /tmp"
-        }));
+        let input = make_hook_input(
+            "PreToolUse",
+            serde_json::json!({
+                "tool_input": "ls -la /tmp"
+            }),
+        );
         let signal = extract_event_topic_signal("PreToolUse", &input);
         assert!(signal.is_none());
     }
@@ -1662,9 +1793,12 @@ mod tests {
     #[test]
     fn test_extract_event_topic_signal_generic_with_feature() {
         // T-09: generic event with feature path in extra
-        let input = make_hook_input("SomeEvent", serde_json::json!({
-            "tool_input": "read product/features/col-017/SCOPE.md"
-        }));
+        let input = make_hook_input(
+            "SomeEvent",
+            serde_json::json!({
+                "tool_input": "read product/features/col-017/SCOPE.md"
+            }),
+        );
         let signal = extract_event_topic_signal("SomeEvent", &input);
         assert_eq!(signal, Some("col-017".to_string()));
     }
@@ -1672,9 +1806,12 @@ mod tests {
     #[test]
     fn test_extract_event_topic_signal_generic_false_positive() {
         // T-09: SR-2 -- generic event with false-positive pattern in URL
-        let input = make_hook_input("SomeEvent", serde_json::json!({
-            "url": "https://api-v2.example.com"
-        }));
+        let input = make_hook_input(
+            "SomeEvent",
+            serde_json::json!({
+                "url": "https://api-v2.example.com"
+            }),
+        );
         let signal = extract_event_topic_signal("SomeEvent", &input);
         // api-v2 is a valid feature ID pattern but it's just a URL segment
         // Our current extractor may match it; this documents the behavior
@@ -1684,9 +1821,12 @@ mod tests {
     #[test]
     fn test_build_request_pretooluse_sets_topic_signal() {
         // End-to-end: build_request for PreToolUse with feature path
-        let input = make_hook_input("PreToolUse", serde_json::json!({
-            "tool_input": {"file_path": "product/features/col-002/SCOPE.md"}
-        }));
+        let input = make_hook_input(
+            "PreToolUse",
+            serde_json::json!({
+                "tool_input": {"file_path": "product/features/col-002/SCOPE.md"}
+            }),
+        );
         let req = build_request("PreToolUse", &input);
         match req {
             HookRequest::RecordEvent { event } => {
@@ -1699,9 +1839,12 @@ mod tests {
     #[test]
     fn test_build_request_generic_sets_topic_signal() {
         // Generic record event also extracts topic signal
-        let input = make_hook_input("SomeHook", serde_json::json!({
-            "path": "product/features/nxs-001/SCOPE.md"
-        }));
+        let input = make_hook_input(
+            "SomeHook",
+            serde_json::json!({
+                "path": "product/features/nxs-001/SCOPE.md"
+            }),
+        );
         let req = build_request("SomeHook", &input);
         match req {
             HookRequest::RecordEvent { event } => {
@@ -1713,9 +1856,12 @@ mod tests {
 
     #[test]
     fn test_build_request_no_signal() {
-        let input = make_hook_input("SomeHook", serde_json::json!({
-            "key": "value without features"
-        }));
+        let input = make_hook_input(
+            "SomeHook",
+            serde_json::json!({
+                "key": "value without features"
+            }),
+        );
         let req = build_request("SomeHook", &input);
         match req {
             HookRequest::RecordEvent { event } => {
@@ -1827,5 +1973,368 @@ mod tests {
             }
             _ => panic!("expected RecordEvents"),
         }
+    }
+
+    // -- col-022: PreToolUse context_cycle tests --
+
+    /// Helper to create a PreToolUse HookInput with given extra JSON.
+    fn pretooluse_input(extra: serde_json::Value) -> HookInput {
+        HookInput {
+            hook_event_name: "PreToolUse".to_string(),
+            session_id: Some("sess-1".to_string()),
+            cwd: None,
+            transcript_path: None,
+            prompt: None,
+            extra,
+        }
+    }
+
+    // -- Tool name matching (R-09) --
+
+    #[test]
+    fn test_build_request_pretooluse_context_cycle_with_prefix() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start", "topic": "col-022"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "cycle_start");
+                assert_eq!(event.payload["feature_cycle"], "col-022");
+                assert_eq!(event.topic_signal.as_deref(), Some("col-022"));
+            }
+            _ => panic!("expected RecordEvent with cycle_start, got {req:?}"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_pretooluse_context_cycle_without_prefix() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "context_cycle",
+            "tool_input": {"type": "start", "topic": "col-022"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "cycle_start");
+            }
+            _ => panic!("expected RecordEvent with cycle_start"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_pretooluse_wrong_server_prefix() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__other_server__context_cycle",
+            "tool_input": {"type": "start", "topic": "col-022"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                // Falls through to generic -- event_type is "PreToolUse", not "cycle_start"
+                assert_eq!(event.event_type, "PreToolUse");
+            }
+            _ => panic!("expected generic RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_pretooluse_context_cycle_substring_no_match() {
+        // "my_context_cycle_thing" contains "context_cycle" but also "unimatrix" is absent
+        // and it's not exactly "context_cycle", so should fall through
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "my_context_cycle_thing",
+            "tool_input": {"type": "start", "topic": "col-022"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PreToolUse");
+            }
+            _ => panic!("expected generic RecordEvent"),
+        }
+    }
+
+    // -- Cycle start event construction --
+
+    #[test]
+    fn test_build_request_cycle_start_event_type() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start", "topic": "col-022"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_START_EVENT);
+                assert_eq!(event.topic_signal, Some("col-022".to_string()));
+            }
+            _ => panic!("expected cycle_start RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_cycle_start_with_keywords() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "start",
+                "topic": "col-022",
+                "keywords": ["attribution", "lifecycle"]
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "cycle_start");
+                assert_eq!(event.payload["feature_cycle"], "col-022");
+                // Keywords are serialized as a JSON string inside the payload
+                let kw_str = event.payload["keywords"]
+                    .as_str()
+                    .expect("keywords should be string");
+                let kw: Vec<String> = serde_json::from_str(kw_str).expect("keywords should parse");
+                assert_eq!(kw, vec!["attribution", "lifecycle"]);
+            }
+            _ => panic!("expected cycle_start RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_cycle_stop_event_type() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "stop", "topic": "col-022"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_STOP_EVENT);
+                assert_eq!(event.payload["feature_cycle"], "col-022");
+            }
+            _ => panic!("expected cycle_stop RecordEvent"),
+        }
+    }
+
+    // -- Validation failure graceful fallthrough (R-02) --
+
+    #[test]
+    fn test_build_request_cycle_invalid_type_falls_through() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "pause", "topic": "col-022"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                // Falls through to generic -- event_type is "PreToolUse"
+                assert_eq!(event.event_type, "PreToolUse");
+            }
+            _ => panic!("expected generic RecordEvent on invalid type"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_cycle_missing_topic_falls_through() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PreToolUse");
+            }
+            _ => panic!("expected generic RecordEvent on missing topic"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_cycle_malformed_tool_input_falls_through() {
+        // tool_input is a string instead of an object
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": "not-an-object"
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                // Falls through because get("type") on a string returns None
+                assert_eq!(event.event_type, "PreToolUse");
+            }
+            _ => panic!("expected generic RecordEvent on malformed tool_input"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_cycle_missing_tool_input_key_falls_through() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle"
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PreToolUse");
+            }
+            _ => panic!("expected generic RecordEvent on missing tool_input key"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_cycle_topic_too_long_falls_through() {
+        // 200 chars with no hyphen -- fails is_valid_feature_id
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start", "topic": "a".repeat(200)}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PreToolUse");
+            }
+            _ => panic!("expected generic RecordEvent on long topic"),
+        }
+    }
+
+    // -- Session ID propagation --
+
+    #[test]
+    fn test_build_request_cycle_preserves_session_id() {
+        let mut input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start", "topic": "col-022"}
+        }));
+        input.session_id = Some("sess-42".to_string());
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.session_id, "sess-42");
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_cycle_no_session_id() {
+        let mut input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start", "topic": "col-022"}
+        }));
+        input.session_id = None;
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                // Falls back to ppid-{parent_pid}
+                assert!(event.session_id.starts_with("ppid-"));
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    // -- Edge cases --
+
+    #[test]
+    fn test_build_request_pretooluse_other_tool_not_cycle() {
+        // context_search should NOT trigger cycle handler
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_search",
+            "tool_input": {"query": "test"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PreToolUse");
+            }
+            _ => panic!("expected generic RecordEvent for non-cycle tool"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_cycle_keywords_with_non_string_items() {
+        // Keywords array with mixed types: only strings should be kept
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "start",
+                "topic": "col-022",
+                "keywords": [1, "valid", null, true, "also-valid"]
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "cycle_start");
+                let kw_str = event.payload["keywords"]
+                    .as_str()
+                    .expect("keywords should be string");
+                let kw: Vec<String> = serde_json::from_str(kw_str).expect("parse keywords");
+                assert_eq!(kw, vec!["valid", "also-valid"]);
+            }
+            _ => panic!("expected cycle_start RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_cycle_no_keywords_field() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start", "topic": "col-022"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "cycle_start");
+                // No keywords key in payload when none provided
+                assert!(event.payload.get("keywords").is_none());
+            }
+            _ => panic!("expected cycle_start RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_cycle_extra_fields_in_tool_input() {
+        // Extra unexpected fields should not cause issues
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "start",
+                "topic": "col-022",
+                "unexpected_field": "ignored",
+                "another": 42
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "cycle_start");
+                assert_eq!(event.payload["feature_cycle"], "col-022");
+            }
+            _ => panic!("expected cycle_start RecordEvent"),
+        }
+    }
+
+    #[test]
+    fn test_build_request_cycle_event_type_constants_match() {
+        // Verify the constants used in hook match the shared constants
+        assert_eq!(CYCLE_START_EVENT, "cycle_start");
+        assert_eq!(CYCLE_STOP_EVENT, "cycle_stop");
+    }
+
+    #[test]
+    fn test_build_request_cycle_is_fire_and_forget() {
+        // Cycle events are RecordEvent, which is fire-and-forget
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start", "topic": "col-022"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        let is_faf = matches!(
+            req,
+            HookRequest::SessionRegister { .. }
+                | HookRequest::SessionClose { .. }
+                | HookRequest::RecordEvent { .. }
+                | HookRequest::RecordEvents { .. }
+        );
+        assert!(is_faf, "cycle events must be fire-and-forget");
     }
 }
