@@ -1,6 +1,6 @@
 {
   "name": "@dug-21/unimatrix",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Unimatrix knowledge engine for multi-agent development",
   "bin": {
     "unimatrix": "bin/unimatrix.js"
@@ -9,8 +9,8 @@
     "postinstall": "node postinstall.js"
   },
   "optionalDependencies": {
-    "@dug-21/unimatrix-linux-x64": "0.5.2",
-    "@dug-21/unimatrix-linux-arm64": "0.5.2"
+    "@dug-21/unimatrix-linux-x64": "0.5.3",
+    "@dug-21/unimatrix-linux-arm64": "0.5.3"
   },
   "files": [
     "bin/",

@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.3] - 2026-03-13
+
+### Fixes
+- CI: add test retry for transient CI failures (#247)
+
 ## [0.5.2] - 2026-03-13
 
 ### Fixes
