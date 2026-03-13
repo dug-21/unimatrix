@@ -207,7 +207,8 @@ fn create_tables(conn: &Connection) -> Result<()> {
             status           INTEGER NOT NULL DEFAULT 0,
             compaction_count INTEGER NOT NULL DEFAULT 0,
             outcome          TEXT,
-            total_injections INTEGER NOT NULL DEFAULT 0
+            total_injections INTEGER NOT NULL DEFAULT 0,
+            keywords         TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_sessions_feature_cycle ON sessions(feature_cycle);
         CREATE INDEX IF NOT EXISTS idx_sessions_started_at    ON sessions(started_at);

@@ -90,6 +90,7 @@ fn make_session(id: &str, status: SessionLifecycleStatus, started_at: u64) -> Se
         compaction_count: 0,
         outcome: None,
         total_injections: 0,
+        keywords: None,
     }
 }
 

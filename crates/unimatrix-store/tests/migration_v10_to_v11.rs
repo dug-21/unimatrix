@@ -349,7 +349,7 @@ fn test_migration_v10_to_v11_basic() {
     assert_eq!(tb.status, "completed");
 
     // Assert: schema_version bumped to 11
-    assert_eq!(read_schema_version(&store), 11);
+    assert_eq!(read_schema_version(&store), 12);
 
     // Assert: query_log table is empty (no backfill for query_log)
     assert_eq!(count_query_log(&store), 0);
@@ -371,7 +371,7 @@ fn test_migration_v10_to_v11_idempotent() {
     {
         let store = Store::open(&db_path).expect("open store");
         assert_eq!(count_topic_deliveries(&store), 1);
-        assert_eq!(read_schema_version(&store), 11);
+        assert_eq!(read_schema_version(&store), 12);
     }
 
     // Act: re-open on same path
@@ -379,7 +379,7 @@ fn test_migration_v10_to_v11_idempotent() {
 
     // Assert: no error, no duplicates
     assert_eq!(count_topic_deliveries(&store), 1);
-    assert_eq!(read_schema_version(&store), 11);
+    assert_eq!(read_schema_version(&store), 12);
 }
 
 #[test]
@@ -395,7 +395,7 @@ fn test_migration_v10_to_v11_empty_sessions() {
 
     // Assert
     assert_eq!(count_topic_deliveries(&store), 0);
-    assert_eq!(read_schema_version(&store), 11);
+    assert_eq!(read_schema_version(&store), 12);
 }
 
 #[test]
@@ -417,7 +417,7 @@ fn test_migration_v10_to_v11_no_attributed_sessions() {
 
     // Assert: all excluded by WHERE clause
     assert_eq!(count_topic_deliveries(&store), 0);
-    assert_eq!(read_schema_version(&store), 11);
+    assert_eq!(read_schema_version(&store), 12);
 }
 
 #[test]
@@ -539,5 +539,5 @@ fn test_migration_v10_to_v11_partial_rerun() {
     assert_eq!(tp.total_duration_secs, 500);
 
     // schema_version updated to 11
-    assert_eq!(read_schema_version(&store), 11);
+    assert_eq!(read_schema_version(&store), 12);
 }

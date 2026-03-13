@@ -1146,6 +1146,7 @@ mod tests {
             compaction_count: 0,
             outcome: outcome.map(|s| s.to_string()),
             total_injections: 0,
+            keywords: None,
         }
     }
 

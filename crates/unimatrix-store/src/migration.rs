@@ -15,7 +15,7 @@ use crate::schema::{deserialize_entry, serialize_entry};
 use crate::db::Store;
 
 /// Current schema version.
-pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 11;
+pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 12;
 
 /// Run migration if schema_version is behind CURRENT_SCHEMA_VERSION.
 /// Called from Store::open() after table creation.
@@ -197,6 +197,27 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
                 WHERE feature_cycle IS NOT NULL AND feature_cycle != ''
                 GROUP BY feature_cycle;"
             ).map_err(StoreError::Sqlite)?;
+        }
+
+        // v11 -> v12: keywords column on sessions (col-022)
+        if current_version < 12 {
+            // Guard: check if column already exists (handles partial migration re-run)
+            let has_keywords: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM pragma_table_info('sessions') WHERE name = 'keywords'",
+                    [],
+                    |row| Ok(row.get::<_, i64>(0)? > 0),
+                )
+                .unwrap_or(false);
+
+            if !has_keywords {
+                conn.execute_batch(
+                    "ALTER TABLE sessions ADD COLUMN keywords TEXT;",
+                )
+                .map_err(StoreError::Sqlite)?;
+            }
+
+            // No data backfill: existing sessions have keywords = NULL (correct default)
         }
 
         // Update schema version

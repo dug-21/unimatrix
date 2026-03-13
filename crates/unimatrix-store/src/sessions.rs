@@ -37,6 +37,9 @@ pub struct SessionRecord {
     pub outcome: Option<String>,
     /// In-memory injection count at SessionClose (OQ-01: fire-and-forget discrepancy accepted).
     pub total_injections: u32,
+    /// JSON array string of semantic keywords, e.g. `["kw1","kw2"]`. (col-022, ADR-003)
+    #[serde(default)]
+    pub keywords: Option<String>,
 }
 
 /// Session lifecycle phase.
@@ -90,12 +93,13 @@ fn session_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRecord> 
         compaction_count: row.get::<_, i64>("compaction_count")? as u32,
         outcome: row.get("outcome")?,
         total_injections: row.get::<_, i64>("total_injections")? as u32,
+        keywords: row.get("keywords")?,
     })
 }
 
 const SESSION_COLUMNS: &str =
     "session_id, feature_cycle, agent_role, started_at, ended_at, \
-     status, compaction_count, outcome, total_injections";
+     status, compaction_count, outcome, total_injections, keywords";
 
 // -- Store methods (SQLite backend) --
 
@@ -108,8 +112,8 @@ impl Store {
         let conn = self.lock_conn();
         conn.execute(
             "INSERT OR REPLACE INTO sessions (session_id, feature_cycle, agent_role,
-                started_at, ended_at, status, compaction_count, outcome, total_injections)
-             VALUES (:sid, :fc, :ar, :sa, :ea, :st, :cc, :oc, :ti)",
+                started_at, ended_at, status, compaction_count, outcome, total_injections, keywords)
+             VALUES (:sid, :fc, :ar, :sa, :ea, :st, :cc, :oc, :ti, :kw)",
             rusqlite::named_params! {
                 ":sid": &record.session_id,
                 ":fc": &record.feature_cycle,
@@ -120,6 +124,7 @@ impl Store {
                 ":cc": record.compaction_count as i64,
                 ":oc": &record.outcome,
                 ":ti": record.total_injections as i64,
+                ":kw": &record.keywords,
             },
         )
         .map_err(StoreError::Sqlite)?;
@@ -156,7 +161,8 @@ impl Store {
             conn.execute(
                 "UPDATE sessions SET feature_cycle = :fc, agent_role = :ar,
                     started_at = :sa, ended_at = :ea, status = :st,
-                    compaction_count = :cc, outcome = :oc, total_injections = :ti
+                    compaction_count = :cc, outcome = :oc, total_injections = :ti,
+                    keywords = :kw
                  WHERE session_id = :sid",
                 rusqlite::named_params! {
                     ":sid": &record.session_id,
@@ -168,6 +174,7 @@ impl Store {
                     ":cc": record.compaction_count as i64,
                     ":oc": &record.outcome,
                     ":ti": record.total_injections as i64,
+                    ":kw": &record.keywords,
                 },
             )
             .map_err(StoreError::Sqlite)?;
@@ -258,6 +265,24 @@ impl Store {
             results.push(row.map_err(StoreError::Sqlite)?);
         }
         Ok(results)
+    }
+
+    /// Update only the `keywords` column for a given session.
+    ///
+    /// Used by the UDS listener to persist keywords from a `cycle_start` event
+    /// without read-modify-write overhead. No-op if the session does not exist.
+    pub fn update_session_keywords(
+        &self,
+        session_id: &str,
+        keywords_json: &str,
+    ) -> Result<()> {
+        let conn = self.lock_conn();
+        conn.execute(
+            "UPDATE sessions SET keywords = ?1 WHERE session_id = ?2",
+            rusqlite::params![keywords_json, session_id],
+        )
+        .map_err(StoreError::Sqlite)?;
+        Ok(())
     }
 
     /// GC sweep: mark old Active sessions as TimedOut; delete very old sessions
