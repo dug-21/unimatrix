@@ -116,8 +116,8 @@ These items from the NDP agent system do NOT apply to `uni-` agents:
 
 | Item | Why Not |
 |------|---------|
-| `get-pattern` / `save-pattern` / `reflexion` skills | NDP pattern store — uni- agents use `/query-patterns` (read), `/store-lesson` (failures), `/store-procedure` (techniques), `/store-adr` (decisions), `/record-outcome` (session end) |
-| Pattern Integration (REQUIRED) section | NDP-specific — uni- agents use `/query-patterns` in MANDATORY sections |
+| `get-pattern` / `save-pattern` / `reflexion` skills | NDP pattern store — uni- agents use `/uni-query-patterns` (read), `/uni-store-lesson` (failures), `/uni-store-procedure` (techniques), `/uni-store-adr` (decisions), `/uni-record-outcome` (session end) |
+| Pattern Integration (REQUIRED) section | NDP-specific — uni- agents use `/uni-query-patterns` in MANDATORY sections |
 | Pattern Workflow (Mandatory) section | NDP-specific |
 | `ndp-github-workflow` skill reference | Not created for uni- yet |
 | AgentDB references | Doesn't exist yet |
@@ -157,7 +157,7 @@ Before finalizing a new `uni-` agent, verify:
 - [ ] Swarm Participation section with agent report path
 - [ ] Self-Check section with verifiable checklist
 - [ ] No NDP-specific content (see "What NOT to Include" table)
-- [ ] No NDP pattern store references (get-pattern, save-pattern, reflexion) — use `/query-patterns` instead
+- [ ] No NDP pattern store references (get-pattern, save-pattern, reflexion) — use `/uni-query-patterns` instead
 - [ ] No coordination layer references (registration, shared memory, hooks)
 - [ ] No implementation-specific code that may become outdated
 - [ ] Agent listed in `uni-agent-routing.md` roster

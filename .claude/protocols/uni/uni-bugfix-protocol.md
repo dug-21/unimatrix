@@ -60,8 +60,8 @@ The Bugfix Manager:
 1. Reads the bug report (fetches GH Issue if URL provided)
 2. Identifies the feature area and any related feature directories
 3. Queries Unimatrix for prior knowledge:
-   - `/query-patterns` — patterns related to the affected area
-   - `/knowledge-search` — lessons from prior bugfixes in the same subsystem
+   - `/uni-query-patterns` — patterns related to the affected area
+   - `/uni-knowledge-search` — lessons from prior bugfixes in the same subsystem
 4. **Declares feature cycle** — before any agent spawning:
    ```
    context_cycle(
@@ -273,7 +273,7 @@ On PASS, the Bugfix Manager:
 
 ## Phase 4: PR Review
 
-After the PR is opened, invoke `/review-pr` with the PR number, feature/issue ID, and GH Issue number. This spawns a fresh-context security reviewer and assesses merge readiness.
+After the PR is opened, invoke `/uni-review-pr` with the PR number, feature/issue ID, and GH Issue number. This spawns a fresh-context security reviewer and assesses merge readiness.
 
 For bugfix PRs, the review verifies the single gate report (not three delivery gates).
 
@@ -376,7 +376,7 @@ NEVER pipe full cargo output into context.
 
 ```
 BUGFIX LEADER (you):
-  Init:       /query-patterns + /knowledge-search — prior knowledge
+  Init:       /uni-query-patterns + /uni-knowledge-search — prior knowledge
               context_cycle(type: "start", topic: "{issue-number}-{desc}", keywords: [...], agent_id: "{issue-number}-bugfix-leader")
   Phase 1:    Task(uni-bug-investigator) — diagnose root cause → GH Issue comment
               ...present diagnosis to human...
@@ -389,10 +389,10 @@ BUGFIX LEADER (you):
   Gate 3:     Task(uni-validator, bugfix check set) → GH Issue comment
               ...PASS → continue / FAIL → rework or stop...
               git commit + push + gh pr create
-  Phase 4:    /review-pr — security review + merge readiness → GH Issue comment
+  Phase 4:    /uni-review-pr — security review + merge readiness → GH Issue comment
               ...wait...
   Phase 5:    context_cycle(type: "stop", topic: "{issue-number}-{desc}", agent_id: "{issue-number}-bugfix-leader")
-              /record-outcome + /store-lesson (if generalizable)
+              /uni-record-outcome + /uni-store-lesson (if generalizable)
               Present PR + security assessment to human — SESSION ENDS
 ```
 
@@ -412,9 +412,9 @@ context_cycle(
 
 Then use Unimatrix skills:
 
-1. **Always**: `/record-outcome` — record the bugfix result (pass/fail, root cause summary, PR link). Include `caused_by_feature:{feature-id}` tag when the originating feature is known.
-2. **If root cause is generalizable**: `/store-lesson` — persist the root cause pattern so future investigators find it via `/knowledge-search`. Tag with `caused_by_feature:{feature-id}` when applicable. Include what could have been done during the originating feature's design phase to prevent the bug.
-3. **If diagnostic/repair sequence is reproducible**: `/store-procedure` — store the technique so future agents can find it
+1. **Always**: `/uni-record-outcome` — record the bugfix result (pass/fail, root cause summary, PR link). Include `caused_by_feature:{feature-id}` tag when the originating feature is known.
+2. **If root cause is generalizable**: `/uni-store-lesson` — persist the root cause pattern so future investigators find it via `/uni-knowledge-search`. Tag with `caused_by_feature:{feature-id}` when applicable. Include what could have been done during the originating feature's design phase to prevent the bug.
+3. **If diagnostic/repair sequence is reproducible**: `/uni-store-procedure` — store the technique so future agents can find it
 
 ### Stewardship Compliance
 

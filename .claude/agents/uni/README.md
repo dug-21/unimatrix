@@ -9,8 +9,8 @@ Agents for Unimatrix product development. These agents implement the Spec-Driven
 **Use `uni-` agents for all Unimatrix product work.** NDP agents in `.claude/agents/ndp/` are retained as reference only.
 
 - For feature work (design, delivery, or bugfix): read the protocol and `uni-scrum-master.md`, then act as coordinator — spawn specialist agents, never generate content.
-- Use `/review-pr` for PR security review and merge readiness.
-- Use `/retro` for post-merge knowledge extraction.
+- Use `/uni-review-pr` for PR security review and merge readiness.
+- Use `/uni-retro` for post-merge knowledge extraction.
 
 ## Three Session Types
 
@@ -55,7 +55,7 @@ The workflow executes across distinct session types. One coordinator reads the p
 | Agent | Used By | What It Does |
 |-------|---------|-------------|
 | `uni-bug-investigator` | Bugfix Phase 1 | Diagnoses root cause, proposes fix, identifies missing tests |
-| `uni-security-reviewer` | `/review-pr` skill | Fresh-context security review of PR diff, OWASP assessment |
+| `uni-security-reviewer` | `/uni-review-pr` skill | Fresh-context security review of PR diff, OWASP assessment |
 
 **Total: 14 agents** (1 coordinator + 1 validator + 6 design + 3 delivery + 2 shared specialists) + 1 architect in retro mode
 
@@ -86,7 +86,7 @@ Stage 3b:     uni-rust-dev × N (one per component)                 (parallel)
 Gate 3b:      uni-validator
 Stage 3c:     uni-tester                                           (execution)
 Gate 3c:      uni-validator
-Phase 4:      git commit + push + PR + /review-pr — SESSION 2 ENDS
+Phase 4:      git commit + push + PR + /uni-review-pr — SESSION 2 ENDS
 ```
 
 ### Bug Fix Session
@@ -98,7 +98,7 @@ Phase 1:      uni-bug-investigator                                 (diagnosis)
 Phase 2:      uni-rust-dev                                         (fix + tests)
 Phase 3:      uni-tester                                           (verification)
 Gate 3:       uni-validator                                        (bugfix check set)
-Phase 4:      git commit + push + PR + /review-pr
+Phase 4:      git commit + push + PR + /uni-review-pr
 Phase 5:      Return to human — SESSION ENDS
 ```
 

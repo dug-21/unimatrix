@@ -6,7 +6,7 @@ Always use `uni-` agents for Unimatrix product work:
 
 | Instead of | Use | Why |
 |------------|-----|-----|
-| generic coder | `uni-rust-dev` | Knows Unimatrix Rust patterns, queries `/query-patterns` before implementing |
+| generic coder | `uni-rust-dev` | Knows Unimatrix Rust patterns, queries `/uni-query-patterns` before implementing |
 | generic architect | `uni-architect` | ADR authority, stores decisions in Unimatrix |
 | generic tester | `uni-tester` | Risk-based testing, dual-phase role |
 | generic planner | Design Leader (you) | Protocol-driven, reads the right protocol for the session |
@@ -30,8 +30,8 @@ For PR review and retrospective, use skills directly (no coordinator needed):
 
 | User intent | Skill |
 |-------------|-------|
-| PR review, merge readiness | `/review-pr` |
-| Retrospective, knowledge extraction | `/retro` |
+| PR review, merge readiness | `/uni-review-pr` |
+| Retrospective, knowledge extraction | `/uni-retro` |
 
 Every swarm also includes `uni-validator` at gates. Non-negotiable.
 
@@ -64,9 +64,9 @@ You are the coordinator. Read the protocol for the session type, spawn specialis
 
 | Agent | Type | Stage | What It Does |
 |-------|------|-------|-------------|
-| `uni-pseudocode` | specialist | 3a | Per-component pseudocode. Queries `/query-patterns` before designing |
+| `uni-pseudocode` | specialist | 3a | Per-component pseudocode. Queries `/uni-query-patterns` before designing |
 | `uni-tester` | specialist | 3a + 3c | Test plan design (3a) + test execution with RISK-COVERAGE-REPORT.md (3c) |
-| `uni-rust-dev` | developer | 3b | Implements code from validated pseudocode. Queries `/query-patterns` before implementing |
+| `uni-rust-dev` | developer | 3b | Implements code from validated pseudocode. Queries `/uni-query-patterns` before implementing |
 
 ### Bug Fix Specialists (1 agent)
 
@@ -74,7 +74,7 @@ You are the coordinator. Read the protocol for the session type, spawn specialis
 |-------|------|-------|-------------|
 | `uni-bug-investigator` | specialist | 1 | Diagnoses root cause, proposes fix approach, identifies missing tests |
 
-### Shared Specialist (1 agent — used by `/review-pr` skill)
+### Shared Specialist (1 agent — used by `/uni-review-pr` skill)
 
 | Agent | Type | Phase | What It Does |
 |-------|------|-------|-------------|
@@ -114,7 +114,7 @@ Gate 3b:      uni-validator (code review)
 Stage 3c:     uni-tester (test execution)
 Gate 3c:      uni-validator (risk validation)
 Phase 4:      Commit, push, open PR
-              /review-pr — security review + merge readiness
+              /uni-review-pr — security review + merge readiness
               Return to human — SESSION 2 ENDS
 ```
 
@@ -122,7 +122,7 @@ Phase 4:      Commit, push, open PR
 
 ```
 Coordinator:  you (read uni-bugfix-protocol.md + coordinator (you).md)
-Init:         /query-patterns + /knowledge-search — prior knowledge
+Init:         /uni-query-patterns + /uni-knowledge-search — prior knowledge
 Phase 1:      uni-bug-investigator (diagnose root cause)
               ★ HUMAN CHECKPOINT — approve diagnosis ★
 Phase 2:      git checkout -b bugfix/{issue}-{desc}
@@ -130,14 +130,14 @@ Phase 2:      git checkout -b bugfix/{issue}-{desc}
 Phase 3:      uni-tester (full test suite verification)
 Gate 3:       uni-validator (bugfix check set)
               git commit + push + gh pr create
-Phase 4:      /review-pr — security review + merge readiness
+Phase 4:      /uni-review-pr — security review + merge readiness
 Phase 5:      Return PR + review assessment — SESSION ENDS
 ```
 
 ### PR Review (standalone)
 
 ```
-Human invokes: /review-pr {pr-number}
+Human invokes: /uni-review-pr {pr-number}
 Step 1:       Verify gate reports
 Step 2:       uni-security-reviewer (fresh-context PR review)
 Step 3:       Merge readiness assessment
@@ -147,7 +147,7 @@ Step 4:       Return to human — REVIEW ENDS
 ### Retrospective (standalone)
 
 ```
-Human invokes: /retro {feature-id} {pr-number}
+Human invokes: /uni-retro {feature-id} {pr-number}
 Phase 1:      Data gathering (context_retrospective + artifact review)
 Phase 2:      uni-architect (pattern/procedure extraction + ADR validation)
 Phase 3:      ADR supersession (if flagged, requires human approval)
@@ -164,8 +164,8 @@ Phase 5:      Summary + outcome recording — RETRO ENDS
 3. **Design session**: All six design agents in defined phase order per protocol.
 4. **Delivery session**: pseudocode + tester + rust-dev + validator at three gates per protocol.
 5. **Bug fix**: bug-investigator + rust-dev + tester + validator per protocol.
-6. **PR review**: `/review-pr` skill + security-reviewer.
-7. **Retrospective**: `/retro` skill + architect (+ tester if testing lessons needed).
+6. **PR review**: `/uni-review-pr` skill + security-reviewer.
+7. **Retrospective**: `/uni-retro` skill + architect (+ tester if testing lessons needed).
 8. **Skip swarm for**: typos, single-line obvious fixes, config-only changes, docs, exploration.
 9. **Max workers per stage**: 5. Split into waves if more needed.
 
@@ -175,13 +175,13 @@ Phase 5:      Summary + outcome recording — RETRO ENDS
 
 | Skill | When | Who |
 |-------|------|-----|
-| `/query-patterns` | BEFORE designing or implementing | uni-architect, uni-pseudocode, uni-rust-dev |
-| `/store-adr` | AFTER each design decision | uni-architect |
-| `/record-outcome` | END of every session | coordinator (you), `/review-pr`, `/retro` |
-| `/store-procedure` | After successful sessions (reusable techniques) | coordinator (you), uni-bug-investigator |
-| `/store-lesson` | After failures | uni-bug-investigator, uni-validator, coordinator (you) |
-| `/knowledge-search` | Exploring what's known | Any agent |
-| `/knowledge-lookup` | Exact-match retrieval | Any agent |
+| `/uni-query-patterns` | BEFORE designing or implementing | uni-architect, uni-pseudocode, uni-rust-dev |
+| `/uni-store-adr` | AFTER each design decision | uni-architect |
+| `/uni-record-outcome` | END of every session | coordinator (you), `/uni-review-pr`, `/uni-retro` |
+| `/uni-store-procedure` | After successful sessions (reusable techniques) | coordinator (you), uni-bug-investigator |
+| `/uni-store-lesson` | After failures | uni-bug-investigator, uni-validator, coordinator (you) |
+| `/uni-knowledge-search` | Exploring what's known | Any agent |
+| `/uni-knowledge-lookup` | Exact-match retrieval | Any agent |
 | `/uni-git` | Git conventions | coordinator (you) |
-| `/review-pr` | After PR creation or standalone | coordinator (you), human |
-| `/retro` | After merge | human |
+| `/uni-review-pr` | After PR creation or standalone | coordinator (you), human |
+| `/uni-retro` | After merge | human |

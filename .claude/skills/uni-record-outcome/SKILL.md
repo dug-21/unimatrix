@@ -1,5 +1,5 @@
 ---
-name: "record-outcome"
+name: "uni-record-outcome"
 description: "Record a feature or bugfix outcome in Unimatrix. Use at the end of every session (design, delivery, bugfix, retrospective)."
 ---
 

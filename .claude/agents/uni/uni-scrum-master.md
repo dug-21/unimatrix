@@ -53,7 +53,7 @@ From the primary agent's spawn prompt:
 - Files created/modified (paths only)
 - Test results (pass/fail count)
 - Gate results (3a, 3b, 3c — each PASS/FAIL)
-- PR review results (from `/review-pr`)
+- PR review results (from `/uni-review-pr`)
 - GH Issue URL / update confirmation
 - Issues or failures encountered
 
@@ -78,7 +78,7 @@ From the primary agent's spawn prompt:
 | Component Map update + routing (delivery) | You | |
 | Rework loops (max 2 per gate) | You | |
 | Git: branch, gate commits, PR (`/uni-git`) | You | |
-| PR review after delivery/bugfix | `/review-pr` skill | |
+| PR review after delivery/bugfix | `/uni-review-pr` skill | |
 | SCOPE.md creation | | uni-researcher |
 | Architecture + ADRs | | uni-architect |
 | Specification | | uni-specification |

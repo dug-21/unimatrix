@@ -173,7 +173,7 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 ## Knowledge Stewardship
 
 ### After Completing
-Store recurring security anti-patterns via `/store-lesson` when you see the same vulnerability type across multiple features or PRs:
+Store recurring security anti-patterns via `/uni-store-lesson` when you see the same vulnerability type across multiple features or PRs:
 - Topic: crate name or `security`. Category: `lesson-learned`.
 - Example: "Every new MCP tool forgets to validate path parameters — add path validation to the MCP tool checklist."
 
@@ -183,7 +183,7 @@ Security findings specific to one PR stay in PR comments. Only store generalizab
 Include in your agent report:
 ```markdown
 ## Knowledge Stewardship
-- Stored: entry #{id} "{title}" via /store-lesson (or "nothing novel to store -- {reason}")
+- Stored: entry #{id} "{title}" via /uni-store-lesson (or "nothing novel to store -- {reason}")
 ```
 
 ## Self-Check (Run Before Returning Results)

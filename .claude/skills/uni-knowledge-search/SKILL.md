@@ -1,5 +1,5 @@
 ---
-name: "knowledge-search"
+name: "uni-knowledge-search"
 description: "Semantic search across Unimatrix knowledge. Use when exploring a topic, looking for related decisions, patterns, or conventions."
 ---
 
@@ -78,9 +78,9 @@ Omit `category` to search across all categories.
 
 ---
 
-## When to Use This vs /knowledge-lookup
+## When to Use This vs /uni-knowledge-lookup
 
-| Use `/knowledge-search` when | Use `/knowledge-lookup` when |
+| Use `/uni-knowledge-search` when | Use `/uni-knowledge-lookup` when |
 |------------------------------|------------------------------|
 | Exploring a concept | You know the exact feature/category |
 | "What do we know about X?" | "Give me all ADRs for nxs-002" |

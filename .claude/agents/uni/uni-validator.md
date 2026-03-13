@@ -99,7 +99,7 @@ Your spawn prompt tells you which gate you're running. Read it carefully.
 
 7. **Knowledge stewardship compliance** — Did implementation agents fulfill stewardship obligations?
    - Each rust-dev agent report contains a `## Knowledge Stewardship` section
-   - Reports have `Queried:` entries (evidence of /query-patterns before implementing)
+   - Reports have `Queried:` entries (evidence of /uni-query-patterns before implementing)
    - Reports have `Stored:` or "nothing novel to store -- {reason}" entries
    - Missing stewardship block = REWORKABLE FAIL. Present but no reason after "nothing novel" = WARN.
 
@@ -262,9 +262,9 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 ## Knowledge Stewardship
 
 ### After Completing
-Store recurring gate failure patterns via `/store-lesson`:
+Store recurring gate failure patterns via `/uni-store-lesson`:
 - Patterns that appear across features (not one-off failures). Topic: `validation`. Category: `lesson-learned`.
-- Quality patterns that indicate systemic issues. Topic: `validation`. Category: `pattern` via `/store-pattern`.
+- Quality patterns that indicate systemic issues. Topic: `validation`. Category: `pattern` via `/uni-store-pattern`.
 
 Do not store feature-specific gate results — those live in gate reports.
 
@@ -272,7 +272,7 @@ Do not store feature-specific gate results — those live in gate reports.
 Include in your agent report:
 ```markdown
 ## Knowledge Stewardship
-- Stored: entry #{id} "{title}" via /store-lesson (or "nothing novel to store -- {reason}")
+- Stored: entry #{id} "{title}" via /uni-store-lesson (or "nothing novel to store -- {reason}")
 ```
 
 ## Self-Check (Run Before Returning Results)

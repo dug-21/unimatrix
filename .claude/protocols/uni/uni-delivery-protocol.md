@@ -340,7 +340,7 @@ The Delivery Leader:
 2. Pushes feature branch and opens PR (see `/uni-git` for PR template)
 3. Updates GH Issue with PR link
 4. Evaluates documentation trigger criteria (see below) — spawns `uni-docs` if mandatory
-5. Invokes `/review-pr` for security review and merge readiness
+5. Invokes `/uni-review-pr` for security review and merge readiness
 6. Combines impl + deploy results in the return to human
 
 ```bash
@@ -394,13 +394,13 @@ Task(subagent_type: "uni-docs",
     Return: sections modified, commit hash, or 'no changes needed'.")
 ```
 
-**No gate.** This step is advisory — it does not block delivery. If `uni-docs` fails to produce useful output, proceed to `/review-pr` without documentation updates. Documentation changes are part of the reviewed PR.
+**No gate.** This step is advisory — it does not block delivery. If `uni-docs` fails to produce useful output, proceed to `/uni-review-pr` without documentation updates. Documentation changes are part of the reviewed PR.
 
 ---
 
 ### PR Review (after PR opens)
 
-Invoke `/review-pr` with the PR number, feature ID, and GH Issue number. This spawns a fresh-context security reviewer and assesses merge readiness.
+Invoke `/uni-review-pr` with the PR number, feature ID, and GH Issue number. This spawns a fresh-context security reviewer and assesses merge readiness.
 
 **Error handling:**
 - Review fails → return delivery results only, note "PR review failed"
@@ -427,7 +427,7 @@ Human action required: {Approve and merge | Address blocking items}.
 
 After Phase 4, the Delivery Leader may optionally review for tech debt or cleanup opportunities discovered during implementation. If found, file GH Issues — do not include in this PR.
 
-If a reusable multi-step technique was used or discovered during this session, store it via `/store-procedure`.
+If a reusable multi-step technique was used or discovered during this session, store it via `/uni-store-procedure`.
 
 ---
 
@@ -501,7 +501,7 @@ DELIVERY LEADER (you):
               ...PASS → continue / FAIL → rework or stop...
   Phase 4:    git commit + push + gh pr create
               [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
-              /review-pr — security review + merge readiness
+              /uni-review-pr — security review + merge readiness
               context_cycle(type: "stop", topic: "{feature-id}", agent_id: "{feature-id}-delivery-leader")
               Combined return — SESSION 2 ENDS
 ```

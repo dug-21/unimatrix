@@ -1,16 +1,16 @@
 ---
-name: "unimatrix-init"
+name: "uni-init"
 description: "Initialize Unimatrix in a repository: append knowledge block to CLAUDE.md and produce agent orientation recommendations."
 ---
 
-# /unimatrix-init — Repository Initialization
+# /uni-init — Repository Initialization
 
 ## Prerequisites
 
 Before running this skill:
 
-1. **Skill files installed**: Both `unimatrix-init/SKILL.md` and `unimatrix-seed/SKILL.md` must be present in `.claude/skills/` in the target repository.
-2. **MCP server wired** (for `/unimatrix-seed`): The Unimatrix MCP server (`unimatrix-server`) must be running and configured in your Claude Code `settings.json`. This skill (`/unimatrix-init`) does not require MCP, but `/unimatrix-seed` does.
+1. **Skill files installed**: Both `uni-init/SKILL.md` and `uni-seed/SKILL.md` must be present in `.claude/skills/` in the target repository.
+2. **MCP server wired** (for `/uni-seed`): The Unimatrix MCP server (`unimatrix-server`) must be running and configured in your Claude Code `settings.json`. This skill (`/uni-init`) does not require MCP, but `/uni-seed` does.
 
 If you need to install the Unimatrix server or wire MCP, consult the installation documentation.
 
@@ -22,8 +22,6 @@ Sets up Unimatrix awareness in a repository by:
 1. Checking if Unimatrix is already initialized (idempotency guard)
 2. Scanning agent definitions for orientation gaps (read-only)
 3. Appending a self-contained Unimatrix knowledge block to CLAUDE.md
-
-**This is different from the `uni-init` agent** (`.claude/agents/uni/uni-init.md`). The `uni-init` agent performs brownfield bootstrap — it extracts knowledge from existing `.claude/agents/` and `.claude/protocols/` files into Unimatrix entries. Use `/unimatrix-init` for new repository setup (CLAUDE.md + recommendations). Use the `uni-init` agent when you already have agent definitions and want to populate Unimatrix from them.
 
 ---
 
@@ -40,13 +38,13 @@ Follow these phases in strict order. Do not skip or reorder.
 
 ### Phase 1: Pre-flight — Idempotency Check
 
-**Check for `--dry-run` argument first.** If the user invoked `/unimatrix-init --dry-run`, set dry-run mode. In dry-run mode, no files will be created or modified — only terminal output.
+**Check for `--dry-run` argument first.** If the user invoked `/uni-init --dry-run`, set dry-run mode. In dry-run mode, no files will be created or modified — only terminal output.
 
 1. Check if `CLAUDE.md` exists in the repository root.
 
 2. **If CLAUDE.md exists**, read the entire file and search for this exact sentinel string:
    ```
-   <!-- unimatrix-init v1: DO NOT REMOVE THIS LINE -->
+   <!-- uni-init v1: DO NOT REMOVE THIS LINE -->
    ```
 
 3. **Head-check fallback for large files**: If `CLAUDE.md` has more than 200 lines, also explicitly read the last 30 lines of the file and check for the sentinel there. This catches cases where the sentinel is at the end of a large file.
@@ -76,8 +74,8 @@ This phase produces a terminal-only recommendation report. **Do not write any fi
 3. **For each agent file found**, read its content and check for the presence of these three patterns:
 
    - **context_briefing**: Does the file contain `context_briefing`? (This indicates the agent calls the Unimatrix briefing tool at session start.)
-   - **Outcome reporting**: Does the file contain `/record-outcome` or reference `context_store` with `category: "outcome"`? (This indicates the agent records session outcomes.)
-   - **unimatrix-\* skill reference**: Does the file contain any reference to `unimatrix-` prefixed skills (e.g., `/unimatrix-init`, `/unimatrix-seed`)?
+   - **Outcome reporting**: Does the file contain `/uni-record-outcome` or reference `context_store` with `category: "outcome"`? (This indicates the agent records session outcomes.)
+   - **uni-\* skill reference**: Does the file contain any reference to `uni-` prefixed skills (e.g., `/uni-init`, `/uni-seed`)?
 
 4. **Print the Agent Orientation Report** to the terminal:
 
@@ -93,8 +91,8 @@ This phase produces a terminal-only recommendation report. **Do not write any fi
    - **Missing**: which of the three patterns are absent
    - **Suggested Addition**: concrete, skill-level recommendation. Examples:
      - Missing context_briefing: "Add orientation section: call context_briefing at session start for relevant knowledge"
-     - Missing outcome reporting: "Add session end: invoke /record-outcome to capture what was learned"
-     - Missing unimatrix-* skills: "Reference /unimatrix-init and /unimatrix-seed for onboarding new repos"
+     - Missing outcome reporting: "Add session end: invoke /uni-record-outcome to capture what was learned"
+     - Missing uni-* skills: "Reference /uni-init and /uni-seed for onboarding new repos"
      - All present: "fully wired" / "none"
 
 5. **If all agents have all three patterns**: Print after the table:
@@ -121,7 +119,7 @@ The exact block to append is:
 
 ```markdown
 
-<!-- unimatrix-init v1: DO NOT REMOVE THIS LINE -->
+<!-- uni-init v1: DO NOT REMOVE THIS LINE -->
 ## Unimatrix
 
 Knowledge engine (MCP server). Makes agent expertise searchable, trustworthy, and self-improving.
@@ -130,18 +128,18 @@ Knowledge engine (MCP server). Makes agent expertise searchable, trustworthy, an
 
 | Skill | When to Use |
 |-------|-------------|
-| `/unimatrix-init` | First-time setup: wire CLAUDE.md and get agent recommendations |
-| `/unimatrix-seed` | Populate Unimatrix with foundational repo knowledge |
+| `/uni-init` | First-time setup: wire CLAUDE.md and get agent recommendations |
+| `/uni-seed` | Populate Unimatrix with foundational repo knowledge |
 
 ### Knowledge Categories
 
 | Category | What Goes Here |
 |----------|---------------|
-| `decision` | Architectural decisions (ADRs) — use `/store-adr` |
-| `pattern` | Reusable implementation patterns — use `/store-pattern` |
-| `procedure` | Step-by-step workflows — use `/store-procedure` |
+| `decision` | Architectural decisions (ADRs) — use `/uni-store-adr` |
+| `pattern` | Reusable implementation patterns — use `/uni-store-pattern` |
+| `procedure` | Step-by-step workflows — use `/uni-store-procedure` |
 | `convention` | Project-wide coding/process standards |
-| `lesson-learned` | Post-failure takeaways — use `/store-lesson` |
+| `lesson-learned` | Post-failure takeaways — use `/uni-store-lesson` |
 
 ### When to Invoke
 
@@ -149,7 +147,7 @@ Knowledge engine (MCP server). Makes agent expertise searchable, trustworthy, an
 - After each architectural decision → store ADR
 - After each shipped feature → run retrospective
 - When a technique evolves → update procedure
-<!-- end unimatrix-init v1 -->
+<!-- end uni-init v1 -->
 ```
 
 **If CLAUDE.md exists**: Append the block to the end of the existing file. Use Edit/append semantics — do NOT overwrite the file. Preserve all existing content. Add a blank line before the block if the file does not already end with a blank line.
@@ -167,5 +165,5 @@ Created CLAUDE.md with Unimatrix block.
 
 Finally, print:
 ```
-Initialization complete. Run /unimatrix-seed next to populate the knowledge base.
+Initialization complete. Run /uni-seed next to populate the knowledge base.
 ```

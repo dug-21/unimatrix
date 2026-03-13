@@ -1,5 +1,5 @@
 ---
-name: "store-pattern"
+name: "uni-store-pattern"
 description: "Store a reusable implementation pattern in Unimatrix. Use when you discover a gotcha, trap, or reusable solution that future agents should know."
 ---
 
@@ -7,7 +7,7 @@ description: "Store a reusable implementation pattern in Unimatrix. Use when you
 
 ## What This Skill Does
 
-Stores a reusable pattern in Unimatrix. Patterns capture implementation gotchas, traps, and solutions — knowledge invisible in source code that you only learn by hitting it. They surface in future `/query-patterns` results so the next agent doesn't repeat the discovery.
+Stores a reusable pattern in Unimatrix. Patterns capture implementation gotchas, traps, and solutions — knowledge invisible in source code that you only learn by hitting it. They surface in future `/uni-query-patterns` results so the next agent doesn't repeat the discovery.
 
 **Use when:** you discover something that compiles but breaks at runtime, a non-obvious integration requirement, a crate-specific trap, or a reusable solution to a recurring problem.
 
@@ -17,11 +17,11 @@ Stores a reusable pattern in Unimatrix. Patterns capture implementation gotchas,
 
 | Type | When to use | Example |
 |------|------------|---------|
-| **Pattern** (`/store-pattern`) | Reusable solution or gotcha applicable regardless of failure context | "Don't hold lock_conn() across await — deadlocks under concurrent requests" |
-| **Lesson** (`/store-lesson`) | Triggered by a specific failure; takeaway is preventive | "Gate 3b failed because rust-dev didn't read ADR before implementing" |
-| **Procedure** (`/store-procedure`) | Ordered steps to accomplish a task | "How to add a new MCP tool: step 1, 2, 3..." |
+| **Pattern** (`/uni-store-pattern`) | Reusable solution or gotcha applicable regardless of failure context | "Don't hold lock_conn() across await — deadlocks under concurrent requests" |
+| **Lesson** (`/uni-store-lesson`) | Triggered by a specific failure; takeaway is preventive | "Gate 3b failed because rust-dev didn't read ADR before implementing" |
+| **Procedure** (`/uni-store-procedure`) | Ordered steps to accomplish a task | "How to add a new MCP tool: step 1, 2, 3..." |
 
-**Decision rule:** If the knowledge was triggered by a specific failure and the takeaway is "don't do X," use `/store-lesson`. If the knowledge is a reusable solution applicable regardless of failure context — "when doing X, use approach Y because Z" — use `/store-pattern`.
+**Decision rule:** If the knowledge was triggered by a specific failure and the takeaway is "don't do X," use `/uni-store-lesson`. If the knowledge is a reusable solution applicable regardless of failure context — "when doing X, use approach Y because Z" — use `/uni-store-pattern`.
 
 ---
 
