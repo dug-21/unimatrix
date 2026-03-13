@@ -1,6 +1,6 @@
 # Unimatrix
 
-A self-learning expertise engine for multi-agent software development. Unimatrix captures the knowledge that emerges from doing work — decisions, patterns, conventions, and lessons — and makes it trustworthy, retrievable, and ever-improving. Agents don't need to ask for context: Unimatrix delivers it automatically via Claude Code's hook system, injecting relevant expertise into every prompt.
+A self-learning knowledge engine for multi-agent software development. Unimatrix captures decisions, patterns, conventions, and lessons from real work, then delivers that context automatically via Claude Code's hook system — agents do not need to ask for it. Confidence scoring evolves from usage signals, so knowledge that helps gets boosted and knowledge that misleads gets downranked.
 
 Built in Rust. Zero cloud dependency. Ships as a single binary MCP server.
 
@@ -8,183 +8,128 @@ Inspired by and building on patterns from [ruvnet's](https://github.com/ruvnet) 
 
 ---
 
-## Features
+## Why Unimatrix
 
-### Knowledge Engine
+Multi-agent development creates knowledge that lives in context windows and dies with sessions. Decisions get re-made, patterns get re-discovered, lessons get re-learned.
 
-- **17-table storage backend** on [redb](https://github.com/cberner/redb) — entries, 5 secondary indexes, vector map, counters, agent registry, audit log, feature tracking, co-access graph, outcome index, observation metrics, signal queue, sessions, and injection log
-- **384-dimension vector search** via HNSW (dot product similarity, ef_construction=200, 16 max connections) with filtered search support
-- **Local ONNX embedding pipeline** — all-MiniLM-L6-v2 runs on-device via ONNX Runtime. No API calls, no cloud dependency
-- **Adaptive embeddings** — MicroLoRA layer (rank 2-8) adapts frozen ONNX embeddings to project-specific usage patterns via contrastive learning (InfoNCE loss), with EWC++ regularization to prevent catastrophic forgetting
-- **Near-duplicate detection** — cosine similarity threshold (0.92) prevents redundant entries at write time
-- **Schema migration** — scan-and-rewrite migrations triggered automatically on database open. 5 schema versions shipped without breaking changes
+- **Auditable Knowledge Lifecycle** — Every entry has a SHA-256 content hash. Corrections create hash-chained supersession links. An append-only audit log records every operation with agent identity and session context. You can trace how any piece of knowledge evolved.
 
-### 12 MCP Tools
+- **Invisible Delivery** — Agents do not need to ask for context. Hook-driven integration (Cortical Implant) injects relevant expertise into every prompt automatically via Claude Code's lifecycle hooks. Knowledge reaches agents without their cooperation.
 
-| Tool | Purpose |
-|------|---------|
-| `context_search` | Semantic search — natural language queries ranked by similarity + confidence + co-access affinity |
-| `context_lookup` | Deterministic retrieval by topic, category, tags, status, or ID |
-| `context_get` | Full entry by ID |
-| `context_store` | Store new knowledge with duplicate detection and content scanning |
-| `context_correct` | Supersede an entry — creates a hash-chained correction link |
-| `context_deprecate` | Mark knowledge as outdated |
-| `context_quarantine` | Isolate suspicious or invalid entries from search results |
-| `context_status` | Health metrics, coherence score, security audit, optional self-maintenance |
-| `context_briefing` | Role + task oriented context delivery — duties, conventions, and relevant patterns compiled into one response |
-| `context_enroll` | Manage agent trust levels and capabilities at runtime |
-| `context_retrospective` | Analyze session telemetry — hotspot detection, evidence synthesis, actionable recommendations |
-
-All tools accept `format`: `summary`, `markdown`, or `json`.
-
-### Confidence & Ranking
-
-Knowledge isn't just stored — it's scored. A six-component additive weighted composite determines each entry's confidence:
-
-| Signal | Weight | How it works |
-|--------|--------|-------------|
-| Base quality | 0.18 | Status-dependent (Active=0.5, Proposed=0.5, Deprecated=0.2, Quarantined=0.1) |
-| Usage frequency | 0.14 | Log-transformed access count, capped at 50 |
-| Freshness | 0.18 | Exponential decay with 1-week half-life |
-| Helpfulness | 0.14 | Wilson score lower bound (95% CI) with a 5-vote minimum before deviating from neutral |
-| Correction quality | 0.14 | Rewards 1-2 corrections (refinement), penalizes 6+ (instability) |
-| Creator trust | 0.14 | human=1.0, system=0.7, agent=0.5 |
-| Co-access affinity | 0.08 | Query-time boost for entries frequently retrieved together |
-
-Search re-ranking: `0.85 * similarity + 0.15 * confidence + co-access boost (max 0.03) + provenance boost (0.02 for lesson-learned entries)`.
-
-All scoring runs at f64 precision. The Wilson score guard prevents gaming — you can't boost an entry by spamming helpful votes until real usage data accumulates.
-
-### Coherence Gate
-
-A composite health metric (lambda, 0.0-1.0) monitors knowledge base structural integrity across four dimensions:
-
-| Dimension | Weight | What it catches |
-|-----------|--------|----------------|
-| Confidence freshness | 0.35 | Entries with stale time-decay components |
-| Graph quality | 0.30 | Orphaned HNSW nodes from re-embeddings |
-| Contradiction density | 0.20 | Rising ratio of quarantined entries |
-| Embedding consistency | 0.15 | Drift between stored and re-computed vectors |
-
-When lambda drops below 0.8, `context_status` surfaces maintenance recommendations. With `maintain=true`, it runs inline: batch confidence refresh, HNSW graph compaction (build-new-then-swap), and co-access cleanup. No background threads, no timers — maintenance happens on-demand within the request.
-
-### Security
-
-- **Agent registry** — 4-tier trust hierarchy (System > Privileged > Internal > Restricted) with per-tool capability checks
-- **Auto-enrollment** — unknown agents get Restricted access (read + search only) until explicitly promoted
-- **Content scanning** — 25+ injection patterns (instruction override, role impersonation, delimiter injection, encoding evasion) and 6+ PII patterns (emails, phone numbers, SSNs, API keys, tokens) checked on every write
-- **Append-only audit log** — every operation recorded with agent identity, session context, and outcome
-- **Hash-chained corrections** — SHA-256 content hashes with `previous_hash` links create a tamper-evident correction history
-- **Input validation** — length limits, character filtering, and pattern matching on all tool parameters
-- **Output framing** — read tools separate data from instructions to prevent confused-deputy attacks
-- **Protected agents** — `system` and `human` identities are immutable with self-lockout prevention
-- **UDS authentication** — peer credential (UID) verification on Unix domain socket connections
-
-### Hook-Driven Delivery (Cortical Implant)
-
-The `unimatrix-server hook` subcommand acts as a universal router for Claude Code lifecycle events. One binary, configured once in `.claude/settings.json`, dispatches all hook events over a Unix domain socket to the running MCP server:
-
-- **Automatic context injection** — `UserPromptSubmit` hook queries Unimatrix for knowledge relevant to the current prompt. Top entries (within a ~350 token budget) are injected into Claude's context before the agent sees it
-- **Compaction resilience** — `PreCompact` hook calls `context_briefing` to re-inject critical knowledge (active decisions, conventions, current feature context) when Claude Code compresses the conversation window
-- **Closed-loop confidence** — `Stop`/`SubagentStop` hooks determine session outcomes (success/rework/abandoned) and feed implicit helpfulness signals back to the confidence pipeline. Successful sessions bulk-apply `helpful=true` to injected entries; rework is flagged for human review, never auto-downweighted
-- **Session lifecycle** — `SessionStart`/`SessionEnd` hooks persist session records with feature attribution, injection history, and outcome tracking. Survives server restart. Stale sessions swept after 24 hours
-
-Transport: length-prefixed JSON over Unix domain socket. Sub-50ms round-trip budget. Graceful degradation via disk-backed event queue when the server is unreachable.
-
-### Observation & Retrospective Intelligence
-
-The `unimatrix-observe` crate provides a full observation pipeline that analyzes Claude Code session telemetry:
-
-- **21 detection rules** across 4 categories — agent behavior (7), friction points (4), session health (5), scope indicators (5)
-- **Historical baselines** — mean + stddev across prior feature cycles with 1.5-sigma outlier detection. Four arithmetic guard modes handle edge cases (NoVariance, NewSignal)
-- **Evidence synthesis** — timestamp clustering (30s sliding window), sequence pattern extraction, top-file ranking, and human-readable narrative generation
-- **Actionable recommendations** — template-based suggestions for recognized hotspot patterns (permission retries, coordinator respawns, sleep workarounds, compile cycles)
-- **Lesson-learned auto-persistence** — retrospective findings are automatically stored as knowledge entries (`category: lesson-learned`) with system trust, embedded for semantic search, and provenance-boosted in future queries
-- **De-duplication** — repeated retrospectives for the same feature cycle supersede prior entries via correction chains
-
-This closes the learning loop: observation feeds retrospective analysis, which produces lesson-learned entries, which rank higher in future searches, which influence future agent behavior.
+- **Self-Learning** — Confidence scoring evolves from real usage signals: access frequency, helpfulness votes, correction quality, creator trust, freshness decay, and co-access patterns. Entries that help get boosted; entries that mislead get downranked. Adaptive embeddings (MicroLoRA) tune search to project-specific usage patterns.
 
 ---
 
-## Architecture
+## Core Capabilities
 
-### 8 Crates
+Unimatrix provides these capabilities out of the box.
 
-| Crate | Role |
-|-------|------|
-| `unimatrix-store` | redb storage engine — 17 tables, 5 schema versions, secondary indexes, scan-and-rewrite migration |
-| `unimatrix-vector` | HNSW vector index — 384d embeddings, dot product, filtered search, build-new-then-swap compaction |
-| `unimatrix-embed` | ONNX embedding pipeline — all-MiniLM-L6-v2, lazy background loading, HuggingFace Hub model caching |
-| `unimatrix-core` | Shared traits (`EntryStore`, `VectorStore`, `IndexStore`), async wrappers, unified error types |
-| `unimatrix-engine` | Business logic — confidence scoring, co-access, project detection, wire protocol, UDS transport, auth |
-| `unimatrix-adapt` | Adaptive embeddings — MicroLoRA, InfoNCE contrastive learning, EWC++ regularization, prototype centroids |
-| `unimatrix-observe` | Observation pipeline — JSONL parsing, feature attribution, 21 detection rules, baselines, synthesis, narratives |
-| `unimatrix-server` | Binary — MCP server (stdio) + hook subcommand (UDS). 12 tools, agent registry, content scanning, session lifecycle |
+### Self-Learning Knowledge Engine
 
-### Data Layout
+Captures decisions, patterns, conventions, procedures, lessons, and outcomes from real feature work. Eight knowledge categories ensure entries surface in the right context. Confidence scoring combines usage signals, correction quality, creator trust, freshness, helpfulness, and co-access patterns into a composite score that evolves automatically. No manual curation required — the system learns what is useful from how knowledge is accessed and rated.
 
-```
-~/.unimatrix/{project-hash}/
-  unimatrix.redb             # 17-table knowledge database
-  unimatrix.pid              # PID file with flock advisory lock
-  unimatrix.sock             # Unix domain socket for hook IPC
-  vector/
-    unimatrix-vector.hnsw2   # HNSW graph
-    unimatrix-vector.meta    # index metadata
-  observation/
-    {session-id}.jsonl        # per-session telemetry
+### Adaptive Embeddings (MicroLoRA)
 
-~/.cache/unimatrix/models/   # ONNX model files (downloaded once)
-```
+All-MiniLM-L6-v2 ONNX model runs locally — no API calls, no cloud dependency. A MicroLoRA layer adapts frozen embeddings to project-specific usage patterns. Search relevance improves over time as the system learns which entries are accessed together. 384-dimension vectors with HNSW index for fast approximate nearest-neighbor search.
+
+### Semantic Search with Confidence-Aware Ranking
+
+Natural language queries return entries ranked by a combination of semantic similarity, confidence score, and co-access affinity. Filters by topic, category, tags, and status narrow results without losing semantic ranking. Near-duplicate detection (cosine similarity >= 0.92) prevents redundant entries at write time. Provenance boosting: `lesson-learned` entries get a small ranking boost in search results.
+
+### Hook-Driven Invisible Delivery (Cortical Implant)
+
+Automatic context injection on every prompt via the `UserPromptSubmit` hook. Five hook events drive the integration: `UserPromptSubmit`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC.
+
+### Retrospective Analysis
+
+Analyzes session telemetry for a completed feature cycle. 21 detection rules across 4 categories: agent behavior, friction points, session health, and scope indicators. Historical baselines with outlier detection surface anomalies. Evidence synthesis produces actionable findings with supporting data. Lessons and patterns extracted from retrospectives are stored back in the knowledge base with de-duplication via correction chains.
+
+### Contradiction Detection
+
+Pairwise heuristic detection across the knowledge base identifies entries that may conflict. Contradictions surface in `context_status` health reports. Detected contradictions reduce the coherence health metric (lambda), prompting review.
+
+### Correction Chains with Audit Trails
+
+`context_correct` creates a new entry and deprecates the original, linking them with SHA-256 content hashes (`previous_hash` chain). The append-only audit log records every operation — store, correct, deprecate, quarantine, enroll — with agent identity, session context, and operation outcome. Correction chains are tamper-evident: any break in the hash chain is detectable.
+
+### Coherence Gate (Lambda Health Metric)
+
+Lambda is a composite health metric [0.0, 1.0] computed from four dimensions: confidence freshness (are entries' confidence scores up to date?), graph quality (is the vector index structurally sound?), contradiction density (how many unresolved contradictions exist?), and embedding consistency (do entries have valid, current embeddings?). When lambda drops below 0.8, maintenance is recommended. A background tick handles maintenance automatically — confidence refresh, graph compaction, co-access cleanup.
+
+### Content Scanning
+
+Every `context_store` and `context_correct` call scans content for injection patterns (~25+ patterns including prompt injection attempts, system prompt overrides, and encoded payloads) and PII patterns (6+ patterns including emails, phone numbers, API keys, and credentials). Flagged content is rejected with a descriptive error before storage.
+
+### Agent Trust Hierarchy
+
+Four-tier trust model: System > Privileged > Internal > Restricted. Four capabilities gate tool access: `read`, `write`, `search`, `admin`. Unknown agents auto-enroll as Restricted (read + search only) on first contact. Protected agents: `system` and `human` cannot be modified. Self-lockout prevention: an admin cannot remove their own Admin capability. `context_enroll` (Admin-only) manages agent trust levels and capabilities at runtime.
+
+### Knowledge Effectiveness Analysis
+
+Per-entry utility scoring from injection logs and session outcomes. Confidence calibration validation — does predicted quality match actual usefulness? Dead knowledge detection — entries that are never accessed after initial storage.
 
 ---
 
 ## Getting Started
 
-### Prerequisites
+### Install via npm
 
-- **Rust 1.89+** (edition 2024)
-- **ONNX Runtime 1.20.x** shared library
+```bash
+npm install @dug-21/unimatrix
+```
 
-#### Installing ONNX Runtime
+Prerequisite: Node.js >= 18.
+
+The npm package includes pre-built binaries for Linux x64. The embedding model downloads automatically on first run (or via `npx unimatrix model-download`).
+
+### Build from Source
+
+Prerequisites:
+- Rust 1.89+ (edition 2024)
+- ONNX Runtime 1.20.x shared library
 
 **macOS (Homebrew):**
 ```bash
 brew install onnxruntime
-export ORT_LIB_LOCATION=$(brew --prefix onnxruntime)/lib
-export ORT_PREFER_DYNAMIC_LINK=1
 ```
 
 **Linux (manual):**
 ```bash
-wget https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/onnxruntime-linux-x64-1.20.1.tgz
-tar xzf onnxruntime-linux-x64-1.20.1.tgz
-sudo cp onnxruntime-linux-x64-1.20.1/lib/* /usr/local/lib/
-sudo ldconfig
-export ORT_LIB_LOCATION=/usr/local/lib
-export ORT_PREFER_DYNAMIC_LINK=1
+# Download from https://github.com/microsoft/onnxruntime/releases
+# Extract and set ORT_DYLIB_PATH or install to /usr/lib
 ```
 
-**Devcontainer:** ONNX Runtime is pre-installed. `.cargo/config.toml` sets the environment automatically.
+**Devcontainer:** ONNX Runtime pre-installed. No setup needed.
 
-### Build
-
+Build:
 ```bash
-cargo build --release
+cargo build --release --workspace
 ```
 
-Binary: `target/release/unimatrix-server`
+Binary at `target/release/unimatrix-server`.
 
-### Configure MCP
+### Configure MCP Server
 
-Add to your project's `.claude/settings.json`:
+Add to `.claude/settings.json`:
 
 ```json
 {
   "mcpServers": {
     "unimatrix": {
-      "command": "/path/to/unimatrix-server",
-      "args": []
+      "command": "npx",
+      "args": ["unimatrix"]
+    }
+  }
+}
+```
+
+Or for build-from-source:
+
+```json
+{
+  "mcpServers": {
+    "unimatrix": {
+      "command": "/path/to/unimatrix-server"
     }
   }
 }
@@ -192,110 +137,235 @@ Add to your project's `.claude/settings.json`:
 
 ### Configure Hooks
 
-Add the cortical implant hooks to `.claude/settings.json`:
+Add to `.claude/settings.json`:
 
 ```json
 {
   "hooks": {
-    "UserPromptSubmit": [
-      { "command": "/path/to/unimatrix-server hook UserPromptSubmit" }
-    ],
-    "PreCompact": [
-      { "command": "/path/to/unimatrix-server hook PreCompact" }
-    ],
-    "PreToolUse": [
-      { "command": "/path/to/unimatrix-server hook PreToolUse" }
-    ],
-    "PostToolUse": [
-      { "command": "/path/to/unimatrix-server hook PostToolUse" }
-    ],
-    "Stop": [
-      { "command": "/path/to/unimatrix-server hook Stop" }
-    ]
+    "UserPromptSubmit": [{ "command": "npx unimatrix hook UserPromptSubmit" }],
+    "PreCompact": [{ "command": "npx unimatrix hook PreCompact" }],
+    "PreToolUse": [{ "command": "npx unimatrix hook PreToolUse" }],
+    "PostToolUse": [{ "command": "npx unimatrix hook PostToolUse" }],
+    "Stop": [{ "command": "npx unimatrix hook Stop" }]
   }
 }
 ```
 
-### Interact
+### Cold Start
 
-Claude Code discovers the `context_*` tools automatically. The server instructions guide agents to search before implementing and store reusable findings:
+A fresh knowledge base returns empty results. Use `/unimatrix-seed` to populate foundational knowledge entries. Use `/unimatrix-init` to configure CLAUDE.md awareness and get agent recommendations.
 
+### First Use Examples
+
+**Search for existing knowledge:**
 ```
-# Search for relevant knowledge
-context_search(query: "error handling conventions", category: "convention")
+context_search(query: "error handling patterns", category: "pattern")
+```
 
-# Store a decision
+**Store a new decision:**
+```
 context_store(
-  topic: "authentication",
+  content: "Use SQLite for local storage — zero cloud dependency, single-file database.",
+  topic: "nxs-008",
   category: "decision",
-  content: "Use JWT with RS256 for API auth. Tokens expire after 1 hour.",
-  title: "Auth token strategy"
+  title: "Storage backend choice"
 )
-
-# Get a role briefing
-context_briefing(role: "developer", task: "implement user registration endpoint")
-
-# Correct outdated knowledge
-context_correct(
-  original_id: 42,
-  content: "Use JWT with ES256 — 3x faster verification on our infra.",
-  reason: "Benchmarked RS256 vs ES256"
-)
-
-# Analyze a feature cycle
-context_retrospective(feature_cycle: "col-010b", evidence_limit: 3)
 ```
 
-### CLI
-
+**Get an orientation briefing:**
 ```
-unimatrix-server [--project-dir <PATH>] [--verbose]
-unimatrix-server hook <EVENT>
+context_briefing(role: "developer", task: "implement new MCP tool", feature: "vnc-012")
 ```
-
-| Flag | Effect |
-|------|--------|
-| `--project-dir <PATH>` | Override automatic project root detection |
-| `--verbose`, `-v` | Debug-level logging (stderr) |
-| `hook <EVENT>` | Handle a Claude Code lifecycle hook event |
 
 ---
 
-## Tests
+## Tips for Maximum Value
 
-```bash
-cargo test
-```
+1. **Start a new session per feature cycle.** Context window pollution across features reduces knowledge quality. Each feature cycle (e.g., `col-015`) should use a fresh Claude Code session.
 
-1,500+ tests across 8 crates. Embedding model tests are gated behind `#[ignore]` — run with `cargo test -- --ignored` to include them.
+2. **Use feature cycle naming.** Phase prefix + number: `col-015`, `nan-005`, `vnc-012`. Used in commits, branches, issue tracking, and as the `feature_cycle` parameter in MCP tool calls.
+
+3. **Follow commit message format.** `{prefix}: {description} (#{issue})` — see `/uni-git` for the prefix table.
+
+4. **Category discipline matters.** The right category determines retrieval quality. Decisions (`decision`) are not conventions (`convention`); procedures (`procedure`) are not patterns (`pattern`). Miscategorized entries surface in wrong contexts during semantic search.
+
+5. **Hook latency budget.** Hooks have a sub-50ms round-trip budget. Heavy blocking operations in hook handlers degrade the user experience.
+
+6. **Cold start: use `/unimatrix-seed`.** A fresh knowledge base returns empty search results. `/unimatrix-seed` populates foundational entries before relying on search.
+
+7. **Near-duplicate detection.** Entries with cosine similarity >= 0.92 to existing entries are rejected as duplicates. Rephrase if a legitimate distinct entry is rejected.
+
+---
+
+## MCP Tool Reference
+
+Unimatrix exposes 11 MCP tools. All tools accept `format: "summary" | "markdown" | "json"` as a common parameter.
+
+| Tool | Purpose | When to Use |
+|------|---------|-------------|
+| `context_search` | Search for relevant context using natural language. Returns semantically similar entries ranked by relevance. | When you need to find patterns, conventions, or decisions related to a concept. Use when you do NOT know exactly what you are looking for. Key params: `query` (required), `category`, `topic`, `tags`, `k` (default 5), `helpful`. |
+| `context_lookup` | Look up context entries by exact filters. Returns entries matching topic, category, tags, status, or ID. | When you KNOW what you are looking for — a specific feature's entries, a category listing, or a known ID. Key params: `topic`, `category`, `tags`, `id`, `status`, `limit` (default 10). |
+| `context_get` | Get a specific context entry by its ID. | When you have an entry ID from a previous search or lookup result and need the full content. Key params: `id` (required), `helpful`. |
+| `context_store` | Store a new context entry with duplicate detection and content scanning. | When you discover a pattern, convention, decision, or lesson worth preserving. Key params: `content` (required), `topic` (required), `category` (required), `tags`, `title`, `feature_cycle`. |
+| `context_correct` | Correct an existing entry. Deprecates the original and creates a new entry with a hash-chain link. | When an entry contains wrong or outdated information that should be superseded (not just hidden). Key params: `original_id` (required), `content` (required), `reason`. |
+| `context_deprecate` | Mark an entry as outdated. Entry remains accessible but excluded from default search/lookup. | When knowledge is no longer relevant but should not be deleted (historical record). Key params: `id` (required), `reason`. |
+| `context_quarantine` | Quarantine or restore an entry. Quarantined entries are excluded from search and lookup. **Admin only.** | When an entry is suspicious, invalid, or harmful and should be isolated. Use `action: "restore"` to undo. Key params: `id` (required), `action` ("quarantine" or "restore"), `reason`. |
+| `context_status` | Get knowledge base health metrics. Shows entry counts, distributions, correction chains, coherence score, security metrics. **Admin only.** | When you need to assess knowledge base health. The `maintain` parameter is accepted but silently ignored — a background tick handles maintenance automatically. Key params: `topic`, `category`, `check_embeddings`. |
+| `context_briefing` | Get an orientation briefing for a role and task. Includes role conventions and task-relevant context. | At the start of any task to get oriented. Gated on `mcp-briefing` feature flag. Key params: `role` (required), `task` (required), `feature`, `max_tokens` (default 3000, range 500-10000). |
+| `context_enroll` | Enroll or update an agent's trust level and capabilities. **Admin only.** | When managing agent permissions. Protected agents (`system`, `human`) cannot be modified. Self-lockout prevention active. Key params: `target_agent_id` (required), `trust_level` (required), `capabilities` (required). |
+| `context_retrospective` | Analyze observation data for a feature cycle. Parses session telemetry, detects hotspots, computes metrics. | After a feature ships, to extract patterns and lessons. Key params: `feature_cycle` (required), `evidence_limit`, `format` ("markdown" default, "json"). |
+
+**`context_search` vs `context_lookup`**: `context_search` uses semantic similarity (natural language). `context_lookup` uses exact filters (topic, category, tags, status). Use search when exploring; use lookup when you know what you want.
+
+**`context_correct` vs `context_deprecate` vs `context_quarantine`**: `context_correct` supersedes with a new version (hash-chained). `context_deprecate` marks as outdated (no replacement). `context_quarantine` isolates from all results (Admin-only, reversible).
+
+---
+
+## Skills Reference
+
+Unimatrix includes 14 Claude Code skills. Skills are platform-native `/command` files installed via the npm package or by copying `.claude/skills/` directories to the target repository.
+
+Skills that interact with the MCP server require the server to be running and configured.
+
+| Skill | Purpose | When to Use |
+|-------|---------|-------------|
+| `/query-patterns` | Search for patterns, procedures, and conventions before work. (MCP) | Before designing or implementing any component. |
+| `/store-adr` | Store an architectural decision record in Unimatrix. (MCP) | After each design decision during architecture work. |
+| `/store-pattern` | Store a reusable implementation pattern. (MCP) | When you discover a gotcha, trap, or reusable solution. |
+| `/store-procedure` | Store or update a technical procedure (how-to). (MCP) | During retrospectives when a technique has evolved. |
+| `/store-lesson` | Store a lesson learned from a failure or unexpected issue. (MCP) | After bugfixes, gate failures, or rework cycles. |
+| `/record-outcome` | Record a feature or bugfix outcome. (MCP) | At the end of every session (design, delivery, bugfix, retrospective). |
+| `/knowledge-search` | Interactive semantic search across knowledge. (MCP) | When exploring a topic or looking for related entries. |
+| `/knowledge-lookup` | Interactive deterministic lookup by exact filters. (MCP) | When you know what you want — a specific feature, category, or ID. |
+| `/review-pr` | PR security review and merge readiness check. | After delivery or bugfix opens a PR. Can be invoked standalone. |
+| `/retro` | Post-merge retrospective — extract patterns, procedures, lessons. (MCP) | After a feature PR is merged. |
+| `/uni-git` | Git workflow conventions (branch naming, commit prefixes, PR templates). | For consistent git conventions. Contributor/developer-focused. |
+| `/release` | Version bump, changelog generation, tag, and release pipeline. | When creating a new release. |
+| `/unimatrix-init` | Initialize Unimatrix in a repository — CLAUDE.md setup + agent recommendations. | First-time setup of a repo to use Unimatrix. |
+| `/unimatrix-seed` | Populate foundational knowledge through human-directed exploration. (MCP) | After installation, to seed the knowledge base before relying on search. |
 
 ---
 
 ## Knowledge Categories
 
-Eight built-in categories: `outcome`, `lesson-learned`, `decision`, `convention`, `pattern`, `procedure`, `duties`, `reference`. The allowlist is extensible at runtime.
+Unimatrix uses 8 built-in knowledge categories. Category discipline matters for retrieval quality — miscategorized entries surface in wrong contexts during semantic search.
+
+| Category | Description | Example |
+|----------|-------------|---------|
+| `outcome` | Session completion records — what shipped, how it went. | "col-015 delivered. All gates passed. PR #42 merged." |
+| `lesson-learned` | Lessons from failures, gate rejections, unexpected issues. | "Always verify hook latency after adding new UDS handlers — we hit 200ms in col-008." |
+| `decision` | Architectural and design decisions (ADRs). | "Use SQLite for local storage — single-file, zero cloud dependency, bundled via rusqlite." |
+| `convention` | Project conventions and rules agents should follow. | "All MCP tool handlers follow the execution order: identity -> capability -> validation -> category -> scanning -> business logic -> format -> audit." |
+| `pattern` | Reusable implementation patterns, gotchas, and solutions. | "Do not hold Store lock across async boundaries — use spawn_blocking for all Store calls." |
+| `procedure` | Step-by-step technical procedures (how-to). | "How to add a new MCP tool: 1. Define params struct, 2. Implement handler, 3. Add validation, 4. Add audit event." |
+| `duties` | Role duties for `context_briefing` orientation. | "Architect duties: read SCOPE.md, decompose into components, define integration surface, produce ADRs." |
+| `reference` | General reference material. | "ONNX Runtime 1.20.x compatibility matrix for supported platforms." |
+
+The category allowlist is runtime-extensible via `add_category()`, but the 8 built-in categories cover the primary use cases.
 
 ---
 
-## Project Structure
+## CLI Reference
+
+The `unimatrix` binary (or `npx unimatrix`) serves as both the MCP server and the hook handler.
+
+### Default Mode (no subcommand)
+
+Starts the MCP server over stdio. This is what the MCP server configuration invokes.
+
+### Subcommands
+
+| Subcommand | Description | Key Flags |
+|------------|-------------|-----------|
+| `hook <EVENT>` | Handle a Claude Code lifecycle hook event. Reads JSON from stdin, connects to the running server via UDS. Designed for use in `.claude/settings.json` hook configuration, not direct user invocation. | Event name as positional arg. |
+| `export` | Export the knowledge base to JSONL format. No running server required. | `--output <PATH>` (defaults to stdout) |
+| `import` | Import a knowledge base from a JSONL export file. Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data) |
+| `version` | Print version and exit. With `--project-dir`, also initializes the database. | `--project-dir <PATH>` |
+| `model-download` | Download the ONNX embedding model to cache. Used by npm postinstall. | None |
+
+### Global Flags
+
+| Flag | Description |
+|------|-------------|
+| `--project-dir <PATH>` | Override automatic project root detection. |
+| `--verbose` / `-v` | Enable debug-level logging to stderr. |
+
+---
+
+## Architecture Overview
+
+Unimatrix is a 9-crate Rust workspace that ships as a single binary.
+
+### Storage
+
+SQLite local database (`unimatrix.db`). 19 tables. Schema version 11. Zero cloud dependency — all data stays on your machine.
+
+### Vector Search
+
+384-dimension HNSW vector index (in-memory, persisted to disk). Dot product similarity.
+
+### Embedding
+
+Local ONNX model (all-MiniLM-L6-v2) via ONNX Runtime. No API calls. MicroLoRA adaptive layer tunes embeddings to project-specific usage.
+
+### Hook Integration
+
+Single binary. The `hook` subcommand communicates with the running MCP server via Unix domain socket (UDS) IPC. Sub-50ms round-trip budget.
+
+### MCP Transport
+
+stdio transport via rmcp. Claude Code connects to the binary as an MCP server.
+
+### Data Layout
 
 ```
-crates/
-  unimatrix-store/       # redb storage engine
-  unimatrix-vector/      # HNSW vector index
-  unimatrix-embed/       # ONNX embedding pipeline
-  unimatrix-core/        # shared traits + async wrappers
-  unimatrix-engine/      # confidence, co-access, wire protocol, auth
-  unimatrix-adapt/       # adaptive embedding (MicroLoRA, EWC++)
-  unimatrix-observe/     # observation pipeline + retrospective intelligence
-  unimatrix-server/      # MCP server + hook binary
-product/
-  PRODUCT-VISION.md      # full roadmap
-  features/              # per-feature documentation
-  research/              # research spikes and analysis
-patches/
-  anndists/              # local fix for anndists edition 2024 compat
+~/.unimatrix/{project-hash}/
+  unimatrix.db               # SQLite knowledge database (schema v11)
+  unimatrix.pid              # PID file with flock advisory lock
+  unimatrix.sock             # Unix domain socket for hook IPC
+  vector/
+    unimatrix-vector.hnsw2   # HNSW graph
+    unimatrix-vector.meta    # Index metadata
+~/.cache/unimatrix/models/   # ONNX model files (downloaded once)
 ```
+
+### Crate Workspace (9 crates)
+
+| Crate | Responsibility |
+|-------|---------------|
+| `unimatrix-store` | SQLite storage engine — entries, indexes, audit log, migrations |
+| `unimatrix-vector` | HNSW vector index — build, search, persist, compact |
+| `unimatrix-embed` | ONNX embedding pipeline — model loading, tokenization, inference |
+| `unimatrix-core` | Core traits, domain types, async wrappers, query filters |
+| `unimatrix-engine` | Shared business logic — confidence scoring, project paths, search ranking |
+| `unimatrix-adapt` | Adaptive embedding pipeline — MicroLoRA training, state persistence |
+| `unimatrix-observe` | Observation pipeline — hotspot detection, metric computation, retrospective analysis |
+| `unimatrix-learn` | Shared ML infrastructure — training reservoirs, EWC++ state, neural models, model versioning |
+| `unimatrix-server` | MCP server — tool handlers, hook IPC, agent registry, audit, content scanning |
+
+---
+
+## Security Model
+
+### Trust Hierarchy
+
+Four-tier model: System > Privileged > Internal > Restricted. Unknown agents auto-enroll as Restricted on first contact (read + search only). `context_enroll` (Admin-only) promotes or modifies agent trust and capabilities. Protected agents: `system` and `human` cannot be modified. Self-lockout prevention: an admin cannot remove their own Admin capability.
+
+### Capabilities
+
+Four capabilities gate tool access: `read`, `write`, `search`, `admin`.
+
+### Content Scanning
+
+Every write operation (`context_store`, `context_correct`) scans content for injection patterns (~25+ patterns including prompt injection, system prompt overrides, and encoded payloads) and PII patterns (6+ patterns including emails, phone numbers, API keys, and credentials). Flagged content is rejected before storage.
+
+### Audit Trail
+
+Append-only audit log records every operation with agent identity (who performed the action), session context (which session, feature cycle), and operation outcome (success/failure).
+
+### Hash-Chained Corrections
+
+SHA-256 content hashes with `previous_hash` links create tamper-evident correction chains. Any break in the chain is detectable.
 
 ---
 
