@@ -330,8 +330,9 @@ The Delivery Leader:
 1. Commits final artifacts (`test: risk coverage + gate reports (#{issue})`)
 2. Pushes feature branch and opens PR (see `/uni-git` for PR template)
 3. Updates GH Issue with PR link
-4. Invokes `/review-pr` for security review and merge readiness
-5. Combines impl + deploy results in the return to human
+4. Evaluates documentation trigger criteria (see below) — spawns `uni-docs` if mandatory
+5. Invokes `/review-pr` for security review and merge readiness
+6. Combines impl + deploy results in the return to human
 
 ```bash
 # Commit final artifacts
@@ -342,6 +343,51 @@ git push -u origin feature/{phase}-{NNN}
 # Open PR (see uni-git skill for full template)
 gh pr create --title "[{feature-id}] {title}" --body "..."
 ```
+
+### Documentation Update (conditional — after PR opens)
+
+Evaluate whether the feature requires a README update using the trigger criteria table below.
+
+#### Trigger Criteria
+
+| Feature Change Type | Documentation Step |
+|--------------------|--------------------|
+| New or modified MCP tool | **MANDATORY** |
+| New or modified skill | **MANDATORY** |
+| New CLI subcommand or flag | **MANDATORY** |
+| New knowledge category | **MANDATORY** |
+| New operational constraint for users | **MANDATORY** |
+| Schema change with user-visible behavior change | **MANDATORY** |
+| Internal refactor (no user-visible change) | SKIP |
+| Test-only feature | SKIP |
+| Documentation-only feature | SKIP |
+
+**Decision rule**: Read the feature's SCOPE.md Goals section. If any goal matches a MANDATORY trigger, spawn `uni-docs`. If all goals are internal, skip.
+
+#### Spawn Template
+
+```
+Task(subagent_type: "uni-docs",
+  prompt: "Your agent ID: {feature-id}-docs
+
+    Feature: {feature-id}
+    Issue: #{issue}
+
+    Read these files:
+    - product/features/{id}/SCOPE.md
+    - product/features/{id}/specification/SPECIFICATION.md
+    - README.md
+
+    Identify README sections affected by this feature.
+    Propose and commit targeted edits to the feature branch.
+    Commit message: docs: update README for {feature-id} (#{issue})
+
+    Return: sections modified, commit hash, or 'no changes needed'.")
+```
+
+**No gate.** This step is advisory — it does not block delivery. If `uni-docs` fails to produce useful output, proceed to `/review-pr` without documentation updates. Documentation changes are part of the reviewed PR.
+
+---
 
 ### PR Review (after PR opens)
 
@@ -444,6 +490,7 @@ DELIVERY LEADER (you):
               Task(uni-validator, Gate 3c)
               ...PASS → continue / FAIL → rework or stop...
   Phase 4:    git commit + push + gh pr create
+              [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
               /review-pr — security review + merge readiness
               Combined return — SESSION 2 ENDS
 ```
