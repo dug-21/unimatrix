@@ -192,10 +192,19 @@ async fn background_tick_loop(
     }
 }
 
+/// Maximum duration for a single maintenance or extraction tick (#236).
+///
+/// If a tick exceeds this timeout, it is aborted and will retry next cycle.
+/// The work is idempotent so no data is lost.
+const TICK_TIMEOUT: Duration = Duration::from_secs(120);
+
 /// Execute a single tick iteration with error recovery (vnc-010).
 ///
 /// Catches panics from spawn_blocking tasks via JoinError and logs them
 /// instead of propagating. Returns Err only for fatal issues.
+///
+/// Both maintenance and extraction ticks are wrapped in a 2-minute timeout (#236)
+/// to prevent long-running DB operations from blocking MCP requests indefinitely.
 #[allow(clippy::too_many_arguments)]
 async fn run_single_tick(
     store: &Arc<Store>,
@@ -213,45 +222,65 @@ async fn run_single_tick(
     let tick_start = now_secs();
     tracing::info!("background tick starting");
 
-    // 1. Maintenance tick
+    // 1. Maintenance tick (with timeout, #236)
     let status_svc = StatusService::new(
         Arc::clone(store),
         Arc::clone(vector_index),
         Arc::clone(embed_service),
         Arc::clone(adapt_service),
     );
-    match maintenance_tick(&status_svc, session_registry, entry_store, pending_entries).await {
-        Ok(()) => {
+    match tokio::time::timeout(
+        TICK_TIMEOUT,
+        maintenance_tick(&status_svc, session_registry, entry_store, pending_entries),
+    )
+    .await
+    {
+        Ok(Ok(())) => {
             if let Ok(mut meta) = tick_metadata.lock() {
                 meta.last_maintenance_run = Some(tick_start);
             }
             tracing::info!("maintenance tick complete");
         }
-        Err(e) => {
+        Ok(Err(e)) => {
             tracing::warn!("maintenance tick failed: {}", e);
+        }
+        Err(_) => {
+            tracing::warn!(
+                timeout_secs = TICK_TIMEOUT.as_secs(),
+                "maintenance tick timed out; will retry next cycle"
+            );
         }
     }
 
-    // 2. Extraction tick
-    match extraction_tick(
-        store,
-        vector_index,
-        embed_service,
-        extraction_ctx,
-        neural_enhancer,
-        shadow_evaluator,
+    // 2. Extraction tick (with timeout, #236)
+    match tokio::time::timeout(
+        TICK_TIMEOUT,
+        extraction_tick(
+            store,
+            vector_index,
+            embed_service,
+            extraction_ctx,
+            neural_enhancer,
+            shadow_evaluator,
+        ),
     )
     .await
     {
-        Ok(stats) => {
+        Ok(Ok(stats)) => {
             if let Ok(mut meta) = tick_metadata.lock() {
                 meta.last_extraction_run = Some(now_secs());
                 meta.extraction_stats = stats;
             }
             tracing::info!("extraction tick complete");
         }
-        Err(e) => {
+        Ok(Err(e)) => {
             tracing::warn!("extraction tick failed: {}", e);
+        }
+        Err(_) => {
+            tracing::warn!(
+                timeout_secs = TICK_TIMEOUT.as_secs(),
+                "extraction tick timed out; will retry next cycle"
+            );
         }
     }
 

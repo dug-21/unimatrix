@@ -180,8 +180,9 @@ pub fn is_unimatrix_process(_pid: u32) -> bool {
 
 /// Send SIGTERM to a process and wait for it to exit.
 ///
-/// Polls `is_process_alive` every 250 ms up to `timeout`. Returns `true` if
-/// the process exited within the timeout, `false` otherwise.
+/// Polls `is_process_alive` every 250 ms up to `timeout`. If the process
+/// does not exit after SIGTERM, escalates to SIGKILL as a last resort (#236).
+/// Returns `true` if the process exited, `false` otherwise.
 ///
 /// On non-Unix platforms this is a no-op that returns `false`.
 #[cfg(unix)]
@@ -208,6 +209,23 @@ pub fn terminate_and_wait(pid: u32, timeout: std::time::Duration) -> bool {
             return true;
         }
         std::thread::sleep(poll_interval);
+    }
+
+    // SIGTERM timeout expired — escalate to SIGKILL (#236).
+    if is_process_alive(pid) {
+        tracing::warn!(pid, "SIGTERM timeout expired, escalating to SIGKILL");
+        let killed = std::process::Command::new("kill")
+            .args(["-KILL", &pid.to_string()])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+
+        if killed {
+            // Brief wait for kernel cleanup after SIGKILL.
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
     }
 
     !is_process_alive(pid)

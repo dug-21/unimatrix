@@ -15,5 +15,6 @@ pub mod registry;
 pub mod scanning;
 pub mod session;
 pub mod shutdown;
+pub mod timeout;
 pub mod usage_dedup;
 pub mod validation;

@@ -1117,26 +1117,29 @@ impl UnimatrixServer {
         //    If empty, fall back to content-based attribution (#162).
         let store_for_obs = Arc::clone(&self.store);
         let feature_cycle_for_load = params.feature_cycle.clone();
-        let attributed = tokio::task::spawn_blocking(move || -> std::result::Result<Vec<unimatrix_observe::ObservationRecord>, unimatrix_observe::ObserveError> {
-            use unimatrix_observe::ObservationSource;
-            let source = crate::services::observation::SqlObservationSource::new(store_for_obs);
+        let attributed = crate::infra::timeout::spawn_blocking_with_timeout(
+            crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+            move || -> std::result::Result<Vec<unimatrix_observe::ObservationRecord>, unimatrix_observe::ObserveError> {
+                use unimatrix_observe::ObservationSource;
+                let source = crate::services::observation::SqlObservationSource::new(store_for_obs);
 
-            // Fast path: direct feature_cycle query
-            let direct = source.load_feature_observations(&feature_cycle_for_load)?;
-            if !direct.is_empty() {
-                return Ok(direct);
-            }
+                // Fast path: direct feature_cycle query
+                let direct = source.load_feature_observations(&feature_cycle_for_load)?;
+                if !direct.is_empty() {
+                    return Ok(direct);
+                }
 
-            // Fallback: content-based attribution for sessions with NULL feature_cycle
-            let unattributed = source.load_unattributed_sessions()?;
-            if unattributed.is_empty() {
-                return Ok(vec![]);
-            }
+                // Fallback: content-based attribution for sessions with NULL feature_cycle
+                let unattributed = source.load_unattributed_sessions()?;
+                if unattributed.is_empty() {
+                    return Ok(vec![]);
+                }
 
-            Ok(unimatrix_observe::attribute_sessions(&unattributed, &feature_cycle_for_load))
-        })
+                Ok(unimatrix_observe::attribute_sessions(&unattributed, &feature_cycle_for_load))
+            },
+        )
         .await
-        .unwrap()
+        .map_err(rmcp::ErrorData::from)?
         .map_err(|e| ServerError::ObservationError(e.to_string()))
         .map_err(rmcp::ErrorData::from)?;
 
@@ -1146,13 +1149,16 @@ impl UnimatrixServer {
 
         if attributed.is_empty() {
             // No new data -- check for cached MetricVector
-            let cached = tokio::task::spawn_blocking({
-                let store = Arc::clone(&store);
-                let fc = feature_cycle.clone();
-                move || store.get_metrics(&fc)
-            })
+            let cached = crate::infra::timeout::spawn_blocking_with_timeout(
+                crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+                {
+                    let store = Arc::clone(&store);
+                    let fc = feature_cycle.clone();
+                    move || store.get_metrics(&fc)
+                },
+            )
             .await
-            .unwrap()
+            .map_err(rmcp::ErrorData::from)?
             .map_err(|e| ServerError::Core(CoreError::Store(e)))
             .map_err(rmcp::ErrorData::from)?;
 
@@ -1207,12 +1213,15 @@ impl UnimatrixServer {
         }
 
         // 7a. Load historical MetricVectors for baseline
-        let all_metrics = tokio::task::spawn_blocking({
-            let store = Arc::clone(&store);
-            move || store.list_all_metrics()
-        })
+        let all_metrics = crate::infra::timeout::spawn_blocking_with_timeout(
+            crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+            {
+                let store = Arc::clone(&store);
+                move || store.list_all_metrics()
+            },
+        )
         .await
-        .unwrap()
+        .map_err(rmcp::ErrorData::from)?
         .map_err(|e| ServerError::Core(CoreError::Store(e)))
         .map_err(rmcp::ErrorData::from)?;
 
@@ -1240,34 +1249,39 @@ impl UnimatrixServer {
         let metrics = unimatrix_observe::compute_metric_vector(&attributed, &hotspots, now);
 
         // 8. Store MetricVector (nxs-009: typed API, no bincode serialization)
-        tokio::task::spawn_blocking({
-            let store = Arc::clone(&store);
-            let fc = feature_cycle.clone();
-            let mv = metrics.clone();
-            move || store.store_metrics(&fc, &mv)
-        })
+        crate::infra::timeout::spawn_blocking_with_timeout(
+            crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+            {
+                let store = Arc::clone(&store);
+                let fc = feature_cycle.clone();
+                let mv = metrics.clone();
+                move || store.store_metrics(&fc, &mv)
+            },
+        )
         .await
-        .unwrap()
+        .map_err(rmcp::ErrorData::from)?
         .map_err(|e| ServerError::Core(CoreError::Store(e)))
         .map_err(rmcp::ErrorData::from)?;
 
         // 9. Cleanup expired observations (FR-07: 60-day retention via SQL DELETE)
         let store_cleanup = Arc::clone(&store);
-        tokio::task::spawn_blocking(move || {
-            let conn = store_cleanup.lock_conn();
-            let now_millis = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_millis() as i64;
-            let sixty_days_millis = 60_i64 * 24 * 60 * 60 * 1000;
-            let cutoff = now_millis - sixty_days_millis;
-            let _ = conn.execute(
-                "DELETE FROM observations WHERE ts_millis < ?1",
-                unimatrix_store::rusqlite::params![cutoff],
-            );
-        })
-        .await
-        .unwrap();
+        let _ = crate::infra::timeout::spawn_blocking_with_timeout(
+            crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+            move || {
+                let conn = store_cleanup.lock_conn();
+                let now_millis = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis() as i64;
+                let sixty_days_millis = 60_i64 * 24 * 60 * 60 * 1000;
+                let cutoff = now_millis - sixty_days_millis;
+                let _ = conn.execute(
+                    "DELETE FROM observations WHERE ts_millis < ?1",
+                    unimatrix_store::rusqlite::params![cutoff],
+                );
+            },
+        )
+        .await;
 
         // 10a. Compute baseline comparison
         let baseline = unimatrix_observe::compute_baselines(&history)
