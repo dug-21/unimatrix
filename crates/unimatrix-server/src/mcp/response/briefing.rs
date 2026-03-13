@@ -3,7 +3,7 @@
 use rmcp::model::{CallToolResult, Content};
 use unimatrix_store::EntryRecord;
 
-use super::{entry_to_json, entry_to_json_with_similarity, ResponseFormat};
+use super::{ResponseFormat, entry_to_json, entry_to_json_with_similarity};
 
 /// Assembled briefing for format_briefing.
 pub struct Briefing {

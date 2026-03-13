@@ -5,9 +5,8 @@ use rmcp::model::{CallToolResult, Content};
 use unimatrix_store::EntryRecord;
 
 use super::{
-    format_empty_results, format_entry_markdown_section,
-    entry_to_json, entry_to_json_with_similarity, tags_str,
-    ResponseFormat,
+    ResponseFormat, entry_to_json, entry_to_json_with_similarity, format_empty_results,
+    format_entry_markdown_section, tags_str,
 };
 
 /// Format a single entry (used by context_get and context_lookup with id).
@@ -123,7 +122,10 @@ pub fn format_lookup_results(entries: &[EntryRecord], format: ResponseFormat) ->
 pub fn format_store_success(entry: &EntryRecord, format: ResponseFormat) -> CallToolResult {
     match format {
         ResponseFormat::Summary => {
-            let text = format!("Stored #{} | {} | {}", entry.id, entry.title, entry.category);
+            let text = format!(
+                "Stored #{} | {} | {}",
+                entry.id, entry.title, entry.category
+            );
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Markdown => {
@@ -137,7 +139,10 @@ pub fn format_store_success(entry: &EntryRecord, format: ResponseFormat) -> Call
             text.push_str("[KNOWLEDGE DATA]\n");
             text.push_str(&entry.content);
             text.push_str("\n[/KNOWLEDGE DATA]\n\n");
-            text.push_str(&format!("*Entry #{} | Version {}*", entry.id, entry.version));
+            text.push_str(&format!(
+                "*Entry #{} | Version {}*",
+                entry.id, entry.version
+            ));
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Json => {
@@ -160,7 +165,10 @@ pub fn format_store_success_with_note(
 ) -> CallToolResult {
     match format {
         ResponseFormat::Summary => {
-            let text = format!("Stored #{} | {} | {}{}", entry.id, entry.title, entry.category, note);
+            let text = format!(
+                "Stored #{} | {} | {}{}",
+                entry.id, entry.title, entry.category, note
+            );
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Markdown => {
@@ -174,7 +182,10 @@ pub fn format_store_success_with_note(
             text.push_str("[KNOWLEDGE DATA]\n");
             text.push_str(&entry.content);
             text.push_str("\n[/KNOWLEDGE DATA]\n\n");
-            text.push_str(&format!("*Entry #{} | Version {}*\n\n", entry.id, entry.version));
+            text.push_str(&format!(
+                "*Entry #{} | Version {}*\n\n",
+                entry.id, entry.version
+            ));
             text.push_str(&format!("> {}", note.trim_start_matches('\n')));
             CallToolResult::success(vec![Content::text(text)])
         }
@@ -211,7 +222,11 @@ pub fn format_duplicate_found(
                 similarity
             );
             text.push_str("Existing entry matches your content. No new entry created.\n\n");
-            text.push_str(&format_entry_markdown_section(1, existing, Some(similarity)));
+            text.push_str(&format_entry_markdown_section(
+                1,
+                existing,
+                Some(similarity),
+            ));
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Json => {

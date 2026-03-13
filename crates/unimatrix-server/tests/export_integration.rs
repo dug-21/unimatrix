@@ -24,8 +24,7 @@ use unimatrix_store::Store;
 /// hash so tests do not collide.
 fn setup_project() -> (TempDir, std::path::PathBuf) {
     let project_dir = TempDir::new().expect("create project temp dir");
-    let paths =
-        project::ensure_data_directory(Some(project_dir.path()), None).unwrap();
+    let paths = project::ensure_data_directory(Some(project_dir.path()), None).unwrap();
     (project_dir, paths.db_path)
 }
 
@@ -131,7 +130,8 @@ fn populate_representative_data(conn: &rusqlite::Connection) {
          allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
          VALUES ('bot-2', 1, '[]', NULL, NULL, 1700000002, 1700000003, 1)",
         [],
-    ).unwrap();
+    )
+    .unwrap();
 
     // Audit log
     for i in 1..=3 {
@@ -192,7 +192,10 @@ fn test_full_export_representative_data() {
     .copied()
     .collect();
     let actual_tables: HashSet<&str> = table_counts.keys().map(|s| s.as_str()).collect();
-    assert_eq!(actual_tables, expected_tables, "All 8 tables must be present");
+    assert_eq!(
+        actual_tables, expected_tables,
+        "All 8 tables must be present"
+    );
 
     // Verify row counts
     assert_eq!(table_counts["entries"], 3);
@@ -202,7 +205,10 @@ fn test_full_export_representative_data() {
     assert_eq!(table_counts["outcome_index"], 2);
     assert_eq!(table_counts["agent_registry"], 2);
     assert_eq!(table_counts["audit_log"], 3);
-    assert!(table_counts["counters"] >= 1, "At least schema_version counter");
+    assert!(
+        table_counts["counters"] >= 1,
+        "At least schema_version counter"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -445,7 +451,11 @@ fn test_row_ordering_within_tables() {
         .filter(|l| l.get("_table").and_then(|t| t.as_str()) == Some("entries"))
         .map(|l| l["id"].as_i64().unwrap())
         .collect();
-    assert_eq!(entry_ids, vec![1, 2, 5, 8], "Entries must be ordered by id ASC");
+    assert_eq!(
+        entry_ids,
+        vec![1, 2, 5, 8],
+        "Entries must be ordered by id ASC"
+    );
 
     // Entry tags ordered by (entry_id, tag)
     let tag_pairs: Vec<(i64, String)> = lines
@@ -604,7 +614,10 @@ fn test_entries_all_26_columns() {
     assert_eq!(obj["source"].as_str().unwrap(), "integration-test");
     assert_eq!(obj["status"].as_i64().unwrap(), 1);
     // f64 precision check
-    assert_eq!(obj["confidence"].as_f64().unwrap().to_bits(), 0.87654321_f64.to_bits());
+    assert_eq!(
+        obj["confidence"].as_f64().unwrap().to_bits(),
+        0.87654321_f64.to_bits()
+    );
     assert_eq!(obj["created_at"].as_i64().unwrap(), 1_700_000_000);
     assert_eq!(obj["updated_at"].as_i64().unwrap(), 1_700_000_001);
     assert_eq!(obj["last_accessed_at"].as_i64().unwrap(), 1_700_000_002);
@@ -666,10 +679,19 @@ fn test_null_handling_nullable_columns() {
         .find(|l| l.get("_table").and_then(|t| t.as_str()) == Some("entries"))
         .expect("entries row");
     let obj = entry_row.as_object().unwrap();
-    assert!(obj.contains_key("supersedes"), "supersedes key must be present");
+    assert!(
+        obj.contains_key("supersedes"),
+        "supersedes key must be present"
+    );
     assert!(obj["supersedes"].is_null(), "supersedes must be JSON null");
-    assert!(obj.contains_key("superseded_by"), "superseded_by key must be present");
-    assert!(obj["superseded_by"].is_null(), "superseded_by must be JSON null");
+    assert!(
+        obj.contains_key("superseded_by"),
+        "superseded_by key must be present"
+    );
+    assert!(
+        obj["superseded_by"].is_null(),
+        "superseded_by must be JSON null"
+    );
     assert!(
         obj.contains_key("pre_quarantine_status"),
         "pre_quarantine_status key must be present"
@@ -799,7 +821,10 @@ fn test_error_on_nonexistent_database() {
         Some(std::path::Path::new("/nonexistent_path_xyz_12345")),
         Some(&output_path),
     );
-    assert!(result.is_err(), "Export with non-canonicalizable project dir should fail");
+    assert!(
+        result.is_err(),
+        "Export with non-canonicalizable project dir should fail"
+    );
 }
 
 // ---------------------------------------------------------------------------

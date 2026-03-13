@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use rusqlite::OptionalExtension;
 
 use crate::error::{Result, StoreError};
-use crate::read::{entry_from_row, load_tags_for_entries, ENTRY_COLUMNS};
+use crate::read::{ENTRY_COLUMNS, entry_from_row, load_tags_for_entries};
 use crate::schema::EntryRecord;
 
 use crate::db::Store;
@@ -153,8 +153,7 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -211,8 +210,7 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -241,8 +239,7 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -280,12 +277,7 @@ impl Store {
                         conn.execute(
                             "UPDATE co_access SET count = ?1, last_updated = ?2 \
                              WHERE entry_id_a = ?3 AND entry_id_b = ?4",
-                            rusqlite::params![
-                                count + 1,
-                                now as i64,
-                                min_id as i64,
-                                max_id as i64
-                            ],
+                            rusqlite::params![count + 1, now as i64, min_id as i64, max_id as i64],
                         )
                         .map_err(StoreError::Sqlite)?;
                     }
@@ -304,8 +296,7 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -332,7 +323,11 @@ impl Store {
     /// Writes universal metrics as SQL columns to `observation_metrics`,
     /// then replaces phase rows in `observation_phase_metrics`.
     /// All operations within a single transaction (NFR-02).
-    pub fn store_metrics(&self, feature_cycle: &str, mv: &crate::metrics::MetricVector) -> Result<()> {
+    pub fn store_metrics(
+        &self,
+        feature_cycle: &str,
+        mv: &crate::metrics::MetricVector,
+    ) -> Result<()> {
         let conn = self.lock_conn();
         conn.execute_batch("BEGIN IMMEDIATE")
             .map_err(StoreError::Sqlite)?;
@@ -383,7 +378,8 @@ impl Store {
             conn.execute(
                 "DELETE FROM observation_phase_metrics WHERE feature_cycle = ?1",
                 rusqlite::params![feature_cycle],
-            ).map_err(StoreError::Sqlite)?;
+            )
+            .map_err(StoreError::Sqlite)?;
 
             // Insert phase rows
             for (phase_name, phase) in &mv.phases {
@@ -404,8 +400,7 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {

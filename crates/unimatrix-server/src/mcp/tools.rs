@@ -18,11 +18,11 @@ use unimatrix_store::QueryLogRecord;
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::registry::Capability;
 use crate::infra::validation::{
-    QuarantineAction, parse_capabilities, parse_quarantine_action, parse_status, parse_trust_level,
-    validate_correct_params, validate_deprecate_params, validate_enroll_params, validate_feature,
-    validate_get_params, validate_helpful, validate_lookup_params, validate_quarantine_params,
-    validate_search_params, validate_status_params, validate_store_params, validated_id,
-    validated_k, validated_limit,
+    CycleType, QuarantineAction, parse_capabilities, parse_quarantine_action, parse_status,
+    parse_trust_level, validate_correct_params, validate_cycle_params, validate_deprecate_params,
+    validate_enroll_params, validate_feature, validate_get_params, validate_helpful,
+    validate_lookup_params, validate_quarantine_params, validate_search_params,
+    validate_status_params, validate_store_params, validated_id, validated_k, validated_limit,
 };
 #[cfg(feature = "mcp-briefing")]
 use crate::infra::validation::{validate_briefing_params, validated_max_tokens};
@@ -249,6 +249,17 @@ pub struct RetrospectiveParams {
     pub evidence_limit: Option<usize>,
     /// Output format: "markdown" (default) or "json". (vnc-011)
     pub format: Option<String>,
+}
+
+/// Parameters for the context_cycle tool.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct CycleParams {
+    /// Cycle action: "start" or "stop".
+    pub r#type: String,
+    /// Feature cycle identifier (e.g., "col-022").
+    pub topic: String,
+    /// Semantic keywords describing the feature work (max 5, each max 64 chars).
+    pub keywords: Option<Vec<String>>,
 }
 
 #[rmcp::tool_router(vis = "pub(crate)")]
@@ -1498,6 +1509,71 @@ impl UnimatrixServer {
             }
         }
     }
+
+    // -- col-022: context_cycle --
+
+    #[tool(
+        name = "context_cycle",
+        description = "Declare the start or end of a feature cycle for this session. \
+            Call with type='start' at session beginning to set feature attribution. \
+            Call with type='stop' when feature work is complete. \
+            Attribution is best-effort via the hook path; confirm via context_retrospective."
+    )]
+    async fn context_cycle(
+        &self,
+        Parameters(params): Parameters<CycleParams>,
+    ) -> Result<CallToolResult, rmcp::model::ErrorData> {
+        // 1. Identity resolution (no agent_id/format/session_id on CycleParams)
+        let identity = self
+            .resolve_agent(&None)
+            .await
+            .map_err(rmcp::ErrorData::from)?;
+
+        // 2. Capability check -- SessionWrite maps to Write capability
+        self.require_cap(&identity.agent_id, Capability::Write)
+            .await?;
+
+        // 3. Validation via shared validate_cycle_params (ADR-004)
+        let keywords_ref = params.keywords.as_deref();
+        let validated = match validate_cycle_params(&params.r#type, &params.topic, keywords_ref) {
+            Err(msg) => {
+                return Ok(CallToolResult::error(vec![rmcp::model::Content::text(
+                    format!("Validation error: {msg}"),
+                )]));
+            }
+            Ok(v) => v,
+        };
+
+        // 4. Build response (no business logic -- MCP server is session-unaware)
+        let action = match validated.cycle_type {
+            CycleType::Start => "cycle_started",
+            CycleType::Stop => "cycle_stopped",
+        };
+
+        let response_text = format!(
+            "Acknowledged: {} for topic '{}'. \
+             Attribution is applied via the hook path (fire-and-forget). \
+             Use context_retrospective to confirm session attribution.",
+            action, validated.topic
+        );
+
+        // 5. Audit log (fire-and-forget)
+        self.audit_fire_and_forget(AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: identity.agent_id.clone(),
+            operation: "context_cycle".to_string(),
+            target_ids: vec![],
+            outcome: Outcome::Success,
+            detail: format!("{} topic={}", action, validated.topic),
+        });
+
+        // 6. Return acknowledgment
+        Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+            response_text,
+        )]))
+    }
 }
 
 /// Build lesson-learned content from a retrospective report (col-010b).
@@ -2339,5 +2415,87 @@ mod tests {
 
         let content = build_lesson_learned_content(&report);
         assert!(!content.is_empty());
+    }
+
+    // -- col-022: CycleParams deserialization --
+
+    #[test]
+    fn test_cycle_params_deserialize_start() {
+        let json = r#"{"type": "start", "topic": "col-022"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.r#type, "start");
+        assert_eq!(params.topic, "col-022");
+        assert!(params.keywords.is_none());
+    }
+
+    #[test]
+    fn test_cycle_params_deserialize_with_keywords() {
+        let json = r#"{"type": "start", "topic": "col-022", "keywords": ["attr", "lifecycle"]}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            params.keywords,
+            Some(vec!["attr".to_string(), "lifecycle".to_string()])
+        );
+    }
+
+    #[test]
+    fn test_cycle_params_deserialize_stop() {
+        let json = r#"{"type": "stop", "topic": "col-022"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.r#type, "stop");
+    }
+
+    #[test]
+    fn test_cycle_params_missing_required_type() {
+        let json = r#"{"topic": "col-022"}"#;
+        assert!(serde_json::from_str::<CycleParams>(json).is_err());
+    }
+
+    #[test]
+    fn test_cycle_params_missing_required_topic() {
+        let json = r#"{"type": "start"}"#;
+        assert!(serde_json::from_str::<CycleParams>(json).is_err());
+    }
+
+    #[test]
+    fn test_cycle_params_extra_fields_ignored() {
+        let json = r#"{"type": "start", "topic": "col-022", "unknown": true}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.r#type, "start");
+        assert_eq!(params.topic, "col-022");
+    }
+
+    #[test]
+    fn test_cycle_params_keywords_empty_array() {
+        let json = r#"{"type": "start", "topic": "col-022", "keywords": []}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.keywords, Some(vec![]));
+    }
+
+    #[test]
+    fn test_cycle_params_keywords_null_vs_absent() {
+        let json_null = r#"{"type": "start", "topic": "col-022", "keywords": null}"#;
+        let json_absent = r#"{"type": "start", "topic": "col-022"}"#;
+        let params_null: CycleParams = serde_json::from_str(json_null).unwrap();
+        let params_absent: CycleParams = serde_json::from_str(json_absent).unwrap();
+        assert!(params_null.keywords.is_none());
+        assert!(params_absent.keywords.is_none());
+    }
+
+    // -- col-022: Response format (R-08) --
+
+    #[test]
+    fn test_cycle_params_type_is_raw_identifier() {
+        // Verify r#type works correctly with JSON key "type"
+        let json = r#"{"type": "start", "topic": "col-022"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.r#type, "start");
+    }
+
+    #[test]
+    fn test_cycle_not_write_operation() {
+        // context_cycle is acknowledgment-only, not a knowledge write
+        assert_ne!("context_cycle", "context_store");
+        assert_ne!("context_cycle", "context_correct");
     }
 }

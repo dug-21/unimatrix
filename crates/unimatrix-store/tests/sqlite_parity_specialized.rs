@@ -7,9 +7,8 @@
 use unimatrix_store::Store;
 use unimatrix_store::test_helpers::{TestDb, TestEntry, assert_index_consistent, seed_entries};
 use unimatrix_store::{
-    InjectionLogRecord, SessionLifecycleStatus, SessionRecord,
-    SignalRecord, SignalSource, SignalType,
-    TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS,
+    DELETE_THRESHOLD_SECS, InjectionLogRecord, SessionLifecycleStatus, SessionRecord, SignalRecord,
+    SignalSource, SignalType, TIMED_OUT_THRESHOLD_SECS,
 };
 
 fn now_secs() -> u64 {
@@ -119,11 +118,13 @@ fn test_session_update() {
     let record = make_session("upd", SessionLifecycleStatus::Active, now);
     db.store().insert_session(&record).unwrap();
 
-    db.store().update_session("upd", |r| {
-        r.status = SessionLifecycleStatus::Completed;
-        r.ended_at = Some(now + 100);
-        r.outcome = Some("success".to_string());
-    }).unwrap();
+    db.store()
+        .update_session("upd", |r| {
+            r.status = SessionLifecycleStatus::Completed;
+            r.ended_at = Some(now + 100);
+            r.outcome = Some("success".to_string());
+        })
+        .unwrap();
 
     let got = db.store().get_session("upd").unwrap().unwrap();
     assert_eq!(got.status, SessionLifecycleStatus::Completed);
@@ -153,9 +154,18 @@ fn test_scan_sessions_by_feature() {
     db.store().insert_session(&s2).unwrap();
     db.store().insert_session(&s3).unwrap();
 
-    assert_eq!(db.store().scan_sessions_by_feature("fc-a").unwrap().len(), 2);
-    assert_eq!(db.store().scan_sessions_by_feature("fc-b").unwrap().len(), 1);
-    assert_eq!(db.store().scan_sessions_by_feature("fc-c").unwrap().len(), 0);
+    assert_eq!(
+        db.store().scan_sessions_by_feature("fc-a").unwrap().len(),
+        2
+    );
+    assert_eq!(
+        db.store().scan_sessions_by_feature("fc-b").unwrap().len(),
+        1
+    );
+    assert_eq!(
+        db.store().scan_sessions_by_feature("fc-c").unwrap().len(),
+        0
+    );
 }
 
 #[test]
@@ -171,11 +181,15 @@ fn test_scan_sessions_with_status_filter() {
     db.store().insert_session(&s1).unwrap();
     db.store().insert_session(&s2).unwrap();
 
-    let completed = db.store().scan_sessions_by_feature_with_status(
-        "fc", Some(SessionLifecycleStatus::Completed)
-    ).unwrap();
+    let completed = db
+        .store()
+        .scan_sessions_by_feature_with_status("fc", Some(SessionLifecycleStatus::Completed))
+        .unwrap();
     assert_eq!(completed.len(), 1);
-    let all = db.store().scan_sessions_by_feature_with_status("fc", None).unwrap();
+    let all = db
+        .store()
+        .scan_sessions_by_feature_with_status("fc", None)
+        .unwrap();
     assert_eq!(all.len(), 2);
 }
 
@@ -187,7 +201,10 @@ fn test_gc_sessions_timeout() {
     let session = make_session("gc-to", SessionLifecycleStatus::Active, old);
     db.store().insert_session(&session).unwrap();
 
-    let stats = db.store().gc_sessions(TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS).unwrap();
+    let stats = db
+        .store()
+        .gc_sessions(TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS)
+        .unwrap();
     assert_eq!(stats.timed_out_count, 1);
 
     let got = db.store().get_session("gc-to").unwrap().unwrap();
@@ -203,17 +220,37 @@ fn test_gc_sessions_delete_with_cascade() {
     db.store().insert_session(&session).unwrap();
 
     let logs = vec![
-        InjectionLogRecord { log_id: 0, session_id: "gc-del".to_string(), entry_id: 1, confidence: 0.8, timestamp: very_old },
-        InjectionLogRecord { log_id: 0, session_id: "gc-del".to_string(), entry_id: 2, confidence: 0.9, timestamp: very_old },
+        InjectionLogRecord {
+            log_id: 0,
+            session_id: "gc-del".to_string(),
+            entry_id: 1,
+            confidence: 0.8,
+            timestamp: very_old,
+        },
+        InjectionLogRecord {
+            log_id: 0,
+            session_id: "gc-del".to_string(),
+            entry_id: 2,
+            confidence: 0.9,
+            timestamp: very_old,
+        },
     ];
     db.store().insert_injection_log_batch(&logs).unwrap();
 
-    let stats = db.store().gc_sessions(TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS).unwrap();
+    let stats = db
+        .store()
+        .gc_sessions(TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS)
+        .unwrap();
     assert_eq!(stats.deleted_session_count, 1);
     assert_eq!(stats.deleted_injection_log_count, 2);
 
     assert!(db.store().get_session("gc-del").unwrap().is_none());
-    assert!(db.store().scan_injection_log_by_session("gc-del").unwrap().is_empty());
+    assert!(
+        db.store()
+            .scan_injection_log_by_session("gc-del")
+            .unwrap()
+            .is_empty()
+    );
 }
 
 // === INJECTION LOG ===
@@ -222,9 +259,27 @@ fn test_gc_sessions_delete_with_cascade() {
 fn test_injection_log_batch() {
     let db = TestDb::new();
     let records = vec![
-        InjectionLogRecord { log_id: 0, session_id: "sess".to_string(), entry_id: 1, confidence: 0.8, timestamp: 1000 },
-        InjectionLogRecord { log_id: 0, session_id: "sess".to_string(), entry_id: 2, confidence: 0.9, timestamp: 1000 },
-        InjectionLogRecord { log_id: 0, session_id: "sess".to_string(), entry_id: 3, confidence: 0.7, timestamp: 1000 },
+        InjectionLogRecord {
+            log_id: 0,
+            session_id: "sess".to_string(),
+            entry_id: 1,
+            confidence: 0.8,
+            timestamp: 1000,
+        },
+        InjectionLogRecord {
+            log_id: 0,
+            session_id: "sess".to_string(),
+            entry_id: 2,
+            confidence: 0.9,
+            timestamp: 1000,
+        },
+        InjectionLogRecord {
+            log_id: 0,
+            session_id: "sess".to_string(),
+            entry_id: 3,
+            confidence: 0.7,
+            timestamp: 1000,
+        },
     ];
     db.store().insert_injection_log_batch(&records).unwrap();
 
@@ -246,17 +301,31 @@ fn test_injection_log_empty_batch() {
 #[test]
 fn test_injection_log_session_isolation() {
     let db = TestDb::new();
-    let batch_a = vec![
-        InjectionLogRecord { log_id: 0, session_id: "A".to_string(), entry_id: 1, confidence: 0.8, timestamp: 1000 },
-    ];
-    let batch_b = vec![
-        InjectionLogRecord { log_id: 0, session_id: "B".to_string(), entry_id: 2, confidence: 0.9, timestamp: 1000 },
-    ];
+    let batch_a = vec![InjectionLogRecord {
+        log_id: 0,
+        session_id: "A".to_string(),
+        entry_id: 1,
+        confidence: 0.8,
+        timestamp: 1000,
+    }];
+    let batch_b = vec![InjectionLogRecord {
+        log_id: 0,
+        session_id: "B".to_string(),
+        entry_id: 2,
+        confidence: 0.9,
+        timestamp: 1000,
+    }];
     db.store().insert_injection_log_batch(&batch_a).unwrap();
     db.store().insert_injection_log_batch(&batch_b).unwrap();
 
-    assert_eq!(db.store().scan_injection_log_by_session("A").unwrap().len(), 1);
-    assert_eq!(db.store().scan_injection_log_by_session("B").unwrap().len(), 1);
+    assert_eq!(
+        db.store().scan_injection_log_by_session("A").unwrap().len(),
+        1
+    );
+    assert_eq!(
+        db.store().scan_injection_log_by_session("B").unwrap().len(),
+        1
+    );
 }
 
 // === INDEX CONSISTENCY (using test helpers) ===

@@ -201,11 +201,7 @@ pub struct CoAccessRecord {
 
 /// Create an ordered pair key: (min, max).
 pub fn co_access_key(a: u64, b: u64) -> (u64, u64) {
-    if a <= b {
-        (a, b)
-    } else {
-        (b, a)
-    }
+    if a <= b { (a, b) } else { (b, a) }
 }
 
 /// Serialize a CoAccessRecord to bincode bytes using the serde-compatible path.
@@ -218,10 +214,8 @@ pub fn serialize_co_access(record: &CoAccessRecord) -> crate::error::Result<Vec<
 /// Deserialize a CoAccessRecord from bincode bytes using the serde-compatible path.
 #[cfg(test)]
 pub fn deserialize_co_access(bytes: &[u8]) -> crate::error::Result<CoAccessRecord> {
-    let (record, _) = bincode::serde::decode_from_slice::<CoAccessRecord, _>(
-        bytes,
-        bincode::config::standard(),
-    )?;
+    let (record, _) =
+        bincode::serde::decode_from_slice::<CoAccessRecord, _>(bytes, bincode::config::standard())?;
     Ok(record)
 }
 
@@ -544,7 +538,10 @@ mod tests {
             record.confidence = confidence;
             let bytes = serialize_entry(&record).expect("serialize");
             let deserialized = deserialize_entry(&bytes).expect("deserialize");
-            assert_eq!(deserialized.confidence, confidence, "f64 {confidence} failed roundtrip");
+            assert_eq!(
+                deserialized.confidence, confidence,
+                "f64 {confidence} failed roundtrip"
+            );
         }
     }
 
@@ -583,12 +580,20 @@ mod tests {
 
     #[test]
     fn test_roundtrip_all_status_variants() {
-        for status in [Status::Active, Status::Deprecated, Status::Proposed, Status::Quarantined] {
+        for status in [
+            Status::Active,
+            Status::Deprecated,
+            Status::Proposed,
+            Status::Quarantined,
+        ] {
             let mut record = make_test_record();
             record.status = status;
             let bytes = serialize_entry(&record).expect("serialize");
             let deserialized = deserialize_entry(&bytes).expect("deserialize");
-            assert_eq!(deserialized.status, status, "status {status:?} failed roundtrip");
+            assert_eq!(
+                deserialized.status, status,
+                "status {status:?} failed roundtrip"
+            );
         }
     }
 
@@ -639,8 +644,14 @@ mod tests {
 
     #[test]
     fn test_status_try_from_invalid() {
-        assert!(matches!(Status::try_from(4u8), Err(StoreError::InvalidStatus(4))));
-        assert!(matches!(Status::try_from(255u8), Err(StoreError::InvalidStatus(255))));
+        assert!(matches!(
+            Status::try_from(4u8),
+            Err(StoreError::InvalidStatus(4))
+        ));
+        assert!(matches!(
+            Status::try_from(255u8),
+            Err(StoreError::InvalidStatus(255))
+        ));
     }
 
     #[test]

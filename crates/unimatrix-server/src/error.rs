@@ -127,7 +127,11 @@ impl fmt::Display for ServerError {
                 description,
             } => write!(f, "content rejected: {description} ({category} detected)"),
             ServerError::DatabaseLocked(path) => {
-                write!(f, "database is locked by another process: {}", path.display())
+                write!(
+                    f,
+                    "database is locked by another process: {}",
+                    path.display()
+                )
             }
             ServerError::InvalidCategory {
                 category,
@@ -185,7 +189,9 @@ impl From<ServerError> for ErrorData {
                 capability,
             } => ErrorData::new(
                 ERROR_CAPABILITY_DENIED,
-                format!("Agent '{agent_id}' lacks {capability:?} capability. Contact project admin."),
+                format!(
+                    "Agent '{agent_id}' lacks {capability:?} capability. Contact project admin."
+                ),
                 None,
             ),
             ServerError::EmbedNotReady => ErrorData::new(
@@ -200,29 +206,25 @@ impl From<ServerError> for ErrorData {
             ),
             ServerError::NotImplemented(tool) => ErrorData::new(
                 ERROR_NOT_IMPLEMENTED,
-                format!("Tool '{tool}' is registered but not yet implemented. Full implementation ships in vnc-002."),
+                format!(
+                    "Tool '{tool}' is registered but not yet implemented. Full implementation ships in vnc-002."
+                ),
                 None,
             ),
-            ServerError::Registry(msg) => ErrorData::new(
-                ERROR_INTERNAL,
-                format!("Agent registry error: {msg}"),
-                None,
-            ),
-            ServerError::Audit(msg) => ErrorData::new(
-                ERROR_INTERNAL,
-                format!("Audit log error: {msg}"),
-                None,
-            ),
+            ServerError::Registry(msg) => {
+                ErrorData::new(ERROR_INTERNAL, format!("Agent registry error: {msg}"), None)
+            }
+            ServerError::Audit(msg) => {
+                ErrorData::new(ERROR_INTERNAL, format!("Audit log error: {msg}"), None)
+            }
             ServerError::ProjectInit(msg) => ErrorData::new(
                 ERROR_INTERNAL,
                 format!("Project initialization failed: {msg}"),
                 None,
             ),
-            ServerError::Shutdown(msg) => ErrorData::new(
-                ERROR_INTERNAL,
-                format!("Shutdown error: {msg}"),
-                None,
-            ),
+            ServerError::Shutdown(msg) => {
+                ErrorData::new(ERROR_INTERNAL, format!("Shutdown error: {msg}"), None)
+            }
             ServerError::InvalidInput { field, reason } => ErrorData::new(
                 ERROR_INVALID_PARAMS,
                 format!("Invalid parameter '{field}': {reason}"),
@@ -300,8 +302,9 @@ mod tests {
 
     #[test]
     fn test_core_error_maps_to_32603() {
-        let err =
-            ServerError::Core(CoreError::Store(StoreError::Serialization("test".to_string())));
+        let err = ServerError::Core(CoreError::Store(StoreError::Serialization(
+            "test".to_string(),
+        )));
         let data: ErrorData = err.into();
         assert_eq!(data.code, ERROR_INTERNAL);
         assert!(data.message.contains("Internal storage error"));
@@ -451,10 +454,7 @@ mod tests {
         let err = ServerError::DatabaseLocked(PathBuf::from("/tmp/test.db"));
         let msg = format!("{err}");
         assert!(msg.contains("locked"), "should mention locked: {msg}");
-        assert!(
-            msg.contains("/tmp/test.db"),
-            "should contain path: {msg}"
-        );
+        assert!(msg.contains("/tmp/test.db"), "should contain path: {msg}");
         assert!(
             !msg.contains("ServerError"),
             "should not leak Rust type: {msg}"
@@ -492,10 +492,7 @@ mod tests {
             agent_id: "system".to_string(),
         };
         let msg = format!("{err}");
-        assert!(
-            msg.contains("system"),
-            "should contain agent_id: {msg}"
-        );
+        assert!(msg.contains("system"), "should contain agent_id: {msg}");
         assert!(
             msg.contains("protected bootstrap agent"),
             "should describe protection: {msg}"
@@ -510,10 +507,7 @@ mod tests {
     fn test_self_lockout_display() {
         let err = ServerError::SelfLockout;
         let msg = format!("{err}");
-        assert!(
-            msg.contains("Admin"),
-            "should mention Admin: {msg}"
-        );
+        assert!(msg.contains("Admin"), "should mention Admin: {msg}");
         assert!(
             !msg.contains("ServerError"),
             "should not leak Rust type: {msg}"

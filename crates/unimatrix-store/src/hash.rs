@@ -73,6 +73,10 @@ mod tests {
         assert_eq!(hash.len(), 64);
         assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
         // Lowercase
-        assert!(hash.chars().filter(|c| c.is_alphabetic()).all(|c| c.is_lowercase()));
+        assert!(
+            hash.chars()
+                .filter(|c| c.is_alphabetic())
+                .all(|c| c.is_lowercase())
+        );
     }
 }

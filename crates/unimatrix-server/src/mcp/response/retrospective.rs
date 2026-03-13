@@ -37,12 +37,16 @@ pub fn format_retrospective_markdown(report: &RetrospectiveReport) -> CallToolRe
     output.push_str(&render_header(report));
 
     // 2. Sessions table (only if session_summaries is Some and non-empty)
-    if let Some(summaries) = &report.session_summaries && !summaries.is_empty() {
+    if let Some(summaries) = &report.session_summaries
+        && !summaries.is_empty()
+    {
         output.push_str(&render_sessions(summaries));
     }
 
     // 3. Attribution note (only if partial attribution)
-    if let Some(attr) = &report.attribution && attr.attributed_session_count < attr.total_session_count {
+    if let Some(attr) = &report.attribution
+        && attr.attributed_session_count < attr.total_session_count
+    {
         output.push_str(&render_attribution_note(attr));
     }
 
@@ -372,7 +376,9 @@ fn render_knowledge_reuse(reuse: &FeatureKnowledgeReuse) -> String {
 fn render_rework_reload(rework: Option<u64>, reload_pct: Option<f64>) -> String {
     let mut parts: Vec<String> = Vec::new();
 
-    if let Some(n) = rework && n > 0 {
+    if let Some(n) = rework
+        && n > 0
+    {
         parts.push(format!("{} rework sessions", n));
     }
 

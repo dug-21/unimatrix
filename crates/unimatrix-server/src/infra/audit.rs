@@ -6,9 +6,9 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use unimatrix_store::rusqlite;
 use unimatrix_store::SqliteWriteTransaction;
 use unimatrix_store::Store;
+use unimatrix_store::rusqlite;
 
 // Re-export types so existing `use crate::infra::audit::*` imports keep working.
 pub use unimatrix_store::{AuditEvent, Outcome};
@@ -39,8 +39,7 @@ impl AuditLog {
         let result = (|| -> Result<(), ServerError> {
             // Get and increment the audit ID counter
             let current_id =
-                unimatrix_store::counters::read_counter(&conn, "next_audit_id")
-                    .unwrap_or(1);
+                unimatrix_store::counters::read_counter(&conn, "next_audit_id").unwrap_or(1);
             let id = if current_id == 0 { 1 } else { current_id };
             unimatrix_store::counters::set_counter(&conn, "next_audit_id", id + 1)
                 .map_err(|e| ServerError::Audit(e.to_string()))?;
@@ -360,7 +359,10 @@ mod tests {
         let event_id = audit.write_in_txn(&txn, make_event()).unwrap();
         txn.commit().unwrap();
 
-        assert_eq!(event_id, 4, "write_in_txn should continue from log_event counter");
+        assert_eq!(
+            event_id, 4,
+            "write_in_txn should continue from log_event counter"
+        );
 
         // Use log_event for 5th
         audit.log_event(make_event()).unwrap();
@@ -478,10 +480,7 @@ mod tests {
         assert_eq!(audit.write_count_since("agent-a", 0).unwrap(), 1);
 
         // Events with since = far future should return 0
-        assert_eq!(
-            audit.write_count_since("agent-a", now + 10000).unwrap(),
-            0
-        );
+        assert_eq!(audit.write_count_since("agent-a", now + 10000).unwrap(), 0);
     }
 
     #[test]

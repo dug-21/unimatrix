@@ -142,11 +142,7 @@ pub fn compute_lambda(
 /// Find the age (in seconds) of the oldest stale entry.
 ///
 /// Returns 0 if no entries are stale.
-pub fn oldest_stale_age(
-    entries: &[EntryRecord],
-    now: u64,
-    staleness_threshold_secs: u64,
-) -> u64 {
+pub fn oldest_stale_age(entries: &[EntryRecord], now: u64, staleness_threshold_secs: u64) -> u64 {
     let mut oldest = 0u64;
     for entry in entries {
         let reference = entry.updated_at.max(entry.last_accessed_at);
@@ -262,7 +258,7 @@ mod tests {
         let now = 200_000u64;
         let threshold = 86400u64; // 1 day
         let entries = vec![
-            make_entry_with_timestamps(0, 0), // both zero = stale
+            make_entry_with_timestamps(0, 0),    // both zero = stale
             make_entry_with_timestamps(1000, 0), // 199000 seconds old > threshold
         ];
         let (score, stale) = confidence_freshness_score(&entries, now, threshold);
@@ -276,7 +272,7 @@ mod tests {
         let threshold = 86400u64;
         let entries = vec![
             make_entry_with_timestamps(now - 100, 0), // 100 seconds old < threshold
-            make_entry_with_timestamps(0, now - 50),   // 50 seconds old < threshold
+            make_entry_with_timestamps(0, now - 50),  // 50 seconds old < threshold
         ];
         let (score, stale) = confidence_freshness_score(&entries, now, threshold);
         assert_eq!(score, 1.0);
@@ -482,8 +478,8 @@ mod tests {
         let threshold = 86400u64;
         // updated_at = now - 48h, last_accessed_at = now - 36h
         let entries = vec![make_entry_with_timestamps(
-            now - 48 * 3600,    // updated 48h ago
-            now - 36 * 3600,    // accessed 36h ago
+            now - 48 * 3600, // updated 48h ago
+            now - 36 * 3600, // accessed 36h ago
         )];
         let (score, stale) = confidence_freshness_score(&entries, now, threshold);
         assert_eq!(score, 0.0, "both timestamps older than threshold -> stale");
@@ -506,7 +502,10 @@ mod tests {
     fn lambda_specific_four_dimensions() {
         let lambda = compute_lambda(0.9, 0.8, Some(1.0), 0.7, &DEFAULT_WEIGHTS);
         // 0.35*0.9 + 0.30*0.8 + 0.15*1.0 + 0.20*0.7 = 0.315 + 0.24 + 0.15 + 0.14 = 0.845
-        assert!((lambda - 0.845).abs() < 0.001, "expected 0.845, got {lambda}");
+        assert!(
+            (lambda - 0.845).abs() < 0.001,
+            "expected 0.845, got {lambda}"
+        );
     }
 
     // UT-C4-18: lambda with embedding excluded (specific value)
@@ -516,7 +515,10 @@ mod tests {
         // remaining = 0.35 + 0.30 + 0.20 = 0.85
         // weighted_sum = 0.35*0.9 + 0.30*0.8 + 0.20*0.7 = 0.315 + 0.24 + 0.14 = 0.695
         // lambda = 0.695 / 0.85 = 0.81765...
-        assert!((lambda - 0.81765).abs() < 0.001, "expected ~0.81765, got {lambda}");
+        assert!(
+            (lambda - 0.81765).abs() < 0.001,
+            "expected ~0.81765, got {lambda}"
+        );
     }
 
     // UT-C4-19: re-normalized effective weights sum to 1.0
@@ -540,7 +542,10 @@ mod tests {
     fn lambda_single_dimension_deviation() {
         let lambda = compute_lambda(0.5, 1.0, Some(1.0), 1.0, &DEFAULT_WEIGHTS);
         // 0.35*0.5 + 0.30*1.0 + 0.15*1.0 + 0.20*1.0 = 0.175 + 0.30 + 0.15 + 0.20 = 0.825
-        assert!((lambda - 0.825).abs() < 0.001, "expected 0.825, got {lambda}");
+        assert!(
+            (lambda - 0.825).abs() < 0.001,
+            "expected 0.825, got {lambda}"
+        );
     }
 
     // UT-C4-23: custom weights with zero embedding weight
@@ -577,6 +582,9 @@ mod tests {
     // UT-C4-35: staleness threshold is named constant
     #[test]
     fn staleness_threshold_constant_value() {
-        assert_eq!(DEFAULT_STALENESS_THRESHOLD_SECS, 86400, "staleness threshold should be 24 hours");
+        assert_eq!(
+            DEFAULT_STALENESS_THRESHOLD_SECS, 86400,
+            "staleness threshold should be 24 hours"
+        );
     }
 }

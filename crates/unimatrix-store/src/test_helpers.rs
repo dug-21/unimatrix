@@ -3,8 +3,8 @@
 //! Available within this crate via `#[cfg(test)]` and to downstream crates
 //! via the `test-support` feature flag.
 
-use crate::schema::{NewEntry, Status, TimeRange};
 use crate::Store;
+use crate::schema::{NewEntry, Status, TimeRange};
 
 /// A test database backed by a temporary directory.
 ///
@@ -222,10 +222,7 @@ pub fn assert_index_absent(
     }
 
     // Check old tags that are not in current tags
-    let current_tags: Vec<String> = current
-        .as_ref()
-        .map(|r| r.tags.clone())
-        .unwrap_or_default();
+    let current_tags: Vec<String> = current.as_ref().map(|r| r.tags.clone()).unwrap_or_default();
     for tag in old_tags {
         if !current_tags.contains(tag) {
             let tag_results = store.query_by_tags(std::slice::from_ref(tag)).unwrap();

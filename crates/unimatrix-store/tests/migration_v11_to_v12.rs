@@ -285,9 +285,7 @@ fn read_schema_version(store: &Store) -> i64 {
 fn has_column(store: &Store, table: &str, column: &str) -> bool {
     let conn = store.lock_conn();
     conn.query_row(
-        &format!(
-            "SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = '{column}'"
-        ),
+        &format!("SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = '{column}'"),
         [],
         |row| Ok(row.get::<_, i64>(0)? > 0),
     )
@@ -420,7 +418,10 @@ fn test_session_record_round_trip_with_keywords() {
     assert_eq!(got.agent_role, Some("developer".to_string()));
     assert_eq!(got.started_at, 1000);
     assert_eq!(got.ended_at, Some(2000));
-    assert_eq!(got.status, unimatrix_store::SessionLifecycleStatus::Completed);
+    assert_eq!(
+        got.status,
+        unimatrix_store::SessionLifecycleStatus::Completed
+    );
     assert_eq!(got.compaction_count, 3);
     assert_eq!(got.outcome, Some("success".to_string()));
     assert_eq!(got.total_injections, 42);
@@ -480,7 +481,10 @@ fn test_session_record_round_trip_empty_keywords() {
     };
 
     store.insert_session(&record).expect("insert");
-    let got = store.get_session("rt-empty-kw").expect("get").expect("exists");
+    let got = store
+        .get_session("rt-empty-kw")
+        .expect("get")
+        .expect("exists");
     assert_eq!(got.keywords, Some("[]".to_string()));
 }
 
@@ -495,7 +499,10 @@ fn test_session_columns_count_matches_from_row() {
         .filter(|s| !s.is_empty())
         .count();
     // SessionRecord has 10 fields
-    assert_eq!(column_count, 10, "SESSION_COLUMNS token count must match SessionRecord field count");
+    assert_eq!(
+        column_count, 10,
+        "SESSION_COLUMNS token count must match SessionRecord field count"
+    );
 }
 
 // ============================================================
@@ -557,7 +564,10 @@ fn test_update_session_keywords_overwrites_existing() {
         .update_session_keywords("kw-overwrite", r#"["new"]"#)
         .expect("update keywords");
 
-    let got = store.get_session("kw-overwrite").expect("get").expect("exists");
+    let got = store
+        .get_session("kw-overwrite")
+        .expect("get")
+        .expect("exists");
     assert_eq!(got.keywords, Some(r#"["new"]"#.to_string()));
 }
 
@@ -599,7 +609,10 @@ fn test_keywords_json_round_trip_special_chars() {
     };
     store.insert_session(&record).expect("insert");
 
-    let got = store.get_session("json-special").expect("get").expect("exists");
+    let got = store
+        .get_session("json-special")
+        .expect("get")
+        .expect("exists");
     let deserialized: Vec<String> =
         serde_json::from_str(got.keywords.as_ref().expect("keywords")).expect("deserialize");
     assert_eq!(deserialized, vec!["has \"quotes\"", "back\\slash"]);
@@ -629,7 +642,10 @@ fn test_keywords_json_unicode() {
     };
     store.insert_session(&record).expect("insert");
 
-    let got = store.get_session("json-unicode").expect("get").expect("exists");
+    let got = store
+        .get_session("json-unicode")
+        .expect("get")
+        .expect("exists");
     let deserialized: Vec<String> =
         serde_json::from_str(got.keywords.as_ref().expect("keywords")).expect("deserialize");
     assert_eq!(deserialized, keywords);
@@ -672,8 +688,14 @@ fn test_keywords_null_vs_empty_distinction() {
     store.insert_session(&a).expect("insert a");
     store.insert_session(&b).expect("insert b");
 
-    let got_a = store.get_session("null-kw").expect("get a").expect("a exists");
-    let got_b = store.get_session("empty-kw").expect("get b").expect("b exists");
+    let got_a = store
+        .get_session("null-kw")
+        .expect("get a")
+        .expect("a exists");
+    let got_b = store
+        .get_session("empty-kw")
+        .expect("get b")
+        .expect("b exists");
 
     assert_eq!(got_a.keywords, None);
     assert_eq!(got_b.keywords, Some("[]".to_string()));

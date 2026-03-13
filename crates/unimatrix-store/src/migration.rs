@@ -97,8 +97,9 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
                     response_snippet TEXT
                 );
                 CREATE INDEX IF NOT EXISTS idx_observations_session ON observations(session_id);
-                CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts_millis);"
-            ).map_err(StoreError::Sqlite)?;
+                CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts_millis);",
+            )
+            .map_err(StoreError::Sqlite)?;
         }
 
         // v7 -> v8: pre_quarantine_status column (vnc-010)
@@ -113,9 +114,8 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
                 .unwrap_or(false);
 
             if !has_column {
-                conn.execute_batch(
-                    "ALTER TABLE entries ADD COLUMN pre_quarantine_status INTEGER;"
-                ).map_err(StoreError::Sqlite)?;
+                conn.execute_batch("ALTER TABLE entries ADD COLUMN pre_quarantine_status INTEGER;")
+                    .map_err(StoreError::Sqlite)?;
             }
 
             // Backfill: existing quarantined entries were quarantined from Active
@@ -138,9 +138,8 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
                 .unwrap_or(false);
 
             if !has_topic_signal {
-                conn.execute_batch(
-                    "ALTER TABLE observations ADD COLUMN topic_signal TEXT;"
-                ).map_err(StoreError::Sqlite)?;
+                conn.execute_batch("ALTER TABLE observations ADD COLUMN topic_signal TEXT;")
+                    .map_err(StoreError::Sqlite)?;
             }
         }
 
@@ -158,8 +157,9 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
                     total_tool_calls INTEGER NOT NULL DEFAULT 0,
                     total_duration_secs INTEGER NOT NULL DEFAULT 0,
                     phases_completed TEXT
-                );"
-            ).map_err(StoreError::Sqlite)?;
+                );",
+            )
+            .map_err(StoreError::Sqlite)?;
 
             // Step 2: Create query_log table with AUTOINCREMENT (ADR-001)
             conn.execute_batch(
@@ -175,8 +175,9 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
                     source TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS idx_query_log_session ON query_log(session_id);
-                CREATE INDEX IF NOT EXISTS idx_query_log_ts ON query_log(ts);"
-            ).map_err(StoreError::Sqlite)?;
+                CREATE INDEX IF NOT EXISTS idx_query_log_ts ON query_log(ts);",
+            )
+            .map_err(StoreError::Sqlite)?;
 
             // Step 3: Backfill topic_deliveries from attributed sessions (ADR-003)
             // INSERT OR IGNORE ensures idempotency on re-run.
@@ -211,10 +212,8 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
                 .unwrap_or(false);
 
             if !has_keywords {
-                conn.execute_batch(
-                    "ALTER TABLE sessions ADD COLUMN keywords TEXT;",
-                )
-                .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("ALTER TABLE sessions ADD COLUMN keywords TEXT;")
+                    .map_err(StoreError::Sqlite)?;
             }
 
             // No data backfill: existing sessions have keywords = NULL (correct default)
@@ -391,8 +390,9 @@ fn migrate_v5_to_v6(conn: &rusqlite::Connection, db_path: &Path) -> Result<()> {
                 target_ids TEXT    NOT NULL DEFAULT '[]',
                 outcome    INTEGER NOT NULL,
                 detail     TEXT    NOT NULL DEFAULT ''
-            );"
-        ).map_err(StoreError::Sqlite)?;
+            );",
+        )
+        .map_err(StoreError::Sqlite)?;
 
         // Step 3: Migrate entries
         migrate_entries_v5_to_v6(conn)?;
@@ -428,8 +428,9 @@ fn migrate_v5_to_v6(conn: &rusqlite::Connection, db_path: &Path) -> Result<()> {
              DROP TABLE injection_log;
              DROP TABLE signal_queue;
              DROP TABLE agent_registry;
-             DROP TABLE audit_log;"
-        ).map_err(StoreError::Sqlite)?;
+             DROP TABLE audit_log;",
+        )
+        .map_err(StoreError::Sqlite)?;
 
         // Step 11: Rename new tables
         conn.execute_batch(
@@ -439,8 +440,9 @@ fn migrate_v5_to_v6(conn: &rusqlite::Connection, db_path: &Path) -> Result<()> {
              ALTER TABLE injection_log_v6 RENAME TO injection_log;
              ALTER TABLE signal_queue_v6 RENAME TO signal_queue;
              ALTER TABLE agent_registry_v6 RENAME TO agent_registry;
-             ALTER TABLE audit_log_v6 RENAME TO audit_log;"
-        ).map_err(StoreError::Sqlite)?;
+             ALTER TABLE audit_log_v6 RENAME TO audit_log;",
+        )
+        .map_err(StoreError::Sqlite)?;
 
         // Step 12: Create indexes
         conn.execute_batch(
@@ -456,14 +458,16 @@ fn migrate_v5_to_v6(conn: &rusqlite::Connection, db_path: &Path) -> Result<()> {
              CREATE INDEX idx_injection_log_session ON injection_log(session_id);
              CREATE INDEX idx_injection_log_entry ON injection_log(entry_id);
              CREATE INDEX idx_audit_log_agent ON audit_log(agent_id);
-             CREATE INDEX idx_audit_log_timestamp ON audit_log(timestamp);"
-        ).map_err(StoreError::Sqlite)?;
+             CREATE INDEX idx_audit_log_timestamp ON audit_log(timestamp);",
+        )
+        .map_err(StoreError::Sqlite)?;
 
         // Step 13: Update schema version
         conn.execute(
             "INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', 6)",
             [],
-        ).map_err(StoreError::Sqlite)?;
+        )
+        .map_err(StoreError::Sqlite)?;
 
         Ok(())
     })();
@@ -504,7 +508,7 @@ fn migrate_entries_v5_to_v6(conn: &rusqlite::Connection) -> Result<()> {
                 :access_count, :supersedes, :superseded_by, :correction_count,
                 :embedding_dim, :created_by, :modified_by, :content_hash,
                 :previous_hash, :version, :feature_cycle, :trust_source,
-                :helpful_count, :unhelpful_count)"
+                :helpful_count, :unhelpful_count)",
         )
         .map_err(StoreError::Sqlite)?;
 
@@ -837,8 +841,7 @@ fn migrate_v8_to_v9(conn: &rusqlite::Connection, db_path: &Path) -> Result<()> {
     let mut migrated: Vec<(String, crate::metrics::MetricVector)> = Vec::new();
     for (fc, data) in &rows {
         // Corrupted blob: insert default MetricVector to preserve the key (FR-06)
-        let mv = migration_compat::deserialize_metric_vector_v8(data)
-            .unwrap_or_default();
+        let mv = migration_compat::deserialize_metric_vector_v8(data).unwrap_or_default();
         migrated.push((fc.clone(), mv));
     }
 
@@ -949,7 +952,8 @@ fn migrate_v8_to_v9(conn: &rusqlite::Connection, db_path: &Path) -> Result<()> {
         conn.execute(
             "INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', 9)",
             [],
-        ).map_err(StoreError::Sqlite)?;
+        )
+        .map_err(StoreError::Sqlite)?;
 
         Ok(())
     })();
