@@ -4,17 +4,17 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 use unimatrix_core::{
     EmbedService, EntryRecord, QueryFilter, Status, Store, StoreAdapter, VectorAdapter,
 };
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 
 use unimatrix_adapt::AdaptationService;
 
-use crate::coaccess::{compute_search_boost, CO_ACCESS_STALENESS_SECONDS};
-use crate::confidence::{rerank_score, DEPRECATED_PENALTY, SUPERSEDED_PENALTY, cosine_similarity};
-use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
+use crate::confidence::{DEPRECATED_PENALTY, SUPERSEDED_PENALTY, cosine_similarity, rerank_score};
 use crate::infra::audit::{AuditEvent, Outcome};
+use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::services::gateway::SecurityGateway;
 use crate::services::{AuditContext, CallerId, ServiceError};
 
@@ -137,7 +137,9 @@ impl SearchService {
         .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?;
 
         // Step 4: Adapt embedding (MicroLoRA) + normalize
-        let adapted = self.adapt_service.adapt_embedding(&raw_embedding, None, None);
+        let adapted = self
+            .adapt_service
+            .adapt_embedding(&raw_embedding, None, None);
         let embedding = unimatrix_embed::l2_normalized(&adapted);
 
         // Step 5: HNSW search (filtered or unfiltered)
@@ -224,12 +226,9 @@ impl SearchService {
                 .collect();
 
             if !successor_ids.is_empty() {
-                let unique_successor_ids: HashSet<u64> =
-                    successor_ids.into_iter().collect();
-                let existing_ids: HashSet<u64> = results_with_scores
-                    .iter()
-                    .map(|(e, _)| e.id)
-                    .collect();
+                let unique_successor_ids: HashSet<u64> = successor_ids.into_iter().collect();
+                let existing_ids: HashSet<u64> =
+                    results_with_scores.iter().map(|(e, _)| e.id).collect();
 
                 let to_fetch: Vec<u64> = unique_successor_ids
                     .into_iter()
@@ -298,8 +297,7 @@ impl SearchService {
                 .take(anchor_count)
                 .map(|(e, _)| e.id)
                 .collect();
-            let result_ids: Vec<u64> =
-                results_with_scores.iter().map(|(e, _)| e.id).collect();
+            let result_ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
 
             // crt-010: collect deprecated IDs for co-access exclusion
             let deprecated_ids: HashSet<u64> = results_with_scores
@@ -455,7 +453,8 @@ mod tests {
         let deprecated_sim = 0.90;
 
         let active_score = penalized_score(active_sim, active.confidence, 1.0);
-        let deprecated_score = penalized_score(deprecated_sim, deprecated.confidence, DEPRECATED_PENALTY);
+        let deprecated_score =
+            penalized_score(deprecated_sim, deprecated.confidence, DEPRECATED_PENALTY);
 
         assert!(
             active_score > deprecated_score,
@@ -473,7 +472,8 @@ mod tests {
         let superseded_sim = 0.90;
 
         let active_score = penalized_score(active_sim, active.confidence, 1.0);
-        let superseded_score = penalized_score(superseded_sim, superseded.confidence, SUPERSEDED_PENALTY);
+        let superseded_score =
+            penalized_score(superseded_sim, superseded.confidence, SUPERSEDED_PENALTY);
 
         assert!(
             active_score > superseded_score,
@@ -500,7 +500,11 @@ mod tests {
             .filter(|(e, _)| e.status == Status::Active && e.superseded_by.is_none())
             .collect();
 
-        assert_eq!(filtered.len(), 1, "strict mode should keep only active non-superseded");
+        assert_eq!(
+            filtered.len(),
+            1,
+            "strict mode should keep only active non-superseded"
+        );
         assert_eq!(filtered[0].0.id, active.id);
     }
 
@@ -522,7 +526,10 @@ mod tests {
         // In flexible mode, deprecated entries are penalized but NOT excluded
         let score = penalized_score(deprecated_sim, deprecated.confidence, DEPRECATED_PENALTY);
 
-        assert!(score > 0.0, "deprecated entry should have a positive score ({score:.4})");
+        assert!(
+            score > 0.0,
+            "deprecated entry should have a positive score ({score:.4})"
+        );
     }
 
     // -- T-SP-06: Successor injection ranking --
@@ -536,7 +543,8 @@ mod tests {
         let superseded_sim = 0.90;
 
         let successor_score = penalized_score(successor_sim, successor.confidence, 1.0);
-        let superseded_score = penalized_score(superseded_sim, superseded.confidence, SUPERSEDED_PENALTY);
+        let superseded_score =
+            penalized_score(superseded_sim, superseded.confidence, SUPERSEDED_PENALTY);
 
         assert!(
             successor_score > superseded_score,

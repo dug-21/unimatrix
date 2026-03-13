@@ -10,8 +10,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use unimatrix_observe::error::{ObserveError, Result};
 use unimatrix_observe::source::ObservationSource;
 use unimatrix_observe::types::{HookType, ObservationRecord, ObservationStats, ParsedSession};
-use unimatrix_store::rusqlite;
 use unimatrix_store::Store;
+use unimatrix_store::rusqlite;
 
 /// SQL-backed implementation of ObservationSource.
 ///
@@ -52,7 +52,11 @@ impl ObservationSource for SqlObservationSource {
         }
 
         // Step 2: Query observations for those session_ids.
-        let placeholders: String = session_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let placeholders: String = session_ids
+            .iter()
+            .map(|_| "?")
+            .collect::<Vec<_>>()
+            .join(",");
         let sql = format!(
             "SELECT session_id, ts_millis, hook, tool, input, response_size, response_snippet
              FROM observations
@@ -66,20 +70,17 @@ impl ObservationSource for SqlObservationSource {
             .map_err(|e| ObserveError::Database(e.to_string()))?;
 
         let rows = obs_stmt
-            .query_map(
-                rusqlite::params_from_iter(session_ids.iter()),
-                |row| {
-                    Ok((
-                        row.get::<_, String>(0)?,     // session_id
-                        row.get::<_, i64>(1)?,        // ts_millis
-                        row.get::<_, String>(2)?,     // hook
-                        row.get::<_, Option<String>>(3)?, // tool
-                        row.get::<_, Option<String>>(4)?, // input
-                        row.get::<_, Option<i64>>(5)?,    // response_size
-                        row.get::<_, Option<String>>(6)?, // response_snippet
-                    ))
-                },
-            )
+            .query_map(rusqlite::params_from_iter(session_ids.iter()), |row| {
+                Ok((
+                    row.get::<_, String>(0)?,         // session_id
+                    row.get::<_, i64>(1)?,            // ts_millis
+                    row.get::<_, String>(2)?,         // hook
+                    row.get::<_, Option<String>>(3)?, // tool
+                    row.get::<_, Option<String>>(4)?, // input
+                    row.get::<_, Option<i64>>(5)?,    // response_size
+                    row.get::<_, Option<String>>(6)?, // response_snippet
+                ))
+            })
             .map_err(|e| ObserveError::Database(e.to_string()))?;
 
         let mut records = Vec::new();
@@ -157,7 +158,11 @@ impl ObservationSource for SqlObservationSource {
         }
 
         // Step 2: Load observations for those sessions, ordered by session then timestamp.
-        let placeholders: String = session_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let placeholders: String = session_ids
+            .iter()
+            .map(|_| "?")
+            .collect::<Vec<_>>()
+            .join(",");
         let sql = format!(
             "SELECT session_id, ts_millis, hook, tool, input, response_size, response_snippet
              FROM observations
@@ -359,7 +364,16 @@ mod tests {
     fn test_load_feature_observations_null_optionals() {
         let store = setup_test_store();
         insert_session(&store, "sess-1", Some("col-012"));
-        insert_observation(&store, "sess-1", 1700000000000, "SubagentStop", None, None, None, None);
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000000000,
+            "SubagentStop",
+            None,
+            None,
+            None,
+            None,
+        );
 
         let source = SqlObservationSource::new(Arc::clone(&store));
         let records = source.load_feature_observations("col-012").unwrap();
@@ -421,10 +435,7 @@ mod tests {
 
         assert_eq!(records.len(), 1);
         let input = records[0].input.as_ref().unwrap();
-        assert_eq!(
-            input.get("command").unwrap().as_str().unwrap(),
-            "ls -la"
-        );
+        assert_eq!(input.get("command").unwrap().as_str().unwrap(), "ls -la");
     }
 
     #[test]
@@ -432,8 +443,26 @@ mod tests {
         let store = setup_test_store();
         insert_session(&store, "sess-1", Some("col-012"));
         insert_session(&store, "sess-2", None);
-        insert_observation(&store, "sess-1", 1700000000000, "PreToolUse", Some("Read"), None, None, None);
-        insert_observation(&store, "sess-2", 1700000001000, "PreToolUse", Some("Write"), None, None, None);
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000000000,
+            "PreToolUse",
+            Some("Read"),
+            None,
+            None,
+            None,
+        );
+        insert_observation(
+            &store,
+            "sess-2",
+            1700000001000,
+            "PreToolUse",
+            Some("Write"),
+            None,
+            None,
+            None,
+        );
 
         let source = SqlObservationSource::new(Arc::clone(&store));
         let records = source.load_feature_observations("col-012").unwrap();
@@ -503,12 +532,36 @@ mod tests {
         insert_session(&store, "sess-1", None);
         insert_session(&store, "sess-2", Some("col-012"));
         insert_session(&store, "sess-3", None);
-        insert_observation(&store, "sess-1", 1700000000000, "PreToolUse", Some("Read"),
-            Some(r#"{"file_path":"product/features/col-015/SCOPE.md"}"#), None, None);
-        insert_observation(&store, "sess-2", 1700000001000, "PreToolUse", Some("Read"),
-            Some(r#"{"file_path":"product/features/col-012/SCOPE.md"}"#), None, None);
-        insert_observation(&store, "sess-3", 1700000002000, "PreToolUse", Some("Write"),
-            Some(r#"{"file_path":"product/features/crt-013/test.rs"}"#), None, None);
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000000000,
+            "PreToolUse",
+            Some("Read"),
+            Some(r#"{"file_path":"product/features/col-015/SCOPE.md"}"#),
+            None,
+            None,
+        );
+        insert_observation(
+            &store,
+            "sess-2",
+            1700000001000,
+            "PreToolUse",
+            Some("Read"),
+            Some(r#"{"file_path":"product/features/col-012/SCOPE.md"}"#),
+            None,
+            None,
+        );
+        insert_observation(
+            &store,
+            "sess-3",
+            1700000002000,
+            "PreToolUse",
+            Some("Write"),
+            Some(r#"{"file_path":"product/features/crt-013/test.rs"}"#),
+            None,
+            None,
+        );
 
         let source = SqlObservationSource::new(Arc::clone(&store));
         let sessions = source.load_unattributed_sessions().unwrap();
@@ -525,7 +578,16 @@ mod tests {
     fn test_load_unattributed_sessions_empty_when_all_attributed() {
         let store = setup_test_store();
         insert_session(&store, "sess-1", Some("col-012"));
-        insert_observation(&store, "sess-1", 1700000000000, "PreToolUse", Some("Read"), None, None, None);
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000000000,
+            "PreToolUse",
+            Some("Read"),
+            None,
+            None,
+            None,
+        );
 
         let source = SqlObservationSource::new(Arc::clone(&store));
         let sessions = source.load_unattributed_sessions().unwrap();
@@ -536,10 +598,26 @@ mod tests {
     fn test_load_unattributed_sessions_groups_by_session_id() {
         let store = setup_test_store();
         insert_session(&store, "sess-1", None);
-        insert_observation(&store, "sess-1", 1700000000000, "PreToolUse", Some("Read"),
-            Some(r#"{"file_path":"product/features/col-015/SCOPE.md"}"#), None, None);
-        insert_observation(&store, "sess-1", 1700000001000, "PostToolUse", Some("Read"),
-            None, Some(512), Some("file contents"));
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000000000,
+            "PreToolUse",
+            Some("Read"),
+            Some(r#"{"file_path":"product/features/col-015/SCOPE.md"}"#),
+            None,
+            None,
+        );
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000001000,
+            "PostToolUse",
+            Some("Read"),
+            None,
+            Some(512),
+            Some("file contents"),
+        );
 
         let source = SqlObservationSource::new(Arc::clone(&store));
         let sessions = source.load_unattributed_sessions().unwrap();
@@ -570,15 +648,39 @@ mod tests {
 
         // Session with NULL feature_cycle but observations referencing col-test
         insert_session(&store, "sess-1", None);
-        insert_observation(&store, "sess-1", 1700000000000, "PreToolUse", Some("Read"),
-            Some(r#"{"file_path":"product/features/col-test/SCOPE.md"}"#), None, None);
-        insert_observation(&store, "sess-1", 1700000001000, "PreToolUse", Some("Write"),
-            Some(r#"{"file_path":"product/features/col-test/impl.rs"}"#), None, None);
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000000000,
+            "PreToolUse",
+            Some("Read"),
+            Some(r#"{"file_path":"product/features/col-test/SCOPE.md"}"#),
+            None,
+            None,
+        );
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000001000,
+            "PreToolUse",
+            Some("Write"),
+            Some(r#"{"file_path":"product/features/col-test/impl.rs"}"#),
+            None,
+            None,
+        );
 
         // Session with NULL feature_cycle referencing a different feature
         insert_session(&store, "sess-2", None);
-        insert_observation(&store, "sess-2", 1700000002000, "PreToolUse", Some("Read"),
-            Some(r#"{"file_path":"product/features/nxs-001/SCOPE.md"}"#), None, None);
+        insert_observation(
+            &store,
+            "sess-2",
+            1700000002000,
+            "PreToolUse",
+            Some("Read"),
+            Some(r#"{"file_path":"product/features/nxs-001/SCOPE.md"}"#),
+            None,
+            None,
+        );
 
         let source = SqlObservationSource::new(Arc::clone(&store));
 
@@ -602,8 +704,16 @@ mod tests {
     fn test_direct_path_preserved_for_populated_feature_cycle() {
         let store = setup_test_store();
         insert_session(&store, "sess-1", Some("col-015"));
-        insert_observation(&store, "sess-1", 1700000000000, "PreToolUse", Some("Read"),
-            Some(r#"{"file_path":"product/features/col-015/SCOPE.md"}"#), None, None);
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000000000,
+            "PreToolUse",
+            Some("Read"),
+            Some(r#"{"file_path":"product/features/col-015/SCOPE.md"}"#),
+            None,
+            None,
+        );
 
         let source = SqlObservationSource::new(Arc::clone(&store));
         let direct = source.load_feature_observations("col-015").unwrap();
@@ -622,14 +732,46 @@ mod tests {
         insert_session(&store, "sess-1", None);
 
         // Session touches col-015 then crt-013
-        insert_observation(&store, "sess-1", 1700000000000, "PreToolUse", Some("Read"),
-            Some(r#"{"file_path":"product/features/col-015/SCOPE.md"}"#), None, None);
-        insert_observation(&store, "sess-1", 1700000001000, "PreToolUse", Some("Write"),
-            Some(r#"{"file_path":"product/features/col-015/impl.rs"}"#), None, None);
-        insert_observation(&store, "sess-1", 1700000002000, "PreToolUse", Some("Read"),
-            Some(r#"{"file_path":"product/features/crt-013/SCOPE.md"}"#), None, None);
-        insert_observation(&store, "sess-1", 1700000003000, "PreToolUse", Some("Write"),
-            Some(r#"{"file_path":"product/features/crt-013/test.rs"}"#), None, None);
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000000000,
+            "PreToolUse",
+            Some("Read"),
+            Some(r#"{"file_path":"product/features/col-015/SCOPE.md"}"#),
+            None,
+            None,
+        );
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000001000,
+            "PreToolUse",
+            Some("Write"),
+            Some(r#"{"file_path":"product/features/col-015/impl.rs"}"#),
+            None,
+            None,
+        );
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000002000,
+            "PreToolUse",
+            Some("Read"),
+            Some(r#"{"file_path":"product/features/crt-013/SCOPE.md"}"#),
+            None,
+            None,
+        );
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000003000,
+            "PreToolUse",
+            Some("Write"),
+            Some(r#"{"file_path":"product/features/crt-013/test.rs"}"#),
+            None,
+            None,
+        );
 
         let source = SqlObservationSource::new(Arc::clone(&store));
         let unattributed = source.load_unattributed_sessions().unwrap();

@@ -53,11 +53,7 @@ impl RateLimiter {
     ///
     /// UdsSession callers are exempt (return Ok immediately).
     /// Poison recovery via `unwrap_or_else(|e| e.into_inner())`.
-    fn check_rate(
-        &self,
-        caller: &CallerId,
-        limit: u32,
-    ) -> Result<(), ServiceError> {
+    fn check_rate(&self, caller: &CallerId, limit: u32) -> Result<(), ServiceError> {
         // UdsSession exemption (structural, not conditional)
         if matches!(caller, CallerId::UdsSession(_)) {
             return Ok(());
@@ -68,9 +64,11 @@ impl RateLimiter {
 
         let mut windows = self.windows.lock().unwrap_or_else(|e| e.into_inner());
 
-        let window = windows.entry(caller.clone()).or_insert_with(|| SlidingWindow {
-            timestamps: VecDeque::new(),
-        });
+        let window = windows
+            .entry(caller.clone())
+            .or_insert_with(|| SlidingWindow {
+                timestamps: VecDeque::new(),
+            });
 
         // Lazy eviction: remove expired timestamps
         while let Some(front) = window.timestamps.front() {
@@ -146,18 +144,24 @@ impl SecurityGateway {
     pub(crate) fn with_rate_config(audit: Arc<AuditLog>, config: RateLimitConfig) -> Self {
         SecurityGateway {
             audit,
-            rate_limiter: RateLimiter::new(config.search_limit, config.write_limit, config.window_secs),
+            rate_limiter: RateLimiter::new(
+                config.search_limit,
+                config.write_limit,
+                config.window_secs,
+            ),
         }
     }
 
     /// S2: Check search rate limit for this caller.
     pub(crate) fn check_search_rate(&self, caller: &CallerId) -> Result<(), ServiceError> {
-        self.rate_limiter.check_rate(caller, self.rate_limiter.search_limit)
+        self.rate_limiter
+            .check_rate(caller, self.rate_limiter.search_limit)
     }
 
     /// S2: Check write rate limit for this caller.
     pub(crate) fn check_write_rate(&self, caller: &CallerId) -> Result<(), ServiceError> {
-        self.rate_limiter.check_rate(caller, self.rate_limiter.write_limit)
+        self.rate_limiter
+            .check_rate(caller, self.rate_limiter.write_limit)
     }
 
     /// S1+S3: Validate and scan a search query.
@@ -277,9 +281,7 @@ impl SecurityGateway {
         // S3: Tag validation
         for tag in tags {
             if tag.is_empty() {
-                return Err(ServiceError::ValidationFailed(
-                    "empty tag".to_string(),
-                ));
+                return Err(ServiceError::ValidationFailed("empty tag".to_string()));
             }
             if tag.len() > 100 {
                 return Err(ServiceError::ValidationFailed(
@@ -336,8 +338,7 @@ impl SecurityGateway {
     pub(crate) fn new_permissive() -> Self {
         use unimatrix_store::Store;
         let dir = tempfile::tempdir().expect("failed to create tempdir");
-        let store = Store::open(dir.path().join("test.db"))
-            .expect("failed to open test store");
+        let store = Store::open(dir.path().join("test.db")).expect("failed to open test store");
         let audit = AuditLog::new(Arc::new(store));
         // Leak the tempdir so it persists for the test lifetime
         std::mem::forget(dir);
@@ -383,7 +384,9 @@ mod tests {
         let gw = SecurityGateway::new_permissive();
         let long_query = "x".repeat(10_001);
         let result = gw.validate_search_query(&long_query, 5, &mcp_ctx());
-        assert!(matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("10000")));
+        assert!(
+            matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("10000"))
+        );
     }
 
     #[test]
@@ -398,14 +401,18 @@ mod tests {
     fn validate_search_query_k_zero() {
         let gw = SecurityGateway::new_permissive();
         let result = gw.validate_search_query("test", 0, &mcp_ctx());
-        assert!(matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("k must be")));
+        assert!(
+            matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("k must be"))
+        );
     }
 
     #[test]
     fn validate_search_query_k_101() {
         let gw = SecurityGateway::new_permissive();
         let result = gw.validate_search_query("test", 101, &mcp_ctx());
-        assert!(matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("k must be")));
+        assert!(
+            matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("k must be"))
+        );
     }
 
     #[test]
@@ -426,7 +433,9 @@ mod tests {
     fn validate_search_query_control_chars() {
         let gw = SecurityGateway::new_permissive();
         let result = gw.validate_search_query("test\x01query", 5, &mcp_ctx());
-        assert!(matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("control")));
+        assert!(
+            matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("control"))
+        );
     }
 
     #[test]
@@ -503,14 +512,18 @@ mod tests {
     fn validate_write_empty_title() {
         let gw = SecurityGateway::new_permissive();
         let result = gw.validate_write("", "content", "pattern", &[], &mcp_ctx());
-        assert!(matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("title")));
+        assert!(
+            matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("title"))
+        );
     }
 
     #[test]
     fn validate_write_empty_content() {
         let gw = SecurityGateway::new_permissive();
         let result = gw.validate_write("title", "", "pattern", &[], &mcp_ctx());
-        assert!(matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("content")));
+        assert!(
+            matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("content"))
+        );
     }
 
     #[test]
@@ -525,33 +538,26 @@ mod tests {
     fn validate_write_title_control_chars() {
         let gw = SecurityGateway::new_permissive();
         let result = gw.validate_write("title\x01", "content", "pattern", &[], &mcp_ctx());
-        assert!(matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("control")));
+        assert!(
+            matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("control"))
+        );
     }
 
     #[test]
     fn validate_write_empty_tag() {
         let gw = SecurityGateway::new_permissive();
-        let result = gw.validate_write(
-            "title",
-            "content",
-            "pattern",
-            &["".to_string()],
-            &mcp_ctx(),
+        let result =
+            gw.validate_write("title", "content", "pattern", &["".to_string()], &mcp_ctx());
+        assert!(
+            matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("empty tag"))
         );
-        assert!(matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("empty tag")));
     }
 
     #[test]
     fn validate_write_tag_too_long() {
         let gw = SecurityGateway::new_permissive();
         let long_tag = "x".repeat(101);
-        let result = gw.validate_write(
-            "title",
-            "content",
-            "pattern",
-            &[long_tag],
-            &mcp_ctx(),
-        );
+        let result = gw.validate_write("title", "content", "pattern", &[long_tag], &mcp_ctx());
         assert!(matches!(result, Err(ServiceError::ValidationFailed(msg)) if msg.contains("tag")));
     }
 
@@ -616,7 +622,11 @@ mod tests {
 
     // -- S2: Rate limiting --
 
-    fn make_limited_gateway(search_limit: u32, write_limit: u32, window_secs: u64) -> SecurityGateway {
+    fn make_limited_gateway(
+        search_limit: u32,
+        write_limit: u32,
+        window_secs: u64,
+    ) -> SecurityGateway {
         use unimatrix_store::Store;
         let dir = tempfile::tempdir().expect("tempdir");
         let store = Store::open(dir.path().join("test.db")).expect("store");
@@ -707,7 +717,10 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(1100));
 
         // Expired entries evicted on next check
-        assert!(gw.check_search_rate(&caller).is_ok(), "should succeed after eviction");
+        assert!(
+            gw.check_search_rate(&caller).is_ok(),
+            "should succeed after eviction"
+        );
     }
 
     #[test]
@@ -728,7 +741,8 @@ mod tests {
 
         // Should allow far more than the default 60-write limit
         for _ in 0..200 {
-            gw.check_write_rate(&caller).expect("permissive config should not limit");
+            gw.check_write_rate(&caller)
+                .expect("permissive config should not limit");
         }
     }
 
@@ -761,6 +775,8 @@ mod tests {
             retry_after_secs: 42,
         };
         let server_err: crate::error::ServerError = err.into();
-        assert!(matches!(server_err, crate::error::ServerError::InvalidInput { field, .. } if field == "rate_limit"));
+        assert!(
+            matches!(server_err, crate::error::ServerError::InvalidInput { field, .. } if field == "rate_limit")
+        );
     }
 }

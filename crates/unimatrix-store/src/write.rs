@@ -92,8 +92,7 @@ impl Store {
 
         match result {
             Ok(id) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(id)
             }
             Err(e) => {
@@ -198,8 +197,7 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -245,8 +243,7 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {
@@ -297,8 +294,7 @@ impl Store {
 
         match result {
             Ok(()) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(())
             }
             Err(e) => {

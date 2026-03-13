@@ -82,8 +82,7 @@ pub fn deserialize_signal(bytes: &[u8]) -> Result<SignalRecord> {
 /// Construct a SignalRecord from a SQL row.
 fn signal_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SignalRecord> {
     let entry_ids_json: String = row.get("entry_ids")?;
-    let entry_ids: Vec<u64> =
-        serde_json::from_str(&entry_ids_json).unwrap_or_default();
+    let entry_ids: Vec<u64> = serde_json::from_str(&entry_ids_json).unwrap_or_default();
     Ok(SignalRecord {
         signal_id: row.get::<_, i64>("signal_id")? as u64,
         session_id: row.get("session_id")?,
@@ -152,8 +151,7 @@ impl Store {
 
         match result {
             Ok(id) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(id)
             }
             Err(e) => {
@@ -180,10 +178,7 @@ impl Store {
                 .map_err(StoreError::Sqlite)?;
 
             let records: Vec<SignalRecord> = stmt
-                .query_map(
-                    rusqlite::params![signal_type as u8 as i64],
-                    signal_from_row,
-                )
+                .query_map(rusqlite::params![signal_type as u8 as i64], signal_from_row)
                 .map_err(StoreError::Sqlite)?
                 .collect::<rusqlite::Result<Vec<_>>>()
                 .map_err(StoreError::Sqlite)?;
@@ -202,8 +197,7 @@ impl Store {
 
         match result {
             Ok(drained) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(StoreError::Sqlite)?;
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
                 Ok(drained)
             }
             Err(e) => {
@@ -319,8 +313,14 @@ mod tests {
 
     #[test]
     fn test_signal_source_try_from() {
-        assert_eq!(SignalSource::try_from(0u8).unwrap(), SignalSource::ImplicitOutcome);
-        assert_eq!(SignalSource::try_from(1u8).unwrap(), SignalSource::ImplicitRework);
+        assert_eq!(
+            SignalSource::try_from(0u8).unwrap(),
+            SignalSource::ImplicitOutcome
+        );
+        assert_eq!(
+            SignalSource::try_from(1u8).unwrap(),
+            SignalSource::ImplicitRework
+        );
         assert!(SignalSource::try_from(2u8).is_err());
     }
 }

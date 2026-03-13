@@ -9,19 +9,18 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use unimatrix_core::{
-    CoreError, EmbedService, NewEntry, StoreAdapter, Store, VectorAdapter, VectorIndex,
-    VectorStore,
-};
 use unimatrix_core::async_wrappers::AsyncEntryStore;
-use unimatrix_learn::models::{ConventionScorer, SignalClassifier};
-use unimatrix_learn::TrainingService;
-use unimatrix_observe::extraction::{
-    ExtractionContext, ExtractionStats, ProposedEntry,
-    default_extraction_rules, quality_gate, run_extraction_rules, QualityGateResult,
+use unimatrix_core::{
+    CoreError, EmbedService, NewEntry, Store, StoreAdapter, VectorAdapter, VectorIndex, VectorStore,
 };
+use unimatrix_learn::TrainingService;
+use unimatrix_learn::models::{ConventionScorer, SignalClassifier};
 use unimatrix_observe::extraction::neural::{EnhancerMode, NeuralEnhancer};
 use unimatrix_observe::extraction::shadow::{ShadowEvaluator, ShadowLogEntry};
+use unimatrix_observe::extraction::{
+    ExtractionContext, ExtractionStats, ProposedEntry, QualityGateResult, default_extraction_rules,
+    quality_gate, run_extraction_rules,
+};
 use unimatrix_observe::types::{HookType, ObservationRecord};
 use unimatrix_store::rusqlite;
 
@@ -31,8 +30,8 @@ use crate::infra::contradiction::{self, ContradictionConfig};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::session::SessionRegistry;
 use crate::server::PendingEntriesAnalysis;
-use crate::services::status::StatusService;
 use crate::services::ServiceError;
+use crate::services::status::StatusService;
 
 /// Default tick interval: 15 minutes.
 const TICK_INTERVAL_SECS: u64 = 900;
@@ -221,14 +220,7 @@ async fn run_single_tick(
         Arc::clone(embed_service),
         Arc::clone(adapt_service),
     );
-    match maintenance_tick(
-        &status_svc,
-        session_registry,
-        entry_store,
-        pending_entries,
-    )
-    .await
-    {
+    match maintenance_tick(&status_svc, session_registry, entry_store, pending_entries).await {
         Ok(()) => {
             if let Ok(mut meta) = tick_metadata.lock() {
                 meta.last_maintenance_run = Some(tick_start);
@@ -281,9 +273,7 @@ async fn maintenance_tick(
     pending_entries: &Arc<Mutex<PendingEntriesAnalysis>>,
 ) -> Result<(), ServiceError> {
     // Compute lightweight report to get active entries
-    let (mut report, active_entries) = status_svc
-        .compute_report(None, None, false)
-        .await?;
+    let (mut report, active_entries) = status_svc.compute_report(None, None, false).await?;
 
     // Run existing maintenance logic
     status_svc
@@ -346,17 +336,26 @@ async fn extraction_tick(
                 let input_str: Option<String> = row.get(5)?;
                 let response_size: Option<i64> = row.get(6)?;
                 let snippet: Option<String> = row.get(7)?;
-                Ok((id, ts, hook_str, session_id, tool, input_str, response_size, snippet))
+                Ok((
+                    id,
+                    ts,
+                    hook_str,
+                    session_id,
+                    tool,
+                    input_str,
+                    response_size,
+                    snippet,
+                ))
             })
-            .map_err(|e| ServiceError::Core(CoreError::Store(
-                unimatrix_store::StoreError::Sqlite(e),
-            )))?;
+            .map_err(|e| {
+                ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Sqlite(e)))
+            })?;
 
         for row in rows {
-            let (id, ts, hook_str, session_id, tool, input_str, response_size, snippet) =
-                row.map_err(|e| ServiceError::Core(CoreError::Store(
-                    unimatrix_store::StoreError::Sqlite(e),
-                )))?;
+            let (id, ts, hook_str, session_id, tool, input_str, response_size, snippet) = row
+                .map_err(|e| {
+                    ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Sqlite(e)))
+                })?;
             if id as u64 > max_id {
                 max_id = id as u64;
             }
@@ -401,10 +400,7 @@ async fn extraction_tick(
     for proposal in proposals {
         match quality_gate(&proposal, ctx) {
             QualityGateResult::Accept => accepted.push(proposal),
-            QualityGateResult::Reject {
-                reason,
-                check_name,
-            } => {
+            QualityGateResult::Reject { reason, check_name } => {
                 tracing::debug!(
                     rule = %proposal.source_rule,
                     check = %check_name,
@@ -417,9 +413,7 @@ async fn extraction_tick(
     }
 
     // 3.5 Neural enhancement (crt-007: between quality gate checks 1-4 and 5-6)
-    let accepted = if let (Some(enhancer), Some(evaluator)) =
-        (neural_enhancer, shadow_evaluator)
-    {
+    let accepted = if let (Some(enhancer), Some(evaluator)) = (neural_enhancer, shadow_evaluator) {
         let mut neural_accepted = Vec::new();
         for entry in accepted {
             let prediction = enhancer.enhance(&entry);
@@ -584,10 +578,22 @@ mod tests {
 
     #[test]
     fn parse_hook_type_variants() {
-        assert!(matches!(parse_hook_type("PreToolUse"), HookType::PreToolUse));
-        assert!(matches!(parse_hook_type("PostToolUse"), HookType::PostToolUse));
-        assert!(matches!(parse_hook_type("SubagentStart"), HookType::SubagentStart));
-        assert!(matches!(parse_hook_type("SubagentStop"), HookType::SubagentStop));
+        assert!(matches!(
+            parse_hook_type("PreToolUse"),
+            HookType::PreToolUse
+        ));
+        assert!(matches!(
+            parse_hook_type("PostToolUse"),
+            HookType::PostToolUse
+        ));
+        assert!(matches!(
+            parse_hook_type("SubagentStart"),
+            HookType::SubagentStart
+        ));
+        assert!(matches!(
+            parse_hook_type("SubagentStop"),
+            HookType::SubagentStop
+        ));
         assert!(matches!(parse_hook_type("Unknown"), HookType::PreToolUse));
     }
 

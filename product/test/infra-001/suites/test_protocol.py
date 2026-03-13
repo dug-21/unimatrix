@@ -33,8 +33,8 @@ def test_server_info(server):
     assert_tool_success(resp)
 
 
-def test_list_tools_returns_eleven(server):
-    """P-03: tools/list returns exactly 11 context_* tools (col-002: +context_retrospective)."""
+def test_list_tools_returns_twelve(server):
+    """P-03: tools/list returns exactly 12 context_* tools (col-022: +context_cycle)."""
     resp = server.list_tools()
     raw = resp.result
     assert raw is not None, "tools/list should return a result"
@@ -46,6 +46,7 @@ def test_list_tools_returns_eleven(server):
         "context_get",
         "context_store",
         "context_correct",
+        "context_cycle",
         "context_deprecate",
         "context_status",
         "context_briefing",

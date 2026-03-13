@@ -35,8 +35,7 @@ fn test_model_download_subcommand_parsed() {
 
 #[test]
 fn test_export_subcommand_unchanged() {
-    let cli =
-        Cli::try_parse_from(["unimatrix", "export", "--output", "/tmp/out.json"]).unwrap();
+    let cli = Cli::try_parse_from(["unimatrix", "export", "--output", "/tmp/out.json"]).unwrap();
     match cli.command {
         Some(Command::Export { output }) => {
             assert_eq!(output, Some(PathBuf::from("/tmp/out.json")));
@@ -47,8 +46,7 @@ fn test_export_subcommand_unchanged() {
 
 #[test]
 fn test_import_subcommand_unchanged() {
-    let cli =
-        Cli::try_parse_from(["unimatrix", "import", "--input", "/tmp/in.json"]).unwrap();
+    let cli = Cli::try_parse_from(["unimatrix", "import", "--input", "/tmp/in.json"]).unwrap();
     match cli.command {
         Some(Command::Import { input, .. }) => {
             assert_eq!(input, PathBuf::from("/tmp/in.json"));
@@ -59,8 +57,7 @@ fn test_import_subcommand_unchanged() {
 
 #[test]
 fn test_project_dir_flag_accepted() {
-    let cli =
-        Cli::try_parse_from(["unimatrix", "--project-dir", "/some/path", "version"]).unwrap();
+    let cli = Cli::try_parse_from(["unimatrix", "--project-dir", "/some/path", "version"]).unwrap();
     assert_eq!(cli.project_dir, Some(PathBuf::from("/some/path")));
     assert!(matches!(cli.command, Some(Command::Version)));
 }

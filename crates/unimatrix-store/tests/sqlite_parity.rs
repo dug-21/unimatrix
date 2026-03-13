@@ -867,11 +867,11 @@ fn test_sql_analytics_query() {
 }
 
 #[test]
-fn test_schema_version_is_11() {
-    // C-04: Schema version must be exactly 11 (nxs-010)
+fn test_schema_version_is_12() {
+    // C-04: Schema version must be exactly 12 (col-022)
     let db = TestDb::new();
     let version = db.store().read_counter("schema_version").unwrap();
-    assert_eq!(version, 11, "schema version must be 11 after nxs-010");
+    assert_eq!(version, 12, "schema version must be 12 after col-022");
 }
 
 // === COUNTERS ===

@@ -18,31 +18,25 @@ use crate::signal::SignalRecord;
 /// Uses serde path with standard() config. All #[serde(default)] fields
 /// handle entries written at schema versions v0-v5.
 pub(crate) fn deserialize_entry_v5(bytes: &[u8]) -> Result<EntryRecord> {
-    let (record, _) = bincode::serde::decode_from_slice::<EntryRecord, _>(
-        bytes,
-        bincode::config::standard(),
-    )
-    .map_err(|e| StoreError::Deserialization(format!("entry v5: {e}")))?;
+    let (record, _) =
+        bincode::serde::decode_from_slice::<EntryRecord, _>(bytes, bincode::config::standard())
+            .map_err(|e| StoreError::Deserialization(format!("entry v5: {e}")))?;
     Ok(record)
 }
 
 /// Deserialize a CoAccessRecord from v5 bincode blob.
 pub(crate) fn deserialize_co_access_v5(bytes: &[u8]) -> Result<CoAccessRecord> {
-    let (record, _) = bincode::serde::decode_from_slice::<CoAccessRecord, _>(
-        bytes,
-        bincode::config::standard(),
-    )
-    .map_err(|e| StoreError::Deserialization(format!("co_access v5: {e}")))?;
+    let (record, _) =
+        bincode::serde::decode_from_slice::<CoAccessRecord, _>(bytes, bincode::config::standard())
+            .map_err(|e| StoreError::Deserialization(format!("co_access v5: {e}")))?;
     Ok(record)
 }
 
 /// Deserialize a SessionRecord from v5 bincode blob.
 pub(crate) fn deserialize_session_v5(bytes: &[u8]) -> Result<SessionRecord> {
-    let (record, _) = bincode::serde::decode_from_slice::<SessionRecord, _>(
-        bytes,
-        bincode::config::standard(),
-    )
-    .map_err(|e| StoreError::Deserialization(format!("session v5: {e}")))?;
+    let (record, _) =
+        bincode::serde::decode_from_slice::<SessionRecord, _>(bytes, bincode::config::standard())
+            .map_err(|e| StoreError::Deserialization(format!("session v5: {e}")))?;
     Ok(record)
 }
 
@@ -58,31 +52,25 @@ pub(crate) fn deserialize_injection_log_v5(bytes: &[u8]) -> Result<InjectionLogR
 
 /// Deserialize a SignalRecord from v5 bincode blob.
 pub(crate) fn deserialize_signal_v5(bytes: &[u8]) -> Result<SignalRecord> {
-    let (record, _) = bincode::serde::decode_from_slice::<SignalRecord, _>(
-        bytes,
-        bincode::config::standard(),
-    )
-    .map_err(|e| StoreError::Deserialization(format!("signal v5: {e}")))?;
+    let (record, _) =
+        bincode::serde::decode_from_slice::<SignalRecord, _>(bytes, bincode::config::standard())
+            .map_err(|e| StoreError::Deserialization(format!("signal v5: {e}")))?;
     Ok(record)
 }
 
 /// Deserialize an AgentRecord from v5 bincode blob.
 pub(crate) fn deserialize_agent_v5(bytes: &[u8]) -> Result<AgentRecord> {
-    let (record, _) = bincode::serde::decode_from_slice::<AgentRecord, _>(
-        bytes,
-        bincode::config::standard(),
-    )
-    .map_err(|e| StoreError::Deserialization(format!("agent v5: {e}")))?;
+    let (record, _) =
+        bincode::serde::decode_from_slice::<AgentRecord, _>(bytes, bincode::config::standard())
+            .map_err(|e| StoreError::Deserialization(format!("agent v5: {e}")))?;
     Ok(record)
 }
 
 /// Deserialize an AuditEvent from v5 bincode blob.
 pub(crate) fn deserialize_audit_event_v5(bytes: &[u8]) -> Result<AuditEvent> {
-    let (record, _) = bincode::serde::decode_from_slice::<AuditEvent, _>(
-        bytes,
-        bincode::config::standard(),
-    )
-    .map_err(|e| StoreError::Deserialization(format!("audit v5: {e}")))?;
+    let (record, _) =
+        bincode::serde::decode_from_slice::<AuditEvent, _>(bytes, bincode::config::standard())
+            .map_err(|e| StoreError::Deserialization(format!("audit v5: {e}")))?;
     Ok(record)
 }
 
@@ -91,8 +79,8 @@ pub(crate) fn deserialize_audit_event_v5(bytes: &[u8]) -> Result<AuditEvent> {
 // Self-contained snapshot of the v8 MetricVector format.
 // These structs are frozen and must not track changes to the live types.
 
-use std::collections::BTreeMap;
 use serde::Deserialize as SerdeDeserialize;
+use std::collections::BTreeMap;
 
 #[derive(SerdeDeserialize)]
 struct MetricVectorV8 {
@@ -163,11 +151,9 @@ struct PhaseMetricsV8 {
 /// Uses `bincode::config::standard()` matching the production serializer
 /// in `unimatrix-observe::serialize_metric_vector()` (R-05).
 pub(crate) fn deserialize_metric_vector_v8(bytes: &[u8]) -> Result<crate::metrics::MetricVector> {
-    let (v8, _) = bincode::serde::decode_from_slice::<MetricVectorV8, _>(
-        bytes,
-        bincode::config::standard(),
-    )
-    .map_err(|e| StoreError::Deserialization(format!("metric_vector v8: {e}")))?;
+    let (v8, _) =
+        bincode::serde::decode_from_slice::<MetricVectorV8, _>(bytes, bincode::config::standard())
+            .map_err(|e| StoreError::Deserialization(format!("metric_vector v8: {e}")))?;
 
     let phases: BTreeMap<String, crate::metrics::PhaseMetrics> = v8
         .phases

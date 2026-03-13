@@ -57,12 +57,7 @@ impl UsageService {
     ///
     /// Fire-and-forget: spawns blocking tasks and returns immediately.
     /// Errors in spawned tasks are logged, never propagated.
-    pub(crate) fn record_access(
-        &self,
-        entry_ids: &[u64],
-        source: AccessSource,
-        ctx: UsageContext,
-    ) {
+    pub(crate) fn record_access(&self, entry_ids: &[u64], source: AccessSource, ctx: UsageContext) {
         if entry_ids.is_empty() {
             return;
         }
@@ -90,7 +85,9 @@ impl UsageService {
         let mut decrement_unhelpful_ids = Vec::new();
 
         if let Some(helpful_value) = ctx.helpful {
-            let vote_actions = self.usage_dedup.check_votes(&agent_id, entry_ids, helpful_value);
+            let vote_actions = self
+                .usage_dedup
+                .check_votes(&agent_id, entry_ids, helpful_value);
             for (id, action) in vote_actions {
                 match action {
                     VoteAction::NewVote => {
@@ -124,12 +121,14 @@ impl UsageService {
 
         // Pre-compute co-access pairs (in-memory, no lock needed)
         let co_access_pairs = if entry_ids.len() >= 2 {
-            let pairs = crate::coaccess::generate_pairs(
-                entry_ids,
-                crate::coaccess::MAX_CO_ACCESS_ENTRIES,
-            );
+            let pairs =
+                crate::coaccess::generate_pairs(entry_ids, crate::coaccess::MAX_CO_ACCESS_ENTRIES);
             let new_pairs = self.usage_dedup.filter_co_access_pairs(&pairs);
-            if new_pairs.is_empty() { None } else { Some(new_pairs) }
+            if new_pairs.is_empty() {
+                None
+            } else {
+                Some(new_pairs)
+            }
         } else {
             None
         };
@@ -137,7 +136,10 @@ impl UsageService {
         // Pre-compute feature recording eligibility
         let feature_recording = ctx.feature_cycle.and_then(|feature_str| {
             let trust = ctx.trust_level.unwrap_or(TrustLevel::Restricted);
-            if matches!(trust, TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal) {
+            if matches!(
+                trust,
+                TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal
+            ) {
                 Some((feature_str, entry_ids.to_vec()))
             } else {
                 None
@@ -188,7 +190,10 @@ impl UsageService {
         // Pre-compute feature recording eligibility
         let feature_recording = ctx.feature_cycle.and_then(|feature_str| {
             let trust = ctx.trust_level.unwrap_or(TrustLevel::Restricted);
-            if matches!(trust, TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal) {
+            if matches!(
+                trust,
+                TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal
+            ) {
                 Some((feature_str, entry_ids.to_vec()))
             } else {
                 None
@@ -274,13 +279,17 @@ mod usage_tests {
     async fn test_record_access_empty_ids() {
         let (service, _store, _dir) = make_usage_service();
         // Should return immediately without panic
-        service.record_access(&[], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("test".to_string()),
-            helpful: None,
-            feature_cycle: None,
-            trust_level: None,
-        });
+        service.record_access(
+            &[],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("test".to_string()),
+                helpful: None,
+                feature_cycle: None,
+                trust_level: None,
+            },
+        );
     }
 
     #[tokio::test]
@@ -288,19 +297,27 @@ mod usage_tests {
         let (service, store, _dir) = make_usage_service();
         let id = insert_test_entry(&store);
 
-        service.record_access(&[id], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("agent-1".to_string()),
-            helpful: None,
-            feature_cycle: None,
-            trust_level: Some(TrustLevel::Internal),
-        });
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-1".to_string()),
+                helpful: None,
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+            },
+        );
 
         // Wait for spawn_blocking to complete
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         let entry = store.get(id).expect("get");
-        assert!(entry.access_count >= 1, "access_count should be >= 1, got {}", entry.access_count);
+        assert!(
+            entry.access_count >= 1,
+            "access_count should be >= 1, got {}",
+            entry.access_count
+        );
     }
 
     #[tokio::test]
@@ -308,13 +325,17 @@ mod usage_tests {
         let (service, store, _dir) = make_usage_service();
         let id = insert_test_entry(&store);
 
-        service.record_access(&[id], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("agent-1".to_string()),
-            helpful: Some(true),
-            feature_cycle: None,
-            trust_level: Some(TrustLevel::Internal),
-        });
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-1".to_string()),
+                helpful: Some(true),
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+            },
+        );
 
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
@@ -327,13 +348,17 @@ mod usage_tests {
         let (service, store, _dir) = make_usage_service();
         let id = insert_test_entry(&store);
 
-        service.record_access(&[id], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("agent-1".to_string()),
-            helpful: Some(false),
-            feature_cycle: None,
-            trust_level: Some(TrustLevel::Internal),
-        });
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-1".to_string()),
+                helpful: Some(false),
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+            },
+        );
 
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
@@ -347,23 +372,31 @@ mod usage_tests {
         let id = insert_test_entry(&store);
 
         // Vote unhelpful first
-        service.record_access(&[id], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("agent-1".to_string()),
-            helpful: Some(false),
-            feature_cycle: None,
-            trust_level: Some(TrustLevel::Internal),
-        });
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-1".to_string()),
+                helpful: Some(false),
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+            },
+        );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         // Correct to helpful
-        service.record_access(&[id], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("agent-1".to_string()),
-            helpful: Some(true),
-            feature_cycle: None,
-            trust_level: Some(TrustLevel::Internal),
-        });
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-1".to_string()),
+                helpful: Some(true),
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+            },
+        );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         let entry = store.get(id).expect("get");
@@ -378,13 +411,17 @@ mod usage_tests {
 
         // Vote helpful twice with same agent
         for _ in 0..2 {
-            service.record_access(&[id], AccessSource::McpTool, UsageContext {
-                session_id: None,
-                agent_id: Some("agent-1".to_string()),
-                helpful: Some(true),
-                feature_cycle: None,
-                trust_level: Some(TrustLevel::Internal),
-            });
+            service.record_access(
+                &[id],
+                AccessSource::McpTool,
+                UsageContext {
+                    session_id: None,
+                    agent_id: Some("agent-1".to_string()),
+                    helpful: Some(true),
+                    feature_cycle: None,
+                    trust_level: Some(TrustLevel::Internal),
+                },
+            );
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
 
@@ -399,18 +436,25 @@ mod usage_tests {
 
         // Two calls with same agent
         for _ in 0..2 {
-            service.record_access(&[id], AccessSource::McpTool, UsageContext {
-                session_id: None,
-                agent_id: Some("agent-1".to_string()),
-                helpful: None,
-                feature_cycle: None,
-                trust_level: Some(TrustLevel::Internal),
-            });
+            service.record_access(
+                &[id],
+                AccessSource::McpTool,
+                UsageContext {
+                    session_id: None,
+                    agent_id: Some("agent-1".to_string()),
+                    helpful: None,
+                    feature_cycle: None,
+                    trust_level: Some(TrustLevel::Internal),
+                },
+            );
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
 
         let entry = store.get(id).expect("get");
-        assert_eq!(entry.access_count, 1, "dedup should prevent double increment");
+        assert_eq!(
+            entry.access_count, 1,
+            "dedup should prevent double increment"
+        );
     }
 
     #[tokio::test]
@@ -418,13 +462,17 @@ mod usage_tests {
         let (service, store, _dir) = make_usage_service();
         let id = insert_test_entry(&store);
 
-        service.record_access(&[id], AccessSource::Briefing, UsageContext {
-            session_id: None,
-            agent_id: Some("agent-1".to_string()),
-            helpful: None,
-            feature_cycle: None,
-            trust_level: Some(TrustLevel::Internal),
-        });
+        service.record_access(
+            &[id],
+            AccessSource::Briefing,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-1".to_string()),
+                helpful: None,
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+            },
+        );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         let entry = store.get(id).expect("get");
@@ -436,15 +484,23 @@ mod usage_tests {
     async fn test_record_access_fire_and_forget_returns_quickly() {
         let (service, _store, _dir) = make_usage_service();
         let start = std::time::Instant::now();
-        service.record_access(&[1, 2, 3], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("agent-1".to_string()),
-            helpful: Some(true),
-            feature_cycle: None,
-            trust_level: Some(TrustLevel::Internal),
-        });
+        service.record_access(
+            &[1, 2, 3],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-1".to_string()),
+                helpful: Some(true),
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+            },
+        );
         let elapsed = start.elapsed();
-        assert!(elapsed.as_millis() < 50, "record_access should return quickly, took {}ms", elapsed.as_millis());
+        assert!(
+            elapsed.as_millis() < 50,
+            "record_access should return quickly, took {}ms",
+            elapsed.as_millis()
+        );
     }
 
     #[tokio::test]
@@ -452,21 +508,31 @@ mod usage_tests {
         let (service, store, _dir) = make_usage_service();
         let id = insert_test_entry(&store);
 
-        service.record_access(&[id], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("agent-1".to_string()),
-            helpful: None,
-            feature_cycle: Some("vnc-009".to_string()),
-            trust_level: Some(TrustLevel::Internal),
-        });
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-1".to_string()),
+                helpful: None,
+                feature_cycle: Some("vnc-009".to_string()),
+                trust_level: Some(TrustLevel::Internal),
+            },
+        );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         let conn = store.lock_conn();
-        let mut stmt = conn.prepare("SELECT entry_id FROM feature_entries WHERE feature_id = ?1").unwrap();
-        let found: Vec<u64> = stmt.query_map(unimatrix_store::rusqlite::params!["vnc-009"], |row| {
-            let v: i64 = row.get(0)?;
-            Ok(v as u64)
-        }).unwrap().map(|r| r.unwrap()).collect();
+        let mut stmt = conn
+            .prepare("SELECT entry_id FROM feature_entries WHERE feature_id = ?1")
+            .unwrap();
+        let found: Vec<u64> = stmt
+            .query_map(unimatrix_store::rusqlite::params!["vnc-009"], |row| {
+                let v: i64 = row.get(0)?;
+                Ok(v as u64)
+            })
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
         assert!(found.contains(&id), "feature entry should be recorded");
     }
 
@@ -475,22 +541,31 @@ mod usage_tests {
         let (service, store, _dir) = make_usage_service();
         let id = insert_test_entry(&store);
 
-        service.record_access(&[id], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("restricted-agent".to_string()),
-            helpful: None,
-            feature_cycle: Some("vnc-009".to_string()),
-            trust_level: Some(TrustLevel::Restricted),
-        });
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("restricted-agent".to_string()),
+                helpful: None,
+                feature_cycle: Some("vnc-009".to_string()),
+                trust_level: Some(TrustLevel::Restricted),
+            },
+        );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         let conn = store.lock_conn();
-        let count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?1",
-            unimatrix_store::rusqlite::params!["vnc-009"],
-            |row| row.get(0),
-        ).unwrap();
-        assert_eq!(count, 0, "restricted agent feature entry should not be recorded");
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?1",
+                unimatrix_store::rusqlite::params!["vnc-009"],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            count, 0,
+            "restricted agent feature entry should not be recorded"
+        );
     }
 
     /// T-INT-01: Verify confidence is recomputed after recording MCP usage.
@@ -503,17 +578,24 @@ mod usage_tests {
         // Before: confidence is 0.0
         assert_eq!(store.get(id).unwrap().confidence, 0.0);
 
-        service.record_access(&[id], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("agent-1".to_string()),
-            helpful: Some(true),
-            feature_cycle: None,
-            trust_level: Some(TrustLevel::Internal),
-        });
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-1".to_string()),
+                helpful: Some(true),
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+            },
+        );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         let entry = store.get(id).expect("get");
-        assert!(entry.confidence > 0.0, "confidence should be recomputed after usage recording");
+        assert!(
+            entry.confidence > 0.0,
+            "confidence should be recomputed after usage recording"
+        );
         assert_eq!(entry.access_count, 1);
         assert_eq!(entry.helpful_count, 1);
     }
@@ -525,25 +607,37 @@ mod usage_tests {
         let id = insert_test_entry(&store);
 
         // First call: access_count becomes 1
-        service.record_access(&[id], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("agent-1".to_string()),
-            helpful: None,
-            feature_cycle: None,
-            trust_level: Some(TrustLevel::Internal),
-        });
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-1".to_string()),
+                helpful: None,
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+            },
+        );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         assert_eq!(store.get(id).unwrap().access_count, 1);
 
         // Second call: same agent+entry -> deduped
-        service.record_access(&[id], AccessSource::McpTool, UsageContext {
-            session_id: None,
-            agent_id: Some("agent-1".to_string()),
-            helpful: None,
-            feature_cycle: None,
-            trust_level: Some(TrustLevel::Internal),
-        });
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-1".to_string()),
+                helpful: None,
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+            },
+        );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-        assert_eq!(store.get(id).unwrap().access_count, 1, "dedup should prevent double increment");
+        assert_eq!(
+            store.get(id).unwrap().access_count,
+            1,
+            "dedup should prevent double increment"
+        );
     }
 }

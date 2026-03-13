@@ -352,10 +352,7 @@ fn export_feature_entries(
     while let Some(row) = rows.next()? {
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("feature_entries".into()));
-        map.insert(
-            "feature_id".into(),
-            Value::String(row.get::<_, String>(0)?),
-        );
+        map.insert("feature_id".into(), Value::String(row.get::<_, String>(0)?));
         map.insert(
             "entry_id".into(),
             Value::Number(row.get::<_, i64>(1)?.into()),
@@ -413,10 +410,7 @@ fn export_agent_registry(
     while let Some(row) = rows.next()? {
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("agent_registry".into()));
-        map.insert(
-            "agent_id".into(),
-            Value::String(row.get::<_, String>(0)?),
-        );
+        map.insert("agent_id".into(), Value::String(row.get::<_, String>(0)?));
         map.insert(
             "trust_level".into(),
             Value::Number(row.get::<_, i64>(1)?.into()),
@@ -472,23 +466,11 @@ fn export_audit_log(
             "timestamp".into(),
             Value::Number(row.get::<_, i64>(1)?.into()),
         );
-        map.insert(
-            "session_id".into(),
-            Value::String(row.get::<_, String>(2)?),
-        );
-        map.insert(
-            "agent_id".into(),
-            Value::String(row.get::<_, String>(3)?),
-        );
-        map.insert(
-            "operation".into(),
-            Value::String(row.get::<_, String>(4)?),
-        );
+        map.insert("session_id".into(), Value::String(row.get::<_, String>(2)?));
+        map.insert("agent_id".into(), Value::String(row.get::<_, String>(3)?));
+        map.insert("operation".into(), Value::String(row.get::<_, String>(4)?));
         // JSON-in-TEXT: emitted as string, not parsed
-        map.insert(
-            "target_ids".into(),
-            Value::String(row.get::<_, String>(5)?),
-        );
+        map.insert("target_ids".into(), Value::String(row.get::<_, String>(5)?));
         map.insert(
             "outcome".into(),
             Value::Number(row.get::<_, i64>(6)?.into()),
@@ -920,10 +902,7 @@ mod tests {
         assert!(r1["allowed_topics"].is_string());
         assert_eq!(r1["allowed_topics"].as_str().unwrap(), "[\"security\"]");
         assert!(r1["allowed_categories"].is_string());
-        assert_eq!(
-            r1["allowed_categories"].as_str().unwrap(),
-            "[\"decision\"]"
-        );
+        assert_eq!(r1["allowed_categories"].as_str().unwrap(), "[\"decision\"]");
 
         // bot-2: empty array as string, nullable fields as null
         let r2 = &rows[1];
@@ -1318,16 +1297,10 @@ mod tests {
             [],
         )
         .unwrap();
-        conn.execute(
-            "INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'z')",
-            [],
-        )
-        .unwrap();
-        conn.execute(
-            "INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'a')",
-            [],
-        )
-        .unwrap();
+        conn.execute("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'z')", [])
+            .unwrap();
+        conn.execute("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'a')", [])
+            .unwrap();
 
         let mut buf = Vec::new();
         export_entry_tags(&conn, &mut buf).unwrap();

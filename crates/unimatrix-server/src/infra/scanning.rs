@@ -124,7 +124,11 @@ impl ContentScanner {
     }
 }
 
-fn make_pattern(category: PatternCategory, description: &'static str, regex: &str) -> CompiledPattern {
+fn make_pattern(
+    category: PatternCategory,
+    description: &'static str,
+    regex: &str,
+) -> CompiledPattern {
     CompiledPattern {
         category,
         description,
@@ -136,66 +140,150 @@ fn build_injection_patterns() -> Vec<CompiledPattern> {
     use PatternCategory::*;
     vec![
         // InstructionOverride
-        make_pattern(InstructionOverride, "instruction override attempt detected",
-            r"(?i)ignore\s+(all\s+)?previous\s+instructions"),
-        make_pattern(InstructionOverride, "instruction override attempt detected",
-            r"(?i)disregard\s+(all\s+)?(above|prior|previous)"),
-        make_pattern(InstructionOverride, "instruction override attempt detected",
-            r"(?i)forget\s+(all\s+)?your\s+(previous\s+)?instructions"),
-        make_pattern(InstructionOverride, "instruction override attempt detected",
-            r"(?i)override\s+(all\s+)?(previous|prior|above)\s+(instructions|rules|guidelines)"),
-        make_pattern(InstructionOverride, "instruction override attempt detected",
-            r"(?i)do\s+not\s+follow\s+(the\s+)?(above|previous|prior)\s+(instructions|rules)"),
-        make_pattern(InstructionOverride, "instruction override attempt detected",
-            r"(?i)new\s+instructions?\s*:"),
-        make_pattern(InstructionOverride, "instruction override attempt detected",
-            r"(?i)system\s*:\s*you\s+are"),
-        make_pattern(InstructionOverride, "instruction override attempt detected",
-            r"(?i)\[\s*system\s*\]"),
+        make_pattern(
+            InstructionOverride,
+            "instruction override attempt detected",
+            r"(?i)ignore\s+(all\s+)?previous\s+instructions",
+        ),
+        make_pattern(
+            InstructionOverride,
+            "instruction override attempt detected",
+            r"(?i)disregard\s+(all\s+)?(above|prior|previous)",
+        ),
+        make_pattern(
+            InstructionOverride,
+            "instruction override attempt detected",
+            r"(?i)forget\s+(all\s+)?your\s+(previous\s+)?instructions",
+        ),
+        make_pattern(
+            InstructionOverride,
+            "instruction override attempt detected",
+            r"(?i)override\s+(all\s+)?(previous|prior|above)\s+(instructions|rules|guidelines)",
+        ),
+        make_pattern(
+            InstructionOverride,
+            "instruction override attempt detected",
+            r"(?i)do\s+not\s+follow\s+(the\s+)?(above|previous|prior)\s+(instructions|rules)",
+        ),
+        make_pattern(
+            InstructionOverride,
+            "instruction override attempt detected",
+            r"(?i)new\s+instructions?\s*:",
+        ),
+        make_pattern(
+            InstructionOverride,
+            "instruction override attempt detected",
+            r"(?i)system\s*:\s*you\s+are",
+        ),
+        make_pattern(
+            InstructionOverride,
+            "instruction override attempt detected",
+            r"(?i)\[\s*system\s*\]",
+        ),
         // RoleImpersonation
-        make_pattern(RoleImpersonation, "role impersonation attempt detected",
-            r"(?i)you\s+are\s+now\s+(?:a\s+|an\s+)?(?:root|admin|superuser|developer|hacker|system|different|new|my|the|unrestricted|jailbroken)"),
-        make_pattern(RoleImpersonation, "role impersonation attempt detected",
-            r"(?i)act\s+as\s+(?:a\s+|an\s+)?(?:root|admin|superuser|developer|hacker|system)"),
-        make_pattern(RoleImpersonation, "role impersonation attempt detected",
-            r"(?i)pretend\s+(?:to\s+be|you\s+are)\s+(?:a\s+|an\s+)?(?:root|admin|superuser|developer|hacker|system|different|new|unrestricted)"),
-        make_pattern(RoleImpersonation, "role impersonation attempt detected",
-            r"(?i)assume\s+the\s+(?:role|identity|persona)\s+of"),
-        make_pattern(RoleImpersonation, "role impersonation attempt detected",
-            r"(?i)you\s+must\s+(?:now\s+)?(?:be|become|act\s+as)"),
-        make_pattern(RoleImpersonation, "role impersonation attempt detected",
-            r"(?i)switch\s+(?:to|into)\s+(?:a\s+|an\s+)?(?:new\s+)?(?:role|mode|persona)"),
+        make_pattern(
+            RoleImpersonation,
+            "role impersonation attempt detected",
+            r"(?i)you\s+are\s+now\s+(?:a\s+|an\s+)?(?:root|admin|superuser|developer|hacker|system|different|new|my|the|unrestricted|jailbroken)",
+        ),
+        make_pattern(
+            RoleImpersonation,
+            "role impersonation attempt detected",
+            r"(?i)act\s+as\s+(?:a\s+|an\s+)?(?:root|admin|superuser|developer|hacker|system)",
+        ),
+        make_pattern(
+            RoleImpersonation,
+            "role impersonation attempt detected",
+            r"(?i)pretend\s+(?:to\s+be|you\s+are)\s+(?:a\s+|an\s+)?(?:root|admin|superuser|developer|hacker|system|different|new|unrestricted)",
+        ),
+        make_pattern(
+            RoleImpersonation,
+            "role impersonation attempt detected",
+            r"(?i)assume\s+the\s+(?:role|identity|persona)\s+of",
+        ),
+        make_pattern(
+            RoleImpersonation,
+            "role impersonation attempt detected",
+            r"(?i)you\s+must\s+(?:now\s+)?(?:be|become|act\s+as)",
+        ),
+        make_pattern(
+            RoleImpersonation,
+            "role impersonation attempt detected",
+            r"(?i)switch\s+(?:to|into)\s+(?:a\s+|an\s+)?(?:new\s+)?(?:role|mode|persona)",
+        ),
         // SystemPromptExtraction
-        make_pattern(SystemPromptExtraction, "system prompt extraction attempt detected",
-            r"(?i)(?:show|display|reveal|output|print|repeat)\s+(?:your\s+)?(?:system\s+)?(?:prompt|instructions|rules)"),
-        make_pattern(SystemPromptExtraction, "system prompt extraction attempt detected",
-            r"(?i)what\s+(?:are|were)\s+your\s+(?:initial|original|system)?\s*instructions"),
-        make_pattern(SystemPromptExtraction, "system prompt extraction attempt detected",
-            r"(?i)(?:copy|paste|echo)\s+(?:the\s+)?(?:above|previous)\s+(?:text|instructions|prompt)"),
-        make_pattern(SystemPromptExtraction, "system prompt extraction attempt detected",
-            r"(?i)dump\s+(?:your\s+)?(?:system\s+)?(?:prompt|config|instructions)"),
-        make_pattern(SystemPromptExtraction, "system prompt extraction attempt detected",
-            r"(?i)tell\s+me\s+(?:your\s+)?(?:system\s+)?(?:prompt|instructions)"),
+        make_pattern(
+            SystemPromptExtraction,
+            "system prompt extraction attempt detected",
+            r"(?i)(?:show|display|reveal|output|print|repeat)\s+(?:your\s+)?(?:system\s+)?(?:prompt|instructions|rules)",
+        ),
+        make_pattern(
+            SystemPromptExtraction,
+            "system prompt extraction attempt detected",
+            r"(?i)what\s+(?:are|were)\s+your\s+(?:initial|original|system)?\s*instructions",
+        ),
+        make_pattern(
+            SystemPromptExtraction,
+            "system prompt extraction attempt detected",
+            r"(?i)(?:copy|paste|echo)\s+(?:the\s+)?(?:above|previous)\s+(?:text|instructions|prompt)",
+        ),
+        make_pattern(
+            SystemPromptExtraction,
+            "system prompt extraction attempt detected",
+            r"(?i)dump\s+(?:your\s+)?(?:system\s+)?(?:prompt|config|instructions)",
+        ),
+        make_pattern(
+            SystemPromptExtraction,
+            "system prompt extraction attempt detected",
+            r"(?i)tell\s+me\s+(?:your\s+)?(?:system\s+)?(?:prompt|instructions)",
+        ),
         // DelimiterInjection
-        make_pattern(DelimiterInjection, "delimiter injection attempt detected",
-            r"(?i)<\s*/\s*(?:system|instruction|prompt|context|message)\s*>"),
-        make_pattern(DelimiterInjection, "delimiter injection attempt detected",
-            r"(?i)<\s*(?:system|instruction|prompt)\s*>"),
-        make_pattern(DelimiterInjection, "delimiter injection attempt detected",
-            r"(?i)```\s*(?:system|instruction|prompt)"),
-        make_pattern(DelimiterInjection, "delimiter injection attempt detected",
-            r"(?i)---\s*(?:SYSTEM|END|BEGIN)\s*---"),
-        make_pattern(DelimiterInjection, "delimiter injection attempt detected",
-            r"(?i)\[\s*(?:INST|SYS|END)\s*\]"),
+        make_pattern(
+            DelimiterInjection,
+            "delimiter injection attempt detected",
+            r"(?i)<\s*/\s*(?:system|instruction|prompt|context|message)\s*>",
+        ),
+        make_pattern(
+            DelimiterInjection,
+            "delimiter injection attempt detected",
+            r"(?i)<\s*(?:system|instruction|prompt)\s*>",
+        ),
+        make_pattern(
+            DelimiterInjection,
+            "delimiter injection attempt detected",
+            r"(?i)```\s*(?:system|instruction|prompt)",
+        ),
+        make_pattern(
+            DelimiterInjection,
+            "delimiter injection attempt detected",
+            r"(?i)---\s*(?:SYSTEM|END|BEGIN)\s*---",
+        ),
+        make_pattern(
+            DelimiterInjection,
+            "delimiter injection attempt detected",
+            r"(?i)\[\s*(?:INST|SYS|END)\s*\]",
+        ),
         // EncodingEvasion
-        make_pattern(EncodingEvasion, "encoding evasion attempt detected",
-            r"(?i)(?:base64|b64)\s*(?:decode|encoded?)\s*:"),
-        make_pattern(EncodingEvasion, "encoding evasion attempt detected",
-            r"(?i)\\u[0-9a-fA-F]{4}\s*\\u[0-9a-fA-F]{4}\s*\\u[0-9a-fA-F]{4}"),
-        make_pattern(EncodingEvasion, "encoding evasion attempt detected",
-            r"(?i)&#x?[0-9a-fA-F]+;\s*&#x?[0-9a-fA-F]+;\s*&#x?[0-9a-fA-F]+;"),
-        make_pattern(EncodingEvasion, "encoding evasion attempt detected",
-            r"%[0-9a-fA-F]{2}%[0-9a-fA-F]{2}%[0-9a-fA-F]{2}"),
+        make_pattern(
+            EncodingEvasion,
+            "encoding evasion attempt detected",
+            r"(?i)(?:base64|b64)\s*(?:decode|encoded?)\s*:",
+        ),
+        make_pattern(
+            EncodingEvasion,
+            "encoding evasion attempt detected",
+            r"(?i)\\u[0-9a-fA-F]{4}\s*\\u[0-9a-fA-F]{4}\s*\\u[0-9a-fA-F]{4}",
+        ),
+        make_pattern(
+            EncodingEvasion,
+            "encoding evasion attempt detected",
+            r"(?i)&#x?[0-9a-fA-F]+;\s*&#x?[0-9a-fA-F]+;\s*&#x?[0-9a-fA-F]+;",
+        ),
+        make_pattern(
+            EncodingEvasion,
+            "encoding evasion attempt detected",
+            r"%[0-9a-fA-F]{2}%[0-9a-fA-F]{2}%[0-9a-fA-F]{2}",
+        ),
     ]
 }
 
@@ -203,21 +291,31 @@ fn build_pii_patterns() -> Vec<CompiledPattern> {
     use PatternCategory::*;
     vec![
         // EmailAddress
-        make_pattern(EmailAddress, "email address detected",
-            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
+        make_pattern(
+            EmailAddress,
+            "email address detected",
+            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+        ),
         // PhoneNumber
-        make_pattern(PhoneNumber, "phone number detected",
-            r"(?:\+?1[\s.-]?)?\(?[2-9]\d{2}\)?[\s.-]?\d{3}[\s.-]?\d{4}"),
+        make_pattern(
+            PhoneNumber,
+            "phone number detected",
+            r"(?:\+?1[\s.-]?)?\(?[2-9]\d{2}\)?[\s.-]?\d{3}[\s.-]?\d{4}",
+        ),
         // SocialSecurityNumber
-        make_pattern(SocialSecurityNumber, "social security number detected",
-            r"\b\d{3}-\d{2}-\d{4}\b"),
+        make_pattern(
+            SocialSecurityNumber,
+            "social security number detected",
+            r"\b\d{3}-\d{2}-\d{4}\b",
+        ),
         // ApiKey
-        make_pattern(ApiKey, "API key or token detected",
-            r"(?i)bearer\s+[a-zA-Z0-9._~+/=-]{20,}"),
-        make_pattern(ApiKey, "AWS access key detected",
-            r"AKIA[A-Z0-9]{16}"),
-        make_pattern(ApiKey, "GitHub token detected",
-            r"gh[pos]_[a-zA-Z0-9]{36}"),
+        make_pattern(
+            ApiKey,
+            "API key or token detected",
+            r"(?i)bearer\s+[a-zA-Z0-9._~+/=-]{20,}",
+        ),
+        make_pattern(ApiKey, "AWS access key detected", r"AKIA[A-Z0-9]{16}"),
+        make_pattern(ApiKey, "GitHub token detected", r"gh[pos]_[a-zA-Z0-9]{36}"),
     ]
 }
 
@@ -237,7 +335,11 @@ mod tests {
     #[test]
     fn test_scan_instruction_override_negative() {
         let scanner = ContentScanner::global();
-        assert!(scanner.scan("Use Result<T, E> for all fallible operations in error handling").is_ok());
+        assert!(
+            scanner
+                .scan("Use Result<T, E> for all fallible operations in error handling")
+                .is_ok()
+        );
     }
 
     #[test]
@@ -260,7 +362,11 @@ mod tests {
     fn test_scan_role_impersonation_negative() {
         let scanner = ContentScanner::global();
         // "act as a proxy" should NOT trigger since pattern requires admin/root/etc
-        assert!(scanner.scan("the service should act as a proxy for requests").is_ok());
+        assert!(
+            scanner
+                .scan("the service should act as a proxy for requests")
+                .is_ok()
+        );
     }
 
     #[test]
@@ -275,7 +381,11 @@ mod tests {
     #[test]
     fn test_scan_system_prompt_extraction_negative() {
         let scanner = ContentScanner::global();
-        assert!(scanner.scan("the system processes prompts in a queue").is_ok());
+        assert!(
+            scanner
+                .scan("the system processes prompts in a queue")
+                .is_ok()
+        );
     }
 
     #[test]
@@ -305,7 +415,11 @@ mod tests {
     #[test]
     fn test_scan_encoding_evasion_negative() {
         let scanner = ContentScanner::global();
-        assert!(scanner.scan("encode the data using standard algorithms").is_ok());
+        assert!(
+            scanner
+                .scan("encode the data using standard algorithms")
+                .is_ok()
+        );
     }
 
     #[test]
@@ -344,7 +458,8 @@ mod tests {
     #[test]
     fn test_scan_api_key_bearer_positive() {
         let scanner = ContentScanner::global();
-        let result = scanner.scan("Authorization: bearer eyJhbGciOiJIUzI1NiJ9.eyJ0ZXN0IjoidmFsdWUifQ");
+        let result =
+            scanner.scan("Authorization: bearer eyJhbGciOiJIUzI1NiJ9.eyJ0ZXN0IjoidmFsdWUifQ");
         assert!(result.is_err());
         let sr = result.unwrap_err();
         assert_eq!(sr.category, PatternCategory::ApiKey);
@@ -402,11 +517,15 @@ mod tests {
     #[test]
     fn test_clean_content_passes() {
         let scanner = ContentScanner::global();
-        assert!(scanner.scan(
-            "Use conventional commits for all git messages. \
+        assert!(
+            scanner
+                .scan(
+                    "Use conventional commits for all git messages. \
              The format is: type(scope): description. \
              Types include feat, fix, docs, refactor, test."
-        ).is_ok());
+                )
+                .is_ok()
+        );
     }
 
     #[test]

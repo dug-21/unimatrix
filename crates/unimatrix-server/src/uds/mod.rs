@@ -30,7 +30,11 @@ mod tests {
     fn test_uds_capabilities_exact_set() {
         assert_eq!(
             UDS_CAPABILITIES,
-            &[Capability::Read, Capability::Search, Capability::SessionWrite]
+            &[
+                Capability::Read,
+                Capability::Search,
+                Capability::SessionWrite
+            ]
         );
     }
 

@@ -73,8 +73,7 @@ impl EmbedServiceHandle {
         let handle = Arc::clone(self);
 
         tokio::spawn(async move {
-            let result =
-                tokio::task::spawn_blocking(move || OnnxProvider::new(config)).await;
+            let result = tokio::task::spawn_blocking(move || OnnxProvider::new(config)).await;
 
             let mut state = handle.state.write().await;
             match result {
@@ -90,12 +89,18 @@ impl EmbedServiceHandle {
                 }
                 Ok(Err(e)) => {
                     let msg = e.to_string();
-                    *state = EmbedState::Failed { message: msg.clone(), attempts: attempt };
+                    *state = EmbedState::Failed {
+                        message: msg.clone(),
+                        attempts: attempt,
+                    };
                     tracing::error!(error = %msg, attempt, "embedding model failed to load");
                 }
                 Err(join_err) => {
                     let msg = join_err.to_string();
-                    *state = EmbedState::Failed { message: msg.clone(), attempts: attempt };
+                    *state = EmbedState::Failed {
+                        message: msg.clone(),
+                        attempts: attempt,
+                    };
                     tracing::error!(error = %msg, attempt, "embedding model load task panicked");
                 }
             }
@@ -170,7 +175,9 @@ impl EmbedServiceHandle {
                                 "retrying embedding model load"
                             );
                             let cfg_clone = cfg.clone();
-                            *state = EmbedState::Retrying { attempt: next_attempt };
+                            *state = EmbedState::Retrying {
+                                attempt: next_attempt,
+                            };
                             drop(config);
                             drop(state);
 
@@ -214,7 +221,10 @@ impl EmbedServiceHandle {
     #[cfg(test)]
     async fn set_failed_for_test(&self, msg: String, attempts: u32) {
         let mut state = self.state.write().await;
-        *state = EmbedState::Failed { message: msg, attempts };
+        *state = EmbedState::Failed {
+            message: msg,
+            attempts,
+        };
     }
 
     /// Check current attempt count for testing.
