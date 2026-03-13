@@ -22,6 +22,10 @@ pub struct EnrollResult {
     pub agent: AgentRecord,
 }
 
+/// When true, unknown agents auto-enroll with [Read, Write, Search].
+/// When false (production), unknown agents auto-enroll with [Read, Search] only.
+const PERMISSIVE_AUTO_ENROLL: bool = true;
+
 /// Agent IDs that cannot be modified via enrollment (ADR-002).
 const PROTECTED_AGENTS: &[&str] = &["system", "human"];
 
@@ -183,8 +187,12 @@ impl AgentRegistry {
 
         // Not found: auto-enroll as Restricted
         let now = current_unix_seconds();
-        let caps_json = serde_json::to_string(&[Capability::Read as u8, Capability::Search as u8])
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
+        let default_caps = if PERMISSIVE_AUTO_ENROLL {
+            vec![Capability::Read, Capability::Write, Capability::Search]
+        } else {
+            vec![Capability::Read, Capability::Search]
+        };
+        let caps_json = serialize_capabilities(&default_caps)?;
 
         conn.execute(
             "INSERT OR IGNORE INTO agent_registry (agent_id, trust_level, capabilities,
@@ -447,19 +455,21 @@ mod tests {
 
         let agent = registry.resolve_or_enroll("unknown-agent-123").unwrap();
         assert_eq!(agent.trust_level, TrustLevel::Restricted);
+        // PERMISSIVE_AUTO_ENROLL=true grants Write to unknown agents
         assert_eq!(
             agent.capabilities,
-            vec![Capability::Read, Capability::Search]
+            vec![Capability::Read, Capability::Write, Capability::Search]
         );
     }
 
     #[test]
-    fn test_enrolled_agent_lacks_write() {
+    fn test_enrolled_agent_has_write_when_permissive() {
         let store = make_store();
         let registry = AgentRegistry::new(store).unwrap();
 
         let agent = registry.resolve_or_enroll("new-agent").unwrap();
-        assert!(!agent.capabilities.contains(&Capability::Write));
+        // PERMISSIVE_AUTO_ENROLL=true grants Write
+        assert!(agent.capabilities.contains(&Capability::Write));
     }
 
     #[test]
@@ -506,9 +516,10 @@ mod tests {
         let registry = AgentRegistry::new(store).unwrap();
 
         registry.resolve_or_enroll("agent-x").unwrap();
+        // PERMISSIVE_AUTO_ENROLL=true grants Write, but Admin is never auto-granted
         assert!(
             !registry
-                .has_capability("agent-x", Capability::Write)
+                .has_capability("agent-x", Capability::Admin)
                 .unwrap()
         );
     }
@@ -532,7 +543,8 @@ mod tests {
         let registry = AgentRegistry::new(store).unwrap();
 
         registry.resolve_or_enroll("agent-x").unwrap();
-        let result = registry.require_capability("agent-x", Capability::Write);
+        // Admin is never auto-granted, so this should be denied
+        let result = registry.require_capability("agent-x", Capability::Admin);
         assert!(matches!(result, Err(ServerError::CapabilityDenied { .. })));
     }
 
@@ -560,10 +572,25 @@ mod tests {
 
         let agent = registry.resolve_or_enroll("anonymous").unwrap();
         assert_eq!(agent.trust_level, TrustLevel::Restricted);
+        // PERMISSIVE_AUTO_ENROLL=true grants Write to anonymous too
         assert_eq!(
             agent.capabilities,
-            vec![Capability::Read, Capability::Search]
+            vec![Capability::Read, Capability::Write, Capability::Search]
         );
+    }
+
+    #[test]
+    fn test_permissive_auto_enroll_grants_read_write_search() {
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+
+        // When PERMISSIVE_AUTO_ENROLL is true, unknown agents get [Read, Write, Search]
+        let agent = registry.resolve_or_enroll("brand-new-agent").unwrap();
+        assert_eq!(agent.trust_level, TrustLevel::Restricted);
+        assert!(agent.capabilities.contains(&Capability::Read));
+        assert!(agent.capabilities.contains(&Capability::Write));
+        assert!(agent.capabilities.contains(&Capability::Search));
+        assert!(!agent.capabilities.contains(&Capability::Admin));
     }
 
     // -- alc-002: enroll_agent --
