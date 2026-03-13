@@ -49,6 +49,20 @@ Each message batches ALL related operations of the same type:
 
 The Design Leader creates a `feature/{feature-id}` branch at session start and opens a **draft PR** at session end. Implementation continues on the same branch — no separate design merge step. See `/uni-git` for branch naming and PR conventions.
 
+### Feature Cycle Attribution
+
+After creating the branch — before spawning any agents — call `context_cycle` to declare the feature cycle:
+
+```
+context_cycle(
+  type: "start",
+  topic: "{feature-id}",
+  keywords: ["{keyword-1}", "{keyword-2}", ...]  // 3-5 semantic terms for the feature
+)
+```
+
+This sets session-level feature attribution so all subsequent tool calls are tracked against this feature.
+
 ---
 
 ## Flow: Phase 1 + Phase 2
@@ -301,6 +315,7 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 ```
 DESIGN LEADER (you):
   Init:       git checkout -b feature/{feature-id}
+              context_cycle(type: "start", topic: "{feature-id}", keywords: [...])
   Phase 1:    Task(uni-researcher) — scope exploration with human
               ...human approves SCOPE.md...
   Phase 1b:   Task(uni-risk-strategist, MODE: scope-risk) — scope risk assessment
@@ -311,16 +326,22 @@ DESIGN LEADER (you):
               ...wait...
   Phase 2b:   Task(uni-vision-guardian) — alignment check
   Phase 2c:   Task(uni-synthesizer) — brief + maps + GH Issue (fresh context)
-  Phase 2d:   git commit + push + gh pr create --draft — SESSION 1 ENDS
+  Phase 2d:   git commit + push + gh pr create --draft
+              context_cycle(type: "stop", topic: "{feature-id}") — SESSION 1 ENDS
 ```
 
 ---
 
 ## Outcome Recording
 
-After returning artifacts to the human, record the session outcome in Unimatrix:
+After returning artifacts to the human, close the feature cycle and record the session outcome:
 
 ```
+context_cycle(
+  type: "stop",
+  topic: "{feature-id}"
+)
+
 context_store(
   category: "outcome",
   feature_cycle: "{feature-id}",

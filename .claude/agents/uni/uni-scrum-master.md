@@ -93,6 +93,21 @@ From the primary agent's spawn prompt:
 
 ---
 
+## Feature Cycle Attribution
+
+**MUST call `context_cycle(type: "start")` before any file-touching tool calls.** This sets session-level feature attribution so all subsequent tool calls are tracked against the correct feature.
+
+| When | Call | Parameters |
+|------|------|------------|
+| After branch creation / initialization, before first agent spawn | `context_cycle(type: "start")` | `topic: "{feature-id}"`, `keywords: [...]` (3-5 semantic terms) |
+| After outcome recording, at session end | `context_cycle(type: "stop")` | `topic: "{feature-id}"` |
+
+- `topic` = the feature ID from your spawn prompt (e.g., `col-022`, `nxs-005`, `142-null-crash`)
+- `keywords` = 3-5 terms describing the feature work (e.g., `["lifecycle", "attribution", "cycle-management"]`)
+- Each protocol specifies the exact insertion point — follow it
+
+---
+
 ## Gate Management (Delivery + Bugfix)
 
 Spawn `uni-validator` with focused check sets per the protocol.
