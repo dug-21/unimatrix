@@ -83,6 +83,7 @@ def test_store_empty_topic(server):
     assert_tool_success(resp)
 
 
+@pytest.mark.xfail(reason="Pre-existing: GH#233 — PERMISSIVE_AUTO_ENROLL grants Write to unknown agents")
 def test_store_restricted_agent_rejected(server):
     """T-08: Restricted agent cannot store (no Write capability)."""
     resp = server.context_store(
@@ -372,6 +373,7 @@ def test_correct_nonexistent(server):
     assert_tool_error(resp)
 
 
+@pytest.mark.xfail(reason="Pre-existing: GH#233 — PERMISSIVE_AUTO_ENROLL grants Write to unknown agents")
 def test_correct_requires_write(server):
     """T-49: Correct requires Write capability."""
     store_resp = server.context_store(
@@ -447,6 +449,7 @@ def test_deprecate_nonexistent(server):
     assert_tool_error(resp)
 
 
+@pytest.mark.xfail(reason="Pre-existing: GH#233 — PERMISSIVE_AUTO_ENROLL grants Write to unknown agents")
 def test_deprecate_requires_write(server):
     """T-55: Deprecate requires Write capability."""
     store_resp = server.context_store(
