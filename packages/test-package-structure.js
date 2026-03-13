@@ -7,13 +7,19 @@ const path = require("path");
 
 const PACKAGES_DIR = path.join(__dirname);
 const ROOT_PKG_PATH = path.join(PACKAGES_DIR, "unimatrix", "package.json");
-const PLATFORM_PKG_PATH = path.join(
+const PLATFORM_X64_PKG_PATH = path.join(
   PACKAGES_DIR,
   "unimatrix-linux-x64",
   "package.json"
 );
+const PLATFORM_ARM64_PKG_PATH = path.join(
+  PACKAGES_DIR,
+  "unimatrix-linux-arm64",
+  "package.json"
+);
 const SKILLS_DIR = path.join(PACKAGES_DIR, "unimatrix", "skills");
-const PLATFORM_BIN_DIR = path.join(PACKAGES_DIR, "unimatrix-linux-x64", "bin");
+const PLATFORM_X64_BIN_DIR = path.join(PACKAGES_DIR, "unimatrix-linux-x64", "bin");
+const PLATFORM_ARM64_BIN_DIR = path.join(PACKAGES_DIR, "unimatrix-linux-arm64", "bin");
 
 let passed = 0;
 let failed = 0;
@@ -34,7 +40,8 @@ function deepEqual(a, b) {
 
 // Load package.json files
 const rootPkg = JSON.parse(fs.readFileSync(ROOT_PKG_PATH, "utf8"));
-const platformPkg = JSON.parse(fs.readFileSync(PLATFORM_PKG_PATH, "utf8"));
+const platformPkg = JSON.parse(fs.readFileSync(PLATFORM_X64_PKG_PATH, "utf8"));
+const platformArm64Pkg = JSON.parse(fs.readFileSync(PLATFORM_ARM64_PKG_PATH, "utf8"));
 
 // --- Root package tests ---
 console.log("Root package (@dug-21/unimatrix):");
@@ -59,9 +66,16 @@ assert(
 );
 
 assert(
-  "test_root_package_has_optional_dependencies",
+  "test_root_package_has_optional_dependencies_x64",
   rootPkg.optionalDependencies &&
     rootPkg.optionalDependencies["@dug-21/unimatrix-linux-x64"] === "0.5.0",
+  `got ${JSON.stringify(rootPkg.optionalDependencies)}`
+);
+
+assert(
+  "test_root_package_has_optional_dependencies_arm64",
+  rootPkg.optionalDependencies &&
+    rootPkg.optionalDependencies["@dug-21/unimatrix-linux-arm64"] === "0.5.0",
   `got ${JSON.stringify(rootPkg.optionalDependencies)}`
 );
 
@@ -139,10 +153,17 @@ assert(
 
 // AC-12: optionalDependencies uses exact version (not range)
 assert(
-  "test_optional_deps_exact_version_not_range",
+  "test_optional_deps_exact_version_not_range_x64",
   rootPkg.optionalDependencies &&
     /^\d+\.\d+\.\d+$/.test(rootPkg.optionalDependencies["@dug-21/unimatrix-linux-x64"]),
   `got "${rootPkg.optionalDependencies && rootPkg.optionalDependencies["@dug-21/unimatrix-linux-x64"]}"`
+);
+
+assert(
+  "test_optional_deps_exact_version_not_range_arm64",
+  rootPkg.optionalDependencies &&
+    /^\d+\.\d+\.\d+$/.test(rootPkg.optionalDependencies["@dug-21/unimatrix-linux-arm64"]),
+  `got "${rootPkg.optionalDependencies && rootPkg.optionalDependencies["@dug-21/unimatrix-linux-arm64"]}"`
 );
 
 // --- Skills directory tests ---
@@ -189,14 +210,62 @@ assert(
   missingMd.length > 0 ? `missing SKILL.md in: ${missingMd.join(", ")}` : ""
 );
 
-// --- Platform bin directory ---
-console.log("\nPlatform binary directory:");
+// --- ARM64 platform package tests ---
+console.log("\nPlatform package (@dug-21/unimatrix-linux-arm64):");
 
 assert(
-  "test_platform_bin_dir_exists",
-  fs.existsSync(PLATFORM_BIN_DIR) &&
-    fs.statSync(PLATFORM_BIN_DIR).isDirectory(),
-  `path: ${PLATFORM_BIN_DIR}`
+  "test_arm64_platform_package_os_field",
+  deepEqual(platformArm64Pkg.os, ["linux"]),
+  `got ${JSON.stringify(platformArm64Pkg.os)}`
+);
+
+assert(
+  "test_arm64_platform_package_cpu_field",
+  deepEqual(platformArm64Pkg.cpu, ["arm64"]),
+  `got ${JSON.stringify(platformArm64Pkg.cpu)}`
+);
+
+assert(
+  "test_arm64_platform_package_version_matches_root",
+  platformArm64Pkg.version === rootPkg.version,
+  `platform=${platformArm64Pkg.version}, root=${rootPkg.version}`
+);
+
+assert(
+  "test_arm64_platform_package_has_no_dependencies",
+  !platformArm64Pkg.dependencies && !platformArm64Pkg.devDependencies,
+  `deps=${JSON.stringify(platformArm64Pkg.dependencies)}, devDeps=${JSON.stringify(platformArm64Pkg.devDependencies)}`
+);
+
+assert(
+  "test_arm64_platform_package_publish_config_restricted",
+  platformArm64Pkg.publishConfig &&
+    platformArm64Pkg.publishConfig.access === "restricted",
+  `got ${JSON.stringify(platformArm64Pkg.publishConfig)}`
+);
+
+assert(
+  "test_arm64_platform_package_files_array",
+  Array.isArray(platformArm64Pkg.files) &&
+    platformArm64Pkg.files.includes("bin/"),
+  `got ${JSON.stringify(platformArm64Pkg.files)}`
+);
+
+// --- Platform bin directories ---
+console.log("\nPlatform binary directories:");
+
+assert(
+  "test_platform_x64_bin_dir_exists",
+  fs.existsSync(PLATFORM_X64_BIN_DIR) &&
+    fs.statSync(PLATFORM_X64_BIN_DIR).isDirectory(),
+  `path: ${PLATFORM_X64_BIN_DIR}`
+);
+
+assert(
+  "test_platform_arm64_bin_dir_exists",
+  fs.existsSync(PLATFORM_ARM64_BIN_DIR) &&
+    fs.statSync(PLATFORM_ARM64_BIN_DIR).isDirectory(),
+  `path: ${PLATFORM_ARM64_BIN_DIR}`
 );
 
 // --- Summary ---

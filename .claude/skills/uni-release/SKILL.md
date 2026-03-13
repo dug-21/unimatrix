@@ -75,8 +75,12 @@ Update these files with the new version:
 1. **`packages/unimatrix/package.json`**:
    - Set `"version"` to `"{new_version}"`.
    - Set `"optionalDependencies"."@dug-21/unimatrix-linux-x64"` to `"{new_version}"`.
+   - Set `"optionalDependencies"."@dug-21/unimatrix-linux-arm64"` to `"{new_version}"`.
 
 2. **`packages/unimatrix-linux-x64/package.json`**:
+   - Set `"version"` to `"{new_version}"`.
+
+3. **`packages/unimatrix-linux-arm64/package.json`**:
    - Set `"version"` to `"{new_version}"`.
 
 ---
@@ -141,7 +145,7 @@ If this fails, stop with: **"Build check failed after version update. Review cha
 
 Stage only the release-related files:
 ```bash
-git add Cargo.toml packages/unimatrix/package.json packages/unimatrix-linux-x64/package.json CHANGELOG.md
+git add Cargo.toml packages/unimatrix/package.json packages/unimatrix-linux-x64/package.json packages/unimatrix-linux-arm64/package.json CHANGELOG.md
 ```
 
 Commit with the release message:
@@ -181,6 +185,7 @@ Files modified:
   - Cargo.toml (workspace version)
   - packages/unimatrix/package.json
   - packages/unimatrix-linux-x64/package.json
+  - packages/unimatrix-linux-arm64/package.json
   - CHANGELOG.md
 
 Git:

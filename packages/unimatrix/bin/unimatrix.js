@@ -35,8 +35,15 @@ function main() {
     return;
   }
 
+  // Ensure bundled shared libraries (libonnxruntime) are found at runtime
+  const binDir = require("path").dirname(binaryPath);
+  const ldPath = process.env.LD_LIBRARY_PATH;
+  const env = Object.assign({}, process.env, {
+    LD_LIBRARY_PATH: ldPath ? binDir + ":" + ldPath : binDir,
+  });
+
   try {
-    execFileSync(binaryPath, args, { stdio: "inherit" });
+    execFileSync(binaryPath, args, { stdio: "inherit", env: env });
   } catch (error) {
     // execFileSync throws on non-zero exit code
     // error.status contains the exit code from the child process

@@ -12,6 +12,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  ORT_VERSION: "1.20.1"
 
 jobs:
   build-linux-x64:
@@ -37,23 +38,39 @@ jobs:
             exit 1
           fi
 
+      - name: Install ONNX Runtime
+        run: |
+          curl -sL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" | tar xz
+          sudo cp onnxruntime-linux-x64-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/
+          sudo ldconfig
+
       - name: Build
         run: cargo build --release
+        env:
+          ORT_LIB_LOCATION: /usr/local/lib
+          ORT_PREFER_DYNAMIC_LINK: "1"
 
       - name: Strip binary
         run: strip target/release/unimatrix
 
+      - name: Bundle binary and shared libraries
+        run: |
+          mkdir -p artifact/bin
+          cp target/release/unimatrix artifact/bin/
+          cp -L /usr/local/lib/libonnxruntime.so.${ORT_VERSION} artifact/bin/
+          cp -L /usr/local/lib/libonnxruntime.so.${ORT_VERSION} artifact/bin/libonnxruntime.so.1
+
       - name: Check shared libraries
         run: |
-          ldd target/release/unimatrix
-          if ldd target/release/unimatrix 2>&1 | grep -q "not found"; then
+          LD_LIBRARY_PATH=artifact/bin ldd artifact/bin/unimatrix
+          if LD_LIBRARY_PATH=artifact/bin ldd artifact/bin/unimatrix 2>&1 | grep -q "not found"; then
             echo "ERROR: Binary has missing shared library dependencies"
             exit 1
           fi
 
       - name: Smoke test
         run: |
-          OUTPUT=$(target/release/unimatrix version)
+          OUTPUT=$(LD_LIBRARY_PATH=artifact/bin artifact/bin/unimatrix version)
           echo "$OUTPUT"
           if ! echo "$OUTPUT" | grep -q "^unimatrix "; then
             echo "ERROR: Unexpected version output: $OUTPUT"
@@ -62,18 +79,102 @@ jobs:
 
       - name: Test
         run: cargo test --release
+        env:
+          ORT_LIB_LOCATION: /usr/local/lib
+          ORT_PREFER_DYNAMIC_LINK: "1"
 
       - name: Binary size
-        run: ls -lh target/release/unimatrix
+        run: |
+          ls -lh artifact/bin/unimatrix
+          ls -lh artifact/bin/libonnxruntime.so.*
 
       - uses: actions/upload-artifact@v4
         with:
           name: unimatrix-linux-x64
-          path: target/release/unimatrix
+          path: artifact/bin/
+          retention-days: 1
+
+  build-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.89
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-arm64-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: linux-arm64-release-
+
+      - name: Verify patched dependencies
+        run: |
+          if [ ! -d "patches/anndists" ]; then
+            echo "ERROR: patches/anndists directory missing"
+            exit 1
+          fi
+
+      - name: Install ONNX Runtime
+        run: |
+          curl -sL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-aarch64-${ORT_VERSION}.tgz" | tar xz
+          sudo cp onnxruntime-linux-aarch64-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/
+          sudo ldconfig
+
+      - name: Build
+        run: cargo build --release
+        env:
+          ORT_LIB_LOCATION: /usr/local/lib
+          ORT_PREFER_DYNAMIC_LINK: "1"
+
+      - name: Strip binary
+        run: strip target/release/unimatrix
+
+      - name: Bundle binary and shared libraries
+        run: |
+          mkdir -p artifact/bin
+          cp target/release/unimatrix artifact/bin/
+          cp -L /usr/local/lib/libonnxruntime.so.${ORT_VERSION} artifact/bin/
+          cp -L /usr/local/lib/libonnxruntime.so.${ORT_VERSION} artifact/bin/libonnxruntime.so.1
+
+      - name: Check shared libraries
+        run: |
+          LD_LIBRARY_PATH=artifact/bin ldd artifact/bin/unimatrix
+          if LD_LIBRARY_PATH=artifact/bin ldd artifact/bin/unimatrix 2>&1 | grep -q "not found"; then
+            echo "ERROR: Binary has missing shared library dependencies"
+            exit 1
+          fi
+
+      - name: Smoke test
+        run: |
+          OUTPUT=$(LD_LIBRARY_PATH=artifact/bin artifact/bin/unimatrix version)
+          echo "$OUTPUT"
+          if ! echo "$OUTPUT" | grep -q "^unimatrix "; then
+            echo "ERROR: Unexpected version output: $OUTPUT"
+            exit 1
+          fi
+
+      - name: Test
+        run: cargo test --release
+        env:
+          ORT_LIB_LOCATION: /usr/local/lib
+          ORT_PREFER_DYNAMIC_LINK: "1"
+
+      - name: Binary size
+        run: |
+          ls -lh artifact/bin/unimatrix
+          ls -lh artifact/bin/libonnxruntime.so.*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unimatrix-linux-arm64
+          path: artifact/bin/
           retention-days: 1
 
   package-npm:
-    needs: build-linux-x64
+    needs: [build-linux-x64, build-linux-arm64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,8 +189,15 @@ jobs:
           name: unimatrix-linux-x64
           path: packages/unimatrix-linux-x64/bin/
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: unimatrix-linux-arm64
+          path: packages/unimatrix-linux-arm64/bin/
+
       - name: Set permissions
-        run: chmod +x packages/unimatrix-linux-x64/bin/unimatrix
+        run: |
+          chmod +x packages/unimatrix-linux-x64/bin/unimatrix
+          chmod +x packages/unimatrix-linux-arm64/bin/unimatrix
 
       - name: Bundle skills
         run: |
@@ -123,6 +231,12 @@ jobs:
 
       - name: Publish @dug-21/unimatrix-linux-x64
         working-directory: packages/unimatrix-linux-x64
+        run: npm publish --access restricted
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @dug-21/unimatrix-linux-arm64
+        working-directory: packages/unimatrix-linux-arm64
         run: npm publish --access restricted
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
