@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.5] - 2026-03-13
+
+### Fixes
+- CI: switch npm packages to public access
+
 ## [0.5.4] - 2026-03-13
 
 ### Fixes
