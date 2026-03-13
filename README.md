@@ -153,7 +153,7 @@ Add to `.claude/settings.json`:
 
 ### Cold Start
 
-A fresh knowledge base returns empty results. Use `/unimatrix-seed` to populate foundational knowledge entries. Use `/unimatrix-init` to configure CLAUDE.md awareness and get agent recommendations.
+A fresh knowledge base returns empty results. Use `/uni-seed` to populate foundational knowledge entries. Use `/uni-init` to configure CLAUDE.md awareness and get agent recommendations.
 
 ### First Use Examples
 
@@ -191,7 +191,7 @@ context_briefing(role: "developer", task: "implement new MCP tool", feature: "vn
 
 5. **Hook latency budget.** Hooks have a sub-50ms round-trip budget. Heavy blocking operations in hook handlers degrade the user experience.
 
-6. **Cold start: use `/unimatrix-seed`.** A fresh knowledge base returns empty search results. `/unimatrix-seed` populates foundational entries before relying on search.
+6. **Cold start: use `/uni-seed`.** A fresh knowledge base returns empty search results. `/uni-seed` populates foundational entries before relying on search.
 
 7. **Near-duplicate detection.** Entries with cosine similarity >= 0.92 to existing entries are rejected as duplicates. Rephrase if a legitimate distinct entry is rejected.
 
@@ -229,20 +229,20 @@ Skills that interact with the MCP server require the server to be running and co
 
 | Skill | Purpose | When to Use |
 |-------|---------|-------------|
-| `/query-patterns` | Search for patterns, procedures, and conventions before work. (MCP) | Before designing or implementing any component. |
-| `/store-adr` | Store an architectural decision record in Unimatrix. (MCP) | After each design decision during architecture work. |
-| `/store-pattern` | Store a reusable implementation pattern. (MCP) | When you discover a gotcha, trap, or reusable solution. |
-| `/store-procedure` | Store or update a technical procedure (how-to). (MCP) | During retrospectives when a technique has evolved. |
-| `/store-lesson` | Store a lesson learned from a failure or unexpected issue. (MCP) | After bugfixes, gate failures, or rework cycles. |
-| `/record-outcome` | Record a feature or bugfix outcome. (MCP) | At the end of every session (design, delivery, bugfix, retrospective). |
-| `/knowledge-search` | Interactive semantic search across knowledge. (MCP) | When exploring a topic or looking for related entries. |
-| `/knowledge-lookup` | Interactive deterministic lookup by exact filters. (MCP) | When you know what you want — a specific feature, category, or ID. |
-| `/review-pr` | PR security review and merge readiness check. | After delivery or bugfix opens a PR. Can be invoked standalone. |
-| `/retro` | Post-merge retrospective — extract patterns, procedures, lessons. (MCP) | After a feature PR is merged. |
+| `/uni-query-patterns` | Search for patterns, procedures, and conventions before work. (MCP) | Before designing or implementing any component. |
+| `/uni-store-adr` | Store an architectural decision record in Unimatrix. (MCP) | After each design decision during architecture work. |
+| `/uni-store-pattern` | Store a reusable implementation pattern. (MCP) | When you discover a gotcha, trap, or reusable solution. |
+| `/uni-store-procedure` | Store or update a technical procedure (how-to). (MCP) | During retrospectives when a technique has evolved. |
+| `/uni-store-lesson` | Store a lesson learned from a failure or unexpected issue. (MCP) | After bugfixes, gate failures, or rework cycles. |
+| `/uni-record-outcome` | Record a feature or bugfix outcome. (MCP) | At the end of every session (design, delivery, bugfix, retrospective). |
+| `/uni-knowledge-search` | Interactive semantic search across knowledge. (MCP) | When exploring a topic or looking for related entries. |
+| `/uni-knowledge-lookup` | Interactive deterministic lookup by exact filters. (MCP) | When you know what you want — a specific feature, category, or ID. |
+| `/uni-review-pr` | PR security review and merge readiness check. | After delivery or bugfix opens a PR. Can be invoked standalone. |
+| `/uni-retro` | Post-merge retrospective — extract patterns, procedures, lessons. (MCP) | After a feature PR is merged. |
 | `/uni-git` | Git workflow conventions (branch naming, commit prefixes, PR templates). | For consistent git conventions. Contributor/developer-focused. |
-| `/release` | Version bump, changelog generation, tag, and release pipeline. | When creating a new release. |
-| `/unimatrix-init` | Initialize Unimatrix in a repository — CLAUDE.md setup + agent recommendations. | First-time setup of a repo to use Unimatrix. |
-| `/unimatrix-seed` | Populate foundational knowledge through human-directed exploration. (MCP) | After installation, to seed the knowledge base before relying on search. |
+| `/uni-release` | Version bump, changelog generation, tag, and release pipeline. | When creating a new release. |
+| `/uni-init` | Initialize Unimatrix in a repository — CLAUDE.md setup + agent recommendations. | First-time setup of a repo to use Unimatrix. |
+| `/uni-seed` | Populate foundational knowledge through human-directed exploration. (MCP) | After installation, to seed the knowledge base before relying on search. |
 
 ---
 

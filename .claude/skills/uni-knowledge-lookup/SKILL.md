@@ -1,5 +1,5 @@
 ---
-name: "knowledge-lookup"
+name: "uni-knowledge-lookup"
 description: "Deterministic lookup of Unimatrix knowledge by exact filters. Use when you know what you want — a specific feature, category, entry ID, or status."
 ---
 
@@ -71,9 +71,9 @@ This is faster than a lookup with an ID filter and always returns full content.
 
 ---
 
-## When to Use This vs /knowledge-search
+## When to Use This vs /uni-knowledge-search
 
-| Use `/knowledge-lookup` when | Use `/knowledge-search` when |
+| Use `/uni-knowledge-lookup` when | Use `/uni-knowledge-search` when |
 |------------------------------|------------------------------|
 | You know the exact feature/category | Exploring a concept |
 | "Give me all ADRs for nxs-002" | "What do we know about X?" |

@@ -1,16 +1,16 @@
 ---
-name: "unimatrix-seed"
+name: "uni-seed"
 description: "Populate Unimatrix with foundational repository knowledge through human-directed, gated exploration."
 ---
 
-# /unimatrix-seed — Knowledge Base Seeding
+# /uni-seed — Knowledge Base Seeding
 
 ## Prerequisites
 
 Before running this skill:
 
 1. **MCP server running**: The Unimatrix MCP server (`unimatrix-server`) must be running and wired in your Claude Code `settings.json`. This skill calls `context_status`, `context_search`, and `context_store` — all require an operational MCP server.
-2. **Recommended**: Run `/unimatrix-init` first to set up the CLAUDE.md knowledge block. Seeding works without it, but the CLAUDE.md block provides ongoing awareness.
+2. **Recommended**: Run `/uni-init` first to set up the CLAUDE.md knowledge block. Seeding works without it, but the CLAUDE.md block provides ongoing awareness.
 
 If `context_status` fails at startup, the MCP server is not available. Consult the installation documentation for wiring setup.
 
@@ -114,7 +114,7 @@ Apply the quality gate (What/Why/Scope) to each candidate. Silently discard any 
 
 If 0 entries pass the quality gate:
 ```
-Could not generate quality entries from available files. Consider adding a README.md with project context, then re-run /unimatrix-seed.
+Could not generate quality entries from available files. Consider adding a README.md with project context, then re-run /uni-seed.
 ```
 Skip to the Done summary.
 
@@ -152,14 +152,14 @@ Approve all entries? (approve / reject)
     topic: "{repo name or top-level context}",
     category: "{convention|pattern|procedure}",
     tags: ["seed", "level-0"],
-    agent_id: "unimatrix-seed"
+    agent_id: "uni-seed"
   )
   ```
   Report success or failure for each entry individually. If a `context_store` call fails, report which entry failed and continue storing the remaining entries.
 
   Print: "Stored {count} entries."
 
-- **If rejected**: Print "0 entries stored. Re-invoke /unimatrix-seed with more specific guidance if needed." and skip to the Done summary.
+- **If rejected**: Print "0 entries stored. Re-invoke /uni-seed with more specific guidance if needed." and skip to the Done summary.
 
 After storing (or rejecting), present the Level 1 exploration menu:
 

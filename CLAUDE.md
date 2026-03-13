@@ -9,7 +9,7 @@
 
    Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries and behavioral rules. The protocol defines what to do and when; the SM definition defines how you behave.
 
-   For PR review: `/review-pr`. For retrospective: `/retro`.
+   For PR review: `/uni-review-pr`. For retrospective: `/uni-retro`.
 2. **Anti-stub**: Never leave TODO, `unimplemented!()`, `todo!()`, or placeholder functions. Ask if blocked.
 3. **Never save files to root.** Use project directory structure.
 
@@ -22,7 +22,7 @@
 /product/features/{phase}-{NNN}/                      - Feature docs per feature
 /.claude/agents/uni/                                  - Agent definitions (active)
 /.claude/protocols/uni/                               - Workflow protocols (design, delivery, bugfix)
-/.claude/skills/                                      - Skills (/review-pr, /retro, /uni-git, etc.)
+/.claude/skills/                                      - Skills (/uni-review-pr, /uni-retro, /uni-git, etc.)
 /.claude/rules/                                       - Contextual rules
 ```
 
@@ -57,10 +57,10 @@ Features use `{phase}-{NNN}` naming. Track via **GitHub Issues**; commits refere
 
 Knowledge engine (MCP server). **Use it.**
 
-- `/query-patterns` — before designing or implementing, check what exists
-- `/store-adr` — after each architectural decision (Unimatrix-only, no ADR files)
-- `/record-outcome` — at the end of every session
-- `/store-procedure` — when a reusable technique evolves
-- `/store-lesson` — after failures and gate rejections
+- `/uni-query-patterns` — before designing or implementing, check what exists
+- `/uni-store-adr` — after each architectural decision (Unimatrix-only, no ADR files)
+- `/uni-record-outcome` — at the end of every session
+- `/uni-store-procedure` — when a reusable technique evolves
+- `/uni-store-lesson` — after failures and gate rejections
 
 Do not store workflow choreography in Unimatrix. Protocols live in `.claude/protocols/uni/`.

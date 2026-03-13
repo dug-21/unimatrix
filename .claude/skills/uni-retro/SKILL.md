@@ -1,5 +1,5 @@
 ---
-name: "retro"
+name: "uni-retro"
 description: "Post-merge retrospective — extracts patterns, procedures, and lessons from shipped features into Unimatrix. Use after a feature PR is merged."
 ---
 
@@ -160,9 +160,9 @@ Agent(uni-architect, "
   YOUR TASKS:
 
   1. PATTERN EXTRACTION — For each component implemented:
-     a. Use /query-patterns to find existing patterns for the affected crate(s)
+     a. Use /uni-query-patterns to find existing patterns for the affected crate(s)
      b. If the component followed an existing pattern: verify it's still accurate.
-        If the pattern drifted, use /store-procedure or context_correct to update it.
+        If the pattern drifted, use /uni-store-procedure or context_correct to update it.
      c. If the component established a NEW reusable structure (used in 2+ features
         or clearly generic): store it via context_store(category: 'pattern').
      d. If the component was one-off: skip — don't store patterns for unique work.
@@ -171,7 +171,7 @@ Agent(uni-architect, "
      a. Did the build/test/integration process change?
      b. Did schema migration steps change?
      c. Was there a new technique that future developers need?
-     If yes: use /store-procedure (new) or context_correct (update existing).
+     If yes: use /uni-store-procedure (new) or context_correct (update existing).
 
   3. ADR VALIDATION — For each ADR created during this feature:
      a. Was the decision validated by successful implementation?
@@ -183,16 +183,16 @@ Agent(uni-architect, "
      A. From gate failures and rework:
         a. What went wrong? (root cause, not symptoms)
         b. Is the lesson generalizable beyond this feature?
-        c. If yes: use /store-lesson.
+        c. If yes: use /uni-store-lesson.
 
      B. From retrospective hotspots and recommendations:
         For each Warning-severity hotspot, ask:
         - Is this a recurring problem (check baseline — is it consistently above threshold)?
         - Can it be prevented by a procedure change or config update?
-        - If yes: store as lesson (/store-lesson) or procedure (/store-procedure).
+        - If yes: store as lesson (/uni-store-lesson) or procedure (/uni-store-procedure).
 
         For each recommendation from the retrospective:
-        - Check if a matching procedure already exists (/query-patterns).
+        - Check if a matching procedure already exists (/uni-query-patterns).
         - If not, and the recommendation is actionable: store as procedure.
         - If it updates existing guidance: use context_correct.
 
@@ -223,7 +223,7 @@ If the architect flagged any ADRs for supersession:
    Approve supersession?
    ```
 
-2. If human approves: spawn architect to perform the supersession via `/store-adr`.
+2. If human approves: spawn architect to perform the supersession via `/uni-store-adr`.
 3. If human disagrees: note as "ADR validated with caveat".
 
 ---
@@ -251,7 +251,7 @@ If a worktree has uncommitted changes, warn the human — do NOT force-remove.
 
 Collect all knowledge base changes from Phases 2-3.
 
-Use `/record-outcome` with:
+Use `/uni-record-outcome` with:
 - Feature: `{feature-id}`
 - Type: `retro`
 - Phase: `retro`

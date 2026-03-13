@@ -39,8 +39,8 @@ Read individual ADR files in `product/features/{feature-id}/architecture/ADR-*.m
 
 ### 3. Query Patterns and Procedures
 
-- Use `/query-patterns` to search for existing component patterns in affected crates — build on established patterns, note deviations
-- Use `/knowledge-search` (category: "procedure") to find design procedures relevant to your task. If server unavailable or no results, proceed without — this is non-blocking.
+- Use `/uni-query-patterns` to search for existing component patterns in affected crates — build on established patterns, note deviations
+- Use `/uni-knowledge-search` (category: "procedure") to find design procedures relevant to your task. If server unavailable or no results, proceed without — this is non-blocking.
 
 ## Design Principles (How to Think)
 
@@ -112,12 +112,12 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 
 ## Knowledge Stewardship
 
-Read-only tier — no storage expected. Query `/query-patterns` for affected crates before designing (already in MANDATORY section above). Report deviations from established patterns in your agent report.
+Read-only tier — no storage expected. Query `/uni-query-patterns` for affected crates before designing (already in MANDATORY section above). Report deviations from established patterns in your agent report.
 
 ### Report Block
 ```markdown
 ## Knowledge Stewardship
-- Queried: /query-patterns for {crate} -- {findings summary or "no results"}
+- Queried: /uni-query-patterns for {crate} -- {findings summary or "no results"}
 - Deviations from established patterns: {list or "none"}
 ```
 

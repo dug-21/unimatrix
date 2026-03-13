@@ -29,7 +29,7 @@ Your spawn prompt tells you which phase you're in. Read it carefully.
 ## MANDATORY: Before Starting
 
 Query Unimatrix for procedural knowledge relevant to your task:
-- Use `/knowledge-search` (category: "procedure") for testing procedures (e.g., "gate verification steps," "integration test triage"). If server unavailable or no results, proceed without — this is non-blocking.
+- Use `/uni-knowledge-search` (category: "procedure") for testing procedures (e.g., "gate verification steps," "integration test triage"). If server unavailable or no results, proceed without — this is non-blocking.
 
 ---
 
@@ -271,10 +271,10 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 ## Knowledge Stewardship
 
 ### Before Starting
-Query `/knowledge-search` (category: "procedure") for testing procedures relevant to your task. Also query `/query-patterns` for the crate(s) being tested — patterns often reveal edge cases worth testing.
+Query `/uni-knowledge-search` (category: "procedure") for testing procedures relevant to your task. Also query `/uni-query-patterns` for the crate(s) being tested — patterns often reveal edge cases worth testing.
 
 ### After Completing
-Store new test infrastructure patterns via `/store-pattern` or `/store-procedure`:
+Store new test infrastructure patterns via `/uni-store-pattern` or `/uni-store-procedure`:
 - New fixture patterns, test helper utilities, or harness techniques discovered
 - Integration test patterns specific to a crate or feature type
 - Topic: `testing` or the specific crate name. Category: `pattern` or `procedure`.
@@ -285,8 +285,8 @@ If nothing novel was discovered, state that explicitly in your report with a rea
 Include in your agent report:
 ```markdown
 ## Knowledge Stewardship
-- Queried: /knowledge-search for testing procedures -- {findings summary or "no results"}
-- Stored: entry #{id} "{title}" via /store-pattern (or "nothing novel to store -- {reason}")
+- Queried: /uni-knowledge-search for testing procedures -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /uni-store-pattern (or "nothing novel to store -- {reason}")
 ```
 
 ## Self-Check (Run Before Returning Results)

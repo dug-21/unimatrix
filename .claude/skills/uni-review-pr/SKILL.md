@@ -1,5 +1,5 @@
 ---
-name: "review-pr"
+name: "uni-review-pr"
 description: "PR security review and merge readiness check. Use after delivery or bugfix opens a PR, or standalone when human wants to review a PR."
 ---
 
@@ -9,7 +9,7 @@ description: "PR security review and merge readiness check. Use after delivery o
 
 Verifies gate results, spawns a fresh-context security reviewer, and assesses merge readiness. Works as:
 - **Auto-invoked** by `uni-scrum-master` at the end of delivery/bugfix protocols
-- **Standalone** when human invokes `/review-pr {pr-number}` directly
+- **Standalone** when human invokes `/uni-review-pr {pr-number}` directly
 
 ---
 
@@ -120,7 +120,7 @@ Human action required: Approve and merge, or address blocking items.
 
 ## Step 5: Record Outcome
 
-Use `/record-outcome` with:
+Use `/uni-record-outcome` with:
 - Feature: `{feature-id}`
 - Type: `feature` (or `bugfix`)
 - Phase: `review`

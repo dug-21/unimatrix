@@ -36,9 +36,9 @@ From the Bugfix Manager's spawn prompt:
 
 Query Unimatrix for prior knowledge that may accelerate diagnosis:
 
-1. **Known bug patterns** — `/query-patterns` with the affected crate/module name to find recurring root cause patterns
-2. **Prior lessons** — `/knowledge-search` with query describing the symptom (e.g., "confidence scoring returns wrong value") to find lessons from past bugfixes
-3. **Related decisions** — `/knowledge-lookup` with `category: "decision"` and relevant topic to understand design intent
+1. **Known bug patterns** — `/uni-query-patterns` with the affected crate/module name to find recurring root cause patterns
+2. **Prior lessons** — `/uni-knowledge-search` with query describing the symptom (e.g., "confidence scoring returns wrong value") to find lessons from past bugfixes
+3. **Related decisions** — `/uni-knowledge-lookup` with `category: "decision"` and relevant topic to understand design intent
 
 Findings from these queries should inform your investigation — don't re-discover what the team already knows.
 
@@ -137,12 +137,12 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 The Unimatrix queries in the investigation section already fulfill the read-side obligation.
 
 ### After Completing
-Store generalizable debugging insights via `/store-lesson`:
+Store generalizable debugging insights via `/uni-store-lesson`:
 - Root cause patterns: "bincode positional encoding breaks when fields are added without migration"
 - Crate-specific traps: "HNSW stale count grows silently after context_correct; check vector_map consistency"
 - Topic: the affected crate name. Category: `lesson-learned`.
 
-If an existing lesson covers the same area but is incomplete, use `context_correct` to supersede it (see `/store-lesson`).
+If an existing lesson covers the same area but is incomplete, use `context_correct` to supersede it (see `/uni-store-lesson`).
 
 **Causal feature linkage**: When the bug was caused by a specific feature's implementation, tag the lesson with `caused_by_feature:{feature-id}`. Also note what could have been done during that feature's design phase to prevent the bug.
 
@@ -152,8 +152,8 @@ Only store generalizable insights — the specific bug diagnosis lives on the GH
 Include in your agent report:
 ```markdown
 ## Knowledge Stewardship
-- Queried: /query-patterns for {crate} -- {findings summary or "no results"}
-- Stored: entry #{id} "{title}" via /store-lesson (or "nothing novel to store -- {reason}")
+- Queried: /uni-query-patterns for {crate} -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /uni-store-lesson (or "nothing novel to store -- {reason}")
 ```
 
 ## Self-Check (Run Before Returning Results)

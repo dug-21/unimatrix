@@ -1,5 +1,5 @@
 ---
-name: "query-patterns"
+name: "uni-query-patterns"
 description: "Query Unimatrix for component patterns, procedures, and conventions before designing or implementing. Use BEFORE writing pseudocode or code."
 ---
 

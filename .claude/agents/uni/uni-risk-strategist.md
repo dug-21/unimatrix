@@ -39,9 +39,9 @@ Your spawn prompt includes `MODE: scope-risk` or `MODE: architecture-risk` to in
 
 Before generating risks, query Unimatrix for historical context:
 
-1. `/knowledge-search` — `"lesson-learned failures gate rejection"` to find past failures relevant to this feature's domain
-2. `/knowledge-search` — `"outcome rework"` filtered to similar phase prefixes to find features that required rework
-3. `/knowledge-search` — `"risk pattern"` with `category: "pattern"` to find recurring risk patterns you've previously stored
+1. `/uni-knowledge-search` — `"lesson-learned failures gate rejection"` to find past failures relevant to this feature's domain
+2. `/uni-knowledge-search` — `"outcome rework"` filtered to similar phase prefixes to find features that required rework
+3. `/uni-knowledge-search` — `"risk pattern"` with `category: "pattern"` to find recurring risk patterns you've previously stored
 
 Use what you find to inform your risk identification — not as a template, but as evidence. Reference Unimatrix entry IDs when a historical lesson directly informs a risk.
 
@@ -124,10 +124,10 @@ Write to `product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md` (at feature ro
 
 Before generating risks, query Unimatrix for historical context:
 
-1. `/knowledge-search` — `"lesson-learned failures gate rejection"` to find past failures relevant to this feature's components
-2. `/knowledge-lookup` — `category: "outcome"` filtered to features touching similar crates/components to find what went wrong in adjacent work
-3. `/knowledge-search` — `"risk pattern"` with `category: "pattern"` to find recurring risk patterns
-4. `/knowledge-search` — query the specific technology or component names from the architecture doc (e.g., `"SQLite migration"`, `"confidence scoring"`) to surface relevant ADRs and their "Harder:" consequences
+1. `/uni-knowledge-search` — `"lesson-learned failures gate rejection"` to find past failures relevant to this feature's components
+2. `/uni-knowledge-lookup` — `category: "outcome"` filtered to features touching similar crates/components to find what went wrong in adjacent work
+3. `/uni-knowledge-search` — `"risk pattern"` with `category: "pattern"` to find recurring risk patterns
+4. `/uni-knowledge-search` — query the specific technology or component names from the architecture doc (e.g., `"SQLite migration"`, `"confidence scoring"`) to surface relevant ADRs and their "Harder:" consequences
 
 Use historical evidence to elevate risk severity/likelihood when past data supports it. Reference Unimatrix entry IDs as evidence.
 
@@ -258,7 +258,7 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 The Historical Intelligence queries in both modes already fulfill the read-side stewardship obligation.
 
 ### After Completing
-Store risk patterns that recur across features via `/store-pattern`:
+Store risk patterns that recur across features via `/uni-store-pattern`:
 - Topic: `risk` or the affected crate/domain. Category: `pattern`.
 - Example: "Features touching confidence scoring consistently underestimate integration test complexity — plan 2x risk budget."
 
@@ -268,8 +268,8 @@ Do not store feature-specific risks — those live in the risk assessment docume
 Include in your agent report:
 ```markdown
 ## Knowledge Stewardship
-- Queried: /knowledge-search for risk patterns -- {findings summary or "no results"}
-- Stored: entry #{id} "{title}" via /store-pattern (or "nothing novel to store -- {reason}")
+- Queried: /uni-knowledge-search for risk patterns -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /uni-store-pattern (or "nothing novel to store -- {reason}")
 ```
 
 ## Self-Check: Architecture-Risk Mode

@@ -78,34 +78,34 @@ You are responsible for architectural decisions in Unimatrix. Every ADR you prod
 
 Before writing any architecture or ADRs for a new feature, you MUST:
 
-1. **Search for prior decisions in the affected domain** — Use `/knowledge-search` with the feature's domain keywords (e.g., "serialization", "MCP transport", "error handling"). This surfaces ADRs from prior features that may constrain or inform your decisions.
+1. **Search for prior decisions in the affected domain** — Use `/uni-knowledge-search` with the feature's domain keywords (e.g., "serialization", "MCP transport", "error handling"). This surfaces ADRs from prior features that may constrain or inform your decisions.
 
-2. **Use `/query-patterns` to search for existing component patterns and conventions in affected crates**
+2. **Use `/uni-query-patterns` to search for existing component patterns and conventions in affected crates**
 
-3. **Look up ADRs for related features** — Use `/knowledge-lookup` with the topic set to related feature IDs (e.g., `topic: "nxs-001"`, `category: "decision"`). Check if any existing decisions conflict with or are superseded by your new feature's requirements.
+3. **Look up ADRs for related features** — Use `/uni-knowledge-lookup` with the topic set to related feature IDs (e.g., `topic: "nxs-001"`, `category: "decision"`). Check if any existing decisions conflict with or are superseded by your new feature's requirements.
 
 4. **Assess supersession** — If your new feature modifies, replaces, or invalidates a prior architectural decision, you MUST deprecate the old ADR before writing the replacement. Do not leave stale ADRs active.
 
 ### After Producing Each ADR (MANDATORY)
 
-After writing each ADR file, you MUST store it in Unimatrix using `/store-adr`. The skill guides you through the exact parameters — title, full content, feature topic, tags.
+After writing each ADR file, you MUST store it in Unimatrix using `/uni-store-adr`. The skill guides you through the exact parameters — title, full content, feature topic, tags.
 
 ### When Superseding a Prior ADR (MANDATORY)
 
 If your decision supersedes an existing ADR:
 
-1. Store a deprecation notice for the old ADR via `/store-adr` (the skill documents the deprecation flow)
+1. Store a deprecation notice for the old ADR via `/uni-store-adr` (the skill documents the deprecation flow)
 2. Reference the superseded ADR in your new ADR's Context section
-3. Store the new ADR via `/store-adr`
+3. Store the new ADR via `/uni-store-adr`
 
 ### What You Search For vs What You Store
 
 | Action | Skill | When |
 |--------|-------|------|
-| Find prior ADRs in this domain | `/knowledge-search` | Before designing |
-| Get all ADRs for a related feature | `/knowledge-lookup` | Before designing |
-| Store a new ADR | `/store-adr` | After writing each ADR file |
-| Deprecate a superseded ADR | `/store-adr` | When new decision replaces old |
+| Find prior ADRs in this domain | `/uni-knowledge-search` | Before designing |
+| Get all ADRs for a related feature | `/uni-knowledge-lookup` | Before designing |
+| Store a new ADR | `/uni-store-adr` | After writing each ADR file |
+| Deprecate a superseded ADR | `/uni-store-adr` | When new decision replaces old |
 
 ## Design Principles (How to Think)
 
@@ -158,7 +158,7 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 ## Knowledge Stewardship
 
 After completing your task, store reusable findings in Unimatrix:
-- ADRs: use `/store-adr` for every ADR produced (already mandatory)
+- ADRs: use `/uni-store-adr` for every ADR produced (already mandatory)
 - Integration patterns that recur across features: `context_store(topic: "architect", category: "pattern")`
 - Superseded decisions: deprecate via `context_deprecate` with reason
 
@@ -174,5 +174,5 @@ Do not store feature-specific details that won't generalize.
 - [ ] No placeholder or TBD sections — flag unknowns as open questions instead
 - [ ] All output files within `product/features/{feature-id}/architecture/`
 - [ ] Searched Unimatrix for existing ADRs in the affected domain before designing
-- [ ] Every ADR stored in Unimatrix via `/store-adr` (file-only ADR = incomplete)
+- [ ] Every ADR stored in Unimatrix via `/uni-store-adr` (file-only ADR = incomplete)
 - [ ] Any superseded ADRs have deprecation notices stored in Unimatrix

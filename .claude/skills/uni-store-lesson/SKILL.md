@@ -1,5 +1,5 @@
 ---
-name: "store-lesson"
+name: "uni-store-lesson"
 description: "Store a lesson learned from a failure, gate rejection, or unexpected issue. Use after bugfixes and gate failures to prevent recurrence."
 ---
 

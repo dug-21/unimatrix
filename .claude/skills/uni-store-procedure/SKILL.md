@@ -1,5 +1,5 @@
 ---
-name: "store-procedure"
+name: "uni-store-procedure"
 description: "Store or update a technical procedure (how-to) in Unimatrix. Use during retrospectives when a technique has evolved or been discovered."
 ---
 
@@ -97,7 +97,7 @@ pure functions that validate input parameters...
 | Consuming roles | `rust-dev`, `pseudocode`, `architect` |
 | Domain | `mcp-tool`, `schema`, `testing`, `integration` |
 
-Always include at least one consuming-role tag so `/query-patterns` can filter by who needs it.
+Always include at least one consuming-role tag so `/uni-query-patterns` can filter by who needs it.
 
 ---
 

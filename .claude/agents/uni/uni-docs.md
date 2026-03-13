@@ -87,7 +87,7 @@ IF feature changes data layout (new files, path changes):
 
 5. **Preserve existing content.** Do not remove or modify content unrelated to the current feature. Do not clean up sections outside your scope.
 
-6. **Consistent terminology.** Follow NFR-07: "Unimatrix" not "UniMatrix", `context_search` not `contextSearch`, `/query-patterns` not `query-patterns`, "SQLite" not "redb".
+6. **Consistent terminology.** Follow NFR-07: "Unimatrix" not "UniMatrix", `context_search` not `contextSearch`, `/uni-query-patterns` not `query-patterns`, "SQLite" not "redb".
 
 7. **Commit with `docs:` prefix.** All README changes committed with: `docs: update README for {feature-id} (#{issue})`.
 
@@ -155,6 +155,6 @@ Exempt — no storage or query expected. This agent reads feature artifacts and 
 - [ ] Only README.md was modified — no other files touched
 - [ ] Commit message uses `docs:` prefix
 - [ ] No aspirational language added ("will", "planned", "future")
-- [ ] Terminology consistent: Unimatrix, context_search, /query-patterns, SQLite
+- [ ] Terminology consistent: Unimatrix, context_search, /uni-query-patterns, SQLite
 - [ ] Table row counts still match intro line counts after edits
 - [ ] Knowledge Stewardship: Exempt (documented above)

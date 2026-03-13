@@ -1,9 +1,9 @@
 ---
-name: "release"
+name: "uni-release"
 description: "Version bump, changelog generation, tag, and push to trigger the release pipeline."
 ---
 
-# /release — Create a Unimatrix Release
+# /uni-release — Create a Unimatrix Release
 
 ## Inputs
 
@@ -166,7 +166,7 @@ git push origin HEAD
 git push origin "v{new_version}"
 ```
 
-The tag push triggers the release pipeline defined in `.github/workflows/release.yml`.
+The tag push triggers the release pipeline defined in `.github/workflows/uni-release.yml`.
 
 ---
 

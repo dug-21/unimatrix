@@ -71,12 +71,12 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 
 Read-only tier — no storage expected. Spec decisions are feature-specific, not generalizable patterns. The retro can promote any interpretation that turns out to generalize.
 
-Query `/query-patterns` for the feature's domain before writing to find established conventions and AC patterns from prior features.
+Query `/uni-query-patterns` for the feature's domain before writing to find established conventions and AC patterns from prior features.
 
 ### Report Block
 ```markdown
 ## Knowledge Stewardship
-- Queried: /query-patterns for {domain} -- {findings summary or "no results"}
+- Queried: /uni-query-patterns for {domain} -- {findings summary or "no results"}
 ```
 
 ## Self-Check (Run Before Returning Results)

@@ -113,10 +113,10 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 ## Knowledge Stewardship
 
 ### Before Starting
-Query `/query-patterns` for patterns in the research area to avoid rediscovering known constraints and technical landscape findings.
+Query `/uni-query-patterns` for patterns in the research area to avoid rediscovering known constraints and technical landscape findings.
 
 ### After Completing
-Store reusable findings via `/store-pattern`:
+Store reusable findings via `/uni-store-pattern`:
 - Problem space patterns (recurring constraints, dependency risks). Topic: the research area or affected crate.
 - Technical landscape findings that inform future features.
 
@@ -126,8 +126,8 @@ Do not store feature-specific scope details — those live in SCOPE.md. Only sto
 Include in your agent report:
 ```markdown
 ## Knowledge Stewardship
-- Queried: /query-patterns for {research area} -- {findings summary or "no results"}
-- Stored: entry #{id} "{title}" via /store-pattern (or "nothing novel to store -- {reason}")
+- Queried: /uni-query-patterns for {research area} -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /uni-store-pattern (or "nothing novel to store -- {reason}")
 ```
 
 ## Self-Check (Run Before Returning Results)

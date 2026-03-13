@@ -1,5 +1,5 @@
 ---
-name: "store-adr"
+name: "uni-store-adr"
 description: "Store an architectural decision record in Unimatrix. ADRs live in Unimatrix only — no ADR files. Use after each design decision."
 ---
 
@@ -139,4 +139,4 @@ After storing:
 | Implementation details (how) | ADRs capture the why — code captures the how |
 | Decisions by other agents | Architect is the sole ADR authority |
 | Coding conventions | Use `convention` category instead |
-| Step-by-step procedures | Use `/store-procedure` instead |
+| Step-by-step procedures | Use `/uni-store-procedure` instead |

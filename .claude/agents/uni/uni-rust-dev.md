@@ -47,8 +47,8 @@ Read relevant ADRs in `architecture/ADR-*.md`. These are binding design decision
 
 ### 3. Query Patterns and Procedures
 
-- Use `/query-patterns` to search for existing component patterns and conventions in affected crates
-- Use `/knowledge-search` (category: "procedure") to find procedural knowledge relevant to your task (e.g., "server integration file order," "crate bootstrapping sequence"). If server unavailable or no results, proceed without — this is non-blocking.
+- Use `/uni-query-patterns` to search for existing component patterns and conventions in affected crates
+- Use `/uni-knowledge-search` (category: "procedure") to find procedural knowledge relevant to your task (e.g., "server integration file order," "crate bootstrapping sequence"). If server unavailable or no results, proceed without — this is non-blocking.
 
 ## Design Principles (How to Think)
 
@@ -108,10 +108,10 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 ## Knowledge Stewardship
 
 ### Before Starting
-Query `/query-patterns` for the crate(s) you're implementing in. Look for gotchas, traps, and conventions specific to the affected crate. Apply what you find — don't rediscover known patterns.
+Query `/uni-query-patterns` for the crate(s) you're implementing in. Look for gotchas, traps, and conventions specific to the affected crate. Apply what you find — don't rediscover known patterns.
 
 ### After Completing
-Store implementation patterns you discovered via `/store-pattern`. Focus on gotchas invisible in source code — things that compile but break at runtime, non-obvious integration requirements, crate-specific traps. Use the crate name as topic (e.g., `unimatrix-store`).
+Store implementation patterns you discovered via `/uni-store-pattern`. Focus on gotchas invisible in source code — things that compile but break at runtime, non-obvious integration requirements, crate-specific traps. Use the crate name as topic (e.g., `unimatrix-store`).
 
 Examples of what to store:
 - "Don't hold `lock_conn()` across await points — deadlocks under concurrent requests"
@@ -124,8 +124,8 @@ If nothing novel was discovered, state that explicitly in your report with a rea
 Include in your agent report:
 ```markdown
 ## Knowledge Stewardship
-- Queried: /query-patterns for {crate} -- {findings summary or "no results"}
-- Stored: entry #{id} "{title}" via /store-pattern (or "nothing novel to store -- {reason}")
+- Queried: /uni-query-patterns for {crate} -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /uni-store-pattern (or "nothing novel to store -- {reason}")
 ```
 
 ## Self-Check (Run Before Returning Results)
