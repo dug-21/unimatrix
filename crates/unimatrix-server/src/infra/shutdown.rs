@@ -50,29 +50,15 @@ pub struct LifecycleHandles {
 
 /// Run the graceful shutdown sequence.
 ///
-/// Waits for the MCP session to close or a signal, then:
-/// 1. Dumps the vector index
-/// 2. Drops all Arc<Store> clones
-/// 3. Attempts to compact the database
+/// Called after the MCP transport has already been closed (or signalled).
+/// Performs:
+/// 1. Stops UDS listener and background tick
+/// 2. Dumps the vector index
+/// 3. Drops all Arc<Store> clones
+/// 4. Attempts to compact the database
 ///
 /// PID file cleanup is handled by `PidGuard::drop` in the caller.
-pub async fn graceful_shutdown<S>(
-    mut handles: LifecycleHandles,
-    server: S,
-) -> Result<(), ServerError>
-where
-    S: std::future::Future<Output = ()>,
-{
-    // Wait for session close or signal
-    tokio::select! {
-        _ = server => {
-            tracing::info!("MCP session closed");
-        }
-        _ = shutdown_signal() => {
-            tracing::info!("received shutdown signal");
-        }
-    }
-
+pub async fn graceful_shutdown(mut handles: LifecycleHandles) -> Result<(), ServerError> {
     // Brief pause for final responses to flush
     tokio::time::sleep(Duration::from_millis(100)).await;
 
@@ -138,7 +124,9 @@ where
 }
 
 /// Wait for a shutdown signal (SIGTERM or SIGINT).
-async fn shutdown_signal() {
+///
+/// Public so `main.rs` can use it in the transport select loop (#236).
+pub async fn shutdown_signal() {
     let ctrl_c = tokio::signal::ctrl_c();
 
     #[cfg(unix)]
