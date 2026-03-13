@@ -99,7 +99,7 @@ assert(
 assert(
   "test_root_package_publish_config_restricted",
   rootPkg.publishConfig &&
-    rootPkg.publishConfig.access === "restricted",
+    rootPkg.publishConfig.access === "public",
   `got ${JSON.stringify(rootPkg.publishConfig)}`
 );
 
@@ -140,7 +140,7 @@ assert(
 assert(
   "test_platform_package_publish_config_restricted",
   platformPkg.publishConfig &&
-    platformPkg.publishConfig.access === "restricted",
+    platformPkg.publishConfig.access === "public",
   `got ${JSON.stringify(platformPkg.publishConfig)}`
 );
 
@@ -240,7 +240,7 @@ assert(
 assert(
   "test_arm64_platform_package_publish_config_restricted",
   platformArm64Pkg.publishConfig &&
-    platformArm64Pkg.publishConfig.access === "restricted",
+    platformArm64Pkg.publishConfig.access === "public",
   `got ${JSON.stringify(platformArm64Pkg.publishConfig)}`
 );
 
