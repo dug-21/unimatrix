@@ -57,7 +57,8 @@ After creating the branch — before spawning any agents — call `context_cycle
 context_cycle(
   type: "start",
   topic: "{feature-id}",
-  keywords: ["{keyword-1}", "{keyword-2}", ...]  // 3-5 semantic terms for the feature
+  keywords: ["{keyword-1}", "{keyword-2}", ...],  // 3-5 semantic terms for the feature
+  agent_id: "{feature-id}-design-leader"
 )
 ```
 
@@ -315,7 +316,7 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 ```
 DESIGN LEADER (you):
   Init:       git checkout -b feature/{feature-id}
-              context_cycle(type: "start", topic: "{feature-id}", keywords: [...])
+              context_cycle(type: "start", topic: "{feature-id}", keywords: [...], agent_id: "{feature-id}-design-leader")
   Phase 1:    Task(uni-researcher) — scope exploration with human
               ...human approves SCOPE.md...
   Phase 1b:   Task(uni-risk-strategist, MODE: scope-risk) — scope risk assessment
@@ -327,7 +328,7 @@ DESIGN LEADER (you):
   Phase 2b:   Task(uni-vision-guardian) — alignment check
   Phase 2c:   Task(uni-synthesizer) — brief + maps + GH Issue (fresh context)
   Phase 2d:   git commit + push + gh pr create --draft
-              context_cycle(type: "stop", topic: "{feature-id}") — SESSION 1 ENDS
+              context_cycle(type: "stop", topic: "{feature-id}", agent_id: "{feature-id}-design-leader") — SESSION 1 ENDS
 ```
 
 ---
@@ -339,7 +340,8 @@ After returning artifacts to the human, close the feature cycle and record the s
 ```
 context_cycle(
   type: "stop",
-  topic: "{feature-id}"
+  topic: "{feature-id}",
+  agent_id: "{feature-id}-design-leader"
 )
 
 context_store(

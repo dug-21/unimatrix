@@ -59,7 +59,8 @@ The Delivery Leader:
    context_cycle(
      type: "start",
      topic: "{feature-id}",
-     keywords: ["{keyword-1}", "{keyword-2}", ...]  // 3-5 semantic terms for the feature
+     keywords: ["{keyword-1}", "{keyword-2}", ...],  // 3-5 semantic terms for the feature
+     agent_id: "{feature-id}-delivery-leader"
    )
    ```
 6. Spawns worker agents with `isolation: "worktree"` for parallel workstreams (see `/uni-git` Worktree Isolation)
@@ -482,7 +483,7 @@ NEVER pipe full cargo output into context.
 ```
 DELIVERY LEADER (you):
   Init:       Read IMPLEMENTATION-BRIEF.md + ACCEPTANCE-MAP.md
-              context_cycle(type: "start", topic: "{feature-id}", keywords: [...])
+              context_cycle(type: "start", topic: "{feature-id}", keywords: [...], agent_id: "{feature-id}-delivery-leader")
   Stage 3a:   Task(uni-pseudocode) + Task(uni-tester) — parallel, ONE message
               ...wait for both to complete...
               UPDATE Component Map in IMPLEMENTATION-BRIEF.md with actual file paths
@@ -501,7 +502,7 @@ DELIVERY LEADER (you):
   Phase 4:    git commit + push + gh pr create
               [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
               /review-pr — security review + merge readiness
-              context_cycle(type: "stop", topic: "{feature-id}")
+              context_cycle(type: "stop", topic: "{feature-id}", agent_id: "{feature-id}-delivery-leader")
               Combined return — SESSION 2 ENDS
 ```
 
@@ -527,7 +528,8 @@ After Phase 4, close the feature cycle and record the session outcome:
 ```
 context_cycle(
   type: "stop",
-  topic: "{feature-id}"
+  topic: "{feature-id}",
+  agent_id: "{feature-id}-delivery-leader"
 )
 
 context_store(
