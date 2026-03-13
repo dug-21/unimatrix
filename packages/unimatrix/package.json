@@ -9,7 +9,8 @@
     "postinstall": "node postinstall.js"
   },
   "optionalDependencies": {
-    "@dug-21/unimatrix-linux-x64": "0.5.0"
+    "@dug-21/unimatrix-linux-x64": "0.5.0",
+    "@dug-21/unimatrix-linux-arm64": "0.5.0"
   },
   "files": [
     "bin/",

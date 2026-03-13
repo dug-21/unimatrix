@@ -6,6 +6,7 @@ const path = require("path");
 
 const PLATFORMS = {
   "linux-x64": "@dug-21/unimatrix-linux-x64",
+  "linux-arm64": "@dug-21/unimatrix-linux-arm64",
 };
 
 /**

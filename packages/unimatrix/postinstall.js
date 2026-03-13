@@ -26,10 +26,17 @@ function main() {
     }
 
     var execFileSync = require("child_process").execFileSync;
+    var path = require("path");
+    var binDir = path.dirname(binaryPath);
+    var ldPath = process.env.LD_LIBRARY_PATH;
+    var env = Object.assign({}, process.env, {
+      LD_LIBRARY_PATH: ldPath ? binDir + ":" + ldPath : binDir,
+    });
     try {
       execFileSync(binaryPath, ["model-download"], {
         stdio: ["ignore", "inherit", "inherit"],
         timeout: 300000,
+        env: env,
       });
       console.log("[unimatrix] postinstall: ONNX model ready");
     } catch (execError) {
