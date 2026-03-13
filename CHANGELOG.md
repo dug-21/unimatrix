@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.2] - 2026-03-13
+
+### Fixes
+- CI: download embedding model before tests in release pipeline (#245)
+
 ## [0.5.1] - 2026-03-13
 
 ### Fixes
