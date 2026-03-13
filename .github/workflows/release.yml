@@ -77,6 +77,9 @@ jobs:
             exit 1
           fi
 
+      - name: Download embedding model
+        run: target/release/unimatrix model-download
+
       - name: Test
         run: cargo test --release
         env:
@@ -155,6 +158,9 @@ jobs:
             echo "ERROR: Unexpected version output: $OUTPUT"
             exit 1
           fi
+
+      - name: Download embedding model
+        run: target/release/unimatrix model-download
 
       - name: Test
         run: cargo test --release
