@@ -202,21 +202,33 @@ pub(crate) fn migrate_if_needed(store: &Store, db_path: &Path) -> Result<()> {
 
         // v11 -> v12: keywords column on sessions (col-022)
         if current_version < 12 {
-            // Guard: check if column already exists (handles partial migration re-run)
-            let has_keywords: bool = conn
+            // Guard: check if sessions table exists (fresh DBs won't have it yet —
+            // create_tables runs after migration and creates it with keywords included)
+            let has_sessions_table: bool = conn
                 .query_row(
-                    "SELECT COUNT(*) FROM pragma_table_info('sessions') WHERE name = 'keywords'",
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='sessions'",
                     [],
                     |row| Ok(row.get::<_, i64>(0)? > 0),
                 )
                 .unwrap_or(false);
 
-            if !has_keywords {
-                conn.execute_batch("ALTER TABLE sessions ADD COLUMN keywords TEXT;")
-                    .map_err(StoreError::Sqlite)?;
-            }
+            if has_sessions_table {
+                // Guard: check if column already exists (handles partial migration re-run)
+                let has_keywords: bool = conn
+                    .query_row(
+                        "SELECT COUNT(*) FROM pragma_table_info('sessions') WHERE name = 'keywords'",
+                        [],
+                        |row| Ok(row.get::<_, i64>(0)? > 0),
+                    )
+                    .unwrap_or(false);
 
-            // No data backfill: existing sessions have keywords = NULL (correct default)
+                if !has_keywords {
+                    conn.execute_batch("ALTER TABLE sessions ADD COLUMN keywords TEXT;")
+                        .map_err(StoreError::Sqlite)?;
+                }
+            }
+            // Fresh DBs: create_tables will create sessions with keywords column included.
+            // No data backfill: existing sessions have keywords = NULL (correct default).
         }
 
         // Update schema version
