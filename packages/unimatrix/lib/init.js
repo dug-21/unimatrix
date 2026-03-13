@@ -78,7 +78,9 @@ function writeMcpJson(projectRoot, binaryPath, dryRun) {
   existing.mcpServers.unimatrix = {
     command: binaryPath,
     args: [],
-    env: {},
+    env: {
+      LD_LIBRARY_PATH: path.dirname(binaryPath),
+    },
   };
 
   if (!dryRun) {
@@ -218,11 +220,19 @@ async function init(options) {
   const skillActions = copySkills(projectRoot, dryRun);
   actions.push(...skillActions);
 
+  // Shared env for all binary invocations: libonnxruntime lives next to the binary
+  const binDir = path.dirname(binaryPath);
+  const ldPath = process.env.LD_LIBRARY_PATH;
+  const binaryEnv = Object.assign({}, process.env, {
+    LD_LIBRARY_PATH: ldPath ? binDir + ":" + ldPath : binDir,
+  });
+
   // Step 6: Pre-create database (exec Rust binary)
   if (!dryRun) {
     try {
       execFileSync(binaryPath, ["version", "--project-dir", projectRoot], {
         stdio: "pipe",
+        env: binaryEnv,
       });
       actions.push("Database: pre-created at ~/.unimatrix/{hash}/");
     } catch (error) {
@@ -243,6 +253,7 @@ async function init(options) {
       const versionOutput = execFileSync(binaryPath, ["version"], {
         stdio: "pipe",
         encoding: "utf8",
+        env: binaryEnv,
       }).trim();
       actions.push("Validation: " + versionOutput);
     } catch (error) {
