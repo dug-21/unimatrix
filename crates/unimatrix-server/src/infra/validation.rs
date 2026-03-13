@@ -318,6 +318,111 @@ pub fn validated_max_tokens(max_tokens: Option<i64>) -> Result<usize, ServerErro
     }
 }
 
+// -- col-022: cycle lifecycle validation --
+
+/// Shared event type constant for cycle_start events (ADR-001, R-04 mitigation).
+pub const CYCLE_START_EVENT: &str = "cycle_start";
+
+/// Shared event type constant for cycle_stop events (ADR-001, R-04 mitigation).
+pub const CYCLE_STOP_EVENT: &str = "cycle_stop";
+
+/// Validation limits for cycle parameters.
+const MAX_CYCLE_TOPIC_LEN: usize = 128;
+const MAX_KEYWORD_LEN: usize = 64;
+const MAX_KEYWORDS_COUNT: usize = 5;
+
+/// The type of cycle event.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CycleType {
+    Start,
+    Stop,
+}
+
+/// Validated cycle parameters, produced by `validate_cycle_params`.
+#[derive(Debug, Clone)]
+pub struct ValidatedCycleParams {
+    pub cycle_type: CycleType,
+    pub topic: String,
+    pub keywords: Vec<String>,
+}
+
+/// Structural check for feature cycle identifiers.
+///
+/// Duplicated from `unimatrix-observe::attribution` (private fn) to avoid
+/// promoting a private function to pub for a single consumer. The function
+/// is trivial and the validation module already has overlapping checks.
+///
+/// Rules: non-empty, max 128 chars, contains hyphen, no leading/trailing
+/// hyphens, only `[a-zA-Z0-9\-_.]`.
+fn is_valid_feature_id(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= MAX_CYCLE_TOPIC_LEN
+        && s.contains('-')
+        && !s.starts_with('-')
+        && !s.ends_with('-')
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+}
+
+/// Validate cycle parameters for both MCP tool and hook handler (ADR-004).
+///
+/// Returns `Result<ValidatedCycleParams, String>` (not `ServerError`) because
+/// the hook handler needs a plain string error and does not use `ServerError`.
+pub fn validate_cycle_params(
+    type_str: &str,
+    topic: &str,
+    keywords: Option<&[String]>,
+) -> Result<ValidatedCycleParams, String> {
+    // Step 1: Validate type (case-sensitive, lowercase only)
+    let cycle_type = match type_str {
+        "start" => CycleType::Start,
+        "stop" => CycleType::Stop,
+        other => return Err(format!("invalid type '{other}': must be 'start' or 'stop'")),
+    };
+
+    // Step 2: Validate topic
+    if topic.is_empty() {
+        return Err("topic must not be empty".to_string());
+    }
+
+    // Sanitize: strip control chars and non-ASCII, truncate to 128
+    let clean_topic: String = topic
+        .chars()
+        .filter(|c| c.is_ascii() && !c.is_ascii_control())
+        .take(MAX_CYCLE_TOPIC_LEN)
+        .collect();
+
+    if clean_topic.is_empty() {
+        return Err("topic contains only invalid characters".to_string());
+    }
+
+    // Structural check: must look like a feature ID
+    if !is_valid_feature_id(&clean_topic) {
+        return Err("topic is not a valid feature cycle identifier".to_string());
+    }
+
+    // Step 3: Validate keywords
+    let mut validated_keywords = Vec::new();
+    if let Some(kw_slice) = keywords {
+        for kw in kw_slice.iter().take(MAX_KEYWORDS_COUNT) {
+            // Truncate individual keywords to 64 chars (UTF-8 safe)
+            let truncated: String = kw.chars().take(MAX_KEYWORD_LEN).collect();
+
+            // Skip empty strings after truncation
+            if !truncated.is_empty() {
+                validated_keywords.push(truncated);
+            }
+        }
+        // Keywords beyond index 4 are silently ignored (FR-05)
+    }
+
+    Ok(ValidatedCycleParams {
+        cycle_type,
+        topic: clean_topic,
+        keywords: validated_keywords,
+    })
+}
+
 // -- alc-002: enrollment validation --
 
 /// Validate context_enroll parameters (target_agent_id field only).
@@ -1217,5 +1322,296 @@ mod tests {
             format: None,
         };
         assert!(validate_retrospective_params(&params).is_err());
+    }
+
+    // -- col-022: validate_cycle_params -- type parameter (AC-07) --
+
+    #[test]
+    fn test_validate_cycle_params_type_start() {
+        let result = validate_cycle_params("start", "col-022", None);
+        let v = result.unwrap();
+        assert_eq!(v.cycle_type, CycleType::Start);
+        assert_eq!(v.topic, "col-022");
+        assert!(v.keywords.is_empty());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_type_stop() {
+        let result = validate_cycle_params("stop", "col-022", None);
+        let v = result.unwrap();
+        assert_eq!(v.cycle_type, CycleType::Stop);
+    }
+
+    #[test]
+    fn test_validate_cycle_params_type_invalid_pause() {
+        let result = validate_cycle_params("pause", "col-022", None);
+        let err = result.unwrap_err();
+        assert!(err.contains("start"));
+        assert!(err.contains("stop"));
+    }
+
+    #[test]
+    fn test_validate_cycle_params_type_invalid_restart() {
+        let result = validate_cycle_params("restart", "col-022", None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_type_empty() {
+        let result = validate_cycle_params("", "col-022", None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_type_case_sensitive_start_upper() {
+        let result = validate_cycle_params("Start", "col-022", None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_type_case_sensitive_stop_upper() {
+        let result = validate_cycle_params("STOP", "col-022", None);
+        assert!(result.is_err());
+    }
+
+    // -- col-022: validate_cycle_params -- topic parameter (AC-06) --
+
+    #[test]
+    fn test_validate_cycle_params_topic_valid() {
+        let result = validate_cycle_params("start", "col-022", None);
+        let v = result.unwrap();
+        assert_eq!(v.topic, "col-022");
+    }
+
+    #[test]
+    fn test_validate_cycle_params_topic_empty() {
+        let result = validate_cycle_params("start", "", None);
+        let err = result.unwrap_err();
+        assert!(err.contains("empty"));
+    }
+
+    #[test]
+    fn test_validate_cycle_params_topic_max_length_128() {
+        // 128 chars with a hyphen to pass is_valid_feature_id
+        let topic = format!("{}-{}", "a".repeat(64), "b".repeat(63));
+        assert_eq!(topic.len(), 128);
+        let result = validate_cycle_params("start", &topic, None);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_topic_over_max_129() {
+        // 129 chars -- sanitize truncates to 128, but the truncated result
+        // must still pass is_valid_feature_id. Build a valid 128-char ID
+        // and append one extra char.
+        let base = format!("{}-{}", "a".repeat(64), "b".repeat(63));
+        assert_eq!(base.len(), 128);
+        let topic = format!("{}x", base);
+        assert_eq!(topic.len(), 129);
+        // After truncation to 128, the result is the base which is valid
+        let result = validate_cycle_params("start", &topic, None);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_topic_control_chars_stripped() {
+        let result = validate_cycle_params("start", "col-022\t\r\n", None);
+        let v = result.unwrap();
+        assert_eq!(v.topic, "col-022");
+    }
+
+    #[test]
+    fn test_validate_cycle_params_topic_only_control_chars() {
+        let result = validate_cycle_params("start", "\x00\x01\x02", None);
+        let err = result.unwrap_err();
+        assert!(err.contains("invalid characters"));
+    }
+
+    // -- col-022: validate_cycle_params -- topic structural check (R-11) --
+
+    #[test]
+    fn test_validate_cycle_params_topic_valid_feature_id_format() {
+        let result = validate_cycle_params("start", "col-022", None);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_topic_no_hyphen_rejected() {
+        let result = validate_cycle_params("start", "foobar", None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_topic_leading_hyphen_rejected() {
+        let result = validate_cycle_params("start", "-col022", None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_topic_trailing_hyphen_rejected() {
+        let result = validate_cycle_params("start", "col022-", None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_topic_feature_ids() {
+        // Various valid feature IDs
+        assert!(validate_cycle_params("start", "col-022", None).is_ok());
+        assert!(validate_cycle_params("start", "nxs-001", None).is_ok());
+        assert!(validate_cycle_params("start", "ASS-014", None).is_ok());
+        assert!(validate_cycle_params("start", "c-1", None).is_ok());
+        assert!(validate_cycle_params("start", "ab-999", None).is_ok());
+
+        // Invalid: no hyphen
+        assert!(validate_cycle_params("start", "col022", None).is_err());
+    }
+
+    // -- col-022: validate_cycle_params -- keywords parameter (AC-13) --
+
+    #[test]
+    fn test_validate_cycle_params_keywords_none() {
+        let result = validate_cycle_params("start", "col-022", None);
+        let v = result.unwrap();
+        assert!(v.keywords.is_empty());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_keywords_empty_vec() {
+        let kw: Vec<String> = vec![];
+        let result = validate_cycle_params("start", "col-022", Some(&kw));
+        let v = result.unwrap();
+        assert!(v.keywords.is_empty());
+    }
+
+    #[test]
+    fn test_validate_cycle_params_keywords_valid() {
+        let kw = vec!["attr".to_string(), "lifecycle".to_string()];
+        let result = validate_cycle_params("start", "col-022", Some(&kw));
+        let v = result.unwrap();
+        assert_eq!(v.keywords, vec!["attr", "lifecycle"]);
+    }
+
+    #[test]
+    fn test_validate_cycle_params_keywords_five() {
+        let kw: Vec<String> = vec!["a", "b", "c", "d", "e"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+        let result = validate_cycle_params("start", "col-022", Some(&kw));
+        let v = result.unwrap();
+        assert_eq!(v.keywords.len(), 5);
+    }
+
+    #[test]
+    fn test_validate_cycle_params_keywords_six_truncated_to_five() {
+        let kw: Vec<String> = vec!["a", "b", "c", "d", "e", "f"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+        let result = validate_cycle_params("start", "col-022", Some(&kw));
+        let v = result.unwrap();
+        assert_eq!(v.keywords, vec!["a", "b", "c", "d", "e"]);
+    }
+
+    #[test]
+    fn test_validate_cycle_params_keywords_seven_truncated_to_five() {
+        let kw: Vec<String> = vec!["a", "b", "c", "d", "e", "f", "g"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+        let result = validate_cycle_params("start", "col-022", Some(&kw));
+        let v = result.unwrap();
+        assert_eq!(v.keywords.len(), 5);
+    }
+
+    #[test]
+    fn test_validate_cycle_params_keyword_64_chars() {
+        let kw = vec!["a".repeat(64)];
+        let result = validate_cycle_params("start", "col-022", Some(&kw));
+        let v = result.unwrap();
+        assert_eq!(v.keywords[0].len(), 64);
+    }
+
+    #[test]
+    fn test_validate_cycle_params_keyword_65_chars_truncated() {
+        let kw = vec!["a".repeat(65)];
+        let result = validate_cycle_params("start", "col-022", Some(&kw));
+        let v = result.unwrap();
+        assert_eq!(v.keywords[0].len(), 64);
+    }
+
+    #[test]
+    fn test_validate_cycle_params_keyword_empty_string() {
+        let kw = vec!["".to_string()];
+        let result = validate_cycle_params("start", "col-022", Some(&kw));
+        let v = result.unwrap();
+        // Empty strings are filtered out
+        assert!(v.keywords.is_empty());
+    }
+
+    // -- col-022: CycleType enum --
+
+    #[test]
+    fn test_cycle_type_start_variant() {
+        let start = CycleType::Start;
+        let stop = CycleType::Stop;
+        assert_ne!(start, stop);
+    }
+
+    #[test]
+    fn test_validated_cycle_params_fields() {
+        let params = ValidatedCycleParams {
+            cycle_type: CycleType::Start,
+            topic: "x-1".to_string(),
+            keywords: vec![],
+        };
+        assert_eq!(params.cycle_type, CycleType::Start);
+        assert_eq!(params.topic, "x-1");
+        assert!(params.keywords.is_empty());
+    }
+
+    // -- col-022: edge cases --
+
+    #[test]
+    fn test_validate_cycle_params_keyword_whitespace_only() {
+        // Whitespace-only keywords should be accepted (no stripping specified)
+        let kw = vec!["   ".to_string()];
+        let result = validate_cycle_params("start", "col-022", Some(&kw));
+        let v = result.unwrap();
+        assert_eq!(v.keywords, vec!["   "]);
+    }
+
+    #[test]
+    fn test_validate_cycle_params_topic_with_null_byte() {
+        // Null byte is a control char, stripped by sanitize
+        let result = validate_cycle_params("start", "col\x00-022", None);
+        let v = result.unwrap();
+        assert_eq!(v.topic, "col-022");
+    }
+
+    #[test]
+    fn test_validate_cycle_params_keyword_unicode_truncation() {
+        // Unicode chars -- truncation must respect char boundaries
+        // Each emoji is 1 char but multiple bytes
+        let emoji_kw = "x".repeat(63) + "\u{1F600}"; // 63 + 1 = 64 chars
+        let kw = vec![emoji_kw.clone()];
+        let result = validate_cycle_params("start", "col-022", Some(&kw));
+        let v = result.unwrap();
+        assert_eq!(v.keywords[0].chars().count(), 64);
+
+        // 65 chars with unicode -- should truncate to 64
+        let long_emoji_kw = "x".repeat(64) + "\u{1F600}"; // 64 + 1 = 65 chars
+        let kw2 = vec![long_emoji_kw];
+        let result2 = validate_cycle_params("start", "col-022", Some(&kw2));
+        let v2 = result2.unwrap();
+        assert_eq!(v2.keywords[0].chars().count(), 64);
+    }
+
+    // -- col-022: event type constants --
+
+    #[test]
+    fn test_cycle_event_constants() {
+        assert_eq!(CYCLE_START_EVENT, "cycle_start");
+        assert_eq!(CYCLE_STOP_EVENT, "cycle_stop");
     }
 }
