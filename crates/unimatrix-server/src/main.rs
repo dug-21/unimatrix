@@ -354,20 +354,35 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         .await
         .map_err(|e| ServerError::Shutdown(e.to_string()))?;
 
-    // Wait for session close or signal, then shutdown.
-    // Flock-based PidGuard handles zombie cleanup at next startup.
-    // Log transport close reason instead of silently discarding (#146).
-    let waiting = async {
-        match running.waiting().await {
-            Ok(reason) => {
-                tracing::info!(?reason, "MCP transport closed");
-            }
-            Err(join_err) => {
-                tracing::error!(error = %join_err, "MCP transport task failed");
-            }
-        }
-    };
-    shutdown::graceful_shutdown(lifecycle_handles, waiting).await?;
+    // Register signal handler to cancel the transport on SIGTERM/SIGINT (#236).
+    //
+    // Previous approach passed a `waiting()` future to `graceful_shutdown` and
+    // used `tokio::select!` to race against the signal. On signal, the `waiting()`
+    // future was dropped, which dropped the RunningService. The Drop impl
+    // triggers async cancellation via a DropGuard, but by then the tokio runtime
+    // is shutting down and the blocking stdin reader is never closed -- ghost process.
+    //
+    // New approach: get the cancellation token BEFORE calling `waiting()`.
+    // A spawned task monitors the shutdown signal and cancels the token, which
+    // causes the rmcp service loop to exit and close the transport properly.
+    // `waiting()` then returns normally with `QuitReason::Cancelled`.
+    let cancel_token = running.cancellation_token();
+    tokio::spawn(async move {
+        shutdown::shutdown_signal().await;
+        tracing::info!("received shutdown signal, cancelling MCP transport");
+        cancel_token.cancel();
+    });
+
+    // Wait for the service to complete. This returns when either:
+    // - The transport closes naturally (client disconnect) -> QuitReason::Closed
+    // - The signal handler cancels the token -> QuitReason::Cancelled
+    match running.waiting().await {
+        Ok(reason) => tracing::info!(?reason, "MCP transport closed"),
+        Err(e) => tracing::error!(error = %e, "MCP transport task failed"),
+    }
+
+    // Run lifecycle shutdown (vector dump, adapt save, DB compaction).
+    shutdown::graceful_shutdown(lifecycle_handles).await?;
 
     tracing::info!("unimatrix server exited cleanly");
     Ok(())
