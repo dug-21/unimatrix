@@ -635,3 +635,22 @@ class UnimatrixClient:
         if format is not None:
             args["format"] = format
         return self.call_tool("context_retrospective", args, timeout=timeout)
+
+    def context_cycle(
+        self,
+        cycle_type: str,
+        topic: str,
+        *,
+        keywords: list[str] | None = None,
+        agent_id: str | None = None,
+        format: str | None = None,
+        timeout: float | None = None,
+    ) -> MCPResponse:
+        args: dict[str, Any] = {"type": cycle_type, "topic": topic}
+        if keywords is not None:
+            args["keywords"] = keywords
+        if agent_id is not None:
+            args["agent_id"] = agent_id
+        if format is not None:
+            args["format"] = format
+        return self.call_tool("context_cycle", args, timeout=timeout)

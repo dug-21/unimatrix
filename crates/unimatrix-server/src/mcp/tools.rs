@@ -260,6 +260,10 @@ pub struct CycleParams {
     pub topic: String,
     /// Semantic keywords describing the feature work (max 5, each max 64 chars).
     pub keywords: Option<Vec<String>>,
+    /// Agent making the request.
+    pub agent_id: Option<String>,
+    /// Response format: summary, markdown, or json.
+    pub format: Option<String>,
 }
 
 #[rmcp::tool_router(vis = "pub(crate)")]
@@ -1523,9 +1527,9 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<CycleParams>,
     ) -> Result<CallToolResult, rmcp::model::ErrorData> {
-        // 1. Identity resolution (no agent_id/format/session_id on CycleParams)
+        // 1. Identity resolution
         let identity = self
-            .resolve_agent(&None)
+            .resolve_agent(&params.agent_id)
             .await
             .map_err(rmcp::ErrorData::from)?;
 
@@ -2490,6 +2494,34 @@ mod tests {
         let json = r#"{"type": "start", "topic": "col-022"}"#;
         let params: CycleParams = serde_json::from_str(json).unwrap();
         assert_eq!(params.r#type, "start");
+    }
+
+    #[test]
+    fn test_cycle_params_deserialize_with_agent_id() {
+        let json = r#"{"type": "start", "topic": "col-022", "agent_id": "human"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.r#type, "start");
+        assert_eq!(params.topic, "col-022");
+        assert_eq!(params.agent_id, Some("human".to_string()));
+        assert!(params.format.is_none());
+    }
+
+    #[test]
+    fn test_cycle_params_deserialize_with_agent_id_and_format() {
+        let json = r#"{"type": "stop", "topic": "nan-005", "agent_id": "delivery-lead", "format": "json"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.r#type, "stop");
+        assert_eq!(params.topic, "nan-005");
+        assert_eq!(params.agent_id, Some("delivery-lead".to_string()));
+        assert_eq!(params.format, Some("json".to_string()));
+    }
+
+    #[test]
+    fn test_cycle_params_agent_id_absent_is_none() {
+        let json = r#"{"type": "start", "topic": "col-022"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert!(params.agent_id.is_none());
+        assert!(params.format.is_none());
     }
 
     #[test]
