@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.7] - 2026-03-13
+
+### Fixes
+- init: set LD_LIBRARY_PATH for binary invocations during init
+
 ## [0.5.6] - 2026-03-13
 
 ### Fixes
