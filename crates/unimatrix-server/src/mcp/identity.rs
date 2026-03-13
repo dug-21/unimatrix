@@ -125,9 +125,10 @@ mod tests {
         let registry = make_registry();
         let identity = resolve_identity(&registry, "new-agent").unwrap();
         assert_eq!(identity.trust_level, TrustLevel::Restricted);
+        // PERMISSIVE_AUTO_ENROLL=true grants Write to unknown agents
         assert_eq!(
             identity.capabilities,
-            vec![Capability::Read, Capability::Search]
+            vec![Capability::Read, Capability::Write, Capability::Search]
         );
     }
 

@@ -118,17 +118,17 @@ def test_restricted_agent_lookup_allowed(server):
 
 
 @pytest.mark.security
-def test_restricted_agent_store_rejected(server):
-    """S-21: Restricted agent cannot store."""
+def test_restricted_agent_store_allowed_permissive(server):
+    """S-21: With permissive auto-enroll, restricted agent CAN store (has Write)."""
     resp = server.context_store(
         "restricted store", "testing", "convention", agent_id="restricted-test-agent"
     )
-    assert_tool_error(resp)
+    assert_tool_success(resp)
 
 
 @pytest.mark.security
-def test_restricted_agent_correct_rejected(server):
-    """S-22: Restricted agent cannot correct."""
+def test_restricted_agent_correct_allowed_permissive(server):
+    """S-22: With permissive auto-enroll, restricted agent CAN correct (has Write)."""
     store_resp = server.context_store(
         "for restricted correct", "testing", "convention", agent_id="human", format="json"
     )
@@ -137,19 +137,19 @@ def test_restricted_agent_correct_rejected(server):
     resp = server.context_correct(
         entry_id, "corrected", agent_id="restricted-test-agent"
     )
-    assert_tool_error(resp)
+    assert_tool_success(resp)
 
 
 @pytest.mark.security
-def test_restricted_agent_deprecate_rejected(server):
-    """S-23: Restricted agent cannot deprecate."""
+def test_restricted_agent_deprecate_allowed_permissive(server):
+    """S-23: With permissive auto-enroll, restricted agent CAN deprecate (has Write)."""
     store_resp = server.context_store(
         "for restricted deprecate", "testing", "convention", agent_id="human", format="json"
     )
     from harness.assertions import extract_entry_id
     entry_id = extract_entry_id(store_resp)
     resp = server.context_deprecate(entry_id, agent_id="restricted-test-agent")
-    assert_tool_error(resp)
+    assert_tool_success(resp)
 
 
 @pytest.mark.security
