@@ -38,6 +38,11 @@ Design architecture for col-022 (Explicit Feature Cycle Lifecycle).
 
 2. MCP tool response cannot confirm whether hook-side attribution succeeded (server has no session_id). Tool response should acknowledge parameter acceptance only.
 
+## Knowledge Stewardship
+
+- Queried: Reviewed existing architecture patterns (MCP tool registration, wire protocol, session schema) from codebase
+- Stored: 5 ADRs produced as files. Unimatrix storage failed (agent lacks Write capability) — Design Leader must store ADRs in Unimatrix using privileged identity
+
 ## Unimatrix Storage
 
 All 5 ADRs failed to store in Unimatrix -- agent lacks Write capability. The Design Leader must store these ADRs using a privileged agent or store them manually.

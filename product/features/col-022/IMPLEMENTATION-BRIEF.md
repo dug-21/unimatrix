@@ -15,18 +15,18 @@
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| mcp-tool | pseudocode/mcp-tool.md | test-plan/mcp-tool.md |
-| hook-handler | pseudocode/hook-handler.md | test-plan/hook-handler.md |
-| uds-listener | pseudocode/uds-listener.md | test-plan/uds-listener.md |
-| schema-migration | pseudocode/schema-migration.md | test-plan/schema-migration.md |
-| shared-validation | pseudocode/shared-validation.md | test-plan/shared-validation.md |
+| shared-validation | product/features/col-022/pseudocode/shared-validation.md | product/features/col-022/test-plan/shared-validation.md |
+| schema-migration | product/features/col-022/pseudocode/schema-migration.md | product/features/col-022/test-plan/schema-migration.md |
+| mcp-tool | product/features/col-022/pseudocode/mcp-tool.md | product/features/col-022/test-plan/mcp-tool.md |
+| hook-handler | product/features/col-022/pseudocode/hook-handler.md | product/features/col-022/test-plan/hook-handler.md |
+| uds-listener | product/features/col-022/pseudocode/uds-listener.md | product/features/col-022/test-plan/uds-listener.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/col-022/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/col-022/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ## Goal
 
