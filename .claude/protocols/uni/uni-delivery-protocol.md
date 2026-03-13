@@ -54,7 +54,15 @@ The Delivery Leader:
 2. Reads `product/features/{feature-id}/ACCEPTANCE-MAP.md` — AC verification methods
 3. Reads paths to the three source documents (listed in the brief)
 4. **Creates feature branch**: `git checkout -b feature/{phase}-{NNN}` (see `/uni-git`)
-5. Spawns worker agents with `isolation: "worktree"` for parallel workstreams (see `/uni-git` Worktree Isolation)
+5. **Declares feature cycle** — before any agent spawning:
+   ```
+   context_cycle(
+     type: "start",
+     topic: "{feature-id}",
+     keywords: ["{keyword-1}", "{keyword-2}", ...]  // 3-5 semantic terms for the feature
+   )
+   ```
+6. Spawns worker agents with `isolation: "worktree"` for parallel workstreams (see `/uni-git` Worktree Isolation)
 
 ---
 
@@ -474,6 +482,7 @@ NEVER pipe full cargo output into context.
 ```
 DELIVERY LEADER (you):
   Init:       Read IMPLEMENTATION-BRIEF.md + ACCEPTANCE-MAP.md
+              context_cycle(type: "start", topic: "{feature-id}", keywords: [...])
   Stage 3a:   Task(uni-pseudocode) + Task(uni-tester) — parallel, ONE message
               ...wait for both to complete...
               UPDATE Component Map in IMPLEMENTATION-BRIEF.md with actual file paths
@@ -492,6 +501,7 @@ DELIVERY LEADER (you):
   Phase 4:    git commit + push + gh pr create
               [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
               /review-pr — security review + merge readiness
+              context_cycle(type: "stop", topic: "{feature-id}")
               Combined return — SESSION 2 ENDS
 ```
 
@@ -512,9 +522,14 @@ The uni-tester agent has full integration harness knowledge (suite selection, tr
 
 ## Outcome Recording
 
-After Phase 4, record the session outcome in Unimatrix:
+After Phase 4, close the feature cycle and record the session outcome:
 
 ```
+context_cycle(
+  type: "stop",
+  topic: "{feature-id}"
+)
+
 context_store(
   category: "outcome",
   feature_cycle: "{feature-id}",

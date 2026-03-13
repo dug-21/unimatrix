@@ -62,7 +62,15 @@ The Bugfix Manager:
 3. Queries Unimatrix for prior knowledge:
    - `/query-patterns` — patterns related to the affected area
    - `/knowledge-search` — lessons from prior bugfixes in the same subsystem
-4. Passes relevant findings to the investigator in Phase 1
+4. **Declares feature cycle** — before any agent spawning:
+   ```
+   context_cycle(
+     type: "start",
+     topic: "{issue-number}-{short-description}",
+     keywords: ["{keyword-1}", "{keyword-2}", ...]  // 3-5 semantic terms for the bug area
+   )
+   ```
+5. Passes relevant findings to the investigator in Phase 1
 
 Worker agents are spawned with `isolation: "worktree"` for branch isolation (see `/uni-git` Worktree Isolation).
 
@@ -368,6 +376,7 @@ NEVER pipe full cargo output into context.
 ```
 BUGFIX LEADER (you):
   Init:       /query-patterns + /knowledge-search — prior knowledge
+              context_cycle(type: "start", topic: "{issue-number}-{desc}", keywords: [...])
   Phase 1:    Task(uni-bug-investigator) — diagnose root cause → GH Issue comment
               ...present diagnosis to human...
               ★ HUMAN CHECKPOINT — human approves diagnosis ★
@@ -381,7 +390,8 @@ BUGFIX LEADER (you):
               git commit + push + gh pr create
   Phase 4:    /review-pr — security review + merge readiness → GH Issue comment
               ...wait...
-  Phase 5:    /record-outcome + /store-lesson (if generalizable)
+  Phase 5:    context_cycle(type: "stop", topic: "{issue-number}-{desc}")
+              /record-outcome + /store-lesson (if generalizable)
               Present PR + security assessment to human — SESSION ENDS
 ```
 
@@ -389,7 +399,16 @@ BUGFIX LEADER (you):
 
 ## Outcome Recording
 
-After presenting the PR to the human, record the bugfix outcome using Unimatrix skills:
+After presenting the PR to the human, close the feature cycle and record the bugfix outcome:
+
+```
+context_cycle(
+  type: "stop",
+  topic: "{issue-number}-{short-description}"
+)
+```
+
+Then use Unimatrix skills:
 
 1. **Always**: `/record-outcome` — record the bugfix result (pass/fail, root cause summary, PR link). Include `caused_by_feature:{feature-id}` tag when the originating feature is known.
 2. **If root cause is generalizable**: `/store-lesson` — persist the root cause pattern so future investigators find it via `/knowledge-search`. Tag with `caused_by_feature:{feature-id}` when applicable. Include what could have been done during the originating feature's design phase to prevent the bug.
