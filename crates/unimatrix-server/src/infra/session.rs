@@ -77,6 +77,22 @@ pub enum SessionOutcome {
     Abandoned,
 }
 
+// -- col-022: Force-set attribution result --
+
+/// Result of a `set_feature_force` operation (col-022, ADR-002).
+///
+/// Indicates what happened when an explicit cycle_start event
+/// attempted to set the session's feature_cycle.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SetFeatureResult {
+    /// Feature was None, now set.
+    Set,
+    /// Feature was already set to the same value.
+    AlreadyMatches,
+    /// Feature was set to a different value, now overwritten.
+    Overridden { previous: String },
+}
+
 // -- Existing type (extended with new fields) --
 
 /// A single injection event recorded during ContextSearch.
@@ -226,6 +242,36 @@ impl SessionRegistry {
         false
     }
 
+    /// Unconditionally set the session's feature_cycle (col-022, ADR-002).
+    ///
+    /// Unlike `set_feature_if_absent`, this overwrites any existing value.
+    /// Used exclusively by `cycle_start` events. All heuristic paths continue
+    /// using `set_feature_if_absent`.
+    pub fn set_feature_force(&self, session_id: &str, feature: &str) -> SetFeatureResult {
+        let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+
+        match sessions.get_mut(session_id) {
+            None => {
+                // Session not registered. Return Set as no-op indicator.
+                // The event is still persisted as observation by the caller.
+                tracing::debug!(session_id, "set_feature_force: session not in registry");
+                SetFeatureResult::Set
+            }
+            Some(state) => match &state.feature {
+                None => {
+                    state.feature = Some(feature.to_string());
+                    SetFeatureResult::Set
+                }
+                Some(existing) if existing == feature => SetFeatureResult::AlreadyMatches,
+                Some(existing) => {
+                    let previous = existing.clone();
+                    state.feature = Some(feature.to_string());
+                    SetFeatureResult::Overridden { previous }
+                }
+            },
+        }
+    }
+
     /// Check if a session's leading topic signal meets the eager attribution threshold (#198, Part 2).
     ///
     /// Returns `Some(winner)` if:
@@ -250,10 +296,8 @@ impl SessionRegistry {
         let total_count: u32 = state.topic_signals.values().map(|t| t.count).sum();
 
         // Find the leader
-        let (leader_topic, leader_tally) = state
-            .topic_signals
-            .iter()
-            .max_by_key(|(_, t)| t.count)?;
+        let (leader_topic, leader_tally) =
+            state.topic_signals.iter().max_by_key(|(_, t)| t.count)?;
 
         // Threshold: 3+ count AND >60% share
         if leader_tally.count >= 3 && (leader_tally.count as f64 / total_count as f64) > 0.6 {
@@ -352,8 +396,8 @@ impl SessionRegistry {
         for session_id in stale_ids {
             if let Some(state) = sessions.remove(&session_id) {
                 // (#198): Resolve feature_cycle via majority vote before eviction
-                let resolved_feature = majority_vote_internal(&state.topic_signals)
-                    .or_else(|| state.feature.clone());
+                let resolved_feature =
+                    majority_vote_internal(&state.topic_signals).or_else(|| state.feature.clone());
 
                 // Stale sessions default to "success" outcome (orphaned — best effort)
                 // If injection_history is empty: silent eviction (FR-09.4)
@@ -1277,6 +1321,86 @@ mod tests {
         assert_eq!(state.feature.as_deref(), Some("col-020"));
     }
 
+    // -- col-022: set_feature_force tests --
+
+    #[test]
+    fn test_set_feature_force_sets_when_absent() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        let result = reg.set_feature_force("s1", "col-022");
+        assert_eq!(result, SetFeatureResult::Set);
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.feature.as_deref(), Some("col-022"));
+    }
+
+    #[test]
+    fn test_set_feature_force_already_matches() {
+        let reg = make_registry();
+        reg.register_session("s1", None, Some("col-022".to_string()));
+        let result = reg.set_feature_force("s1", "col-022");
+        assert_eq!(result, SetFeatureResult::AlreadyMatches);
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.feature.as_deref(), Some("col-022"));
+    }
+
+    #[test]
+    fn test_set_feature_force_overrides_existing() {
+        let reg = make_registry();
+        reg.register_session("s1", None, Some("col-017".to_string()));
+        let result = reg.set_feature_force("s1", "col-022");
+        assert_eq!(
+            result,
+            SetFeatureResult::Overridden {
+                previous: "col-017".to_string()
+            }
+        );
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.feature.as_deref(), Some("col-022"));
+    }
+
+    #[test]
+    fn test_set_feature_force_unregistered_session() {
+        let reg = make_registry();
+        let result = reg.set_feature_force("unknown", "col-022");
+        assert_eq!(result, SetFeatureResult::Set);
+    }
+
+    #[test]
+    fn test_set_feature_force_sequential_different_topics() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.set_feature_force("s1", "col-017");
+        let result = reg.set_feature_force("s1", "col-022");
+        assert_eq!(
+            result,
+            SetFeatureResult::Overridden {
+                previous: "col-017".to_string()
+            }
+        );
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.feature.as_deref(), Some("col-022"));
+    }
+
+    #[test]
+    fn test_set_feature_force_preserves_heuristic_path() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        // Heuristic sets feature
+        assert!(reg.set_feature_if_absent("s1", "col-017"));
+        // Explicit force overrides
+        let result = reg.set_feature_force("s1", "col-022");
+        assert_eq!(
+            result,
+            SetFeatureResult::Overridden {
+                previous: "col-017".to_string()
+            }
+        );
+        // Subsequent heuristic cannot override explicit
+        assert!(!reg.set_feature_if_absent("s1", "col-099"));
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.feature.as_deref(), Some("col-022"));
+    }
+
     // -- #198: check_eager_attribution tests --
 
     #[test]
@@ -1377,10 +1501,7 @@ mod tests {
         let results = reg.sweep_stale_sessions();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].session_id, "s1");
-        assert_eq!(
-            results[0].resolved_feature,
-            Some("col-020".to_string())
-        );
+        assert_eq!(results[0].resolved_feature, Some("col-020".to_string()));
     }
 
     #[test]
@@ -1402,10 +1523,7 @@ mod tests {
         }
         let results = reg.sweep_stale_sessions();
         assert_eq!(results.len(), 1);
-        assert_eq!(
-            results[0].resolved_feature,
-            Some("col-017".to_string())
-        );
+        assert_eq!(results[0].resolved_feature, Some("col-017".to_string()));
     }
 
     #[test]

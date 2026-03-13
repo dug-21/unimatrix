@@ -33,7 +33,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::registry::Capability;
-use crate::infra::session::{ReworkEvent, SessionOutcome, SessionRegistry, SignalOutput};
+use crate::infra::session::{
+    ReworkEvent, SessionOutcome, SessionRegistry, SetFeatureResult, SignalOutput,
+};
+use crate::infra::validation::{CYCLE_START_EVENT, CYCLE_STOP_EVENT};
 use crate::server::PendingEntriesAnalysis;
 use crate::uds::uds_has_capability;
 
@@ -468,6 +471,7 @@ async fn dispatch_request(
                     compaction_count: 0,
                     outcome: None,
                     total_injections: 0,
+                    keywords: None,
                 };
                 let store_clone = Arc::clone(store);
                 spawn_blocking_fire_and_forget(move || {
@@ -595,6 +599,13 @@ async fn dispatch_request(
                 "UDS: event recorded"
             );
 
+            // col-022: cycle_start gets force-set attribution + keywords persistence.
+            // Must run BEFORE the generic #198 path so set_feature_if_absent becomes a no-op.
+            // cycle_stop has no special handling -- falls through to generic observation persistence.
+            if event.event_type == CYCLE_START_EVENT {
+                handle_cycle_start(&event, session_registry, store);
+            }
+
             // #198 Part 1: Extract explicit feature_cycle from event payload
             if let Some(fc) = event.payload.get("feature_cycle").and_then(|v| v.as_str()) {
                 let fc_clean = sanitize_metadata_field(fc);
@@ -689,8 +700,7 @@ async fn dispatch_request(
                         let sid = event.session_id.clone();
                         let fc_owned = fc_clean;
                         spawn_blocking_fire_and_forget(move || {
-                            if let Err(e) =
-                                update_session_feature_cycle(&store_fc, &sid, &fc_owned)
+                            if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc_owned)
                             {
                                 tracing::warn!(
                                     error = %e,
@@ -2047,6 +2057,111 @@ pub(crate) fn update_session_feature_cycle_pub(
     feature_cycle: &str,
 ) -> Result<(), unimatrix_store::StoreError> {
     update_session_feature_cycle(store, session_id, feature_cycle)
+}
+
+// -- col-022: Cycle event helpers --
+
+/// Persist keywords JSON string to the session record (col-022, ADR-003).
+///
+/// Uses the existing `store.update_session` read-modify-write pattern.
+/// Validation happens upstream in `validate_cycle_params`; this function
+/// stores the string as-is.
+fn update_session_keywords(
+    store: &Store,
+    session_id: &str,
+    keywords_json: &str,
+) -> Result<(), unimatrix_store::StoreError> {
+    store.update_session(session_id, |record| {
+        record.keywords = Some(keywords_json.to_string());
+    })
+}
+
+/// Handle a `cycle_start` event: force-set attribution + keywords persistence (col-022, ADR-002).
+///
+/// Called before the generic #198 feature extraction path. After `set_feature_force`,
+/// the subsequent `set_feature_if_absent` in the generic path will be a no-op.
+fn handle_cycle_start(
+    event: &unimatrix_engine::wire::ImplantEvent,
+    session_registry: &SessionRegistry,
+    store: &Arc<Store>,
+) {
+    // Step 1: Extract feature_cycle from payload
+    let feature_cycle = match event.payload.get("feature_cycle").and_then(|v| v.as_str()) {
+        Some(fc) => sanitize_metadata_field(fc),
+        None => {
+            tracing::warn!(
+                session_id = %event.session_id,
+                "cycle_start missing feature_cycle in payload"
+            );
+            return;
+        }
+    };
+
+    if feature_cycle.is_empty() {
+        tracing::warn!(
+            session_id = %event.session_id,
+            "cycle_start feature_cycle is empty after sanitize"
+        );
+        return;
+    }
+
+    // Step 2: Force-set attribution (ADR-002)
+    let result = session_registry.set_feature_force(&event.session_id, &feature_cycle);
+
+    match &result {
+        SetFeatureResult::Set => {
+            tracing::info!(
+                session_id = %event.session_id,
+                feature_cycle = %feature_cycle,
+                "col-022: feature_cycle set via explicit cycle_start"
+            );
+        }
+        SetFeatureResult::AlreadyMatches => {
+            tracing::info!(
+                session_id = %event.session_id,
+                feature_cycle = %feature_cycle,
+                "col-022: feature_cycle already matches (no-op)"
+            );
+        }
+        SetFeatureResult::Overridden { previous } => {
+            tracing::warn!(
+                session_id = %event.session_id,
+                feature_cycle = %feature_cycle,
+                previous = %previous,
+                "col-022: feature_cycle overridden by explicit cycle_start"
+            );
+        }
+    }
+
+    // Step 3: Persist feature_cycle to SQLite (fire-and-forget)
+    // Only persist if the value changed (Set or Overridden)
+    if matches!(
+        result,
+        SetFeatureResult::Set | SetFeatureResult::Overridden { .. }
+    ) {
+        let store_fc = Arc::clone(store);
+        let sid = event.session_id.clone();
+        let fc = feature_cycle.clone();
+        spawn_blocking_fire_and_forget(move || {
+            if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc) {
+                tracing::warn!(error = %e, "col-022: feature_cycle persist failed");
+            }
+        });
+    }
+
+    // Step 4: Extract and persist keywords (fire-and-forget, independent of attribution)
+    if let Some(keywords_val) = event.payload.get("keywords") {
+        let keywords_json = keywords_val.to_string();
+        if !keywords_json.is_empty() {
+            let store_kw = Arc::clone(store);
+            let sid = event.session_id.clone();
+            spawn_blocking_fire_and_forget(move || {
+                if let Err(e) = update_session_keywords(&store_kw, &sid, &keywords_json) {
+                    tracing::warn!(error = %e, "col-022: keywords persist failed");
+                }
+            });
+        }
+    }
 }
 
 // -- col-012: Observation persistence helpers --
@@ -4186,5 +4301,534 @@ mod tests {
             "topic signal 'col-018' should be accumulated"
         );
         assert_eq!(state.topic_signals["col-018"].count, 1);
+    }
+
+    // -- col-022: cycle_start / cycle_stop dispatch tests --
+
+    fn make_cycle_event(
+        event_type: &str,
+        session_id: &str,
+        payload: serde_json::Value,
+        topic_signal: Option<String>,
+    ) -> ImplantEvent {
+        ImplantEvent {
+            event_type: event_type.to_string(),
+            session_id: session_id.to_string(),
+            timestamp: unix_now_secs(),
+            payload,
+            topic_signal,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_cycle_start_sets_feature_force() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "col-022"}),
+            Some("col-022".to_string()),
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(state.feature.as_deref(), Some("col-022"));
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_cycle_start_overwrites_heuristic_attribution() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, Some("col-017".to_string()));
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "col-022"}),
+            Some("col-022".to_string()),
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(state.feature.as_deref(), Some("col-022"));
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_cycle_start_already_matches() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, Some("col-022".to_string()));
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "col-022"}),
+            Some("col-022".to_string()),
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(state.feature.as_deref(), Some("col-022"));
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_cycle_start_unknown_session() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "unknown",
+            serde_json::json!({"feature_cycle": "col-022"}),
+            Some("col-022".to_string()),
+        );
+
+        let resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        assert!(matches!(resp, HookResponse::Ack));
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_cycle_start_persists_keywords() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+
+        store
+            .insert_session(&SessionRecord {
+                session_id: "s1".to_string(),
+                feature_cycle: None,
+                agent_role: None,
+                started_at: unix_now_secs(),
+                ended_at: None,
+                status: SessionLifecycleStatus::Active,
+                compaction_count: 0,
+                outcome: None,
+                total_injections: 0,
+                keywords: None,
+            })
+            .unwrap();
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s1",
+            serde_json::json!({
+                "feature_cycle": "col-022",
+                "keywords": ["attr", "lifecycle"]
+            }),
+            Some("col-022".to_string()),
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        let session = store
+            .get_session("s1")
+            .unwrap()
+            .expect("session row should exist");
+        assert_eq!(session.keywords.as_deref(), Some(r#"["attr","lifecycle"]"#));
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_cycle_start_no_keywords_field() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+
+        store
+            .insert_session(&SessionRecord {
+                session_id: "s1".to_string(),
+                feature_cycle: None,
+                agent_role: None,
+                started_at: unix_now_secs(),
+                ended_at: None,
+                status: SessionLifecycleStatus::Active,
+                compaction_count: 0,
+                outcome: None,
+                total_injections: 0,
+                keywords: None,
+            })
+            .unwrap();
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "col-022"}),
+            Some("col-022".to_string()),
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        let session = store
+            .get_session("s1")
+            .unwrap()
+            .expect("session row should exist");
+        assert_eq!(session.keywords, None);
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_cycle_stop_does_not_modify_feature() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, Some("col-022".to_string()));
+
+        let event = make_cycle_event(
+            CYCLE_STOP_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "col-022"}),
+            Some("col-022".to_string()),
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(state.feature.as_deref(), Some("col-022"));
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_cycle_stop_without_prior_start() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+
+        let event = make_cycle_event(
+            CYCLE_STOP_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "col-022"}),
+            None,
+        );
+
+        let resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        assert!(matches!(resp, HookResponse::Ack));
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_cycle_start_missing_feature_cycle() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+
+        let event = make_cycle_event(CYCLE_START_EVENT, "s1", serde_json::json!({}), None);
+
+        let resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        assert!(matches!(resp, HookResponse::Ack));
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(state.feature, None);
+    }
+
+    #[tokio::test]
+    async fn test_cycle_start_then_heuristic_is_noop() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "col-022"}),
+            Some("col-022".to_string()),
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        let event2 = make_cycle_event(
+            "PreToolUse",
+            "s1",
+            serde_json::json!({"feature_cycle": "col-099"}),
+            Some("col-099".to_string()),
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event: event2 },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(state.feature.as_deref(), Some("col-022"));
+    }
+
+    // -- col-022: update_session_keywords unit tests --
+
+    #[test]
+    fn test_update_session_keywords_valid() {
+        let store = make_store();
+        store
+            .insert_session(&SessionRecord {
+                session_id: "s1".to_string(),
+                feature_cycle: None,
+                agent_role: None,
+                started_at: 1000,
+                ended_at: None,
+                status: SessionLifecycleStatus::Active,
+                compaction_count: 0,
+                outcome: None,
+                total_injections: 0,
+                keywords: None,
+            })
+            .unwrap();
+
+        update_session_keywords(&store, "s1", r#"["a","b"]"#).unwrap();
+
+        let session = store
+            .get_session("s1")
+            .unwrap()
+            .expect("session should exist");
+        assert_eq!(session.keywords.as_deref(), Some(r#"["a","b"]"#));
+    }
+
+    #[test]
+    fn test_update_session_keywords_unknown_session() {
+        let store = make_store();
+        let result = update_session_keywords(&store, "unknown", "[]");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_update_session_keywords_malformed_json() {
+        let store = make_store();
+        store
+            .insert_session(&SessionRecord {
+                session_id: "s1".to_string(),
+                feature_cycle: None,
+                agent_role: None,
+                started_at: 1000,
+                ended_at: None,
+                status: SessionLifecycleStatus::Active,
+                compaction_count: 0,
+                outcome: None,
+                total_injections: 0,
+                keywords: None,
+            })
+            .unwrap();
+
+        update_session_keywords(&store, "s1", "not-json").unwrap();
+
+        let session = store
+            .get_session("s1")
+            .unwrap()
+            .expect("session should exist");
+        assert_eq!(session.keywords.as_deref(), Some("not-json"));
+    }
+
+    #[test]
+    fn test_dispatch_cycle_start_matches_hook_constant() {
+        assert_eq!(CYCLE_START_EVENT, "cycle_start");
+        assert_eq!(CYCLE_STOP_EVENT, "cycle_stop");
+    }
+
+    #[tokio::test]
+    async fn test_dispatch_cycle_start_empty_keywords_stored() {
+        let store = make_store();
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+
+        store
+            .insert_session(&SessionRecord {
+                session_id: "s1".to_string(),
+                feature_cycle: None,
+                agent_role: None,
+                started_at: unix_now_secs(),
+                ended_at: None,
+                status: SessionLifecycleStatus::Active,
+                compaction_count: 0,
+                outcome: None,
+                total_injections: 0,
+                keywords: None,
+            })
+            .unwrap();
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s1",
+            serde_json::json!({
+                "feature_cycle": "col-022",
+                "keywords": []
+            }),
+            Some("col-022".to_string()),
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        let session = store
+            .get_session("s1")
+            .unwrap()
+            .expect("session row should exist");
+        assert_eq!(session.keywords.as_deref(), Some("[]"));
     }
 }
