@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.8] - 2026-03-13
+
+### Fixes
+- init: set LD_LIBRARY_PATH in hook commands and fix --project-dir argument order
+
 ## [0.5.7] - 2026-03-13
 
 ### Fixes
