@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.6] - 2026-03-13
+
+### Fixes
+- CI: build arm64 on ubuntu-22.04 to target glibc 2.35
+
 ## [0.5.5] - 2026-03-13
 
 ### Fixes
