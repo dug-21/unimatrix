@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.1] - 2026-03-13
+
+### Fixes
+- CI: install ORT on CI runner and add linux-arm64 build (#243)
+
 ## [0.5.0] - 2026-03-13
 
 ### Features
