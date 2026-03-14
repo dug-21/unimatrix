@@ -225,6 +225,10 @@ pub struct ServiceLayer {
     pub(crate) briefing: BriefingService,
     pub(crate) status: StatusService,
     pub(crate) usage: UsageService,
+    /// crt-018b: effectiveness classification cache shared with SearchService,
+    /// BriefingService, and the background tick. Held here for external access
+    /// via `effectiveness_state_handle()` (mirrors `confidence_state_handle()`).
+    effectiveness_state: EffectivenessStateHandle,
 }
 
 impl ServiceLayer {
@@ -235,6 +239,16 @@ impl ServiceLayer {
     /// shares the same `Arc<RwLock<ConfidenceState>>` as the search path.
     pub fn confidence_state_handle(&self) -> ConfidenceStateHandle {
         self.confidence.state_handle()
+    }
+
+    /// Return a clone of the `EffectivenessStateHandle` owned by this layer.
+    ///
+    /// Used by the binary crate (`main.rs`) to pass the shared handle to
+    /// `spawn_background_tick` so the background tick shares the same
+    /// `Arc<RwLock<EffectivenessState>>` as the search and briefing paths.
+    /// Mirrors `confidence_state_handle()` (crt-018b).
+    pub fn effectiveness_state_handle(&self) -> EffectivenessStateHandle {
+        Arc::clone(&self.effectiveness_state)
     }
 
     pub fn new(
@@ -281,6 +295,11 @@ impl ServiceLayer {
         // so both services share the same Arc<RwLock<ConfidenceState>>.
         let confidence_state_handle = confidence.state_handle();
 
+        // crt-018b (ADR-001): create effectiveness state handle once; clone into
+        // SearchService, BriefingService, and the background tick so all components
+        // share the same Arc<RwLock<EffectivenessState>> (mirrors confidence pattern).
+        let effectiveness_state = EffectivenessState::new_handle();
+
         let search = SearchService::new(
             Arc::clone(&store),
             Arc::clone(&vector_store),
@@ -289,6 +308,7 @@ impl ServiceLayer {
             Arc::clone(&adapt_service),
             Arc::clone(&gateway),
             Arc::clone(&confidence_state_handle),
+            Arc::clone(&effectiveness_state),
         );
 
         let store_ops = StoreService::new(
@@ -308,6 +328,7 @@ impl ServiceLayer {
             search.clone(),
             Arc::clone(&gateway),
             semantic_k,
+            Arc::clone(&effectiveness_state), // crt-018b (ADR-004): required, non-optional
         );
 
         let status = StatusService::new(
@@ -331,6 +352,7 @@ impl ServiceLayer {
             briefing,
             status,
             usage,
+            effectiveness_state, // crt-018b: held for external access via effectiveness_state_handle()
         }
     }
 }

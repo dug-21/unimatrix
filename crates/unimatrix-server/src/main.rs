@@ -319,6 +319,13 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // crt-019: extract ConfidenceStateHandle before services is moved.
     let confidence_state_handle = services.confidence_state_handle();
+    // crt-018b: extract EffectivenessStateHandle before services is moved.
+    let effectiveness_state_handle = services.effectiveness_state_handle();
+
+    // crt-018b: parse auto-quarantine threshold at startup (Constraint 14).
+    // Value 0 disables auto-quarantine; values > 1000 cause a startup error.
+    let auto_quarantine_cycles = unimatrix_server::background::parse_auto_quarantine_cycles()
+        .map_err(ServerError::ProjectInit)?;
 
     // Spawn background tick for automated maintenance + extraction (col-013)
     let tick_handle = unimatrix_server::background::spawn_background_tick(
@@ -332,6 +339,9 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&server.tick_metadata),
         None, // TrainingService: wired in future integration step
         confidence_state_handle,
+        effectiveness_state_handle, // crt-018b: shared with search/briefing paths
+        Arc::clone(&audit),         // crt-018b: for tick_skipped audit events
+        auto_quarantine_cycles,     // crt-018b: auto-quarantine threshold
     );
 
     // Prepare lifecycle handles for shutdown.

@@ -6,6 +6,7 @@
 //! 2. Extraction tick: runs extraction rules on new observations, quality-gates
 //!    proposals, stores accepted entries.
 
+use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -22,10 +23,12 @@ use unimatrix_observe::extraction::{
     quality_gate, run_extraction_rules,
 };
 use unimatrix_observe::types::{HookType, ObservationRecord};
+use unimatrix_store::Status;
 use unimatrix_store::rusqlite;
 
 use unimatrix_adapt::AdaptationService;
 
+use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::contradiction::{self, ContradictionConfig};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::session::SessionRegistry;
@@ -34,6 +37,17 @@ use crate::services::ServiceError;
 use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::effectiveness::EffectivenessStateHandle;
 use crate::services::status::StatusService;
+use unimatrix_engine::effectiveness::EffectivenessCategory;
+
+/// Hardcoded system agent identity for background-generated audit events.
+/// Never sourced from external input (Security Risk 2 from RISK-TEST-STRATEGY).
+const SYSTEM_AGENT_ID: &str = "system";
+const OP_AUTO_QUARANTINE: &str = "auto_quarantine";
+const OP_TICK_SKIPPED: &str = "tick_skipped";
+
+/// Upper bound on `UNIMATRIX_AUTO_QUARANTINE_CYCLES`.
+/// Values above this are implausibly large and rejected at startup (Constraint 14).
+const AUTO_QUARANTINE_CYCLES_MAX: u32 = 1000;
 
 /// Default tick interval: 15 minutes.
 const TICK_INTERVAL_SECS: u64 = 900;
@@ -63,6 +77,33 @@ fn now_secs() -> u64 {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs()
+}
+
+/// Parse and validate `UNIMATRIX_AUTO_QUARANTINE_CYCLES` from the environment.
+///
+/// - Default: 3 (auto-quarantine after 3 consecutive bad ticks, ~45 min minimum).
+/// - Value 0: auto-quarantine disabled (valid).
+/// - Value > 1000: startup error (implausibly large, DoS mitigation, Constraint 14).
+/// - Non-integer: startup error.
+pub fn parse_auto_quarantine_cycles() -> Result<u32, String> {
+    let raw = std::env::var("UNIMATRIX_AUTO_QUARANTINE_CYCLES").unwrap_or_else(|_| "3".to_string());
+
+    let value: u32 = raw.parse().map_err(|_| {
+        format!(
+            "UNIMATRIX_AUTO_QUARANTINE_CYCLES: must be a non-negative integer, got {:?}",
+            raw
+        )
+    })?;
+
+    if value > AUTO_QUARANTINE_CYCLES_MAX {
+        return Err(format!(
+            "UNIMATRIX_AUTO_QUARANTINE_CYCLES: value {} > {} is implausibly large; \
+             set to 0 to disable or use a value in [1, {}]",
+            value, AUTO_QUARANTINE_CYCLES_MAX, AUTO_QUARANTINE_CYCLES_MAX
+        ));
+    }
+
+    Ok(value)
 }
 
 /// Initialize the neural enhancer with baseline models.
@@ -124,6 +165,8 @@ pub fn spawn_background_tick(
     training_service: Option<Arc<TrainingService>>,
     confidence_state: ConfidenceStateHandle,
     effectiveness_state: EffectivenessStateHandle, // crt-018b: shared with search/briefing paths
+    audit_log: Arc<AuditLog>,
+    auto_quarantine_cycles: u32,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(background_tick_loop(
         store,
@@ -137,6 +180,8 @@ pub fn spawn_background_tick(
         training_service,
         confidence_state,
         effectiveness_state,
+        audit_log,
+        auto_quarantine_cycles,
     ))
 }
 
@@ -154,6 +199,8 @@ async fn background_tick_loop(
     _training_service: Option<Arc<TrainingService>>,
     confidence_state: ConfidenceStateHandle,
     effectiveness_state: EffectivenessStateHandle, // crt-018b: threaded to run_single_tick
+    audit_log: Arc<AuditLog>,
+    auto_quarantine_cycles: u32,
 ) {
     let mut interval = tokio::time::interval(Duration::from_secs(TICK_INTERVAL_SECS));
     let mut extraction_ctx = ExtractionContext::new();
@@ -193,6 +240,8 @@ async fn background_tick_loop(
             shadow_evaluator.as_mut(),
             &confidence_state,
             &effectiveness_state,
+            &audit_log,
+            auto_quarantine_cycles,
         )
         .await;
 
@@ -229,7 +278,9 @@ async fn run_single_tick(
     neural_enhancer: Option<&NeuralEnhancer>,
     shadow_evaluator: Option<&mut ShadowEvaluator>,
     confidence_state: &ConfidenceStateHandle,
-    _effectiveness_state: &EffectivenessStateHandle, // crt-018b: used by maintenance_tick (agent-7)
+    effectiveness_state: &EffectivenessStateHandle,
+    audit_log: &Arc<AuditLog>,
+    auto_quarantine_cycles: u32,
 ) -> Result<(), String> {
     let tick_start = now_secs();
     tracing::info!("background tick starting");
@@ -244,7 +295,16 @@ async fn run_single_tick(
     );
     match tokio::time::timeout(
         TICK_TIMEOUT,
-        maintenance_tick(&status_svc, session_registry, entry_store, pending_entries),
+        maintenance_tick(
+            &status_svc,
+            session_registry,
+            entry_store,
+            pending_entries,
+            effectiveness_state,
+            audit_log,
+            auto_quarantine_cycles,
+            store,
+        ),
     )
     .await
     {
@@ -308,16 +368,150 @@ async fn run_single_tick(
 }
 
 /// Run maintenance operations via StatusService.
+///
+/// On `compute_report()` success: writes classification data to `EffectivenessState`,
+/// scans for auto-quarantine threshold, and runs existing maintenance operations.
+///
+/// On `compute_report()` failure: emits a `tick_skipped` audit event and returns `Err`
+/// without touching `EffectivenessState` (ADR-002 hold semantics, R-08).
+#[allow(clippy::too_many_arguments)]
 async fn maintenance_tick(
     status_svc: &StatusService,
     session_registry: &SessionRegistry,
     entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
     pending_entries: &Arc<Mutex<PendingEntriesAnalysis>>,
+    effectiveness_state: &EffectivenessStateHandle,
+    audit_log: &Arc<AuditLog>,
+    auto_quarantine_cycles: u32,
+    store: &Arc<Store>,
 ) -> Result<(), ServiceError> {
-    // Compute lightweight report to get active entries
-    let (mut report, active_entries) = status_svc.compute_report(None, None, false).await?;
+    // Step 1: Attempt to compute the status report.
+    let result = status_svc.compute_report(None, None, false).await;
 
-    // Run existing maintenance logic
+    let (mut report, active_entries) = match result {
+        Err(error) => {
+            // ADR-002: hold semantics — do NOT modify EffectivenessState on error.
+            // Emit tick_skipped audit event so operators can observe paused auto-quarantine.
+            emit_tick_skipped_audit(audit_log, error.to_string());
+            return Err(error);
+        }
+        Ok(pair) => pair,
+    };
+
+    // Step 2: Extract EffectivenessReport and update EffectivenessState if present.
+    // `to_quarantine` is collected inside the write lock; SQL is called after lock release
+    // (NFR-02, R-13).
+    if report.effectiveness.is_some() {
+        // SAFETY: checked is_some() above; unwrap is safe.
+        let effectiveness_report = report.effectiveness.as_ref().unwrap();
+
+        // Steps 3–8: Acquire write lock, update state, collect quarantine candidates,
+        // then DROP the write lock (R-13, NFR-02).
+        // The write guard goes out of scope at the closing `}` below — no store call inside.
+        let to_quarantine: Vec<(u64, u32, EffectivenessCategory)> = {
+            let mut state = effectiveness_state
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+
+            // Step 4: Build new categories map from all_entries (full per-entry slice).
+            let new_categories: std::collections::HashMap<u64, EffectivenessCategory> =
+                effectiveness_report
+                    .all_entries
+                    .iter()
+                    .map(|ee| (ee.entry_id, ee.category))
+                    .collect();
+
+            // Step 5: Replace categories map.
+            state.categories = new_categories;
+
+            // Step 6: Remove counters for entries no longer in the active classification
+            // set (quarantined, deprecated, or deleted since last tick).
+            let active_ids: HashSet<u64> = state.categories.keys().copied().collect();
+            state
+                .consecutive_bad_cycles
+                .retain(|id, _| active_ids.contains(id));
+
+            // Step 6b: Increment or reset per-entry consecutive_bad_cycles.
+            // Collect updates first to satisfy the borrow checker — iterating over
+            // &state.categories and mutating &mut state.consecutive_bad_cycles in the
+            // same loop body triggers E0502 (simultaneous immutable + mutable borrow).
+            let mut to_increment: Vec<u64> = Vec::new();
+            let mut to_reset: Vec<u64> = Vec::new();
+            for (&entry_id, category) in &state.categories {
+                match category {
+                    EffectivenessCategory::Ineffective | EffectivenessCategory::Noisy => {
+                        to_increment.push(entry_id);
+                    }
+                    EffectivenessCategory::Effective
+                    | EffectivenessCategory::Settled
+                    | EffectivenessCategory::Unmatched => {
+                        to_reset.push(entry_id);
+                    }
+                }
+            }
+            // Apply increments (FR-09).
+            for entry_id in to_increment {
+                let counter = state.consecutive_bad_cycles.entry(entry_id).or_insert(0);
+                *counter += 1;
+            }
+            // Reset counters on recovery; remove to keep map sparse (FR-09).
+            for entry_id in to_reset {
+                state.consecutive_bad_cycles.remove(&entry_id);
+            }
+
+            // Step 7: Collect entries that cross the auto-quarantine threshold.
+            // Scan happens INSIDE write lock (counters already updated).
+            // SQL writes happen AFTER lock is released (NFR-02, R-13).
+            let mut candidates = Vec::new();
+            if auto_quarantine_cycles > 0 {
+                for (&entry_id, &count) in &state.consecutive_bad_cycles {
+                    if count >= auto_quarantine_cycles {
+                        let category = state
+                            .categories
+                            .get(&entry_id)
+                            .copied()
+                            .unwrap_or(EffectivenessCategory::Ineffective);
+                        // Defensive check: only Ineffective or Noisy qualify (AC-14, R-11).
+                        match category {
+                            EffectivenessCategory::Ineffective | EffectivenessCategory::Noisy => {
+                                candidates.push((entry_id, count, category));
+                            }
+                            _ => {
+                                // Counter was reset in Step 6b for non-bad categories.
+                                // This branch is unreachable in practice (defensive guard).
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Step 8: Increment generation counter.
+            state.generation += 1;
+
+            // Write lock drops here (end of block scope).
+            // CRITICAL: No store calls may be made inside this block (NFR-02, R-13).
+            candidates
+        };
+        // EffectivenessState write guard is now out of scope — lock is released.
+
+        // Step 9: Auto-quarantine SQL writes (write lock is NOT held).
+        let quarantined_ids = process_auto_quarantine(
+            to_quarantine,
+            effectiveness_state,
+            effectiveness_report,
+            store,
+            audit_log,
+            auto_quarantine_cycles,
+        )
+        .await;
+
+        // Populate auto_quarantined_this_cycle on the report (FR-14).
+        if let Some(ref mut eff_report) = report.effectiveness {
+            eff_report.auto_quarantined_this_cycle = quarantined_ids;
+        }
+    }
+
+    // Step 10: Run existing maintenance logic (unchanged).
     status_svc
         .run_maintenance(
             &active_entries,
@@ -329,6 +523,209 @@ async fn maintenance_tick(
         .await?;
 
     Ok(())
+}
+
+/// Process the auto-quarantine candidates collected during the tick write.
+///
+/// Called after the `EffectivenessState` write lock has been released (NFR-02, R-13).
+/// Each candidate is quarantined independently — failure of one does not abort
+/// the remaining candidates (R-03).
+///
+/// Returns the list of entry IDs successfully quarantined this cycle (FR-14).
+async fn process_auto_quarantine(
+    to_quarantine: Vec<(u64, u32, EffectivenessCategory)>,
+    effectiveness_state: &EffectivenessStateHandle,
+    effectiveness_report: &unimatrix_engine::effectiveness::EffectivenessReport,
+    store: &Arc<Store>,
+    audit_log: &Arc<AuditLog>,
+    auto_quarantine_cycles: u32,
+) -> Vec<u64> {
+    if to_quarantine.is_empty() || auto_quarantine_cycles == 0 {
+        return Vec::new();
+    }
+
+    let mut quarantined: Vec<u64> = Vec::new();
+
+    for (entry_id, cycle_count, category) in to_quarantine {
+        // Defense in depth: verify the category is still Ineffective or Noisy (AC-14, R-11).
+        // Background tick is the sole writer; no state change can have occurred since we
+        // released the write lock above (still in the same tick invocation).
+        match category {
+            EffectivenessCategory::Ineffective | EffectivenessCategory::Noisy => { /* proceed */ }
+            _ => continue, // stale entry — defensive skip
+        }
+
+        // Fetch entry metadata for audit event (title, topic).
+        let (title, topic, entry_category) =
+            find_entry_metadata_in_report(effectiveness_report, entry_id).unwrap_or_else(|| {
+                (
+                    format!("(id={})", entry_id),
+                    "(unknown)".to_string(),
+                    "(unknown)".to_string(),
+                )
+            });
+
+        // Quarantine via synchronous store path inside spawn_blocking (NFR-05).
+        // `Store::update_status` is the synchronous quarantine primitive.
+        let store_clone = Arc::clone(store);
+        let quarantine_result = tokio::task::spawn_blocking(move || {
+            store_clone
+                .update_status(entry_id, Status::Quarantined)
+                .map_err(|e| e.to_string())
+        })
+        .await;
+
+        match quarantine_result {
+            Ok(Ok(())) => {
+                // Quarantine succeeded — reset consecutive_bad_cycles counter (idempotent).
+                // Re-acquire write lock for counter reset only.
+                // `generation` is NOT incremented — search/briefing paths do not need to
+                // re-clone categories for a counter-only change.
+                {
+                    let mut state = effectiveness_state
+                        .write()
+                        .unwrap_or_else(|e| e.into_inner());
+                    state.consecutive_bad_cycles.remove(&entry_id);
+                }
+                // write lock drops here.
+
+                // Emit auto_quarantine audit event (Component 6, FR-11).
+                emit_auto_quarantine_audit(
+                    audit_log,
+                    entry_id,
+                    &title,
+                    &topic,
+                    &entry_category,
+                    category,
+                    cycle_count,
+                    auto_quarantine_cycles,
+                );
+
+                quarantined.push(entry_id);
+            }
+            Ok(Err(store_error)) => {
+                // Quarantine SQL failed (e.g., entry already quarantined or deleted).
+                // Do NOT reset counter — entry may still qualify next tick.
+                // Do NOT abort loop — continue to next candidate (R-03).
+                tracing::warn!(
+                    entry_id = entry_id,
+                    error = %store_error,
+                    "auto-quarantine: update_status failed, skipping entry"
+                );
+            }
+            Err(join_error) => {
+                // spawn_blocking panicked.
+                tracing::warn!(
+                    entry_id = entry_id,
+                    error = %join_error,
+                    "auto-quarantine: spawn_blocking join error, skipping entry"
+                );
+            }
+        }
+    }
+
+    quarantined
+}
+
+/// Look up entry title, topic, and category string from the `EffectivenessReport`.
+///
+/// Searches `top_ineffective` and `noisy_entries` lists. Entries that crossed the
+/// quarantine threshold must be `Ineffective` or `Noisy`, so these lists are
+/// sufficient. Returns `None` if the entry is not found in either list.
+fn find_entry_metadata_in_report(
+    report: &unimatrix_engine::effectiveness::EffectivenessReport,
+    entry_id: u64,
+) -> Option<(String, String, String)> {
+    report
+        .top_ineffective
+        .iter()
+        .chain(report.noisy_entries.iter())
+        .find(|ee| ee.entry_id == entry_id)
+        .map(|ee| {
+            (
+                ee.title.clone(),
+                ee.topic.clone(),
+                // `trust_source` is the closest available field for category context
+                // (knowledge category is not stored on EntryEffectiveness).
+                ee.trust_source.clone(),
+            )
+        })
+}
+
+/// Emit a `tick_skipped` audit event when `compute_report()` returns an error.
+///
+/// The error reason flows through to the audit log so operators can understand
+/// why auto-quarantine logic was paused (ADR-002, FR-13, SR-07).
+fn emit_tick_skipped_audit(audit_log: &Arc<AuditLog>, error_reason: String) {
+    let event = AuditEvent {
+        event_id: 0,
+        timestamp: 0,
+        session_id: String::new(),
+        agent_id: SYSTEM_AGENT_ID.to_string(),
+        operation: OP_TICK_SKIPPED.to_string(),
+        target_ids: vec![],
+        outcome: Outcome::Error,
+        detail: format!("background tick compute_report failed: {}", error_reason),
+    };
+
+    if let Err(e) = audit_log.log_event(event) {
+        tracing::warn!(error = %e, "failed to emit tick_skipped audit event");
+    }
+}
+
+/// Emit an `auto_quarantine` audit event for a successfully quarantined entry.
+///
+/// All 9 FR-11 fields are encoded: operation, agent_id, target_ids, entry_title,
+/// entry_category, classification, consecutive_cycles, threshold, reason.
+#[allow(clippy::too_many_arguments)]
+fn emit_auto_quarantine_audit(
+    audit_log: &Arc<AuditLog>,
+    entry_id: u64,
+    title: &str,
+    topic: &str,
+    entry_category: &str,
+    classification: EffectivenessCategory,
+    consecutive_cycles: u32,
+    threshold: u32,
+) {
+    let reason = format!(
+        "auto-quarantine: entry '{}' (id={}, category={:?}, \
+         consecutive_bad_cycles={}, topic={}) quarantined after {} consecutive \
+         background maintenance ticks classified as {:?}",
+        title,
+        entry_id,
+        classification,
+        consecutive_cycles,
+        topic,
+        consecutive_cycles,
+        classification
+    );
+
+    let detail = format!(
+        "entry_title={:?} entry_category={:?} classification={:?} \
+         consecutive_cycles={} threshold={} reason={}",
+        title, entry_category, classification, consecutive_cycles, threshold, reason
+    );
+
+    let event = AuditEvent {
+        event_id: 0,
+        timestamp: 0,
+        session_id: String::new(),
+        agent_id: SYSTEM_AGENT_ID.to_string(),
+        operation: OP_AUTO_QUARANTINE.to_string(),
+        target_ids: vec![entry_id],
+        outcome: Outcome::Success,
+        detail,
+    };
+
+    if let Err(e) = audit_log.log_event(event) {
+        tracing::warn!(
+            entry_id = entry_id,
+            error = %e,
+            "auto-quarantine: failed to write audit event"
+        );
+        // Do not escalate — quarantine succeeded even if audit write fails.
+    }
 }
 
 /// Parse a hook type string into a HookType enum.
