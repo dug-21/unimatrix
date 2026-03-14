@@ -153,7 +153,10 @@ mod tests {
     #[test]
     fn test_effectiveness_state_new_returns_empty() {
         let state = EffectivenessState::new();
-        assert!(state.categories.is_empty(), "categories must be empty on cold-start");
+        assert!(
+            state.categories.is_empty(),
+            "categories must be empty on cold-start"
+        );
         assert!(
             state.consecutive_bad_cycles.is_empty(),
             "consecutive_bad_cycles must be empty on cold-start"
@@ -173,8 +176,7 @@ mod tests {
 
     #[test]
     fn test_effectiveness_state_handle_type_alias() {
-        let handle: EffectivenessStateHandle =
-            Arc::new(RwLock::new(EffectivenessState::new()));
+        let handle: EffectivenessStateHandle = Arc::new(RwLock::new(EffectivenessState::new()));
         let guard = handle.read().unwrap_or_else(|e| e.into_inner());
         assert_eq!(guard.categories.len(), 0);
     }
@@ -241,7 +243,9 @@ mod tests {
 
         {
             let mut guard1 = handle1.write().unwrap_or_else(|e| e.into_inner());
-            guard1.categories.insert(99, EffectivenessCategory::Ineffective);
+            guard1
+                .categories
+                .insert(99, EffectivenessCategory::Ineffective);
             guard1.generation = 1;
         }
 
@@ -273,8 +277,14 @@ mod tests {
         // Clone must see the same state (shared backing object)
         {
             let cache = clone.lock().unwrap_or_else(|e| e.into_inner());
-            assert_eq!(cache.generation, 5, "clone must see updated generation via shared Arc");
-            assert_eq!(cache.categories.get(&1), Some(&EffectivenessCategory::Settled));
+            assert_eq!(
+                cache.generation, 5,
+                "clone must see updated generation via shared Arc"
+            );
+            assert_eq!(
+                cache.categories.get(&1),
+                Some(&EffectivenessCategory::Settled)
+            );
         }
     }
 
@@ -287,7 +297,9 @@ mod tests {
         // Pre-populate with a known entry before poisoning
         {
             let mut guard = handle.write().unwrap_or_else(|e| e.into_inner());
-            guard.categories.insert(42, EffectivenessCategory::Effective);
+            guard
+                .categories
+                .insert(42, EffectivenessCategory::Effective);
             guard.generation = 7;
         }
 
@@ -340,7 +352,10 @@ mod tests {
         // Read back
         {
             let guard = handle.read().unwrap_or_else(|e| e.into_inner());
-            assert_eq!(guard.categories.get(&1), Some(&EffectivenessCategory::Noisy));
+            assert_eq!(
+                guard.categories.get(&1),
+                Some(&EffectivenessCategory::Noisy)
+            );
             assert_eq!(guard.consecutive_bad_cycles.get(&1), Some(&3u32));
             assert_eq!(guard.generation, 1);
         }
