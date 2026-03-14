@@ -340,12 +340,79 @@ fn test_record_usage_with_confidence() {
             &[],
             &[],
             &[],
-            Some(&|_record, _now| 0.85),
+            Some(
+                Box::new(|_record: &unimatrix_store::EntryRecord, _now: u64| 0.85_f64)
+                    as Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send>,
+            ),
         )
         .unwrap();
     let record = db.store().get(id).unwrap();
     assert_eq!(record.confidence, 0.85);
     assert_eq!(record.helpful_count, 1);
+}
+
+/// R-11 gate: Verify the store does NOT deduplicate IDs in record_usage_with_confidence.
+///
+/// The store loops over `all_ids` (outer loop), and checks `access_ids` via a HashSet
+/// for set-membership. When `all_ids = [id, id]`, the UPDATE executes twice for the
+/// same row, producing access_count += 2.
+///
+/// This means the flat_map repeat approach IS viable:
+///   access_weight=2 -> all_ids=[id,id], access_ids=[id,id] -> access_count += 2
+#[test]
+fn test_r11_store_does_not_deduplicate_duplicate_all_ids() {
+    let db = TestDb::new();
+    let id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
+
+    let initial = db.store().get(id).unwrap().access_count;
+
+    // Pass the same ID twice in both all_ids and access_ids
+    db.store()
+        .record_usage_with_confidence(
+            &[id, id], // all_ids: duplicate — store loops over this, so UPDATE runs twice
+            &[id, id], // access_ids: duplicate
+            &[],
+            &[],
+            &[],
+            &[],
+            None,
+        )
+        .unwrap();
+
+    let after = db.store().get(id).unwrap().access_count;
+    // Store does NOT deduplicate: access_count += 2
+    assert_eq!(
+        after,
+        initial + 2,
+        "store does not deduplicate all_ids: duplicate ID increments access_count by 2"
+    );
+}
+
+/// R-11 fallback: increment_access_counts applies extra increments correctly.
+///
+/// When access_weight = 2, record_usage_with_confidence applies +1, then
+/// increment_access_counts applies the additional +1. Net result: access_count += 2.
+#[test]
+fn test_increment_access_counts_applies_extra_increment() {
+    let db = TestDb::new();
+    let id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
+
+    let initial = db.store().get(id).unwrap().access_count;
+
+    // Step 1: normal record (dedup-compatible, increments by 1)
+    db.store()
+        .record_usage_with_confidence(&[id], &[id], &[], &[], &[], &[], None)
+        .unwrap();
+
+    // Step 2: extra increment for access_weight - 1 = 1
+    db.store().increment_access_counts(&[id], 1).unwrap();
+
+    let after = db.store().get(id).unwrap().access_count;
+    assert_eq!(
+        after,
+        initial + 2,
+        "record_usage (+1) + increment_access_counts (+1) = access_count += 2"
+    );
 }
 
 #[test]

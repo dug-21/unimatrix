@@ -45,6 +45,11 @@ pub(crate) struct UsageContext {
     pub feature_cycle: Option<String>,
     /// Trust level for feature entry gating.
     pub trust_level: Option<TrustLevel>,
+    /// Access weight multiplier: 1 = normal, 2 = deliberate retrieval (context_lookup).
+    ///
+    /// Default MUST be 1. A value of 0 silently drops the access increment (EC-04).
+    /// UsageDedup fires BEFORE this multiplier is applied (C-05).
+    pub access_weight: u32,
 }
 
 impl UsageService {
@@ -75,7 +80,8 @@ impl UsageService {
     fn record_mcp_usage(&self, entry_ids: &[u64], ctx: UsageContext) {
         let agent_id = ctx.agent_id.clone().unwrap_or_default();
 
-        // Step 1: Dedup access counts
+        // Step 1: Dedup access counts FIRST (C-05: dedup before multiply).
+        // UsageDedup filters entries already seen by this agent this session.
         let access_ids = self.usage_dedup.filter_access(&agent_id, entry_ids);
 
         // Step 2: Determine vote actions
@@ -117,7 +123,34 @@ impl UsageService {
         // a separate spawn_blocking, each independently acquiring the Store mutex.
         // This caused blocking pool saturation under concurrent MCP requests.
         let store = Arc::clone(&self.store);
-        let all_ids = entry_ids.to_vec();
+
+        // R-11 VERIFIED: The store loops over `all_ids` (outer loop) and uses
+        // `access_ids` only for set-membership checks. Passing [id, id] in both
+        // `all_ids` and `access_ids` produces access_count += 2 (not deduplicated).
+        // This means the flat_map repeat approach IS viable for access_weight > 1.
+        //
+        // C-05: Dedup (filter_access) fires in Step 1 above. Only entries not yet
+        // seen by this agent appear in `access_ids`. The multiplier applies only to
+        // those fresh entries — a repeated lookup by the same agent produces 0.
+        let multiplied_all_ids: Vec<u64> = if ctx.access_weight <= 1 {
+            entry_ids.to_vec()
+        } else {
+            // Each entry appears access_weight times in all_ids for correct increment
+            entry_ids
+                .iter()
+                .flat_map(|&id| std::iter::repeat(id).take(ctx.access_weight as usize))
+                .collect()
+        };
+
+        let multiplied_access_ids: Vec<u64> = if ctx.access_weight <= 1 {
+            access_ids
+        } else {
+            // access_ids (post-dedup) gets multiplied; deduped entries remain absent
+            access_ids
+                .iter()
+                .flat_map(|&id| std::iter::repeat(id).take(ctx.access_weight as usize))
+                .collect()
+        };
 
         // Pre-compute co-access pairs (in-memory, no lock needed)
         let co_access_pairs = if entry_ids.len() >= 2 {
@@ -146,18 +179,23 @@ impl UsageService {
             }
         });
 
+        // R-01: Construct a capturing closure with cold-start alpha0/beta0 defaults.
+        // When ConfidenceStateHandle is wired (confidence-state component), the
+        // snapshot will be taken from state before spawning. For now, use cold-start
+        // defaults (alpha0=3.0, beta0=3.0) as placeholders.
+        let confidence_fn: Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send> =
+            Box::new(move |entry, now| crate::confidence::compute_confidence(entry, now, 3.0, 3.0));
+
         let _ = tokio::task::spawn_blocking(move || {
             // Single lock acquisition for all writes
             if let Err(e) = store.record_usage_with_confidence(
-                &all_ids,
-                &access_ids,
+                &multiplied_all_ids,
+                &multiplied_access_ids,
                 &helpful_ids,
                 &unhelpful_ids,
                 &decrement_helpful_ids,
                 &decrement_unhelpful_ids,
-                Some(&|entry: &unimatrix_core::EntryRecord, now: u64| {
-                    crate::confidence::compute_confidence(entry, now, 3.0, 3.0)
-                }),
+                Some(confidence_fn),
             ) {
                 tracing::warn!("usage recording failed: {e}");
             }
@@ -242,9 +280,11 @@ impl UsageService {
                 &[],
                 &[],
                 &[],
-                Some(&|entry: &unimatrix_core::EntryRecord, now: u64| {
-                    crate::confidence::compute_confidence(entry, now, 3.0, 3.0)
-                }),
+                Some(
+                    Box::new(move |entry: &unimatrix_store::EntryRecord, now: u64| {
+                        crate::confidence::compute_confidence(entry, now, 3.0, 3.0)
+                    }) as Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send>,
+                ),
             ) {
                 tracing::warn!("briefing usage recording failed: {e}");
             }
@@ -292,6 +332,7 @@ mod usage_tests {
                 helpful: None,
                 feature_cycle: None,
                 trust_level: None,
+                access_weight: 1,
             },
         );
     }
@@ -310,6 +351,7 @@ mod usage_tests {
                 helpful: None,
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
             },
         );
 
@@ -338,6 +380,7 @@ mod usage_tests {
                 helpful: Some(true),
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
             },
         );
 
@@ -361,6 +404,7 @@ mod usage_tests {
                 helpful: Some(false),
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
             },
         );
 
@@ -385,6 +429,7 @@ mod usage_tests {
                 helpful: Some(false),
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -399,6 +444,7 @@ mod usage_tests {
                 helpful: Some(true),
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -424,6 +470,7 @@ mod usage_tests {
                     helpful: Some(true),
                     feature_cycle: None,
                     trust_level: Some(TrustLevel::Internal),
+                    access_weight: 1,
                 },
             );
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -449,6 +496,7 @@ mod usage_tests {
                     helpful: None,
                     feature_cycle: None,
                     trust_level: Some(TrustLevel::Internal),
+                    access_weight: 1,
                 },
             );
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -475,6 +523,7 @@ mod usage_tests {
                 helpful: None,
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -497,6 +546,7 @@ mod usage_tests {
                 helpful: Some(true),
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
             },
         );
         let elapsed = start.elapsed();
@@ -521,6 +571,7 @@ mod usage_tests {
                 helpful: None,
                 feature_cycle: Some("vnc-009".to_string()),
                 trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -554,6 +605,7 @@ mod usage_tests {
                 helpful: None,
                 feature_cycle: Some("vnc-009".to_string()),
                 trust_level: Some(TrustLevel::Restricted),
+                access_weight: 1,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -591,6 +643,7 @@ mod usage_tests {
                 helpful: Some(true),
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -620,6 +673,7 @@ mod usage_tests {
                 helpful: None,
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -635,6 +689,7 @@ mod usage_tests {
                 helpful: None,
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -642,6 +697,147 @@ mod usage_tests {
             store.get(id).unwrap().access_count,
             1,
             "dedup should prevent double increment"
+        );
+    }
+
+    /// AC-08a: context_get implicit helpful vote — helpful: Some(true) increments helpful_count.
+    /// This is what the context_get handler now passes via params.helpful.or(Some(true)).
+    #[tokio::test]
+    async fn test_context_get_implicit_helpful_vote_increments_helpful_count() {
+        let (service, store, _dir) = make_usage_service();
+        let id = insert_test_entry(&store);
+
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-get-1".to_string()),
+                helpful: Some(true), // what context_get handler passes when params.helpful.is_none()
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
+            },
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        let entry = store.get(id).expect("get");
+        assert_eq!(
+            entry.helpful_count, 1,
+            "implicit helpful vote must increment helpful_count"
+        );
+        assert_eq!(entry.access_count, 1, "access_count must also increment");
+    }
+
+    /// AC-08a: context_get with explicit helpful=false does NOT increment helpful_count.
+    #[tokio::test]
+    async fn test_context_get_explicit_false_does_not_increment_helpful() {
+        let (service, store, _dir) = make_usage_service();
+        let id = insert_test_entry(&store);
+
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-get-2".to_string()),
+                helpful: Some(false), // explicit unhelpful — must not increment helpful_count
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
+            },
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        let entry = store.get(id).expect("get");
+        assert_eq!(
+            entry.helpful_count, 0,
+            "explicit false must not increment helpful_count"
+        );
+        assert_eq!(
+            entry.unhelpful_count, 1,
+            "explicit false must increment unhelpful_count"
+        );
+    }
+
+    /// AC-08b / R-11 fallback: context_lookup access_weight=2 increments access_count by 2.
+    /// New agent, new entry — dedup passes, access_weight multiplier applied.
+    #[tokio::test]
+    async fn test_context_lookup_access_weight_2_increments_by_2() {
+        let (service, store, _dir) = make_usage_service();
+        let id = insert_test_entry(&store);
+
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-lookup-1".to_string()),
+                helpful: None, // no implicit vote for lookup
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+                access_weight: 2, // context_lookup sets this
+            },
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        let entry = store.get(id).expect("get");
+        assert_eq!(
+            entry.access_count, 2,
+            "lookup with access_weight=2 must produce access_count += 2"
+        );
+        assert_eq!(
+            entry.helpful_count, 0,
+            "lookup must not inject helpful vote"
+        );
+    }
+
+    /// C-05: dedup fires BEFORE access_weight multiplier.
+    /// Same agent calling context_lookup twice: second call deduped, access_count stays 2.
+    #[tokio::test]
+    async fn test_context_lookup_dedup_before_multiply_second_call_zero() {
+        let (service, store, _dir) = make_usage_service();
+        let id = insert_test_entry(&store);
+
+        // First lookup: access_weight=2, fresh agent -> access_count becomes 2
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-lookup-dedup".to_string()),
+                helpful: None,
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+                access_weight: 2,
+            },
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        assert_eq!(
+            store.get(id).unwrap().access_count,
+            2,
+            "first lookup: access_count must be 2"
+        );
+
+        // Second lookup: same agent -> UsageDedup filters the entry -> empty access_ids
+        // -> multiplier applied to empty set -> 0 increments (C-05)
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-lookup-dedup".to_string()),
+                helpful: None,
+                feature_cycle: None,
+                trust_level: Some(TrustLevel::Internal),
+                access_weight: 2,
+            },
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        assert_eq!(
+            store.get(id).unwrap().access_count,
+            2,
+            "second lookup same agent: access_count must remain 2 (dedup before multiply)"
         );
     }
 }
