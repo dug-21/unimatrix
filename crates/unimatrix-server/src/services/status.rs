@@ -166,7 +166,6 @@ pub(crate) struct StatusService {
     /// after computing empirical priors from the voted-entry population.
     /// Read once before each confidence refresh batch (IR-02) to snapshot
     /// alpha0/beta0 without acquiring the lock inside the hot loop.
-    #[allow(dead_code)]
     confidence_state: ConfidenceStateHandle,
 }
 
@@ -922,6 +921,19 @@ impl StatusService {
 
             match prior_result {
                 Ok((alpha0, beta0, observed_spread, confidence_weight)) => {
+                    // Atomic write of all four fields (ADR-002, FM-03).
+                    // All values written in a single lock acquisition to prevent
+                    // a reader observing a partially-updated state.
+                    {
+                        let mut guard = self
+                            .confidence_state
+                            .write()
+                            .unwrap_or_else(|e| e.into_inner());
+                        guard.alpha0 = alpha0;
+                        guard.beta0 = beta0;
+                        guard.observed_spread = observed_spread;
+                        guard.confidence_weight = confidence_weight;
+                    }
                     tracing::debug!(
                         alpha0 = %format!("{alpha0:.3}"),
                         beta0 = %format!("{beta0:.3}"),
@@ -929,16 +941,6 @@ impl StatusService {
                         confidence_weight = %format!("{confidence_weight:.4}"),
                         "confidence state updated (Step 2b)"
                     );
-                    // TODO(crt-019 confidence-state agent): when ConfidenceStateHandle is wired
-                    // through ServiceLayer, replace the tracing log above with an atomic write:
-                    //   let mut guard = confidence_state_handle
-                    //       .write()
-                    //       .unwrap_or_else(|e| e.into_inner());
-                    //   guard.alpha0            = alpha0;
-                    //   guard.beta0             = beta0;
-                    //   guard.observed_spread   = observed_spread;
-                    //   guard.confidence_weight = confidence_weight;
-                    let _ = (alpha0, beta0, observed_spread, confidence_weight);
                 }
                 Err(e) => {
                     // Graceful degradation (FM-01): ConfidenceState retains previous tick values.

@@ -316,7 +316,11 @@ impl ServiceLayer {
             Arc::clone(&confidence_state_handle),
         );
 
-        let usage = UsageService::new(Arc::clone(&store), usage_dedup);
+        let usage = UsageService::new(
+            Arc::clone(&store),
+            usage_dedup,
+            Arc::clone(&confidence_state_handle),
+        );
 
         ServiceLayer {
             search,

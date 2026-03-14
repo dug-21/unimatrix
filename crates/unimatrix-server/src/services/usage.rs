@@ -10,6 +10,7 @@ use unimatrix_store::Store;
 
 use crate::infra::registry::TrustLevel;
 use crate::infra::usage_dedup::{UsageDedup, VoteAction};
+use crate::services::confidence::ConfidenceStateHandle;
 
 /// Unified usage recording service for both transports.
 ///
@@ -19,6 +20,12 @@ use crate::infra::usage_dedup::{UsageDedup, VoteAction};
 pub(crate) struct UsageService {
     store: Arc<Store>,
     usage_dedup: Arc<UsageDedup>,
+    /// crt-019 (ADR-001): empirical prior parameters for confidence recomputation.
+    ///
+    /// Snapshot of `(alpha0, beta0)` taken before each `spawn_blocking` call so
+    /// the capturing closure uses the latest tick values, not cold-start defaults.
+    /// All lock acquisitions use `unwrap_or_else(|e| e.into_inner())` (FM-03).
+    confidence_state: ConfidenceStateHandle,
 }
 
 /// Discriminates the origin of a usage event.
@@ -53,9 +60,17 @@ pub(crate) struct UsageContext {
 }
 
 impl UsageService {
-    /// Create a new UsageService with shared store and dedup state.
-    pub(crate) fn new(store: Arc<Store>, usage_dedup: Arc<UsageDedup>) -> Self {
-        UsageService { store, usage_dedup }
+    /// Create a new UsageService with shared store, dedup state, and confidence handle.
+    pub(crate) fn new(
+        store: Arc<Store>,
+        usage_dedup: Arc<UsageDedup>,
+        confidence_state: ConfidenceStateHandle,
+    ) -> Self {
+        UsageService {
+            store,
+            usage_dedup,
+            confidence_state,
+        }
     }
 
     /// Record access for a set of entry IDs.
@@ -179,12 +194,18 @@ impl UsageService {
             }
         });
 
-        // R-01: Construct a capturing closure with cold-start alpha0/beta0 defaults.
-        // When ConfidenceStateHandle is wired (confidence-state component), the
-        // snapshot will be taken from state before spawning. For now, use cold-start
-        // defaults (alpha0=3.0, beta0=3.0) as placeholders.
+        // R-01: Snapshot alpha0/beta0 from ConfidenceState on the async thread before
+        // entering spawn_blocking. The read lock is held briefly; the values are moved
+        // into the closure so the blocking thread needs no lock at all (FM-03, ADR-001).
+        let (alpha0, beta0) = {
+            let guard = self
+                .confidence_state
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
+            (guard.alpha0, guard.beta0)
+        };
         let confidence_fn: Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send> =
-            Box::new(move |entry, now| crate::confidence::compute_confidence(entry, now, 3.0, 3.0));
+            Box::new(move |entry, now| crate::confidence::compute_confidence(entry, now, alpha0, beta0));
 
         let _ = tokio::task::spawn_blocking(move || {
             // Single lock acquisition for all writes
@@ -271,6 +292,15 @@ impl UsageService {
             return;
         }
 
+        // Snapshot alpha0/beta0 before spawn (same pattern as record_mcp_usage, ADR-001).
+        let (alpha0, beta0) = {
+            let guard = self
+                .confidence_state
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
+            (guard.alpha0, guard.beta0)
+        };
+
         let store = Arc::clone(&self.store);
         let _ = tokio::task::spawn_blocking(move || {
             if let Err(e) = store.record_usage_with_confidence(
@@ -282,7 +312,7 @@ impl UsageService {
                 &[],
                 Some(
                     Box::new(move |entry: &unimatrix_store::EntryRecord, now: u64| {
-                        crate::confidence::compute_confidence(entry, now, 3.0, 3.0)
+                        crate::confidence::compute_confidence(entry, now, alpha0, beta0)
                     }) as Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send>,
                 ),
             ) {
@@ -299,7 +329,8 @@ mod usage_tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let store = Arc::new(Store::open(dir.path().join("test.db")).expect("store"));
         let usage_dedup = Arc::new(UsageDedup::new());
-        let service = UsageService::new(Arc::clone(&store), usage_dedup);
+        let confidence_state = crate::services::confidence::ConfidenceState::new_handle();
+        let service = UsageService::new(Arc::clone(&store), usage_dedup, confidence_state);
         (service, store, dir)
     }
 
