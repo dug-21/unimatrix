@@ -165,7 +165,7 @@ The confidence refresh tick must compute α₀ and β₀ from the voted-entry po
   - Population mean `p̄ = sum(helpful_count) / sum(total_votes)` across voted entries
   - Population variance `v = sample_variance(per_entry_helpfulness_rates)`
   - `α₀ = p̄ * ((p̄ * (1 - p̄) / v) - 1)`; `β₀ = (1 - p̄) * ((p̄ * (1 - p̄) / v) - 1)`
-  - Clamp α₀ and β₀ to `[0.5, 20.0]` to prevent degenerate estimates.
+  - Clamp α₀ and β₀ to `[0.5, 50.0]` to prevent degenerate estimates.
 - α₀, β₀, and `observed_spread` are computed in the same refresh tick. Their atomic
   consistency boundary is defined by ARCHITECTURE.md (SR-02).
 

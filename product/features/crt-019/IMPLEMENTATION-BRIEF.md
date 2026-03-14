@@ -29,20 +29,20 @@ feature establishing a confidence spread of >= 0.20.
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| confidence-formula-engine | pseudocode/confidence-formula-engine.md | test-plan/confidence-formula-engine.md |
-| confidence-state | pseudocode/confidence-state.md | test-plan/confidence-state.md |
-| empirical-prior-computation | pseudocode/empirical-prior-computation.md | test-plan/empirical-prior-computation.md |
-| confidence-refresh-batch | pseudocode/confidence-refresh-batch.md | test-plan/confidence-refresh-batch.md |
-| deliberate-retrieval-signal | pseudocode/deliberate-retrieval-signal.md | test-plan/deliberate-retrieval-signal.md |
-| query-skills | pseudocode/query-skills.md | test-plan/query-skills.md |
-| test-infrastructure | pseudocode/test-infrastructure.md | test-plan/test-infrastructure.md |
+| confidence-formula-engine | product/features/crt-019/pseudocode/confidence-formula-engine.md | product/features/crt-019/test-plan/confidence-formula-engine.md |
+| confidence-state | product/features/crt-019/pseudocode/confidence-state.md | product/features/crt-019/test-plan/confidence-state.md |
+| empirical-prior-computation | product/features/crt-019/pseudocode/empirical-prior-computation.md | product/features/crt-019/test-plan/empirical-prior-computation.md |
+| confidence-refresh-batch | product/features/crt-019/pseudocode/confidence-refresh-batch.md | product/features/crt-019/test-plan/confidence-refresh-batch.md |
+| deliberate-retrieval-signal | product/features/crt-019/pseudocode/deliberate-retrieval-signal.md | product/features/crt-019/test-plan/deliberate-retrieval-signal.md |
+| query-skills | product/features/crt-019/pseudocode/query-skills.md | product/features/crt-019/test-plan/query-skills.md |
+| test-infrastructure | product/features/crt-019/pseudocode/test-infrastructure.md | product/features/crt-019/test-plan/test-infrastructure.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/crt-019/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/crt-019/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 

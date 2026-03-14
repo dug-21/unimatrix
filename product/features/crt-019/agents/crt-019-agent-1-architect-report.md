@@ -89,3 +89,8 @@ This affects the store's API surface in `crates/unimatrix-store/` — verify the
 
 MCP server was not accessible in this session. ADRs must be stored via `/uni-store-adr` skill
 in a subsequent session before marking this feature complete in Unimatrix.
+
+## Knowledge Stewardship
+
+Queried: `/uni-query-patterns` for confidence state management, RwLock patterns, engine statelessness — MCP server not reachable in this session; no results retrieved.
+Declined: No entries stored (MCP server unavailable). ADRs produced as files in `architecture/`. Store via `/uni-store-adr` in a subsequent session.
