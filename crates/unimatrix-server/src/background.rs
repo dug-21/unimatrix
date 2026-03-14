@@ -87,7 +87,14 @@ fn now_secs() -> u64 {
 /// - Non-integer: startup error.
 pub fn parse_auto_quarantine_cycles() -> Result<u32, String> {
     let raw = std::env::var("UNIMATRIX_AUTO_QUARANTINE_CYCLES").unwrap_or_else(|_| "3".to_string());
+    parse_auto_quarantine_cycles_str(&raw)
+}
 
+/// Inner parse logic for `parse_auto_quarantine_cycles`, separated for unit-testability.
+///
+/// Takes the raw env var string value (or the default "3") and validates it.
+/// This function avoids the need for `unsafe` env var manipulation in tests.
+fn parse_auto_quarantine_cycles_str(raw: &str) -> Result<u32, String> {
     let value: u32 = raw.parse().map_err(|_| {
         format!(
             "UNIMATRIX_AUTO_QUARANTINE_CYCLES: must be a non-negative integer, got {:?}",
@@ -1002,6 +1009,15 @@ async fn extraction_tick(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
+    use std::sync::{Arc, RwLock};
+    use unimatrix_engine::effectiveness::EffectivenessCategory;
+
+    use crate::services::effectiveness::EffectivenessState;
+
+    // ---------------------------------------------------------------------------
+    // Legacy tests (preserved)
+    // ---------------------------------------------------------------------------
 
     #[test]
     fn tick_metadata_new_defaults() {
@@ -1049,5 +1065,747 @@ mod tests {
         assert!(result.is_some());
         let (enhancer, _evaluator) = result.unwrap();
         assert_eq!(enhancer.mode(), EnhancerMode::Shadow);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Helper: simulate the tick write logic on an EffectivenessStateHandle.
+    //
+    // Mirrors the logic inside maintenance_tick without requiring a real store or
+    // StatusService. Returns the set of quarantine candidates collected.
+    // ---------------------------------------------------------------------------
+
+    /// Apply one tick write to `effectiveness_state` using the given category map.
+    ///
+    /// Returns `(to_quarantine, generation_after)`.
+    fn apply_tick_write(
+        effectiveness_state: &EffectivenessStateHandle,
+        categories_from_report: HashMap<u64, EffectivenessCategory>,
+        auto_quarantine_cycles: u32,
+    ) -> (Vec<(u64, u32, EffectivenessCategory)>, u64) {
+        let to_quarantine: Vec<(u64, u32, EffectivenessCategory)> = {
+            let mut state = effectiveness_state
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+
+            // Replace categories map
+            state.categories = categories_from_report;
+
+            // Remove counters for entries absent from the new classification set
+            let active_ids: HashSet<u64> = state.categories.keys().copied().collect();
+            state
+                .consecutive_bad_cycles
+                .retain(|id, _| active_ids.contains(id));
+
+            // Two-pass increment/reset (borrow-checker safe)
+            let mut to_increment: Vec<u64> = Vec::new();
+            let mut to_reset: Vec<u64> = Vec::new();
+            for (&entry_id, category) in &state.categories {
+                match category {
+                    EffectivenessCategory::Ineffective | EffectivenessCategory::Noisy => {
+                        to_increment.push(entry_id);
+                    }
+                    EffectivenessCategory::Effective
+                    | EffectivenessCategory::Settled
+                    | EffectivenessCategory::Unmatched => {
+                        to_reset.push(entry_id);
+                    }
+                }
+            }
+            for entry_id in to_increment {
+                let counter = state.consecutive_bad_cycles.entry(entry_id).or_insert(0);
+                *counter += 1;
+            }
+            for entry_id in to_reset {
+                state.consecutive_bad_cycles.remove(&entry_id);
+            }
+
+            // Collect quarantine candidates
+            let mut candidates = Vec::new();
+            if auto_quarantine_cycles > 0 {
+                for (&entry_id, &count) in &state.consecutive_bad_cycles {
+                    if count >= auto_quarantine_cycles {
+                        let category = state
+                            .categories
+                            .get(&entry_id)
+                            .copied()
+                            .unwrap_or(EffectivenessCategory::Ineffective);
+                        match category {
+                            EffectivenessCategory::Ineffective | EffectivenessCategory::Noisy => {
+                                candidates.push((entry_id, count, category));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            state.generation += 1;
+            candidates
+        };
+
+        let generation_after = {
+            let state = effectiveness_state
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
+            state.generation
+        };
+        (to_quarantine, generation_after)
+    }
+
+    // ---------------------------------------------------------------------------
+    // FR-03 / AC-01 — Categories written correctly from report
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_tick_write_updates_categories_from_report() {
+        let handle = EffectivenessState::new_handle();
+        let mut cats = HashMap::new();
+        cats.insert(1u64, EffectivenessCategory::Effective);
+        cats.insert(2u64, EffectivenessCategory::Ineffective);
+        cats.insert(3u64, EffectivenessCategory::Settled);
+
+        apply_tick_write(&handle, cats, 5);
+
+        let state = handle.read().unwrap_or_else(|e| e.into_inner());
+        assert_eq!(
+            state.categories.get(&1),
+            Some(&EffectivenessCategory::Effective)
+        );
+        assert_eq!(
+            state.categories.get(&2),
+            Some(&EffectivenessCategory::Ineffective)
+        );
+        assert_eq!(
+            state.categories.get(&3),
+            Some(&EffectivenessCategory::Settled)
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // FR-03 — Generation increments on each tick write
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_tick_write_increments_generation() {
+        let handle = EffectivenessState::new_handle();
+
+        {
+            let (_, generation_after) = apply_tick_write(&handle, HashMap::new(), 5);
+            assert_eq!(generation_after, 1, "generation must be 1 after first tick");
+        }
+        {
+            let (_, generation_after) = apply_tick_write(&handle, HashMap::new(), 5);
+            assert_eq!(
+                generation_after, 2,
+                "generation must be 2 after second tick"
+            );
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // FR-09 / AC-09 — consecutive_bad_cycles increment for Ineffective
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_consecutive_bad_cycles_increment_for_ineffective() {
+        let handle = EffectivenessState::new_handle();
+
+        let mut cats = HashMap::new();
+        cats.insert(10u64, EffectivenessCategory::Ineffective);
+        apply_tick_write(&handle, cats.clone(), 99);
+        {
+            let state = handle.read().unwrap_or_else(|e| e.into_inner());
+            assert_eq!(
+                state.consecutive_bad_cycles.get(&10),
+                Some(&1),
+                "counter must be 1 after tick 1"
+            );
+        }
+
+        apply_tick_write(&handle, cats, 99);
+        {
+            let state = handle.read().unwrap_or_else(|e| e.into_inner());
+            assert_eq!(
+                state.consecutive_bad_cycles.get(&10),
+                Some(&2),
+                "counter must be 2 after tick 2"
+            );
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // FR-09 / AC-09 — consecutive_bad_cycles increment for Noisy
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_consecutive_bad_cycles_increment_for_noisy() {
+        let handle = EffectivenessState::new_handle();
+
+        let mut cats = HashMap::new();
+        cats.insert(20u64, EffectivenessCategory::Noisy);
+        apply_tick_write(&handle, cats, 99);
+
+        let state = handle.read().unwrap_or_else(|e| e.into_inner());
+        assert_eq!(
+            state.consecutive_bad_cycles.get(&20),
+            Some(&1),
+            "Noisy must increment counter by 1"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // FR-09 / AC-09 — counter resets when entry becomes Effective
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_consecutive_bad_cycles_reset_on_recovery() {
+        let handle = EffectivenessState::new_handle();
+
+        // Pre-seed: entry 5 was Ineffective for 2 ticks
+        {
+            let mut state = handle.write().unwrap_or_else(|e| e.into_inner());
+            state.consecutive_bad_cycles.insert(5, 2);
+        }
+
+        let mut cats = HashMap::new();
+        cats.insert(5u64, EffectivenessCategory::Effective);
+        apply_tick_write(&handle, cats, 99);
+
+        let state = handle.read().unwrap_or_else(|e| e.into_inner());
+        assert!(
+            !state.consecutive_bad_cycles.contains_key(&5),
+            "counter must be removed on Effective recovery"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // FR-09 — counter reset on Settled
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_consecutive_bad_cycles_reset_on_settled() {
+        let handle = EffectivenessState::new_handle();
+
+        {
+            let mut state = handle.write().unwrap_or_else(|e| e.into_inner());
+            state.consecutive_bad_cycles.insert(7, 3);
+        }
+
+        let mut cats = HashMap::new();
+        cats.insert(7u64, EffectivenessCategory::Settled);
+        apply_tick_write(&handle, cats, 99);
+
+        let state = handle.read().unwrap_or_else(|e| e.into_inner());
+        assert!(
+            !state.consecutive_bad_cycles.contains_key(&7),
+            "counter must be removed on Settled"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // FR-09 — counter reset on Unmatched
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_consecutive_bad_cycles_reset_on_unmatched() {
+        let handle = EffectivenessState::new_handle();
+
+        {
+            let mut state = handle.write().unwrap_or_else(|e| e.into_inner());
+            state.consecutive_bad_cycles.insert(8, 1);
+        }
+
+        let mut cats = HashMap::new();
+        cats.insert(8u64, EffectivenessCategory::Unmatched);
+        apply_tick_write(&handle, cats, 99);
+
+        let state = handle.read().unwrap_or_else(|e| e.into_inner());
+        assert!(
+            !state.consecutive_bad_cycles.contains_key(&8),
+            "counter must be removed on Unmatched"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // FR-09 — counter removed for entry absent from tick report (quarantined externally)
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_consecutive_bad_cycles_remove_absent_entry() {
+        let handle = EffectivenessState::new_handle();
+
+        // Entry 99 has a counter but no longer appears in the report
+        {
+            let mut state = handle.write().unwrap_or_else(|e| e.into_inner());
+            state.consecutive_bad_cycles.insert(99, 2);
+        }
+
+        // Report with only entry 1, not entry 99
+        let mut cats = HashMap::new();
+        cats.insert(1u64, EffectivenessCategory::Effective);
+        apply_tick_write(&handle, cats, 99);
+
+        let state = handle.read().unwrap_or_else(|e| e.into_inner());
+        assert!(
+            !state.consecutive_bad_cycles.contains_key(&99),
+            "absent entry counter must be removed by retain()"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // FR-09 — three-tick sequence with recovery: no false quarantine at threshold=2
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_consecutive_bad_cycles_three_tick_sequence_no_quarantine() {
+        // Tick 1: Ineffective → counter=1
+        // Tick 2: Effective   → counter=0 (reset)
+        // Tick 3: Ineffective → counter=1 (not 3)
+        let handle = EffectivenessState::new_handle();
+        let threshold = 2u32;
+
+        let mut ineffective = HashMap::new();
+        ineffective.insert(42u64, EffectivenessCategory::Ineffective);
+        let mut effective = HashMap::new();
+        effective.insert(42u64, EffectivenessCategory::Effective);
+
+        apply_tick_write(&handle, ineffective.clone(), threshold);
+        {
+            let state = handle.read().unwrap_or_else(|e| e.into_inner());
+            assert_eq!(state.consecutive_bad_cycles.get(&42), Some(&1));
+        }
+
+        apply_tick_write(&handle, effective, threshold);
+        {
+            let state = handle.read().unwrap_or_else(|e| e.into_inner());
+            assert!(!state.consecutive_bad_cycles.contains_key(&42));
+        }
+
+        let (candidates, _) = apply_tick_write(&handle, ineffective, threshold);
+        {
+            let state = handle.read().unwrap_or_else(|e| e.into_inner());
+            assert_eq!(state.consecutive_bad_cycles.get(&42), Some(&1));
+        }
+        assert!(
+            candidates.is_empty(),
+            "counter=1 < threshold=2, so no quarantine candidate"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // AC-14 / R-11 — Category restriction: only Ineffective and Noisy qualify for quarantine
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_auto_quarantine_does_not_fire_for_settled() {
+        let handle = EffectivenessState::new_handle();
+        // Pre-seed high counter
+        {
+            let mut state = handle.write().unwrap_or_else(|e| e.into_inner());
+            state.consecutive_bad_cycles.insert(50, 10);
+        }
+        let mut cats = HashMap::new();
+        cats.insert(50u64, EffectivenessCategory::Settled);
+        let (candidates, _) = apply_tick_write(&handle, cats, 3);
+        assert!(
+            candidates.is_empty(),
+            "Settled must never produce quarantine candidates"
+        );
+    }
+
+    #[test]
+    fn test_auto_quarantine_does_not_fire_for_unmatched() {
+        let handle = EffectivenessState::new_handle();
+        {
+            let mut state = handle.write().unwrap_or_else(|e| e.into_inner());
+            state.consecutive_bad_cycles.insert(51, 10);
+        }
+        let mut cats = HashMap::new();
+        cats.insert(51u64, EffectivenessCategory::Unmatched);
+        let (candidates, _) = apply_tick_write(&handle, cats, 3);
+        assert!(
+            candidates.is_empty(),
+            "Unmatched must never produce quarantine candidates"
+        );
+    }
+
+    #[test]
+    fn test_auto_quarantine_does_not_fire_for_effective() {
+        let handle = EffectivenessState::new_handle();
+        {
+            let mut state = handle.write().unwrap_or_else(|e| e.into_inner());
+            state.consecutive_bad_cycles.insert(52, 10);
+        }
+        let mut cats = HashMap::new();
+        cats.insert(52u64, EffectivenessCategory::Effective);
+        let (candidates, _) = apply_tick_write(&handle, cats, 3);
+        assert!(
+            candidates.is_empty(),
+            "Effective must never produce quarantine candidates"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // AC-10 / AC-11 — Quarantine fires at threshold
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_auto_quarantine_fires_at_threshold() {
+        let handle = EffectivenessState::new_handle();
+        // Simulate 3 prior ticks of Ineffective
+        let mut cats = HashMap::new();
+        cats.insert(100u64, EffectivenessCategory::Ineffective);
+        apply_tick_write(&handle, cats.clone(), 99); // counter=1
+        apply_tick_write(&handle, cats.clone(), 99); // counter=2
+        let (candidates, _) = apply_tick_write(&handle, cats, 3); // counter=3, threshold=3
+
+        assert_eq!(candidates.len(), 1);
+        let (id, count, cat) = candidates[0];
+        assert_eq!(id, 100);
+        assert_eq!(count, 3);
+        assert_eq!(cat, EffectivenessCategory::Ineffective);
+    }
+
+    #[test]
+    fn test_auto_quarantine_does_not_fire_below_threshold() {
+        let handle = EffectivenessState::new_handle();
+        let mut cats = HashMap::new();
+        cats.insert(101u64, EffectivenessCategory::Ineffective);
+        apply_tick_write(&handle, cats.clone(), 99); // counter=1
+        let (candidates, _) = apply_tick_write(&handle, cats, 3); // counter=2, threshold=3
+
+        assert!(
+            candidates.is_empty(),
+            "counter=2 must not produce candidates when threshold=3"
+        );
+    }
+
+    #[test]
+    fn test_auto_quarantine_fires_at_threshold_1() {
+        // AC-11: threshold=1 means quarantine after first consecutive bad tick
+        let handle = EffectivenessState::new_handle();
+        let mut cats = HashMap::new();
+        cats.insert(102u64, EffectivenessCategory::Noisy);
+        let (candidates, _) = apply_tick_write(&handle, cats, 1); // counter=1 >= threshold=1
+
+        assert_eq!(
+            candidates.len(),
+            1,
+            "threshold=1 must fire on first bad tick"
+        );
+        assert_eq!(candidates[0].0, 102);
+        assert_eq!(candidates[0].2, EffectivenessCategory::Noisy);
+    }
+
+    // ---------------------------------------------------------------------------
+    // AC-12 — Quarantine disabled when threshold = 0
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_auto_quarantine_disabled_when_threshold_zero() {
+        let handle = EffectivenessState::new_handle();
+        // Tick many times with Ineffective
+        let mut cats = HashMap::new();
+        cats.insert(200u64, EffectivenessCategory::Ineffective);
+        for _ in 0..10 {
+            let (candidates, _) = apply_tick_write(&handle, cats.clone(), 0);
+            assert!(
+                candidates.is_empty(),
+                "threshold=0 must never produce quarantine candidates"
+            );
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // parse_auto_quarantine_cycles validation (Constraint 14)
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_parse_auto_quarantine_cycles_default_is_3() {
+        // Test the inner parse function with the default value "3" — avoids
+        // unsafe env var manipulation forbidden by #![forbid(unsafe_code)].
+        let result = parse_auto_quarantine_cycles_str("3");
+        assert!(result.is_ok(), "default parse must succeed");
+        assert_eq!(result.unwrap(), 3, "default must be 3");
+    }
+
+    #[test]
+    fn test_parse_auto_quarantine_cycles_zero_is_valid() {
+        let result = parse_auto_quarantine_cycles_str("0");
+        assert!(
+            result.is_ok(),
+            "zero must be accepted (disables auto-quarantine)"
+        );
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn test_parse_auto_quarantine_cycles_boundary_1000_accepted() {
+        let result = parse_auto_quarantine_cycles_str("1000");
+        assert!(result.is_ok(), "1000 is the accepted upper boundary");
+        assert_eq!(result.unwrap(), 1000);
+    }
+
+    #[test]
+    fn test_parse_auto_quarantine_cycles_rejects_over_1000() {
+        let result = parse_auto_quarantine_cycles_str("1001");
+        assert!(
+            result.is_err(),
+            "1001 must be rejected as implausibly large"
+        );
+        let msg = result.unwrap_err();
+        assert!(
+            msg.contains("1001"),
+            "error message must reference the invalid value"
+        );
+    }
+
+    #[test]
+    fn test_parse_auto_quarantine_cycles_rejects_non_integer() {
+        let result = parse_auto_quarantine_cycles_str("abc");
+        assert!(result.is_err(), "non-integer must be rejected");
+        let msg = result.unwrap_err();
+        assert!(
+            msg.contains("abc"),
+            "error message must include the bad value"
+        );
+    }
+
+    #[test]
+    fn test_parse_auto_quarantine_cycles_rejects_negative() {
+        // Negative strings like "-1" are rejected because u32 parse fails on '-'.
+        let result = parse_auto_quarantine_cycles_str("-1");
+        assert!(result.is_err(), "negative value must be rejected");
+    }
+
+    // ---------------------------------------------------------------------------
+    // Audit event constants (FR-11, AC-13) — code-level assertions
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_audit_constants_have_correct_values() {
+        // Security Risk 2: SYSTEM_AGENT_ID must be a hardcoded compile-time constant
+        assert_eq!(SYSTEM_AGENT_ID, "system");
+        assert_eq!(OP_AUTO_QUARANTINE, "auto_quarantine");
+        assert_eq!(OP_TICK_SKIPPED, "tick_skipped");
+    }
+
+    #[test]
+    fn test_auto_quarantine_max_cycles_constant() {
+        assert_eq!(
+            AUTO_QUARANTINE_CYCLES_MAX, 1000,
+            "DoS mitigation constant must be 1000"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // emit_auto_quarantine_audit field correctness (AC-13 / FR-11)
+    // ---------------------------------------------------------------------------
+
+    /// Read the most recent audit_log rows (up to `limit`) from a store.
+    fn read_recent_audit_events(
+        store: &unimatrix_store::Store,
+        limit: i64,
+    ) -> Vec<unimatrix_store::AuditEvent> {
+        let conn = store.lock_conn();
+        let mut stmt = match conn.prepare(
+            "SELECT event_id, timestamp, session_id, agent_id, operation,
+                    target_ids, outcome, detail
+             FROM audit_log ORDER BY event_id DESC LIMIT ?1",
+        ) {
+            Ok(s) => s,
+            Err(_) => return vec![],
+        };
+        let rows = match stmt.query_map(unimatrix_store::rusqlite::params![limit], |row| {
+            let target_ids_json: String = row.get("target_ids")?;
+            let target_ids: Vec<u64> = serde_json::from_str(&target_ids_json).unwrap_or_default();
+            Ok(unimatrix_store::AuditEvent {
+                event_id: row.get::<_, i64>("event_id")? as u64,
+                timestamp: row.get::<_, i64>("timestamp")? as u64,
+                session_id: row.get("session_id")?,
+                agent_id: row.get("agent_id")?,
+                operation: row.get("operation")?,
+                target_ids,
+                outcome: Outcome::try_from(row.get::<_, i64>("outcome")? as u8)
+                    .unwrap_or(Outcome::Error),
+                detail: row.get("detail")?,
+            })
+        }) {
+            Ok(r) => r,
+            Err(_) => return vec![],
+        };
+        rows.filter_map(|r| r.ok()).collect()
+    }
+
+    #[test]
+    fn test_emit_auto_quarantine_audit_detail_fields() {
+        use crate::infra::audit::AuditLog;
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let db_path = tmp.path().join("test.db");
+
+        let store = Arc::new(unimatrix_store::Store::open(&db_path).expect("store open"));
+        let audit_log = Arc::new(AuditLog::new(Arc::clone(&store)));
+
+        emit_auto_quarantine_audit(
+            &audit_log,
+            42,
+            "test-entry",
+            "eng-practices",
+            "convention",
+            EffectivenessCategory::Ineffective,
+            3,
+            3,
+        );
+
+        let events = read_recent_audit_events(&store, 10);
+        let event = events
+            .iter()
+            .find(|e| e.operation == "auto_quarantine")
+            .expect("auto_quarantine event must be written");
+
+        assert_eq!(
+            event.agent_id, "system",
+            "agent_id must be hardcoded system"
+        );
+        assert_eq!(
+            event.target_ids,
+            vec![42u64],
+            "target_ids must include entry_id"
+        );
+        assert_eq!(event.outcome, Outcome::Success, "outcome must be Success");
+        assert!(
+            event.detail.contains("entry_title"),
+            "detail must contain entry_title key"
+        );
+        assert!(
+            event.detail.contains("test-entry"),
+            "detail must contain entry title value"
+        );
+        assert!(
+            event.detail.contains("consecutive_cycles"),
+            "detail must contain consecutive_cycles"
+        );
+        assert!(
+            event.detail.contains("threshold"),
+            "detail must contain threshold"
+        );
+        assert!(
+            event.detail.contains("Ineffective"),
+            "detail must contain classification"
+        );
+    }
+
+    #[test]
+    fn test_emit_tick_skipped_audit_detail_fields() {
+        use crate::infra::audit::AuditLog;
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let db_path = tmp.path().join("test2.db");
+
+        let store = Arc::new(unimatrix_store::Store::open(&db_path).expect("store open"));
+        let audit_log = Arc::new(AuditLog::new(Arc::clone(&store)));
+
+        emit_tick_skipped_audit(&audit_log, "db locked".to_string());
+
+        let events = read_recent_audit_events(&store, 10);
+        let event = events
+            .iter()
+            .find(|e| e.operation == "tick_skipped")
+            .expect("tick_skipped event must be written");
+
+        assert_eq!(event.agent_id, "system");
+        assert_eq!(
+            event.outcome,
+            Outcome::Error,
+            "tick_skipped outcome must be Error"
+        );
+        assert!(
+            event.detail.contains("db locked"),
+            "detail must contain the error reason"
+        );
+        assert!(
+            event.target_ids.is_empty(),
+            "tick_skipped has no target ids"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // R-13 — Write lock released before quarantine: verify read lock acquirable
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_write_lock_not_held_after_tick_write_block() {
+        // The apply_tick_write helper mirrors the exact scoped block pattern in
+        // maintenance_tick. After the function returns, the write guard is dropped.
+        // Verify that a subsequent read lock acquisition is non-blocking.
+        let handle = EffectivenessState::new_handle();
+        let mut cats = HashMap::new();
+        cats.insert(1u64, EffectivenessCategory::Ineffective);
+
+        apply_tick_write(&handle, cats, 99);
+
+        // try_read() must succeed (non-blocking) — write lock is released
+        let try_result = handle.try_read();
+        assert!(
+            try_result.is_ok(),
+            "read lock must be acquirable after tick write block completes (write lock released)"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // Empty report edge case
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_tick_write_with_empty_report_clears_categories() {
+        let handle = EffectivenessState::new_handle();
+
+        // Pre-seed categories and counters
+        {
+            let mut state = handle.write().unwrap_or_else(|e| e.into_inner());
+            state.categories.insert(1, EffectivenessCategory::Effective);
+            state.consecutive_bad_cycles.insert(2, 3);
+            state.generation = 5;
+        }
+
+        // Empty report (no entries classified)
+        apply_tick_write(&handle, HashMap::new(), 3);
+
+        let state = handle.read().unwrap_or_else(|e| e.into_inner());
+        assert!(
+            state.categories.is_empty(),
+            "categories must be cleared by empty report"
+        );
+        assert!(
+            state.consecutive_bad_cycles.is_empty(),
+            "consecutive_bad_cycles must be cleared when all entries absent"
+        );
+        assert_eq!(
+            state.generation, 6,
+            "generation still increments on empty tick"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // Multiple consecutive bad ticks without quarantine (no-op when threshold high)
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_tick_write_with_no_quarantine_candidates_is_noop() {
+        let handle = EffectivenessState::new_handle();
+        let mut cats = HashMap::new();
+        cats.insert(300u64, EffectivenessCategory::Ineffective);
+
+        // threshold = 99, only 2 ticks → no candidates
+        apply_tick_write(&handle, cats.clone(), 99);
+        let (candidates, _) = apply_tick_write(&handle, cats, 99);
+
+        assert!(
+            candidates.is_empty(),
+            "must return empty candidates when counter < threshold"
+        );
     }
 }
