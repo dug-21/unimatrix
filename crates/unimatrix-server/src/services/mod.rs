@@ -29,7 +29,7 @@ pub(crate) mod store_ops;
 pub(crate) mod usage;
 
 pub(crate) use briefing::BriefingService;
-pub(crate) use confidence::ConfidenceService;
+pub(crate) use confidence::{ConfidenceService, ConfidenceState};
 pub(crate) use gateway::{RateLimitConfig, SecurityGateway};
 pub(crate) use search::{RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
@@ -285,6 +285,7 @@ impl ServiceLayer {
         );
 
         let confidence = ConfidenceService::new(Arc::clone(&store));
+        let confidence_state = ConfidenceState::new_handle();
 
         let semantic_k = briefing::parse_semantic_k();
         let briefing = BriefingService::new(
@@ -299,6 +300,7 @@ impl ServiceLayer {
             Arc::clone(&vector_index),
             Arc::clone(&embed_service),
             Arc::clone(&adapt_service),
+            confidence_state,
         );
 
         let usage = UsageService::new(Arc::clone(&store), usage_dedup);

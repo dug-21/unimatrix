@@ -223,11 +223,16 @@ async fn run_single_tick(
     tracing::info!("background tick starting");
 
     // 1. Maintenance tick (with timeout, #236)
+    // crt-019: StatusService now requires a ConfidenceStateHandle for the prior snapshot.
+    // The background tick creates its own default handle (cold-start values) until a
+    // shared handle is threaded through from the server initialisation path.
+    let confidence_state = crate::services::confidence::ConfidenceState::new_handle();
     let status_svc = StatusService::new(
         Arc::clone(store),
         Arc::clone(vector_index),
         Arc::clone(embed_service),
         Arc::clone(adapt_service),
+        confidence_state,
     );
     match tokio::time::timeout(
         TICK_TIMEOUT,

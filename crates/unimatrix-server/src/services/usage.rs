@@ -155,7 +155,9 @@ impl UsageService {
                 &unhelpful_ids,
                 &decrement_helpful_ids,
                 &decrement_unhelpful_ids,
-                Some(&crate::confidence::compute_confidence),
+                Some(&|entry: &unimatrix_core::EntryRecord, now: u64| {
+                    crate::confidence::compute_confidence(entry, now, 3.0, 3.0)
+                }),
             ) {
                 tracing::warn!("usage recording failed: {e}");
             }
@@ -240,7 +242,9 @@ impl UsageService {
                 &[],
                 &[],
                 &[],
-                Some(&crate::confidence::compute_confidence),
+                Some(&|entry: &unimatrix_core::EntryRecord, now: u64| {
+                    crate::confidence::compute_confidence(entry, now, 3.0, 3.0)
+                }),
             ) {
                 tracing::warn!("briefing usage recording failed: {e}");
             }
