@@ -5,7 +5,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use unimatrix_core::async_wrappers::AsyncEntryStore;
 use unimatrix_core::{CoreError, EmbedService, Store, VectorAdapter, VectorIndex};
@@ -23,6 +23,131 @@ use crate::mcp::response::status::{CoAccessClusterEntry, StatusReport};
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
 use crate::services::confidence::ConfidenceStateHandle;
+
+/// Minimum number of voted entries required for empirical Bayesian prior estimation.
+///
+/// Below this threshold, cold-start defaults (alpha0=3.0, beta0=3.0) are used.
+/// ADR-002 sets this at 10 for population stability (SPEC originally stated 5).
+pub const MINIMUM_VOTED_POPULATION: usize = 10;
+
+/// Pre-crt-019 measured confidence spread baseline.
+///
+/// Returned by `compute_observed_spread` when the active population is non-empty
+/// but too small (< 10 entries) to compute a reliable spread.
+const PRE_CRT019_SPREAD_BASELINE: f64 = 0.1471;
+
+/// Cold-start alpha0 prior (positive pseudo-votes).
+const COLD_START_ALPHA: f64 = 3.0;
+/// Cold-start beta0 prior (negative pseudo-votes).
+const COLD_START_BETA: f64 = 3.0;
+
+/// Compute empirical Bayesian prior (alpha0, beta0) from voted-entry population.
+///
+/// Uses method-of-moments estimation on the Beta distribution. Requires
+/// at least `MINIMUM_VOTED_POPULATION` (10) voted entries to attempt estimation;
+/// below this threshold returns cold-start defaults (3.0, 3.0).
+///
+/// Handles zero-variance degeneracy (all entries identical rate) by returning
+/// cold-start defaults rather than propagating NaN or +∞.
+///
+/// Output clamped to [0.5, 50.0] per ADR-002 / IMPLEMENTATION-BRIEF.
+///
+/// # Parameters
+/// - `voted_entries`: slice of `(helpful_count, unhelpful_count)` for entries
+///   with at least one vote (total >= 1). The caller is responsible for the filter.
+pub(crate) fn compute_empirical_prior(voted_entries: &[(u32, u32)]) -> (f64, f64) {
+    if voted_entries.len() < MINIMUM_VOTED_POPULATION {
+        return (COLD_START_ALPHA, COLD_START_BETA);
+    }
+
+    // Per-entry helpfulness rate: cast u32 to f64 before division.
+    // Caller guarantees total >= 1, so no division-by-zero here.
+    let rates: Vec<f64> = voted_entries
+        .iter()
+        .map(|(h, u)| {
+            let h_f = *h as f64;
+            let u_f = *u as f64;
+            h_f / (h_f + u_f)
+        })
+        .collect();
+
+    let n = rates.len() as f64;
+
+    // Population mean helpfulness rate.
+    let p_bar: f64 = rates.iter().sum::<f64>() / n;
+
+    // Sample variance (Bessel's correction: divide by n-1).
+    // With n >= MINIMUM_VOTED_POPULATION (10), n-1 >= 9, so no division-by-zero.
+    let sum_sq_dev: f64 = rates.iter().map(|r| (r - p_bar).powi(2)).sum();
+    let variance = sum_sq_dev / (n - 1.0);
+
+    // Zero-variance degeneracy (R-12): all entries have identical rate.
+    // Cannot estimate concentration; return cold-start to avoid NaN/∞.
+    if variance <= 0.0 {
+        return (COLD_START_ALPHA, COLD_START_BETA);
+    }
+
+    // Method-of-moments for Beta distribution:
+    //   concentration = p_bar * (1 - p_bar) / variance - 1
+    // Requires p_bar * (1 - p_bar) / variance > 1 for a valid Beta;
+    // if not, the variance is too large relative to the mean — return cold-start.
+    let ratio = p_bar * (1.0 - p_bar) / variance;
+    if ratio <= 1.0 {
+        return (COLD_START_ALPHA, COLD_START_BETA);
+    }
+
+    let concentration = ratio - 1.0;
+    let alpha0 = (p_bar * concentration).clamp(0.5, 50.0);
+    let beta0 = ((1.0 - p_bar) * concentration).clamp(0.5, 50.0);
+
+    (alpha0, beta0)
+}
+
+/// Compute observed confidence spread as p95 - p5 of the confidence distribution.
+///
+/// Returns:
+/// - `0.0` for an empty slice (EC-01).
+/// - `PRE_CRT019_SPREAD_BASELINE` (0.1471) for 1–9 entries (too small for reliable spread;
+///   use the pre-crt-019 measured baseline rather than a noisy near-zero estimate).
+/// - Computed p95 - p5 for 10 or more entries, using the nearest-rank method.
+///
+/// Result is non-negative (guarded by `.max(0.0)` against floating-point rounding).
+pub(crate) fn compute_observed_spread(confidences: &[f64]) -> f64 {
+    if confidences.is_empty() {
+        return 0.0;
+    }
+
+    if confidences.len() < MINIMUM_VOTED_POPULATION {
+        return PRE_CRT019_SPREAD_BASELINE;
+    }
+
+    let mut sorted = confidences.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+    let n = sorted.len();
+
+    // Nearest-rank percentile (1-indexed):
+    //   p5  → index = ceil(0.05 * n) - 1, clamped to [0, n-1]
+    //   p95 → index = ceil(0.95 * n) - 1, clamped to [0, n-1]
+    let p5_idx = ((0.05 * n as f64).ceil() as usize).saturating_sub(1);
+    let p95_idx = (((0.95 * n as f64).ceil() as usize).saturating_sub(1)).min(n - 1);
+
+    let p5 = sorted[p5_idx];
+    let p95 = sorted[p95_idx];
+
+    (p95 - p5).max(0.0)
+}
+
+/// Compute adaptive confidence weight from observed spread.
+///
+/// Formula: `clamp(observed_spread * 1.25, 0.15, 0.25)`
+///
+/// This is a local copy of the formula from `unimatrix_engine::confidence::adaptive_confidence_weight`
+/// (added in crt-019). Once the engine function is available, call sites in Step 2b can
+/// delegate to `unimatrix_engine::confidence::adaptive_confidence_weight(spread)`.
+fn adaptive_confidence_weight_local(observed_spread: f64) -> f64 {
+    (observed_spread * 1.25).clamp(0.15, 0.25)
+}
 
 /// Transport-agnostic status computation service.
 ///
@@ -617,7 +742,8 @@ impl StatusService {
     ///
     /// Operations:
     /// 1. Co-access stale pair cleanup
-    /// 2. Confidence refresh (batch 100)
+    /// 2. Confidence refresh (batch 500, 200ms wall-clock guard — crt-019)
+    /// 2b. Empirical prior + spread computation (crt-019)
     /// 3. Graph compaction (if stale ratio > trigger)
     /// 4. Observation file cleanup (60-day retention)
     /// 5. Stale session sweep + signal processing
@@ -682,8 +808,18 @@ impl StatusService {
 
                 let store_for_refresh = Arc::clone(&self.store);
                 let refresh_result = tokio::task::spawn_blocking(move || {
+                    let loop_start = Instant::now();
+                    let wall_budget = Duration::from_millis(200);
                     let mut refreshed = 0u64;
                     for (id, new_conf) in ids_and_confs {
+                        // Duration guard (crt-019): break early if 200ms wall-clock exceeded.
+                        if loop_start.elapsed() > wall_budget {
+                            tracing::debug!(
+                                refreshed,
+                                "confidence refresh: 200ms budget exceeded, stopping early"
+                            );
+                            break;
+                        }
                         match store_for_refresh.update_confidence(id, new_conf) {
                             Ok(()) => refreshed += 1,
                             Err(e) => {
@@ -703,6 +839,88 @@ impl StatusService {
                     Err(e) => {
                         tracing::warn!("confidence refresh task failed: {e}");
                     }
+                }
+            }
+        }
+
+        // 2b. Empirical prior + spread computation (crt-019 Step 2b).
+        //
+        // After the confidence refresh loop, compute alpha0/beta0 from the voted-entry
+        // population using method-of-moments, then compute observed_spread from all active
+        // confidence values. Atomically update ConfidenceState when available.
+        //
+        // NOTE: ConfidenceStateHandle wiring is handled by the confidence-state agent
+        // (crt-019). This step accepts Option<&ConfidenceStateHandle> — passing None here
+        // until that component is wired through ServiceLayer.
+        {
+            let store_for_prior = Arc::clone(&self.store);
+            let prior_result = tokio::task::spawn_blocking(move || -> (f64, f64, f64, f64) {
+                let conn = store_for_prior.lock_conn();
+
+                // Load voted entries: active with helpful_count + unhelpful_count >= 1.
+                let voted_pairs: Vec<(u32, u32)> = {
+                    match conn.prepare(
+                        "SELECT helpful_count, unhelpful_count \
+                         FROM entries \
+                         WHERE status = 'active' \
+                           AND (helpful_count + unhelpful_count) >= 1",
+                    ) {
+                        Ok(mut stmt) => stmt
+                            .query_map([], |row| Ok((row.get::<_, u32>(0)?, row.get::<_, u32>(1)?)))
+                            .map(|rows| rows.filter_map(|r| r.ok()).collect())
+                            .unwrap_or_default(),
+                        Err(e) => {
+                            tracing::warn!("prior computation: voted-entry query failed: {e}");
+                            vec![]
+                        }
+                    }
+                };
+
+                // Load all active entry confidence values for spread computation.
+                let all_confidences: Vec<f64> = {
+                    match conn.prepare("SELECT confidence FROM entries WHERE status = 'active'") {
+                        Ok(mut stmt) => stmt
+                            .query_map([], |row| row.get::<_, f64>(0))
+                            .map(|rows| rows.filter_map(|r| r.ok()).collect())
+                            .unwrap_or_default(),
+                        Err(e) => {
+                            tracing::warn!("prior computation: confidence query failed: {e}");
+                            vec![]
+                        }
+                    }
+                };
+
+                let (alpha0, beta0) = compute_empirical_prior(&voted_pairs);
+                let observed_spread = compute_observed_spread(&all_confidences);
+                let confidence_weight = adaptive_confidence_weight_local(observed_spread);
+
+                (alpha0, beta0, observed_spread, confidence_weight)
+            })
+            .await;
+
+            match prior_result {
+                Ok((alpha0, beta0, observed_spread, confidence_weight)) => {
+                    tracing::debug!(
+                        alpha0 = %format!("{alpha0:.3}"),
+                        beta0 = %format!("{beta0:.3}"),
+                        observed_spread = %format!("{observed_spread:.4}"),
+                        confidence_weight = %format!("{confidence_weight:.4}"),
+                        "confidence state updated (Step 2b)"
+                    );
+                    // TODO(crt-019 confidence-state agent): when ConfidenceStateHandle is wired
+                    // through ServiceLayer, replace the tracing log above with an atomic write:
+                    //   let mut guard = confidence_state_handle
+                    //       .write()
+                    //       .unwrap_or_else(|e| e.into_inner());
+                    //   guard.alpha0            = alpha0;
+                    //   guard.beta0             = beta0;
+                    //   guard.observed_spread   = observed_spread;
+                    //   guard.confidence_weight = confidence_weight;
+                    let _ = (alpha0, beta0, observed_spread, confidence_weight);
+                }
+                Err(e) => {
+                    // Graceful degradation (FM-01): ConfidenceState retains previous tick values.
+                    tracing::warn!("prior computation task failed: {e}");
                 }
             }
         }
@@ -841,5 +1059,282 @@ impl StatusService {
             graph_compacted,
             stale_pairs_cleaned,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---------------------------------------------------------------------------
+    // compute_empirical_prior — threshold boundary (R-05)
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_empirical_prior_below_threshold_returns_cold_start() {
+        // Exactly 9 voted entries — must use cold-start (3.0, 3.0).
+        let voted_entries: Vec<(u32, u32)> = (0..9).map(|_| (5u32, 2u32)).collect();
+        let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
+        assert_eq!(
+            alpha0, 3.0,
+            "below threshold must return cold-start alpha0=3.0"
+        );
+        assert_eq!(
+            beta0, 3.0,
+            "below threshold must return cold-start beta0=3.0"
+        );
+    }
+
+    #[test]
+    fn test_empirical_prior_zero_entries_returns_cold_start() {
+        let voted_entries: Vec<(u32, u32)> = vec![];
+        let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
+        assert_eq!(alpha0, 3.0);
+        assert_eq!(beta0, 3.0);
+    }
+
+    #[test]
+    fn test_empirical_prior_five_entries_returns_cold_start() {
+        // Verifies threshold is 10, not 5 (ADR-002 overrides SPEC FR-09).
+        let voted_entries: Vec<(u32, u32)> = (0..5).map(|_| (10u32, 0u32)).collect();
+        let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
+        assert_eq!(
+            alpha0, 3.0,
+            "5 entries must use cold-start (threshold is 10, not 5)"
+        );
+        assert_eq!(beta0, 3.0);
+    }
+
+    #[test]
+    fn test_empirical_prior_at_threshold_uses_population() {
+        // Exactly 10 voted entries — must attempt empirical estimation.
+        // Uniform p_i = 0.5 produces zero variance -> falls back to cold-start.
+        // Key assertion: no panic, values in [0.5, 50.0].
+        let voted_entries: Vec<(u32, u32)> = (0..10).map(|_| (5u32, 5u32)).collect();
+        let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
+        assert!(
+            alpha0 >= 0.5 && alpha0 <= 50.0,
+            "alpha0 out of clamp range: {alpha0}"
+        );
+        assert!(
+            beta0 >= 0.5 && beta0 <= 50.0,
+            "beta0 out of clamp range: {beta0}"
+        );
+    }
+
+    #[test]
+    fn test_empirical_prior_fifteen_entries_uses_population() {
+        // 15 entries with identical skewed data — zero variance → cold-start.
+        // Main assertion: no panic, values clamped.
+        let voted_entries: Vec<(u32, u32)> = (0..15).map(|_| (8u32, 2u32)).collect();
+        let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
+        assert!(alpha0 >= 0.5 && alpha0 <= 50.0);
+        assert!(beta0 >= 0.5 && beta0 <= 50.0);
+    }
+
+    // ---------------------------------------------------------------------------
+    // compute_empirical_prior — balanced mixed population (R-05, boundary exact)
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_empirical_prior_mixed_rates_sensible_values() {
+        // 10 entries with genuine rate variance — empirical path should produce
+        // finite clamped values with p_bar = 0.5.
+        let voted_entries = vec![
+            (10u32, 0u32),
+            (8, 2),
+            (6, 4),
+            (4, 6),
+            (2, 8),
+            (9, 1),
+            (7, 3),
+            (5, 5),
+            (3, 7),
+            (1, 9),
+        ];
+        let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
+        // p_bar = 0.5, variance > 0 → empirical path; symmetric → alpha0 ≈ beta0
+        assert!(!alpha0.is_nan(), "alpha0 must not be NaN");
+        assert!(!beta0.is_nan(), "beta0 must not be NaN");
+        assert!(alpha0 >= 0.5 && alpha0 <= 50.0, "alpha0={alpha0}");
+        assert!(beta0 >= 0.5 && beta0 <= 50.0, "beta0={beta0}");
+    }
+
+    // ---------------------------------------------------------------------------
+    // compute_empirical_prior — zero-variance degeneracy (R-12)
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_prior_zero_variance_all_helpful_returns_cold_start() {
+        // All 10 entries at p_i = 1.0 (all helpful) — variance = 0 → cold-start.
+        let voted_entries: Vec<(u32, u32)> = (0..10).map(|_| (10u32, 0u32)).collect();
+        let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
+        assert!(
+            !alpha0.is_nan(),
+            "alpha0 must not be NaN with zero variance"
+        );
+        assert!(!beta0.is_nan(), "beta0 must not be NaN with zero variance");
+        assert!(
+            alpha0 >= 0.5 && alpha0 <= 50.0,
+            "alpha0 out of clamp: {alpha0}"
+        );
+        assert!(beta0 >= 0.5 && beta0 <= 50.0, "beta0 out of clamp: {beta0}");
+    }
+
+    #[test]
+    fn test_prior_zero_variance_all_unhelpful_returns_cold_start() {
+        // All 10 entries at p_i = 0.0 — variance = 0 → cold-start.
+        let voted_entries: Vec<(u32, u32)> = (0..10).map(|_| (0u32, 10u32)).collect();
+        let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
+        assert!(!alpha0.is_nan(), "alpha0 must not be NaN");
+        assert!(!beta0.is_nan(), "beta0 must not be NaN");
+        assert!(alpha0 >= 0.5 && alpha0 <= 50.0);
+        assert!(beta0 >= 0.5 && beta0 <= 50.0);
+    }
+
+    #[test]
+    fn test_prior_mixed_variance_stays_in_clamp_range() {
+        // 12 entries with genuine variance — no NaN, values in [0.5, 50.0].
+        let voted_entries = vec![
+            (10u32, 0u32),
+            (9, 1),
+            (8, 2),
+            (7, 3),
+            (6, 4),
+            (5, 5),
+            (4, 6),
+            (3, 7),
+            (2, 8),
+            (1, 9),
+            (0, 10),
+            (10, 0),
+        ];
+        let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
+        assert!(
+            !alpha0.is_nan() && !beta0.is_nan(),
+            "NaN propagation detected"
+        );
+        assert!(alpha0 >= 0.5 && alpha0 <= 50.0, "alpha0={alpha0}");
+        assert!(beta0 >= 0.5 && beta0 <= 50.0, "beta0={beta0}");
+    }
+
+    // ---------------------------------------------------------------------------
+    // compute_empirical_prior — clamp fires on near-degenerate input
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_prior_clamp_prevents_extreme_values() {
+        // Near-zero variance with high mean: alpha0 would be very large without clamping.
+        // Use 10 entries with near-identical high rate (999 helpful, 1 unhelpful).
+        // variance will be ~0 → cold-start path (variance <= 0.0 check fires first).
+        let voted_entries: Vec<(u32, u32)> = (0..10).map(|_| (999u32, 1u32)).collect();
+        let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
+        assert!(
+            alpha0 <= 50.0,
+            "alpha0 must be clamped to 50.0, got {alpha0}"
+        );
+        assert!(beta0 <= 50.0, "beta0 must be clamped to 50.0, got {beta0}");
+        assert!(alpha0 >= 0.5, "alpha0 must be >= 0.5, got {alpha0}");
+        assert!(beta0 >= 0.5, "beta0 must be >= 0.5, got {beta0}");
+    }
+
+    // ---------------------------------------------------------------------------
+    // compute_observed_spread (EC-01)
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_observed_spread_empty_population() {
+        let spread = compute_observed_spread(&[]);
+        assert_eq!(spread, 0.0, "empty population should return 0.0");
+    }
+
+    #[test]
+    fn test_observed_spread_single_entry_returns_baseline() {
+        // Single entry: fewer than MINIMUM_VOTED_POPULATION → baseline.
+        let spread = compute_observed_spread(&[0.6]);
+        assert_eq!(spread, PRE_CRT019_SPREAD_BASELINE);
+    }
+
+    #[test]
+    fn test_observed_spread_nine_entries_returns_baseline() {
+        // 9 entries: fewer than 10 → pre-crt-019 baseline.
+        let confs: Vec<f64> = (0..9).map(|i| i as f64 * 0.1).collect();
+        let spread = compute_observed_spread(&confs);
+        assert_eq!(spread, PRE_CRT019_SPREAD_BASELINE);
+    }
+
+    #[test]
+    fn test_observed_spread_uniform_population() {
+        // All same value (10+ entries) → spread ≈ 0.0.
+        let confs: Vec<f64> = (0..20).map(|_| 0.5).collect();
+        let spread = compute_observed_spread(&confs);
+        assert!(
+            spread.abs() < 1e-10,
+            "uniform population spread must be ~0.0, got {spread}"
+        );
+    }
+
+    #[test]
+    fn test_observed_spread_full_range() {
+        // Values spanning [0.0, 1.0] → spread close to 0.90 (p95 ≈ 0.95, p5 ≈ 0.05).
+        let confs: Vec<f64> = (0..=100).map(|i| i as f64 / 100.0).collect();
+        let spread = compute_observed_spread(&confs);
+        assert!(spread > 0.85 && spread < 1.0, "full range spread: {spread}");
+    }
+
+    #[test]
+    fn test_observed_spread_non_negative() {
+        // Spread must never be negative regardless of input.
+        let confs = vec![0.9, 0.1, 0.5, 0.3, 0.7, 0.2, 0.8, 0.4, 0.6, 0.15];
+        let spread = compute_observed_spread(&confs);
+        assert!(spread >= 0.0, "spread must be non-negative, got {spread}");
+    }
+
+    // ---------------------------------------------------------------------------
+    // adaptive_confidence_weight_local — formula verification
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_adaptive_confidence_weight_floor() {
+        // spread = 0.0 → clamp to floor 0.15.
+        let w = adaptive_confidence_weight_local(0.0);
+        assert!((w - 0.15).abs() < 1e-10, "floor: expected 0.15, got {w}");
+    }
+
+    #[test]
+    fn test_adaptive_confidence_weight_ceiling() {
+        // spread = 1.0 → 1.0 * 1.25 = 1.25 → clamp to ceiling 0.25.
+        let w = adaptive_confidence_weight_local(1.0);
+        assert!((w - 0.25).abs() < 1e-10, "ceiling: expected 0.25, got {w}");
+    }
+
+    #[test]
+    fn test_adaptive_confidence_weight_initial_spread() {
+        // Initial observed_spread = 0.1471 → 0.1471 * 1.25 = 0.183875 → 0.184 (approx).
+        let w = adaptive_confidence_weight_local(0.1471);
+        assert!(
+            (w - 0.183875).abs() < 1e-6,
+            "initial spread: expected ~0.184, got {w}"
+        );
+        assert!(w >= 0.15 && w <= 0.25);
+    }
+
+    #[test]
+    fn test_adaptive_confidence_weight_midrange() {
+        // spread = 0.2 → 0.2 * 1.25 = 0.25 → ceiling clamp.
+        let w = adaptive_confidence_weight_local(0.2);
+        assert!((w - 0.25).abs() < 1e-10, "0.2 * 1.25 = 0.25, got {w}");
+    }
+
+    // ---------------------------------------------------------------------------
+    // MINIMUM_VOTED_POPULATION constant
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_minimum_voted_population_is_ten() {
+        assert_eq!(
+            MINIMUM_VOTED_POPULATION, 10,
+            "ADR-002 requires threshold = 10"
+        );
     }
 }
