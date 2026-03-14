@@ -20,9 +20,9 @@ fn test_golden_confidence_values() {
     let good = profile_to_entry_record(&good_agent_entry(), 2, now);
     let auto = profile_to_entry_record(&auto_extracted_new(), 3, now);
 
-    let conf_expert = compute_confidence(&expert, now);
-    let conf_good = compute_confidence(&good, now);
-    let conf_auto = compute_confidence(&auto, now);
+    let conf_expert = compute_confidence(&expert, now, 3.0, 3.0);
+    let conf_good = compute_confidence(&good, now, 3.0, 3.0);
+    let conf_auto = compute_confidence(&auto, now, 3.0, 3.0);
 
     // Golden values computed at implementation time.
     // If these fail, weights or formula changed. See test_scenarios module docs.
@@ -57,18 +57,15 @@ fn test_golden_confidence_values() {
 
 #[test]
 fn test_weight_constants() {
-    assert_eq!(W_BASE, 0.18, "W_BASE changed");
-    assert_eq!(W_USAGE, 0.14, "W_USAGE changed");
-    assert_eq!(W_FRESH, 0.18, "W_FRESH changed");
-    assert_eq!(W_HELP, 0.14, "W_HELP changed");
-    assert_eq!(W_CORR, 0.14, "W_CORR changed");
-    assert_eq!(W_TRUST, 0.14, "W_TRUST changed");
+    assert_eq!(W_BASE,  0.16, "W_BASE changed");
+    assert_eq!(W_USAGE, 0.16, "W_USAGE changed");
+    assert_eq!(W_FRESH, 0.18, "W_FRESH unchanged");
+    assert_eq!(W_HELP,  0.12, "W_HELP changed");
+    assert_eq!(W_CORR,  0.14, "W_CORR unchanged");
+    assert_eq!(W_TRUST, 0.16, "W_TRUST changed");
 
     let sum = W_BASE + W_USAGE + W_FRESH + W_HELP + W_CORR + W_TRUST;
-    assert!(
-        (sum - 0.92).abs() < 0.001,
-        "weight sum changed: {sum}, expected 0.92"
-    );
+    assert_eq!(sum, 0.92_f64, "weight sum must equal exactly 0.92");
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +84,7 @@ fn test_ranking_stability() {
 
     let mut scored: Vec<(u64, f64)> = records
         .iter()
-        .map(|e| (e.id, compute_confidence(e, scenario.now)))
+        .map(|e| (e.id, compute_confidence(e, scenario.now, 3.0, 3.0)))
         .collect();
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
     let actual_ranking: Vec<u64> = scored.iter().map(|(id, _)| *id).collect();
