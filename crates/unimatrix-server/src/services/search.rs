@@ -15,6 +15,7 @@ use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
 use crate::confidence::{DEPRECATED_PENALTY, SUPERSEDED_PENALTY, cosine_similarity, rerank_score};
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::gateway::SecurityGateway;
 use crate::services::{AuditContext, CallerId, ServiceError};
 
@@ -80,6 +81,13 @@ pub(crate) struct SearchService {
     embed_service: Arc<EmbedServiceHandle>,
     adapt_service: Arc<AdaptationService>,
     gateway: Arc<SecurityGateway>,
+    /// crt-019 (ADR-001): adaptive blend weight state shared with StatusService.
+    ///
+    /// Readers clone `confidence_weight` f64 under a short read lock before
+    /// each re-ranking step. The write lock is held only by the maintenance
+    /// tick (StatusService) for the brief field-update critical section.
+    #[allow(dead_code)]
+    confidence_state: ConfidenceStateHandle,
 }
 
 impl SearchService {
@@ -90,6 +98,7 @@ impl SearchService {
         embed_service: Arc<EmbedServiceHandle>,
         adapt_service: Arc<AdaptationService>,
         gateway: Arc<SecurityGateway>,
+        confidence_state: ConfidenceStateHandle,
     ) -> Self {
         SearchService {
             store,
@@ -98,6 +107,7 @@ impl SearchService {
             embed_service,
             adapt_service,
             gateway,
+            confidence_state,
         }
     }
 
