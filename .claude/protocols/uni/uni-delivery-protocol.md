@@ -63,7 +63,7 @@ The Delivery Leader:
      agent_id: "{feature-id}-delivery-leader"
    )
    ```
-6. Spawns worker agents with `isolation: "worktree"` for parallel workstreams (see `/uni-git` Worktree Isolation)
+6. Plans Stage 3b waves from the IMPLEMENTATION-BRIEF before spawning any implementation agents
 
 ---
 
@@ -177,19 +177,30 @@ Task(subagent_type: "uni-validator",
 
 ---
 
-## Stage 3b: Code Implementation (Parallelized by Component)
+## Stage 3b: Code Implementation (Wave-Based)
 
-**Agents**: uni-rust-dev (one per component)
+**Agents**: uni-rust-dev (one per component per wave)
 
 **Prerequisite**: Gate 3a PASSED. Component Map in IMPLEMENTATION-BRIEF.md is updated with actual pseudocode/test-plan file paths.
 
-The Delivery Leader reads the updated Component Map and spawns **exactly one implementation agent per component**. Every component in the Component Map gets its own agent — no grouping, no exceptions. This is mandatory for both speed (parallel execution) and context window management (each agent only loads its own component's artifacts).
+### Wave Planning (MANDATORY — before spawning any agent)
 
-Each agent receives ONLY its component's pseudocode and test plan — not every file.
+The Delivery Leader reads the IMPLEMENTATION-BRIEF and groups components into **waves** based on dependency order. Components in the same wave are independent of each other and can be implemented in parallel. Components in later waves depend on earlier waves being committed first.
+
+**How to identify waves:**
+1. Read the IMPLEMENTATION-BRIEF for any mandatory ordering: numbered steps, "must be first", "blocking prerequisite", or explicit dependency statements.
+2. Group components: Wave 1 = components with no dependencies on other components. Wave 2 = components that require Wave 1 to be complete. And so on.
+3. If no ordering constraints exist, all components are Wave 1.
+
+**One wave = current parallel behavior.** Multiple waves = execute sequentially, committing between each.
+
+### Wave Execution
+
+For each wave (in order):
+
+1. **Spawn all agents in the wave in ONE message** — one agent per component, no worktree isolation (agents work directly on the feature branch):
 
 ```
-# For each component in the Component Map, spawn in ONE message:
-
 Task(subagent_type: "uni-rust-dev",
   prompt: "Your agent ID: {feature-id}-agent-3-{component-1}
 
@@ -217,9 +228,11 @@ Task(subagent_type: "uni-rust-dev",
     ...same structure, with {component-2}'s pseudocode and test plan...")
 ```
 
-**MANDATORY — One Agent Per Component**: Each component in the Component Map gets its own agent. No grouping, no exceptions. This is mandatory for both speed (parallel execution) and context window management. Monolithic single-agent implementations are an anti-pattern that causes context exhaustion and silent quality loss.
+2. **Wait for all agents in the wave to complete.**
+3. **Commit the wave**: `git add -p && git commit -m "impl: wave {N} — {component list} (#{issue})"`
+4. **Spawn the next wave**, which now builds on the committed state.
 
-Each agent gets ONLY its own component's `pseudocode/{component}.md` and `test-plan/{component}.md`. Do NOT dump all pseudocode files into every agent. Stage 3b agents do NOT run or modify integration tests — that's Stage 3c.
+Each agent receives ONLY its component's pseudocode and test plan — not every file. Stage 3b agents do NOT run or modify integration tests — that is Stage 3c.
 
 ### Gate 3b: Code Review
 
@@ -489,9 +502,10 @@ DELIVERY LEADER (you):
               UPDATE Component Map in IMPLEMENTATION-BRIEF.md with actual file paths
               Task(uni-validator, Gate 3a) — MANDATORY BLOCK
               ...PASS → continue / FAIL → rework or stop...
-  Stage 3b:   Task(uni-rust-dev × N) — ONE agent per component, ALL in ONE message
+  Stage 3b:   PLAN waves from IMPLEMENTATION-BRIEF (1 wave = all parallel, N waves = sequential)
+              FOR EACH WAVE: Task(uni-rust-dev × components-in-wave) — ONE message, no worktree isolation
               Each agent gets ONLY its component's pseudocode + test plan
-              No grouping — every component gets its own agent
+              ...wait for wave... commit wave... spawn next wave...
               ...wait...
               Task(uni-validator, Gate 3b)
               ...PASS → continue / FAIL → rework or stop...
