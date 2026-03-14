@@ -121,7 +121,7 @@ pub fn good_agent_entry() -> EntryProfile {
         status: Status::Active,
         access_count: 15,
         last_accessed_at: CANONICAL_NOW - 3 * 24 * 3600, // 3 days ago
-        created_at: CANONICAL_NOW - 14 * 24 * 3600, // 2 weeks ago
+        created_at: CANONICAL_NOW - 14 * 24 * 3600,      // 2 weeks ago
         helpful_count: 5,
         unhelpful_count: 1,
         correction_count: 2,
@@ -137,7 +137,7 @@ pub fn auto_extracted_new() -> EntryProfile {
         status: Status::Proposed,
         access_count: 2,
         last_accessed_at: CANONICAL_NOW - 1800, // 30 minutes ago
-        created_at: CANONICAL_NOW - 3600, // 1 hour ago
+        created_at: CANONICAL_NOW - 3600,       // 1 hour ago
         helpful_count: 0,
         unhelpful_count: 0,
         correction_count: 0,
@@ -153,7 +153,7 @@ pub fn stale_deprecated() -> EntryProfile {
         status: Status::Deprecated,
         access_count: 10,
         last_accessed_at: CANONICAL_NOW - 90 * 24 * 3600, // 90 days ago
-        created_at: CANONICAL_NOW - 180 * 24 * 3600, // 180 days ago
+        created_at: CANONICAL_NOW - 180 * 24 * 3600,      // 180 days ago
         helpful_count: 3,
         unhelpful_count: 3,
         correction_count: 4,
@@ -169,7 +169,7 @@ pub fn quarantined_bad() -> EntryProfile {
         status: Status::Quarantined,
         access_count: 1,
         last_accessed_at: CANONICAL_NOW - 30 * 24 * 3600, // 30 days ago
-        created_at: CANONICAL_NOW - 60 * 24 * 3600, // 60 days ago
+        created_at: CANONICAL_NOW - 60 * 24 * 3600,       // 60 days ago
         helpful_count: 1,
         unhelpful_count: 8,
         correction_count: 7,
@@ -242,11 +242,11 @@ pub fn trust_source_ordering() -> CalibrationScenario {
 /// Same base signals except freshness varies: now > 1day > 1week > 1month > 1year.
 pub fn freshness_dominance() -> CalibrationScenario {
     let offsets: Vec<u64> = vec![
-        60,                // 1 minute ago
-        24 * 3600,         // 1 day ago
-        7 * 24 * 3600,     // 1 week ago
-        30 * 24 * 3600,    // 1 month ago
-        365 * 24 * 3600,   // 1 year ago
+        60,              // 1 minute ago
+        24 * 3600,       // 1 day ago
+        7 * 24 * 3600,   // 1 week ago
+        30 * 24 * 3600,  // 1 month ago
+        365 * 24 * 3600, // 1 year ago
     ];
 
     let labels: Vec<&'static str> = vec![
@@ -355,9 +355,8 @@ pub fn assert_ranked_above(results: &[(u64, f64)], higher_id: u64, lower_id: u64
     let higher_pos = higher_pos.unwrap_or_else(|| {
         panic!("assert_ranked_above: higher_id {higher_id} not found in results")
     });
-    let lower_pos = lower_pos.unwrap_or_else(|| {
-        panic!("assert_ranked_above: lower_id {lower_id} not found in results")
-    });
+    let lower_pos = lower_pos
+        .unwrap_or_else(|| panic!("assert_ranked_above: lower_id {lower_id} not found in results"));
 
     let higher_score = results[higher_pos].1;
     let lower_score = results[lower_pos].1;
@@ -372,8 +371,8 @@ pub fn assert_ranked_above(results: &[(u64, f64)], higher_id: u64, lower_id: u64
 /// Assert that `entry_id` appears in the first `k` results.
 pub fn assert_in_top_k(results: &[(u64, f64)], entry_id: u64, k: usize) {
     let pos = results.iter().position(|(id, _)| *id == entry_id);
-    let pos = pos
-        .unwrap_or_else(|| panic!("assert_in_top_k: entry_id {entry_id} not found in results"));
+    let pos =
+        pos.unwrap_or_else(|| panic!("assert_in_top_k: entry_id {entry_id} not found in results"));
 
     assert!(
         pos < k,
@@ -399,7 +398,7 @@ pub fn assert_tau_above(ranking_a: &[u64], ranking_b: &[u64], min_tau: f64) {
 pub fn assert_confidence_ordering(entries: &[EntryRecord], expected_order: &[u64], now: u64) {
     let mut scored: Vec<(u64, f64)> = entries
         .iter()
-        .map(|e| (e.id, compute_confidence(e, now)))
+        .map(|e| (e.id, compute_confidence(e, now, 3.0, 3.0)))
         .collect();
 
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));

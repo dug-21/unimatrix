@@ -4,8 +4,8 @@
 //! for standard scenarios, and that each signal contributes meaningfully.
 
 use unimatrix_engine::confidence::{
-    self, base_score, compute_confidence, correction_score, freshness_score, helpfulness_score,
-    rerank_score, trust_score, usage_score, W_BASE, W_CORR, W_FRESH, W_HELP, W_TRUST, W_USAGE,
+    self, W_BASE, W_CORR, W_FRESH, W_HELP, W_TRUST, W_USAGE, base_score, compute_confidence,
+    correction_score, freshness_score, helpfulness_score, rerank_score, trust_score, usage_score,
 };
 use unimatrix_engine::test_scenarios::*;
 
@@ -91,10 +91,10 @@ fn confidence_with_adjusted_weight(
 ) -> f64 {
     let weights = [W_BASE, W_USAGE, W_FRESH, W_HELP, W_CORR, W_TRUST];
     let scores = [
-        base_score(entry.status),
+        base_score(entry.status, &entry.trust_source),
         usage_score(entry.access_count),
         freshness_score(entry.last_accessed_at, entry.created_at, now),
-        helpfulness_score(entry.helpful_count, entry.unhelpful_count),
+        helpfulness_score(entry.helpful_count, entry.unhelpful_count, 3.0, 3.0),
         correction_score(entry.correction_count),
         trust_score(&entry.trust_source),
     ];
@@ -123,7 +123,7 @@ fn test_weight_sensitivity() {
     // Original ranking
     let mut original_scored: Vec<(u64, f64)> = records
         .iter()
-        .map(|e| (e.id, compute_confidence(e, scenario.now)))
+        .map(|e| (e.id, compute_confidence(e, scenario.now, 3.0, 3.0)))
         .collect();
     original_scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
     let original_ranking: Vec<u64> = original_scored.iter().map(|(id, _)| *id).collect();
@@ -141,8 +141,7 @@ fn test_weight_sensitivity() {
                 })
                 .collect();
             perturbed_scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-            let perturbed_ranking: Vec<u64> =
-                perturbed_scored.iter().map(|(id, _)| *id).collect();
+            let perturbed_ranking: Vec<u64> = perturbed_scored.iter().map(|(id, _)| *id).collect();
 
             let tau = kendall_tau(&original_ranking, &perturbed_ranking);
             assert!(
@@ -222,8 +221,8 @@ macro_rules! ablation_test {
         fn $name() {
             let now = CANONICAL_NOW;
             let (high, low) = ablation_pair($signal, now);
-            let conf_high = compute_confidence(&high, now);
-            let conf_low = compute_confidence(&low, now);
+            let conf_high = compute_confidence(&high, now, 3.0, 3.0);
+            let conf_low = compute_confidence(&low, now, 3.0, 3.0);
             assert!(
                 conf_high > conf_low,
                 "{}: high={conf_high:.6}, low={conf_low:.6} — expected high > low",
@@ -259,7 +258,7 @@ fn test_boundary_all_zero() {
         category: "decision",
     };
     let entry = profile_to_entry_record(&profile, 1, CANONICAL_NOW);
-    let conf = compute_confidence(&entry, CANONICAL_NOW);
+    let conf = compute_confidence(&entry, CANONICAL_NOW, 3.0, 3.0);
     assert!(
         (0.0..=1.0).contains(&conf),
         "all-zero confidence {conf} out of range"
@@ -281,10 +280,13 @@ fn test_boundary_all_max() {
         category: "decision",
     };
     let entry = profile_to_entry_record(&profile, 1, CANONICAL_NOW);
-    let conf = compute_confidence(&entry, CANONICAL_NOW);
+    let conf = compute_confidence(&entry, CANONICAL_NOW, 3.0, 3.0);
     assert!(
         (0.0..=1.0).contains(&conf),
         "all-max confidence {conf} out of range"
     );
-    assert!(conf > 0.7, "all-max should have high confidence, got {conf}");
+    assert!(
+        conf > 0.7,
+        "all-max should have high confidence, got {conf}"
+    );
 }

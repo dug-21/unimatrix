@@ -62,10 +62,10 @@ fn profile_round_trip_expert() {
     assert_eq!(entry.correction_count, 1);
     assert_eq!(entry.trust_source, "human");
 
-    let conf = confidence::compute_confidence(&entry, CANONICAL_NOW);
+    let conf = confidence::compute_confidence(&entry, CANONICAL_NOW, 3.0, 3.0);
     assert!(conf > 0.5, "expert should have high confidence, got {conf}");
 
-    let b = confidence::base_score(entry.status);
+    let b = confidence::base_score(entry.status, &entry.trust_source);
     assert_eq!(b, 0.5);
     let t = confidence::trust_score(&entry.trust_source);
     assert_eq!(t, 1.0);
@@ -87,7 +87,7 @@ fn all_profiles_distinct_confidence() {
         .enumerate()
         .map(|(i, p)| {
             let entry = profile_to_entry_record(p, i as u64 + 1, CANONICAL_NOW);
-            confidence::compute_confidence(&entry, CANONICAL_NOW)
+            confidence::compute_confidence(&entry, CANONICAL_NOW, 3.0, 3.0)
         })
         .collect();
 
