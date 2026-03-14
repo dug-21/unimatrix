@@ -22,6 +22,7 @@ use crate::infra::session::SessionRegistry;
 use crate::mcp::response::status::{CoAccessClusterEntry, StatusReport};
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
+use crate::services::confidence::ConfidenceStateHandle;
 
 /// Transport-agnostic status computation service.
 ///
@@ -33,6 +34,13 @@ pub(crate) struct StatusService {
     vector_index: Arc<VectorIndex>,
     embed_service: Arc<EmbedServiceHandle>,
     adapt_service: Arc<AdaptationService>,
+    /// crt-019 (ADR-001, ADR-002): write-side owner of the adaptive blend state.
+    ///
+    /// The maintenance tick (run_maintenance Step 2b) acquires the write lock to
+    /// update `{alpha0, beta0, observed_spread, confidence_weight}` atomically
+    /// after computing empirical priors from the voted-entry population.
+    #[allow(dead_code)]
+    confidence_state: ConfidenceStateHandle,
 }
 
 /// Result of maintenance operations.
@@ -49,12 +57,14 @@ impl StatusService {
         vector_index: Arc<VectorIndex>,
         embed_service: Arc<EmbedServiceHandle>,
         adapt_service: Arc<AdaptationService>,
+        confidence_state: ConfidenceStateHandle,
     ) -> Self {
         StatusService {
             store,
             vector_index,
             embed_service,
             adapt_service,
+            confidence_state,
         }
     }
 
