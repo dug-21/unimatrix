@@ -603,9 +603,9 @@ impl StatusService {
         Ok((report, active_entries))
     }
 
-    /// Run maintenance operations. Requires Admin capability (enforced by caller).
+    /// Run maintenance operations. Called by the background tick (col-013).
     ///
-    /// Operations (matches maintain=true path in original handler):
+    /// Operations:
     /// 1. Co-access stale pair cleanup
     /// 2. Confidence refresh (batch 100)
     /// 3. Graph compaction (if stale ratio > trigger)
