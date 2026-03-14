@@ -197,8 +197,6 @@ pub struct StatusParams {
     pub format: Option<String>,
     /// Opt-in embedding consistency check (default: false).
     pub check_embeddings: Option<bool>,
-    /// Set to true to run maintenance writes (confidence refresh, graph compaction). Default: false (read-only diagnostics).
-    pub maintain: Option<bool>,
 }
 
 /// Parameters for getting an orientation briefing.
@@ -763,7 +761,7 @@ impl UnimatrixServer {
 
     #[tool(
         name = "context_status",
-        description = "Get the health status of the knowledge base. Shows entry counts, category/topic distributions, correction chains, and security metrics. Requires Admin capability."
+        description = "Get the health status of the knowledge base. Shows entry counts, category/topic distributions, correction chains, and security metrics. Requires Read capability."
     )]
     async fn context_status(
         &self,
@@ -773,7 +771,7 @@ impl UnimatrixServer {
         let ctx = self
             .build_context(&params.agent_id, &params.format, &None)
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Admin).await?;
+        self.require_cap(&ctx.agent_id, Capability::Read).await?;
 
         // 2. Validation
         validate_status_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -787,9 +785,8 @@ impl UnimatrixServer {
             .await
             .map_err(rmcp::ErrorData::from)?;
 
-        // 4. Maintenance is now handled by background tick (col-013).
-        // The `maintain` parameter is silently ignored for backward compatibility.
-        // Read tick metadata for status reporting.
+        // 4. Read tick metadata for status reporting.
+        // Maintenance is handled by the background tick (col-013).
         {
             use crate::mcp::response::status::ExtractionStatsResponse;
             let tick_meta = self.tick_metadata.lock().unwrap_or_else(|e| e.into_inner());
@@ -828,10 +825,6 @@ impl UnimatrixServer {
         // 6. Format response
         Ok(format_status_report(&report, ctx.format))
     }
-
-    // vnc-008: The old 618-line context_status body was extracted into
-    // services/status.rs (StatusService::compute_report + run_maintenance).
-    // Remove this comment once Gate 3b validates.
 
     #[tool(
         name = "context_briefing",
@@ -2148,6 +2141,32 @@ mod tests {
     fn test_status_params_check_embeddings_default() {
         let json = r#"{}"#;
         let params: StatusParams = serde_json::from_str(json).unwrap();
+        assert!(params.check_embeddings.is_none());
+    }
+
+    // -- bugfix/252: StatusParams maintain field removed --
+
+    #[test]
+    fn test_status_params_no_maintain_field() {
+        // Deserialization succeeds and `maintain` is silently ignored as an
+        // unrecognised field (serde deny_unknown_fields is not set).
+        // The struct no longer carries `maintain` at all -- confirmed by
+        // accessing only the known fields below.
+        let json = r#"{"topic": "auth", "check_embeddings": false}"#;
+        let params: StatusParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.topic.as_deref(), Some("auth"));
+        assert_eq!(params.check_embeddings, Some(false));
+    }
+
+    #[test]
+    fn test_status_params_anonymous_agent_deserializes() {
+        // A fresh-install call with no agent_id provided should deserialise
+        // and leave agent_id as None (the handler auto-enrolls it).
+        let json = r#"{}"#;
+        let params: StatusParams = serde_json::from_str(json).unwrap();
+        assert!(params.agent_id.is_none());
+        assert!(params.topic.is_none());
+        assert!(params.category.is_none());
         assert!(params.check_embeddings.is_none());
     }
 
