@@ -238,7 +238,7 @@ async fn run_single_tick(
         Arc::clone(vector_index),
         Arc::clone(embed_service),
         Arc::clone(adapt_service),
-        Arc::clone(confidence_state),
+        Arc::clone(&confidence_state),
     );
     match tokio::time::timeout(
         TICK_TIMEOUT,

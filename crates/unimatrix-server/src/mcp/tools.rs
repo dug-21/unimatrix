@@ -1796,7 +1796,7 @@ async fn write_lesson_learned(
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_secs();
-                let conf = unimatrix_engine::confidence::compute_confidence(&entry, now);
+                let conf = unimatrix_engine::confidence::compute_confidence(&entry, now, 3.0, 3.0);
                 let _ = store.update_confidence(new_id, conf);
             }
         })

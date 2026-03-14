@@ -66,7 +66,7 @@ The Bugfix Manager:
    ```
    context_cycle(
      type: "start",
-     topic: "{issue-number}-{short-description}",
+     topic: "bugfix-{issue-number}",
      keywords: ["{keyword-1}", "{keyword-2}", ...],  // 3-5 semantic terms for the bug area
      agent_id: "{issue-number}-bugfix-leader"
    )
@@ -377,7 +377,7 @@ NEVER pipe full cargo output into context.
 ```
 BUGFIX LEADER (you):
   Init:       /uni-query-patterns + /uni-knowledge-search — prior knowledge
-              context_cycle(type: "start", topic: "{issue-number}-{desc}", keywords: [...], agent_id: "{issue-number}-bugfix-leader")
+              context_cycle(type: "start", topic: "bugfix-{issue-number}", keywords: [...], agent_id: "{issue-number}-bugfix-leader")
   Phase 1:    Task(uni-bug-investigator) — diagnose root cause → GH Issue comment
               ...present diagnosis to human...
               ★ HUMAN CHECKPOINT — human approves diagnosis ★
@@ -391,7 +391,7 @@ BUGFIX LEADER (you):
               git commit + push + gh pr create
   Phase 4:    /uni-review-pr — security review + merge readiness → GH Issue comment
               ...wait...
-  Phase 5:    context_cycle(type: "stop", topic: "{issue-number}-{desc}", agent_id: "{issue-number}-bugfix-leader")
+  Phase 5:    context_cycle(type: "stop", topic: "bugfix-{issue-number}", agent_id: "{issue-number}-bugfix-leader")
               /uni-record-outcome + /uni-store-lesson (if generalizable)
               Present PR + security assessment to human — SESSION ENDS
 ```
@@ -405,7 +405,7 @@ After presenting the PR to the human, close the feature cycle and record the bug
 ```
 context_cycle(
   type: "stop",
-  topic: "{issue-number}-{short-description}",
+  topic: "bugfix-{issue-number}",
   agent_id: "{issue-number}-bugfix-leader"
 )
 ```

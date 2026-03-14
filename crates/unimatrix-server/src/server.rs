@@ -1501,8 +1501,10 @@ mod tests {
 
         let r = server.store.get(entry_id).unwrap();
         assert!(r.confidence > 0.0, "confidence should be seeded on insert");
-        // Agent-authored entry: expected ~0.525
-        assert!((r.confidence - 0.525).abs() < 0.05);
+        // Agent-authored entry, just inserted (crt-019 weights):
+        // base=0.5, usage=0.0, fresh≈1.0 (just created), help=0.5, corr=0.5, trust=0.5
+        // composite ≈ 0.16*0.5 + 0.16*0.0 + 0.18*1.0 + 0.12*0.5 + 0.14*0.5 + 0.16*0.5 = 0.47
+        assert!((r.confidence - 0.47).abs() < 0.05, "expected ~0.47, got {}", r.confidence);
     }
 
     #[tokio::test]

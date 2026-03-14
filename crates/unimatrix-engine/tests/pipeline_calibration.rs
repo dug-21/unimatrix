@@ -5,7 +5,7 @@
 
 use unimatrix_engine::confidence::{
     W_BASE, W_CORR, W_FRESH, W_HELP, W_TRUST, W_USAGE, base_score, compute_confidence,
-    correction_score, freshness_score, helpfulness_score, rerank_score, trust_score, usage_score,
+    correction_score, freshness_score, helpfulness_score, trust_score, usage_score,
 };
 use unimatrix_engine::test_scenarios::*;
 

@@ -1014,7 +1014,7 @@ async fn handle_context_search(
                     log_id: 0, // allocated by insert_injection_log_batch
                     session_id: sid.clone(),
                     entry_id: entry.id,
-                    confidence: rerank_score(*sim, entry.confidence),
+                    confidence: rerank_score(*sim, entry.confidence, 0.18375),
                     timestamp: now,
                 })
                 .collect();
