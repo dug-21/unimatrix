@@ -32,6 +32,7 @@ use crate::infra::session::SessionRegistry;
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
 use crate::services::confidence::ConfidenceStateHandle;
+use crate::services::effectiveness::EffectivenessStateHandle;
 use crate::services::status::StatusService;
 
 /// Default tick interval: 15 minutes.
@@ -122,6 +123,7 @@ pub fn spawn_background_tick(
     tick_metadata: Arc<Mutex<TickMetadata>>,
     training_service: Option<Arc<TrainingService>>,
     confidence_state: ConfidenceStateHandle,
+    effectiveness_state: EffectivenessStateHandle, // crt-018b: shared with search/briefing paths
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(background_tick_loop(
         store,
@@ -134,6 +136,7 @@ pub fn spawn_background_tick(
         tick_metadata,
         training_service,
         confidence_state,
+        effectiveness_state,
     ))
 }
 
@@ -150,6 +153,7 @@ async fn background_tick_loop(
     tick_metadata: Arc<Mutex<TickMetadata>>,
     _training_service: Option<Arc<TrainingService>>,
     confidence_state: ConfidenceStateHandle,
+    effectiveness_state: EffectivenessStateHandle, // crt-018b: threaded to run_single_tick
 ) {
     let mut interval = tokio::time::interval(Duration::from_secs(TICK_INTERVAL_SECS));
     let mut extraction_ctx = ExtractionContext::new();
@@ -188,6 +192,7 @@ async fn background_tick_loop(
             neural_enhancer.as_ref(),
             shadow_evaluator.as_mut(),
             &confidence_state,
+            &effectiveness_state,
         )
         .await;
 
@@ -224,6 +229,7 @@ async fn run_single_tick(
     neural_enhancer: Option<&NeuralEnhancer>,
     shadow_evaluator: Option<&mut ShadowEvaluator>,
     confidence_state: &ConfidenceStateHandle,
+    _effectiveness_state: &EffectivenessStateHandle, // crt-018b: used by maintenance_tick (agent-7)
 ) -> Result<(), String> {
     let tick_start = now_secs();
     tracing::info!("background tick starting");
