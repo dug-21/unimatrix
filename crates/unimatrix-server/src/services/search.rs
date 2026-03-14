@@ -86,7 +86,6 @@ pub(crate) struct SearchService {
     /// Readers clone `confidence_weight` f64 under a short read lock before
     /// each re-ranking step. The write lock is held only by the maintenance
     /// tick (StatusService) for the brief field-update critical section.
-    #[allow(dead_code)]
     confidence_state: ConfidenceStateHandle,
 }
 
