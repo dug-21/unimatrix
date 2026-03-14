@@ -51,13 +51,7 @@ Activate the effectiveness classifications produced by crt-018 as live retrieval
 | Utility delta magnitude | Symmetric: `UTILITY_BOOST = 0.05`, `UTILITY_PENALTY = 0.05`, `SETTLED_BOOST = 0.01`; 0.05 is meaningful at both crt-019 spread extremes without overwhelming similarity signal | SPECIFICATION FR-04, FR-05; ADR-003 range analysis | — |
 | Auto-quarantine default threshold | `AUTO_QUARANTINE_CYCLES = 3` (env: `UNIMATRIX_AUTO_QUARANTINE_CYCLES`); value 0 disables entirely; minimum 45 minutes wall time before first auto-quarantine | SPECIFICATION FR-12 | — |
 
-> **OPEN VARIANCE — Human decision required before implementation begins.**
->
-> The ALIGNMENT-REPORT identifies a direct contradiction between ARCHITECTURE and SPECIFICATION on whether the generation counter (ADR-001) is built:
-> - **Option A**: Implement the generation cache as ARCHITECTURE specifies (ADR-001, Component 1, Component 3). Remove SPECIFICATION §NOT in Scope item 7. Keep RISK-TEST-STRATEGY R-06 test scenarios.
-> - **Option B**: Skip the generation cache; use plain clone-per-call (satisfies the 1ms budget at 500 entries). Remove ADR-001 and all generation counter references from ARCHITECTURE. Rewrite R-06 as a clone-latency test only.
->
-> The Resolved Decisions table above follows Option A (as built by the architect). If the human chooses Option B, R-06 test scenarios must be removed or replaced and `Arc<Mutex<EffectivenessSnapshot>>` fields are not needed.
+> **RESOLVED — Option A selected.** Generation counter (ADR-001) is in scope. SPECIFICATION §NOT in Scope item 7 removed. R-06 test scenarios stand.
 
 ---
 
@@ -91,7 +85,7 @@ EffectivenessState {
 
     generation: u64
         // incremented on every write; readers skip HashMap clone when unchanged
-        // (present only if human approves Option A from the open variance above)
+        // incremented on every write; readers skip HashMap clone when unchanged
 }
 
 EffectivenessStateHandle = Arc<RwLock<EffectivenessState>>
@@ -264,27 +258,15 @@ Two lock ordering rules must be enforced in code:
 
 ## Alignment Status
 
-**Overall**: PASS with one VARIANCE requiring human resolution and one implementation team warning.
+**Overall**: PASS with one implementation team warning. All variances resolved.
 
 | Check | Status | Notes |
 |-------|--------|-------|
 | Vision Alignment | PASS | Directly advances auditable knowledge lifecycle and retrieval quality goals; all four SCOPE goals covered |
 | Milestone Fit | PASS | Correct dependency position (crt-018 + crt-019 both merged before implementation) |
 | Scope Gaps | PASS | All four SCOPE goals addressed in all three source documents |
-| Architecture Consistency | WARN | See Variance below |
+| Architecture Consistency | PASS | Generation counter variance resolved (Option A): ADR-001 in scope, SPECIFICATION §NOT in Scope item 7 removed |
 | Risk Completeness | PASS | RISK-TEST-STRATEGY covers all 8 SCOPE-RISK-ASSESSMENT items and adds 6 additional risks (4 Critical) |
-
-### Variance: Generation Counter (ARCHITECTURE vs. SPECIFICATION contradiction)
-
-**Requires human decision before implementation begins.**
-
-ARCHITECTURE (ADR-001, Component 1, Component 3) fully specifies a `generation: u64` field on `EffectivenessState` and a `Arc<Mutex<EffectivenessSnapshot>>` shared-cache pattern in `SearchService` and `BriefingService` to skip HashMap clones on unchanged state.
-
-SPECIFICATION §NOT in Scope item 7 explicitly defers it: "Snapshot version counter optimization — not a correctness requirement. Not in scope for this feature."
-
-RISK-TEST-STRATEGY R-06 (generation cache not shared across service clones, rated High) and its test scenarios are predicated on the generation cache being present.
-
-**Options**: (A) Accept ARCHITECTURE — remove SPECIFICATION §NOT in Scope item 7, keep R-06; (B) Accept SPECIFICATION — remove ADR-001 and all generation counter references from ARCHITECTURE, replace generation-cache snapshot pattern with plain clone-per-call, remove R-06 or rewrite as latency-only test.
 
 ### Implementation Team Warning: Write Lock Before SQL (NFR-02)
 

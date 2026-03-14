@@ -18,8 +18,8 @@
 | Vision Alignment | PASS | Feature directly advances the auditable knowledge lifecycle and retrieval quality goals |
 | Milestone Fit | PASS | Targets Search Quality Enhancements milestone; correct dependency position (after crt-019) |
 | Scope Gaps | PASS | All four SCOPE goals covered by source docs |
-| Scope Additions | WARN | Architecture adds generation counter (ADR-001); SPECIFICATION explicitly removes it from scope |
-| Architecture Consistency | WARN | Tension between ARCHITECTURE Component 3 (generation cache added) and SPECIFICATION §NOT in Scope item 7 (generation counter deferred) — needs human resolution |
+| Scope Additions | PASS | Generation counter (ADR-001) resolved: Option A selected, SPECIFICATION §NOT in Scope item 7 removed |
+| Architecture Consistency | PASS | Generation counter variance resolved (Option A): ADR-001, Component 1, Component 3 are authoritative |
 | Risk Completeness | PASS | RISK-TEST-STRATEGY covers all 8 SCOPE-RISK-ASSESSMENT items; adds 6 additional risks |
 
 ---
@@ -29,24 +29,16 @@
 | Type | Item | Details |
 |------|------|---------|
 | Gap | None | All four SCOPE goals (utility signal in search, effectiveness-weighted briefing, auto-quarantine with N-cycle guard, configurable threshold) are addressed in all three source documents |
-| Addition | Generation counter / `EffectivenessSnapshot` cache | ARCHITECTURE Component 3 (ADR-001) and the snapshot pattern in `SearchService` add a `generation: u64` field and `Arc<Mutex<EffectivenessSnapshot>>` shared-cache approach. SCOPE-RISK-ASSESSMENT SR-02 recommended this. SPECIFICATION §NOT in Scope item 7 explicitly defers it as an optimization. The ARCHITECTURE builds it; the SPECIFICATION defers it. |
+| Addition | Generation counter / `EffectivenessSnapshot` cache | ARCHITECTURE Component 3 (ADR-001) adds `generation: u64` + `Arc<Mutex<EffectivenessSnapshot>>` shared-cache (SR-02 recommendation). **Resolved**: Option A selected — SPECIFICATION §NOT in Scope item 7 removed; generation counter is in scope. |
 | Simplification | None | No scope items were simplified without documentation |
 
 ---
 
-## Variances Requiring Approval
+## Variances
 
-### VARIANCE 1 — Generation Counter: Architecture Includes It; Specification Defers It
+### VARIANCE 1 — Generation Counter — RESOLVED (Option A)
 
-1. **What**: ARCHITECTURE.md (Component 1, Component 3, ADR-001, Integration Surface table) fully specifies a `generation: u64` field on `EffectivenessState` and a `cached_generation`/`cached_categories` pattern in `SearchService` and `BriefingService`. The stated rationale is avoiding per-search HashMap clones (SCOPE-RISK-ASSESSMENT SR-02 recommendation). SPECIFICATION.md §NOT in Scope item 7 explicitly states: "Snapshot version counter optimization — The SCOPE-RISK-ASSESSMENT SR-02 recommendation for a generation tag to skip unchanged clones is an optimization, not a correctness requirement. Not in scope for this feature."
-
-2. **Why it matters**: This is a direct contradiction between the ARCHITECTURE and the SPECIFICATION on whether a named component (the generation cache) is built. RISK-TEST-STRATEGY R-06 (and its test scenarios requiring `Arc<Mutex<EffectivenessSnapshot>>` type assertions) is predicated on the generation cache being present. If SPECIFICATION governs, R-06 tests would fail to compile or would test something that does not exist. If ARCHITECTURE governs, SPECIFICATION's "not in scope" statement is misleading.
-
-   Additionally, ARCHITECTURE Component 3's snapshot pseudocode shows `SearchService` with mutable self-fields (`self.cached_generation`, `self.cached_categories`), which requires `SearchService` to hold an `Arc<Mutex<_>>` inner snapshot because rmcp clones service instances. RISK-TEST-STRATEGY R-06 tests for this exact construction. If the generation cache is not built, R-06 disappears as a risk but the simpler clone-per-call path (which also satisfies the 1ms budget at 500 entries) needs to be specified.
-
-3. **Recommendation**: Choose one path before implementation begins.
-   - **Option A (include generation cache)**: Remove item 7 from SPECIFICATION §NOT in Scope; add AC for generation-based clone skip; keep R-06 as a test risk.
-   - **Option B (defer generation cache)**: Remove ADR-001 and all generation counter references from ARCHITECTURE; replace the generation-cache snapshot pattern in Component 3 with a plain clone-on-every-call pattern; remove R-06 from RISK-TEST-STRATEGY or rewrite it as a clone-latency test only.
+**Resolution**: Option A selected. Generation counter (ADR-001) is in scope. SPECIFICATION §NOT in Scope item 7 removed. R-06 test scenarios stand. ARCHITECTURE is authoritative on this point.
 
 ---
 
@@ -77,7 +69,7 @@ No features from future milestones (Graph Enablement or beyond) are pulled in. T
 
 ### Architecture Review
 
-**Finding: WARN (generation counter contradiction with SPECIFICATION)**
+**Finding: PASS (generation counter variance resolved — Option A)**
 
 The overall architecture is sound and follows established patterns correctly:
 
@@ -95,11 +87,11 @@ The overall architecture is sound and follows established patterns correctly:
 
   Closer reading: ARCHITECTURE Component 5 says quarantine calls go through the `spawn_blocking` path. The write lock section (Component 2 step 3) says the check happens while the lock is held, but the quarantine SQL call happens *after* in Component 5. The flow diagram shows the auto-quarantine scan as part of the write-lock section but the `store.quarantine_entry()` call as a separate step. The architecture does not explicitly state the write lock is dropped between the scan and the SQL call. SPECIFICATION NFR-02 is explicit: "write lock on `EffectivenessState` in `maintenance_tick()` must be held only for the duration of the in-memory map update... It must be released before any SQL write (auto-quarantine) is issued." The implementation team must resolve this by dropping the write guard before calling `quarantine_entry()`.
 
-- **Generation counter variance**: As documented in Variance 1, ARCHITECTURE builds the generation counter; SPECIFICATION defers it.
+- **Generation counter**: Variance resolved (Option A) — ARCHITECTURE (ADR-001) is authoritative; SPECIFICATION §NOT in Scope item 7 removed.
 
 ### Specification Review
 
-**Finding: PASS (modulo the generation counter variance already flagged)**
+**Finding: PASS**
 
 The specification is thorough, well-structured, and traceable. All 18 acceptance criteria from SCOPE.md are reproduced faithfully and extended with additional precision:
 
