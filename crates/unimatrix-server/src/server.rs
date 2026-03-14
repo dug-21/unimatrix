@@ -117,8 +117,8 @@ pub struct UnimatrixServer {
     /// Accumulated entry-level analysis from signal consumers (col-009).
     /// Shared with UDS listener; drained by context_retrospective handler.
     pub pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
-    /// Session registry for stale session sweep in maintain=true path (col-009, FR-09.2).
-    /// Shared with UDS listener; sweep called by context_status maintain=true.
+    /// Session registry for stale session sweep (col-009, FR-09.2).
+    /// Shared with UDS listener; swept by the background tick.
     pub session_registry: Arc<SessionRegistry>,
     /// Transport-agnostic service layer (vnc-006).
     pub(crate) services: ServiceLayer,

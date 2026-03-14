@@ -894,4 +894,67 @@ mod tests {
         assert_eq!(resolved.trust_level, TrustLevel::Internal);
         assert!(resolved.capabilities.contains(&Capability::Write));
     }
+
+    // -- bugfix/252: context_status Read-capability gate --
+
+    #[test]
+    fn test_status_read_cap_non_admin_agent_passes() {
+        // A Restricted agent with only Read+Search capabilities should pass a
+        // Read capability check -- this mirrors the context_status gate after
+        // the fix (Admin -> Read).
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        // Auto-enrolled Restricted agent gets [Read, Search] in non-permissive
+        // mode, or [Read, Write, Search] in permissive mode.  Either way it
+        // holds Read.
+        let _agent = registry.resolve_or_enroll("restricted-reader").unwrap();
+
+        let result = registry.require_capability("restricted-reader", Capability::Read);
+        assert!(
+            result.is_ok(),
+            "Restricted agent with Read capability must pass the Read gate"
+        );
+    }
+
+    #[test]
+    fn test_status_read_cap_non_admin_agent_lacks_admin() {
+        // The same Restricted agent must NOT pass an Admin capability check,
+        // confirming the old gate was blocking read-only queries.
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        registry.bootstrap_defaults().unwrap();
+
+        registry.resolve_or_enroll("restricted-reader-2").unwrap();
+
+        let result = registry.require_capability("restricted-reader-2", Capability::Admin);
+        assert!(
+            matches!(result, Err(ServerError::CapabilityDenied { .. })),
+            "Restricted agent must not pass Admin gate"
+        );
+    }
+
+    #[test]
+    fn test_status_anonymous_fresh_install_passes_read_gate() {
+        // Simulates a fresh-install scenario: no prior enrollment, agent
+        // resolved on first access.  Must pass the Read gate used by
+        // context_status after the fix.
+        let store = make_store();
+        let registry = AgentRegistry::new(store).unwrap();
+        // Intentionally skip bootstrap_defaults to simulate a fresh install
+        // where system/human have not yet been set up.
+
+        let agent = registry.resolve_or_enroll("brand-new-fresh-agent").unwrap();
+        assert!(
+            agent.capabilities.contains(&Capability::Read),
+            "Auto-enrolled agent must have Read capability"
+        );
+
+        let result = registry.require_capability("brand-new-fresh-agent", Capability::Read);
+        assert!(
+            result.is_ok(),
+            "Fresh-install (anonymous) agent must pass Read gate"
+        );
+    }
 }

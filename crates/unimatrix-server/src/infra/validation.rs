@@ -970,7 +970,6 @@ mod tests {
             agent_id: None,
             format: None,
             check_embeddings: None,
-            maintain: None,
         };
         assert!(validate_status_params(&params).is_ok());
     }
@@ -983,7 +982,6 @@ mod tests {
             agent_id: None,
             format: None,
             check_embeddings: None,
-            maintain: None,
         };
         assert!(validate_status_params(&params).is_err());
     }
@@ -996,7 +994,6 @@ mod tests {
             agent_id: None,
             format: None,
             check_embeddings: None,
-            maintain: None,
         };
         assert!(validate_status_params(&params).is_err());
     }
