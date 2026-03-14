@@ -30,6 +30,7 @@ pub(crate) mod usage;
 
 pub(crate) use briefing::BriefingService;
 pub(crate) use confidence::ConfidenceService;
+pub use confidence::{ConfidenceState, ConfidenceStateHandle};
 pub(crate) use gateway::{RateLimitConfig, SecurityGateway};
 pub(crate) use search::{RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
@@ -225,6 +226,15 @@ pub struct ServiceLayer {
 }
 
 impl ServiceLayer {
+    /// Return a clone of the `ConfidenceStateHandle` owned by this layer.
+    ///
+    /// Used by the binary crate (`main.rs`) to pass the shared handle to
+    /// `spawn_background_tick` so the background tick loop's `StatusService`
+    /// shares the same `Arc<RwLock<ConfidenceState>>` as the search path.
+    pub fn confidence_state_handle(&self) -> ConfidenceStateHandle {
+        self.confidence.state_handle()
+    }
+
     pub fn new(
         store: Arc<Store>,
         vector_index: Arc<VectorIndex>,
@@ -264,6 +274,11 @@ impl ServiceLayer {
             rate_config,
         ));
 
+        let confidence = ConfidenceService::new(Arc::clone(&store));
+        // crt-019 (ADR-001): obtain handle before constructing search/status
+        // so both services share the same Arc<RwLock<ConfidenceState>>.
+        let confidence_state_handle = confidence.state_handle();
+
         let search = SearchService::new(
             Arc::clone(&store),
             Arc::clone(&vector_store),
@@ -271,6 +286,7 @@ impl ServiceLayer {
             Arc::clone(&embed_service),
             Arc::clone(&adapt_service),
             Arc::clone(&gateway),
+            Arc::clone(&confidence_state_handle),
         );
 
         let store_ops = StoreService::new(
@@ -283,8 +299,6 @@ impl ServiceLayer {
             Arc::clone(&gateway),
             Arc::clone(&audit),
         );
-
-        let confidence = ConfidenceService::new(Arc::clone(&store));
 
         let semantic_k = briefing::parse_semantic_k();
         let briefing = BriefingService::new(
@@ -299,9 +313,14 @@ impl ServiceLayer {
             Arc::clone(&vector_index),
             Arc::clone(&embed_service),
             Arc::clone(&adapt_service),
+            Arc::clone(&confidence_state_handle),
         );
 
-        let usage = UsageService::new(Arc::clone(&store), usage_dedup);
+        let usage = UsageService::new(
+            Arc::clone(&store),
+            usage_dedup,
+            Arc::clone(&confidence_state_handle),
+        );
 
         ServiceLayer {
             search,

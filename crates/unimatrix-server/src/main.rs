@@ -317,6 +317,9 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
     server.session_registry = Arc::clone(&session_registry);
 
+    // crt-019: extract ConfidenceStateHandle before services is moved.
+    let confidence_state_handle = services.confidence_state_handle();
+
     // Spawn background tick for automated maintenance + extraction (col-013)
     let tick_handle = unimatrix_server::background::spawn_background_tick(
         Arc::clone(&store),
@@ -328,6 +331,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&pending_entries_analysis),
         Arc::clone(&server.tick_metadata),
         None, // TrainingService: wired in future integration step
+        confidence_state_handle,
     );
 
     // Prepare lifecycle handles for shutdown.

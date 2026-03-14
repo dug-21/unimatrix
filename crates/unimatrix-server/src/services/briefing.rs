@@ -505,6 +505,9 @@ mod tests {
         let audit = Arc::new(AuditLog::new(Arc::clone(store)));
         let gateway = Arc::new(SecurityGateway::new(Arc::clone(&audit)));
 
+        let confidence_state = Arc::new(std::sync::RwLock::new(
+            crate::services::confidence::ConfidenceState::default(),
+        ));
         let search = SearchService::new(
             Arc::clone(store),
             vector_store,
@@ -512,6 +515,7 @@ mod tests {
             embed_service,
             adapt_service,
             Arc::clone(&gateway),
+            confidence_state,
         );
 
         let service = BriefingService::new(

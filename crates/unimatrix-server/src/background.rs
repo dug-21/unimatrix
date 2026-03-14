@@ -31,6 +31,7 @@ use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::session::SessionRegistry;
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
+use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::status::StatusService;
 
 /// Default tick interval: 15 minutes.
@@ -120,6 +121,7 @@ pub fn spawn_background_tick(
     pending_entries: Arc<Mutex<PendingEntriesAnalysis>>,
     tick_metadata: Arc<Mutex<TickMetadata>>,
     training_service: Option<Arc<TrainingService>>,
+    confidence_state: ConfidenceStateHandle,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(background_tick_loop(
         store,
@@ -131,6 +133,7 @@ pub fn spawn_background_tick(
         pending_entries,
         tick_metadata,
         training_service,
+        confidence_state,
     ))
 }
 
@@ -146,6 +149,7 @@ async fn background_tick_loop(
     pending_entries: Arc<Mutex<PendingEntriesAnalysis>>,
     tick_metadata: Arc<Mutex<TickMetadata>>,
     _training_service: Option<Arc<TrainingService>>,
+    confidence_state: ConfidenceStateHandle,
 ) {
     let mut interval = tokio::time::interval(Duration::from_secs(TICK_INTERVAL_SECS));
     let mut extraction_ctx = ExtractionContext::new();
@@ -183,6 +187,7 @@ async fn background_tick_loop(
             &mut extraction_ctx,
             neural_enhancer.as_ref(),
             shadow_evaluator.as_mut(),
+            &confidence_state,
         )
         .await;
 
@@ -218,6 +223,7 @@ async fn run_single_tick(
     extraction_ctx: &mut ExtractionContext,
     neural_enhancer: Option<&NeuralEnhancer>,
     shadow_evaluator: Option<&mut ShadowEvaluator>,
+    confidence_state: &ConfidenceStateHandle,
 ) -> Result<(), String> {
     let tick_start = now_secs();
     tracing::info!("background tick starting");
@@ -228,6 +234,7 @@ async fn run_single_tick(
         Arc::clone(vector_index),
         Arc::clone(embed_service),
         Arc::clone(adapt_service),
+        Arc::clone(confidence_state),
     );
     match tokio::time::timeout(
         TICK_TIMEOUT,

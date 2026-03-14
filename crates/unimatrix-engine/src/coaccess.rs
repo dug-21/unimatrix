@@ -270,8 +270,8 @@ mod tests {
     fn similarity_dominance() {
         // Entry A: similarity=0.95, no boost
         // Entry B: similarity=0.85, max boost=0.03
-        let score_a = crate::confidence::rerank_score(0.95, 0.5); // no boost
-        let score_b = crate::confidence::rerank_score(0.85, 0.5) + MAX_CO_ACCESS_BOOST;
+        let score_a = crate::confidence::rerank_score(0.95, 0.5, 0.15); // no boost
+        let score_b = crate::confidence::rerank_score(0.85, 0.5, 0.15) + MAX_CO_ACCESS_BOOST;
         assert!(
             score_a > score_b,
             "similarity should dominate: score_a={score_a}, score_b={score_b}"
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn tiebreaker_behavior() {
-        let base = crate::confidence::rerank_score(0.90, 0.5);
+        let base = crate::confidence::rerank_score(0.90, 0.5, 0.15);
         let with_boost = base + 0.02;
         assert!(with_boost > base);
     }

@@ -15,6 +15,7 @@ use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
 use crate::confidence::{DEPRECATED_PENALTY, SUPERSEDED_PENALTY, cosine_similarity, rerank_score};
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::gateway::SecurityGateway;
 use crate::services::{AuditContext, CallerId, ServiceError};
 
@@ -80,6 +81,12 @@ pub(crate) struct SearchService {
     embed_service: Arc<EmbedServiceHandle>,
     adapt_service: Arc<AdaptationService>,
     gateway: Arc<SecurityGateway>,
+    /// crt-019 (ADR-001): adaptive blend weight state shared with StatusService.
+    ///
+    /// Readers clone `confidence_weight` f64 under a short read lock before
+    /// each re-ranking step. The write lock is held only by the maintenance
+    /// tick (StatusService) for the brief field-update critical section.
+    confidence_state: ConfidenceStateHandle,
 }
 
 impl SearchService {
@@ -90,6 +97,7 @@ impl SearchService {
         embed_service: Arc<EmbedServiceHandle>,
         adapt_service: Arc<AdaptationService>,
         gateway: Arc<SecurityGateway>,
+        confidence_state: ConfidenceStateHandle,
     ) -> Self {
         SearchService {
             store,
@@ -98,6 +106,7 @@ impl SearchService {
             embed_service,
             adapt_service,
             gateway,
+            confidence_state,
         }
     }
 
@@ -111,6 +120,16 @@ impl SearchService {
         audit_ctx: &AuditContext,
         caller_id: &CallerId,
     ) -> Result<SearchResults, ServiceError> {
+        // Snapshot adaptive confidence_weight before any await points (ADR-001).
+        // Closure captures require a `Copy` f64, not a guard under a lock.
+        let confidence_weight = {
+            let guard = self
+                .confidence_state
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
+            guard.confidence_weight
+        };
+
         // Step 0: S2 rate check before any work
         self.gateway.check_search_rate(caller_id)?;
 
@@ -272,8 +291,8 @@ impl SearchService {
             } else {
                 0.0
             };
-            let base_a = rerank_score(*sim_a, entry_a.confidence) + prov_a;
-            let base_b = rerank_score(*sim_b, entry_b.confidence) + prov_b;
+            let base_a = rerank_score(*sim_a, entry_a.confidence, confidence_weight) + prov_a;
+            let base_b = rerank_score(*sim_b, entry_b.confidence, confidence_weight) + prov_b;
             let penalty_a = penalty_map.get(&entry_a.id).copied().unwrap_or(1.0);
             let penalty_b = penalty_map.get(&entry_b.id).copied().unwrap_or(1.0);
             let final_a = base_a * penalty_a;
@@ -324,8 +343,8 @@ impl SearchService {
 
             if !boost_map.is_empty() {
                 results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-                    let base_a = rerank_score(*sim_a, entry_a.confidence);
-                    let base_b = rerank_score(*sim_b, entry_b.confidence);
+                    let base_a = rerank_score(*sim_a, entry_a.confidence, confidence_weight);
+                    let base_b = rerank_score(*sim_b, entry_b.confidence, confidence_weight);
                     let boost_a = boost_map.get(&entry_a.id).copied().unwrap_or(0.0);
                     let boost_b = boost_map.get(&entry_b.id).copied().unwrap_or(0.0);
                     let prov_a = if entry_a.category == "lesson-learned" {
@@ -367,7 +386,7 @@ impl SearchService {
                 let penalty = penalty_map.get(&entry.id).copied().unwrap_or(1.0);
                 ScoredEntry {
                     entry: entry.clone(),
-                    final_score: rerank_score(*sim, entry.confidence) * penalty,
+                    final_score: rerank_score(*sim, entry.confidence, confidence_weight) * penalty,
                     similarity: *sim,
                     confidence: entry.confidence,
                 }
@@ -439,7 +458,8 @@ mod tests {
 
     /// Simulate the penalty-applied final score as computed in Step 7.
     fn penalized_score(similarity: f64, confidence: f64, penalty: f64) -> f64 {
-        rerank_score(similarity, confidence) * penalty
+        // Use initial confidence_weight (0.18375) for test assertions
+        rerank_score(similarity, confidence, 0.18375) * penalty
     }
 
     // -- T-SP-01: Deprecated ranks below active in Flexible mode --
@@ -558,11 +578,11 @@ mod tests {
         // Penalties are multiplicative on the FINAL re-ranked score, not on confidence
         let sim = 0.9;
         let conf = 0.8;
-        let base = rerank_score(sim, conf);
+        let base = rerank_score(sim, conf, 0.18375);
         let penalized = base * DEPRECATED_PENALTY;
 
         // The rerank base score is unchanged
-        assert_eq!(base, rerank_score(sim, conf));
+        assert_eq!(base, rerank_score(sim, conf, 0.18375));
         // The penalty only affects the final score
         assert!(penalized < base);
         assert!((penalized - base * DEPRECATED_PENALTY).abs() < f64::EPSILON);

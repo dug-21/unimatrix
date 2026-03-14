@@ -31,7 +31,7 @@ Call the `mcp__unimatrix__context_search` MCP tool:
 
 **Find ADRs about error handling across all features:**
 ```
-mcp__unimatrix__context_search(query: "error handling strategy", category: "decision")
+mcp__unimatrix__context_search(query: "error handling strategy", category: "decision", helpful: true)
 ```
 
 **Find anything related to MCP transport:**
@@ -48,6 +48,12 @@ mcp__unimatrix__context_search(query: "test patterns integration", topic: "nxs-0
 ```
 mcp__unimatrix__context_search(query: "serialization approach", format: "markdown")
 ```
+
+### Helpful Vote Guidance
+
+Pass `helpful: true` when the retrieved entries were useful for completing the current task — this is the standard case.
+Pass `helpful: false` when entries were retrieved but did not apply to the task (e.g., the results were about a different concern). Negative signal is valuable for confidence calibration.
+Omit `helpful` when you cannot determine applicability — for example, when the search is exploratory or you are not yet sure which results will be used.
 
 ---
 

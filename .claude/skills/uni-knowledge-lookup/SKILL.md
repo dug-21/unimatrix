@@ -34,7 +34,7 @@ Call the `mcp__unimatrix__context_lookup` MCP tool:
 
 **Get all ADRs for a specific feature:**
 ```
-mcp__unimatrix__context_lookup(topic: "nxs-002", category: "decision")
+mcp__unimatrix__context_lookup(topic: "nxs-002", category: "decision", helpful: true)
 ```
 
 **Get a specific entry by ID (full content):**
@@ -56,6 +56,14 @@ mcp__unimatrix__context_lookup(category: "decision", tags: ["adr", "serializatio
 ```
 mcp__unimatrix__context_lookup(topic: "vnc-001")
 ```
+
+### Helpful Vote Guidance
+
+Pass `helpful: true` when the retrieved entries applied to the task — this is the standard case for deliberate lookups.
+Pass `helpful: false` when entries were retrieved but did not apply to the task (e.g., the result was for the wrong feature or an unrelated concern). Negative signal is valuable for confidence calibration.
+Omit `helpful` when you cannot determine applicability, such as during exploratory browsing or pre-flight checks where you don't yet know which entries will be used.
+
+Note: `context_lookup` already records a doubled access signal automatically (×2 weight vs. search). The `helpful` vote is an additional optional signal for quality calibration.
 
 ---
 

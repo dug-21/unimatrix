@@ -1008,13 +1008,19 @@ async fn handle_context_search(
     if let Some(ref sid) = session_id {
         if !sid.is_empty() && !filtered.is_empty() {
             let now = unix_now_secs();
+            // crt-019: use adaptive confidence_weight from shared ConfidenceState (#258)
+            let confidence_weight = {
+                let handle = services.confidence_state_handle();
+                let guard = handle.read().unwrap_or_else(|e| e.into_inner());
+                guard.confidence_weight
+            };
             let records: Vec<InjectionLogRecord> = filtered
                 .iter()
                 .map(|(entry, sim)| InjectionLogRecord {
                     log_id: 0, // allocated by insert_injection_log_batch
                     session_id: sid.clone(),
                     entry_id: entry.id,
-                    confidence: rerank_score(*sim, entry.confidence),
+                    confidence: rerank_score(*sim, entry.confidence, confidence_weight),
                     timestamp: now,
                 })
                 .collect();
