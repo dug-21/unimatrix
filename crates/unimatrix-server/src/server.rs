@@ -797,7 +797,9 @@ impl UnimatrixServer {
                 &unhelpful_ids,
                 &decrement_helpful_ids,
                 &decrement_unhelpful_ids,
-                Some(&crate::confidence::compute_confidence),
+                Some(&|entry: &unimatrix_core::EntryRecord, now: u64| {
+                    crate::confidence::compute_confidence(entry, now, 3.0, 3.0)
+                }),
             ) {
                 tracing::warn!("usage recording failed: {e}");
             }
@@ -1421,7 +1423,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let expected = crate::confidence::compute_confidence(&entry, now);
+        let expected = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
         // Allow small tolerance for timestamp difference
         assert!((entry.confidence - expected).abs() < 0.01);
     }
@@ -1493,7 +1495,7 @@ mod tests {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            let conf = crate::confidence::compute_confidence(&entry, now);
+            let conf = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
             server.store.update_confidence(entry_id, conf).unwrap();
         }
 
@@ -1539,7 +1541,7 @@ mod tests {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            let conf = crate::confidence::compute_confidence(&entry, now);
+            let conf = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
             server.store.update_confidence(id, conf).unwrap();
         }
 
@@ -1822,7 +1824,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let before = crate::confidence::compute_confidence(&entry, now);
+        let before = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
         server.store.update_confidence(id, before).unwrap();
 
         // Quarantine
@@ -1833,7 +1835,7 @@ mod tests {
 
         // Recompute confidence for quarantined entry
         let entry = server.store.get(id).unwrap();
-        let after = crate::confidence::compute_confidence(&entry, now);
+        let after = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
         server.store.update_confidence(id, after).unwrap();
 
         assert!(
@@ -1849,7 +1851,7 @@ mod tests {
 
         // Recompute confidence for restored entry
         let entry = server.store.get(id).unwrap();
-        let restored = crate::confidence::compute_confidence(&entry, now);
+        let restored = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
 
         assert!(
             restored > after,

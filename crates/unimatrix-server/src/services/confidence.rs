@@ -5,6 +5,8 @@
 //!
 //! crt-019: Adds `ConfidenceState` struct and `ConfidenceStateHandle` type alias
 //! for adaptive blend weight and Bayesian prior state management (ADR-001, ADR-002).
+//! Also exposes `ConfidenceState::new_handle()` for standalone handle creation in
+//! background.rs and other callers.
 
 use std::sync::{Arc, RwLock};
 
@@ -52,6 +54,16 @@ impl Default for ConfidenceState {
             // clamp(0.1471 * 1.25, 0.15, 0.25) = clamp(0.18375, 0.15, 0.25) = 0.18375
             confidence_weight: 0.18375,
         }
+    }
+}
+
+impl ConfidenceState {
+    /// Create a new handle with default initial values.
+    ///
+    /// Convenience constructor used by background.rs and other callers that
+    /// need a standalone handle not wired through `ConfidenceService`.
+    pub fn new_handle() -> ConfidenceStateHandle {
+        Arc::new(RwLock::new(ConfidenceState::default()))
     }
 }
 
@@ -123,12 +135,8 @@ impl ConfidenceService {
             for id in ids {
                 match store.get(id) {
                     Ok(entry) => {
-                        // crt-019 (R-01): compute_confidence gains alpha0/beta0 params
-                        // when the confidence-formula-engine component lands its signature
-                        // update. The priors are already captured here; the call becomes:
-                        //   compute_confidence(&entry, now, alpha0, beta0)
-                        let conf = unimatrix_engine::confidence::compute_confidence(&entry, now);
-                        let _ = (alpha0, beta0); // captured — used after engine update
+                        let conf =
+                            unimatrix_engine::confidence::compute_confidence(&entry, now, alpha0, beta0);
                         if let Err(e) = store.update_confidence(id, conf) {
                             tracing::warn!("confidence recompute failed for {id}: {e}");
                         }
@@ -168,7 +176,7 @@ mod tests {
         // clamp(0.1471 * 1.25, 0.15, 0.25) = clamp(0.18375, 0.15, 0.25) = 0.18375
         assert!(
             (state.confidence_weight - 0.18375).abs() < 1e-6,
-            "initial confidence_weight must be ~0.184, got {}",
+            "initial confidence_weight must be ~0.18375, got {}",
             state.confidence_weight
         );
         // Must be strictly > 0.15 (floor) on server start without any tick

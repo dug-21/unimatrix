@@ -17,7 +17,7 @@ pub const DEFAULT_STALE_RATIO_TRIGGER: f64 = 0.10;
 pub const DEFAULT_LAMBDA_THRESHOLD: f64 = 0.8;
 
 /// Maximum entries to refresh per context_status call.
-pub const MAX_CONFIDENCE_REFRESH_BATCH: usize = 100;
+pub const MAX_CONFIDENCE_REFRESH_BATCH: usize = 500;
 
 /// Weights for the four coherence dimensions.
 pub struct CoherenceWeights {
@@ -585,6 +585,15 @@ mod tests {
         assert_eq!(
             DEFAULT_STALENESS_THRESHOLD_SECS, 86400,
             "staleness threshold should be 24 hours"
+        );
+    }
+
+    // crt-019 AC-07: batch size increased to 500
+    #[test]
+    fn test_max_confidence_refresh_batch_is_500() {
+        assert_eq!(
+            MAX_CONFIDENCE_REFRESH_BATCH, 500,
+            "MAX_CONFIDENCE_REFRESH_BATCH must be 500 after crt-019"
         );
     }
 }
