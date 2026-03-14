@@ -20,6 +20,7 @@ use crate::infra::usage_dedup::UsageDedup;
 
 pub(crate) mod briefing;
 pub(crate) mod confidence;
+pub(crate) mod effectiveness;
 pub(crate) mod gateway;
 pub(crate) mod observation;
 pub(crate) mod search;
@@ -31,6 +32,7 @@ pub(crate) mod usage;
 pub(crate) use briefing::BriefingService;
 pub(crate) use confidence::ConfidenceService;
 pub use confidence::{ConfidenceState, ConfidenceStateHandle};
+pub use effectiveness::{EffectivenessState, EffectivenessStateHandle};
 pub(crate) use gateway::{RateLimitConfig, SecurityGateway};
 pub(crate) use search::{RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
