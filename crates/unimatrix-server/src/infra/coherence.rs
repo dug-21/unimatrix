@@ -181,14 +181,14 @@ pub fn generate_recommendations(
     if stale_confidence_count > 0 {
         let days = oldest_stale_age_secs / 86400;
         recs.push(format!(
-            "{stale_confidence_count} entries have stale confidence (oldest: {days} days) -- run with maintain: true to refresh"
+            "{stale_confidence_count} entries have stale confidence (oldest: {days} days) -- background maintenance will refresh automatically"
         ));
     }
 
     if graph_stale_ratio > DEFAULT_STALE_RATIO_TRIGGER {
         let pct = (graph_stale_ratio * 100.0) as u64;
         recs.push(format!(
-            "HNSW graph has {pct}% stale nodes -- run with maintain: true to compact"
+            "HNSW graph has {pct}% stale nodes -- background maintenance will compact automatically"
         ));
     }
 
