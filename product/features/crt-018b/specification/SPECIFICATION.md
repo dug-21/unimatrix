@@ -599,15 +599,12 @@ are held (not incremented) to prevent false auto-quarantine on stale or failed d
    output is a separate feature (issue #206, item 4).
 6. **Persistent consecutive counter storage** — `consecutive_bad_cycles` is in-memory only.
    Durability across restarts is not in scope.
-7. **Snapshot version counter optimization** — The SCOPE-RISK-ASSESSMENT SR-02 recommendation
-   for a generation tag to skip unchanged clones is an optimization, not a correctness
-   requirement. Not in scope for this feature.
-8. **Retroactive quarantine of existing Ineffective/Noisy entries** — Entries must accumulate
+7. **Retroactive quarantine of existing Ineffective/Noisy entries** — Entries must accumulate
    N consecutive bad ticks post-deployment.
-9. **UDS (Strict) path re-ranking** — The Strict retrieval mode hard-filters to Active-only
+8. **UDS (Strict) path re-ranking** — The Strict retrieval mode hard-filters to Active-only
    and is not affected by this feature.
-10. **Auto-quarantine undo tool** — Restore uses the existing `context_quarantine` restore
-    operation; no new undo primitive is added.
+9. **Auto-quarantine undo tool** — Restore uses the existing `context_quarantine` restore
+   operation; no new undo primitive is added.
 
 ---
 
