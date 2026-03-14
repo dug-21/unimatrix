@@ -33,6 +33,18 @@ pub const OUTCOME_WEIGHT_ABANDONED: f64 = 0.0;
 /// Trust sources considered "noisy" for classification (ADR-004).
 pub const NOISY_TRUST_SOURCES: &[&str] = &["auto"];
 
+/// Additive utility boost for Effective-classified entries at query time.
+/// Applied inside the status_penalty multiplication (ADR-003).
+pub const UTILITY_BOOST: f64 = 0.05;
+
+/// Additive utility boost for Settled-classified entries at query time.
+/// Must be strictly less than co-access boost maximum (0.03) per Constraint 5.
+pub const SETTLED_BOOST: f64 = 0.01;
+
+/// Additive utility penalty magnitude for Ineffective and Noisy entries.
+/// Applied as `-UTILITY_PENALTY` at query time.
+pub const UTILITY_PENALTY: f64 = 0.05;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -100,6 +112,17 @@ pub struct EffectivenessReport {
     pub noisy_entries: Vec<EntryEffectiveness>,
     pub unmatched_entries: Vec<EntryEffectiveness>,
     pub data_window: DataWindow,
+    /// All classified entries from the most recent background tick.
+    /// Used by the background tick to build the category map for `EffectivenessState`
+    /// without re-querying the store. Empty when constructed outside the tick path.
+    #[serde(default)]
+    pub all_entries: Vec<EntryEffectiveness>,
+    /// Entry IDs quarantined by the most recent background maintenance tick.
+    /// Populated by maintenance_tick() after auto-quarantine SQL writes complete.
+    /// Empty when auto-quarantine is disabled or no entries crossed the threshold.
+    /// Surfaced in context_status output (FR-14).
+    #[serde(default)]
+    pub auto_quarantined_this_cycle: Vec<u64>,
 }
 
 // ---------------------------------------------------------------------------
@@ -352,5 +375,7 @@ pub fn build_report(
         noisy_entries,
         unmatched_entries: unmatched,
         data_window,
+        all_entries: classifications,
+        auto_quarantined_this_cycle: Vec::new(),
     }
 }
