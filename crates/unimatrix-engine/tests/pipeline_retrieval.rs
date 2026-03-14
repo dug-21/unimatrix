@@ -5,8 +5,7 @@
 
 use unimatrix_engine::coaccess::MAX_CO_ACCESS_BOOST;
 use unimatrix_engine::confidence::{
-    rerank_score, DEPRECATED_PENALTY, PROVENANCE_BOOST, SEARCH_SIMILARITY_WEIGHT,
-    SUPERSEDED_PENALTY,
+    DEPRECATED_PENALTY, PROVENANCE_BOOST, SUPERSEDED_PENALTY, rerank_score,
 };
 
 // ---------------------------------------------------------------------------
@@ -16,14 +15,15 @@ use unimatrix_engine::confidence::{
 #[test]
 fn test_rerank_blend_ordering() {
     // High similarity + moderate confidence should beat moderate similarity + high confidence
-    // because SEARCH_SIMILARITY_WEIGHT = 0.85
-    let score_high_sim = rerank_score(0.95, 0.50);
-    let score_high_conf = rerank_score(0.70, 1.0);
+    // because confidence_weight = 0.15 (floor) means similarity_weight = 0.85
+    let confidence_weight = 0.15_f64;
+    let score_high_sim = rerank_score(0.95, 0.50, confidence_weight);
+    let score_high_conf = rerank_score(0.70, 1.0, confidence_weight);
 
     assert!(
         score_high_sim > score_high_conf,
         "similarity-dominant entry ({score_high_sim:.4}) should beat \
-         confidence-dominant entry ({score_high_conf:.4}) at weight={SEARCH_SIMILARITY_WEIGHT}"
+         confidence-dominant entry ({score_high_conf:.4}) at confidence_weight={confidence_weight}"
     );
 }
 
@@ -33,7 +33,7 @@ fn test_rerank_blend_ordering() {
 
 #[test]
 fn test_status_penalty_ordering() {
-    let base_score = rerank_score(0.90, 0.60);
+    let base_score = rerank_score(0.90, 0.60, 0.15);
 
     let active_score = base_score * 1.0; // no penalty
     let deprecated_score = base_score * DEPRECATED_PENALTY;
@@ -55,7 +55,7 @@ fn test_status_penalty_ordering() {
 
 #[test]
 fn test_provenance_boost_effect() {
-    let base_score = rerank_score(0.85, 0.60);
+    let base_score = rerank_score(0.85, 0.60, 0.15);
     let boosted_score = base_score + PROVENANCE_BOOST;
 
     assert!(
@@ -123,9 +123,9 @@ fn test_combined_interaction_ordering() {
     let sim_c = 0.90;
     let conf = 0.60;
 
-    let score_a = rerank_score(sim_a, conf) * 1.0 + PROVENANCE_BOOST + 0.02; // active + provenance + co-access
-    let score_b = rerank_score(sim_b, conf) * DEPRECATED_PENALTY; // deprecated, no boosts
-    let score_c = rerank_score(sim_c, conf) * 1.0; // active, no boosts
+    let score_a = rerank_score(sim_a, conf, 0.15) * 1.0 + PROVENANCE_BOOST + 0.02; // active + provenance + co-access
+    let score_b = rerank_score(sim_b, conf, 0.15) * DEPRECATED_PENALTY; // deprecated, no boosts
+    let score_c = rerank_score(sim_c, conf, 0.15) * 1.0; // active, no boosts
 
     assert!(
         score_a > score_c,
