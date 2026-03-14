@@ -797,7 +797,12 @@ impl UnimatrixServer {
                 &unhelpful_ids,
                 &decrement_helpful_ids,
                 &decrement_unhelpful_ids,
-                Some(&crate::confidence::compute_confidence),
+                Some(Box::new(|entry: &unimatrix_store::EntryRecord, now: u64| {
+                    crate::confidence::compute_confidence(entry, now)
+                })
+                    as Box<
+                        dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send,
+                    >),
             ) {
                 tracing::warn!("usage recording failed: {e}");
             }

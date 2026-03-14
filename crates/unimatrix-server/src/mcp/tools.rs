@@ -342,6 +342,7 @@ impl UnimatrixServer {
                 helpful: params.helpful,
                 feature_cycle: params.feature.clone(),
                 trust_level: Some(ctx.trust_level),
+                access_weight: 1,
             },
         );
 
@@ -454,6 +455,9 @@ impl UnimatrixServer {
         });
 
         // 6. Usage recording (fire-and-forget via UsageService)
+        // access_weight: 2 — deliberate retrieval signal (crt-019 ADR-004):
+        // a lookup is an intentional act of knowledge retrieval; the doubled
+        // access signal differentiates it from incidental context_search hits.
         self.services.usage.record_access(
             &target_ids,
             AccessSource::McpTool,
@@ -463,6 +467,7 @@ impl UnimatrixServer {
                 helpful: params.helpful,
                 feature_cycle: params.feature.clone(),
                 trust_level: Some(ctx.trust_level),
+                access_weight: 2,
             },
         );
 
@@ -599,15 +604,22 @@ impl UnimatrixServer {
         });
 
         // 6. Usage recording (fire-and-forget via UsageService)
+        // C-04: inject implicit helpful vote in-process, before the existing spawn_blocking.
+        // params.helpful.or(Some(true)) semantics:
+        //   helpful=None   -> Some(true)  (implicit helpful vote: user retrieved and read)
+        //   helpful=true   -> Some(true)  (explicit positive)
+        //   helpful=false  -> Some(false) (explicit negative honored)
+        // UsageDedup enforces one vote per agent-entry pair.
         self.services.usage.record_access(
             &[id],
             AccessSource::McpTool,
             UsageContext {
                 session_id: ctx.audit_ctx.session_id.clone(),
                 agent_id: Some(ctx.agent_id.clone()),
-                helpful: params.helpful,
+                helpful: params.helpful.or(Some(true)),
                 feature_cycle: params.feature.clone(),
                 trust_level: Some(ctx.trust_level),
+                access_weight: 1,
             },
         );
 
@@ -906,6 +918,7 @@ impl UnimatrixServer {
                     helpful: params.helpful,
                     feature_cycle: params.feature.clone(),
                     trust_level: Some(ctx.trust_level),
+                    access_weight: 1,
                 },
             );
 

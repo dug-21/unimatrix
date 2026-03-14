@@ -42,7 +42,7 @@ impl Store {
             unhelpful_ids,
             decrement_helpful_ids,
             decrement_unhelpful_ids,
-            None,
+            None::<Box<dyn Fn(&EntryRecord, u64) -> f64 + Send>>,
         )
     }
 
@@ -66,7 +66,7 @@ impl Store {
         unhelpful_ids: &[u64],
         decrement_helpful_ids: &[u64],
         decrement_unhelpful_ids: &[u64],
-        confidence_fn: Option<&dyn Fn(&EntryRecord, u64) -> f64>,
+        confidence_fn: Option<Box<dyn Fn(&EntryRecord, u64) -> f64 + Send>>,
     ) -> Result<()> {
         if all_ids.is_empty() {
             return Ok(());
@@ -147,6 +147,43 @@ impl Store {
                     )
                     .map_err(StoreError::Sqlite)?;
                 }
+            }
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => {
+                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
+                Ok(())
+            }
+            Err(e) => {
+                let _ = conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
+        }
+    }
+
+    /// Increment `access_count` by `amount` for each entry ID.
+    ///
+    /// Used by the deliberate-retrieval-signal path when `access_weight > 1`.
+    /// Since `record_usage_with_confidence` deduplicates access IDs via a
+    /// `HashSet`, the extra increments for weighted access are applied here
+    /// in a separate step within the same `spawn_blocking` closure (R-11 fallback).
+    pub fn increment_access_counts(&self, ids: &[u64], amount: u32) -> Result<()> {
+        if ids.is_empty() || amount == 0 {
+            return Ok(());
+        }
+        let conn = self.lock_conn();
+        conn.execute_batch("BEGIN IMMEDIATE")
+            .map_err(StoreError::Sqlite)?;
+
+        let result = (|| -> Result<()> {
+            for &id in ids {
+                conn.execute(
+                    "UPDATE entries SET access_count = access_count + ?1 WHERE id = ?2",
+                    rusqlite::params![amount as i64, id as i64],
+                )
+                .map_err(StoreError::Sqlite)?;
             }
             Ok(())
         })();
