@@ -160,7 +160,7 @@ This is a documentation change only. No MCP parameter schema changes are require
 The confidence refresh tick must compute α₀ and β₀ from the voted-entry population:
 
 - Collect all active entries where `helpful_count + unhelpful_count >= 1`.
-- If the count of such entries is **< 5**, use cold-start defaults (α₀ = 3, β₀ = 3).
+- If the count of such entries is **< 10**, use cold-start defaults (α₀ = 3, β₀ = 3).
 - Otherwise, estimate via method of moments:
   - Population mean `p̄ = sum(helpful_count) / sum(total_votes)` across voted entries
   - Population variance `v = sample_variance(per_entry_helpfulness_rates)`
@@ -416,7 +416,7 @@ Computed per refresh tick from the voted-entry population. Cold-start defaults: 
 
 **Voted-entry population**: all active entries with `helpful_count + unhelpful_count >= 1`.
 
-**Activation threshold**: ≥ 5 such entries required before empirical estimation; below threshold
+**Activation threshold**: ≥ 10 such entries required before empirical estimation; below threshold
 the cold-start default applies.
 
 **Staleness**: α₀/β₀ are recomputed each refresh tick. Between ticks, callers receive the cached
