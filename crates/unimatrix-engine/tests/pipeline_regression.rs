@@ -60,13 +60,13 @@ fn test_weight_constants() {
     // crt-019: W_BASE 0.18->0.16, W_USAGE 0.14->0.16, W_HELP 0.14->0.12, W_TRUST 0.14->0.16
     assert_eq!(W_BASE, 0.16, "W_BASE changed");
     assert_eq!(W_USAGE, 0.16, "W_USAGE changed");
-    assert_eq!(W_FRESH, 0.18, "W_FRESH changed");
+    assert_eq!(W_FRESH, 0.18, "W_FRESH unchanged");
     assert_eq!(W_HELP, 0.12, "W_HELP changed");
-    assert_eq!(W_CORR, 0.14, "W_CORR changed");
+    assert_eq!(W_CORR, 0.14, "W_CORR unchanged");
     assert_eq!(W_TRUST, 0.16, "W_TRUST changed");
 
     let sum = W_BASE + W_USAGE + W_FRESH + W_HELP + W_CORR + W_TRUST;
-    assert_eq!(sum, 0.92_f64, "weight sum changed: {sum}, expected 0.92");
+    assert_eq!(sum, 0.92_f64, "weight sum must equal exactly 0.92");
 }
 
 // ---------------------------------------------------------------------------
