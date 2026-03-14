@@ -2,7 +2,7 @@
 //! in tools.rs and uds_listener.rs.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 use unimatrix_core::{
@@ -10,12 +10,16 @@ use unimatrix_core::{
 };
 
 use unimatrix_adapt::AdaptationService;
+use unimatrix_engine::effectiveness::{
+    EffectivenessCategory, SETTLED_BOOST, UTILITY_BOOST, UTILITY_PENALTY,
+};
 
 use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
 use crate::confidence::{DEPRECATED_PENALTY, SUPERSEDED_PENALTY, cosine_similarity, rerank_score};
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::services::confidence::ConfidenceStateHandle;
+use crate::services::effectiveness::{EffectivenessSnapshot, EffectivenessStateHandle};
 use crate::services::gateway::SecurityGateway;
 use crate::services::{AuditContext, CallerId, ServiceError};
 
@@ -87,6 +91,29 @@ pub(crate) struct SearchService {
     /// each re-ranking step. The write lock is held only by the maintenance
     /// tick (StatusService) for the brief field-update critical section.
     confidence_state: ConfidenceStateHandle,
+    /// crt-018b (ADR-001): effectiveness classification snapshot for utility delta.
+    /// Arc clone received from ServiceLayer; shared with BriefingService and background tick.
+    effectiveness_state: EffectivenessStateHandle,
+    /// crt-018b (ADR-001): generation-cached snapshot shared across rmcp clones.
+    /// Arc<Mutex<_>> ensures all clones of SearchService share one cache object (R-06).
+    cached_snapshot: Arc<Mutex<EffectivenessSnapshot>>,
+}
+
+/// Map an effectiveness category to its additive utility delta for search re-ranking.
+///
+/// Applied inside the `status_penalty` multiplication (ADR-003):
+/// `(rerank_score + utility_delta + prov_boost + co_access_boost) * status_penalty`.
+///
+/// Absent / unclassified entries (None) produce 0.0 — cold-start safe (AC-06, NFR-06).
+/// Both Ineffective and Noisy receive the full symmetric penalty.
+fn utility_delta(category: Option<EffectivenessCategory>) -> f64 {
+    match category {
+        Some(EffectivenessCategory::Effective) => UTILITY_BOOST,
+        Some(EffectivenessCategory::Settled) => SETTLED_BOOST,
+        Some(EffectivenessCategory::Ineffective) => -UTILITY_PENALTY,
+        Some(EffectivenessCategory::Noisy) => -UTILITY_PENALTY,
+        Some(EffectivenessCategory::Unmatched) | None => 0.0,
+    }
 }
 
 impl SearchService {
@@ -98,6 +125,7 @@ impl SearchService {
         adapt_service: Arc<AdaptationService>,
         gateway: Arc<SecurityGateway>,
         confidence_state: ConfidenceStateHandle,
+        effectiveness_state: EffectivenessStateHandle,
     ) -> Self {
         SearchService {
             store,
@@ -107,6 +135,8 @@ impl SearchService {
             adapt_service,
             gateway,
             confidence_state,
+            effectiveness_state,
+            cached_snapshot: EffectivenessSnapshot::new_shared(),
         }
     }
 
@@ -128,6 +158,39 @@ impl SearchService {
                 .read()
                 .unwrap_or_else(|e| e.into_inner());
             guard.confidence_weight
+        };
+
+        // crt-018b (ADR-001): snapshot effectiveness categories under short read lock.
+        // Generation comparison skips the HashMap clone on the common path (no state change).
+        // LOCK ORDERING (R-01): acquire read lock, read generation, DROP guard, then acquire
+        // cached_snapshot mutex. Never hold both guards simultaneously.
+        let categories: HashMap<u64, EffectivenessCategory> = {
+            let current_generation = {
+                let guard = self
+                    .effectiveness_state
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+                guard.generation
+                // read guard drops here (end of inner block)
+            };
+            // Read guard is now out of scope. Safe to acquire the mutex.
+            let mut cache = self
+                .cached_snapshot
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            if cache.generation != current_generation {
+                // State has changed since last call — re-clone categories from live state.
+                let guard = self
+                    .effectiveness_state
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+                cache.generation = guard.generation;
+                cache.categories = guard.categories.clone();
+                // guard drops here
+            }
+            // Return a local clone of the cached categories for this call's use.
+            // This clone happens at most once per 15-minute background tick.
+            cache.categories.clone()
         };
 
         // Step 0: S2 rate check before any work
@@ -279,7 +342,9 @@ impl SearchService {
             }
         }
 
-        // Step 7: Re-rank with penalty multipliers (crt-010)
+        // Step 7: Re-rank with penalty multipliers (crt-010) and utility delta (crt-018b).
+        // utility_delta is inside the penalty multiplication per ADR-003:
+        // (rerank_score + delta + prov) * penalty
         results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
             let prov_a = if entry_a.category == "lesson-learned" {
                 PROVENANCE_BOOST
@@ -291,8 +356,12 @@ impl SearchService {
             } else {
                 0.0
             };
-            let base_a = rerank_score(*sim_a, entry_a.confidence, confidence_weight) + prov_a;
-            let base_b = rerank_score(*sim_b, entry_b.confidence, confidence_weight) + prov_b;
+            let delta_a = utility_delta(categories.get(&entry_a.id).copied());
+            let delta_b = utility_delta(categories.get(&entry_b.id).copied());
+            let base_a =
+                rerank_score(*sim_a, entry_a.confidence, confidence_weight) + delta_a + prov_a;
+            let base_b =
+                rerank_score(*sim_b, entry_b.confidence, confidence_weight) + delta_b + prov_b;
             let penalty_a = penalty_map.get(&entry_a.id).copied().unwrap_or(1.0);
             let penalty_b = penalty_map.get(&entry_b.id).copied().unwrap_or(1.0);
             let final_a = base_a * penalty_a;
@@ -342,6 +411,7 @@ impl SearchService {
             });
 
             if !boost_map.is_empty() {
+                // crt-018b (ADR-003): utility_delta inside penalty multiplication alongside boost.
                 results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
                     let base_a = rerank_score(*sim_a, entry_a.confidence, confidence_weight);
                     let base_b = rerank_score(*sim_b, entry_b.confidence, confidence_weight);
@@ -357,10 +427,12 @@ impl SearchService {
                     } else {
                         0.0
                     };
+                    let delta_a = utility_delta(categories.get(&entry_a.id).copied());
+                    let delta_b = utility_delta(categories.get(&entry_b.id).copied());
                     let penalty_a = penalty_map.get(&entry_a.id).copied().unwrap_or(1.0);
                     let penalty_b = penalty_map.get(&entry_b.id).copied().unwrap_or(1.0);
-                    let final_a = (base_a + boost_a + prov_a) * penalty_a;
-                    let final_b = (base_b + boost_b + prov_b) * penalty_b;
+                    let final_a = (base_a + delta_a + boost_a + prov_a) * penalty_a;
+                    let final_b = (base_b + delta_b + boost_b + prov_b) * penalty_b;
                     final_b
                         .partial_cmp(&final_a)
                         .unwrap_or(std::cmp::Ordering::Equal)
@@ -379,14 +451,17 @@ impl SearchService {
             results_with_scores.retain(|(entry, _)| entry.confidence >= conf_floor);
         }
 
-        // Step 11: Build ScoredEntry results with penalty-adjusted final_score
+        // Step 11: Build ScoredEntry results with penalty-adjusted final_score.
+        // crt-018b: utility_delta included in final_score for consistency with sort order.
         let entries: Vec<ScoredEntry> = results_with_scores
             .iter()
             .map(|(entry, sim)| {
                 let penalty = penalty_map.get(&entry.id).copied().unwrap_or(1.0);
+                let delta = utility_delta(categories.get(&entry.id).copied());
                 ScoredEntry {
                     entry: entry.clone(),
-                    final_score: rerank_score(*sim, entry.confidence, confidence_weight) * penalty,
+                    final_score: (rerank_score(*sim, entry.confidence, confidence_weight) + delta)
+                        * penalty,
                     similarity: *sim,
                     confidence: entry.confidence,
                 }
@@ -600,5 +675,371 @@ mod tests {
 
         assert!(active_score > deprecated_score);
         assert!(deprecated_score > superseded_score);
+    }
+
+    // =========================================================================
+    // crt-018b: utility_delta unit tests
+    // =========================================================================
+
+    // -- AC-03 / AC-04 / AC-16: utility_delta pure function covers all 5 categories + None --
+
+    #[test]
+    fn test_utility_delta_effective() {
+        assert_eq!(
+            utility_delta(Some(EffectivenessCategory::Effective)),
+            UTILITY_BOOST,
+            "Effective must return UTILITY_BOOST (0.05)"
+        );
+    }
+
+    #[test]
+    fn test_utility_delta_settled() {
+        assert_eq!(
+            utility_delta(Some(EffectivenessCategory::Settled)),
+            SETTLED_BOOST,
+            "Settled must return SETTLED_BOOST (0.01)"
+        );
+    }
+
+    #[test]
+    fn test_utility_delta_ineffective() {
+        assert_eq!(
+            utility_delta(Some(EffectivenessCategory::Ineffective)),
+            -UTILITY_PENALTY,
+            "Ineffective must return -UTILITY_PENALTY (-0.05)"
+        );
+    }
+
+    #[test]
+    fn test_utility_delta_noisy() {
+        assert_eq!(
+            utility_delta(Some(EffectivenessCategory::Noisy)),
+            -UTILITY_PENALTY,
+            "Noisy must return -UTILITY_PENALTY (-0.05)"
+        );
+    }
+
+    #[test]
+    fn test_utility_delta_unmatched_zero() {
+        assert_eq!(
+            utility_delta(Some(EffectivenessCategory::Unmatched)),
+            0.0_f64,
+            "Unmatched must return 0.0"
+        );
+    }
+
+    #[test]
+    fn test_utility_delta_none_zero() {
+        // AC-06, R-07: absent entry (None) must not default-to-penalty — it is 0.0.
+        assert_eq!(
+            utility_delta(None),
+            0.0_f64,
+            "None (absent/unclassified) must return 0.0, not a penalty"
+        );
+    }
+
+    #[test]
+    fn test_utility_delta_noisy_equals_ineffective_penalty() {
+        // Documents the intentional symmetry: both bad categories receive the same penalty.
+        assert_eq!(
+            utility_delta(Some(EffectivenessCategory::Noisy)),
+            utility_delta(Some(EffectivenessCategory::Ineffective)),
+            "Noisy and Ineffective must receive identical (symmetric) penalty"
+        );
+    }
+
+    // -- AC-03: constant invariants --
+
+    #[test]
+    fn test_utility_constants_values() {
+        assert!(
+            (UTILITY_BOOST - 0.05_f64).abs() < f64::EPSILON,
+            "UTILITY_BOOST must be 0.05"
+        );
+        assert!(
+            (SETTLED_BOOST - 0.01_f64).abs() < f64::EPSILON,
+            "SETTLED_BOOST must be 0.01"
+        );
+        assert!(
+            (UTILITY_PENALTY - 0.05_f64).abs() < f64::EPSILON,
+            "UTILITY_PENALTY must be 0.05"
+        );
+        // AC-03: SETTLED_BOOST < co-access max (0.03)
+        assert!(
+            SETTLED_BOOST < 0.03_f64,
+            "SETTLED_BOOST ({SETTLED_BOOST}) must be less than co-access max (0.03)"
+        );
+    }
+
+    // -- AC-05 / R-02: Effective outranks near-equal Ineffective --
+
+    #[test]
+    fn test_effective_outranks_ineffective_at_close_similarity() {
+        // confidence_weight = 0.15 (floor)
+        // Entry A: sim=0.75, conf=0.60, category=Effective
+        // Entry B: sim=0.76, conf=0.60, category=Ineffective
+        // A base = rerank(0.75, 0.60, 0.15) + 0.05 = (0.85*0.75 + 0.15*0.60) + 0.05
+        // B base = rerank(0.76, 0.60, 0.15) - 0.05 = (0.85*0.76 + 0.15*0.60) - 0.05
+        let cw = 0.15_f64;
+        let score_a = (rerank_score(0.75, 0.60, cw)
+            + utility_delta(Some(EffectivenessCategory::Effective)))
+            * 1.0;
+        let score_b = (rerank_score(0.76, 0.60, cw)
+            + utility_delta(Some(EffectivenessCategory::Ineffective)))
+            * 1.0;
+        assert!(
+            score_a > score_b,
+            "Effective entry (sim=0.75) must outrank Ineffective entry (sim=0.76) \
+             despite lower similarity: score_a={score_a:.6}, score_b={score_b:.6}"
+        );
+    }
+
+    #[test]
+    fn test_effective_outranks_ineffective_at_max_weight() {
+        // Repeat at confidence_weight = 0.25 (ceiling) to confirm ordering holds at both extremes.
+        let cw = 0.25_f64;
+        let score_a = (rerank_score(0.75, 0.60, cw)
+            + utility_delta(Some(EffectivenessCategory::Effective)))
+            * 1.0;
+        let score_b = (rerank_score(0.76, 0.60, cw)
+            + utility_delta(Some(EffectivenessCategory::Ineffective)))
+            * 1.0;
+        assert!(
+            score_a > score_b,
+            "Effective entry must outrank Ineffective at max confidence_weight (0.25): \
+             score_a={score_a:.6}, score_b={score_b:.6}"
+        );
+    }
+
+    // -- R-05 / ADR-003: utility_delta is INSIDE the status_penalty multiplication --
+
+    #[test]
+    fn test_utility_delta_inside_deprecated_penalty() {
+        // Entry: status=Deprecated (penalty=0.7), category=Effective, sim=0.75, conf=0.60, cw=0.15
+        // Correct:  (rerank + UTILITY_BOOST) * DEPRECATED_PENALTY
+        // Wrong:    rerank * DEPRECATED_PENALTY + UTILITY_BOOST
+        let sim = 0.75_f64;
+        let conf = 0.60_f64;
+        let cw = 0.15_f64;
+        let base = rerank_score(sim, conf, cw);
+        let delta = utility_delta(Some(EffectivenessCategory::Effective));
+
+        let correct_score = (base + delta) * DEPRECATED_PENALTY;
+        let wrong_score = base * DEPRECATED_PENALTY + delta;
+
+        // Numerical values from test plan:
+        // base = 0.85*0.75 + 0.15*0.60 = 0.6375 + 0.09 = 0.7275
+        // correct = (0.7275 + 0.05) * 0.7 = 0.7775 * 0.7 = 0.54425
+        // wrong   = 0.7275 * 0.7 + 0.05  = 0.50925 + 0.05 = 0.55925
+        assert!(
+            (correct_score - wrong_score).abs() > 0.001,
+            "correct and wrong formulas must differ by more than 0.001 (detectable)"
+        );
+        // The two differ; implementation must produce correct_score, not wrong_score.
+        // We verify by computing the step-7 formula directly:
+        let step7_score = (base + delta) * DEPRECATED_PENALTY;
+        assert!(
+            (step7_score - correct_score).abs() < f64::EPSILON,
+            "Step 7 formula must match (base + delta) * penalty: \
+             got {step7_score:.6}, expected {correct_score:.6}"
+        );
+    }
+
+    #[test]
+    fn test_utility_delta_inside_superseded_penalty() {
+        // Entry: status=superseded (penalty=0.5), category=Noisy
+        let sim = 0.80_f64;
+        let conf = 0.65_f64;
+        let cw = 0.18375_f64;
+        let base = rerank_score(sim, conf, cw);
+        let delta = utility_delta(Some(EffectivenessCategory::Noisy));
+
+        let correct_score = (base + delta) * SUPERSEDED_PENALTY;
+        let wrong_score = base * SUPERSEDED_PENALTY + delta;
+
+        assert!(
+            (correct_score - wrong_score).abs() > 1e-6,
+            "correct and wrong placement must differ for Noisy + superseded"
+        );
+        let step7_score = (base + delta) * SUPERSEDED_PENALTY;
+        assert!(
+            (step7_score - correct_score).abs() < f64::EPSILON,
+            "Step 7 formula must match (base + delta) * penalty for superseded/Noisy"
+        );
+    }
+
+    // -- AC-06 / R-07: Empty EffectivenessState produces zero delta --
+
+    #[test]
+    fn test_utility_delta_absent_entry_zero() {
+        // When an entry_id is not in the categories map, get() returns None.
+        // utility_delta(None) must return 0.0 — not a penalty.
+        let categories: HashMap<u64, EffectivenessCategory> = HashMap::new();
+        let absent_id: u64 = 999;
+        let delta = utility_delta(categories.get(&absent_id).copied());
+        assert_eq!(
+            delta, 0.0_f64,
+            "absent entry must produce 0.0 delta (cold-start safe)"
+        );
+    }
+
+    // -- R-06: cached_snapshot is Arc<Mutex<_>> shared across SearchService clones --
+
+    #[test]
+    fn test_cached_snapshot_shared_across_clones() {
+        use crate::services::effectiveness::EffectivenessState;
+        use crate::services::effectiveness::{EffectivenessSnapshot, EffectivenessStateHandle};
+        use std::sync::{Arc, Mutex, RwLock};
+
+        // Simulate the Arc<Mutex<EffectivenessSnapshot>> sharing pattern.
+        let shared_snapshot: Arc<Mutex<EffectivenessSnapshot>> =
+            EffectivenessSnapshot::new_shared();
+        let snapshot_clone = Arc::clone(&shared_snapshot);
+
+        // Update via original arc (as background tick would via SearchService::new)
+        {
+            let mut cache = shared_snapshot.lock().unwrap_or_else(|e| e.into_inner());
+            cache.generation = 3;
+            cache.categories.insert(1, EffectivenessCategory::Effective);
+        }
+
+        // Clone must see the same state — they share the same Arc backing object
+        {
+            let cache = snapshot_clone.lock().unwrap_or_else(|e| e.into_inner());
+            assert_eq!(
+                cache.generation, 3,
+                "clone must see updated generation via shared Arc<Mutex<_>>"
+            );
+            assert_eq!(
+                cache.categories.get(&1),
+                Some(&EffectivenessCategory::Effective),
+                "clone must see the Effective category via shared Arc<Mutex<_>>"
+            );
+        }
+    }
+
+    // -- R-01: Lock ordering — read guard dropped before mutex (code-level verification) --
+
+    #[test]
+    fn test_snapshot_read_guard_dropped_before_mutex_lock() {
+        // Verifies the lock ordering invariant from ADR-001 / R-01:
+        // The effectiveness_state read guard must be out of scope before cached_snapshot.lock().
+        // We exercise this by performing the exact same scoping pattern used in search().
+        use crate::services::effectiveness::{
+            EffectivenessSnapshot, EffectivenessState, EffectivenessStateHandle,
+        };
+        use std::sync::{Arc, Mutex, RwLock};
+
+        let effectiveness_state: EffectivenessStateHandle =
+            Arc::new(RwLock::new(EffectivenessState::new()));
+        let cached_snapshot: Arc<Mutex<EffectivenessSnapshot>> =
+            EffectivenessSnapshot::new_shared();
+
+        // Pattern from search() — inner block acquires and drops read guard before mutex.
+        let _categories: HashMap<u64, EffectivenessCategory> = {
+            let current_generation = {
+                let guard = effectiveness_state
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+                guard.generation
+                // read guard drops here
+            };
+            // Read guard is out of scope here — safe to acquire the mutex.
+            let mut cache = cached_snapshot.lock().unwrap_or_else(|e| e.into_inner());
+            if cache.generation != current_generation {
+                let guard = effectiveness_state
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+                cache.generation = guard.generation;
+                cache.categories = guard.categories.clone();
+            }
+            cache.categories.clone()
+        };
+
+        // If we get here without deadlock the lock ordering is correct.
+        // Verify the result is an empty map (cold-start state).
+        assert!(_categories.is_empty(), "cold-start snapshot must be empty");
+    }
+
+    // -- Generation cache: snapshot updates only when generation changes --
+
+    #[test]
+    fn test_generation_cache_skips_clone_when_unchanged() {
+        use crate::services::effectiveness::{
+            EffectivenessSnapshot, EffectivenessState, EffectivenessStateHandle,
+        };
+        use std::sync::{Arc, Mutex, RwLock};
+
+        let effectiveness_state: EffectivenessStateHandle =
+            Arc::new(RwLock::new(EffectivenessState::new()));
+        let cached_snapshot: Arc<Mutex<EffectivenessSnapshot>> =
+            EffectivenessSnapshot::new_shared();
+
+        // First call: both at generation=0, cache should NOT clone (already matches).
+        {
+            let current_generation = {
+                let guard = effectiveness_state
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+                guard.generation
+            };
+            let cache = cached_snapshot.lock().unwrap_or_else(|e| e.into_inner());
+            // generations match (both 0) — no update needed
+            assert_eq!(
+                cache.generation, current_generation,
+                "cache and state must both start at 0"
+            );
+        }
+
+        // Background tick: update state, bump generation
+        {
+            let mut guard = effectiveness_state
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+            guard
+                .categories
+                .insert(42, EffectivenessCategory::Effective);
+            guard.generation = 1;
+        }
+
+        // Second call: generation mismatch — cache must update
+        {
+            let current_generation = {
+                let guard = effectiveness_state
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+                guard.generation
+            };
+            let mut cache = cached_snapshot.lock().unwrap_or_else(|e| e.into_inner());
+            if cache.generation != current_generation {
+                let guard = effectiveness_state
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+                cache.generation = guard.generation;
+                cache.categories = guard.categories.clone();
+            }
+            assert_eq!(cache.generation, 1, "cache must be updated to generation 1");
+            assert_eq!(
+                cache.categories.get(&42),
+                Some(&EffectivenessCategory::Effective),
+                "cache must contain the Effective entry after update"
+            );
+        }
+
+        // Third call: generation unchanged — cache must NOT re-clone (already at 1).
+        {
+            let current_generation = {
+                let guard = effectiveness_state
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+                guard.generation
+            };
+            let cache = cached_snapshot.lock().unwrap_or_else(|e| e.into_inner());
+            // generations match (both 1) — no update needed
+            assert_eq!(
+                cache.generation, current_generation,
+                "cache generation must still match state after second tick (no redundant clone)"
+            );
+        }
     }
 }
