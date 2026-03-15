@@ -276,6 +276,31 @@ impl Store {
         Ok(entries)
     }
 
+    /// Query all entries regardless of status (GH #266).
+    ///
+    /// One `lock_conn()` call, one SQL SELECT with no status filter, one
+    /// `load_tags_for_entries()` batch. Used by `SupersessionState::rebuild()`
+    /// to replace the 4x `query_by_status` loop that caused mutex contention
+    /// under the background tick.
+    pub fn query_all_entries(&self) -> Result<Vec<EntryRecord>> {
+        let conn = self.lock_conn();
+        let mut stmt = conn
+            .prepare(&format!("SELECT {} FROM entries", ENTRY_COLUMNS))
+            .map_err(StoreError::Sqlite)?;
+
+        let mut entries: Vec<EntryRecord> = stmt
+            .query_map([], entry_from_row)
+            .map_err(StoreError::Sqlite)?
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(StoreError::Sqlite)?;
+
+        let ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
+        let tag_map = load_tags_for_entries(&conn, &ids)?;
+        apply_tags(&mut entries, &tag_map);
+
+        Ok(entries)
+    }
+
     /// Combined query with SQL WHERE clause across all specified filters.
     pub fn query(&self, filter: QueryFilter) -> Result<Vec<EntryRecord>> {
         let conn = self.lock_conn();
