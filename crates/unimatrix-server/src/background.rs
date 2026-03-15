@@ -51,7 +51,43 @@ const OP_TICK_SKIPPED: &str = "tick_skipped";
 const AUTO_QUARANTINE_CYCLES_MAX: u32 = 1000;
 
 /// Default tick interval: 15 minutes.
-const TICK_INTERVAL_SECS: u64 = 900;
+const DEFAULT_TICK_INTERVAL_SECS: u64 = 900;
+
+/// Parse a tick interval string as a `u64`, returning the default on any error.
+///
+/// Extracted for testability — avoids unsafe env var manipulation in tests.
+fn parse_tick_interval_str(s: &str) -> u64 {
+    match s.trim().parse::<u64>() {
+        Ok(secs) => secs,
+        Err(_) => DEFAULT_TICK_INTERVAL_SECS,
+    }
+}
+
+/// Read the tick interval from `UNIMATRIX_TICK_INTERVAL_SECS` env var.
+///
+/// Falls back to `DEFAULT_TICK_INTERVAL_SECS` (900s) if the variable is unset
+/// or contains a value that cannot be parsed as a `u64`.
+fn read_tick_interval() -> u64 {
+    match std::env::var("UNIMATRIX_TICK_INTERVAL_SECS") {
+        Ok(val) => {
+            let secs = parse_tick_interval_str(&val);
+            if secs == DEFAULT_TICK_INTERVAL_SECS && val.trim() != "900" {
+                tracing::warn!(
+                    value = %val,
+                    default = DEFAULT_TICK_INTERVAL_SECS,
+                    "UNIMATRIX_TICK_INTERVAL_SECS is not a valid u64; using default"
+                );
+            } else {
+                tracing::info!(
+                    secs,
+                    "tick interval configured via UNIMATRIX_TICK_INTERVAL_SECS"
+                );
+            }
+            secs
+        }
+        Err(_) => DEFAULT_TICK_INTERVAL_SECS,
+    }
+}
 
 /// Shared tick metadata, read by context_status and written by the tick loop.
 #[derive(Default)]
@@ -195,7 +231,7 @@ pub fn spawn_background_tick(
     ))
 }
 
-/// Main tick loop: runs maintenance + extraction every TICK_INTERVAL_SECS.
+/// Main tick loop: runs maintenance + extraction at the configured tick interval.
 #[allow(clippy::too_many_arguments)]
 async fn background_tick_loop(
     store: Arc<Store>,
@@ -213,7 +249,8 @@ async fn background_tick_loop(
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
 ) {
-    let mut interval = tokio::time::interval(Duration::from_secs(TICK_INTERVAL_SECS));
+    let tick_interval_secs = read_tick_interval();
+    let mut interval = tokio::time::interval(Duration::from_secs(tick_interval_secs));
     let mut extraction_ctx = ExtractionContext::new();
 
     // Initialize neural enhancer (crt-007: shadow mode)
@@ -254,6 +291,7 @@ async fn background_tick_loop(
             &supersession_state,
             &audit_log,
             auto_quarantine_cycles,
+            tick_interval_secs,
         )
         .await;
 
@@ -294,6 +332,7 @@ async fn run_single_tick(
     supersession_state: &SupersessionStateHandle, // GH #264: rebuild each tick
     audit_log: &Arc<AuditLog>,
     auto_quarantine_cycles: u32,
+    tick_interval_secs: u64, // nan-006: configurable via UNIMATRIX_TICK_INTERVAL_SECS
 ) -> Result<(), String> {
     let tick_start = now_secs();
     tracing::info!("background tick starting");
@@ -410,7 +449,7 @@ async fn run_single_tick(
 
     // Update next scheduled time
     if let Ok(mut meta) = tick_metadata.lock() {
-        meta.next_scheduled = Some(now_secs() + TICK_INTERVAL_SECS);
+        meta.next_scheduled = Some(now_secs() + tick_interval_secs);
     }
 
     let duration = now_secs() - tick_start;
@@ -1062,6 +1101,57 @@ mod tests {
     // ---------------------------------------------------------------------------
     // Legacy tests (preserved)
     // ---------------------------------------------------------------------------
+
+    // ---------------------------------------------------------------------------
+    // UNIMATRIX_TICK_INTERVAL_SECS parsing tests (nan-006)
+    // Tests target parse_tick_interval_str() to avoid env var mutation
+    // (forbidden by #![forbid(unsafe_code)] on std::env::set_var in Rust 1.81+).
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn parse_tick_interval_str_default_value() {
+        assert_eq!(
+            parse_tick_interval_str("900"),
+            900,
+            "default value string must parse correctly"
+        );
+    }
+
+    #[test]
+    fn parse_tick_interval_str_custom_value() {
+        assert_eq!(
+            parse_tick_interval_str("30"),
+            30,
+            "should parse '30' as 30"
+        );
+    }
+
+    #[test]
+    fn parse_tick_interval_str_invalid_falls_back() {
+        assert_eq!(
+            parse_tick_interval_str("not-a-number"),
+            DEFAULT_TICK_INTERVAL_SECS,
+            "invalid string must fall back to 900"
+        );
+    }
+
+    #[test]
+    fn parse_tick_interval_str_empty_falls_back() {
+        assert_eq!(
+            parse_tick_interval_str(""),
+            DEFAULT_TICK_INTERVAL_SECS,
+            "empty string must fall back to 900"
+        );
+    }
+
+    #[test]
+    fn parse_tick_interval_str_whitespace_value() {
+        assert_eq!(
+            parse_tick_interval_str("  60  "),
+            60,
+            "whitespace-padded value must be trimmed and parsed"
+        );
+    }
 
     #[test]
     fn tick_metadata_new_defaults() {
