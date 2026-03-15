@@ -4,9 +4,12 @@
 //! without requiring a running server or ONNX model.
 
 use unimatrix_engine::coaccess::MAX_CO_ACCESS_BOOST;
-use unimatrix_engine::confidence::{
-    DEPRECATED_PENALTY, PROVENANCE_BOOST, SUPERSEDED_PENALTY, rerank_score,
-};
+use unimatrix_engine::confidence::{PROVENANCE_BOOST, rerank_score};
+
+// Ordering constants retained here for test arithmetic; the canonical
+// definitions moved to graph.rs (crt-014, ADR-004).
+const DEPRECATED_PENALTY: f64 = 0.7;
+const SUPERSEDED_PENALTY: f64 = 0.5;
 
 // ---------------------------------------------------------------------------
 // T-RET-01: Re-rank blend ordering

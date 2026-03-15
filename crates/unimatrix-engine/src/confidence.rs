@@ -55,15 +55,6 @@ pub const COLD_START_BETA: f64 = 3.0;
 /// Does NOT modify the stored confidence formula invariant (0.92).
 pub const PROVENANCE_BOOST: f64 = 0.02;
 
-/// Multiplicative penalty for deprecated entries in Flexible retrieval mode (crt-010).
-/// Applied to the final re-ranked score, not the confidence formula.
-pub const DEPRECATED_PENALTY: f64 = 0.7;
-
-/// Multiplicative penalty for superseded entries in Flexible retrieval mode (crt-010).
-/// Harsher than DEPRECATED_PENALTY since a known successor exists.
-/// Applied to the final re-ranked score, not the confidence formula.
-pub const SUPERSEDED_PENALTY: f64 = 0.5;
-
 /// Cosine similarity between two f32 vectors, returned as f64 for scoring precision.
 ///
 /// Returns 0.0 for zero-length, mismatched dimensions, or zero-norm vectors.
@@ -885,37 +876,12 @@ mod tests {
         assert!((boosted - base - 0.02).abs() < f64::EPSILON);
     }
 
-    // -- crt-010: penalty constants tests (T-PC-01..04) --
-
     #[test]
-    fn deprecated_penalty_value() {
-        assert_eq!(DEPRECATED_PENALTY, 0.7);
-        assert!(DEPRECATED_PENALTY > 0.0 && DEPRECATED_PENALTY < 1.0);
-    }
-
-    #[test]
-    fn superseded_penalty_value() {
-        assert_eq!(SUPERSEDED_PENALTY, 0.5);
-        assert!(SUPERSEDED_PENALTY > 0.0 && SUPERSEDED_PENALTY < 1.0);
-    }
-
-    #[test]
-    fn superseded_penalty_harsher_than_deprecated() {
-        assert!(
-            SUPERSEDED_PENALTY < DEPRECATED_PENALTY,
-            "superseded ({}) should be < deprecated ({})",
-            SUPERSEDED_PENALTY,
-            DEPRECATED_PENALTY,
-        );
-    }
-
-    #[test]
-    fn penalties_independent_of_confidence_formula() {
-        // Weight sum invariant unchanged
+    fn weight_sum_invariant_is_0_92() {
         let stored_sum = W_BASE + W_USAGE + W_FRESH + W_HELP + W_CORR + W_TRUST;
         assert_eq!(
             stored_sum, 0.92_f64,
-            "penalty constants must not affect stored weight sum"
+            "stored weight components must sum to 0.92"
         );
     }
 

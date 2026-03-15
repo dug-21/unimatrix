@@ -15,7 +15,7 @@ use unimatrix_engine::effectiveness::{
 };
 
 use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
-use crate::confidence::{DEPRECATED_PENALTY, SUPERSEDED_PENALTY, cosine_similarity, rerank_score};
+use crate::confidence::{cosine_similarity, rerank_score};
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::services::confidence::ConfidenceStateHandle;
