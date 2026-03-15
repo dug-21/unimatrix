@@ -624,6 +624,7 @@ mod tests {
         let confidence_state = Arc::new(std::sync::RwLock::new(
             crate::services::confidence::ConfidenceState::default(),
         ));
+        let supersession_state = crate::services::supersession::SupersessionState::new_handle();
         let search = SearchService::new(
             Arc::clone(store),
             vector_store,
@@ -633,6 +634,7 @@ mod tests {
             Arc::clone(&gateway),
             confidence_state,
             Arc::clone(&effectiveness_state), // crt-018b: shared handle
+            supersession_state,               // GH #264: cold-start empty state for tests
         );
 
         let service = BriefingService::new(

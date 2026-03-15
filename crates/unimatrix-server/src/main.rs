@@ -321,6 +321,8 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let confidence_state_handle = services.confidence_state_handle();
     // crt-018b: extract EffectivenessStateHandle before services is moved.
     let effectiveness_state_handle = services.effectiveness_state_handle();
+    // GH #264: extract SupersessionStateHandle before services is moved.
+    let supersession_state_handle = services.supersession_state_handle();
 
     // crt-018b: parse auto-quarantine threshold at startup (Constraint 14).
     // Value 0 disables auto-quarantine; values > 1000 cause a startup error.
@@ -340,6 +342,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         None, // TrainingService: wired in future integration step
         confidence_state_handle,
         effectiveness_state_handle, // crt-018b: shared with search/briefing paths
+        supersession_state_handle,  // GH #264: shared with SearchService
         Arc::clone(&audit),         // crt-018b: for tick_skipped audit events
         auto_quarantine_cycles,     // crt-018b: auto-quarantine threshold
     );

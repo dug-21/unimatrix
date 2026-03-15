@@ -37,6 +37,7 @@ use crate::services::ServiceError;
 use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::effectiveness::EffectivenessStateHandle;
 use crate::services::status::StatusService;
+use crate::services::supersession::{SupersessionState, SupersessionStateHandle};
 use unimatrix_engine::effectiveness::EffectivenessCategory;
 
 /// Hardcoded system agent identity for background-generated audit events.
@@ -172,6 +173,7 @@ pub fn spawn_background_tick(
     training_service: Option<Arc<TrainingService>>,
     confidence_state: ConfidenceStateHandle,
     effectiveness_state: EffectivenessStateHandle, // crt-018b: shared with search/briefing paths
+    supersession_state: SupersessionStateHandle,   // GH #264: shared with SearchService
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
 ) -> tokio::task::JoinHandle<()> {
@@ -187,6 +189,7 @@ pub fn spawn_background_tick(
         training_service,
         confidence_state,
         effectiveness_state,
+        supersession_state,
         audit_log,
         auto_quarantine_cycles,
     ))
@@ -206,6 +209,7 @@ async fn background_tick_loop(
     _training_service: Option<Arc<TrainingService>>,
     confidence_state: ConfidenceStateHandle,
     effectiveness_state: EffectivenessStateHandle, // crt-018b: threaded to run_single_tick
+    supersession_state: SupersessionStateHandle,   // GH #264: threaded to run_single_tick
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
 ) {
@@ -247,6 +251,7 @@ async fn background_tick_loop(
             shadow_evaluator.as_mut(),
             &confidence_state,
             &effectiveness_state,
+            &supersession_state,
             &audit_log,
             auto_quarantine_cycles,
         )
@@ -286,6 +291,7 @@ async fn run_single_tick(
     shadow_evaluator: Option<&mut ShadowEvaluator>,
     confidence_state: &ConfidenceStateHandle,
     effectiveness_state: &EffectivenessStateHandle,
+    supersession_state: &SupersessionStateHandle, // GH #264: rebuild each tick
     audit_log: &Arc<AuditLog>,
     auto_quarantine_cycles: u32,
 ) -> Result<(), String> {
@@ -329,6 +335,31 @@ async fn run_single_tick(
                 timeout_secs = TICK_TIMEOUT.as_secs(),
                 "maintenance tick timed out; will retry next cycle"
             );
+        }
+    }
+
+    // GH #264 fix: Rebuild supersession graph cache after maintenance tick completes.
+    // Runs inside spawn_blocking because Store uses Mutex<Connection> (sync).
+    // Failure is logged but non-fatal — search falls back to FALLBACK_PENALTY.
+    {
+        let store_clone = Arc::clone(store);
+        match tokio::task::spawn_blocking(move || SupersessionState::rebuild(&store_clone)).await {
+            Ok(Ok(new_state)) => {
+                let mut guard = supersession_state
+                    .write()
+                    .unwrap_or_else(|e| e.into_inner());
+                *guard = new_state;
+                tracing::debug!(
+                    "supersession state rebuilt ({} entries)",
+                    guard.all_entries.len()
+                );
+            }
+            Ok(Err(e)) => {
+                tracing::error!("supersession state rebuild failed: {e}");
+            }
+            Err(e) => {
+                tracing::error!("supersession state rebuild task panicked: {e}");
+            }
         }
     }
 
