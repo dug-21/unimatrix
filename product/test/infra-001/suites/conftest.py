@@ -13,5 +13,5 @@ if harness_parent not in sys.path:
     sys.path.insert(0, harness_parent)
 
 # Re-export fixtures so pytest discovers them for suites/
-from harness.conftest import server, shared_server, populated_server, admin_server  # noqa: F401
+from harness.conftest import server, shared_server, populated_server, admin_server, fast_tick_server  # noqa: F401
 from harness.conftest import get_binary_path  # noqa: F401

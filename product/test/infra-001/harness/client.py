@@ -71,6 +71,7 @@ class UnimatrixClient:
         binary_path: str | Path,
         project_dir: str | Path | None = None,
         timeout: float = DEFAULT_TIMEOUT,
+        extra_env: dict[str, str] | None = None,
     ):
         self._binary_path = str(binary_path)
         self._timeout = timeout
@@ -88,6 +89,8 @@ class UnimatrixClient:
 
         env = os.environ.copy()
         env.setdefault("RUST_LOG", "info")
+        if extra_env:
+            env.update(extra_env)
 
         self._process = subprocess.Popen(
             [self._binary_path, "--project-dir", self._project_dir],
