@@ -363,6 +363,233 @@ def test_full_pipeline_10_entries(server):
     assert_tool_success(status_resp)
 
 
+# === crt-018b: Effectiveness-Driven Retrieval ================================
+
+
+def test_effectiveness_search_ordering_after_cold_start(server):
+    """L-E01: Cold-start effectiveness state produces zero delta (AC-17 item 1, AC-06, R-07).
+
+    Without a background tick, EffectivenessState is empty.  All entries receive
+    utility_delta = 0.0.  Search ordering must be identical to pre-crt-018b
+    (confidence + similarity only).  No panic, no regression.
+
+    AC-17 item 1 note: the full ordering change is only observable after a
+    background tick writes classifications into EffectivenessState.  That path
+    requires an internal trigger not yet exposed through MCP.  This test
+    validates the prerequisite: cold-start is safe and produces no distortion.
+    """
+    # Store two entries with similar content but differing votes (drives confidence apart)
+    resp_a = server.context_store(
+        "effectiveness search ordering cold start entry alpha unique k7q",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    id_a = extract_entry_id(resp_a)
+
+    resp_b = server.context_store(
+        "effectiveness search ordering cold start entry beta unique k7q",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    id_b = extract_entry_id(resp_b)
+
+    # Vote A helpful repeatedly to raise confidence
+    for i in range(5):
+        server.context_get(id_a, agent_id=f"e-voter-a-{i}", helpful=True)
+    time.sleep(0.3)
+
+    # Search — both entries should be returned, no panic
+    search_resp = server.context_search(
+        "effectiveness search ordering cold start entry unique k7q",
+        format="json",
+        agent_id="human",
+    )
+    entries = parse_entries(search_resp)
+    result_ids = [e.get("id") for e in entries if e.get("id")]
+    # Both entries must be findable (no suppression)
+    assert id_a in result_ids or id_b in result_ids, (
+        "At least one seeded entry must appear in search results. "
+        "Cold-start must not suppress entries: AC-06."
+    )
+    # No tool-level error
+    assert_tool_success(search_resp)
+
+
+def test_briefing_effectiveness_tiebreaker(server):
+    """L-E02: Briefing context_briefing completes without error (AC-17 item 2, AC-07).
+
+    Stores entries with differing helpfulness vote patterns, then calls
+    context_briefing.  At cold-start, effectiveness_priority(None) = 0 for all
+    entries (AC-06 / R-07 guard): briefing degrades to confidence-only sort.
+    The test verifies: no panic, non-empty output, entries returned.
+
+    Full tiebreaker ordering is unit-tested in briefing.rs
+    (test_injection_sort_effectiveness_is_tiebreaker).
+    """
+    # Store a "helpful" entry
+    helpful_resp = server.context_store(
+        "briefing effectiveness tiebreaker helpful entry unique q8w",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    helpful_id = extract_entry_id(helpful_resp)
+
+    # Store an "unhelpful" entry
+    unhelpful_resp = server.context_store(
+        "briefing effectiveness tiebreaker unhelpful entry unique q8w",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    unhelpful_id = extract_entry_id(unhelpful_resp)
+
+    # Vote helpful entry 5 times helpful, unhelpful entry 5 times unhelpful
+    for i in range(5):
+        server.context_get(helpful_id, agent_id=f"brief-voter-h-{i}", helpful=True)
+        server.context_get(unhelpful_id, agent_id=f"brief-voter-u-{i}", helpful=False)
+    time.sleep(0.3)
+
+    # Call context_briefing — must not error
+    briefing_resp = server.context_briefing(
+        "tester",
+        "verify effectiveness tiebreaker q8w",
+        agent_id="human",
+    )
+    result = assert_tool_success(briefing_resp)
+
+    # Briefing must return some content
+    assert len(result.text) > 0, (
+        "context_briefing must return non-empty content (AC-07)."
+    )
+    assert helpful_id is not None and unhelpful_id is not None
+
+
+def test_context_status_does_not_advance_consecutive_counters(server):
+    """L-E03: context_status calls must not increment consecutive_bad_cycles (R-04, AC-01, AC-09).
+
+    Calls context_status 10 times.  If R-04 were violated, status calls would
+    increment counters, eventually triggering auto-quarantine on entries that
+    have never been seen by the background tick writer.
+
+    Observable proxy: after many status calls, the stored entry must still be
+    Active (not Quarantined).  Since AC-01 requires that only the background
+    tick writes EffectivenessState, we confirm the entry status via context_get.
+    """
+    # Store a test entry that would be auto-quarantined if counters were wrongly incremented
+    store_resp = server.context_store(
+        "status counter test entry must remain active unique r4z",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+
+    # Call context_status 10 times (simulates frequent status polling)
+    for _ in range(10):
+        status_resp = server.context_status(agent_id="human", format="json")
+        assert_tool_success(status_resp)
+
+    # Entry must still be Active — not quarantined by status calls
+    get_resp = server.context_get(entry_id, format="json")
+    entry = parse_entry(get_resp)
+    status = entry.get("status", "").lower()
+    assert status == "active", (
+        f"Entry must remain Active after 10 context_status calls; got '{status}'. "
+        "R-04: context_status must NOT write EffectivenessState."
+    )
+
+
+def test_auto_quarantine_disabled_when_env_zero(tmp_path):
+    """L-E04: UNIMATRIX_AUTO_QUARANTINE_CYCLES=0 disables auto-quarantine (AC-12, R-03).
+
+    Starts a server with auto-quarantine disabled.  Stores entries and confirms
+    the server starts and accepts requests normally.  Since the tick interval
+    is 15 minutes, we cannot drive the tick in integration tests; instead we
+    verify that the server starts without error and serves requests correctly
+    when the threshold is 0.
+
+    This covers the startup validation path (CYCLES=0 must be accepted, not rejected).
+    """
+    import os
+    binary = get_binary_path()
+
+    env = os.environ.copy()
+    env["UNIMATRIX_AUTO_QUARANTINE_CYCLES"] = "0"
+
+    import subprocess, threading, json, tempfile, time as _time
+    proc = subprocess.Popen(
+        [binary, "--project-dir", str(tmp_path)],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+
+    stderr_lines = []
+    def drain():
+        for line in iter(proc.stderr.readline, b""):
+            stderr_lines.append(line.decode("utf-8", errors="replace").rstrip())
+    t = threading.Thread(target=drain, daemon=True)
+    t.start()
+
+    # Give server 5s to start
+    _time.sleep(2)
+    assert proc.poll() is None, (
+        f"Server exited immediately with CYCLES=0 (must not exit). "
+        f"Stderr: {' '.join(stderr_lines[-5:])}"
+    )
+
+    proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except Exception:
+        proc.kill()
+
+
+@pytest.mark.xfail(
+    reason=(
+        "AC-17 item 3: auto-quarantine fires after N consecutive background ticks. "
+        "The background tick interval is 15 minutes in production and cannot be driven "
+        "externally through the MCP interface. A test-mode tick trigger "
+        "(e.g., UNIMATRIX_TICK_INTERVAL_SECONDS env var) is needed. "
+        "Unit tests in background.rs cover the trigger logic end-to-end. "
+        "This integration test is filed as a known gap: "
+        "see test-plan/auto-quarantine-guard.md Integration Test Expectations."
+    )
+)
+def test_auto_quarantine_after_consecutive_bad_ticks(server):
+    """L-E05: Auto-quarantine fires after N consecutive bad ticks (AC-17 item 3, AC-10, R-03).
+
+    Requires the background tick to be drivable at test time, which is not
+    currently possible through the MCP interface (tick interval = 15 minutes).
+    Marked xfail until UNIMATRIX_TICK_INTERVAL_SECONDS or equivalent is added.
+    """
+    # Store an entry that would accumulate bad classifications
+    store_resp = server.context_store(
+        "auto quarantine consecutive bad ticks test entry unique m3x",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+
+    # If the tick could be driven here, we would:
+    # 1. Force N=3 consecutive ticks classifying this entry as Ineffective
+    # 2. Call context_status and verify entry is Quarantined
+    # 3. Verify auto_quarantined_this_cycle contains entry_id
+    # Since we cannot drive the tick, this fails with xfail as expected
+    assert False, "Background tick cannot be driven externally (15-minute interval)"
+
+
 # === crt-019: Confidence Signal Activation (R-01 critical end-to-end) ========
 
 

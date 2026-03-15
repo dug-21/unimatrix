@@ -5,9 +5,14 @@ and input validation boundary testing.
 """
 
 import json
+import os
+import subprocess
+import threading
+import time
 import pytest
 from pathlib import Path
 from harness.assertions import assert_tool_success, assert_tool_error
+from harness.conftest import get_binary_path
 
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
@@ -212,3 +217,112 @@ def test_false_positive_safe_content(server):
         agent_id="human",
     )
     assert_tool_success(resp)
+
+
+# === crt-018b: Auto-Quarantine DoS Mitigation ================================
+
+
+@pytest.mark.security
+def test_auto_quarantine_cycles_invalid_large_value_rejected_at_startup(tmp_path):
+    """S-31: UNIMATRIX_AUTO_QUARANTINE_CYCLES > 1000 causes startup failure (Constraint 14, Security Risk 1).
+
+    An operator who can set env vars could set AUTO_QUARANTINE_CYCLES to a
+    very large value (e.g., 1001) as a DoS amplification.  Constraint 14
+    requires the server to reject implausibly large values at startup rather
+    than silently accepting them.
+
+    This test verifies: server exits with non-zero exit code when the env var
+    exceeds the 1000 upper bound.  The server must NOT serve MCP requests.
+    """
+    binary = get_binary_path()
+    env = os.environ.copy()
+    env["UNIMATRIX_AUTO_QUARANTINE_CYCLES"] = "1001"
+
+    proc = subprocess.Popen(
+        [binary, "--project-dir", str(tmp_path)],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+
+    stderr_lines: list[str] = []
+
+    def drain_stderr():
+        for line in iter(proc.stderr.readline, b""):
+            stderr_lines.append(line.decode("utf-8", errors="replace").rstrip())
+
+    t = threading.Thread(target=drain_stderr, daemon=True)
+    t.start()
+
+    try:
+        exit_code = proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        raise AssertionError(
+            "Server did not exit within 10s with UNIMATRIX_AUTO_QUARANTINE_CYCLES=1001. "
+            "Expected startup failure (Constraint 14 / Security Risk 1)."
+        )
+
+    t.join(timeout=2)
+    stderr_all = "\n".join(stderr_lines)
+
+    assert exit_code != 0, (
+        f"Server must exit with non-zero code when UNIMATRIX_AUTO_QUARANTINE_CYCLES=1001. "
+        f"Got exit code {exit_code}. Stderr: {stderr_all[-500:]}"
+    )
+
+    # The error message must mention the implausible value
+    assert "1001" in stderr_all or "implausibly" in stderr_all.lower() or "1000" in stderr_all, (
+        f"Server exit message must reference the invalid value (1001) or the limit (1000). "
+        f"Got stderr: {stderr_all[-500:]}"
+    )
+
+
+@pytest.mark.security
+def test_auto_quarantine_cycles_zero_accepted_at_startup(tmp_path):
+    """S-32: UNIMATRIX_AUTO_QUARANTINE_CYCLES=0 is accepted at startup (AC-12, Constraint 14).
+
+    Value 0 is the disable sentinel — must NOT be rejected.  The server must
+    start and serve MCP requests normally when the threshold is 0.
+    """
+    binary = get_binary_path()
+    env = os.environ.copy()
+    env["UNIMATRIX_AUTO_QUARANTINE_CYCLES"] = "0"
+
+    proc = subprocess.Popen(
+        [binary, "--project-dir", str(tmp_path)],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+
+    stderr_lines: list[str] = []
+
+    def drain_stderr():
+        for line in iter(proc.stderr.readline, b""):
+            stderr_lines.append(line.decode("utf-8", errors="replace").rstrip())
+
+    t = threading.Thread(target=drain_stderr, daemon=True)
+    t.start()
+
+    # Give server time to start and load the embedding model
+    time.sleep(3)
+
+    still_running = proc.poll() is None
+    proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+
+    t.join(timeout=2)
+    stderr_all = "\n".join(stderr_lines)
+
+    assert still_running, (
+        f"Server must NOT exit immediately when UNIMATRIX_AUTO_QUARANTINE_CYCLES=0. "
+        f"Value 0 is the disable sentinel (AC-12). "
+        f"Stderr: {stderr_all[-500:]}"
+    )
