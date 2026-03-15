@@ -195,7 +195,11 @@ fn persist_shadow_evaluations(store: &Store, logs: &[ShadowLogEntry]) {
 
 /// Spawn the background tick loop. Call once at server startup.
 ///
-/// Returns a JoinHandle that runs indefinitely (until server shutdown).
+/// Returns a JoinHandle for the outer supervisor task (stored in `LifecycleHandles.tick_handle`
+/// and aborted during graceful shutdown). The supervisor wraps `background_tick_loop` in an
+/// inner spawn; if that inner task panics, the supervisor logs the panic and restarts after a
+/// 30-second cooldown. If the inner task is cancelled (i.e. the outer handle is aborted during
+/// shutdown), the supervisor exits cleanly without restarting (#276).
 #[allow(clippy::too_many_arguments)]
 pub fn spawn_background_tick(
     store: Arc<Store>,
@@ -213,22 +217,43 @@ pub fn spawn_background_tick(
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
 ) -> tokio::task::JoinHandle<()> {
-    tokio::spawn(background_tick_loop(
-        store,
-        vector_index,
-        embed_service,
-        adapt_service,
-        session_registry,
-        entry_store,
-        pending_entries,
-        tick_metadata,
-        training_service,
-        confidence_state,
-        effectiveness_state,
-        supersession_state,
-        audit_log,
-        auto_quarantine_cycles,
-    ))
+    // Outer supervisor — this handle is stored as tick_handle and aborted on shutdown.
+    tokio::spawn(async move {
+        loop {
+            // Clone all Arc/Copy params fresh for each inner spawn iteration.
+            let inner_handle = tokio::spawn(background_tick_loop(
+                Arc::clone(&store),
+                Arc::clone(&vector_index),
+                Arc::clone(&embed_service),
+                Arc::clone(&adapt_service),
+                Arc::clone(&session_registry),
+                Arc::clone(&entry_store),
+                Arc::clone(&pending_entries),
+                Arc::clone(&tick_metadata),
+                training_service.clone(),
+                confidence_state.clone(),
+                effectiveness_state.clone(),
+                supersession_state.clone(),
+                Arc::clone(&audit_log),
+                auto_quarantine_cycles,
+            ));
+
+            match inner_handle.await {
+                // Normal return: background_tick_loop exited (should not happen in practice).
+                Ok(()) => break,
+                // Cancelled: outer handle was aborted by graceful_shutdown — exit cleanly.
+                Err(ref join_err) if join_err.is_cancelled() => break,
+                // Panic: log and restart after a 30-second cooldown (#276).
+                Err(join_err) => {
+                    tracing::error!(
+                        error = %join_err,
+                        "background tick panicked; restarting in 30s"
+                    );
+                    tokio::time::sleep(Duration::from_secs(30)).await;
+                }
+            }
+        }
+    })
 }
 
 /// Main tick loop: runs maintenance + extraction at the configured tick interval.
@@ -1936,6 +1961,128 @@ mod tests {
         assert!(
             candidates.is_empty(),
             "must return empty candidates when counter < threshold"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // Supervisor pattern tests (#276)
+    //
+    // These tests exercise the supervisor loop directly using a factory closure
+    // rather than testing spawn_background_tick (which has heavy dependencies).
+    // The factory produces a worker future; the supervisor wraps it in inner
+    // spawns and restarts on panic after a 30s delay.
+    // ---------------------------------------------------------------------------
+
+    /// Runs the supervisor loop with a given worker factory. The outer task is
+    /// returned so callers can abort it. The supervisor mirrors the logic in
+    /// `spawn_background_tick`: panic → 30s delay → restart; cancel → clean exit.
+    fn spawn_test_supervisor<F, Fut>(factory: F) -> tokio::task::JoinHandle<()>
+    where
+        F: Fn() -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = ()> + Send + 'static,
+    {
+        tokio::spawn(async move {
+            loop {
+                let inner = tokio::spawn(factory());
+                match inner.await {
+                    Ok(()) => break,
+                    Err(ref e) if e.is_cancelled() => break,
+                    Err(e) => {
+                        tracing::error!("worker panicked in test supervisor: {e}");
+                        tokio::time::sleep(Duration::from_secs(30)).await;
+                    }
+                }
+            }
+        })
+    }
+
+    /// Supervisor: a panic in the worker triggers a 30-second delay then restarts.
+    ///
+    /// Uses `start_paused = true` + `tokio::time::advance` to avoid real wall-clock waits.
+    #[tokio::test(start_paused = true)]
+    async fn test_supervisor_panic_causes_30s_delay_then_restart() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let call_count = Arc::new(AtomicUsize::new(0));
+        let call_count_clone = Arc::clone(&call_count);
+
+        let handle = spawn_test_supervisor(move || {
+            let count = Arc::clone(&call_count_clone);
+            async move {
+                let n = count.fetch_add(1, Ordering::SeqCst);
+                if n == 0 {
+                    // First call: panic to exercise restart path.
+                    panic!("simulated tick panic");
+                }
+                // Second call: block until cancelled so the supervisor stays alive.
+                tokio::time::sleep(Duration::from_secs(3600)).await;
+            }
+        });
+
+        // Let the first inner task run and panic.
+        tokio::task::yield_now().await;
+
+        // After the panic the supervisor sleeps 30s. Verify restart has NOT happened yet.
+        assert_eq!(
+            call_count.load(Ordering::SeqCst),
+            1,
+            "worker should have been called once (and panicked)"
+        );
+
+        // Advance past the 30-second restart delay.
+        tokio::time::advance(Duration::from_secs(31)).await;
+        tokio::task::yield_now().await;
+
+        // The supervisor should have restarted the worker.
+        assert_eq!(
+            call_count.load(Ordering::SeqCst),
+            2,
+            "worker should have been restarted after 30s delay"
+        );
+
+        // Clean up: aborting the outer handle should stop the supervisor.
+        handle.abort();
+        let result = handle.await;
+        assert!(
+            result.unwrap_err().is_cancelled(),
+            "aborted outer handle should report cancelled"
+        );
+    }
+
+    /// Supervisor: aborting the outer handle (graceful shutdown) exits cleanly without restart.
+    #[tokio::test(start_paused = true)]
+    async fn test_supervisor_abort_exits_cleanly_without_restart() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let call_count = Arc::new(AtomicUsize::new(0));
+        let call_count_clone = Arc::clone(&call_count);
+
+        let handle = spawn_test_supervisor(move || {
+            let count = Arc::clone(&call_count_clone);
+            async move {
+                count.fetch_add(1, Ordering::SeqCst);
+                // Block until cancelled — simulates an idle tick loop.
+                tokio::time::sleep(Duration::from_secs(3600)).await;
+            }
+        });
+
+        // Let the first inner task start.
+        tokio::task::yield_now().await;
+        assert_eq!(call_count.load(Ordering::SeqCst), 1, "worker started once");
+
+        // Abort the outer supervisor (mirrors graceful_shutdown calling tick_handle.abort()).
+        handle.abort();
+        let result = handle.await;
+        assert!(
+            result.unwrap_err().is_cancelled(),
+            "aborted outer handle should report cancelled"
+        );
+
+        // No restart should have occurred.
+        assert_eq!(
+            call_count.load(Ordering::SeqCst),
+            1,
+            "worker must not be restarted after abort (graceful shutdown)"
         );
     }
 }
