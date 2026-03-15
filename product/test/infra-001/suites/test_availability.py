@@ -17,10 +17,6 @@ MCP client is NOT thread-safe. All calls in this suite are sequential.
 Known failures (xfail):
   - test_concurrent_ops_during_tick: GH#277 — no handler timeouts
   - test_read_ops_not_blocked_by_tick: GH#277 — no handler timeouts
-  - test_sustained_multi_tick: GH#275 — unwrap() kills tick permanently
-
-Deferred (skip):
-  - test_tick_panic_recovery: depends on GH#276
 """
 
 import time
@@ -283,16 +279,52 @@ def test_sustained_multi_tick(fast_tick_server):
         )
 
 
-@pytest.mark.skip(reason="Deferred: depends on GH#276 — tick supervisor restart not yet implemented")
+@pytest.mark.timeout(120)
 def test_tick_panic_recovery(fast_tick_server):
-    """Verify a tick supervisor restarts the tick task after a panic.
+    """Verify MCP remains responsive across tick cycles (supervisor liveness, GH#276).
 
-    This test is a stub. Implementation blocked on GH#276.
+    The supervisor wraps the tick task in an inner spawn; if it panics, it
+    restarts after a 30-second cooldown. We cannot inject a panic from outside
+    the process, so this test validates the observable invariant: the server
+    stays responsive across two full tick cycles (ensuring the supervisor loop
+    did not permanently exit).
 
-    Expected behavior (post-fix):
-    - Trigger a panic in the tick task
-    - Verify the tick supervisor detects the JoinError and restarts the task
-    - Verify MCP remains responsive during and after the restart
-    - Verify the next tick fires correctly after recovery
+    Panic-injection and restart-count assertions are covered by unit tests in
+    background::tests::test_supervisor_panic_causes_30s_delay_then_restart and
+    background::tests::test_supervisor_abort_exits_cleanly_without_restart.
     """
-    pass
+    server = fast_tick_server
+    tick_secs = 30
+    buffer_secs = 5
+
+    # Arrange: store entries to give each tick work to do.
+    for i in range(3):
+        server.context_store(
+            content=f"tick supervisor liveness entry {i}: availability testing data",
+            topic="supervisor-test",
+            category="convention",
+            agent_id="test-agent",
+        )
+
+    # Act: wait for the first tick to fire and complete.
+    time.sleep(tick_secs + buffer_secs)
+
+    # Assert: server is still responsive after the first tick.
+    search_resp = server.context_search(
+        query="tick supervisor liveness",
+        agent_id="test-agent",
+    )
+    assert search_resp is not None, "search returned None after first tick"
+    assert search_resp.error is None, (
+        f"search error after first tick: {search_resp.error}"
+    )
+
+    # Act: wait for a second tick cycle, confirming the supervisor loop is still alive.
+    time.sleep(tick_secs + buffer_secs)
+
+    # Assert: server is still responsive after the second tick cycle.
+    status_resp = server.context_status(agent_id="test-agent")
+    assert status_resp is not None, "status returned None after second tick"
+    assert status_resp.error is None, (
+        f"status error after second tick: {status_resp.error}"
+    )
