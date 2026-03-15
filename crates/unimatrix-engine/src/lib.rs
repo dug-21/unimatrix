@@ -19,6 +19,7 @@ pub mod coaccess;
 pub mod confidence;
 pub mod effectiveness;
 pub mod event_queue;
+pub mod graph;
 pub mod project;
 pub mod transport;
 pub mod wire;

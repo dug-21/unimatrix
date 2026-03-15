@@ -117,8 +117,7 @@ mod tests {
     fn test_mean_pool_384d() {
         let seq_len = 5;
         let hidden_dim = 384;
-        let token_embeddings: Vec<f32> =
-            (0..seq_len * hidden_dim).map(|i| i as f32).collect();
+        let token_embeddings: Vec<f32> = (0..seq_len * hidden_dim).map(|i| i as f32).collect();
         let attention_mask = vec![1_i64; seq_len];
         let result = mean_pool(&token_embeddings, &attention_mask, 1, seq_len, hidden_dim);
         assert_eq!(result.len(), 1);
@@ -129,13 +128,7 @@ mod tests {
     fn test_mean_pool_padding_does_not_dilute() {
         // Same real tokens, different padding
         let result_no_pad = mean_pool(&[1.0, 2.0, 3.0, 4.0], &[1, 1], 1, 2, 2);
-        let result_padded = mean_pool(
-            &[1.0, 2.0, 3.0, 4.0, 0.0, 0.0],
-            &[1, 1, 0],
-            1,
-            3,
-            2,
-        );
+        let result_padded = mean_pool(&[1.0, 2.0, 3.0, 4.0, 0.0, 0.0], &[1, 1, 0], 1, 3, 2);
         assert!((result_no_pad[0][0] - result_padded[0][0]).abs() < 1e-6);
         assert!((result_no_pad[0][1] - result_padded[0][1]).abs() < 1e-6);
     }

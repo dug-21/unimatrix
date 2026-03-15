@@ -89,10 +89,7 @@ mod tests {
     fn test_observe_error_display_timestamp() {
         let err = ObserveError::TimestampParse("invalid format".to_string());
         let msg = format!("{err}");
-        assert!(
-            msg.contains("timestamp"),
-            "expected timestamp in: {msg}"
-        );
+        assert!(msg.contains("timestamp"), "expected timestamp in: {msg}");
     }
 
     #[test]

@@ -173,14 +173,8 @@ mod tests {
             EmbeddingModel::BgeSmallEnV15.model_id(),
             "BAAI/bge-small-en-v1.5"
         );
-        assert_eq!(
-            EmbeddingModel::E5SmallV2.model_id(),
-            "intfloat/e5-small-v2"
-        );
-        assert_eq!(
-            EmbeddingModel::GteSmall.model_id(),
-            "thenlper/gte-small"
-        );
+        assert_eq!(EmbeddingModel::E5SmallV2.model_id(), "intfloat/e5-small-v2");
+        assert_eq!(EmbeddingModel::GteSmall.model_id(), "thenlper/gte-small");
     }
 
     #[test]

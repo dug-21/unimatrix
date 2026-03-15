@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use unimatrix_store::Store;
 
-use crate::index::{SearchResult, VectorIndex};
 use crate::config::VectorConfig;
+use crate::index::{SearchResult, VectorIndex};
 
 /// A test VectorIndex backed by a temporary store.
 ///
@@ -34,8 +34,7 @@ impl TestVectorIndex {
         let dir_path = dir.path().to_path_buf();
         let db_path = dir.path().join("test.db");
         let store = Arc::new(Store::open(&db_path).expect("failed to open test store"));
-        let index =
-            VectorIndex::new(store.clone(), config).expect("failed to create test index");
+        let index = VectorIndex::new(store.clone(), config).expect("failed to create test index");
 
         TestVectorIndex {
             _dir: dir,

@@ -103,10 +103,7 @@ mod tests {
         assert_eq!(d.features[6], 1.0); // 30/10 clamped
         // All values in [0.0, 1.0]
         for (i, &v) in d.features.iter().enumerate() {
-            assert!(
-                (0.0..=1.0).contains(&v),
-                "slot {i} = {v} out of [0,1]"
-            );
+            assert!((0.0..=1.0).contains(&v), "slot {i} = {v} out of [0,1]");
         }
     }
 

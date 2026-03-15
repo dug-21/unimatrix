@@ -47,8 +47,13 @@ impl TrainingService {
             TrainingReservoir::new(config.reservoir_capacity, config.reservoir_seed + 1),
         );
 
-        let classifier_param_count = SignalClassifier::new_with_baseline_seed(config.classifier_init_seed).flat_parameters().len();
-        let scorer_param_count = ConventionScorer::new_with_baseline_seed(config.scorer_init_seed).flat_parameters().len();
+        let classifier_param_count =
+            SignalClassifier::new_with_baseline_seed(config.classifier_init_seed)
+                .flat_parameters()
+                .len();
+        let scorer_param_count = ConventionScorer::new_with_baseline_seed(config.scorer_init_seed)
+            .flat_parameters()
+            .len();
 
         let mut ewc_states = HashMap::new();
         ewc_states.insert(
@@ -140,7 +145,11 @@ impl TrainingService {
         let batch: Vec<TrainingSample> = {
             let mut reservoirs = self.reservoirs.lock().unwrap_or_else(|e| e.into_inner());
             match reservoirs.get_mut(model_name) {
-                Some(reservoir) => reservoir.sample_batch(batch_size).into_iter().cloned().collect(),
+                Some(reservoir) => reservoir
+                    .sample_batch(batch_size)
+                    .into_iter()
+                    .cloned()
+                    .collect(),
                 None => {
                     lock.store(false, Ordering::SeqCst);
                     return;
@@ -174,8 +183,12 @@ impl TrainingService {
 
             // Reconstruct model from baseline using configured seeds
             let mut model: Box<dyn NeuralModel> = match model_name_owned.as_str() {
-                "signal_classifier" => Box::new(SignalClassifier::new_with_baseline_seed(classifier_init_seed)),
-                "convention_scorer" => Box::new(ConventionScorer::new_with_baseline_seed(scorer_init_seed)),
+                "signal_classifier" => Box::new(SignalClassifier::new_with_baseline_seed(
+                    classifier_init_seed,
+                )),
+                "convention_scorer" => {
+                    Box::new(ConventionScorer::new_with_baseline_seed(scorer_init_seed))
+                }
                 _ => return,
             };
 

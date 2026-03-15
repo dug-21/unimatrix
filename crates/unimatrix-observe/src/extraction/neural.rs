@@ -2,7 +2,9 @@
 //!
 //! Wraps Signal Classifier + Convention Scorer, produces NeuralPrediction.
 
-use unimatrix_learn::models::{ClassificationResult, ConventionScorer, SignalClassifier, SignalDigest};
+use unimatrix_learn::models::{
+    ClassificationResult, ConventionScorer, SignalClassifier, SignalDigest,
+};
 
 use super::ProposedEntry;
 
@@ -80,7 +82,8 @@ mod tests {
     fn make_test_entry() -> ProposedEntry {
         ProposedEntry {
             title: "Valid title that is long enough".to_string(),
-            content: "This is valid content with enough length for the quality gate checks".to_string(),
+            content: "This is valid content with enough length for the quality gate checks"
+                .to_string(),
             category: "convention".to_string(),
             topic: "test".to_string(),
             tags: vec!["auto-extracted".to_string()],

@@ -103,10 +103,7 @@ impl<T: EntryStore + 'static> AsyncEntryStore<T> {
             .map_err(|e| CoreError::JoinError(e.to_string()))?
     }
 
-    pub async fn query_by_status(
-        &self,
-        status: Status,
-    ) -> Result<Vec<EntryRecord>, CoreError> {
+    pub async fn query_by_status(&self, status: Status) -> Result<Vec<EntryRecord>, CoreError> {
         let inner = Arc::clone(&self.inner);
         tokio::task::spawn_blocking(move || inner.query_by_status(status))
             .await

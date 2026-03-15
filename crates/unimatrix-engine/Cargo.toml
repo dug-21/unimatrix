@@ -14,6 +14,9 @@ sha2 = "0.10"
 dirs = "6"
 tracing = "0.1"
 nix = { version = "0.31", features = ["socket", "process", "user"] }
+# ADR-001: stable_graph feature only — no graphmap, matrix_graph, rayon, serde-1, or generate
+petgraph = { version = "0.8", default-features = false, features = ["stable_graph"] }
+thiserror = "2"
 
 [features]
 test-support = []

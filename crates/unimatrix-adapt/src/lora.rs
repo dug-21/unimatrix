@@ -92,11 +92,7 @@ impl MicroLoRA {
     /// Backward pass: compute gradients of loss wrt A and B.
     ///
     /// Returns (grad_A, grad_B) given input and dL/d(output).
-    pub fn backward(
-        &self,
-        input: &[f32],
-        grad_output: &[f32],
-    ) -> (Array2<f32>, Array2<f32>) {
+    pub fn backward(&self, input: &[f32], grad_output: &[f32]) -> (Array2<f32>, Array2<f32>) {
         let weights = self.weights.read().expect("weights lock poisoned");
         let input_arr = ArrayView1::from(input);
         let grad_out = ArrayView1::from(grad_output);
@@ -121,13 +117,7 @@ impl MicroLoRA {
     ///
     /// NaN/Inf check: if any new weight is NaN or Inf, the update is aborted
     /// and a warning is logged.
-    pub fn update_weights(
-        &self,
-        grad_a: &Array2<f32>,
-        grad_b: &Array2<f32>,
-        lr_a: f32,
-        lr_b: f32,
-    ) {
+    pub fn update_weights(&self, grad_a: &Array2<f32>, grad_b: &Array2<f32>, lr_a: f32, lr_b: f32) {
         // Read current weights to compute new values
         let current = {
             let w = self.weights.read().expect("weights lock poisoned");
@@ -164,12 +154,20 @@ impl MicroLoRA {
 
     /// Get a copy of the A matrix (for persistence/inspection).
     pub fn weights_a(&self) -> Array2<f32> {
-        self.weights.read().expect("weights lock poisoned").a.clone()
+        self.weights
+            .read()
+            .expect("weights lock poisoned")
+            .a
+            .clone()
     }
 
     /// Get a copy of the B matrix (for persistence/inspection).
     pub fn weights_b(&self) -> Array2<f32> {
-        self.weights.read().expect("weights lock poisoned").b.clone()
+        self.weights
+            .read()
+            .expect("weights lock poisoned")
+            .b
+            .clone()
     }
 
     /// Set weight matrices (for state restoration).
@@ -292,8 +290,7 @@ mod tests {
             let r = rank as usize;
 
             let input: Vec<f32> = (0..d).map(|i| (i as f32 * 0.1).sin()).collect();
-            let grad_output: Vec<f32> =
-                (0..d).map(|i| (i as f32 * 0.2).cos()).collect();
+            let grad_output: Vec<f32> = (0..d).map(|i| (i as f32 * 0.2).cos()).collect();
 
             // Analytical gradients
             let (grad_a, grad_b) = lora.backward(&input, &grad_output);
@@ -308,18 +305,13 @@ mod tests {
                     a_plus[[i, j]] = original + eps;
                     lora.set_weights(a_plus, lora.weights_b());
                     let out_plus = lora.forward(&input);
-                    let f_plus: f32 =
-                        out_plus.iter().zip(&grad_output).map(|(o, g)| o * g).sum();
+                    let f_plus: f32 = out_plus.iter().zip(&grad_output).map(|(o, g)| o * g).sum();
 
                     let mut a_minus = lora.weights_a();
                     a_minus[[i, j]] = original - eps;
                     lora.set_weights(a_minus, lora.weights_b());
                     let out_minus = lora.forward(&input);
-                    let f_minus: f32 = out_minus
-                        .iter()
-                        .zip(&grad_output)
-                        .map(|(o, g)| o * g)
-                        .sum();
+                    let f_minus: f32 = out_minus.iter().zip(&grad_output).map(|(o, g)| o * g).sum();
 
                     // Restore
                     let mut a_restore = lora.weights_a();
@@ -345,18 +337,13 @@ mod tests {
                     b_plus[[i, j]] = original + eps;
                     lora.set_weights(lora.weights_a(), b_plus);
                     let out_plus = lora.forward(&input);
-                    let f_plus: f32 =
-                        out_plus.iter().zip(&grad_output).map(|(o, g)| o * g).sum();
+                    let f_plus: f32 = out_plus.iter().zip(&grad_output).map(|(o, g)| o * g).sum();
 
                     let mut b_minus = lora.weights_b();
                     b_minus[[i, j]] = original - eps;
                     lora.set_weights(lora.weights_a(), b_minus);
                     let out_minus = lora.forward(&input);
-                    let f_minus: f32 = out_minus
-                        .iter()
-                        .zip(&grad_output)
-                        .map(|(o, g)| o * g)
-                        .sum();
+                    let f_minus: f32 = out_minus.iter().zip(&grad_output).map(|(o, g)| o * g).sum();
 
                     // Restore
                     let mut b_restore = lora.weights_b();
@@ -384,12 +371,7 @@ mod tests {
         // NaN gradients
         let mut nan_grad = Array2::zeros((16, 4));
         nan_grad[[0, 0]] = f32::NAN;
-        lora.update_weights(
-            &nan_grad,
-            &Array2::zeros((4, 16)),
-            0.01,
-            0.16,
-        );
+        lora.update_weights(&nan_grad, &Array2::zeros((4, 16)), 0.01, 0.16);
         assert_eq!(
             lora.parameters_flat(),
             initial_params,
@@ -399,12 +381,7 @@ mod tests {
         // Inf gradients
         let mut inf_grad = Array2::zeros((4, 16));
         inf_grad[[0, 0]] = f32::INFINITY;
-        lora.update_weights(
-            &Array2::zeros((16, 4)),
-            &inf_grad,
-            0.01,
-            0.16,
-        );
+        lora.update_weights(&Array2::zeros((16, 4)), &inf_grad, 0.01, 0.16);
         assert_eq!(
             lora.parameters_flat(),
             initial_params,

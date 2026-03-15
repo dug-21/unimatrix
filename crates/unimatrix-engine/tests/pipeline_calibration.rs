@@ -138,7 +138,14 @@ fn test_weight_sensitivity() {
                 .map(|e| {
                     (
                         e.id,
-                        confidence_with_adjusted_weight(e, scenario.now, weight_idx, delta, 3.0, 3.0),
+                        confidence_with_adjusted_weight(
+                            e,
+                            scenario.now,
+                            weight_idx,
+                            delta,
+                            3.0,
+                            3.0,
+                        ),
                     )
                 })
                 .collect();
@@ -305,11 +312,13 @@ fn auto_vs_agent_spread() {
     let signals: &[(&str, u32, u32, u32, u64, u64)] = &[
         // (label, access_count, helpful_count, correction_count, last_accessed_at, created_at)
         ("zero", 0, 0, 0, 0, now),
-        ("mid",  5, 3, 1, now - 3600, now - 7200),
+        ("mid", 5, 3, 1, now - 3600, now - 7200),
         ("high", 50, 20, 1, now, now - 3600),
     ];
 
-    for (label, access_count, helpful_count, correction_count, last_accessed_at, created_at) in signals {
+    for (label, access_count, helpful_count, correction_count, last_accessed_at, created_at) in
+        signals
+    {
         let auto_profile = EntryProfile {
             label: "auto-active",
             status: Status::Active,
@@ -328,10 +337,10 @@ fn auto_vs_agent_spread() {
             ..auto_profile.clone()
         };
 
-        let auto_entry  = profile_to_entry_record(&auto_profile,  1, now);
+        let auto_entry = profile_to_entry_record(&auto_profile, 1, now);
         let agent_entry = profile_to_entry_record(&agent_profile, 2, now);
 
-        let conf_auto  = compute_confidence(&auto_entry,  now, 3.0, 3.0);
+        let conf_auto = compute_confidence(&auto_entry, now, 3.0, 3.0);
         let conf_agent = compute_confidence(&agent_entry, now, 3.0, 3.0);
 
         assert!(
@@ -407,7 +416,7 @@ fn test_cal_spread_synthetic_population() {
     }
 
     confidences.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let p5_idx  = (confidences.len() as f64 * 0.05) as usize;
+    let p5_idx = (confidences.len() as f64 * 0.05) as usize;
     let p95_idx = (confidences.len() as f64 * 0.95) as usize;
     let spread = confidences[p95_idx] - confidences[p5_idx];
 

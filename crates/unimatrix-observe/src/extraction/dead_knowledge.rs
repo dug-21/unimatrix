@@ -8,8 +8,8 @@ use std::collections::{HashMap, HashSet};
 use unimatrix_store::Store;
 use unimatrix_store::rusqlite;
 
-use crate::types::ObservationRecord;
 use super::{ExtractionRule, ProposedEntry};
+use crate::types::ObservationRecord;
 
 pub struct DeadKnowledgeRule;
 
@@ -173,7 +173,12 @@ mod tests {
     use super::*;
     use unimatrix_core::HookType;
 
-    fn make_obs(session_id: &str, ts: u64, tool: Option<&str>, snippet: Option<&str>) -> ObservationRecord {
+    fn make_obs(
+        session_id: &str,
+        ts: u64,
+        tool: Option<&str>,
+        snippet: Option<&str>,
+    ) -> ObservationRecord {
         ObservationRecord {
             ts,
             hook: HookType::PostToolUse,
@@ -253,7 +258,9 @@ mod tests {
         };
         let id = store.insert(entry).expect("insert");
         // Bump access_count via record_usage (batch API)
-        store.record_usage(&[id], &[id], &[], &[], &[], &[]).expect("record usage");
+        store
+            .record_usage(&[id], &[id], &[], &[], &[], &[])
+            .expect("record usage");
 
         // Create 6 sessions where recent ones don't access this entry
         let mut observations = Vec::new();
@@ -292,14 +299,20 @@ mod tests {
         };
         let id = store.insert(entry).expect("insert");
         // Bump access_count via record_usage (batch API)
-        store.record_usage(&[id], &[id], &[], &[], &[], &[]).expect("record usage");
+        store
+            .record_usage(&[id], &[id], &[], &[], &[], &[])
+            .expect("record usage");
 
         // Most recent session's snippet references this entry ID
         let mut observations = Vec::new();
         for i in 0..6 {
             let snippet = if i == 5 {
                 // Most recent session references the entry
-                Some(format!("Found entry with \"id\": {}", id).as_str().to_string())
+                Some(
+                    format!("Found entry with \"id\": {}", id)
+                        .as_str()
+                        .to_string(),
+                )
             } else {
                 Some("No results".to_string())
             };

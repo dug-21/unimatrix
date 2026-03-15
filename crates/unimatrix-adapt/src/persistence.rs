@@ -322,7 +322,8 @@ mod tests {
         );
 
         let state = make_test_state();
-        let (restored_gen, steps) = restore_state(state, &lora, &mut ewc, &mut prototypes, &config).unwrap();
+        let (restored_gen, steps) =
+            restore_state(state, &lora, &mut ewc, &mut prototypes, &config).unwrap();
 
         assert_eq!(restored_gen, 42);
         assert_eq!(steps, 100);

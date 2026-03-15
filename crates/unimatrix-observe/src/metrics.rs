@@ -193,10 +193,7 @@ fn compute_universal(
             for r in &pre_records {
                 *ts_counts.entry(r.ts).or_default() += 1;
             }
-            let parallel_count: u64 = ts_counts
-                .values()
-                .filter(|&&count| count > 1)
-                .sum::<u64>();
+            let parallel_count: u64 = ts_counts.values().filter(|&&count| count > 1).sum::<u64>();
             m.parallel_call_rate = parallel_count as f64 / total_pre as f64;
         }
     }
@@ -353,9 +350,7 @@ fn compute_phases(records: &[ObservationRecord]) -> BTreeMap<String, PhaseMetric
 /// Also accepts a plain `Value::String` as a fallback (useful in tests).
 fn extract_phase_name(input: &serde_json::Value) -> Option<String> {
     let s = match input {
-        serde_json::Value::Object(map) => {
-            map.get("subject")?.as_str()?
-        }
+        serde_json::Value::Object(map) => map.get("subject")?.as_str()?,
         serde_json::Value::String(s) => s.as_str(),
         _ => return None,
     };
@@ -583,10 +578,7 @@ mod tests {
 
     #[test]
     fn test_compute_phases_no_task_create() {
-        let records = vec![
-            make_pre(1000, "Read", "s1"),
-            make_pre(2000, "Write", "s1"),
-        ];
+        let records = vec![make_pre(1000, "Read", "s1"), make_pre(2000, "Write", "s1")];
 
         let phases = compute_phases(&records);
         assert!(phases.is_empty());
@@ -694,7 +686,13 @@ mod tests {
     fn test_search_miss_rate_half_misses() {
         let records = vec![
             make_post_with_snippet(1000, "Grep", "s1", 50, "{\"numFiles\": 0}"),
-            make_post_with_snippet(2000, "Grep", "s1", 50, "{\"numFiles\": 5, \"results\": [...]}"),
+            make_post_with_snippet(
+                2000,
+                "Grep",
+                "s1",
+                50,
+                "{\"numFiles\": 5, \"results\": [...]}",
+            ),
         ];
         let mv = compute_metric_vector(&records, &[], 0);
         assert!((mv.universal.search_miss_rate - 0.5).abs() < 0.001);
@@ -754,7 +752,7 @@ mod tests {
         let records = vec![
             make_post(1000, "Read", "s1", 2048), // Read response before any write
             make_post(2000, "Read", "s1", 1024), // Another read before write
-            make_pre(3000, "Edit", "s1"),          // First write/edit - stops counting
+            make_pre(3000, "Edit", "s1"),        // First write/edit - stops counting
             make_post(4000, "Read", "s1", 8192), // After write, not counted
         ];
         let mv = compute_metric_vector(&records, &[], 0);
@@ -791,7 +789,7 @@ mod tests {
         // Gap of 31 minutes between record 2 and 3
         let records = vec![
             make_pre(1_000_000, "Read", "s1"),
-            make_pre(1_060_000, "Read", "s1"),          // 1 min later
+            make_pre(1_060_000, "Read", "s1"), // 1 min later
             make_pre(1_060_000 + 1_860_000, "Read", "s1"), // 31 min gap
         ];
         let mv = compute_metric_vector(&records, &[], 0);
@@ -838,10 +836,7 @@ mod tests {
 
     #[test]
     fn test_parallel_call_rate_no_parallel() {
-        let records = vec![
-            make_pre(1000, "Read", "s1"),
-            make_pre(2000, "Write", "s1"),
-        ];
+        let records = vec![make_pre(1000, "Read", "s1"), make_pre(2000, "Write", "s1")];
         let mv = compute_metric_vector(&records, &[], 0);
         assert!((mv.universal.parallel_call_rate - 0.0).abs() < 0.001);
     }
@@ -877,10 +872,7 @@ mod tests {
 
     #[test]
     fn test_post_completion_work_pct_no_completion() {
-        let records = vec![
-            make_pre(1000, "Read", "s1"),
-            make_pre(2000, "Write", "s1"),
-        ];
+        let records = vec![make_pre(1000, "Read", "s1"), make_pre(2000, "Write", "s1")];
         let mv = compute_metric_vector(&records, &[], 0);
         assert!((mv.universal.post_completion_work_pct - 0.0).abs() < 0.001);
     }
@@ -896,14 +888,14 @@ mod tests {
                 "s1",
                 serde_json::json!({"taskId": "1", "status": "completed"}),
             ),
-            make_pre(3000, "Read", "s1"),      // after first completion
+            make_pre(3000, "Read", "s1"), // after first completion
             make_pre_with_input(
                 4000,
                 "TaskUpdate",
                 "s1",
                 serde_json::json!({"taskId": "2", "status": "completed"}),
             ),
-            make_pre(5000, "Read", "s1"),      // after last completion
+            make_pre(5000, "Read", "s1"), // after last completion
         ];
         let mv = compute_metric_vector(&records, &[], 0);
         // 1 record after last completion / 5 total * 100 = 20.0

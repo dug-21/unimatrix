@@ -7,9 +7,9 @@ use std::collections::{HashMap, HashSet};
 
 use unimatrix_store::Store;
 
+use super::{ExtractionRule, ProposedEntry};
 use crate::detection;
 use crate::types::ObservationRecord;
-use super::{ExtractionRule, ProposedEntry};
 
 pub struct RecurringFrictionRule;
 
@@ -99,9 +99,7 @@ mod tests {
                 tool: Some("Bash".to_string()),
                 input: Some(serde_json::json!({"command": "cargo test"})),
                 response_size: Some(100),
-                response_snippet: Some(
-                    "The user denied the tool call".to_string(),
-                ),
+                response_snippet: Some("The user denied the tool call".to_string()),
             })
             .collect()
     }

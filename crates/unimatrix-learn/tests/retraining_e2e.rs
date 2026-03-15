@@ -2,13 +2,13 @@
 
 use std::sync::{Arc, Mutex};
 
+use unimatrix_learn::LearnConfig;
 use unimatrix_learn::models::classifier::SignalClassifier;
 use unimatrix_learn::models::digest::SignalDigest;
 use unimatrix_learn::models::traits::NeuralModel;
 use unimatrix_learn::registry::{ModelRegistry, ModelSlot};
 use unimatrix_learn::service::TrainingService;
 use unimatrix_learn::training::FeedbackSignal;
-use unimatrix_learn::LearnConfig;
 
 #[test]
 fn end_to_end_feedback_retrain_shadow() {

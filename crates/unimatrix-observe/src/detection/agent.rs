@@ -9,7 +9,7 @@ use crate::types::{
     EvidenceRecord, HookType, HotspotCategory, HotspotFinding, ObservationRecord, Severity,
 };
 
-use super::{input_to_command_string, input_to_file_path, truncate, DetectionRule};
+use super::{DetectionRule, input_to_command_string, input_to_file_path, truncate};
 
 // -- Rule 1: ContextLoadRule (FR-01.1) --
 
@@ -103,10 +103,7 @@ impl DetectionRule for LifespanRule {
                         .push((record.ts, agent_type));
                 }
                 HookType::SubagentStop => {
-                    stops
-                        .entry(&record.session_id)
-                        .or_default()
-                        .push(record.ts);
+                    stops.entry(&record.session_id).or_default().push(record.ts);
                 }
                 _ => {}
             }
@@ -245,8 +242,10 @@ impl DetectionRule for RereadRateRule {
             }
         }
 
-        let reread_files: Vec<(&String, &u64)> =
-            read_counts.iter().filter(|(_, count)| **count > 1).collect();
+        let reread_files: Vec<(&String, &u64)> = read_counts
+            .iter()
+            .filter(|(_, count)| **count > 1)
+            .collect();
         let reread_count = reread_files.len() as f64;
 
         if reread_count > REREAD_THRESHOLD {
@@ -416,8 +415,8 @@ impl DetectionRule for EditBloatRule {
         let mut evidence = Vec::new();
 
         for record in records {
-            let is_edit_post = record.tool.as_deref() == Some("Edit")
-                && record.hook == HookType::PostToolUse;
+            let is_edit_post =
+                record.tool.as_deref() == Some("Edit") && record.hook == HookType::PostToolUse;
             if let (true, Some(size)) = (is_edit_post, record.response_size) {
                 let kb = size as f64 / 1024.0;
                 edit_sizes.push(kb);
@@ -573,8 +572,8 @@ mod tests {
     fn test_context_load_fires_above_threshold() {
         // 200 KB of reads before any write
         let records = vec![
-            make_post_read(1000, 102_400, "/tmp/a.rs"),   // 100 KB
-            make_post_read(2000, 102_400, "/tmp/b.rs"),   // 100 KB = 200 KB total
+            make_post_read(1000, 102_400, "/tmp/a.rs"), // 100 KB
+            make_post_read(2000, 102_400, "/tmp/b.rs"), // 100 KB = 200 KB total
             make_post_write(3000),
         ];
         let rule = ContextLoadRule;
@@ -587,7 +586,7 @@ mod tests {
     #[test]
     fn test_context_load_silent_below_threshold() {
         let records = vec![
-            make_post_read(1000, 51_200, "/tmp/a.rs"),    // 50 KB
+            make_post_read(1000, 51_200, "/tmp/a.rs"), // 50 KB
             make_post_write(2000),
         ];
         let rule = ContextLoadRule;
@@ -605,9 +604,9 @@ mod tests {
     fn test_context_load_stops_at_first_write() {
         // 50 KB before write, 200 KB after -- should only count the first 50 KB
         let records = vec![
-            make_post_read(1000, 51_200, "/tmp/a.rs"),    // 50 KB
+            make_post_read(1000, 51_200, "/tmp/a.rs"), // 50 KB
             make_post_write(2000),
-            make_post_read(3000, 204_800, "/tmp/b.rs"),   // 200 KB
+            make_post_read(3000, 204_800, "/tmp/b.rs"), // 200 KB
         ];
         let rule = ContextLoadRule;
         let findings = rule.detect(&records);
@@ -783,9 +782,8 @@ mod tests {
 
     #[test]
     fn test_compile_cycles_silent_below_threshold() {
-        let records: Vec<ObservationRecord> = (0..4)
-            .map(|i| make_bash(i * 1000, "cargo build"))
-            .collect();
+        let records: Vec<ObservationRecord> =
+            (0..4).map(|i| make_bash(i * 1000, "cargo build")).collect();
         let rule = CompileCyclesRule;
         let findings = rule.detect(&records);
         assert!(findings.is_empty());
@@ -831,8 +829,8 @@ mod tests {
     #[test]
     fn test_edit_bloat_fires_above_threshold() {
         let records = vec![
-            make_post_edit(1000, 60_000),  // ~58 KB
-            make_post_edit(2000, 70_000),  // ~68 KB
+            make_post_edit(1000, 60_000), // ~58 KB
+            make_post_edit(2000, 70_000), // ~68 KB
         ];
         let rule = EditBloatRule;
         let findings = rule.detect(&records);
@@ -843,8 +841,8 @@ mod tests {
     #[test]
     fn test_edit_bloat_silent_below_threshold() {
         let records = vec![
-            make_post_edit(1000, 10_000),  // ~10 KB
-            make_post_edit(2000, 20_000),  // ~20 KB
+            make_post_edit(1000, 10_000), // ~10 KB
+            make_post_edit(2000, 20_000), // ~20 KB
         ];
         let rule = EditBloatRule;
         let findings = rule.detect(&records);

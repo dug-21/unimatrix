@@ -117,9 +117,7 @@ impl LabelGenerator {
                 )]
             }
             FeedbackSignal::UnhelpfulVote {
-                entry_id,
-                digest,
-                ..
+                entry_id, digest, ..
             } => {
                 vec![sample(
                     "signal_classifier",
@@ -234,9 +232,7 @@ impl LabelGenerator {
                         OutcomeResult::Success => {
                             TrainingTarget::Classification(one_hot_for_category(cat))
                         }
-                        OutcomeResult::Rework => {
-                            TrainingTarget::Classification(NOISE_ONE_HOT)
-                        }
+                        OutcomeResult::Rework => TrainingTarget::Classification(NOISE_ONE_HOT),
                     };
                     sample(
                         "signal_classifier",

@@ -321,10 +321,7 @@ mod tests {
     #[test]
     fn test_input_to_file_path_object() {
         let input = serde_json::json!({"file_path": "/tmp/test.rs"});
-        assert_eq!(
-            input_to_file_path(&input),
-            Some("/tmp/test.rs".to_string())
-        );
+        assert_eq!(input_to_file_path(&input), Some("/tmp/test.rs".to_string()));
     }
 
     #[test]
