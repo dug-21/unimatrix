@@ -76,6 +76,43 @@ def server(tmp_path):
             logger.debug("Server stderr for %s:\n%s", tmp_path, stderr)
 
 
+@pytest.fixture(scope="function")
+def fast_tick_server(tmp_path):
+    """Fresh server per test with a 30-second tick interval (nan-006).
+
+    Identical to the `server` fixture except UNIMATRIX_TICK_INTERVAL_SECS=30
+    is passed to the subprocess, enabling time-extended availability tests
+    without waiting 15 minutes for the production tick.
+
+    Use this fixture for @pytest.mark.availability tests that exercise
+    tick liveness, sustained operation, and mutex pressure.
+    """
+    binary = get_binary_path()
+    client = UnimatrixClient(
+        binary,
+        project_dir=str(tmp_path),
+        extra_env={"UNIMATRIX_TICK_INTERVAL_SECS": "30"},
+    )
+
+    try:
+        client.initialize()
+        client.wait_until_ready()
+    except Exception as e:
+        client.shutdown()
+        pytest.fail(f"Fast-tick server initialization failed: {e}")
+
+    yield client
+
+    try:
+        client.shutdown()
+    except Exception as e:
+        logger.warning("Fast-tick server shutdown error: %s", e)
+    finally:
+        stderr = client.get_stderr()
+        if stderr:
+            logger.debug("Fast-tick server stderr for %s:\n%s", tmp_path, stderr)
+
+
 @pytest.fixture(scope="module")
 def shared_server(tmp_path_factory):
     """One server per test module (for volume/lifecycle suites).
