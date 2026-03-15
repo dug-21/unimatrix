@@ -19,6 +19,7 @@ use crate::infra::coherence;
 use crate::infra::contradiction;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::session::SessionRegistry;
+use crate::infra::timeout::{MCP_HANDLER_TIMEOUT, spawn_blocking_with_timeout};
 use crate::mcp::response::status::{CoAccessClusterEntry, StatusReport};
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
@@ -203,9 +204,10 @@ impl StatusService {
         category_filter: Option<String>,
         check_embeddings: bool,
     ) -> Result<(StatusReport, Vec<EntryRecord>), ServiceError> {
-        // Phase 1: SQL queries (spawn_blocking)
+        // Phase 1: SQL queries (spawn_blocking_with_timeout #277)
         let store = Arc::clone(&self.store);
-        let report_result = tokio::task::spawn_blocking(
+        let report_result = spawn_blocking_with_timeout(
+            MCP_HANDLER_TIMEOUT,
             move || -> Result<(StatusReport, Vec<EntryRecord>), crate::error::ServerError> {
                 let conn = store.lock_conn();
 
@@ -411,7 +413,13 @@ impl StatusService {
             },
         )
         .await
-        .map_err(|e| ServiceError::Core(CoreError::JoinError(e.to_string())))?
+        .map_err(|e| {
+            let core_err: CoreError = match e {
+                crate::error::ServerError::Core(ce) => ce,
+                other => CoreError::JoinError(other.to_string()),
+            };
+            ServiceError::Core(core_err)
+        })?
         .map_err(|e| {
             let core_err: CoreError = match e {
                 crate::error::ServerError::Core(ce) => ce,
@@ -429,7 +437,7 @@ impl StatusService {
             let adapter_for_scan = Arc::clone(&adapter);
             let config_for_scan = scan_config.clone();
 
-            match tokio::task::spawn_blocking(move || {
+            match spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
                 let vs = VectorAdapter::new(vi_for_scan);
                 contradiction::scan_contradictions(
                     &store_for_scan,
@@ -446,7 +454,7 @@ impl StatusService {
                     report.contradiction_scan_performed = true;
                 }
                 _ => {
-                    // Scan failed -- graceful degradation
+                    // Scan failed or timed out -- graceful degradation
                 }
             }
 
@@ -457,7 +465,7 @@ impl StatusService {
                 let adapter_for_embed = Arc::clone(&adapter);
                 let config_for_embed = contradiction::ContradictionConfig::default();
 
-                match tokio::task::spawn_blocking(move || {
+                match spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
                     let vs = VectorAdapter::new(vi_for_embed);
                     contradiction::check_embedding_consistency(
                         &store_for_embed,
@@ -473,7 +481,7 @@ impl StatusService {
                         report.embedding_check_performed = true;
                     }
                     _ => {
-                        // Check failed -- graceful degradation
+                        // Check failed or timed out -- graceful degradation
                     }
                 }
             }
@@ -488,7 +496,7 @@ impl StatusService {
             let staleness_cutoff = now.saturating_sub(crate::coaccess::CO_ACCESS_STALENESS_SECONDS);
 
             let store_for_coaccess = Arc::clone(&self.store);
-            let co_access_result = tokio::task::spawn_blocking(move || {
+            let co_access_result = spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
                 let (total, active) = store_for_coaccess.co_access_stats(staleness_cutoff)?;
                 let top_pairs = store_for_coaccess.top_co_access_pairs(5, staleness_cutoff)?;
 
@@ -526,7 +534,7 @@ impl StatusService {
                     tracing::warn!("co-access stats failed: {e}");
                 }
                 Err(e) => {
-                    tracing::warn!("co-access stats task failed: {e}");
+                    tracing::warn!("co-access stats task timed out or panicked: {e}");
                 }
             }
         }
@@ -629,14 +637,14 @@ impl StatusService {
 
         // Phase 6: Observation stats from SQL (col-012)
         let store_for_obs = Arc::clone(&self.store);
-        let obs_stats = tokio::task::spawn_blocking(move || {
+        let obs_stats = spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
             use unimatrix_observe::ObservationSource;
             let source = crate::services::observation::SqlObservationSource::new(store_for_obs);
             source.observation_stats()
         })
         .await
-        .unwrap_or_else(|join_err| {
-            tracing::error!("spawn_blocking panicked in observation stats: {join_err}");
+        .unwrap_or_else(|e| {
+            tracing::error!("observation stats task timed out or panicked: {e}");
             Ok(unimatrix_observe::ObservationStats {
                 record_count: 0,
                 session_count: 0,
@@ -657,13 +665,13 @@ impl StatusService {
         report.observation_approaching_cleanup = obs_stats.approaching_cleanup;
 
         // Phase 7: Retrospected feature count
-        let retrospected = tokio::task::spawn_blocking({
+        let retrospected = spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, {
             let store = Arc::clone(&self.store);
             move || store.list_all_metrics()
         })
         .await
-        .unwrap_or_else(|join_err| {
-            tracing::error!("spawn_blocking panicked in metric vectors: {join_err}");
+        .unwrap_or_else(|e| {
+            tracing::error!("metric vectors task timed out or panicked: {e}");
             Ok(vec![])
         })
         .unwrap_or_else(|_| vec![]);
@@ -671,7 +679,7 @@ impl StatusService {
 
         // Phase 8: Effectiveness analysis (crt-018)
         let store_for_eff = Arc::clone(&self.store);
-        let effectiveness = match tokio::task::spawn_blocking(move || {
+        let effectiveness = match spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
             let aggregates = store_for_eff.compute_effectiveness_aggregates()?;
             let entry_meta = store_for_eff.load_entry_classification_meta()?;
             Ok::<_, StoreError>((aggregates, entry_meta))
@@ -740,8 +748,8 @@ impl StatusService {
                 tracing::warn!("Effectiveness query failed: {e}");
                 None
             }
-            Err(join_err) => {
-                tracing::warn!("Effectiveness task panicked: {join_err}");
+            Err(e) => {
+                tracing::warn!("Effectiveness task timed out or panicked: {e}");
                 None
             }
         };

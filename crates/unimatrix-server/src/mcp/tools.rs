@@ -1349,10 +1349,13 @@ impl UnimatrixServer {
             let session_records = {
                 let store_c = Arc::clone(&store);
                 let fc = feature_cycle.clone();
-                tokio::task::spawn_blocking(move || store_c.scan_sessions_by_feature(&fc))
-                    .await
-                    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
-                    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
+                crate::infra::timeout::spawn_blocking_with_timeout(
+                    crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+                    move || store_c.scan_sessions_by_feature(&fc),
+                )
+                .await
+                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
+                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
             };
 
             // Build session_id -> outcome map
@@ -1408,12 +1411,16 @@ impl UnimatrixServer {
             match (|| async {
                 let store_for_discover = Arc::clone(&store);
                 let fc_for_discover = feature_cycle.clone();
-                let discovered_ids = tokio::task::spawn_blocking(move || {
-                    use unimatrix_observe::ObservationSource;
-                    let source =
-                        crate::services::observation::SqlObservationSource::new(store_for_discover);
-                    source.discover_sessions_for_feature(&fc_for_discover)
-                })
+                let discovered_ids = crate::infra::timeout::spawn_blocking_with_timeout(
+                    crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+                    move || {
+                        use unimatrix_observe::ObservationSource;
+                        let source = crate::services::observation::SqlObservationSource::new(
+                            store_for_discover,
+                        );
+                        source.discover_sessions_for_feature(&fc_for_discover)
+                    },
+                )
                 .await
                 .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
                 .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
@@ -1444,42 +1451,47 @@ impl UnimatrixServer {
                 let total_duration_secs = report.metrics.universal.total_duration_secs as i64;
                 let store_for_counters = Arc::clone(&store);
                 let topic_for_counters = feature_cycle.clone();
-                match tokio::task::spawn_blocking(move || {
-                    // Ensure record exists before setting counters
-                    if store_for_counters
-                        .get_topic_delivery(&topic_for_counters)?
-                        .is_none()
-                    {
-                        let now = std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_secs();
-                        store_for_counters.upsert_topic_delivery(
-                            &unimatrix_store::TopicDeliveryRecord {
-                                topic: topic_for_counters.clone(),
-                                created_at: now,
-                                completed_at: None,
-                                status: "active".to_string(),
-                                github_issue: None,
-                                total_sessions: 0,
-                                total_tool_calls: 0,
-                                total_duration_secs: 0,
-                                phases_completed: None,
-                            },
-                        )?;
-                    }
-                    store_for_counters.set_topic_delivery_counters(
-                        &topic_for_counters,
-                        total_sessions,
-                        total_tool_calls,
-                        total_duration_secs,
-                    )
-                })
+                match crate::infra::timeout::spawn_blocking_with_timeout(
+                    crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+                    move || {
+                        // Ensure record exists before setting counters
+                        if store_for_counters
+                            .get_topic_delivery(&topic_for_counters)?
+                            .is_none()
+                        {
+                            let now = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs();
+                            store_for_counters.upsert_topic_delivery(
+                                &unimatrix_store::TopicDeliveryRecord {
+                                    topic: topic_for_counters.clone(),
+                                    created_at: now,
+                                    completed_at: None,
+                                    status: "active".to_string(),
+                                    github_issue: None,
+                                    total_sessions: 0,
+                                    total_tool_calls: 0,
+                                    total_duration_secs: 0,
+                                    phases_completed: None,
+                                },
+                            )?;
+                        }
+                        store_for_counters.set_topic_delivery_counters(
+                            &topic_for_counters,
+                            total_sessions,
+                            total_tool_calls,
+                            total_duration_secs,
+                        )
+                    },
+                )
                 .await
                 {
                     Ok(Ok(())) => {}
                     Ok(Err(e)) => tracing::warn!("col-020: counter update failed: {e}"),
-                    Err(e) => tracing::warn!("col-020: counter update task failed: {e}"),
+                    Err(e) => {
+                        tracing::warn!("col-020: counter update task timed out or panicked: {e}")
+                    }
                 }
             }
 
@@ -1662,7 +1674,8 @@ async fn write_lesson_learned(
     let existing = {
         let store = Arc::clone(&server.store);
         let topic_clone = topic.clone();
-        tokio::task::spawn_blocking(
+        crate::infra::timeout::spawn_blocking_with_timeout(
+            crate::infra::timeout::MCP_HANDLER_TIMEOUT,
             move || -> Result<Vec<unimatrix_core::EntryRecord>, crate::error::ServerError> {
                 let filter = unimatrix_core::QueryFilter {
                     topic: Some(topic_clone),
@@ -1689,9 +1702,10 @@ async fn write_lesson_learned(
         Ok(adapter) => {
             let title_clone = title.clone();
             let content_clone = content.clone();
-            match tokio::task::spawn_blocking(move || {
-                adapter.embed_entry(&title_clone, &content_clone)
-            })
+            match crate::infra::timeout::spawn_blocking_with_timeout(
+                crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+                move || adapter.embed_entry(&title_clone, &content_clone),
+            )
             .await
             {
                 Ok(Ok(raw)) => {
@@ -1712,7 +1726,7 @@ async fn write_lesson_learned(
                 }
                 Err(e) => {
                     tracing::warn!(
-                        "lesson-learned embedding task panicked for {}: {}",
+                        "lesson-learned embedding task timed out or panicked for {}: {}",
                         feature_cycle,
                         e
                     );
@@ -1830,11 +1844,15 @@ async fn compute_knowledge_reuse_for_sessions(
     // Load query_log
     let store_ql = Arc::clone(store);
     let ids_ql: Vec<String> = session_id_list.clone();
-    let query_logs = tokio::task::spawn_blocking(move || {
-        let refs: Vec<&str> = ids_ql.iter().map(|s| s.as_str()).collect();
-        store_ql.scan_query_log_by_sessions(&refs)
-    })
-    .await??;
+    let query_logs = crate::infra::timeout::spawn_blocking_with_timeout(
+        crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+        move || {
+            let refs: Vec<&str> = ids_ql.iter().map(|s| s.as_str()).collect();
+            store_ql.scan_query_log_by_sessions(&refs)
+        },
+    )
+    .await
+    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })??;
 
     tracing::debug!(
         "col-020b: knowledge reuse data flow: {} query_log records loaded",
@@ -1844,11 +1862,15 @@ async fn compute_knowledge_reuse_for_sessions(
     // Load injection_log
     let store_il = Arc::clone(store);
     let ids_il: Vec<String> = session_id_list.clone();
-    let injection_logs = tokio::task::spawn_blocking(move || {
-        let refs: Vec<&str> = ids_il.iter().map(|s| s.as_str()).collect();
-        store_il.scan_injection_log_by_sessions(&refs)
-    })
-    .await??;
+    let injection_logs = crate::infra::timeout::spawn_blocking_with_timeout(
+        crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+        move || {
+            let refs: Vec<&str> = ids_il.iter().map(|s| s.as_str()).collect();
+            store_il.scan_injection_log_by_sessions(&refs)
+        },
+    )
+    .await
+    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })??;
 
     tracing::debug!(
         "col-020b: knowledge reuse data flow: {} injection_log records loaded",
@@ -1857,8 +1879,12 @@ async fn compute_knowledge_reuse_for_sessions(
 
     // Load active category counts
     let store_ac = Arc::clone(store);
-    let active_cats =
-        tokio::task::spawn_blocking(move || store_ac.count_active_entries_by_category()).await??;
+    let active_cats = crate::infra::timeout::spawn_blocking_with_timeout(
+        crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+        move || store_ac.count_active_entries_by_category(),
+    )
+    .await
+    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })??;
 
     tracing::debug!(
         "col-020b: knowledge reuse data flow: {} active categories",

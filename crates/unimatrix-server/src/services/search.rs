@@ -22,6 +22,7 @@ use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
 use crate::confidence::{cosine_similarity, rerank_score};
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::timeout::{MCP_HANDLER_TIMEOUT, spawn_blocking_with_timeout};
 use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::effectiveness::{EffectivenessSnapshot, EffectivenessStateHandle};
 use crate::services::gateway::SecurityGateway;
@@ -219,9 +220,9 @@ impl SearchService {
             .await
             .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?;
 
-        // Step 3: Embed query via spawn_blocking
+        // Step 3: Embed query via spawn_blocking_with_timeout (#277)
         let query = params.query.clone();
-        let raw_embedding: Vec<f32> = tokio::task::spawn_blocking({
+        let raw_embedding: Vec<f32> = spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, {
             let adapter = Arc::clone(&adapter);
             move || adapter.embed_entry("", &query)
         })
@@ -458,7 +459,7 @@ impl SearchService {
                 .collect();
 
             let store = Arc::clone(&self.store);
-            let boost_map = tokio::task::spawn_blocking(move || {
+            let boost_map = spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
                 compute_search_boost(
                     &anchor_ids,
                     &result_ids,
