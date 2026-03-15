@@ -5,6 +5,7 @@ Each test exercises a complete flow, not isolated operations.
 """
 
 import time
+import threading
 
 import pytest
 from harness.assertions import (
@@ -861,3 +862,76 @@ def test_search_deprecated_entry_visible_with_topology_penalty(server):
             f"ORPHAN_PENALTY (0.75) must reduce B's score below active entries. "
             f"Result order: {result_ids}"
         )
+
+
+# === GH #264 fix: concurrent search stability ================================
+
+
+@pytest.mark.smoke
+def test_concurrent_search_stability(server):
+    """L-GH264: 8 rapid context_search calls all complete within 10 seconds.
+
+    Regression test for GH #264: crt-014 added 4x Store::query_by_status() calls
+    inside spawn_blocking on every context_search.  Under concurrent load this
+    serialised all searches on the Store Mutex and exhausted the tokio blocking
+    thread pool, causing MCP connection drops.
+
+    The fix caches the entry snapshot in SupersessionState (background tick,
+    15-min rebuild) so the search hot path performs zero store I/O for graph
+    construction.
+
+    This test fires 8 search calls rapidly in parallel threads and asserts:
+    - All 8 calls return tool-level success (no error response).
+    - Total wall time is under 10 seconds (proves no pool exhaustion).
+    """
+    # Pre-populate entries to ensure search has work to do
+    for i in range(5):
+        server.context_store(
+            f"concurrent search stability entry {i} unique x9r",
+            "testing",
+            "convention",
+            agent_id="human",
+        )
+
+    results = [None] * 8
+    errors = []
+    lock = threading.Lock()
+
+    def run_search(idx):
+        try:
+            resp = server.context_search(
+                "concurrent search stability unique x9r",
+                format="json",
+                agent_id="human",
+            )
+            with lock:
+                results[idx] = resp
+        except Exception as exc:
+            with lock:
+                errors.append(f"search {idx}: {exc}")
+
+    # Fire 8 threads — the MCP client serialises over stdio, but this validates
+    # that all calls complete without timeout or server crash under rapid fire.
+    start = time.monotonic()
+    threads = [threading.Thread(target=run_search, args=(i,)) for i in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=10.0)
+    elapsed = time.monotonic() - start
+
+    assert not errors, f"Search calls raised exceptions: {errors}"
+    assert all(r is not None for r in results), (
+        "All 8 search threads must complete within 10-second join timeout. "
+        f"Results: {[r is not None for r in results]}"
+    )
+    assert elapsed < 10.0, (
+        f"8 concurrent searches took {elapsed:.1f}s — exceeds 10s budget. "
+        "This suggests blocking thread pool exhaustion (GH #264 regression)."
+    )
+
+    # Verify each result is a tool-level success
+    for i, resp in enumerate(results):
+        if resp is None:
+            continue  # already caught above
+        assert_tool_success(resp)

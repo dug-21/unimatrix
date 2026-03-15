@@ -27,6 +27,7 @@ pub(crate) mod search;
 pub(crate) mod status;
 pub(crate) mod store_correct;
 pub(crate) mod store_ops;
+pub(crate) mod supersession;
 pub(crate) mod usage;
 
 pub(crate) use briefing::BriefingService;
@@ -37,6 +38,7 @@ pub(crate) use gateway::{RateLimitConfig, SecurityGateway};
 pub(crate) use search::{RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
 pub(crate) use store_ops::StoreService;
+pub use supersession::{SupersessionState, SupersessionStateHandle};
 pub(crate) use usage::UsageService;
 
 // ---------------------------------------------------------------------------
@@ -229,6 +231,11 @@ pub struct ServiceLayer {
     /// BriefingService, and the background tick. Held here for external access
     /// via `effectiveness_state_handle()` (mirrors `confidence_state_handle()`).
     effectiveness_state: EffectivenessStateHandle,
+    /// GH #264 fix: supersession entry snapshot cache shared with SearchService
+    /// and the background tick. Eliminates 4x Store::query_by_status() calls
+    /// from the search hot path. Held here for external access via
+    /// `supersession_state_handle()` (mirrors `effectiveness_state_handle()`).
+    supersession_state: SupersessionStateHandle,
 }
 
 impl ServiceLayer {
@@ -249,6 +256,16 @@ impl ServiceLayer {
     /// Mirrors `confidence_state_handle()` (crt-018b).
     pub fn effectiveness_state_handle(&self) -> EffectivenessStateHandle {
         Arc::clone(&self.effectiveness_state)
+    }
+
+    /// Return a clone of the `SupersessionStateHandle` owned by this layer.
+    ///
+    /// Used by the binary crate (`main.rs`) to pass the shared handle to
+    /// `spawn_background_tick` so the background tick rebuilds the same
+    /// `Arc<RwLock<SupersessionState>>` that `SearchService` reads from.
+    /// Mirrors `effectiveness_state_handle()` (GH #264 fix).
+    pub fn supersession_state_handle(&self) -> SupersessionStateHandle {
+        Arc::clone(&self.supersession_state)
     }
 
     pub fn new(
@@ -300,6 +317,10 @@ impl ServiceLayer {
         // share the same Arc<RwLock<EffectivenessState>> (mirrors confidence pattern).
         let effectiveness_state = EffectivenessState::new_handle();
 
+        // GH #264 fix: create supersession state handle once; clone into SearchService
+        // and the background tick so the tick rebuilds the snapshot SearchService reads.
+        let supersession_state = SupersessionState::new_handle();
+
         let search = SearchService::new(
             Arc::clone(&store),
             Arc::clone(&vector_store),
@@ -309,6 +330,7 @@ impl ServiceLayer {
             Arc::clone(&gateway),
             Arc::clone(&confidence_state_handle),
             Arc::clone(&effectiveness_state),
+            Arc::clone(&supersession_state),
         );
 
         let store_ops = StoreService::new(
@@ -353,6 +375,7 @@ impl ServiceLayer {
             status,
             usage,
             effectiveness_state, // crt-018b: held for external access via effectiveness_state_handle()
+            supersession_state, // GH #264: held for external access via supersession_state_handle()
         }
     }
 }
