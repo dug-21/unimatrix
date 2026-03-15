@@ -53,6 +53,14 @@ const AUTO_QUARANTINE_CYCLES_MAX: u32 = 1000;
 /// Default tick interval: 15 minutes.
 const DEFAULT_TICK_INTERVAL_SECS: u64 = 900;
 
+/// Maximum observations fetched per extraction tick.
+///
+/// Bounds the `Mutex<Connection>` hold time in `extraction_tick()`. The
+/// watermark advances by exactly this many rows; any remainder is processed
+/// on the next tick. Smaller values reduce mutex contention against concurrent
+/// MCP request handlers. (#279)
+const EXTRACTION_BATCH_SIZE: i64 = 1000;
+
 /// Parse a tick interval string as a `u64`, returning the default on any error.
 ///
 /// Extracted for testability — avoids unsafe env var manipulation in tests.
@@ -854,34 +862,35 @@ fn parse_hook_type(s: &str) -> HookType {
     }
 }
 
-/// Run extraction pipeline on new observations since last watermark.
-#[allow(clippy::too_many_arguments)]
-async fn extraction_tick(
-    store: &Arc<Store>,
-    vector_index: &Arc<VectorIndex>,
-    embed_service: &Arc<EmbedServiceHandle>,
-    ctx: &mut ExtractionContext,
-    neural_enhancer: Option<&NeuralEnhancer>,
-    shadow_evaluator: Option<&mut ShadowEvaluator>,
-) -> Result<ExtractionStats, ServiceError> {
-    let store_clone = Arc::clone(store);
-    let watermark = ctx.last_watermark;
-
-    // 1. Query new observations since watermark (spawn_blocking)
-    let (observations, new_watermark) = tokio::task::spawn_blocking(move || {
-        let conn = store_clone.lock_conn();
-        let mut stmt = conn.prepare(
+/// Fetch the next batch of observations since `watermark`.
+///
+/// Returns `(records, new_watermark)` where `new_watermark` is the maximum
+/// observation `id` seen in the batch (unchanged from `watermark` if empty).
+/// The batch is bounded to `EXTRACTION_BATCH_SIZE` rows so that the
+/// `Mutex<Connection>` hold time is bounded regardless of backlog size. (#279)
+///
+/// Extracted from `extraction_tick` for unit testability of the batch/watermark
+/// logic without requiring the full embedding pipeline.
+fn fetch_observation_batch(
+    store: &Store,
+    watermark: u64,
+) -> Result<(Vec<ObservationRecord>, u64), ServiceError> {
+    let conn = store.lock_conn();
+    let mut stmt = conn
+        .prepare(
             "SELECT id, ts_millis, hook, session_id, tool, input, response_size, response_snippet
-             FROM observations WHERE id > ?1 ORDER BY id ASC LIMIT 10000",
+             FROM observations WHERE id > ?1 ORDER BY id ASC LIMIT ?2",
         )
-        .map_err(|e| ServiceError::Core(CoreError::Store(
-            unimatrix_store::StoreError::Sqlite(e),
-        )))?;
+        .map_err(|e| {
+            ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Sqlite(e)))
+        })?;
 
-        let mut records = Vec::new();
-        let mut max_id = watermark;
-        let rows = stmt
-            .query_map(rusqlite::params![watermark as i64], |row| {
+    let mut records = Vec::new();
+    let mut max_id = watermark;
+    let rows = stmt
+        .query_map(
+            rusqlite::params![watermark as i64, EXTRACTION_BATCH_SIZE],
+            |row| {
                 let id: i64 = row.get(0)?;
                 let ts: i64 = row.get(1)?;
                 let hook_str: String = row.get(2)?;
@@ -900,39 +909,58 @@ async fn extraction_tick(
                     response_size,
                     snippet,
                 ))
-            })
-            .map_err(|e| {
+            },
+        )
+        .map_err(|e| {
+            ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Sqlite(e)))
+        })?;
+
+    for row in rows {
+        let (id, ts, hook_str, session_id, tool, input_str, response_size, snippet) =
+            row.map_err(|e| {
                 ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Sqlite(e)))
             })?;
-
-        for row in rows {
-            let (id, ts, hook_str, session_id, tool, input_str, response_size, snippet) = row
-                .map_err(|e| {
-                    ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Sqlite(e)))
-                })?;
-            if id as u64 > max_id {
-                max_id = id as u64;
-            }
-            let hook = parse_hook_type(&hook_str);
-            let input = match (&hook, input_str) {
-                (HookType::SubagentStart, Some(s)) => Some(serde_json::Value::String(s)),
-                (_, Some(s)) => serde_json::from_str(&s).ok(),
-                (_, None) => None,
-            };
-            records.push(ObservationRecord {
-                ts: ts as u64,
-                hook,
-                session_id,
-                tool,
-                input,
-                response_size: response_size.map(|s| s as u64),
-                response_snippet: snippet,
-            });
+        if id as u64 > max_id {
+            max_id = id as u64;
         }
-        Ok::<(Vec<ObservationRecord>, u64), ServiceError>((records, max_id))
-    })
-    .await
-    .map_err(|e| ServiceError::Core(CoreError::JoinError(e.to_string())))??;
+        let hook = parse_hook_type(&hook_str);
+        let input = match (&hook, input_str) {
+            (HookType::SubagentStart, Some(s)) => Some(serde_json::Value::String(s)),
+            (_, Some(s)) => serde_json::from_str(&s).ok(),
+            (_, None) => None,
+        };
+        records.push(ObservationRecord {
+            ts: ts as u64,
+            hook,
+            session_id,
+            tool,
+            input,
+            response_size: response_size.map(|s| s as u64),
+            response_snippet: snippet,
+        });
+    }
+    Ok((records, max_id))
+}
+
+/// Run extraction pipeline on new observations since last watermark.
+#[allow(clippy::too_many_arguments)]
+async fn extraction_tick(
+    store: &Arc<Store>,
+    vector_index: &Arc<VectorIndex>,
+    embed_service: &Arc<EmbedServiceHandle>,
+    ctx: &mut ExtractionContext,
+    neural_enhancer: Option<&NeuralEnhancer>,
+    shadow_evaluator: Option<&mut ShadowEvaluator>,
+) -> Result<ExtractionStats, ServiceError> {
+    let store_clone = Arc::clone(store);
+    let watermark = ctx.last_watermark;
+
+    // 1. Query new observations since watermark (spawn_blocking).
+    // Bounded to EXTRACTION_BATCH_SIZE rows to cap Mutex<Connection> hold time. (#279)
+    let (observations, new_watermark) =
+        tokio::task::spawn_blocking(move || fetch_observation_batch(&store_clone, watermark))
+            .await
+            .map_err(|e| ServiceError::Core(CoreError::JoinError(e.to_string())))??;
 
     if observations.is_empty() {
         return Ok(ctx.stats.clone());
@@ -2083,6 +2111,173 @@ mod tests {
             call_count.load(Ordering::SeqCst),
             1,
             "worker must not be restarted after abort (graceful shutdown)"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // fetch_observation_batch / EXTRACTION_BATCH_SIZE watermark tests (#279)
+    //
+    // These tests verify that the observation fetch is bounded to
+    // EXTRACTION_BATCH_SIZE rows per call and that the watermark advances
+    // correctly across multiple calls.  No ONNX model is required — the helper
+    // function is synchronous and only touches SQLite.
+    // ---------------------------------------------------------------------------
+
+    /// Insert `count` observations into the store, returning the session_id used.
+    fn insert_n_observations(store: &unimatrix_store::Store, count: usize) -> String {
+        let session_id = "test-session-batch".to_string();
+        let conn = store.lock_conn();
+        // Ensure a session row exists (observations table has no FK, but tests
+        // that use sessions table helpers in observation.rs do insert one).
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO sessions (session_id, feature_cycle, started_at, status)
+             VALUES (?1, NULL, 1700000000, 0)",
+            rusqlite::params![&session_id],
+        );
+        for i in 0..count {
+            conn.execute(
+                "INSERT INTO observations
+                 (session_id, ts_millis, hook, tool, input, response_size, response_snippet)
+                 VALUES (?1, ?2, 'PreToolUse', 'Read', NULL, NULL, NULL)",
+                rusqlite::params![&session_id, 1_700_000_000_000_i64 + i as i64],
+            )
+            .expect("insert observation");
+        }
+        session_id
+    }
+
+    /// AC-01: First batch returns exactly EXTRACTION_BATCH_SIZE rows when backlog
+    /// exceeds the limit.
+    #[test]
+    fn test_fetch_observation_batch_first_batch_capped_at_batch_size() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().expect("tempdir");
+        let store =
+            unimatrix_store::Store::open(tmp.path().join("obs_batch.db")).expect("store open");
+
+        let total: usize = (EXTRACTION_BATCH_SIZE as usize) + 200; // 1200
+        insert_n_observations(&store, total);
+
+        let (records, new_watermark) =
+            fetch_observation_batch(&store, 0).expect("fetch must succeed");
+
+        assert_eq!(
+            records.len(),
+            EXTRACTION_BATCH_SIZE as usize,
+            "first batch must return exactly EXTRACTION_BATCH_SIZE rows"
+        );
+        assert_eq!(
+            new_watermark, EXTRACTION_BATCH_SIZE as u64,
+            "watermark must advance to the id of the last row in the batch"
+        );
+    }
+
+    /// AC-02: Second call advances watermark by another EXTRACTION_BATCH_SIZE rows
+    /// when remaining backlog >= batch size.
+    #[test]
+    fn test_fetch_observation_batch_second_call_advances_watermark() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().expect("tempdir");
+        let store =
+            unimatrix_store::Store::open(tmp.path().join("obs_batch2.db")).expect("store open");
+
+        let total: usize = EXTRACTION_BATCH_SIZE as usize * 2 + 200; // 2200
+        insert_n_observations(&store, total);
+
+        let (_, wm1) = fetch_observation_batch(&store, 0).expect("first fetch");
+        assert_eq!(wm1, EXTRACTION_BATCH_SIZE as u64);
+
+        let (records2, wm2) = fetch_observation_batch(&store, wm1).expect("second fetch");
+        assert_eq!(
+            records2.len(),
+            EXTRACTION_BATCH_SIZE as usize,
+            "second batch must return exactly EXTRACTION_BATCH_SIZE rows"
+        );
+        assert_eq!(
+            wm2,
+            EXTRACTION_BATCH_SIZE as u64 * 2,
+            "watermark must advance by another EXTRACTION_BATCH_SIZE"
+        );
+    }
+
+    /// AC-03: Third call (remainder) returns only the leftover rows and watermark
+    /// advances to the maximum id in the store.
+    #[test]
+    fn test_fetch_observation_batch_remainder_processed_on_third_tick() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().expect("tempdir");
+        let store =
+            unimatrix_store::Store::open(tmp.path().join("obs_batch3.db")).expect("store open");
+
+        let remainder = 200_usize;
+        let total: usize = EXTRACTION_BATCH_SIZE as usize + remainder; // 1200
+        insert_n_observations(&store, total);
+
+        let (_, wm1) = fetch_observation_batch(&store, 0).expect("first fetch");
+        let (records2, wm2) = fetch_observation_batch(&store, wm1).expect("second fetch");
+
+        assert_eq!(
+            records2.len(),
+            remainder,
+            "second call must return only the remaining {remainder} rows"
+        );
+        assert_eq!(
+            wm2, total as u64,
+            "watermark must advance to the last row id ({total})"
+        );
+    }
+
+    /// AC-04: Empty store returns empty records and watermark unchanged.
+    #[test]
+    fn test_fetch_observation_batch_empty_store_returns_empty() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().expect("tempdir");
+        let store =
+            unimatrix_store::Store::open(tmp.path().join("obs_empty.db")).expect("store open");
+
+        let (records, new_watermark) =
+            fetch_observation_batch(&store, 0).expect("fetch must succeed on empty store");
+
+        assert!(records.is_empty(), "empty store must return no records");
+        assert_eq!(
+            new_watermark, 0,
+            "watermark must remain 0 when no rows returned"
+        );
+    }
+
+    /// AC-05: Batch does not re-process rows already past the watermark.
+    #[test]
+    fn test_fetch_observation_batch_no_reprocessing_past_watermark() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().expect("tempdir");
+        let store =
+            unimatrix_store::Store::open(tmp.path().join("obs_nowm.db")).expect("store open");
+
+        insert_n_observations(&store, 50);
+
+        // First call: consume all 50
+        let (recs1, wm1) = fetch_observation_batch(&store, 0).expect("first fetch");
+        assert_eq!(recs1.len(), 50);
+
+        // Second call: nothing left past watermark
+        let (recs2, wm2) = fetch_observation_batch(&store, wm1).expect("second fetch");
+        assert!(
+            recs2.is_empty(),
+            "no rows must be returned after watermark catches up"
+        );
+        assert_eq!(
+            wm2, wm1,
+            "watermark must not change when nothing is fetched"
+        );
+    }
+
+    /// AC-06: EXTRACTION_BATCH_SIZE constant is exactly 1000 (enforces the fix
+    /// value is not inadvertently changed).
+    #[test]
+    fn test_extraction_batch_size_constant_value() {
+        assert_eq!(
+            EXTRACTION_BATCH_SIZE, 1000,
+            "EXTRACTION_BATCH_SIZE must be 1000 (#279)"
         );
     }
 }
