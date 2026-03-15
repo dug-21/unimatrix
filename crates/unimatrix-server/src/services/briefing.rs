@@ -5,12 +5,14 @@
 //! semantic search, injection history) are selected by `BriefingParams`.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use unimatrix_core::async_wrappers::AsyncEntryStore;
 use unimatrix_core::{EntryRecord, QueryFilter, Status, StoreAdapter};
+use unimatrix_engine::effectiveness::EffectivenessCategory;
 
 use crate::infra::audit::{AuditEvent, Outcome};
+use crate::services::effectiveness::{EffectivenessSnapshot, EffectivenessStateHandle};
 use crate::services::gateway::SecurityGateway;
 use crate::services::search::{SearchService, ServiceSearchParams};
 use crate::services::{AuditContext, CallerId, ServiceError};
@@ -30,6 +32,12 @@ pub(crate) struct BriefingService {
     search: SearchService,
     gateway: Arc<SecurityGateway>,
     semantic_k: usize,
+    /// crt-018b (ADR-004): effectiveness classification handle.
+    /// Required parameter — missing wiring is a compile error.
+    effectiveness_state: EffectivenessStateHandle,
+    /// crt-018b (ADR-001): generation-cached snapshot shared across rmcp clones.
+    /// `Arc` wrapper ensures all clones share the same cached copy.
+    cached_snapshot: Arc<Mutex<EffectivenessSnapshot>>,
 }
 
 /// Caller-provided parameters controlling `BriefingService::assemble()` behavior.
@@ -142,12 +150,15 @@ impl BriefingService {
         search: SearchService,
         gateway: Arc<SecurityGateway>,
         semantic_k: usize,
+        effectiveness_state: EffectivenessStateHandle, // crt-018b (ADR-004): required, non-optional
     ) -> Self {
         BriefingService {
             entry_store,
             search,
             gateway,
             semantic_k,
+            effectiveness_state,
+            cached_snapshot: EffectivenessSnapshot::new_shared(),
         }
     }
 
@@ -166,6 +177,35 @@ impl BriefingService {
         // Step 1: S3 input validation
         validate_briefing_inputs(&params)?;
 
+        // crt-018b (ADR-001): snapshot effectiveness categories under short read lock.
+        // Lock ordering (R-01): read generation, drop read guard, then acquire mutex.
+        // Never hold both guards simultaneously.
+        let categories: HashMap<u64, EffectivenessCategory> = {
+            let current_generation = {
+                let guard = self
+                    .effectiveness_state
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+                guard.generation
+                // read guard drops here
+            };
+            // Read guard is now dropped — safe to acquire mutex
+            let mut cache = self
+                .cached_snapshot
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            if cache.generation != current_generation {
+                let guard = self
+                    .effectiveness_state
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+                cache.generation = guard.generation;
+                cache.categories = guard.categories.clone();
+                // guard drops here
+            }
+            cache.categories.clone()
+        };
+
         // Step 2: Initialize budget tracker
         let char_budget = params.max_tokens.saturating_mul(4); // ~4 chars per token
         let mut budget_remaining = char_budget;
@@ -179,8 +219,9 @@ impl BriefingService {
 
         // Step 4: Injection history path
         if let Some(ref history) = params.injection_history {
-            let (sections, chars_used) =
-                self.process_injection_history(history, char_budget).await?;
+            let (sections, chars_used) = self
+                .process_injection_history(history, char_budget, &categories)
+                .await?;
 
             // Collect entry IDs from injection sections
             for (entry, _) in &sections.decisions {
@@ -215,7 +256,8 @@ impl BriefingService {
                 // S4: exclude quarantined (defense-in-depth)
                 conv_entries.retain(|e| !SecurityGateway::is_quarantined(&e.status));
 
-                // Feature sort: feature-tagged entries first
+                // Convention sort: feature-tagged entries first (when feature is set),
+                // then confidence descending, then effectiveness_priority descending (crt-018b).
                 if let Some(ref feature) = params.feature {
                     conv_entries.sort_by(|a, b| {
                         let a_has = a.tags.iter().any(|t| t == feature);
@@ -223,11 +265,35 @@ impl BriefingService {
                         match (a_has, b_has) {
                             (true, false) => std::cmp::Ordering::Less,
                             (false, true) => std::cmp::Ordering::Greater,
-                            _ => b
-                                .confidence
-                                .partial_cmp(&a.confidence)
-                                .unwrap_or(std::cmp::Ordering::Equal),
+                            _ => {
+                                // Among entries with same feature-tag status:
+                                // confidence descending, then effectiveness tiebreaker
+                                let conf_ord = b
+                                    .confidence
+                                    .partial_cmp(&a.confidence)
+                                    .unwrap_or(std::cmp::Ordering::Equal);
+                                if conf_ord != std::cmp::Ordering::Equal {
+                                    return conf_ord;
+                                }
+                                let pri_a = effectiveness_priority(categories.get(&a.id).copied());
+                                let pri_b = effectiveness_priority(categories.get(&b.id).copied());
+                                pri_b.cmp(&pri_a)
+                            }
                         }
+                    });
+                } else {
+                    // No feature: sort by (confidence DESC, effectiveness_priority DESC)
+                    conv_entries.sort_by(|a, b| {
+                        let conf_ord = b
+                            .confidence
+                            .partial_cmp(&a.confidence)
+                            .unwrap_or(std::cmp::Ordering::Equal);
+                        if conf_ord != std::cmp::Ordering::Equal {
+                            return conf_ord;
+                        }
+                        let pri_a = effectiveness_priority(categories.get(&a.id).copied());
+                        let pri_b = effectiveness_priority(categories.get(&b.id).copied());
+                        pri_b.cmp(&pri_a)
                     });
                 }
 
@@ -329,10 +395,15 @@ impl BriefingService {
     /// Process injection history: deduplicate, fetch, partition, sort, budget-truncate.
     ///
     /// Returns the partitioned sections and total characters consumed.
+    ///
+    /// `categories` is the current effectiveness snapshot passed from `assemble()`.
+    /// When empty (cold start), all effectiveness priorities are 0 and sort degrades
+    /// to confidence-only (correct behavior, no special-casing needed).
     async fn process_injection_history(
         &self,
         history: &[InjectionEntry],
         char_budget: usize,
+        categories: &HashMap<u64, EffectivenessCategory>,
     ) -> Result<(InjectionSections, usize), ServiceError> {
         // Step 1: Deduplicate — keep highest confidence per entry_id
         let mut best_confidence: HashMap<u64, f64> = HashMap::new();
@@ -368,10 +439,22 @@ impl BriefingService {
             }
         }
 
-        // Step 3: Sort each group by confidence descending
-        decisions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        injections.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        conventions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        // Step 3: Sort each group by (confidence DESC, effectiveness_priority DESC).
+        // crt-018b: effectiveness_priority is the tiebreaker; confidence is still primary.
+        // When categories is empty (cold start), effectiveness_priority(None) = 0 for all
+        // entries, so 0.cmp(&0) == Equal — sort degrades gracefully to confidence-only.
+        let injection_sort = |a: &(EntryRecord, f64), b: &(EntryRecord, f64)| {
+            let conf_ord = b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal);
+            if conf_ord != std::cmp::Ordering::Equal {
+                return conf_ord;
+            }
+            let pri_a = effectiveness_priority(categories.get(&a.0.id).copied());
+            let pri_b = effectiveness_priority(categories.get(&b.0.id).copied());
+            pri_b.cmp(&pri_a)
+        };
+        decisions.sort_by(injection_sort);
+        injections.sort_by(injection_sort);
+        conventions.sort_by(injection_sort);
 
         // Step 4: Proportional budget allocation (per ADR-003)
         // Header: 5%, Decisions: 40%, Injections: 30%, Conventions: 20%, Buffer: 5%
@@ -399,6 +482,28 @@ impl BriefingService {
 // ---------------------------------------------------------------------------
 // Private helpers
 // ---------------------------------------------------------------------------
+
+/// Map an effectiveness category to a sort priority integer (crt-018b, ADR-004).
+///
+/// Used as a secondary sort key in injection history and convention lookup sorts.
+/// Primary key is always confidence descending; effectiveness breaks ties only.
+///
+/// Scale (ARCHITECTURE Component 4 canonical — supersedes SPECIFICATION FR-07 3-2-1-0):
+/// - `Effective`   =>  2  (proven useful)
+/// - `Settled`     =>  1  (used but unconfirmed)
+/// - `None`        =>  0  (not yet classified; cold-start safe)
+/// - `Unmatched`   =>  0  (no outcome data)
+/// - `Ineffective` => -1  (used, poor outcomes)
+/// - `Noisy`       => -2  (noisy trust source; lowest priority)
+fn effectiveness_priority(category: Option<EffectivenessCategory>) -> i32 {
+    match category {
+        Some(EffectivenessCategory::Effective) => 2,
+        Some(EffectivenessCategory::Settled) => 1,
+        None | Some(EffectivenessCategory::Unmatched) => 0,
+        Some(EffectivenessCategory::Ineffective) => -1,
+        Some(EffectivenessCategory::Noisy) => -2,
+    }
+}
 
 /// S3: Validate briefing inputs.
 fn validate_briefing_inputs(params: &BriefingParams) -> Result<(), ServiceError> {
@@ -475,6 +580,7 @@ mod tests {
 
     use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
     use unimatrix_core::{NewEntry, Store, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex};
+    use unimatrix_engine::effectiveness::EffectivenessCategory;
 
     use crate::infra::audit::AuditLog;
     use crate::infra::embed_handle::EmbedServiceHandle;
@@ -490,6 +596,16 @@ mod tests {
 
     fn make_briefing_service(
         store: &Arc<Store>,
+    ) -> (BriefingService, Arc<AsyncEntryStore<StoreAdapter>>) {
+        make_briefing_service_with_effectiveness(
+            store,
+            crate::services::effectiveness::EffectivenessState::new_handle(),
+        )
+    }
+
+    fn make_briefing_service_with_effectiveness(
+        store: &Arc<Store>,
+        effectiveness_state: crate::services::effectiveness::EffectivenessStateHandle,
     ) -> (BriefingService, Arc<AsyncEntryStore<StoreAdapter>>) {
         let store_adapter = StoreAdapter::new(Arc::clone(store));
         let entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
@@ -516,6 +632,7 @@ mod tests {
             adapt_service,
             Arc::clone(&gateway),
             confidence_state,
+            Arc::clone(&effectiveness_state), // crt-018b: shared handle
         );
 
         let service = BriefingService::new(
@@ -523,6 +640,7 @@ mod tests {
             search,
             gateway,
             3, // default semantic_k for existing tests
+            effectiveness_state,
         );
 
         (service, entry_store)
@@ -1474,5 +1592,634 @@ mod tests {
     fn parse_semantic_k_boundary_twenty() {
         let k = super::parse_semantic_k_from(Some("20".to_string()));
         assert_eq!(k, 20);
+    }
+
+    // ---------------------------------------------------------------------------
+    // crt-018b: effectiveness_priority pure function tests (AC-07, R-09)
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_effectiveness_priority_effective() {
+        assert_eq!(
+            super::effectiveness_priority(Some(EffectivenessCategory::Effective)),
+            2_i32
+        );
+    }
+
+    #[test]
+    fn test_effectiveness_priority_settled() {
+        assert_eq!(
+            super::effectiveness_priority(Some(EffectivenessCategory::Settled)),
+            1_i32
+        );
+    }
+
+    #[test]
+    fn test_effectiveness_priority_unmatched() {
+        assert_eq!(
+            super::effectiveness_priority(Some(EffectivenessCategory::Unmatched)),
+            0_i32
+        );
+    }
+
+    #[test]
+    fn test_effectiveness_priority_none() {
+        // None is neutral (not negative) — cold-start degrades to confidence-only (R-07)
+        assert_eq!(super::effectiveness_priority(None), 0_i32);
+    }
+
+    #[test]
+    fn test_effectiveness_priority_ineffective() {
+        assert_eq!(
+            super::effectiveness_priority(Some(EffectivenessCategory::Ineffective)),
+            -1_i32
+        );
+    }
+
+    #[test]
+    fn test_effectiveness_priority_noisy() {
+        assert_eq!(
+            super::effectiveness_priority(Some(EffectivenessCategory::Noisy)),
+            -2_i32
+        );
+    }
+
+    #[test]
+    fn test_effectiveness_priority_noisy_lower_than_ineffective() {
+        // Documents canonical ordering: Noisy is the lowest priority in briefing
+        assert!(
+            super::effectiveness_priority(Some(EffectivenessCategory::Noisy))
+                < super::effectiveness_priority(Some(EffectivenessCategory::Ineffective))
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // crt-018b: Injection history sort — confidence is primary key (AC-07, R-09)
+    // ---------------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_injection_sort_confidence_is_primary_key() {
+        // High-confidence Ineffective must rank above low-confidence Effective (R-09)
+        let (_dir, store) = make_test_store();
+        let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
+
+        let id_a = store_entry(
+            &store,
+            "High Conf Ineffective",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Active,
+        );
+        let id_b = store_entry(
+            &store,
+            "Low Conf Effective",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Active,
+        );
+
+        // Populate effectiveness: A=Ineffective, B=Effective
+        {
+            let mut guard = effectiveness_handle
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+            guard
+                .categories
+                .insert(id_a, EffectivenessCategory::Ineffective);
+            guard
+                .categories
+                .insert(id_b, EffectivenessCategory::Effective);
+            guard.generation = 1;
+        }
+
+        let (service, _es) =
+            make_briefing_service_with_effectiveness(&store, Arc::clone(&effectiveness_handle));
+
+        let params = BriefingParams {
+            role: None,
+            task: None,
+            feature: None,
+            max_tokens: 3000,
+            include_conventions: false,
+            include_semantic: false,
+            injection_history: Some(vec![
+                InjectionEntry {
+                    entry_id: id_a,
+                    confidence: 0.90, // high confidence, Ineffective
+                },
+                InjectionEntry {
+                    entry_id: id_b,
+                    confidence: 0.40, // low confidence, Effective
+                },
+            ]),
+        };
+
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
+
+        let decisions = &result.injection_sections.decisions;
+        assert_eq!(decisions.len(), 2);
+        // A (confidence=0.90) must rank first despite being Ineffective
+        assert_eq!(
+            decisions[0].0.id, id_a,
+            "higher confidence wins regardless of effectiveness category (R-09)"
+        );
+        assert_eq!(decisions[1].0.id, id_b);
+    }
+
+    #[tokio::test]
+    async fn test_injection_sort_effectiveness_is_tiebreaker() {
+        // Equal confidence: Effective must rank above Ineffective (AC-07)
+        let (_dir, store) = make_test_store();
+        let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
+
+        let id_a = store_entry(
+            &store,
+            "Equal Conf Ineffective",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Active,
+        );
+        let id_b = store_entry(
+            &store,
+            "Equal Conf Effective",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Active,
+        );
+
+        {
+            let mut guard = effectiveness_handle
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+            guard
+                .categories
+                .insert(id_a, EffectivenessCategory::Ineffective);
+            guard
+                .categories
+                .insert(id_b, EffectivenessCategory::Effective);
+            guard.generation = 1;
+        }
+
+        let (service, _es) =
+            make_briefing_service_with_effectiveness(&store, Arc::clone(&effectiveness_handle));
+
+        let params = BriefingParams {
+            role: None,
+            task: None,
+            feature: None,
+            max_tokens: 3000,
+            include_conventions: false,
+            include_semantic: false,
+            injection_history: Some(vec![
+                InjectionEntry {
+                    entry_id: id_a,
+                    confidence: 0.60, // same confidence, Ineffective
+                },
+                InjectionEntry {
+                    entry_id: id_b,
+                    confidence: 0.60, // same confidence, Effective
+                },
+            ]),
+        };
+
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
+
+        let decisions = &result.injection_sections.decisions;
+        assert_eq!(decisions.len(), 2);
+        // B (Effective, priority=2) must rank before A (Ineffective, priority=-1)
+        assert_eq!(
+            decisions[0].0.id, id_b,
+            "Effective entry must rank above Ineffective at equal confidence (AC-07)"
+        );
+        assert_eq!(decisions[1].0.id, id_a);
+    }
+
+    #[tokio::test]
+    async fn test_injection_sort_equal_confidence_equal_effectiveness() {
+        // Both Effective at equal confidence: sort is stable (no preference)
+        let (_dir, store) = make_test_store();
+        let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
+
+        let id_a = store_entry(
+            &store,
+            "Entry A",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Active,
+        );
+        let id_b = store_entry(
+            &store,
+            "Entry B",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Active,
+        );
+
+        {
+            let mut guard = effectiveness_handle
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+            guard
+                .categories
+                .insert(id_a, EffectivenessCategory::Effective);
+            guard
+                .categories
+                .insert(id_b, EffectivenessCategory::Effective);
+            guard.generation = 1;
+        }
+
+        let (service, _es) =
+            make_briefing_service_with_effectiveness(&store, Arc::clone(&effectiveness_handle));
+
+        let params = BriefingParams {
+            role: None,
+            task: None,
+            feature: None,
+            max_tokens: 3000,
+            include_conventions: false,
+            include_semantic: false,
+            injection_history: Some(vec![
+                InjectionEntry {
+                    entry_id: id_a,
+                    confidence: 0.60,
+                },
+                InjectionEntry {
+                    entry_id: id_b,
+                    confidence: 0.60,
+                },
+            ]),
+        };
+
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
+
+        let decisions = &result.injection_sections.decisions;
+        assert_eq!(decisions.len(), 2, "both entries must be present");
+        // Both have same priority — no ordering assertion, just that no panic occurs
+    }
+
+    #[tokio::test]
+    async fn test_injection_sort_three_entries_mixed() {
+        // A: 0.70 Effective; B: 0.80 Ineffective; C: 0.70 Ineffective
+        // Expected: B (0.80, prio=-1), A (0.70, prio=2), C (0.70, prio=-1)
+        let (_dir, store) = make_test_store();
+        let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
+
+        let id_a = store_entry(
+            &store,
+            "A 0.70 Effective",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Active,
+        );
+        let id_b = store_entry(
+            &store,
+            "B 0.80 Ineffective",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Active,
+        );
+        let id_c = store_entry(
+            &store,
+            "C 0.70 Ineffective",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Active,
+        );
+
+        {
+            let mut guard = effectiveness_handle
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+            guard
+                .categories
+                .insert(id_a, EffectivenessCategory::Effective);
+            guard
+                .categories
+                .insert(id_b, EffectivenessCategory::Ineffective);
+            guard
+                .categories
+                .insert(id_c, EffectivenessCategory::Ineffective);
+            guard.generation = 1;
+        }
+
+        let (service, _es) =
+            make_briefing_service_with_effectiveness(&store, Arc::clone(&effectiveness_handle));
+
+        let params = BriefingParams {
+            role: None,
+            task: None,
+            feature: None,
+            max_tokens: 3000,
+            include_conventions: false,
+            include_semantic: false,
+            injection_history: Some(vec![
+                InjectionEntry {
+                    entry_id: id_a,
+                    confidence: 0.70,
+                },
+                InjectionEntry {
+                    entry_id: id_b,
+                    confidence: 0.80,
+                },
+                InjectionEntry {
+                    entry_id: id_c,
+                    confidence: 0.70,
+                },
+            ]),
+        };
+
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
+
+        let decisions = &result.injection_sections.decisions;
+        assert_eq!(decisions.len(), 3);
+        // B: highest confidence wins (0.80 > 0.70), regardless of Ineffective category
+        assert_eq!(decisions[0].0.id, id_b, "B (0.80) must be first");
+        // A: equal confidence to C (0.70), but Effective (2) beats Ineffective (-1)
+        assert_eq!(
+            decisions[1].0.id, id_a,
+            "A (0.70, Effective) beats C (0.70, Ineffective)"
+        );
+        assert_eq!(decisions[2].0.id, id_c, "C (0.70, Ineffective) is last");
+    }
+
+    // ---------------------------------------------------------------------------
+    // crt-018b: Convention sort tiebreaker (AC-08)
+    // ---------------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_convention_sort_feature_tag_overrides_effectiveness() {
+        // Feature-tagged Ineffective must rank above non-feature-tagged Effective (AC-08)
+        let (_dir, store) = make_test_store();
+        let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
+
+        let id_a = store_entry(
+            &store,
+            "Feature Ineffective",
+            "content",
+            "convention",
+            "dev",
+            vec!["crt-018b".to_string()],
+            Status::Active,
+        );
+        let id_b = store_entry(
+            &store,
+            "NonFeature Effective",
+            "content",
+            "convention",
+            "dev",
+            vec![],
+            Status::Active,
+        );
+
+        {
+            let mut guard = effectiveness_handle
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+            guard
+                .categories
+                .insert(id_a, EffectivenessCategory::Ineffective);
+            guard
+                .categories
+                .insert(id_b, EffectivenessCategory::Effective);
+            guard.generation = 1;
+        }
+
+        let (service, _es) =
+            make_briefing_service_with_effectiveness(&store, Arc::clone(&effectiveness_handle));
+
+        let params = BriefingParams {
+            role: Some("dev".to_string()),
+            task: None,
+            feature: Some("crt-018b".to_string()),
+            max_tokens: 3000,
+            include_conventions: true,
+            include_semantic: false,
+            injection_history: None,
+        };
+
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
+
+        assert_eq!(result.conventions.len(), 2);
+        // A has feature tag — must come first regardless of Ineffective classification
+        assert_eq!(
+            result.conventions[0].id, id_a,
+            "feature_tag overrides effectiveness (AC-08)"
+        );
+        assert_eq!(result.conventions[1].id, id_b);
+    }
+
+    #[tokio::test]
+    async fn test_convention_sort_effectiveness_tiebreaker_no_feature() {
+        // No feature tag: equal confidence — Effective ranks above Ineffective (AC-08)
+        let (_dir, store) = make_test_store();
+        let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
+
+        let id_a = store_entry(
+            &store,
+            "Conv Ineffective",
+            "content",
+            "convention",
+            "dev",
+            vec![],
+            Status::Active,
+        );
+        let id_b = store_entry(
+            &store,
+            "Conv Effective",
+            "content",
+            "convention",
+            "dev",
+            vec![],
+            Status::Active,
+        );
+
+        {
+            let mut guard = effectiveness_handle
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+            guard
+                .categories
+                .insert(id_a, EffectivenessCategory::Ineffective);
+            guard
+                .categories
+                .insert(id_b, EffectivenessCategory::Effective);
+            guard.generation = 1;
+        }
+
+        let (service, _es) =
+            make_briefing_service_with_effectiveness(&store, Arc::clone(&effectiveness_handle));
+
+        let params = BriefingParams {
+            role: Some("dev".to_string()),
+            task: None,
+            feature: None, // no feature — no feature-sort active
+            max_tokens: 3000,
+            include_conventions: true,
+            include_semantic: false,
+            injection_history: None,
+        };
+
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble");
+
+        assert_eq!(result.conventions.len(), 2);
+        // Both entries have same (default) confidence=0.0; Effective ranks above Ineffective
+        assert_eq!(
+            result.conventions[0].id, id_b,
+            "Effective must rank above Ineffective at equal confidence (AC-08)"
+        );
+        assert_eq!(result.conventions[1].id, id_a);
+    }
+
+    // ---------------------------------------------------------------------------
+    // crt-018b: R-07 — Empty effectiveness state degrades to confidence-only sort
+    // ---------------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_briefing_with_empty_effectiveness_state_no_panic() {
+        // Cold start: empty EffectivenessState, all priorities=0, sort=confidence-only
+        let (_dir, store) = make_test_store();
+        // Default new_handle() is empty — cold start
+        let (service, _es) = make_briefing_service(&store);
+
+        let id_a = store_entry(
+            &store,
+            "Entry A",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Active,
+        );
+        let id_b = store_entry(
+            &store,
+            "Entry B",
+            "content",
+            "decision",
+            "test",
+            vec![],
+            Status::Active,
+        );
+
+        let params = BriefingParams {
+            role: None,
+            task: None,
+            feature: None,
+            max_tokens: 3000,
+            include_conventions: false,
+            include_semantic: false,
+            injection_history: Some(vec![
+                InjectionEntry {
+                    entry_id: id_a,
+                    confidence: 0.80,
+                },
+                InjectionEntry {
+                    entry_id: id_b,
+                    confidence: 0.60,
+                },
+            ]),
+        };
+
+        // Must not panic; ordering must follow confidence descending (no effectiveness data)
+        let result = service
+            .assemble(params, &test_audit_ctx(), None)
+            .await
+            .expect("assemble must not panic on empty effectiveness state");
+
+        let decisions = &result.injection_sections.decisions;
+        assert_eq!(decisions.len(), 2);
+        // A (0.80) must rank first — pure confidence sort when no effectiveness data
+        assert_eq!(
+            decisions[0].0.id, id_a,
+            "confidence-only sort when effectiveness state is empty (R-07)"
+        );
+        assert_eq!(decisions[1].0.id, id_b);
+    }
+
+    // ---------------------------------------------------------------------------
+    // crt-018b: ADR-004 — BriefingService constructor requires EffectivenessStateHandle
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_briefing_service_new_requires_handle() {
+        // Construct BriefingService with a valid EffectivenessStateHandle.
+        // The fact that Option<EffectivenessStateHandle> is not accepted is
+        // guaranteed by the type system (ADR-004 compile-time safety).
+        let (_dir, store) = make_test_store();
+        let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
+        let (service, _es) = make_briefing_service_with_effectiveness(&store, effectiveness_handle);
+        // Construction succeeded — assert the service is functional by checking
+        // that clone works (shared Arc snapshot is set up correctly)
+        let _cloned = service.clone();
+    }
+
+    // ---------------------------------------------------------------------------
+    // crt-018b: R-06 — EffectivenessSnapshot shared across BriefingService clones
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_briefing_service_clones_share_snapshot() {
+        // Clone shares the same Arc<Mutex<EffectivenessSnapshot>> backing object.
+        let (_dir, store) = make_test_store();
+        let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
+
+        let (service_b1, _es) =
+            make_briefing_service_with_effectiveness(&store, Arc::clone(&effectiveness_handle));
+        let service_b2 = service_b1.clone();
+
+        // Write a new category to the shared state (simulates background tick)
+        {
+            let mut guard = effectiveness_handle
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+            guard
+                .categories
+                .insert(42, EffectivenessCategory::Effective);
+            guard.generation = 1;
+        }
+
+        // Both instances share the same cached_snapshot Arc — pointer equality check
+        // (implementation guarantee: Clone derives shared Arc, not deep copy)
+        let ptr_b1 = Arc::as_ptr(&service_b1.cached_snapshot);
+        let ptr_b2 = Arc::as_ptr(&service_b2.cached_snapshot);
+        assert_eq!(
+            ptr_b1, ptr_b2,
+            "BriefingService clone must share the same Arc<Mutex<EffectivenessSnapshot>> (R-06)"
+        );
     }
 }
