@@ -150,6 +150,35 @@ docker compose -f product/test/infra-001/docker-compose.yml up --build --abort-o
 
 All 157 tests must pass.
 
+### Pre-Release Gate
+
+Before tagging any release, run the availability suite:
+
+```bash
+cd product/test/infra-001
+python -m pytest suites/ -v -m availability --timeout=150
+```
+
+**Expected outcome:** All non-xfail tests pass. Known-failing tests (marked
+`@pytest.mark.xfail`) show as `XFAIL` — this is expected and not a blocking
+failure. Tests marked `@pytest.mark.skip` show as `SKIPPED`.
+
+**Run time:** ~15-20 minutes.
+
+**When xfails become passes:** When a bug fix (e.g., GH#275, GH#277) is merged,
+remove the corresponding `xfail` marker. The test then becomes a hard pass/fail
+gate for future releases.
+
+---
+
+## When to Run — Summary
+
+| Tier | When | Command | Expected Time |
+|------|------|---------|---------------|
+| Smoke | Per-feature gate (Stage 3c), minimum per-PR check | `pytest -m smoke` | <60s |
+| Full suite | Pre-merge for any PR touching server code | `pytest suites/` | ~20 min |
+| Availability | Pre-release only | `pytest -m availability` | ~15-20 min |
+
 ---
 
 ## Failure Triage Protocol
@@ -341,3 +370,22 @@ All 157 tests. **Run time:** ~20 minutes (varies with hardware, especially embed
 ### Selective Suites
 
 Use `TEST_SUITE=<name>` or `python -m pytest suites/test_<name>.py` to run individual suites. Useful during development when you know exactly what's affected.
+
+### Availability Tests (`-m availability`)
+
+5 runnable tests (+ 1 deferred stub) covering time-extended reliability:
+
+| Test | What It Catches | Expected Result |
+|------|----------------|-----------------|
+| `test_tick_liveness` | Tick fires; server responds to MCP after tick | PASS |
+| `test_cold_start_request_race` | No crash on immediate requests before warmup | PASS |
+| `test_concurrent_ops_during_tick` | Mutex pressure — requests don't hang during tick | XFAIL (GH#277) |
+| `test_read_ops_not_blocked_by_tick` | Read ops complete within deadline during tick | XFAIL (GH#277) |
+| `test_sustained_multi_tick` | Server survives 3+ tick cycles (~100s) | XFAIL (GH#275) |
+| `test_tick_panic_recovery` | Tick supervisor restarts after panic | SKIP (GH#276) |
+
+**Run time:** ~15-20 minutes. Pre-release gate only — not per-feature or per-PR.
+
+**Note on xfail:** These tests document known bugs. As fixes land, remove the
+corresponding `@pytest.mark.xfail` decorator. If a test starts passing before
+its fix is explicitly applied (`XPASS`), remove the marker and close the issue.
