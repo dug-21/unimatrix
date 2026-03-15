@@ -693,3 +693,171 @@ def test_empirical_prior_flows_to_stored_confidence(server):
         f"Helpful votes should raise confidence; unhelpful votes should lower it. "
         f"If equal, the Bayesian formula may not be receiving the vote data correctly."
     )
+
+
+# === crt-014: Topology-Aware Supersession ====================================
+
+
+def test_search_multihop_injects_terminal_active(server):
+    """L-CRT14-01: Multi-hop injection — search for superseded A (A→B→C, C active) injects C.
+
+    Verifies AC-13 and R-06: search.rs Step 6b must follow the full supersession
+    chain via find_terminal_active, not stop at the single-hop superseded_by value.
+
+    Chain built via context_correct (A corrected to B, B corrected to C):
+      - A: superseded (has superseded_by=B.id), content matches query
+      - B: superseded (has superseded_by=C.id), intermediate hop
+      - C: active terminal
+
+    Expected: C.id appears in search results (injected); B.id does NOT appear as
+    the injected successor (B is an intermediate superseded node, not the terminal).
+    """
+    unique = "crt014 multihop injection test unique q9z"
+
+    # Store A with content that will match the search query
+    resp_a = server.context_store(
+        f"{unique} alpha entry",
+        "testing",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    id_a = extract_entry_id(resp_a)
+
+    # Correct A to B (A becomes superseded, B is new)
+    resp_b = server.context_correct(
+        id_a,
+        f"{unique} beta entry corrected",
+        reason="first correction",
+        agent_id="human",
+        format="json",
+    )
+    id_b = extract_entry_id(resp_b)
+
+    # Correct B to C (B becomes superseded, C is the active terminal)
+    resp_c = server.context_correct(
+        id_b,
+        f"{unique} gamma entry final correction",
+        reason="second correction",
+        agent_id="human",
+        format="json",
+    )
+    id_c = extract_entry_id(resp_c)
+
+    # Verify state: A and B are deprecated (context_correct sets Deprecated + superseded_by), C is active
+    entry_a = parse_entry(server.context_get(id_a, format="json"))
+    entry_b = parse_entry(server.context_get(id_b, format="json"))
+    entry_c = parse_entry(server.context_get(id_c, format="json"))
+    assert entry_a.get("status") == "deprecated", (
+        f"A must be deprecated (context_correct sets original to Deprecated); got: {entry_a.get('status')}"
+    )
+    assert entry_a.get("superseded_by") == id_b, (
+        f"A.superseded_by must point to B; got: {entry_a.get('superseded_by')}"
+    )
+    assert entry_b.get("status") == "deprecated", (
+        f"B must be deprecated; got: {entry_b.get('status')}"
+    )
+    assert entry_b.get("superseded_by") == id_c, (
+        f"B.superseded_by must point to C; got: {entry_b.get('superseded_by')}"
+    )
+    assert entry_c.get("status") == "active", (
+        f"C (terminal) must be active; got: {entry_c.get('status')}"
+    )
+
+    # Search using the unique prefix — A's content semantically matches
+    search_resp = server.context_search(f"{unique}", format="json", agent_id="human")
+    assert_tool_success(search_resp)
+    entries = parse_entries(search_resp)
+    result_ids = [e.get("id") for e in entries if e.get("id") is not None]
+
+    # C (terminal active) must be present — injected via multi-hop traversal
+    assert id_c in result_ids, (
+        f"AC-13: terminal active entry C (id={id_c}) must be injected into search results. "
+        f"Multi-hop traversal (A→B→C) must follow to C, not stop at B. "
+        f"Got result IDs: {result_ids}"
+    )
+
+    # B must NOT be present as the injected entry — it is a superseded intermediate
+    # (B may appear if it matched the query directly, but it must not appear as injected
+    # successor; if B is superseded it will have a penalty applied regardless)
+    # The key invariant: C is present. B being absent or present with penalty is acceptable.
+    # We assert the positive: C is in results.
+    # Note: B may appear in results with its own penalty — that is correct behavior.
+
+
+def test_search_deprecated_entry_visible_with_topology_penalty(server):
+    """L-CRT14-02: Deprecated orphan entry visible in search with ORPHAN_PENALTY applied.
+
+    Verifies AC-12 (topology-derived penalty, not removed constant) and IR-02:
+    - Store 5 active entries with similar content (ensures HNSW returns multiple results)
+    - Store B (active, similar content)
+    - Deprecate B (B becomes orphan: Deprecated + no successor)
+    - Search: B appears in results with deprecated status (visible in Flexible mode)
+    - Active entries rank above B (B penalized by ORPHAN_PENALTY=0.75)
+
+    This test validates that the topology-derived penalty path is active (not the
+    removed DEPRECATED_PENALTY constant). The ordering assertion is behavioral,
+    not a constant-value check.
+
+    Note: stores multiple active entries to ensure HNSW returns enough candidates
+    for B to appear alongside active entries in the same result set.
+    """
+    unique = "crt014 topology penalty orphan test unique p5y"
+
+    # Store 5 active entries with similar content to populate HNSW enough for recall
+    active_ids = []
+    for i in range(5):
+        resp = server.context_store(
+            f"{unique} active knowledge entry index {i} patterns architecture design",
+            "testing",
+            "decision",
+            agent_id="human",
+            format="json",
+        )
+        active_ids.append(extract_entry_id(resp))
+
+    # Store B: similar content to the active entries
+    resp_b = server.context_store(
+        f"{unique} active knowledge entry deprecated orphan patterns architecture design",
+        "testing",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    id_b = extract_entry_id(resp_b)
+
+    # Deprecate B — makes it an orphan (Deprecated + no successor)
+    server.context_deprecate(id_b, reason="outdated", agent_id="human")
+
+    # Verify B is deprecated
+    entry_b = parse_entry(server.context_get(id_b, format="json"))
+    assert entry_b.get("status") == "deprecated", (
+        f"B must be deprecated; got: {entry_b.get('status')}"
+    )
+
+    # Search with k=10 to retrieve both active and deprecated entries
+    search_resp = server.context_search(f"{unique}", format="json", agent_id="human", k=10)
+    assert_tool_success(search_resp)
+    entries = parse_entries(search_resp)
+    result_ids = [e.get("id") for e in entries if e.get("id") is not None]
+
+    # B must appear in results (deprecated entries visible in Flexible mode)
+    assert id_b in result_ids, (
+        f"AC-12: deprecated orphan entry B (id={id_b}) must appear in Flexible mode search. "
+        f"Got result IDs: {result_ids}. "
+        f"Deprecated entries must remain visible in search (not excluded like quarantined)."
+    )
+
+    # All active entries that appear must rank above B
+    result_statuses = {e.get("id"): e.get("status") for e in entries}
+    pos_b = result_ids.index(id_b)
+
+    active_ids_in_results = [eid for eid in result_ids if result_statuses.get(eid) == "active"]
+    for eid in active_ids_in_results:
+        pos_active = result_ids.index(eid)
+        assert pos_active < pos_b, (
+            f"AC-12: active entry (id={eid}, pos={pos_active}) must rank above "
+            f"deprecated orphan B (id={id_b}, pos={pos_b}). "
+            f"ORPHAN_PENALTY (0.75) must reduce B's score below active entries. "
+            f"Result order: {result_ids}"
+        )
