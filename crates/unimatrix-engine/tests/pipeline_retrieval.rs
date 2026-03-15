@@ -5,11 +5,9 @@
 
 use unimatrix_engine::coaccess::MAX_CO_ACCESS_BOOST;
 use unimatrix_engine::confidence::{PROVENANCE_BOOST, rerank_score};
-
-// Ordering constants retained here for test arithmetic; the canonical
-// definitions moved to graph.rs (crt-014, ADR-004).
-const DEPRECATED_PENALTY: f64 = 0.7;
-const SUPERSEDED_PENALTY: f64 = 0.5;
+use unimatrix_engine::graph::{
+    CLEAN_REPLACEMENT_PENALTY, FALLBACK_PENALTY, ORPHAN_PENALTY, PARTIAL_SUPERSESSION_PENALTY,
+};
 
 // ---------------------------------------------------------------------------
 // T-RET-01: Re-rank blend ordering
@@ -34,24 +32,58 @@ fn test_rerank_blend_ordering() {
 }
 
 // ---------------------------------------------------------------------------
-// T-RET-02: Status penalty ordering
+// T-RET-02: Status penalty ordering (crt-014 topology-derived constants)
 // ---------------------------------------------------------------------------
 
 #[test]
 fn test_status_penalty_ordering() {
     let base_score = rerank_score(0.90, 0.60, 0.184);
 
+    // crt-014 topology ordering (ADR-004):
+    // active (no penalty) > orphan deprecated (ORPHAN_PENALTY=0.75) >
+    // clean-replacement superseded (CLEAN_REPLACEMENT_PENALTY=0.40)
     let active_score = base_score * 1.0; // no penalty
-    let deprecated_score = base_score * DEPRECATED_PENALTY;
-    let superseded_score = base_score * SUPERSEDED_PENALTY;
+    let deprecated_score = base_score * ORPHAN_PENALTY; // 0.75 — orphan deprecated
+    let superseded_score = base_score * CLEAN_REPLACEMENT_PENALTY; // 0.40 — depth-1 superseded
 
     assert!(
         active_score > deprecated_score,
-        "active ({active_score:.4}) should beat deprecated ({deprecated_score:.4})"
+        "active ({active_score:.4}) should beat orphan deprecated ({deprecated_score:.4})"
     );
     assert!(
         deprecated_score > superseded_score,
-        "deprecated ({deprecated_score:.4}) should beat superseded ({superseded_score:.4})"
+        "orphan deprecated ({deprecated_score:.4}) should beat clean-replacement superseded ({superseded_score:.4})"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// T-RET-02b: Topology penalty ordering — behavioral assertions (crt-014)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_topology_penalty_behavioral_ordering() {
+    // Verify constant ordering semantics without needing a live graph.
+    // Higher multiplier = softer penalty (less suppression).
+    // Ordering from harshest to softest (ADR-004, ADR-006):
+    // CLEAN_REPLACEMENT_PENALTY (0.40) < PARTIAL_SUPERSESSION_PENALTY (0.60) <
+    // FALLBACK_PENALTY (0.70) < ORPHAN_PENALTY (0.75) < 1.0 (active, no penalty)
+    assert!(
+        CLEAN_REPLACEMENT_PENALTY < PARTIAL_SUPERSESSION_PENALTY,
+        "clean replacement ({CLEAN_REPLACEMENT_PENALTY}) must be harsher than \
+         partial supersession ({PARTIAL_SUPERSESSION_PENALTY})"
+    );
+    assert!(
+        PARTIAL_SUPERSESSION_PENALTY < FALLBACK_PENALTY,
+        "partial supersession ({PARTIAL_SUPERSESSION_PENALTY}) must be harsher than \
+         fallback ({FALLBACK_PENALTY})"
+    );
+    assert!(
+        FALLBACK_PENALTY < ORPHAN_PENALTY,
+        "fallback ({FALLBACK_PENALTY}) must be harsher than orphan ({ORPHAN_PENALTY})"
+    );
+    assert!(
+        ORPHAN_PENALTY < 1.0,
+        "orphan ({ORPHAN_PENALTY}) must be less than 1.0 (active entry, no penalty)"
     );
 }
 
@@ -131,7 +163,8 @@ fn test_combined_interaction_ordering() {
 
     let cw = 0.184_f64; // initial confidence_weight
     let score_a = rerank_score(sim_a, conf, cw) * 1.0 + PROVENANCE_BOOST + 0.02; // active + provenance + co-access
-    let score_b = rerank_score(sim_b, conf, cw) * DEPRECATED_PENALTY; // deprecated, no boosts
+    // crt-014: deprecated orphan entry receives ORPHAN_PENALTY (0.75), no boosts
+    let score_b = rerank_score(sim_b, conf, cw) * ORPHAN_PENALTY; // deprecated orphan
     let score_c = rerank_score(sim_c, conf, cw) * 1.0; // active, no boosts
 
     assert!(
