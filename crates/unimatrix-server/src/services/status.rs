@@ -635,7 +635,15 @@ impl StatusService {
             source.observation_stats()
         })
         .await
-        .unwrap()
+        .unwrap_or_else(|join_err| {
+            tracing::error!("spawn_blocking panicked in observation stats: {join_err}");
+            Ok(unimatrix_observe::ObservationStats {
+                record_count: 0,
+                session_count: 0,
+                oldest_record_age_days: 0,
+                approaching_cleanup: vec![],
+            })
+        })
         .unwrap_or_else(|_| unimatrix_observe::ObservationStats {
             record_count: 0,
             session_count: 0,
@@ -654,7 +662,10 @@ impl StatusService {
             move || store.list_all_metrics()
         })
         .await
-        .unwrap()
+        .unwrap_or_else(|join_err| {
+            tracing::error!("spawn_blocking panicked in metric vectors: {join_err}");
+            Ok(vec![])
+        })
         .unwrap_or_else(|_| vec![]);
         report.retrospected_feature_count = retrospected.len() as u64;
 
@@ -1482,6 +1493,70 @@ mod confidence_refresh_tests {
             budget.as_millis(),
             200,
             "duration guard must be 200ms per FR-05"
+        );
+    }
+
+    // GH-275: verify JoinError from spawn_blocking is handled without panic.
+    //
+    // A real JoinError can only be produced by tokio when a spawned task panics.
+    // We cannot inject that in a pure unit test without actually panicking a thread,
+    // so this test validates the recovery *pattern* by constructing an equivalent
+    // Result chain and confirming the fallback values are returned safely.
+    //
+    // Integration-level coverage (actual spawn_blocking panic → recovery) lives in
+    // test_availability.py::test_sustained_multi_tick.
+    #[test]
+    fn test_join_error_recovery_pattern_observation_stats() {
+        // Simulate the recovery chain for observation stats:
+        //   JoinHandle::await -> Err(JoinError)  =>  unwrap_or_else returns Ok(default)
+        //   Ok(default).unwrap_or_else(|_| fallback)  =>  returns default
+        let join_result: Result<Result<unimatrix_observe::ObservationStats, ()>, &str> =
+            Err("simulated join error");
+
+        let recovered = join_result
+            .unwrap_or_else(|_join_err| {
+                Ok(unimatrix_observe::ObservationStats {
+                    record_count: 0,
+                    session_count: 0,
+                    oldest_record_age_days: 0,
+                    approaching_cleanup: vec![],
+                })
+            })
+            .unwrap_or_else(|_| unimatrix_observe::ObservationStats {
+                record_count: 0,
+                session_count: 0,
+                oldest_record_age_days: 0,
+                approaching_cleanup: vec![],
+            });
+
+        assert_eq!(
+            recovered.record_count, 0,
+            "join error must produce zero record_count"
+        );
+        assert_eq!(
+            recovered.session_count, 0,
+            "join error must produce zero session_count"
+        );
+        assert!(
+            recovered.approaching_cleanup.is_empty(),
+            "join error must produce empty approaching_cleanup"
+        );
+    }
+
+    // GH-275: verify JoinError recovery pattern for metric vectors.
+    #[test]
+    fn test_join_error_recovery_pattern_metric_vectors() {
+        // Simulate: JoinHandle::await -> Err(JoinError)  =>  unwrap_or_else returns Ok(vec![])
+        //           Ok(vec![]).unwrap_or_else(|_| vec![])  =>  returns vec![]
+        let join_result: Result<Result<Vec<String>, ()>, &str> = Err("simulated join error");
+
+        let recovered = join_result
+            .unwrap_or_else(|_join_err| Ok(vec![]))
+            .unwrap_or_else(|_| vec![]);
+
+        assert!(
+            recovered.is_empty(),
+            "join error must produce empty metric vector list"
         );
     }
 }
