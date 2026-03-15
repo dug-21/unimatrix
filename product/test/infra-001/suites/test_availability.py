@@ -13,10 +13,6 @@ hides hang diagnostics. Instead, we detect hangs and report them as test
 failures with timing context.
 
 MCP client is NOT thread-safe. All calls in this suite are sequential.
-
-Known failures (xfail):
-  - test_concurrent_ops_during_tick: GH#277 — no handler timeouts
-  - test_read_ops_not_blocked_by_tick: GH#277 — no handler timeouts
 """
 
 import time
@@ -110,19 +106,13 @@ def test_cold_start_request_race(tmp_path):
         client.shutdown()
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "Pre-existing: GH#277 — no handler timeouts; "
-        "requests may hang indefinitely during tick mutex hold"
-    ),
-)
 def test_concurrent_ops_during_tick(fast_tick_server):
     """Verify MCP requests complete within wall-clock deadline during a tick.
 
     Waits until t≈25s (tick fires at ~30s), then fires 8 sequential MCP
     calls (mixed store/search/status), each must complete within 15 seconds.
-    Currently xfail: GH#277 (no handler timeouts means requests may hang).
+    Fixed by GH#277: spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT) wraps
+    all hot-path MCP handlers so they time out rather than hang.
     """
     server = fast_tick_server
 
@@ -175,19 +165,13 @@ def test_concurrent_ops_during_tick(fast_tick_server):
         )
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "Pre-existing: GH#277 — no handler timeouts; "
-        "read ops may block indefinitely during tick mutex hold"
-    ),
-)
 def test_read_ops_not_blocked_by_tick(fast_tick_server):
     """Verify read operations complete within deadline during a tick window.
 
     Pre-loads 20 entries, waits until t≈35s (tick likely in progress),
     fires 5 search + 5 search-by-topic calls, each within 10s wall-clock.
-    Currently xfail: GH#277 (tick holds SQLite mutex, blocking all ops).
+    Fixed by GH#277: spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT) wraps
+    all hot-path MCP handlers so they time out rather than hang indefinitely.
     """
     server = fast_tick_server
 

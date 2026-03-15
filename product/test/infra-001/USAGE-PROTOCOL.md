@@ -379,8 +379,8 @@ Use `TEST_SUITE=<name>` or `python -m pytest suites/test_<name>.py` to run indiv
 |------|----------------|-----------------|
 | `test_tick_liveness` | Tick fires; server responds to MCP after tick | PASS |
 | `test_cold_start_request_race` | No crash on immediate requests before warmup | PASS |
-| `test_concurrent_ops_during_tick` | Mutex pressure — requests don't hang during tick | XFAIL (GH#277) |
-| `test_read_ops_not_blocked_by_tick` | Read ops complete within deadline during tick | XFAIL (GH#277) |
+| `test_concurrent_ops_during_tick` | Mutex pressure — requests don't hang during tick | PASS |
+| `test_read_ops_not_blocked_by_tick` | Read ops complete within deadline during tick | PASS |
 | `test_sustained_multi_tick` | Server survives 3+ tick cycles (~100s) | PASS |
 | `test_tick_panic_recovery` | Tick supervisor restarts after panic | SKIP (GH#276) |
 
