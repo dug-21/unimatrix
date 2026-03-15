@@ -236,21 +236,14 @@ def test_read_ops_not_blocked_by_tick(fast_tick_server):
         )
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "Pre-existing: GH#275 — unwrap() in tick task kills tick permanently "
-        "after first JoinError; subsequent ticks never fire"
-    ),
-)
 @pytest.mark.timeout(150)
 def test_sustained_multi_tick(fast_tick_server):
     """Verify server survives 3 full tick cycles without degradation.
 
     Runs 3 tick cycles at 30s each (~105s total with 5s buffer per cycle).
     After each cycle, asserts search and status both succeed.
-    Currently xfail: GH#275 (unwrap() kills the tick task permanently).
     Requires @pytest.mark.timeout(150) to override the default 60s limit.
+    Fixed by GH#275 — naked .unwrap() on JoinError replaced with logged recovery.
     """
     server = fast_tick_server
     tick_secs = 30
