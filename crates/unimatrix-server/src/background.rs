@@ -1119,11 +1119,7 @@ mod tests {
 
     #[test]
     fn parse_tick_interval_str_custom_value() {
-        assert_eq!(
-            parse_tick_interval_str("30"),
-            30,
-            "should parse '30' as 30"
-        );
+        assert_eq!(parse_tick_interval_str("30"), 30, "should parse '30' as 30");
     }
 
     #[test]
