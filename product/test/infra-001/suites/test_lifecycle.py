@@ -699,10 +699,6 @@ def test_empirical_prior_flows_to_stored_confidence(server):
 # === crt-014: Topology-Aware Supersession ====================================
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="Pre-existing: GH#286 — flaky when run in full lifecycle suite (passes in isolation)",
-)
 def test_search_multihop_injects_terminal_active(server):
     """L-CRT14-01: Multi-hop injection — search for superseded A (A→B→C, C active) injects C.
 
