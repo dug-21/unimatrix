@@ -298,9 +298,17 @@ impl VectorIndex {
     /// Retrieve the stored embedding for an entry.
     ///
     /// Returns `None` if the entry has no vector mapping or the underlying
-    /// HNSW point data cannot be retrieved. Iterates the base layer (layer 0)
-    /// to find the point by its data_id (origin_id). This is O(n) but called
-    /// infrequently (only during supersession injection, crt-010).
+    /// HNSW point data cannot be retrieved. Iterates ALL layers via `IterPoint`
+    /// (IntoIterator for &PointIndexation) to find the point by its data_id
+    /// (origin_id). This is O(n) but called infrequently (only during
+    /// supersession injection, crt-010).
+    ///
+    /// IMPORTANT: hnsw_rs assigns each point to a single layer at insertion
+    /// time (randomly, probability ~1/M per level). A point at level L exists
+    /// ONLY in points_by_layer[L] — not in layer 0. `get_layer_iterator(0)`
+    /// therefore misses ~6% of points (those assigned level >= 1). The
+    /// IntoIterator impl (IterPoint) traverses all layers from 0 through
+    /// entry_point_level, covering every inserted point. (GH#286)
     pub fn get_embedding(&self, entry_id: u64) -> Option<Vec<f32>> {
         let data_id = {
             let id_map = self.id_map.read().unwrap_or_else(|e| e.into_inner());
@@ -310,8 +318,10 @@ impl VectorIndex {
         let hnsw = self.hnsw.read().unwrap_or_else(|e| e.into_inner());
         let point_indexation = hnsw.get_point_indexation();
 
-        // Iterate layer 0 (base layer — contains all points) to find by origin_id
-        for point in point_indexation.get_layer_iterator(0) {
+        // Iterate all layers (IterPoint via IntoIterator) to find by origin_id.
+        // get_layer_iterator(0) was wrong — points are stored at their assigned
+        // layer only, not always at layer 0. (bugfix GH#286)
+        for point in point_indexation {
             if point.get_origin_id() == data_id as usize {
                 return Some(point.get_v().to_vec());
             }
@@ -1422,6 +1432,93 @@ mod tests {
             assert!(
                 (top_before - top_after).abs() < 0.01,
                 "top similarity should be stable: before={top_before}, after={top_after}"
+            );
+        }
+    }
+
+    // -- GH#286: get_embedding must find points at any layer, not only layer 0 --
+
+    /// Insert enough points that the HNSW layer-assignment RNG almost certainly
+    /// places at least one above layer 0 (probability ~1-(15/16)^200 ≈ 1.0).
+    /// Then verify get_embedding returns Some(_) for ALL inserted points.
+    ///
+    /// This is a deterministic regression guard: if get_embedding still used
+    /// get_layer_iterator(0) it would return None for points assigned level >= 1,
+    /// causing this assertion to fail.
+    #[test]
+    fn test_get_embedding_returns_some_for_all_points_regardless_of_layer() {
+        let tvi = TestVectorIndex::new();
+
+        // 200 points: probability that ALL land on layer 0 is (15/16)^200 < 10^-6.
+        // In practice hnsw_rs uses max_nb_connection=16 => P(level>=1) ~= 1/16 per point.
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 200);
+
+        let mut missing = Vec::new();
+        for &id in &ids {
+            if tvi.vi().get_embedding(id).is_none() {
+                missing.push(id);
+            }
+        }
+
+        assert!(
+            missing.is_empty(),
+            "get_embedding returned None for {} entries: {:?}",
+            missing.len(),
+            &missing[..missing.len().min(10)]
+        );
+    }
+
+    /// Verify that get_embedding returns the correct vector (round-trips).
+    /// Uses a single known embedding stored via insert_hnsw_only so the
+    /// data_id is predictable and the layer assignment is random.
+    #[test]
+    fn test_get_embedding_value_matches_inserted_vector() {
+        let tvi = TestVectorIndex::new();
+        let dim = 384;
+
+        // Insert 50 entries; for each, verify the retrieved embedding is
+        // close to the original (dot product ~1.0 for unit vectors).
+        let mut embeddings: Vec<(u64, Vec<f32>)> = Vec::new();
+        for i in 0..50 {
+            let entry = unimatrix_store::NewEntry {
+                title: format!("Emb entry {i}"),
+                content: format!("Content {i}"),
+                topic: "test".to_string(),
+                category: "vector".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: unimatrix_store::Status::Active,
+                created_by: String::new(),
+                feature_cycle: String::new(),
+                trust_source: String::new(),
+            };
+            let entry_id = tvi.store().insert(entry).unwrap();
+            let emb = random_normalized_embedding(dim);
+            tvi.vi().insert(entry_id, &emb).unwrap();
+            embeddings.push((entry_id, emb));
+        }
+
+        for (entry_id, original) in &embeddings {
+            let retrieved = tvi
+                .vi()
+                .get_embedding(*entry_id)
+                .unwrap_or_else(|| panic!("get_embedding returned None for entry {entry_id}"));
+
+            assert_eq!(
+                retrieved.len(),
+                dim,
+                "retrieved embedding has wrong dimension for entry {entry_id}"
+            );
+
+            // Dot product of two unit vectors equals cosine similarity; should be ~1.0
+            let dot: f32 = original
+                .iter()
+                .zip(retrieved.iter())
+                .map(|(a, b)| a * b)
+                .sum();
+            assert!(
+                dot > 0.99,
+                "embedding round-trip mismatch for entry {entry_id}: dot={dot}"
             );
         }
     }
