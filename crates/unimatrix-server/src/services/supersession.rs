@@ -22,7 +22,7 @@
 
 use std::sync::{Arc, RwLock};
 
-use unimatrix_core::{EntryRecord, Status, Store};
+use unimatrix_core::{EntryRecord, Store};
 use unimatrix_store::StoreError;
 
 // ---------------------------------------------------------------------------
@@ -86,18 +86,12 @@ impl SupersessionState {
     /// to `true` transiently if `build_supersession_graph` returns `CycleDetected`.
     /// This is safe because the search path rebuilds the graph on each call (Option A).
     pub fn rebuild(store: &Store) -> Result<Self, StoreError> {
-        let mut all: Vec<EntryRecord> = Vec::new();
-        for status in [
-            Status::Active,
-            Status::Deprecated,
-            Status::Proposed,
-            Status::Quarantined,
-        ] {
-            let mut batch = store.query_by_status(status)?;
-            all.append(&mut batch);
-        }
+        // Single lock_conn() + single SQL SELECT (GH #266).
+        // Replaces 4x query_by_status() calls that held the mutex 4 times
+        // and caused contention against concurrent MCP spawn_blocking calls.
+        let all_entries = store.query_all_entries()?;
         Ok(SupersessionState {
-            all_entries: all,
+            all_entries,
             use_fallback: false,
         })
     }

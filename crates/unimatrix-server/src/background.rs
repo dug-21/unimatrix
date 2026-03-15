@@ -340,11 +340,18 @@ async fn run_single_tick(
 
     // GH #264 fix: Rebuild supersession graph cache after maintenance tick completes.
     // Runs inside spawn_blocking because Store uses Mutex<Connection> (sync).
-    // Failure is logged but non-fatal — search falls back to FALLBACK_PENALTY.
+    // Wrapped in TICK_TIMEOUT (GH #266) so an abandoned blocking thread cannot
+    // hold the mutex indefinitely and block MCP handler spawn_blocking calls.
+    // On timeout the existing cached state is retained (guard is not updated).
     {
         let store_clone = Arc::clone(store);
-        match tokio::task::spawn_blocking(move || SupersessionState::rebuild(&store_clone)).await {
-            Ok(Ok(new_state)) => {
+        match tokio::time::timeout(
+            TICK_TIMEOUT,
+            tokio::task::spawn_blocking(move || SupersessionState::rebuild(&store_clone)),
+        )
+        .await
+        {
+            Ok(Ok(Ok(new_state))) => {
                 let mut guard = supersession_state
                     .write()
                     .unwrap_or_else(|e| e.into_inner());
@@ -354,11 +361,17 @@ async fn run_single_tick(
                     guard.all_entries.len()
                 );
             }
-            Ok(Err(e)) => {
+            Ok(Ok(Err(e))) => {
                 tracing::error!("supersession state rebuild failed: {e}");
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 tracing::error!("supersession state rebuild task panicked: {e}");
+            }
+            Err(_) => {
+                tracing::warn!(
+                    timeout_secs = TICK_TIMEOUT.as_secs(),
+                    "supersession state rebuild timed out; retaining existing cache"
+                );
             }
         }
     }
