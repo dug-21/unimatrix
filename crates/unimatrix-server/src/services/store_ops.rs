@@ -17,6 +17,7 @@ use unimatrix_adapt::AdaptationService;
 use crate::error::ServerError;
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::timeout::{MCP_HANDLER_TIMEOUT, spawn_blocking_with_timeout};
 use crate::services::gateway::SecurityGateway;
 use crate::services::{AuditContext, CallerId, ServiceError};
 
@@ -113,7 +114,7 @@ impl StoreService {
                     .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?;
                 let title = entry.title.clone();
                 let content = entry.content.clone();
-                let raw = tokio::task::spawn_blocking({
+                let raw = spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, {
                     let adapter = Arc::clone(&adapter);
                     move || adapter.embed_entry(&title, &content)
                 })
@@ -183,8 +184,9 @@ impl StoreService {
         let store = Arc::clone(&self.store);
         let audit_log = Arc::clone(&self.audit);
 
-        let (entry_id, record) =
-            tokio::task::spawn_blocking(move || -> Result<(u64, EntryRecord), ServerError> {
+        let (entry_id, record) = spawn_blocking_with_timeout(
+            MCP_HANDLER_TIMEOUT,
+            move || -> Result<(u64, EntryRecord), ServerError> {
                 let txn = store
                     .begin_write()
                     .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
@@ -317,16 +319,20 @@ impl StoreService {
                 txn.commit()
                     .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
                 Ok((id, record))
-            })
-            .await
-            .map_err(|e| ServiceError::Core(CoreError::JoinError(e.to_string())))?
-            .map_err(|e| -> ServiceError {
-                let server_err: ServerError = e;
-                match server_err {
-                    ServerError::Core(ce) => ServiceError::Core(ce),
-                    other => ServiceError::EmbeddingFailed(format!("{other}")),
-                }
-            })?;
+            },
+        )
+        .await
+        .map_err(|e| match e {
+            ServerError::Core(ce) => ServiceError::Core(ce),
+            other => ServiceError::EmbeddingFailed(format!("{other}")),
+        })?
+        .map_err(|e| -> ServiceError {
+            let server_err: ServerError = e;
+            match server_err {
+                ServerError::Core(ce) => ServiceError::Core(ce),
+                other => ServiceError::EmbeddingFailed(format!("{other}")),
+            }
+        })?;
 
         // Step 5: HNSW insert (after transaction commits)
         if !embedding.is_empty() {
