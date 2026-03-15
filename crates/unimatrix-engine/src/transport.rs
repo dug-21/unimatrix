@@ -8,8 +8,8 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::wire::{
-    deserialize_response, read_frame, serialize_request, write_frame, HookRequest, HookResponse,
-    MAX_PAYLOAD_SIZE, TransportError,
+    HookRequest, HookResponse, MAX_PAYLOAD_SIZE, TransportError, deserialize_response, read_frame,
+    serialize_request, write_frame,
 };
 
 /// Transport abstraction for hook-to-server communication.
@@ -77,12 +77,12 @@ impl Transport for LocalTransport {
         }
 
         let stream = UnixStream::connect(&self.socket_path)?;
-        stream.set_read_timeout(Some(self.timeout)).map_err(|e| {
-            TransportError::Transport(format!("failed to set read timeout: {e}"))
-        })?;
-        stream.set_write_timeout(Some(self.timeout)).map_err(|e| {
-            TransportError::Transport(format!("failed to set write timeout: {e}"))
-        })?;
+        stream
+            .set_read_timeout(Some(self.timeout))
+            .map_err(|e| TransportError::Transport(format!("failed to set read timeout: {e}")))?;
+        stream
+            .set_write_timeout(Some(self.timeout))
+            .map_err(|e| TransportError::Transport(format!("failed to set write timeout: {e}")))?;
         self.stream = Some(stream);
         Ok(())
     }
@@ -110,8 +110,7 @@ impl Transport for LocalTransport {
 
         // Serialize and write request frame
         let payload = serialize_request(req)?;
-        write_frame(stream, &payload)
-            .map_err(|e| TransportError::Transport(e.to_string()))?;
+        write_frame(stream, &payload).map_err(|e| TransportError::Transport(e.to_string()))?;
 
         // Read response frame
         let response_bytes = read_frame(stream, MAX_PAYLOAD_SIZE)?;
@@ -141,8 +140,7 @@ impl Transport for LocalTransport {
 
         // Serialize and write request frame
         let payload = serialize_request(req)?;
-        write_frame(stream, &payload)
-            .map_err(|e| TransportError::Transport(e.to_string()))?;
+        write_frame(stream, &payload).map_err(|e| TransportError::Transport(e.to_string()))?;
 
         // Do NOT read response -- disconnect immediately
         self.disconnect();

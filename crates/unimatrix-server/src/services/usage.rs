@@ -205,7 +205,9 @@ impl UsageService {
             (guard.alpha0, guard.beta0)
         };
         let confidence_fn: Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send> =
-            Box::new(move |entry, now| crate::confidence::compute_confidence(entry, now, alpha0, beta0));
+            Box::new(move |entry, now| {
+                crate::confidence::compute_confidence(entry, now, alpha0, beta0)
+            });
 
         let _ = tokio::task::spawn_blocking(move || {
             // Single lock acquisition for all writes
@@ -313,7 +315,8 @@ impl UsageService {
                 Some(
                     Box::new(move |entry: &unimatrix_store::EntryRecord, now: u64| {
                         crate::confidence::compute_confidence(entry, now, alpha0, beta0)
-                    }) as Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send>,
+                    })
+                        as Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send>,
                 ),
             ) {
                 tracing::warn!("briefing usage recording failed: {e}");

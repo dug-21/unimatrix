@@ -47,10 +47,7 @@ impl ConventionScorer {
     }
 
     /// Forward pass returning intermediate activations for backward pass.
-    fn forward_layers(
-        &self,
-        input: &Array1<f32>,
-    ) -> (Array1<f32>, Array1<f32>, Array1<f32>) {
+    fn forward_layers(&self, input: &Array1<f32>) -> (Array1<f32>, Array1<f32>, Array1<f32>) {
         // Layer 1: Linear + ReLU
         let z1 = self.w1.t().dot(input) + &self.b1;
         let a1 = z1.mapv(relu);
@@ -159,8 +156,8 @@ impl NeuralModel for ConventionScorer {
         offset += 32;
 
         let s = 32;
-        self.w2 = Array2::from_shape_vec((32, 1), params[offset..offset + s].to_vec())
-            .expect("w2 shape");
+        self.w2 =
+            Array2::from_shape_vec((32, 1), params[offset..offset + s].to_vec()).expect("w2 shape");
         offset += s;
 
         self.b2 = Array1::from(params[offset..offset + 1].to_vec());
@@ -191,16 +188,14 @@ fn relu(x: f32) -> f32 {
 }
 
 fn relu_derivative(x: f32) -> f32 {
-    if x > 0.0 {
-        1.0
-    } else {
-        0.0
-    }
+    if x > 0.0 { 1.0 } else { 0.0 }
 }
 
 fn xavier_init(rng: &mut StdRng, fan_in: usize, fan_out: usize) -> Array2<f32> {
     let scale = (2.0 / (fan_in + fan_out) as f32).sqrt();
-    Array2::from_shape_fn((fan_in, fan_out), |_| rng.random::<f32>() * 2.0 * scale - scale)
+    Array2::from_shape_fn((fan_in, fan_out), |_| {
+        rng.random::<f32>() * 2.0 * scale - scale
+    })
 }
 
 #[cfg(test)]
@@ -212,11 +207,7 @@ mod tests {
     fn baseline_zero_digest_low_score() {
         let scorer = ConventionScorer::new_with_baseline();
         let score = scorer.score(&SignalDigest::zeros());
-        assert!(
-            score < 0.3,
-            "zero-digest score {} should be < 0.3",
-            score
-        );
+        assert!(score < 0.3, "zero-digest score {} should be < 0.3", score);
     }
 
     // T-CS-05: Scorer output in [0,1] (AC-05)
@@ -273,18 +264,16 @@ mod tests {
             scorer.set_parameters(&p_plus);
             let out_plus = scorer.forward(&input);
             let y_plus = out_plus[0];
-            let loss_plus =
-                -(target[0] * y_plus.max(1e-7).ln()
-                    + (1.0 - target[0]) * (1.0 - y_plus).max(1e-7).ln());
+            let loss_plus = -(target[0] * y_plus.max(1e-7).ln()
+                + (1.0 - target[0]) * (1.0 - y_plus).max(1e-7).ln());
 
             let mut p_minus = params_before.clone();
             p_minus[i] -= h;
             scorer.set_parameters(&p_minus);
             let out_minus = scorer.forward(&input);
             let y_minus = out_minus[0];
-            let loss_minus =
-                -(target[0] * y_minus.max(1e-7).ln()
-                    + (1.0 - target[0]) * (1.0 - y_minus).max(1e-7).ln());
+            let loss_minus = -(target[0] * y_minus.max(1e-7).ln()
+                + (1.0 - target[0]) * (1.0 - y_minus).max(1e-7).ln());
 
             let numerical = (loss_plus - loss_minus) / (2.0 * h);
             let anal = analytical[i];
@@ -344,10 +333,7 @@ mod tests {
         let params_b = scorer_b.flat_parameters();
         assert_eq!(params_a.len(), params_b.len());
         for (i, (a, b)) in params_a.iter().zip(params_b.iter()).enumerate() {
-            assert!(
-                (a - b).abs() < 1e-6,
-                "param {i} mismatch: {a} vs {b}"
-            );
+            assert!((a - b).abs() < 1e-6, "param {i} mismatch: {a} vs {b}");
         }
     }
 
@@ -363,10 +349,8 @@ mod tests {
             (0..32).map(|i| 1.0 - i as f32 * 0.03).collect(),
         ];
 
-        let preds_before: Vec<Vec<f32>> = test_inputs
-            .iter()
-            .map(|inp| scorer.forward(inp))
-            .collect();
+        let preds_before: Vec<Vec<f32>> =
+            test_inputs.iter().map(|inp| scorer.forward(inp)).collect();
 
         let params = scorer.flat_parameters();
         scorer.set_parameters(&params);
@@ -374,10 +358,7 @@ mod tests {
         for (i, inp) in test_inputs.iter().enumerate() {
             let pred = scorer.forward(inp);
             for (j, (a, b)) in preds_before[i].iter().zip(pred.iter()).enumerate() {
-                assert!(
-                    (a - b).abs() < 1e-6,
-                    "input {i} output {j}: {a} vs {b}"
-                );
+                assert!((a - b).abs() < 1e-6, "input {i} output {j}: {a} vs {b}");
             }
         }
     }

@@ -3,13 +3,13 @@
 //! Tests rule firing, quality gate, and neural enhancer behavior.
 
 use unimatrix_core::HookType;
-use unimatrix_observe::extraction::{
-    default_extraction_rules, quality_gate, run_extraction_rules, ExtractionContext,
-    ProposedEntry, QualityGateResult,
-};
-use unimatrix_observe::extraction::neural::{EnhancerMode, NeuralEnhancer};
-use unimatrix_observe::types::ObservationRecord;
 use unimatrix_learn::models::{ConventionScorer, SignalClassifier};
+use unimatrix_observe::extraction::neural::{EnhancerMode, NeuralEnhancer};
+use unimatrix_observe::extraction::{
+    ExtractionContext, ProposedEntry, QualityGateResult, default_extraction_rules, quality_gate,
+    run_extraction_rules,
+};
+use unimatrix_observe::types::ObservationRecord;
 use unimatrix_store::test_helpers::TestDb;
 
 // ---------------------------------------------------------------------------
@@ -195,9 +195,7 @@ fn test_cross_rule_feature_minimums() {
         // Entry with exactly minimum features should pass cross-feature check
         let mut sufficient = base_entry.clone();
         sufficient.source_rule = rule_name.to_string();
-        sufficient.source_features = (0..min_features)
-            .map(|i| format!("session-{i}"))
-            .collect();
+        sufficient.source_features = (0..min_features).map(|i| format!("session-{i}")).collect();
 
         let mut ctx2 = ExtractionContext::new();
         let result2 = quality_gate(&sufficient, &mut ctx2);

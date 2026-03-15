@@ -43,12 +43,7 @@ pub struct SerializedPrototype {
 
 impl PrototypeManager {
     /// Create a new prototype manager.
-    pub fn new(
-        max_count: usize,
-        min_entries: u32,
-        pull_strength: f32,
-        dimension: usize,
-    ) -> Self {
+    pub fn new(max_count: usize, min_entries: u32, pull_strength: f32, dimension: usize) -> Self {
         Self {
             prototypes: HashMap::new(),
             max_count,
@@ -74,7 +69,11 @@ impl PrototypeManager {
         // Check category prototype
         if let Some(cat) = category {
             let key = PrototypeKey::Category(cat.to_string());
-            if let Some(proto) = self.prototypes.get(&key).filter(|p| p.entry_count >= self.min_entries) {
+            if let Some(proto) = self
+                .prototypes
+                .get(&key)
+                .filter(|p| p.entry_count >= self.min_entries)
+            {
                 let sim = cosine_similarity(adapted, proto.centroid.as_slice().unwrap());
                 if sim > best_sim {
                     best_sim = sim;
@@ -86,7 +85,11 @@ impl PrototypeManager {
         // Check topic prototype
         if let Some(top) = topic {
             let key = PrototypeKey::Topic(top.to_string());
-            if let Some(proto) = self.prototypes.get(&key).filter(|p| p.entry_count >= self.min_entries) {
+            if let Some(proto) = self
+                .prototypes
+                .get(&key)
+                .filter(|p| p.entry_count >= self.min_entries)
+            {
                 let sim = cosine_similarity(adapted, proto.centroid.as_slice().unwrap());
                 if sim > best_sim {
                     best_sim = sim;
@@ -313,8 +316,14 @@ mod tests {
         let input = vec![0.8, 0.2, 0.0, 0.0];
         let result = pm.apply_pull(&input, Some("test"), None);
         // Should be pulled toward [1, 0, 0, 0]
-        assert!(result[0] > input[0], "first element should increase toward prototype");
-        assert!(result[1] < input[1], "second element should decrease toward prototype");
+        assert!(
+            result[0] > input[0],
+            "first element should increase toward prototype"
+        );
+        assert!(
+            result[1] < input[1],
+            "second element should decrease toward prototype"
+        );
     }
 
     // T-PRO-06: Prototype stability under rapid updates
@@ -335,8 +344,16 @@ mod tests {
         // Centroid should converge to mean of v1 and v2: [0.5, 0.5, 0, 0]
         let key = PrototypeKey::Category("test".to_string());
         let proto = pm.prototypes.get(&key).unwrap();
-        assert!((proto.centroid[0] - 0.5).abs() < 0.1, "centroid[0]={}", proto.centroid[0]);
-        assert!((proto.centroid[1] - 0.5).abs() < 0.1, "centroid[1]={}", proto.centroid[1]);
+        assert!(
+            (proto.centroid[0] - 0.5).abs() < 0.1,
+            "centroid[0]={}",
+            proto.centroid[0]
+        );
+        assert!(
+            (proto.centroid[1] - 0.5).abs() < 0.1,
+            "centroid[1]={}",
+            proto.centroid[1]
+        );
         assert_eq!(proto.entry_count, 100);
     }
 
@@ -352,10 +369,22 @@ mod tests {
         // Adding "d" should evict "a" (oldest timestamp=100)
         pm.update(&[0.0, 0.0, 0.0, 1.0], Some("d"), None, 400);
         assert_eq!(pm.len(), 3);
-        assert!(!pm.prototypes.contains_key(&PrototypeKey::Category("a".to_string())));
-        assert!(pm.prototypes.contains_key(&PrototypeKey::Category("b".to_string())));
-        assert!(pm.prototypes.contains_key(&PrototypeKey::Category("c".to_string())));
-        assert!(pm.prototypes.contains_key(&PrototypeKey::Category("d".to_string())));
+        assert!(
+            !pm.prototypes
+                .contains_key(&PrototypeKey::Category("a".to_string()))
+        );
+        assert!(
+            pm.prototypes
+                .contains_key(&PrototypeKey::Category("b".to_string()))
+        );
+        assert!(
+            pm.prototypes
+                .contains_key(&PrototypeKey::Category("c".to_string()))
+        );
+        assert!(
+            pm.prototypes
+                .contains_key(&PrototypeKey::Category("d".to_string()))
+        );
     }
 
     // T-PRO-09: Category and topic prototypes independent
@@ -374,7 +403,10 @@ mod tests {
         // Centroids should be different
         let cat_centroid = &pm.prototypes[&cat_key].centroid;
         let top_centroid = &pm.prototypes[&top_key].centroid;
-        assert_ne!(cat_centroid.as_slice().unwrap(), top_centroid.as_slice().unwrap());
+        assert_ne!(
+            cat_centroid.as_slice().unwrap(),
+            top_centroid.as_slice().unwrap()
+        );
     }
 
     // T-PRO-11: Serialization round-trip
@@ -382,8 +414,18 @@ mod tests {
     fn serialization_roundtrip() {
         let mut pm = PrototypeManager::new(256, 3, 0.1, 4);
         for i in 0..5 {
-            pm.update(&[1.0, 0.0, 0.0, 0.0], Some(&format!("cat{i}")), None, i as u64 * 100);
-            pm.update(&[0.0, 1.0, 0.0, 0.0], None, Some(&format!("top{i}")), i as u64 * 100);
+            pm.update(
+                &[1.0, 0.0, 0.0, 0.0],
+                Some(&format!("cat{i}")),
+                None,
+                i as u64 * 100,
+            );
+            pm.update(
+                &[0.0, 1.0, 0.0, 0.0],
+                None,
+                Some(&format!("top{i}")),
+                i as u64 * 100,
+            );
         }
 
         let serialized = pm.to_serialized();

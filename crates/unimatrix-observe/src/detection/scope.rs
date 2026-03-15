@@ -10,7 +10,9 @@ use crate::types::{
     Severity,
 };
 
-use super::{find_completion_boundary, input_to_command_string, input_to_file_path, truncate, DetectionRule};
+use super::{
+    DetectionRule, find_completion_boundary, input_to_command_string, input_to_file_path, truncate,
+};
 
 // -- Rule 1: SourceFileCountRule (FR-04.1) --
 
@@ -32,8 +34,8 @@ impl DetectionRule for SourceFileCountRule {
         let mut evidence = Vec::new();
 
         for record in records {
-            let is_write_post = record.tool.as_deref() == Some("Write")
-                && record.hook == HookType::PostToolUse;
+            let is_write_post =
+                record.tool.as_deref() == Some("Write") && record.hook == HookType::PostToolUse;
             if !is_write_post {
                 continue;
             }
@@ -464,10 +466,22 @@ mod tests {
     #[test]
     fn test_adr_count_fires() {
         let records = vec![
-            make_write_pre(1000, "product/features/col-002b/architecture/ADR-001-test.md"),
-            make_write_pre(2000, "product/features/col-002b/architecture/ADR-002-test.md"),
-            make_write_pre(3000, "product/features/col-002b/architecture/ADR-003-test.md"),
-            make_write_pre(4000, "product/features/col-002b/architecture/ADR-004-test.md"),
+            make_write_pre(
+                1000,
+                "product/features/col-002b/architecture/ADR-001-test.md",
+            ),
+            make_write_pre(
+                2000,
+                "product/features/col-002b/architecture/ADR-002-test.md",
+            ),
+            make_write_pre(
+                3000,
+                "product/features/col-002b/architecture/ADR-003-test.md",
+            ),
+            make_write_pre(
+                4000,
+                "product/features/col-002b/architecture/ADR-004-test.md",
+            ),
         ];
         let rule = AdrCountRule;
         let findings = rule.detect(&records);
@@ -478,8 +492,14 @@ mod tests {
     #[test]
     fn test_adr_count_silent() {
         let records = vec![
-            make_write_pre(1000, "product/features/col-002b/architecture/ADR-001-test.md"),
-            make_write_pre(2000, "product/features/col-002b/architecture/ADR-002-test.md"),
+            make_write_pre(
+                1000,
+                "product/features/col-002b/architecture/ADR-001-test.md",
+            ),
+            make_write_pre(
+                2000,
+                "product/features/col-002b/architecture/ADR-002-test.md",
+            ),
         ];
         let rule = AdrCountRule;
         assert!(rule.detect(&records).is_empty());
@@ -579,9 +599,7 @@ mod tests {
 
     #[test]
     fn test_phase_duration_outlier_insufficient_history() {
-        let history: Vec<MetricVector> = (0..2)
-            .map(|_| MetricVector::default())
-            .collect();
+        let history: Vec<MetricVector> = (0..2).map(|_| MetricVector::default()).collect();
 
         let rule = PhaseDurationOutlierRule::new(Some(&history));
         assert!(rule.phase_baselines.is_empty());

@@ -8,8 +8,8 @@ use std::collections::{HashMap, HashSet};
 use unimatrix_core::HookType;
 use unimatrix_store::Store;
 
-use crate::types::ObservationRecord;
 use super::{ExtractionRule, ProposedEntry};
+use crate::types::ObservationRecord;
 
 pub struct KnowledgeGapRule;
 
@@ -141,9 +141,12 @@ mod tests {
     #[test]
     fn no_gap_from_single_session() {
         let store = make_store();
-        let observations = vec![
-            make_search_obs("session-1", "deployment rollback", Some(0), None),
-        ];
+        let observations = vec![make_search_obs(
+            "session-1",
+            "deployment rollback",
+            Some(0),
+            None,
+        )];
         let rule = KnowledgeGapRule;
         let proposals = rule.evaluate(&observations, &store);
         assert!(proposals.is_empty());
@@ -153,8 +156,18 @@ mod tests {
     fn no_gap_when_results_found() {
         let store = make_store();
         let observations = vec![
-            make_search_obs("session-1", "deployment rollback", Some(100), Some("Found 3 results")),
-            make_search_obs("session-2", "deployment rollback", Some(50), Some("Found 1 result")),
+            make_search_obs(
+                "session-1",
+                "deployment rollback",
+                Some(100),
+                Some("Found 3 results"),
+            ),
+            make_search_obs(
+                "session-2",
+                "deployment rollback",
+                Some(50),
+                Some("Found 1 result"),
+            ),
         ];
         let rule = KnowledgeGapRule;
         let proposals = rule.evaluate(&observations, &store);

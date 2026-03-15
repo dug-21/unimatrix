@@ -43,7 +43,9 @@ fn extract_from_path(s: &str) -> Option<String> {
 /// Accepts any feature ID matching the `alpha-digits` pattern (e.g., "col-002", "eng-001").
 /// No prefix allowlist — the structural pattern validated by `is_valid_feature_id` is sufficient.
 fn extract_feature_id_pattern(s: &str) -> Option<String> {
-    for word in s.split(|c: char| c.is_whitespace() || c == '"' || c == '\'' || c == '(' || c == ')') {
+    for word in
+        s.split(|c: char| c.is_whitespace() || c == '"' || c == '\'' || c == '(' || c == ')')
+    {
         let candidate = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '-');
         if is_valid_feature_id(candidate) {
             return Some(candidate.to_string());
@@ -137,7 +139,10 @@ pub fn attribute_sessions(
                 if current_feature.as_deref() != Some(&signal) {
                     // Feature switch point
                     if !current_records.is_empty() {
-                        partitions.push((current_feature.clone(), std::mem::take(&mut current_records)));
+                        partitions.push((
+                            current_feature.clone(),
+                            std::mem::take(&mut current_records),
+                        ));
                     }
                     current_feature = Some(signal);
                 }
@@ -149,9 +154,7 @@ pub fn attribute_sessions(
         }
 
         // FR-04.4: Records before any feature ID -> attributed to first feature found
-        let first_feature = partitions
-            .iter()
-            .find_map(|(f, _)| f.clone());
+        let first_feature = partitions.iter().find_map(|(f, _)| f.clone());
 
         for (feature, records) in &partitions {
             let effective_feature = feature.as_ref().or(first_feature.as_ref());
@@ -241,8 +244,16 @@ mod tests {
     #[test]
     fn test_attribute_single_feature_session() {
         let records = vec![
-            make_record(1000, Some("Read"), Some("product/features/col-002/SCOPE.md")),
-            make_record(2000, Some("Write"), Some("product/features/col-002/test.rs")),
+            make_record(
+                1000,
+                Some("Read"),
+                Some("product/features/col-002/SCOPE.md"),
+            ),
+            make_record(
+                2000,
+                Some("Write"),
+                Some("product/features/col-002/test.rs"),
+            ),
         ];
         let sessions = vec![make_session("s1", records)];
 
@@ -253,10 +264,26 @@ mod tests {
     #[test]
     fn test_attribute_two_feature_session() {
         let records = vec![
-            make_record(1000, Some("Read"), Some("product/features/col-001/SCOPE.md")),
-            make_record(2000, Some("Write"), Some("product/features/col-001/test.rs")),
-            make_record(3000, Some("Read"), Some("product/features/col-002/SCOPE.md")),
-            make_record(4000, Some("Write"), Some("product/features/col-002/test.rs")),
+            make_record(
+                1000,
+                Some("Read"),
+                Some("product/features/col-001/SCOPE.md"),
+            ),
+            make_record(
+                2000,
+                Some("Write"),
+                Some("product/features/col-001/test.rs"),
+            ),
+            make_record(
+                3000,
+                Some("Read"),
+                Some("product/features/col-002/SCOPE.md"),
+            ),
+            make_record(
+                4000,
+                Some("Write"),
+                Some("product/features/col-002/test.rs"),
+            ),
         ];
         let sessions = vec![make_session("s1", records)];
 
@@ -281,8 +308,16 @@ mod tests {
     fn test_attribute_pre_feature_records() {
         let records = vec![
             make_record(1000, Some("Read"), Some("/tmp/setup.rs")),
-            make_record(2000, Some("Read"), Some("product/features/col-002/SCOPE.md")),
-            make_record(3000, Some("Write"), Some("product/features/col-002/test.rs")),
+            make_record(
+                2000,
+                Some("Read"),
+                Some("product/features/col-002/SCOPE.md"),
+            ),
+            make_record(
+                3000,
+                Some("Write"),
+                Some("product/features/col-002/test.rs"),
+            ),
         ];
         let sessions = vec![make_session("s1", records)];
 
@@ -293,15 +328,30 @@ mod tests {
 
     #[test]
     fn test_attribute_multiple_sessions() {
-        let s1 = make_session("s1", vec![
-            make_record(1000, Some("Read"), Some("product/features/col-002/SCOPE.md")),
-        ]);
-        let s2 = make_session("s2", vec![
-            make_record(2000, Some("Read"), Some("product/features/nxs-001/SCOPE.md")),
-        ]);
-        let s3 = make_session("s3", vec![
-            make_record(3000, Some("Read"), Some("product/features/col-002/test.rs")),
-        ]);
+        let s1 = make_session(
+            "s1",
+            vec![make_record(
+                1000,
+                Some("Read"),
+                Some("product/features/col-002/SCOPE.md"),
+            )],
+        );
+        let s2 = make_session(
+            "s2",
+            vec![make_record(
+                2000,
+                Some("Read"),
+                Some("product/features/nxs-001/SCOPE.md"),
+            )],
+        );
+        let s3 = make_session(
+            "s3",
+            vec![make_record(
+                3000,
+                Some("Read"),
+                Some("product/features/col-002/test.rs"),
+            )],
+        );
 
         let result = attribute_sessions(&[s1, s2, s3], "col-002");
         assert_eq!(result.len(), 2);
@@ -423,8 +473,16 @@ mod tests {
     fn test_attribute_sessions_suffixed_feature() {
         // AC-14: E2E attribution with suffixed feature ID (#79)
         let records = vec![
-            make_record(1000, Some("Read"), Some("product/features/col-010b/SCOPE.md")),
-            make_record(2000, Some("Write"), Some("product/features/col-010b/test.rs")),
+            make_record(
+                1000,
+                Some("Read"),
+                Some("product/features/col-010b/SCOPE.md"),
+            ),
+            make_record(
+                2000,
+                Some("Write"),
+                Some("product/features/col-010b/test.rs"),
+            ),
         ];
         let sessions = vec![make_session("s1", records)];
 
@@ -466,20 +524,14 @@ mod tests {
         // AC-04: path > pattern priority (AR-1)
         // Input has both a path and a standalone pattern; path should win
         let input = "reading product/features/col-002/SCOPE.md while working on nxs-001";
-        assert_eq!(
-            extract_topic_signal(input),
-            Some("col-002".to_string())
-        );
+        assert_eq!(extract_topic_signal(input), Some("col-002".to_string()));
     }
 
     #[test]
     fn test_extract_topic_signal_priority_pattern_over_git() {
         // AC-04: pattern > git priority (AR-1)
         let input = "working on col-002 then git checkout feature/nxs-001";
-        assert_eq!(
-            extract_topic_signal(input),
-            Some("col-002".to_string())
-        );
+        assert_eq!(extract_topic_signal(input), Some("col-002".to_string()));
     }
 
     #[test]
@@ -496,9 +548,18 @@ mod tests {
         // Patterns like "utf-8", "x86-64", "sha-256" do pass validation.
         // Majority vote at session level mitigates: occasional false positives
         // are outvoted by repeated real signals across a session.
-        assert_eq!(extract_topic_signal("encoding utf-8"), Some("utf-8".to_string()));
-        assert_eq!(extract_topic_signal("architecture x86-64"), Some("x86-64".to_string()));
-        assert_eq!(extract_topic_signal("hash sha-256"), Some("sha-256".to_string()));
+        assert_eq!(
+            extract_topic_signal("encoding utf-8"),
+            Some("utf-8".to_string())
+        );
+        assert_eq!(
+            extract_topic_signal("architecture x86-64"),
+            Some("x86-64".to_string())
+        );
+        assert_eq!(
+            extract_topic_signal("hash sha-256"),
+            Some("sha-256".to_string())
+        );
 
         // Strings without hyphens are correctly rejected
         assert_eq!(extract_topic_signal("just a number 42"), None);

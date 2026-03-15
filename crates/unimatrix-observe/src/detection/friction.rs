@@ -8,7 +8,7 @@ use crate::types::{
     EvidenceRecord, HookType, HotspotCategory, HotspotFinding, ObservationRecord, Severity,
 };
 
-use super::{contains_sleep_command, input_to_command_string, truncate, DetectionRule};
+use super::{DetectionRule, contains_sleep_command, input_to_command_string, truncate};
 
 // -- Rule 1: PermissionRetriesRule (moved from col-002 detection.rs) --
 
@@ -135,10 +135,14 @@ fn is_search_command(cmd: &str) -> bool {
     let trimmed = cmd.trim();
     for segment in trimmed.split(|c: char| c == ';' || c == '\n') {
         let seg = segment.trim();
-        if seg.starts_with("find ") || seg == "find"
-            || seg.starts_with("grep ") || seg == "grep"
-            || seg.starts_with("rg ") || seg == "rg"
-            || seg.starts_with("ag ") || seg == "ag"
+        if seg.starts_with("find ")
+            || seg == "find"
+            || seg.starts_with("grep ")
+            || seg == "grep"
+            || seg.starts_with("rg ")
+            || seg == "rg"
+            || seg.starts_with("ag ")
+            || seg == "ag"
         {
             return true;
         }
@@ -270,7 +274,9 @@ impl DetectionRule for OutputParsingStruggleRule {
                 let filters: HashSet<String> = in_window
                     .iter()
                     .filter_map(|(_, full)| {
-                        let after_pipe = full.split_once('|').map(|(_, rest)| rest.trim().to_string());
+                        let after_pipe = full
+                            .split_once('|')
+                            .map(|(_, rest)| rest.trim().to_string());
                         after_pipe
                     })
                     .collect();

@@ -60,9 +60,8 @@ pub fn extract_peer_credentials(
 ) -> Result<PeerCredentials, AuthError> {
     use nix::sys::socket::{self, sockopt};
 
-    let cred = socket::getsockopt(stream, sockopt::PeerCredentials).map_err(|e| {
-        AuthError::CredentialExtraction(format!("SO_PEERCRED failed: {e}"))
-    })?;
+    let cred = socket::getsockopt(stream, sockopt::PeerCredentials)
+        .map_err(|e| AuthError::CredentialExtraction(format!("SO_PEERCRED failed: {e}")))?;
 
     Ok(PeerCredentials {
         uid: cred.uid(),
@@ -75,14 +74,13 @@ pub fn extract_peer_credentials(
 pub fn extract_peer_credentials(
     stream: &std::os::unix::net::UnixStream,
 ) -> Result<PeerCredentials, AuthError> {
-    use nix::unistd::{Uid, Gid};
+    use nix::unistd::{Gid, Uid};
     use std::os::fd::AsRawFd;
 
     // On macOS, use getpeereid via nix
     let fd = stream.as_raw_fd();
-    let (uid, gid) = nix::unistd::getpeereid(fd).map_err(|e| {
-        AuthError::CredentialExtraction(format!("getpeereid failed: {e}"))
-    })?;
+    let (uid, gid) = nix::unistd::getpeereid(fd)
+        .map_err(|e| AuthError::CredentialExtraction(format!("getpeereid failed: {e}")))?;
 
     Ok(PeerCredentials {
         uid: uid.as_raw(),
@@ -114,7 +112,9 @@ pub fn authenticate_connection(
     #[cfg(target_os = "linux")]
     if let Some(pid) = creds.pid {
         if let Err(e) = verify_process_lineage(pid) {
-            tracing::warn!("process lineage check failed for pid {pid}: {e} (advisory, allowing connection)");
+            tracing::warn!(
+                "process lineage check failed for pid {pid}: {e} (advisory, allowing connection)"
+            );
         }
     }
 
@@ -131,9 +131,8 @@ fn verify_process_lineage(pid: u32) -> Result<(), AuthError> {
     use std::fs;
 
     let cmdline_path = format!("/proc/{pid}/cmdline");
-    let cmdline = fs::read_to_string(&cmdline_path).map_err(|e| {
-        AuthError::LineageFailed(format!("cannot read {cmdline_path}: {e}"))
-    })?;
+    let cmdline = fs::read_to_string(&cmdline_path)
+        .map_err(|e| AuthError::LineageFailed(format!("cannot read {cmdline_path}: {e}")))?;
 
     // Accept any process with a non-empty cmdline for now.
     // Future versions may verify the process descends from a Claude Code session.

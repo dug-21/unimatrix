@@ -135,8 +135,9 @@ impl ConfidenceService {
             for id in ids {
                 match store.get(id) {
                     Ok(entry) => {
-                        let conf =
-                            unimatrix_engine::confidence::compute_confidence(&entry, now, alpha0, beta0);
+                        let conf = unimatrix_engine::confidence::compute_confidence(
+                            &entry, now, alpha0, beta0,
+                        );
                         if let Err(e) = store.update_confidence(id, conf) {
                             tracing::warn!("confidence recompute failed for {id}: {e}");
                         }

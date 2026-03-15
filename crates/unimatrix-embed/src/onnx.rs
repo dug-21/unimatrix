@@ -94,12 +94,9 @@ impl OnnxProvider {
 
         // Create tensors with shape [1, seq_len]
         let shape = vec![1_i64, seq_len as i64];
-        let ids_tensor =
-            Tensor::from_array((shape.clone(), input_ids_i64.clone()))?;
-        let mask_tensor =
-            Tensor::from_array((shape.clone(), attention_mask_i64.clone()))?;
-        let type_tensor =
-            Tensor::from_array((shape, token_type_ids_i64.clone()))?;
+        let ids_tensor = Tensor::from_array((shape.clone(), input_ids_i64.clone()))?;
+        let mask_tensor = Tensor::from_array((shape.clone(), attention_mask_i64.clone()))?;
+        let type_tensor = Tensor::from_array((shape, token_type_ids_i64.clone()))?;
 
         let inputs = ort::inputs![
             "input_ids" => ids_tensor,
@@ -120,7 +117,11 @@ impl OnnxProvider {
             if shape.len() != 3 || shape[0] != 1 || shape[2] as usize != hidden_dim {
                 return Err(EmbedError::DimensionMismatch {
                     expected: hidden_dim,
-                    got: if shape.len() == 3 { shape[2] as usize } else { 0 },
+                    got: if shape.len() == 3 {
+                        shape[2] as usize
+                    } else {
+                        0
+                    },
                 });
             }
 
@@ -186,12 +187,9 @@ impl OnnxProvider {
 
             // Create tensors with shape [batch_size, seq_len]
             let shape = vec![batch_size as i64, seq_len as i64];
-            let ids_tensor =
-                Tensor::from_array((shape.clone(), input_ids_flat.clone()))?;
-            let mask_tensor =
-                Tensor::from_array((shape.clone(), attention_mask_flat.clone()))?;
-            let type_tensor =
-                Tensor::from_array((shape, token_type_ids_flat.clone()))?;
+            let ids_tensor = Tensor::from_array((shape.clone(), input_ids_flat.clone()))?;
+            let mask_tensor = Tensor::from_array((shape.clone(), attention_mask_flat.clone()))?;
+            let type_tensor = Tensor::from_array((shape, token_type_ids_flat.clone()))?;
 
             let inputs = ort::inputs![
                 "input_ids" => ids_tensor,
@@ -272,7 +270,11 @@ mod tests {
     fn test_provider_construction_default() {
         let config = EmbedConfig::default();
         let result = OnnxProvider::new(config);
-        assert!(result.is_ok(), "OnnxProvider::new failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "OnnxProvider::new failed: {:?}",
+            result.err()
+        );
         let provider = result.unwrap();
         assert_eq!(provider.dimension(), 384);
         assert_eq!(provider.name(), "sentence-transformers/all-MiniLM-L6-v2");
@@ -324,7 +326,13 @@ mod tests {
     #[ignore]
     fn test_normalization_diverse_inputs() {
         let provider = OnnxProvider::new(EmbedConfig::default()).unwrap();
-        let inputs = ["short", "a much longer text about various topics", "", " ", "!"];
+        let inputs = [
+            "short",
+            "a much longer text about various topics",
+            "",
+            " ",
+            "!",
+        ];
         for text in &inputs {
             let embedding = provider.embed(text).unwrap();
             assert_normalized(&embedding, 0.001);
@@ -335,7 +343,9 @@ mod tests {
     #[ignore]
     fn test_semantic_similarity() {
         let provider = OnnxProvider::new(EmbedConfig::default()).unwrap();
-        let e1 = provider.embed("Rust error handling best practices").unwrap();
+        let e1 = provider
+            .embed("Rust error handling best practices")
+            .unwrap();
         let e2 = provider.embed("How to handle errors in Rust").unwrap();
         let e3 = provider.embed("Recipe for chocolate cake").unwrap();
 
@@ -386,8 +396,7 @@ mod tests {
             "machine learning",
         ];
 
-        let individual: Vec<Vec<f32>> =
-            texts.iter().map(|t| provider.embed(t).unwrap()).collect();
+        let individual: Vec<Vec<f32>> = texts.iter().map(|t| provider.embed(t).unwrap()).collect();
 
         let batch = provider.embed_batch(&texts).unwrap();
 

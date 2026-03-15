@@ -59,12 +59,7 @@ impl EwcState {
     /// Updates the Fisher diagonal and reference parameters:
     /// - F_new = alpha * F_old + (1-alpha) * F_batch
     /// - theta*_new = alpha * theta*_old + (1-alpha) * theta_current
-    pub fn update(
-        &mut self,
-        current_params: &[f32],
-        grad_a: &Array2<f32>,
-        grad_b: &Array2<f32>,
-    ) {
+    pub fn update(&mut self, current_params: &[f32], grad_a: &Array2<f32>, grad_b: &Array2<f32>) {
         // Compute batch Fisher approximation: F_batch = grad^2
         let mut batch_fisher = Vec::with_capacity(current_params.len());
         for v in grad_a.iter().chain(grad_b.iter()) {
@@ -166,11 +161,7 @@ mod tests {
         let grad_b = Array2::from_shape_vec((1, 2), vec![0.2, 0.4]).expect("shape");
 
         // Compute grad_squared as update() would
-        let grad_squared: Vec<f32> = grad_a
-            .iter()
-            .chain(grad_b.iter())
-            .map(|v| v * v)
-            .collect();
+        let grad_squared: Vec<f32> = grad_a.iter().chain(grad_b.iter()).map(|v| v * v).collect();
 
         ewc1.update(&params, &grad_a, &grad_b);
         ewc2.update_from_flat(&params, &grad_squared);
@@ -178,10 +169,7 @@ mod tests {
         let test_params = vec![0.5, 1.0, 1.5, 2.0];
         let p1 = ewc1.penalty(&test_params);
         let p2 = ewc2.penalty(&test_params);
-        assert!(
-            (p1 - p2).abs() < 1e-6,
-            "penalty mismatch: {p1} vs {p2}"
-        );
+        assert!((p1 - p2).abs() < 1e-6, "penalty mismatch: {p1} vs {p2}");
     }
 
     #[test]

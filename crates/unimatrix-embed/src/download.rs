@@ -32,9 +32,12 @@ pub fn ensure_model(model: EmbeddingModel, cache_dir: &Path) -> Result<PathBuf> 
     let repo = api.model(model.model_id().to_string());
 
     // Download ONNX model file (repo path may differ from local filename)
-    let downloaded_onnx = repo
-        .get(model.onnx_repo_path())
-        .map_err(|e| EmbedError::Download(format!("failed to download {}: {e}", model.onnx_repo_path())))?;
+    let downloaded_onnx = repo.get(model.onnx_repo_path()).map_err(|e| {
+        EmbedError::Download(format!(
+            "failed to download {}: {e}",
+            model.onnx_repo_path()
+        ))
+    })?;
 
     // Download tokenizer
     let downloaded_tokenizer = repo
