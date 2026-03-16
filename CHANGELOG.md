@@ -3,6 +3,18 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.9] - 2026-03-16
+
+### Fixes
+- server: decouple compute_report() from maintenance tick — skip O(N) ONNX phases (#280)
+- server: cache contradiction scan result in background tick (#278)
+- server: use is_multiple_of for contradiction scan tick gate (#278)
+- server: batch extraction tick observations to 1000 rows (#279)
+- server: wrap all hot-path MCP handler spawn_blocking calls with timeout (#277)
+- server: wrap background tick in panic supervisor loop (#276)
+- server: replace naked JoinHandle unwrap in compute_report() (#275)
+- vector: iterate all HNSW layers in get_embedding (#286)
+
 ## [0.5.8] - 2026-03-13
 
 ### Fixes
