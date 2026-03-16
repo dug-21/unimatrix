@@ -99,6 +99,57 @@ pub struct StatusReport {
     pub effectiveness: Option<unimatrix_engine::effectiveness::EffectivenessReport>,
 }
 
+impl Default for StatusReport {
+    fn default() -> Self {
+        StatusReport {
+            total_active: 0,
+            total_deprecated: 0,
+            total_proposed: 0,
+            total_quarantined: 0,
+            category_distribution: Vec::new(),
+            topic_distribution: Vec::new(),
+            entries_with_supersedes: 0,
+            entries_with_superseded_by: 0,
+            total_correction_count: 0,
+            trust_source_distribution: Vec::new(),
+            entries_without_attribution: 0,
+            contradictions: Vec::new(),
+            contradiction_count: 0,
+            embedding_inconsistencies: Vec::new(),
+            contradiction_scan_performed: false,
+            embedding_check_performed: false,
+            total_co_access_pairs: 0,
+            active_co_access_pairs: 0,
+            top_co_access_pairs: Vec::new(),
+            stale_pairs_cleaned: 0,
+            coherence: 1.0,
+            confidence_freshness_score: 1.0,
+            graph_quality_score: 1.0,
+            embedding_consistency_score: 1.0,
+            contradiction_density_score: 1.0,
+            stale_confidence_count: 0,
+            confidence_refreshed_count: 0,
+            graph_stale_ratio: 0.0,
+            graph_compacted: false,
+            maintenance_recommendations: Vec::new(),
+            total_outcomes: 0,
+            outcomes_by_type: Vec::new(),
+            outcomes_by_result: Vec::new(),
+            outcomes_by_feature_cycle: Vec::new(),
+            observation_file_count: 0,
+            observation_total_size_bytes: 0,
+            observation_oldest_file_days: 0,
+            observation_approaching_cleanup: Vec::new(),
+            retrospected_feature_count: 0,
+            last_maintenance_run: None,
+            next_maintenance_scheduled: None,
+            extraction_stats: None,
+            coherence_by_source: Vec::new(),
+            effectiveness: None,
+        }
+    }
+}
+
 /// Extraction pipeline statistics for status reporting (col-013).
 #[derive(Debug, Clone, Serialize)]
 pub struct ExtractionStatsResponse {
