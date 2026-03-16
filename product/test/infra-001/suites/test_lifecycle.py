@@ -557,13 +557,9 @@ def test_auto_quarantine_disabled_when_env_zero(tmp_path):
 
 @pytest.mark.xfail(
     reason=(
-        "AC-17 item 3: auto-quarantine fires after N consecutive background ticks. "
-        "The background tick interval is 15 minutes in production and cannot be driven "
-        "externally through the MCP interface. A test-mode tick trigger "
-        "(e.g., UNIMATRIX_TICK_INTERVAL_SECONDS env var) is needed. "
-        "Unit tests in background.rs cover the trigger logic end-to-end. "
-        "This integration test is filed as a known gap: "
-        "see test-plan/auto-quarantine-guard.md Integration Test Expectations."
+        "Pre-existing: GH#291 — tick interval not overridable at integration level. "
+        "UNIMATRIX_TICK_INTERVAL_SECONDS env var needed to drive ticks in test. "
+        "Unit tests in background.rs cover trigger logic end-to-end."
     )
 )
 def test_auto_quarantine_after_consecutive_bad_ticks(server):
