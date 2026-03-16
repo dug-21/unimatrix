@@ -20,6 +20,7 @@ use crate::infra::usage_dedup::UsageDedup;
 
 pub(crate) mod briefing;
 pub(crate) mod confidence;
+pub(crate) mod contradiction_cache;
 pub(crate) mod effectiveness;
 pub(crate) mod gateway;
 pub(crate) mod observation;
@@ -33,6 +34,9 @@ pub(crate) mod usage;
 pub(crate) use briefing::BriefingService;
 pub(crate) use confidence::ConfidenceService;
 pub use confidence::{ConfidenceState, ConfidenceStateHandle};
+pub use contradiction_cache::{
+    ContradictionScanCacheHandle, ContradictionScanResult, new_contradiction_cache_handle,
+};
 pub use effectiveness::{EffectivenessState, EffectivenessStateHandle};
 pub(crate) use gateway::{RateLimitConfig, SecurityGateway};
 pub(crate) use search::{RetrievalMode, SearchService, ServiceSearchParams};
@@ -236,6 +240,11 @@ pub struct ServiceLayer {
     /// from the search hot path. Held here for external access via
     /// `supersession_state_handle()` (mirrors `effectiveness_state_handle()`).
     supersession_state: SupersessionStateHandle,
+    /// GH #278 fix: contradiction scan result cache shared with StatusService
+    /// and the background tick. Eliminates O(N) ONNX inference from every
+    /// `context_status` call. Held here for external access via
+    /// `contradiction_cache_handle()` (mirrors `supersession_state_handle()`).
+    contradiction_cache: ContradictionScanCacheHandle,
 }
 
 impl ServiceLayer {
@@ -266,6 +275,16 @@ impl ServiceLayer {
     /// Mirrors `effectiveness_state_handle()` (GH #264 fix).
     pub fn supersession_state_handle(&self) -> SupersessionStateHandle {
         Arc::clone(&self.supersession_state)
+    }
+
+    /// Return a clone of the `ContradictionScanCacheHandle` owned by this layer.
+    ///
+    /// Used by the binary crate (`main.rs`) to pass the shared handle to
+    /// `spawn_background_tick` so the background tick writes the same
+    /// `Arc<RwLock<Option<ContradictionScanResult>>>` that `StatusService` reads from.
+    /// Mirrors `supersession_state_handle()` (GH #278 fix).
+    pub fn contradiction_cache_handle(&self) -> ContradictionScanCacheHandle {
+        Arc::clone(&self.contradiction_cache)
     }
 
     pub fn new(
@@ -321,6 +340,11 @@ impl ServiceLayer {
         // and the background tick so the tick rebuilds the snapshot SearchService reads.
         let supersession_state = SupersessionState::new_handle();
 
+        // GH #278 fix: create contradiction cache handle once; clone into StatusService
+        // (read path) and the background tick (write path) so they share the same
+        // Arc<RwLock<Option<ContradictionScanResult>>>.
+        let contradiction_cache = new_contradiction_cache_handle();
+
         let search = SearchService::new(
             Arc::clone(&store),
             Arc::clone(&vector_store),
@@ -359,6 +383,7 @@ impl ServiceLayer {
             Arc::clone(&embed_service),
             Arc::clone(&adapt_service),
             Arc::clone(&confidence_state_handle),
+            Arc::clone(&contradiction_cache),
         );
 
         let usage = UsageService::new(
@@ -376,6 +401,7 @@ impl ServiceLayer {
             usage,
             effectiveness_state, // crt-018b: held for external access via effectiveness_state_handle()
             supersession_state, // GH #264: held for external access via supersession_state_handle()
+            contradiction_cache, // GH #278: held for external access via contradiction_cache_handle()
         }
     }
 }

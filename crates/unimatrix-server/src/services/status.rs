@@ -24,6 +24,7 @@ use crate::mcp::response::status::{CoAccessClusterEntry, StatusReport};
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
 use crate::services::confidence::ConfidenceStateHandle;
+use crate::services::contradiction_cache::ContradictionScanCacheHandle;
 
 /// Minimum number of voted entries required for empirical Bayesian prior estimation.
 ///
@@ -168,6 +169,11 @@ pub(crate) struct StatusService {
     /// Read once before each confidence refresh batch (IR-02) to snapshot
     /// alpha0/beta0 without acquiring the lock inside the hot loop.
     confidence_state: ConfidenceStateHandle,
+    /// GH #278: last contradiction scan result, written by background tick, read here.
+    ///
+    /// `compute_report()` reads the cached result instead of running O(N) ONNX
+    /// inference on every call. `None` on cold-start; set after first scan tick.
+    contradiction_cache: ContradictionScanCacheHandle,
 }
 
 /// Result of maintenance operations.
@@ -185,6 +191,7 @@ impl StatusService {
         embed_service: Arc<EmbedServiceHandle>,
         adapt_service: Arc<AdaptationService>,
         confidence_state: ConfidenceStateHandle,
+        contradiction_cache: ContradictionScanCacheHandle,
     ) -> Self {
         StatusService {
             store,
@@ -192,6 +199,7 @@ impl StatusService {
             embed_service,
             adapt_service,
             confidence_state,
+            contradiction_cache,
         }
     }
 
@@ -429,37 +437,28 @@ impl StatusService {
         })?;
         let (mut report, active_entries) = report_result;
 
-        // Phase 2: Contradiction scanning (outside read txn)
-        if let Ok(adapter) = self.embed_service.get_adapter().await {
-            let scan_config = contradiction::ContradictionConfig::default();
-            let store_for_scan = Arc::clone(&self.store);
-            let vi_for_scan = Arc::clone(&self.vector_index);
-            let adapter_for_scan = Arc::clone(&adapter);
-            let config_for_scan = scan_config.clone();
-
-            match spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
-                let vs = VectorAdapter::new(vi_for_scan);
-                contradiction::scan_contradictions(
-                    &store_for_scan,
-                    &vs,
-                    &*adapter_for_scan,
-                    &config_for_scan,
-                )
-            })
-            .await
-            {
-                Ok(Ok(contradictions)) => {
-                    report.contradiction_count = contradictions.len();
-                    report.contradictions = contradictions;
-                    report.contradiction_scan_performed = true;
-                }
-                _ => {
-                    // Scan failed or timed out -- graceful degradation
-                }
+        // Phase 2: Contradiction scan — read from cache populated by background tick.
+        //
+        // GH #278: scan_contradictions() runs O(N) ONNX inference and is too expensive
+        // to call on every context_status invocation. The background tick writes the
+        // cache every CONTRADICTION_SCAN_INTERVAL_TICKS ticks; we read it here without
+        // touching the embed service at all.
+        {
+            let cached = self
+                .contradiction_cache
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
+            if let Some(ref result) = *cached {
+                report.contradiction_count = result.pairs.len();
+                report.contradictions = result.pairs.clone();
+                report.contradiction_scan_performed = true;
             }
+            // If None (cold-start): contradiction_scan_performed stays false (default).
+        }
 
-            // Phase 3: Embedding consistency (opt-in)
-            if check_embeddings {
+        // Phase 3: Embedding consistency (opt-in)
+        if check_embeddings {
+            if let Ok(adapter) = self.embed_service.get_adapter().await {
                 let store_for_embed = Arc::clone(&self.store);
                 let vi_for_embed = Arc::clone(&self.vector_index);
                 let adapter_for_embed = Arc::clone(&adapter);

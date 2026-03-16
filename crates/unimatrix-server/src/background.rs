@@ -35,6 +35,9 @@ use crate::infra::session::SessionRegistry;
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
 use crate::services::confidence::ConfidenceStateHandle;
+use crate::services::contradiction_cache::{
+    CONTRADICTION_SCAN_INTERVAL_TICKS, ContradictionScanCacheHandle, ContradictionScanResult,
+};
 use crate::services::effectiveness::EffectivenessStateHandle;
 use crate::services::status::StatusService;
 use crate::services::supersession::{SupersessionState, SupersessionStateHandle};
@@ -108,6 +111,12 @@ pub struct TickMetadata {
     pub next_scheduled: Option<u64>,
     /// Cumulative extraction statistics.
     pub extraction_stats: ExtractionStats,
+    /// Monotonically increasing tick counter (wraps via `wrapping_add`).
+    ///
+    /// Used to gate infrequent operations (e.g. contradiction scan) that
+    /// run every N ticks rather than every tick. Starts at 0; the first
+    /// tick is tick 0 (`tick_counter % N == 0` fires on tick 0).
+    pub tick_counter: u32,
 }
 
 impl TickMetadata {
@@ -222,6 +231,7 @@ pub fn spawn_background_tick(
     confidence_state: ConfidenceStateHandle,
     effectiveness_state: EffectivenessStateHandle, // crt-018b: shared with search/briefing paths
     supersession_state: SupersessionStateHandle,   // GH #264: shared with SearchService
+    contradiction_cache: ContradictionScanCacheHandle, // GH #278: shared with StatusService
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
 ) -> tokio::task::JoinHandle<()> {
@@ -242,6 +252,7 @@ pub fn spawn_background_tick(
                 confidence_state.clone(),
                 effectiveness_state.clone(),
                 supersession_state.clone(),
+                Arc::clone(&contradiction_cache),
                 Arc::clone(&audit_log),
                 auto_quarantine_cycles,
             ));
@@ -279,6 +290,7 @@ async fn background_tick_loop(
     confidence_state: ConfidenceStateHandle,
     effectiveness_state: EffectivenessStateHandle, // crt-018b: threaded to run_single_tick
     supersession_state: SupersessionStateHandle,   // GH #264: threaded to run_single_tick
+    contradiction_cache: ContradictionScanCacheHandle, // GH #278: threaded to run_single_tick
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
 ) {
@@ -304,6 +316,14 @@ async fn background_tick_loop(
     loop {
         interval.tick().await;
 
+        // Read and increment tick_counter (wrapping to avoid panic on overflow).
+        let current_tick = {
+            let mut meta = tick_metadata.lock().unwrap_or_else(|e| e.into_inner());
+            let t = meta.tick_counter;
+            meta.tick_counter = meta.tick_counter.wrapping_add(1);
+            t
+        };
+
         // Wrap the entire tick body in a spawned task (vnc-010).
         // If any spawn_blocking panics, the JoinError is caught here
         // instead of killing the background tick loop silently.
@@ -322,6 +342,8 @@ async fn background_tick_loop(
             &confidence_state,
             &effectiveness_state,
             &supersession_state,
+            &contradiction_cache,
+            current_tick,
             &audit_log,
             auto_quarantine_cycles,
             tick_interval_secs,
@@ -363,6 +385,8 @@ async fn run_single_tick(
     confidence_state: &ConfidenceStateHandle,
     effectiveness_state: &EffectivenessStateHandle,
     supersession_state: &SupersessionStateHandle, // GH #264: rebuild each tick
+    contradiction_cache: &ContradictionScanCacheHandle, // GH #278: write on interval
+    current_tick: u32,
     audit_log: &Arc<AuditLog>,
     auto_quarantine_cycles: u32,
     tick_interval_secs: u64, // nan-006: configurable via UNIMATRIX_TICK_INTERVAL_SECS
@@ -377,6 +401,7 @@ async fn run_single_tick(
         Arc::clone(embed_service),
         Arc::clone(adapt_service),
         Arc::clone(confidence_state),
+        Arc::clone(contradiction_cache),
     );
     match tokio::time::timeout(
         TICK_TIMEOUT,
@@ -444,6 +469,62 @@ async fn run_single_tick(
                     timeout_secs = TICK_TIMEOUT.as_secs(),
                     "supersession state rebuild timed out; retaining existing cache"
                 );
+            }
+        }
+    }
+
+    // GH #278 fix: Contradiction scan — runs every CONTRADICTION_SCAN_INTERVAL_TICKS ticks
+    // (including tick 0 = first tick). This gates the O(N) ONNX inference so it runs at
+    // ~60-minute intervals rather than on every 15-minute tick or every context_status call.
+    // The result is written to `contradiction_cache`; StatusService reads it without ONNX.
+    if current_tick % CONTRADICTION_SCAN_INTERVAL_TICKS == 0 {
+        if let Ok(adapter) = embed_service.get_adapter().await {
+            let store_for_scan = Arc::clone(store);
+            let vi_for_scan = Arc::clone(vector_index);
+            let adapter_for_scan = Arc::clone(&adapter);
+            let config_for_scan = ContradictionConfig::default();
+
+            tracing::debug!(tick = current_tick, "contradiction scan starting");
+
+            match tokio::time::timeout(
+                TICK_TIMEOUT,
+                tokio::task::spawn_blocking(move || {
+                    let vs = VectorAdapter::new(vi_for_scan);
+                    contradiction::scan_contradictions(
+                        &store_for_scan,
+                        &vs,
+                        &*adapter_for_scan,
+                        &config_for_scan,
+                    )
+                }),
+            )
+            .await
+            {
+                Ok(Ok(Ok(pairs))) => {
+                    let pair_count = pairs.len();
+                    let mut guard = contradiction_cache
+                        .write()
+                        .unwrap_or_else(|e| e.into_inner());
+                    *guard = Some(ContradictionScanResult { pairs });
+                    tracing::debug!(
+                        tick = current_tick,
+                        pairs = pair_count,
+                        "contradiction scan complete; cache updated"
+                    );
+                }
+                Ok(Ok(Err(e))) => {
+                    tracing::warn!(tick = current_tick, error = %e, "contradiction scan failed; cache retained");
+                }
+                Ok(Err(e)) => {
+                    tracing::warn!(tick = current_tick, error = %e, "contradiction scan task panicked; cache retained");
+                }
+                Err(_) => {
+                    tracing::warn!(
+                        tick = current_tick,
+                        timeout_secs = TICK_TIMEOUT.as_secs(),
+                        "contradiction scan timed out; cache retained"
+                    );
+                }
             }
         }
     }
