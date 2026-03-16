@@ -1728,6 +1728,7 @@ mod maintenance_snapshot_tests {
 
     use crate::infra::embed_handle::EmbedServiceHandle;
     use crate::services::confidence::ConfidenceState;
+    use crate::services::contradiction_cache::new_contradiction_cache_handle;
     use crate::services::status::StatusService;
 
     fn make_status_service(store: &Arc<Store>) -> StatusService {
@@ -1740,12 +1741,14 @@ mod maintenance_snapshot_tests {
             unimatrix_adapt::AdaptConfig::default(),
         ));
         let confidence_state = Arc::new(std::sync::RwLock::new(ConfidenceState::default()));
+        let contradiction_cache = new_contradiction_cache_handle();
         StatusService::new(
             Arc::clone(store),
             vector_index,
             embed_service,
             adapt_service,
             confidence_state,
+            contradiction_cache,
         )
     }
 
@@ -1769,8 +1772,8 @@ mod maintenance_snapshot_tests {
             "empty graph must have zero stale ratio"
         );
         assert!(
-            snapshot.effectiveness.is_none() || snapshot.effectiveness.is_some(),
-            "effectiveness field must be present (Some or None)"
+            snapshot.effectiveness.is_some(),
+            "empty store must produce Some effectiveness report (build_report succeeds on empty classifications)"
         );
     }
 
