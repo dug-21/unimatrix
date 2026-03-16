@@ -39,7 +39,7 @@ use crate::services::contradiction_cache::{
     CONTRADICTION_SCAN_INTERVAL_TICKS, ContradictionScanCacheHandle, ContradictionScanResult,
 };
 use crate::services::effectiveness::EffectivenessStateHandle;
-use crate::services::status::StatusService;
+use crate::services::status::{MaintenanceDataSnapshot, StatusService};
 use crate::services::supersession::{SupersessionState, SupersessionStateHandle};
 use unimatrix_engine::effectiveness::EffectivenessCategory;
 
@@ -589,25 +589,35 @@ async fn maintenance_tick(
     auto_quarantine_cycles: u32,
     store: &Arc<Store>,
 ) -> Result<(), ServiceError> {
-    // Step 1: Attempt to compute the status report.
-    let result = status_svc.compute_report(None, None, false).await;
-
-    let (mut report, active_entries) = match result {
+    // Step 1: Load the lightweight maintenance snapshot (#280).
+    // Replaces the full compute_report() call which ran phases 2–7 unnecessarily.
+    // Only active_entries, graph_stale_ratio, and effectiveness are consumed by this tick.
+    let snapshot: MaintenanceDataSnapshot = match status_svc.load_maintenance_snapshot().await {
+        Ok(s) => s,
         Err(error) => {
             // ADR-002: hold semantics — do NOT modify EffectivenessState on error.
             // Emit tick_skipped audit event so operators can observe paused auto-quarantine.
             emit_tick_skipped_audit(audit_log, error.to_string());
             return Err(error);
         }
-        Ok(pair) => pair,
     };
+    let active_entries = snapshot.active_entries;
+    let graph_stale_ratio = snapshot.graph_stale_ratio;
+    // Build a thin report shell used by run_maintenance() for graph compaction trigger.
+    // Only graph_stale_ratio is read by run_maintenance(); all other fields are defaults.
+    let mut report = crate::mcp::response::status::StatusReport {
+        graph_stale_ratio,
+        ..crate::mcp::response::status::StatusReport::default()
+    };
+    // Wrap effectiveness in a mutable Option to match the existing code structure below.
+    let mut effectiveness_opt = snapshot.effectiveness;
 
     // Step 2: Extract EffectivenessReport and update EffectivenessState if present.
     // `to_quarantine` is collected inside the write lock; SQL is called after lock release
     // (NFR-02, R-13).
-    if report.effectiveness.is_some() {
+    if effectiveness_opt.is_some() {
         // SAFETY: checked is_some() above; unwrap is safe.
-        let effectiveness_report = report.effectiveness.as_ref().unwrap();
+        let effectiveness_report = effectiveness_opt.as_ref().unwrap();
 
         // Steps 3–8: Acquire write lock, update state, collect quarantine candidates,
         // then DROP the write lock (R-13, NFR-02).
@@ -709,8 +719,8 @@ async fn maintenance_tick(
         )
         .await;
 
-        // Populate auto_quarantined_this_cycle on the report (FR-14).
-        if let Some(ref mut eff_report) = report.effectiveness {
+        // Populate auto_quarantined_this_cycle on the effectiveness snapshot (FR-14).
+        if let Some(ref mut eff_report) = effectiveness_opt {
             eff_report.auto_quarantined_this_cycle = quarantined_ids;
         }
     }

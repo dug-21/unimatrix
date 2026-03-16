@@ -184,6 +184,23 @@ pub(crate) struct MaintenanceResult {
     pub stale_pairs_cleaned: u64,
 }
 
+/// Lightweight snapshot of the data consumed by `maintenance_tick()`.
+///
+/// Replaces the full `compute_report()` call in the background tick path (#280).
+/// Only the three values actually consumed by the tick are computed:
+/// - `active_entries`: loaded via `store.load_active_entries_with_tags()`
+/// - `graph_stale_ratio`: computed inline from `VectorIndex` counters
+/// - `effectiveness`: built via the same Phase 8 logic as `compute_report()`
+///
+/// Phases 2 (contradiction scan, O(N) ONNX), 3, 4, 6, 7, and most of Phase 1
+/// are intentionally skipped to avoid wasting 15–35 s per tick.
+#[derive(Debug)]
+pub(crate) struct MaintenanceDataSnapshot {
+    pub active_entries: Vec<EntryRecord>,
+    pub graph_stale_ratio: f64,
+    pub effectiveness: Option<unimatrix_engine::effectiveness::EffectivenessReport>,
+}
+
 impl StatusService {
     pub(crate) fn new(
         store: Arc<Store>,
@@ -201,6 +218,135 @@ impl StatusService {
             confidence_state,
             contradiction_cache,
         }
+    }
+
+    /// Load the minimal data snapshot required by the background maintenance tick (#280).
+    ///
+    /// Runs exactly three operations, skipping the O(N) ONNX contradiction scan
+    /// (Phase 2), co-access queries (Phase 4), observation stats (Phase 6),
+    /// retrospective count (Phase 7), and most of Phase 1:
+    /// 1. `store.load_active_entries_with_tags()` for confidence refresh and graph compaction.
+    /// 2. `VectorIndex::point_count()` / `stale_count()` (inline, no blocking) for `graph_stale_ratio`.
+    /// 3. `store.compute_effectiveness_aggregates()` + classify loop + `build_report()` for auto-quarantine.
+    ///
+    /// `compute_report()` is left untouched — it is still used by the `context_status` MCP tool.
+    pub(crate) async fn load_maintenance_snapshot(
+        &self,
+    ) -> Result<MaintenanceDataSnapshot, ServiceError> {
+        // Step 1: Load active entries (needed by confidence refresh, graph compaction).
+        let store_for_entries = Arc::clone(&self.store);
+        let active_entries = spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
+            store_for_entries
+                .load_active_entries_with_tags()
+                .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))
+        })
+        .await
+        .map_err(|e| {
+            let core_err: CoreError = match e {
+                crate::error::ServerError::Core(ce) => ce,
+                other => CoreError::JoinError(other.to_string()),
+            };
+            ServiceError::Core(core_err)
+        })?
+        .map_err(|e| {
+            let core_err: CoreError = match e {
+                crate::error::ServerError::Core(ce) => ce,
+                other => CoreError::JoinError(other.to_string()),
+            };
+            ServiceError::Core(core_err)
+        })?;
+
+        // Step 2: Compute graph stale ratio inline (no blocking — VectorIndex uses atomics).
+        let graph_point_count = self.vector_index.point_count();
+        let graph_stale_count = self.vector_index.stale_count();
+        let graph_stale_ratio = if graph_point_count == 0 {
+            0.0
+        } else {
+            graph_stale_count as f64 / graph_point_count as f64
+        };
+
+        // Step 3: Effectiveness analysis (same logic as Phase 8 of compute_report).
+        let store_for_eff = Arc::clone(&self.store);
+        let effectiveness = match spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
+            let aggregates = store_for_eff.compute_effectiveness_aggregates()?;
+            let entry_meta = store_for_eff.load_entry_classification_meta()?;
+            Ok::<_, unimatrix_store::StoreError>((aggregates, entry_meta))
+        })
+        .await
+        {
+            Ok(Ok((aggregates, entry_meta))) => {
+                use unimatrix_engine::effectiveness::{
+                    NOISY_TRUST_SOURCES, build_report, classify_entry,
+                };
+
+                let stats_map: HashMap<u64, &unimatrix_store::read::EntryInjectionStats> =
+                    aggregates
+                        .entry_stats
+                        .iter()
+                        .map(|s| (s.entry_id, s))
+                        .collect();
+
+                let classifications: Vec<unimatrix_engine::effectiveness::EntryEffectiveness> =
+                    entry_meta
+                        .iter()
+                        .map(|meta| {
+                            let (inj_count, success, rework, abandoned) =
+                                match stats_map.get(&meta.entry_id) {
+                                    Some(stats) => (
+                                        stats.injection_count,
+                                        stats.success_count,
+                                        stats.rework_count,
+                                        stats.abandoned_count,
+                                    ),
+                                    None => (0, 0, 0, 0),
+                                };
+
+                            let topic_has_sessions = aggregates.active_topics.contains(&meta.topic);
+
+                            classify_entry(
+                                meta.entry_id,
+                                &meta.title,
+                                &meta.topic,
+                                &meta.trust_source,
+                                meta.helpful_count,
+                                meta.unhelpful_count,
+                                inj_count,
+                                success,
+                                rework,
+                                abandoned,
+                                topic_has_sessions,
+                                NOISY_TRUST_SOURCES,
+                            )
+                        })
+                        .collect();
+
+                let data_window = unimatrix_engine::effectiveness::DataWindow {
+                    session_count: aggregates.session_count,
+                    earliest_session_at: aggregates.earliest_session_at,
+                    latest_session_at: aggregates.latest_session_at,
+                };
+
+                Some(build_report(
+                    classifications,
+                    &aggregates.calibration_rows,
+                    data_window,
+                ))
+            }
+            Ok(Err(e)) => {
+                tracing::warn!("Effectiveness query failed in snapshot: {e}");
+                None
+            }
+            Err(e) => {
+                tracing::warn!("Effectiveness task timed out or panicked in snapshot: {e}");
+                None
+            }
+        };
+
+        Ok(MaintenanceDataSnapshot {
+            active_entries,
+            graph_stale_ratio,
+            effectiveness,
+        })
     }
 
     /// Compute the full status report using direct SQL queries.
@@ -1564,6 +1710,124 @@ mod confidence_refresh_tests {
         assert!(
             recovered.is_empty(),
             "join error must produce empty metric vector list"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// GH-280: load_maintenance_snapshot() — skips O(N) ONNX phases
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod maintenance_snapshot_tests {
+    use std::sync::Arc;
+
+    use unimatrix_adapt::AdaptationService;
+    use unimatrix_core::{VectorConfig, VectorIndex};
+    use unimatrix_store::{NewEntry, Status, Store};
+
+    use crate::infra::embed_handle::EmbedServiceHandle;
+    use crate::services::confidence::ConfidenceState;
+    use crate::services::contradiction_cache::new_contradiction_cache_handle;
+    use crate::services::status::StatusService;
+
+    fn make_status_service(store: &Arc<Store>) -> StatusService {
+        let vector_index = Arc::new(
+            VectorIndex::new(Arc::clone(store), VectorConfig::default()).expect("vector index"),
+        );
+        // EmbedServiceHandle::new() already returns Arc<EmbedServiceHandle>.
+        let embed_service = EmbedServiceHandle::new();
+        let adapt_service = Arc::new(AdaptationService::new(
+            unimatrix_adapt::AdaptConfig::default(),
+        ));
+        let confidence_state = Arc::new(std::sync::RwLock::new(ConfidenceState::default()));
+        let contradiction_cache = new_contradiction_cache_handle();
+        StatusService::new(
+            Arc::clone(store),
+            vector_index,
+            embed_service,
+            adapt_service,
+            confidence_state,
+            contradiction_cache,
+        )
+    }
+
+    // T-280-01: snapshot returns Ok with empty active_entries on an empty store.
+    #[tokio::test]
+    async fn test_load_maintenance_snapshot_empty_store_returns_ok() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = Arc::new(Store::open(dir.path().join("test.db")).expect("store"));
+        let svc = make_status_service(&store);
+
+        let result = svc.load_maintenance_snapshot().await;
+        assert!(result.is_ok(), "snapshot must succeed on empty store");
+
+        let snapshot = result.unwrap();
+        assert!(
+            snapshot.active_entries.is_empty(),
+            "empty store must produce empty active_entries"
+        );
+        assert_eq!(
+            snapshot.graph_stale_ratio, 0.0,
+            "empty graph must have zero stale ratio"
+        );
+        assert!(
+            snapshot.effectiveness.is_some(),
+            "empty store must produce Some effectiveness report (build_report succeeds on empty classifications)"
+        );
+    }
+
+    // T-280-02: snapshot returns non-empty active_entries when active entries exist.
+    #[tokio::test]
+    async fn test_load_maintenance_snapshot_with_active_entries_returns_non_empty() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = Arc::new(Store::open(dir.path().join("test.db")).expect("store"));
+
+        // Insert one active entry.
+        store
+            .insert(NewEntry {
+                title: "Test entry".to_string(),
+                content: "Content for maintenance snapshot test".to_string(),
+                topic: "test".to_string(),
+                category: "convention".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Active,
+                created_by: "test".to_string(),
+                feature_cycle: "bugfix-280".to_string(),
+                trust_source: "human".to_string(),
+            })
+            .expect("insert entry");
+
+        let svc = make_status_service(&store);
+        let snapshot = svc
+            .load_maintenance_snapshot()
+            .await
+            .expect("snapshot must succeed");
+
+        assert_eq!(
+            snapshot.active_entries.len(),
+            1,
+            "must return exactly one active entry"
+        );
+        assert_eq!(
+            snapshot.active_entries[0].title, "Test entry",
+            "must return the inserted entry"
+        );
+    }
+
+    // T-280-03: snapshot graph_stale_ratio is 0.0 when vector index is empty.
+    #[tokio::test]
+    async fn test_load_maintenance_snapshot_graph_stale_ratio_zero_on_empty_index() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = Arc::new(Store::open(dir.path().join("test.db")).expect("store"));
+        let svc = make_status_service(&store);
+
+        let snapshot = svc.load_maintenance_snapshot().await.expect("snapshot ok");
+
+        assert_eq!(
+            snapshot.graph_stale_ratio, 0.0,
+            "empty vector index must produce zero stale ratio"
         );
     }
 }
