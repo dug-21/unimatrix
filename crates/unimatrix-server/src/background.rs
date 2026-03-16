@@ -477,7 +477,7 @@ async fn run_single_tick(
     // (including tick 0 = first tick). This gates the O(N) ONNX inference so it runs at
     // ~60-minute intervals rather than on every 15-minute tick or every context_status call.
     // The result is written to `contradiction_cache`; StatusService reads it without ONNX.
-    if current_tick % CONTRADICTION_SCAN_INTERVAL_TICKS == 0 {
+    if current_tick.is_multiple_of(CONTRADICTION_SCAN_INTERVAL_TICKS) {
         if let Ok(adapter) = embed_service.get_adapter().await {
             let store_for_scan = Arc::clone(store);
             let vi_for_scan = Arc::clone(vector_index);
