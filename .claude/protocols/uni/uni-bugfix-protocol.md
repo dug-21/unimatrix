@@ -265,7 +265,11 @@ Task(subagent_type: "uni-validator",
 - **SCOPE FAIL** → Session stops. Return to human with recommendation.
 
 On PASS, the Bugfix Manager:
-1. Commits: `fix: {description} (#{issue-number})`
+1. Stages and commits fix code, tests, and feature artifacts:
+   ```bash
+   git add product/features/{issue-number}/
+   git commit -m "fix: {description} (#{issue-number})"
+   ```
 2. Pushes branch: `git push -u origin bugfix/{issue-number}-{short-description}`
 3. Opens PR: `gh pr create --title "fix: {description} (#{issue-number})" --body "..."`
 

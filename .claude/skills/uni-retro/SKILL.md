@@ -251,6 +251,13 @@ If a worktree has uncommitted changes, warn the human — do NOT force-remove.
 
 Collect all knowledge base changes from Phases 2-3.
 
+**Commit retro artifacts** before recording outcome:
+```bash
+git add product/features/{id}/agents/
+git commit -m "chore: add retro artifacts ({feature-id})"
+git push origin main
+```
+
 Use `/uni-record-outcome` with:
 - Feature: `{feature-id}`
 - Type: `retro`

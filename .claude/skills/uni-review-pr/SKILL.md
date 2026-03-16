@@ -88,6 +88,20 @@ If any blocking item → `Merge readiness: BLOCKED` with specific items listed
 
 ---
 
+## Step 3b: Commit Security Reviewer Report
+
+After the security reviewer returns, commit its report to the PR branch so it is included in the merge:
+
+```bash
+git add product/features/{id}/agents/{feature-id}-security-reviewer-report.md
+git commit -m "chore: add security reviewer report ({feature-id}) (#{issue})"
+git push
+```
+
+If the PR is already merged and you are on `main`, commit directly to main instead.
+
+---
+
 ## Step 4: Report
 
 Post security review result to GH Issue:
