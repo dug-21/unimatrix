@@ -7,6 +7,7 @@ use crate::infra::registry::Capability;
 
 pub mod hook;
 pub mod listener;
+pub mod mcp_listener;
 
 /// Fixed capabilities for UDS connections. Not configurable at runtime.
 /// UDS connections can read, search, and perform session-scoped writes.
