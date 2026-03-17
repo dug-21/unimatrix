@@ -456,15 +456,25 @@ to each `sqlx::query!()` call. This preserves atomicity without a wrapper type.
 ### 7. unimatrix-observe Migration
 
 `dead_knowledge.rs` currently calls `store.lock_conn()` and uses `rusqlite::params!`.
+See ADR-006 for the decision to convert `ExtractionRule::evaluate()` to `async fn` across
+all 5 extraction rules.
+
+**Scope summary (ADR-006):**
+- 5 extraction rules affected (not 21 — the 21 detection rules use `DetectionRule::detect()`
+  which is a separate trait that never touches the store and is unaffected)
+- Only `dead_knowledge.rs` has real logic to rewrite; the other 4 gain `async` on the
+  method signature only
 
 **Migration approach:**
-1. The `ExtractionRule::evaluate()` trait method signature changes:
-   `fn evaluate(&self, observations: &[ObservationRecord], store: &Store) -> Vec<ProposedEntry>`
-   becomes async-aware. Since `ExtractionRule` is called from the server's background task
-   (which is async), the change is to make the method `async fn` or accept an async store
-   directly.
+1. `ExtractionRule::evaluate()` becomes `async fn` across the trait and all 5 implementations
+   (ADR-006, Option A). The `store` parameter type changes from `&Store` to `&SqlxStore`.
 
-2. `query_accessed_active_entries` is rewritten as an async sqlx query on `read_pool`:
+2. Dynamic dispatch for `Vec<Box<dyn ExtractionRule>>` resolves the object-safety concern
+   via an explicit enum over the 5 concrete rule types (preferred) or `async_trait` macro.
+   This is a delivery-level implementation decision documented in code comments.
+
+3. `query_accessed_active_entries` in `dead_knowledge.rs` is rewritten as an async sqlx
+   query on `read_pool`:
    ```rust
    async fn query_accessed_active_entries(
        store: &SqlxStore,
@@ -481,9 +491,15 @@ to each `sqlx::query!()` call. This preserves atomicity without a wrapper type.
    }
    ```
 
-3. `unimatrix-observe/Cargo.toml`: remove `rusqlite` dependency (direct and transitive).
+4. The `spawn_blocking` wrapper around `run_extraction_rules` in `background.rs` is
+   removed. The call site becomes a direct `.await` (consistent with eliminating
+   `spawn_blocking` debt — nxs-011's primary goal).
 
-4. The `observe` crate migrates in the same delivery wave as the store crate (C-09, SR-07).
+5. `unimatrix-observe/Cargo.toml`: remove `rusqlite` dependency (direct and transitive).
+
+6. Tests for `DeadKnowledgeRule` are rewritten using `#[tokio::test]` and `SqlxStore`.
+
+7. The `observe` crate migrates in the same delivery wave as the store crate (C-09, SR-07).
 
 ---
 
@@ -551,6 +567,7 @@ Store::close() / Drop:                                               │
 | Migration connection sequencing | Dedicated non-pooled connection before pool construction | ADR-003 |
 | sqlx-data.json placement | Workspace-level single file | ADR-004 |
 | Native async fn in EntryStore trait | RPITIT (Rust 1.89), no async_trait | ADR-005 |
+| ExtractionRule::evaluate() async conversion | Option A: convert all 5 extraction rules to async fn; remove spawn_blocking call site | ADR-006 |
 
 ---
 
@@ -605,7 +622,8 @@ unaffected, and the shed counter is a `SqlxStore`-specific operational metric.
 | `READ_POOL_ACQUIRE_TIMEOUT` | `pub const READ_POOL_ACQUIRE_TIMEOUT: Duration = Duration::from_secs(2)` | `unimatrix-store/src/pool_config.rs` |
 | `WRITE_POOL_ACQUIRE_TIMEOUT` | `pub const WRITE_POOL_ACQUIRE_TIMEOUT: Duration = Duration::from_secs(5)` | `unimatrix-store/src/pool_config.rs` |
 | `migrate_if_needed` (adapted) | `pub(crate) async fn migrate_if_needed(conn: &mut SqliteConnection, db_path: &Path) -> Result<()>` | `unimatrix-store/src/migration.rs` |
-| `ExtractionRule::evaluate` (observe) | Signature updated to accept `&SqlxStore` and be async-compatible | `unimatrix-observe/src/extraction/mod.rs` |
+| `ExtractionRule::evaluate` (observe) | `async fn evaluate(&self, observations: &[ObservationRecord], store: &SqlxStore) -> Vec<ProposedEntry>` — ADR-006 | `unimatrix-observe/src/extraction/mod.rs` |
+| `run_extraction_rules` (observe) | `async fn run_extraction_rules(observations: &[ObservationRecord], store: &SqlxStore, rules: &[...]) -> Vec<ProposedEntry>` | `unimatrix-observe/src/extraction/mod.rs` |
 
 ---
 
@@ -639,14 +657,10 @@ The following files are deleted:
 
 ## Open Questions
 
-1. **`ExtractionRule` trait async signature** — `dead_knowledge.rs` currently uses a sync
-   trait method `fn evaluate(...)`. Making it `async fn evaluate(...)` requires updating all
-   other rule implementations (21 detection rules per MEMORY). The architect recommends
-   making `evaluate` accept `&SqlxStore` by reference and internally calling `.await` within
-   a sync context via `Handle::current().block_on(...)` as an intermediate step, OR converting
-   the entire `ExtractionRule` trait to async at the same time. This requires confirmation from
-   the delivery team on the scope of rule trait changes in `unimatrix-observe`. **Flag for
-   delivery agent wave 1.**
+1. **`ExtractionRule` trait async signature** — RESOLVED. See ADR-006. The trait converts
+   to `async fn evaluate()` via Option A (RPITIT). Scope is 5 extraction rules, not 21
+   (the 21 detection rules use `DetectionRule::detect()` which is unaffected). The
+   `spawn_blocking` wrapper around `run_extraction_rules` in `background.rs` is removed.
 
 2. **Drain task shutdown timeout configurability** — OQ-05 asks whether the 5s grace period
    should be configurable via `PoolConfig`. The architecture defines it as a constant
