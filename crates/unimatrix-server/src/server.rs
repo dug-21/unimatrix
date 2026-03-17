@@ -2602,7 +2602,10 @@ mod tests {
 
         assert!(pea.buckets.contains_key("vnc-005"), "bucket must exist");
         let bucket = &pea.buckets["vnc-005"];
-        assert!(bucket.entries.contains_key(&1), "entry_id 1 must be present");
+        assert!(
+            bucket.entries.contains_key(&1),
+            "entry_id 1 must be present"
+        );
         assert_eq!(bucket.entries[&1].entry_id, 1);
         assert_eq!(bucket.entries[&1].rework_flag_count, 3);
     }
@@ -2620,8 +2623,7 @@ mod tests {
         assert_eq!(bucket.entries.len(), 1, "only one entry_id=42 must exist");
         // v2 replaces v1 — rework_flag_count should be 99, not 1+99=100
         assert_eq!(
-            bucket.entries[&42].rework_flag_count,
-            99,
+            bucket.entries[&42].rework_flag_count, 99,
             "upsert must overwrite, not accumulate"
         );
     }
@@ -2671,7 +2673,10 @@ mod tests {
 
         // Second drain returns empty (AC-18)
         let second = pea.drain_for("vnc-005");
-        assert!(second.is_empty(), "second drain on same key must return empty");
+        assert!(
+            second.is_empty(),
+            "second drain on same key must return empty"
+        );
     }
 
     // T-ACCUM-U-05: drain_for on absent key returns empty Vec, no panic
