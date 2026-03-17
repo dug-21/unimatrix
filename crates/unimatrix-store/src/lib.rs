@@ -3,6 +3,11 @@
 mod error;
 mod hash;
 mod schema;
+// Wave 2 (nxs-011): uncomment these module declarations when rusqlite is removed
+// and sqlx is added to Cargo.toml. Both changes MUST happen atomically — sqlx
+// cannot coexist with rusqlite due to libsqlite3-sys links conflict.
+// pub mod pool_config;
+// pub(crate) mod analytics;
 
 pub mod counters;
 mod db;
@@ -46,3 +51,9 @@ pub use topic_deliveries::TopicDeliveryRecord;
 // Re-exports: SQLite backend
 pub use db::Store;
 pub use txn::SqliteWriteTransaction;
+
+// Wave 2 (nxs-011): add these re-exports when pool_config and analytics modules are enabled.
+// pub use pool_config::{
+//     PoolConfig, ANALYTICS_QUEUE_CAPACITY, READ_POOL_ACQUIRE_TIMEOUT, WRITE_POOL_ACQUIRE_TIMEOUT,
+// };
+// pub use analytics::AnalyticsWrite;
