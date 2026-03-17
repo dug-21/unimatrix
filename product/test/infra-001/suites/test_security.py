@@ -238,8 +238,9 @@ def test_auto_quarantine_cycles_invalid_large_value_rejected_at_startup(tmp_path
     env = os.environ.copy()
     env["UNIMATRIX_AUTO_QUARANTINE_CYCLES"] = "1001"
 
+    # vnc-005: default invocation is now bridge mode; use `serve --stdio` for stdio path.
     proc = subprocess.Popen(
-        [binary, "--project-dir", str(tmp_path)],
+        [binary, "--project-dir", str(tmp_path), "serve", "--stdio"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -291,8 +292,9 @@ def test_auto_quarantine_cycles_zero_accepted_at_startup(tmp_path):
     env = os.environ.copy()
     env["UNIMATRIX_AUTO_QUARANTINE_CYCLES"] = "0"
 
+    # vnc-005: default invocation is now bridge mode; use `serve --stdio` for stdio path.
     proc = subprocess.Popen(
-        [binary, "--project-dir", str(tmp_path)],
+        [binary, "--project-dir", str(tmp_path), "serve", "--stdio"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

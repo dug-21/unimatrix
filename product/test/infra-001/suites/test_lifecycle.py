@@ -526,8 +526,9 @@ def test_auto_quarantine_disabled_when_env_zero(tmp_path):
     env["UNIMATRIX_AUTO_QUARANTINE_CYCLES"] = "0"
 
     import subprocess, threading, json, tempfile, time as _time
+    # vnc-005: default invocation is now bridge mode; use `serve --stdio` for stdio path.
     proc = subprocess.Popen(
-        [binary, "--project-dir", str(tmp_path)],
+        [binary, "--project-dir", str(tmp_path), "serve", "--stdio"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

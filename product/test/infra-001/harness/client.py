@@ -92,8 +92,10 @@ class UnimatrixClient:
         if extra_env:
             env.update(extra_env)
 
+        # vnc-005: default invocation is now bridge mode; use `serve --stdio` for
+        # the stdio MCP path that the test harness exercises.
         self._process = subprocess.Popen(
-            [self._binary_path, "--project-dir", self._project_dir],
+            [self._binary_path, "--project-dir", self._project_dir, "serve", "--stdio"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
