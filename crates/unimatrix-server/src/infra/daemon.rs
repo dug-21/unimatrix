@@ -63,15 +63,15 @@ pub fn run_daemon_launcher(paths: &ProjectPaths) -> Result<(), ServerError> {
     // Always pass --project-dir so the child uses the same project root even
     // if the working directory differs between launcher and child.
     //
-    // Ordering: `--daemon-child` is a top-level Cli flag (not inside `serve`),
-    // so it MUST come before the `serve` subcommand or clap will reject it as
-    // an unknown argument to the subcommand.
+    // Ordering: `--daemon-child` and `--project-dir` are top-level Cli flags
+    // (not inside `serve`), so they MUST come before the `serve` subcommand or
+    // clap will reject them as unknown arguments to the subcommand.
     let child_args: Vec<std::ffi::OsString> = vec![
         "--daemon-child".into(),
-        "serve".into(),
-        "--daemon".into(),
         "--project-dir".into(),
         paths.project_root.as_os_str().into(),
+        "serve".into(),
+        "--daemon".into(),
     ];
 
     tracing::info!(
@@ -346,13 +346,14 @@ mod tests {
 
         // Replicate the args-building logic from run_daemon_launcher.
         // (immutable — same as production code)
-        // `--daemon-child` comes BEFORE `serve` because it is a top-level Cli flag.
+        // `--daemon-child` and `--project-dir` come BEFORE `serve` because
+        // they are top-level Cli flags, not serve subcommand args.
         let child_args: Vec<std::ffi::OsString> = vec![
             "--daemon-child".into(),
-            "serve".into(),
-            "--daemon".into(),
             "--project-dir".into(),
             paths.project_root.as_os_str().into(),
+            "serve".into(),
+            "--daemon".into(),
         ];
 
         let args_str: Vec<&str> = child_args.iter().map(|a| a.to_str().unwrap()).collect();
