@@ -111,11 +111,15 @@ preserved across daemon restarts.
 
 ### FR-16: `pending_entries_analysis` Accumulator
 The in-memory `pending_entries_analysis` structure is refactored from a single
-`Vec<EntryRecord>` to a `HashMap<feature_cycle: String, Vec<EntryRecord>>`. Each
-`context_store` call appends the stored entry to the bucket keyed by the active
-`feature_cycle` value from the request. When `context_retrospective` is called with a
-`topic` argument, it drains the bucket for the matching `feature_cycle` key, consuming
-all entries accumulated across all sessions for that feature cycle.
+`Vec<EntryRecord>` to a two-level `HashMap<String, HashMap<u64, EntryAnalysis>>`. The
+outer key is `feature_cycle: String`; the inner key is `entry_id: u64`. Using entry ID
+as the inner key preserves upsert semantics — if the same entry is stored multiple times
+across sessions (e.g., via correction), only the latest `EntryAnalysis` is kept. Each
+`context_store` call upserts the stored entry into the bucket for the active
+`feature_cycle`. When `context_retrospective` is called with a `topic` argument, it
+drains the bucket for the matching `feature_cycle` key, consuming all entries accumulated
+across all sessions for that feature cycle. *(Authoritative type: ARCHITECTURE.md
+Component 5, ADR-004. Supersedes the `Vec<EntryRecord>` description in SCOPE.md OQ-05.)*
 
 ### FR-17: Stale Accumulator Bucket Eviction
 A `feature_cycle` bucket in `pending_entries_analysis` is evicted when:
@@ -371,9 +375,12 @@ The bridge's procedure for starting a daemon when none is reachable. Defined ful
 FR-05. Uses `is_unimatrix_process` to avoid double-spawning.
 
 ### `pending_entries_analysis`
-A daemon-wide in-memory `HashMap<String, Vec<EntryRecord>>` keyed by `feature_cycle`.
-Accumulates entries contributed by `context_store` calls from any session. Drained by
-`context_retrospective`. Subject to TTL eviction (FR-17).
+A daemon-wide in-memory two-level map: `HashMap<String, HashMap<u64, EntryAnalysis>>`.
+Outer key: `feature_cycle: String`. Inner key: `entry_id: u64`. The inner map provides
+upsert semantics — repeated stores of the same entry (via correction) overwrite rather
+than duplicate. Accumulates entries contributed by `context_store` calls from any
+session. Drained by `context_retrospective`. Subject to TTL eviction (FR-17).
+*(Authoritative type from ARCHITECTURE.md Component 5 / ADR-004.)*
 
 ### Feature Cycle Key
 A `String` value identifying a feature's active work cycle, e.g., `"vnc-005"`. Provided
