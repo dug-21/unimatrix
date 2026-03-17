@@ -16,22 +16,21 @@
 
 | Component | Pseudocode | Test Plan |
 |-----------|------------|-----------|
-| Daemonizer (`infra/daemon.rs`) | pseudocode/daemonizer.md | test-plan/daemonizer.md |
+| Daemonizer (`infra/daemon.rs` + `project.rs`) | pseudocode/daemonizer.md | test-plan/daemonizer.md |
 | MCP Session Acceptor (`uds/mcp_listener.rs`) | pseudocode/mcp_listener.md | test-plan/mcp_listener.md |
-| UnimatrixServer Clone Refactor (`server.rs`) | pseudocode/server_clone.md | test-plan/server_clone.md |
+| Server Refactor (`server.rs` — UnimatrixServer Clone + PendingEntriesAnalysis) | pseudocode/server_refactor.md | test-plan/server_refactor.md |
 | Shutdown Signal Router (`infra/shutdown.rs`) | pseudocode/shutdown.md | test-plan/shutdown.md |
-| Feature-Cycle Accumulator (`server.rs` — `PendingEntriesAnalysis`) | pseudocode/accumulator.md | test-plan/accumulator.md |
 | Bridge Client (`bridge.rs`) | pseudocode/bridge.md | test-plan/bridge.md |
-| Stop Subcommand (`main.rs`) | pseudocode/stop_cmd.md | test-plan/stop_cmd.md |
+| Stop Subcommand + CLI routing (`main.rs`) | pseudocode/stop_cmd.md | test-plan/stop_cmd.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+Note: UnimatrixServer Clone Refactor and Feature-Cycle Accumulator are combined into `server_refactor` — both modify `server.rs` and are implemented by one agent to avoid merge conflicts.
+
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
-
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists expected components from the architecture — actual file paths are filled during delivery.
+| Pseudocode Overview | product/features/vnc-005/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/vnc-005/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
