@@ -79,6 +79,25 @@ drain task match in dependent crates.
 `dead_knowledge.rs` `query_accessed_active_entries` becomes async sqlx query on `read_pool`.
 `ExtractionRule::evaluate()` trait update flagged as open question for delivery team.
 
+## Knowledge Stewardship
+
+### Stored in Unimatrix
+
+| Entry | Title | Category |
+|-------|-------|----------|
+| #2058 | ADR-001: Pool Acquire Timeout Values | decision |
+| #2059 | ADR-002: SqliteWriteTransaction Retirement | decision |
+| #2060 | ADR-003: Migration Connection Sequencing | decision |
+| #2061 | ADR-004: sqlx-data.json Placement | decision |
+| #2062 | ADR-005: Native async fn in EntryStore Trait (RPITIT) | decision |
+| #2065 | ADR-006: ExtractionRule Async Conversion (Option A — RPITIT) | decision |
+
+### Queried
+
+Unimatrix was queried for existing SQLite connection pool patterns, async trait conventions, and migration sequencing precedents before producing architecture decisions.
+
+---
+
 ## Open Questions for Delivery Team
 
 1. **`ExtractionRule` trait signature** — `evaluate()` is currently sync. `dead_knowledge.rs`

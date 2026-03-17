@@ -18,6 +18,7 @@
 | ADR-003 | product/features/nxs-011/architecture/ADR-003-migration-connection-sequencing.md |
 | ADR-004 | product/features/nxs-011/architecture/ADR-004-sqlx-data-json-placement.md |
 | ADR-005 | product/features/nxs-011/architecture/ADR-005-native-async-trait.md |
+| ADR-006 | product/features/nxs-011/architecture/ADR-006-extraction-rule-async-conversion.md |
 
 ---
 
@@ -25,22 +26,36 @@
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| SqlxStore (db.rs) | pseudocode/sqlx-store.md | test-plan/sqlx-store.md |
-| PoolConfig (pool_config.rs) | pseudocode/pool-config.md | test-plan/pool-config.md |
-| AnalyticsQueue + AnalyticsWrite (analytics.rs) | pseudocode/analytics-queue.md | test-plan/analytics-queue.md |
-| migration.rs adaptation | pseudocode/migration.md | test-plan/migration.md |
-| EntryStore trait migration (unimatrix-core/traits.rs) | pseudocode/entry-store-trait.md | test-plan/entry-store-trait.md |
-| AsyncEntryStore retirement (async_wrappers.rs) | pseudocode/async-wrappers.md | test-plan/async-wrappers.md |
-| Server crate spawn_blocking removal | pseudocode/server-migration.md | test-plan/server-migration.md |
-| unimatrix-observe migration (dead_knowledge.rs) | pseudocode/observe-migration.md | test-plan/observe-migration.md |
-| sqlx-data.json + CI enforcement | pseudocode/ci-offline.md | test-plan/ci-offline.md |
+| PoolConfig (pool_config.rs) | product/features/nxs-011/pseudocode/pool-config.md | product/features/nxs-011/test-plan/pool-config.md |
+| migration.rs adaptation | product/features/nxs-011/pseudocode/migration.md | product/features/nxs-011/test-plan/migration.md |
+| AnalyticsQueue + AnalyticsWrite (analytics.rs) | product/features/nxs-011/pseudocode/analytics-queue.md | product/features/nxs-011/test-plan/analytics-queue.md |
+| SqlxStore (db.rs + method modules) | product/features/nxs-011/pseudocode/sqlx-store.md | product/features/nxs-011/test-plan/sqlx-store.md |
+| EntryStore trait migration (unimatrix-core/traits.rs) | product/features/nxs-011/pseudocode/entry-store-trait.md | product/features/nxs-011/test-plan/entry-store-trait.md |
+| AsyncEntryStore retirement (async_wrappers.rs) | product/features/nxs-011/pseudocode/async-wrappers.md | product/features/nxs-011/test-plan/async-wrappers.md |
+| Server crate spawn_blocking removal | product/features/nxs-011/pseudocode/server-migration.md | product/features/nxs-011/test-plan/server-migration.md |
+| unimatrix-observe migration (dead_knowledge.rs) | product/features/nxs-011/pseudocode/observe-migration.md | product/features/nxs-011/test-plan/observe-migration.md |
+| sqlx-data.json + CI enforcement | product/features/nxs-011/pseudocode/ci-offline.md | product/features/nxs-011/test-plan/ci-offline.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Stage 3b Wave Structure (from Stage 3a)
+
+| Wave | Components | Constraint |
+|------|-----------|------------|
+| Wave 1 | pool-config, migration | No cross-crate deps |
+| Wave 2 | analytics-queue, sqlx-store (all method files, error.rs, lib.rs, test_helpers.rs, Cargo.toml, txn.rs deletion) | Depends on Wave 1 |
+| Wave 3 | entry-store-trait, async-wrappers | Requires SqlxStore to exist (Wave 2) |
+| Wave 4 | server-migration + observe-migration | Must land atomically; compile break without both |
+| Wave 5 | ci-offline | All sqlx::query!() sites must be finalized first |
+
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/nxs-011/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/nxs-011/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
+### Open Question (surfaced during Stage 3a)
+
+**OQ-NEW-01** (Low): `observation_phase_metrics` table exists in the schema v12 DDL but has no corresponding `AnalyticsWrite` variant and is not listed in the 11 analytics tables in the architecture. Wave 2 delivery agent must audit whether any existing code writes to this table. If a writer exists and uses `spawn_blocking`, an `ObservationPhaseMetric` variant must be added. If no writer exists, no action required.
 
 ---
 
