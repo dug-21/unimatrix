@@ -1294,12 +1294,14 @@ impl UnimatrixServer {
             .map(|baselines| unimatrix_observe::compare_to_baseline(&metrics, &baselines));
 
         // 10b. Drain accumulated entry analysis from signal consumers (col-009, FR-10.5)
+        // vnc-005: drain_for(&feature_cycle) replaces drain_all() — drains only the
+        // bucket for this feature cycle, leaving other feature cycles' data intact.
         let entries_analysis = {
             let mut pending = self
                 .pending_entries_analysis
                 .lock()
                 .unwrap_or_else(|e| e.into_inner());
-            let drained = pending.drain_all();
+            let drained = pending.drain_for(&feature_cycle);
             if drained.is_empty() {
                 None
             } else {
@@ -1585,6 +1587,25 @@ impl UnimatrixServer {
             CycleType::Start => "cycle_started",
             CycleType::Stop => "cycle_stopped",
         };
+
+        // 4b. vnc-005: On cycle stop, drain the pending_entries_analysis bucket for this
+        // feature cycle. Context_cycle is the authoritative "feature is done" signal
+        // (ADR-004 eviction trigger 1). Drained entries are discarded — cycle close
+        // implies retrospective was already done or explicitly skipped.
+        if validated.cycle_type == CycleType::Stop {
+            let drained = self
+                .pending_entries_analysis
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .drain_for(&validated.topic);
+            if !drained.is_empty() {
+                tracing::info!(
+                    feature_cycle = %validated.topic,
+                    entry_count = drained.len(),
+                    "context_cycle: cleared pending_entries_analysis bucket on cycle close"
+                );
+            }
+        }
 
         let response_text = format!(
             "Acknowledged: {} for topic '{}'. \

@@ -1205,16 +1205,21 @@ impl StatusService {
                 )
                 .await;
             }
+            // Use an empty string as feature_cycle for stale sweeps where the feature
+            // is unknown. Entries accumulate in the "" bucket until evicted by TTL.
+            let stale_fc = "";
             crate::uds::listener::run_confidence_consumer(
                 &store_for_sweep,
                 &entry_store_for_sweep,
                 &pending_for_sweep,
+                stale_fc,
             )
             .await;
             crate::uds::listener::run_retrospective_consumer(
                 &store_for_sweep,
                 &pending_for_sweep,
                 &entry_store_for_sweep,
+                stale_fc,
             )
             .await;
         }

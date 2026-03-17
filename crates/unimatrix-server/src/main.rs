@@ -39,7 +39,14 @@ struct Cli {
     #[arg(long, short)]
     verbose: bool,
 
-    /// Subcommand (hook, version, model-download, or none for server mode).
+    /// Internal flag: set by run_daemon_launcher when spawning the daemon child.
+    ///
+    /// When present, main() calls prepare_daemon_child() (setsid) before entering
+    /// the tokio runtime. Not intended for direct user invocation (R-17 / RV-03).
+    #[arg(long, hide = true)]
+    daemon_child: bool,
+
+    /// Subcommand (hook, serve, stop, version, model-download, or none for bridge mode).
     #[command(subcommand)]
     command: Option<Command>,
 }
@@ -96,12 +103,38 @@ enum Command {
     /// Used by npm postinstall to pre-download the embedding model.
     /// Synchronous path, no tokio runtime.
     ModelDownload,
+
+    /// Start the MCP server in daemon or stdio mode.
+    ///
+    /// `--daemon`: detach to background; use bridge mode (no args) for normal operation.
+    /// `--stdio`: run in foreground stdio mode (pre-vnc-005 behavior; for development).
+    Serve {
+        /// Run as a detached background daemon.
+        #[arg(long)]
+        daemon: bool,
+
+        /// Run in foreground stdio mode (pre-vnc-005 default behavior).
+        #[arg(long)]
+        stdio: bool,
+    },
+
+    /// Stop the running background daemon.
+    ///
+    /// Sends SIGTERM to the daemon (reads PID file) and waits up to 15 seconds
+    /// for the process to exit. Synchronous path, no tokio runtime.
+    ///
+    /// Exit codes: 0 = stopped, 1 = no daemon / stale PID, 2 = timeout.
+    Stop,
 }
 
-/// Entry point: branches between hook subcommand (sync) and server (async).
+/// Entry point: branches between sync subcommands and async paths.
 ///
-/// The hook path runs pure synchronous code with no tokio runtime (ADR-002).
-/// The server path initializes tokio for the full MCP server.
+/// ## Dispatch ordering (C-10)
+///
+/// 1. Hook and other sync subcommands dispatched FIRST — before any Tokio runtime.
+/// 2. Stop dispatched SECOND — synchronous, no Tokio.
+/// 3. daemon_child flag handled THIRD — setsid() before any runtime init (C-01).
+/// 4. All async paths (serve --daemon child, serve --stdio, bridge) enter Tokio last.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Install panic hook that logs to stderr before aborting (vnc-010).
     // Without this, panics in background tasks are swallowed silently.
@@ -122,15 +155,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cli = Cli::parse();
 
+    // C-10: Sync subcommands MUST be dispatched before any Tokio runtime init.
+    // The match below runs in declaration order; all sync paths return here.
     match cli.command {
         Some(Command::Hook { event }) => {
             // Sync path: NO tokio, NO tracing init, NO database open
             // Minimal startup for <50ms budget
-            unimatrix_server::uds::hook::run(event, cli.project_dir)
+            return unimatrix_server::uds::hook::run(event, cli.project_dir);
         }
         Some(Command::Export { output }) => {
             // Sync path: NO tokio, like Hook
-            unimatrix_server::export::run_export(cli.project_dir.as_deref(), output.as_deref())
+            return unimatrix_server::export::run_export(
+                cli.project_dir.as_deref(),
+                output.as_deref(),
+            );
         }
         Some(Command::Import {
             input,
@@ -138,41 +176,155 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             force,
         }) => {
             // Sync path: NO tokio, like Hook and Export
-            unimatrix_server::import::run_import(
+            return unimatrix_server::import::run_import(
                 cli.project_dir.as_deref(),
                 &input,
                 skip_hash_validation,
                 force,
-            )
+            );
         }
         Some(Command::Version) => {
             // Sync path: NO tokio
-            handle_version(cli.project_dir)
+            return handle_version(cli.project_dir);
         }
         Some(Command::ModelDownload) => {
             // Sync path: NO tokio
-            handle_model_download()
+            return handle_model_download();
+        }
+        Some(Command::Stop) => {
+            // Sync path: NO tokio (ADR-006)
+            // run_stop returns an exit code; we call std::process::exit here.
+            let code = run_stop(cli.project_dir);
+            std::process::exit(code);
+        }
+        Some(Command::Serve {
+            daemon: true,
+            stdio: _,
+        }) => {
+            // Daemon path — launcher or child (ADR-001 / C-01).
+            //
+            // If --daemon-child is set: we are the spawned child process.
+            //   C-01: prepare_daemon_child() (setsid) MUST be called before
+            //   tokio_main_daemon() initializes the Tokio runtime.
+            // If --daemon-child is NOT set: we are the launcher.
+            //   Run synchronously: spawn child + poll socket.
+            if cli.daemon_child {
+                // C-01: setsid() before Tokio runtime init.
+                unimatrix_server::infra::daemon::prepare_daemon_child()?;
+                // Fall through to tokio_main_daemon below.
+                return tokio_main_daemon(cli);
+            } else {
+                // Launcher path: synchronous spawn + poll for socket.
+                let paths = compute_paths_sync(&cli.project_dir)?;
+                unimatrix_server::infra::daemon::run_daemon_launcher(&paths)?;
+                return Ok(());
+            }
+        }
+        Some(Command::Serve {
+            daemon: false,
+            stdio: _,
+        }) => {
+            // Stdio mode: serve --stdio or bare `serve` with no flags.
+            // Identical to pre-vnc-005 default behavior (R-12 regression gate).
+            return tokio_main_stdio(cli);
         }
         None => {
-            // Async path: full server with tokio runtime
-            tokio_main(cli)
+            // No subcommand: bridge mode (vnc-005 default invocation).
+            // C-10: only reached after all sync dispatch arms above.
+            if cli.daemon_child {
+                // --daemon-child with no subcommand: should not happen in normal
+                // operation but handle defensively — fall into daemon path.
+                unimatrix_server::infra::daemon::prepare_daemon_child()?;
+                return tokio_main_daemon(cli);
+            }
+            return tokio_main_bridge(cli);
         }
     }
 }
 
-/// Tokio-based server entry point (called from main when no subcommand).
+/// Resolve project paths synchronously without initializing any async runtime.
+///
+/// Used in the launcher path where only paths are needed (no server init).
+fn compute_paths_sync(
+    project_dir: &Option<PathBuf>,
+) -> Result<unimatrix_engine::project::ProjectPaths, Box<dyn std::error::Error>> {
+    project::ensure_data_directory(project_dir.as_deref(), None).map_err(|e| {
+        Box::new(ServerError::ProjectInit(e.to_string())) as Box<dyn std::error::Error>
+    })
+}
+
+/// Synchronous stop subcommand (no Tokio runtime).
+///
+/// Reads PID file, verifies the process via `is_unimatrix_process`, sends SIGTERM
+/// via `terminate_and_wait`, and polls for exit.
+///
+/// ## Exit codes (ADR-006)
+///
+/// - 0: daemon stopped successfully
+/// - 1: no daemon running, no PID file, or stale PID
+/// - 2: daemon did not exit within 15-second timeout
+fn run_stop(project_dir: Option<PathBuf>) -> i32 {
+    // Step 1: Resolve project paths (same as hook path — synchronous).
+    let paths = match project::ensure_data_directory(project_dir.as_deref(), None) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("error: failed to resolve project paths: {e}");
+            return 1;
+        }
+    };
+
+    // Step 2: Read PID file.
+    let pid = match pidfile::read_pid_file(&paths.pid_path) {
+        Some(p) => p,
+        None => {
+            eprintln!("no unimatrix daemon running for this project (no PID file)");
+            return 1;
+        }
+    };
+
+    // Step 3: Verify it is a unimatrix process.
+    // On macOS/BSD: falls back to is_process_alive (no /proc — existing limitation).
+    if !pidfile::is_unimatrix_process(pid) {
+        eprintln!("stale PID file: process {pid} is not a unimatrix daemon (or has exited)",);
+        return 1;
+    }
+
+    // Step 4: Send SIGTERM and wait (ADR-006: 15s to accommodate graceful shutdown).
+    let stopped = pidfile::terminate_and_wait(pid, Duration::from_secs(15));
+
+    // Step 5: Report result.
+    if stopped {
+        println!("unimatrix daemon stopped (PID {pid})");
+        0 // exit code 0: daemon stopped
+    } else {
+        eprintln!("daemon (PID {pid}) did not stop within 15 seconds");
+        2 // exit code 2: timeout (ADR-006 exit code specification)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Async entry points
+// ---------------------------------------------------------------------------
+
+/// Async entry point for daemon child mode (new in vnc-005).
+///
+/// Called after `prepare_daemon_child()` has run setsid(). Starts the full
+/// MCP server stack with a UDS acceptor; waits for the daemon token (SIGTERM/SIGINT).
+///
+/// C-04: There is exactly ONE call to `graceful_shutdown` in this codebase,
+/// reachable only from the daemon token cancellation path below.
 #[tokio::main]
-async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize tracing (logs to stderr — stdout is for MCP protocol)
+async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing (daemon: log to stderr, redirected to log file by launcher).
     let filter = if cli.verbose { "debug" } else { "info" };
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
         .init();
 
-    tracing::info!("starting unimatrix server");
+    tracing::info!("starting unimatrix daemon");
 
-    // Initialize project data directory
+    // Initialize project paths.
     let paths = project::ensure_data_directory(cli.project_dir.as_deref(), None)
         .map_err(|e| ServerError::ProjectInit(e.to_string()))?;
 
@@ -180,12 +332,13 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         project_root = %paths.project_root.display(),
         project_hash = %paths.project_hash,
         data_dir = %paths.data_dir.display(),
-        "project initialized"
+        mcp_socket = %paths.mcp_socket_path.display(),
+        "daemon project initialized"
     );
 
-    // Handle stale PID file before attempting to open the database
+    // Handle stale PID file before attempting to open the database.
     match pidfile::handle_stale_pid_file(&paths.pid_path, STALE_PROCESS_TIMEOUT) {
-        Ok(true) => {} // Resolved or no stale process.
+        Ok(true) => {}
         Ok(false) => {
             tracing::warn!("stale process did not exit; will attempt database open anyway");
         }
@@ -194,11 +347,10 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Open database with retry loop for lock contention
+    // Open database with retry loop for lock contention.
     let store = open_store_with_retry(&paths.db_path)?;
 
-    // Acquire PID guard (flock + write PID) now that we hold the database lock.
-    // PidGuard::drop will remove the PID file and release the lock on exit.
+    // Acquire PID guard (flock + write PID).
     let _pid_guard = match pidfile::PidGuard::acquire(&paths.pid_path) {
         Ok(guard) => {
             tracing::info!("PID guard acquired");
@@ -210,10 +362,10 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    // Handle stale socket file (unconditional unlink per ADR-004)
+    // Handle stale hook IPC socket file (unconditional unlink per ADR-004).
     uds_listener::handle_stale_socket(&paths.socket_path)?;
 
-    // Initialize vector index
+    // Initialize vector index.
     let vector_config = VectorConfig::default();
     let meta_path = paths.vector_dir.join("unimatrix-vector.meta");
 
@@ -231,28 +383,28 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         )
     };
 
-    // Initialize embedding service (lazy — background task)
+    // Initialize embedding service (lazy — background task).
     let embed_handle = EmbedServiceHandle::new();
     embed_handle.start_loading(EmbedConfig::default());
 
-    // Initialize agent registry and bootstrap defaults
+    // Initialize agent registry and bootstrap defaults.
     let registry = Arc::new(AgentRegistry::new(Arc::clone(&store))?);
     registry.bootstrap_defaults()?;
 
-    // Initialize audit log
+    // Initialize audit log.
     let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
 
-    // Build adapters and async wrappers
+    // Build adapters and async wrappers.
     let store_adapter = StoreAdapter::new(Arc::clone(&store));
     let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
 
     let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
     let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
-    // Initialize category allowlist
+    // Initialize category allowlist.
     let categories = Arc::new(CategoryAllowlist::new());
 
-    // Initialize adaptation service (crt-006)
+    // Initialize adaptation service (crt-006).
     let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
     if let Err(e) = adapt_service.load_state(&paths.data_dir) {
         tracing::warn!("adaptation state load failed: {e}, starting fresh");
@@ -263,13 +415,13 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Create session registry for hook IPC (col-008)
+    // Create session registry for hook IPC (col-008).
     let session_registry = Arc::new(unimatrix_server::infra::session::SessionRegistry::new());
 
-    // Create pending entries analysis accumulator shared between UDS listener and MCP server (col-009)
+    // Create pending entries analysis accumulator (col-009).
     let pending_entries_analysis = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
 
-    // Build shared ServiceLayer for UDS and MCP transports (vnc-006, vnc-009)
+    // Build shared ServiceLayer for UDS and MCP transports (vnc-006, vnc-009).
     let usage_dedup = Arc::new(UsageDedup::new());
     let services = unimatrix_server::services::ServiceLayer::new(
         Arc::clone(&store),
@@ -282,7 +434,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&usage_dedup),
     );
 
-    // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009)
+    // Start UDS listener for hook IPC.
     let server_uid = nix::unistd::getuid().as_raw();
     let (uds_handle, socket_guard) = uds_listener::start_uds_listener(
         &paths.socket_path,
@@ -300,7 +452,7 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    // Build server
+    // Build server (ADR-003: constructed once, cloned into each session task).
     let async_entry_store_for_tick = Arc::clone(&async_entry_store);
     let mut server = UnimatrixServer::new(
         async_entry_store,
@@ -313,7 +465,255 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&vector_index),
         Arc::clone(&adapt_service),
     );
-    // Share pending_entries_analysis and session_registry with the MCP server (col-009)
+    // Share pending_entries_analysis and session_registry with the MCP server (col-009).
+    server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
+    server.session_registry = Arc::clone(&session_registry);
+
+    // Extract state handles before services is moved.
+    let confidence_state_handle = services.confidence_state_handle();
+    let effectiveness_state_handle = services.effectiveness_state_handle();
+    let supersession_state_handle = services.supersession_state_handle();
+    let contradiction_cache_handle = services.contradiction_cache_handle();
+
+    // Parse auto-quarantine threshold at startup (Constraint 14).
+    let auto_quarantine_cycles = unimatrix_server::background::parse_auto_quarantine_cycles()
+        .map_err(ServerError::ProjectInit)?;
+
+    // Spawn background tick for automated maintenance + extraction (col-013).
+    let tick_handle = unimatrix_server::background::spawn_background_tick(
+        Arc::clone(&store),
+        Arc::clone(&vector_index),
+        Arc::clone(&embed_handle),
+        Arc::clone(&adapt_service),
+        Arc::clone(&session_registry),
+        async_entry_store_for_tick,
+        Arc::clone(&pending_entries_analysis),
+        Arc::clone(&server.tick_metadata),
+        None,
+        confidence_state_handle,
+        effectiveness_state_handle,
+        supersession_state_handle,
+        contradiction_cache_handle,
+        Arc::clone(&audit),
+        auto_quarantine_cycles,
+    );
+
+    // Create daemon CancellationToken (ADR-002).
+    let daemon_token = shutdown::new_daemon_token();
+
+    // Start MCP UDS acceptor (vnc-005: Component 2).
+    let (mcp_acceptor_handle, mcp_socket_guard) =
+        unimatrix_server::uds::mcp_listener::start_mcp_uds_listener(
+            &paths.mcp_socket_path,
+            server.clone(),
+            daemon_token.clone(),
+        )
+        .await?;
+
+    // Signal handler: cancel daemon token on SIGTERM/SIGINT.
+    // This is the ONLY path that triggers graceful_shutdown (C-04 / C-05).
+    let signal_token = daemon_token.clone();
+    tokio::spawn(async move {
+        shutdown::shutdown_signal().await;
+        tracing::info!("received shutdown signal; cancelling daemon token");
+        signal_token.cancel();
+    });
+
+    // Build LifecycleHandles with new vnc-005 fields.
+    // Drop ordering is enforced by graceful_shutdown (see infra/shutdown.rs).
+    let lifecycle_handles = LifecycleHandles {
+        store,
+        vector_index,
+        vector_dir: paths.vector_dir.clone(),
+        registry,
+        audit,
+        adapt_service,
+        data_dir: paths.data_dir.clone(),
+        mcp_socket_guard: Some(mcp_socket_guard), // vnc-005: MCP UDS socket
+        mcp_acceptor_handle: Some(mcp_acceptor_handle), // vnc-005: MCP accept loop
+        socket_guard: Some(socket_guard),
+        uds_handle: Some(uds_handle),
+        tick_handle: Some(tick_handle),
+        services: Some(services),
+    };
+
+    tracing::info!("unimatrix daemon ready");
+
+    // Wait for daemon token cancellation (SIGTERM/SIGINT via signal handler above).
+    //
+    // ADR-002 / C-04: Session EOF (QuitReason::Closed) does NOT cancel this token.
+    // The daemon survives individual session disconnections.
+    daemon_token.cancelled().await;
+    tracing::info!("daemon token cancelled; beginning graceful shutdown");
+
+    // C-05: ONLY call site for graceful_shutdown in the daemon path.
+    // The serve --stdio path uses its own QuitReason::Closed → graceful_shutdown path below.
+    shutdown::graceful_shutdown(lifecycle_handles).await?;
+
+    tracing::info!("unimatrix daemon exited cleanly");
+    Ok(())
+}
+
+/// Async entry point for stdio mode (refactored from the pre-vnc-005 `tokio_main`).
+///
+/// Identical to the pre-vnc-005 default behavior: serves MCP over stdio,
+/// exits when stdin closes (R-12 regression gate) or on signal.
+///
+/// The new `mcp_socket_guard: None` and `mcp_acceptor_handle: None` fields are
+/// supplied to satisfy the updated `LifecycleHandles` struct.
+#[tokio::main]
+async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing (logs to stderr — stdout is for MCP protocol).
+    let filter = if cli.verbose { "debug" } else { "info" };
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_writer(std::io::stderr)
+        .init();
+
+    tracing::info!("starting unimatrix server");
+
+    // Initialize project data directory.
+    let paths = project::ensure_data_directory(cli.project_dir.as_deref(), None)
+        .map_err(|e| ServerError::ProjectInit(e.to_string()))?;
+
+    tracing::info!(
+        project_root = %paths.project_root.display(),
+        project_hash = %paths.project_hash,
+        data_dir = %paths.data_dir.display(),
+        "project initialized"
+    );
+
+    // Handle stale PID file before attempting to open the database.
+    match pidfile::handle_stale_pid_file(&paths.pid_path, STALE_PROCESS_TIMEOUT) {
+        Ok(true) => {}
+        Ok(false) => {
+            tracing::warn!("stale process did not exit; will attempt database open anyway");
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "PID file handling failed; continuing startup");
+        }
+    }
+
+    // Open database with retry loop for lock contention.
+    let store = open_store_with_retry(&paths.db_path)?;
+
+    // Acquire PID guard (flock + write PID) now that we hold the database lock.
+    // PidGuard::drop will remove the PID file and release the lock on exit.
+    let _pid_guard = match pidfile::PidGuard::acquire(&paths.pid_path) {
+        Ok(guard) => {
+            tracing::info!("PID guard acquired");
+            Some(guard)
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "failed to acquire PID guard; continuing without it");
+            None
+        }
+    };
+
+    // Handle stale socket file (unconditional unlink per ADR-004).
+    uds_listener::handle_stale_socket(&paths.socket_path)?;
+
+    // Initialize vector index.
+    let vector_config = VectorConfig::default();
+    let meta_path = paths.vector_dir.join("unimatrix-vector.meta");
+
+    let vector_index = if meta_path.exists() {
+        tracing::info!("loading existing vector index");
+        Arc::new(
+            VectorIndex::load(Arc::clone(&store), vector_config, &paths.vector_dir)
+                .map_err(|e| ServerError::Core(CoreError::Vector(e)))?,
+        )
+    } else {
+        tracing::info!("creating new vector index");
+        Arc::new(
+            VectorIndex::new(Arc::clone(&store), vector_config)
+                .map_err(|e| ServerError::Core(CoreError::Vector(e)))?,
+        )
+    };
+
+    // Initialize embedding service (lazy — background task).
+    let embed_handle = EmbedServiceHandle::new();
+    embed_handle.start_loading(EmbedConfig::default());
+
+    // Initialize agent registry and bootstrap defaults.
+    let registry = Arc::new(AgentRegistry::new(Arc::clone(&store))?);
+    registry.bootstrap_defaults()?;
+
+    // Initialize audit log.
+    let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
+
+    // Build adapters and async wrappers.
+    let store_adapter = StoreAdapter::new(Arc::clone(&store));
+    let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
+
+    let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
+    let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
+
+    // Initialize category allowlist.
+    let categories = Arc::new(CategoryAllowlist::new());
+
+    // Initialize adaptation service (crt-006).
+    let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
+    if let Err(e) = adapt_service.load_state(&paths.data_dir) {
+        tracing::warn!("adaptation state load failed: {e}, starting fresh");
+    } else {
+        let training_gen = adapt_service.training_generation();
+        if training_gen > 0 {
+            tracing::info!(generation = training_gen, "adaptation state restored");
+        }
+    }
+
+    // Create session registry for hook IPC (col-008).
+    let session_registry = Arc::new(unimatrix_server::infra::session::SessionRegistry::new());
+
+    // Create pending entries analysis accumulator shared between UDS listener and MCP server (col-009).
+    let pending_entries_analysis = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
+
+    // Build shared ServiceLayer for UDS and MCP transports (vnc-006, vnc-009).
+    let usage_dedup = Arc::new(UsageDedup::new());
+    let services = unimatrix_server::services::ServiceLayer::new(
+        Arc::clone(&store),
+        Arc::clone(&vector_index),
+        Arc::clone(&async_vector_store),
+        Arc::clone(&async_entry_store),
+        Arc::clone(&embed_handle),
+        Arc::clone(&adapt_service),
+        Arc::clone(&audit),
+        Arc::clone(&usage_dedup),
+    );
+
+    // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009).
+    let server_uid = nix::unistd::getuid().as_raw();
+    let (uds_handle, socket_guard) = uds_listener::start_uds_listener(
+        &paths.socket_path,
+        Arc::clone(&store),
+        Arc::clone(&embed_handle),
+        Arc::clone(&async_vector_store),
+        Arc::clone(&async_entry_store),
+        Arc::clone(&adapt_service),
+        Arc::clone(&session_registry),
+        Arc::clone(&pending_entries_analysis),
+        server_uid,
+        env!("CARGO_PKG_VERSION").to_string(),
+        services.clone(),
+        Arc::clone(&audit),
+    )
+    .await?;
+
+    // Build server.
+    let async_entry_store_for_tick = Arc::clone(&async_entry_store);
+    let mut server = UnimatrixServer::new(
+        async_entry_store,
+        async_vector_store,
+        Arc::clone(&embed_handle),
+        Arc::clone(&registry),
+        Arc::clone(&audit),
+        categories,
+        Arc::clone(&store),
+        Arc::clone(&vector_index),
+        Arc::clone(&adapt_service),
+    );
+    // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
     server.session_registry = Arc::clone(&session_registry);
 
@@ -327,11 +727,10 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let contradiction_cache_handle = services.contradiction_cache_handle();
 
     // crt-018b: parse auto-quarantine threshold at startup (Constraint 14).
-    // Value 0 disables auto-quarantine; values > 1000 cause a startup error.
     let auto_quarantine_cycles = unimatrix_server::background::parse_auto_quarantine_cycles()
         .map_err(ServerError::ProjectInit)?;
 
-    // Spawn background tick for automated maintenance + extraction (col-013)
+    // Spawn background tick for automated maintenance + extraction (col-013).
     let tick_handle = unimatrix_server::background::spawn_background_tick(
         Arc::clone(&store),
         Arc::clone(&vector_index),
@@ -361,13 +760,16 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         audit,
         adapt_service,
         data_dir: paths.data_dir.clone(),
+        // vnc-005: stdio mode does not use MCP UDS socket or acceptor task
+        mcp_socket_guard: None,
+        mcp_acceptor_handle: None,
         socket_guard: Some(socket_guard),
         uds_handle: Some(uds_handle),
         tick_handle: Some(tick_handle),
         services: Some(services),
     };
 
-    // Serve over stdio
+    // Serve over stdio (R-12 regression gate: must exit when stdin closes).
     tracing::info!("serving MCP over stdio");
     let running = server
         .serve(rmcp::transport::io::stdio())
@@ -396,17 +798,55 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Wait for the service to complete. This returns when either:
     // - The transport closes naturally (client disconnect) -> QuitReason::Closed
     // - The signal handler cancels the token -> QuitReason::Cancelled
+    //
+    // R-12 regression gate: QuitReason::Closed (stdin EOF) must reach graceful_shutdown.
     match running.waiting().await {
         Ok(reason) => tracing::info!(?reason, "MCP transport closed"),
         Err(e) => tracing::error!(error = %e, "MCP transport task failed"),
     }
 
     // Run lifecycle shutdown (vector dump, adapt save, DB compaction).
+    // C-04: This is the graceful_shutdown call for stdio mode (separate from daemon path).
     shutdown::graceful_shutdown(lifecycle_handles).await?;
 
     tracing::info!("unimatrix server exited cleanly");
     Ok(())
 }
+
+/// Async entry point for bridge mode (new default no-subcommand path in vnc-005).
+///
+/// Connects Claude Code's stdio pipe to the running daemon's MCP UDS socket,
+/// auto-starting the daemon if absent. The bridge carries no Unimatrix
+/// capabilities (C-06); all auth enforcement lives in the daemon.
+#[tokio::main]
+async fn tokio_main_bridge(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing. Bridge logs go to stderr (stdout is for MCP protocol).
+    let filter = if cli.verbose { "debug" } else { "info" };
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_writer(std::io::stderr)
+        .init();
+
+    tracing::debug!("bridge mode starting");
+
+    // Resolve project paths (needed for mcp_socket_path, pid_path, log_path).
+    let paths = project::ensure_data_directory(cli.project_dir.as_deref(), None)
+        .map_err(|e| ServerError::ProjectInit(e.to_string()))?;
+
+    tracing::debug!(
+        mcp_socket = %paths.mcp_socket_path.display(),
+        "bridge connecting to daemon"
+    );
+
+    // Delegate to the bridge module (Component 6).
+    unimatrix_server::bridge::run_bridge(&paths).await?;
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Utility functions
+// ---------------------------------------------------------------------------
 
 /// Print version string to stdout and exit.
 ///

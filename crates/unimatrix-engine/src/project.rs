@@ -25,6 +25,10 @@ pub struct ProjectPaths {
     pub pid_path: PathBuf,
     /// Socket file path: ~/.unimatrix/{hash}/unimatrix.sock
     pub socket_path: PathBuf,
+    /// MCP UDS socket path: ~/.unimatrix/{hash}/unimatrix-mcp.sock
+    pub mcp_socket_path: PathBuf,
+    /// Daemon log file path: ~/.unimatrix/{hash}/unimatrix.log
+    pub log_path: PathBuf,
 }
 
 /// Detect the project root by walking up from cwd looking for `.git`.
@@ -161,6 +165,8 @@ pub fn ensure_data_directory(
     let vector_dir = data_dir.join("vector");
     let pid_path = data_dir.join("unimatrix.pid");
     let socket_path = data_dir.join("unimatrix.sock");
+    let mcp_socket_path = data_dir.join("unimatrix-mcp.sock");
+    let log_path = data_dir.join("unimatrix.log");
 
     fs::create_dir_all(&data_dir)?;
     #[cfg(unix)]
@@ -175,6 +181,8 @@ pub fn ensure_data_directory(
         vector_dir,
         pid_path,
         socket_path,
+        mcp_socket_path,
+        log_path,
     })
 }
 
@@ -250,6 +258,13 @@ mod tests {
                 .to_string_lossy()
                 .ends_with("unimatrix.sock")
         );
+        assert!(
+            paths
+                .mcp_socket_path
+                .to_string_lossy()
+                .ends_with("unimatrix-mcp.sock")
+        );
+        assert!(paths.log_path.to_string_lossy().ends_with("unimatrix.log"));
     }
 
     #[test]
@@ -283,6 +298,25 @@ mod tests {
         let base_dir = tempfile::TempDir::new().unwrap();
         let paths = ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
         assert_eq!(paths.socket_path, paths.data_dir.join("unimatrix.sock"));
+    }
+
+    #[test]
+    fn test_mcp_socket_path_in_data_dir() {
+        let project_dir = tempfile::TempDir::new().unwrap();
+        let base_dir = tempfile::TempDir::new().unwrap();
+        let paths = ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
+        assert_eq!(
+            paths.mcp_socket_path,
+            paths.data_dir.join("unimatrix-mcp.sock")
+        );
+    }
+
+    #[test]
+    fn test_log_path_in_data_dir() {
+        let project_dir = tempfile::TempDir::new().unwrap();
+        let base_dir = tempfile::TempDir::new().unwrap();
+        let paths = ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
+        assert_eq!(paths.log_path, paths.data_dir.join("unimatrix.log"));
     }
 
     #[test]
@@ -407,6 +441,8 @@ mod tests {
         assert!(paths.db_path.starts_with(base_dir.path()));
         assert!(paths.pid_path.starts_with(base_dir.path()));
         assert!(paths.socket_path.starts_with(base_dir.path()));
+        assert!(paths.mcp_socket_path.starts_with(base_dir.path()));
+        assert!(paths.log_path.starts_with(base_dir.path()));
 
         // The hash directory should NOT exist under ~/.unimatrix/
         let home = dirs::home_dir().unwrap();

@@ -1553,8 +1553,11 @@ async fn process_session_close(
         write_signals_to_queue(output, store).await;
 
         // Step 4: Run consumers (after queue is written)
-        run_confidence_consumer(store, entry_store, pending).await;
-        run_retrospective_consumer(store, pending, entry_store).await;
+        // Pass the resolved feature_cycle so entries accumulate in the correct bucket.
+        // An empty string is used for sessions without feature cycle attribution.
+        let fc_key = final_feature_cycle.as_deref().unwrap_or("");
+        run_confidence_consumer(store, entry_store, pending, fc_key).await;
+        run_retrospective_consumer(store, pending, entry_store, fc_key).await;
     }
     // If session absent (already cleared): no-op (idempotent — AC-03)
 
@@ -1767,10 +1770,13 @@ pub(crate) async fn write_signals_to_queue(output: &SignalOutput, store: &Arc<St
 /// Drain Helpful signals from SIGNAL_QUEUE and apply helpful_count increments.
 ///
 /// Also updates success_session_count in PendingEntriesAnalysis (FR-06.2b).
+/// `feature_cycle`: the feature cycle key for the bucket to write into.
+/// Pass an empty string for sessions with no feature cycle attribution.
 pub(crate) async fn run_confidence_consumer(
     store: &Arc<Store>,
     entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
+    feature_cycle: &str,
 ) {
     // Step 1: Drain all Helpful signals in one transaction.
     // Use spawn_blocking to keep store.lock_conn() off the async runtime (#176).
@@ -1838,9 +1844,21 @@ pub(crate) async fn run_confidence_consumer(
         let mut needing_fetch = Vec::new();
         for signal in &signals {
             for &entry_id in &signal.entry_ids {
-                if let Some(existing) = pending_guard.entries.get_mut(&entry_id) {
+                // Access the bucket directly for in-place mutation (success_session_count).
+                // Using the bucket's entries map rather than upsert() to avoid a full
+                // read-modify-write cycle for the common case (entry already exists).
+                let in_bucket = pending_guard
+                    .buckets
+                    .get_mut(feature_cycle)
+                    .and_then(|b| b.entries.get_mut(&entry_id))
+                    .is_some();
+                if in_bucket {
                     if session_counted.insert((signal.session_id.clone(), entry_id)) {
-                        existing.success_session_count += 1;
+                        if let Some(b) = pending_guard.buckets.get_mut(feature_cycle) {
+                            if let Some(existing) = b.entries.get_mut(&entry_id) {
+                                existing.success_session_count += 1;
+                            }
+                        }
                     }
                 } else {
                     needing_fetch.push(entry_id);
@@ -1867,13 +1885,22 @@ pub(crate) async fn run_confidence_consumer(
         for signal in &signals {
             for &entry_id in &signal.entry_ids {
                 if let Some((title, category)) = fetched.get(&entry_id) {
-                    if let Some(existing) = pending_guard.entries.get_mut(&entry_id) {
+                    let in_bucket = pending_guard
+                        .buckets
+                        .get_mut(feature_cycle)
+                        .and_then(|b| b.entries.get_mut(&entry_id))
+                        .is_some();
+                    if in_bucket {
                         // Entry exists (added between passes or by earlier signal iteration)
                         if session_counted.insert((signal.session_id.clone(), entry_id)) {
-                            existing.success_session_count += 1;
+                            if let Some(b) = pending_guard.buckets.get_mut(feature_cycle) {
+                                if let Some(existing) = b.entries.get_mut(&entry_id) {
+                                    existing.success_session_count += 1;
+                                }
+                            }
                         }
                     } else {
-                        // New entry — insert with session-aware count
+                        // New entry — insert with session-aware count via upsert
                         let is_new_session =
                             session_counted.insert((signal.session_id.clone(), entry_id));
                         let analysis = unimatrix_observe::EntryAnalysis {
@@ -1885,7 +1912,7 @@ pub(crate) async fn run_confidence_consumer(
                             success_session_count: if is_new_session { 1 } else { 0 },
                             rework_session_count: 0,
                         };
-                        pending_guard.upsert(analysis);
+                        pending_guard.upsert(feature_cycle, analysis);
                     }
                 }
             }
@@ -1894,10 +1921,14 @@ pub(crate) async fn run_confidence_consumer(
 }
 
 /// Drain Flagged signals from SIGNAL_QUEUE and update PendingEntriesAnalysis.
+///
+/// `feature_cycle`: the feature cycle key for the bucket to write into.
+/// Pass an empty string for sessions with no feature cycle attribution.
 pub(crate) async fn run_retrospective_consumer(
     store: &Arc<Store>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
     entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    feature_cycle: &str,
 ) {
     // Step 1: Drain all Flagged signals.
     // Use spawn_blocking to keep store.lock_conn() off the async runtime (#176).
@@ -1927,7 +1958,12 @@ pub(crate) async fn run_retrospective_consumer(
         signals
             .iter()
             .flat_map(|s| s.entry_ids.iter().copied())
-            .filter(|id| !pending_guard.entries.contains_key(id))
+            .filter(|id| {
+                !pending_guard
+                    .buckets
+                    .get(feature_cycle)
+                    .map_or(false, |b| b.entries.contains_key(id))
+            })
             .collect::<HashSet<_>>()
             .into_iter()
             .collect()
@@ -1958,12 +1994,20 @@ pub(crate) async fn run_retrospective_consumer(
         let mut pending_guard = pending.lock().unwrap_or_else(|e| e.into_inner());
         for signal in &signals {
             for &entry_id in &signal.entry_ids {
-                if let Some(existing) = pending_guard.entries.get_mut(&entry_id) {
+                let in_bucket = pending_guard
+                    .buckets
+                    .get(feature_cycle)
+                    .map_or(false, |b| b.entries.contains_key(&entry_id));
+                if in_bucket {
                     // rework_flag_count: always increment (event counter, no dedup)
-                    existing.rework_flag_count += 1;
-                    // rework_session_count: dedup per (session_id, entry_id)
-                    if session_counted.insert((signal.session_id.clone(), entry_id)) {
-                        existing.rework_session_count += 1;
+                    if let Some(b) = pending_guard.buckets.get_mut(feature_cycle) {
+                        if let Some(existing) = b.entries.get_mut(&entry_id) {
+                            existing.rework_flag_count += 1;
+                            // rework_session_count: dedup per (session_id, entry_id)
+                            if session_counted.insert((signal.session_id.clone(), entry_id)) {
+                                existing.rework_session_count += 1;
+                            }
+                        }
                     }
                 } else {
                     let (title, category) = fetched.get(&entry_id).cloned().unwrap_or_default();
@@ -1978,7 +2022,7 @@ pub(crate) async fn run_retrospective_consumer(
                         success_session_count: 0,
                         rework_session_count: if is_new_session { 1 } else { 0 },
                     };
-                    pending_guard.upsert(analysis);
+                    pending_guard.upsert(feature_cycle, analysis);
                 }
             }
         }
@@ -3309,13 +3353,15 @@ mod tests {
             .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful))
             .unwrap();
 
-        run_confidence_consumer(&store, &entry_store, &pending).await;
+        // vnc-005: pass feature_cycle to consumer; use "" as default
+        run_confidence_consumer(&store, &entry_store, &pending, "").await;
 
         let guard = pending.lock().unwrap();
         let analysis = guard
-            .entries
-            .get(&entry_id)
-            .expect("entry should exist in pending");
+            .buckets
+            .get("")
+            .and_then(|b| b.entries.get(&entry_id))
+            .expect("entry should exist in pending bucket");
         assert_eq!(
             analysis.success_session_count, 1,
             "same session should count only once"
@@ -3340,13 +3386,15 @@ mod tests {
             .insert_signal(&make_signal("sess-B", vec![entry_id], SignalType::Helpful))
             .unwrap();
 
-        run_confidence_consumer(&store, &entry_store, &pending).await;
+        // vnc-005: pass feature_cycle to consumer; use "" as default
+        run_confidence_consumer(&store, &entry_store, &pending, "").await;
 
         let guard = pending.lock().unwrap();
         let analysis = guard
-            .entries
-            .get(&entry_id)
-            .expect("entry should exist in pending");
+            .buckets
+            .get("")
+            .and_then(|b| b.entries.get(&entry_id))
+            .expect("entry should exist in pending bucket");
         assert_eq!(
             analysis.success_session_count, 2,
             "different sessions should each count"
@@ -3371,13 +3419,15 @@ mod tests {
             .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
             .unwrap();
 
-        run_retrospective_consumer(&store, &pending, &entry_store).await;
+        // vnc-005: pass feature_cycle to consumer; use "" as default
+        run_retrospective_consumer(&store, &pending, &entry_store, "").await;
 
         let guard = pending.lock().unwrap();
         let analysis = guard
-            .entries
-            .get(&entry_id)
-            .expect("entry should exist in pending");
+            .buckets
+            .get("")
+            .and_then(|b| b.entries.get(&entry_id))
+            .expect("entry should exist in pending bucket");
         assert_eq!(
             analysis.rework_session_count, 1,
             "same session should count only once"
@@ -3410,13 +3460,15 @@ mod tests {
             .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
             .unwrap();
 
-        run_retrospective_consumer(&store, &pending, &entry_store).await;
+        // vnc-005: pass feature_cycle to consumer; use "" as default
+        run_retrospective_consumer(&store, &pending, &entry_store, "").await;
 
         let guard = pending.lock().unwrap();
         let analysis = guard
-            .entries
-            .get(&entry_id)
-            .expect("entry should exist in pending");
+            .buckets
+            .get("")
+            .and_then(|b| b.entries.get(&entry_id))
+            .expect("entry should exist in pending bucket");
         assert_eq!(
             analysis.rework_flag_count, 3,
             "every flagging event should count"

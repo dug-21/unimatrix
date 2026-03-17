@@ -23,10 +23,11 @@ unimatrix-adapt = { path = "../unimatrix-adapt" }
 unimatrix-observe = { path = "../unimatrix-observe" }
 unimatrix-learn = { path = "../unimatrix-learn" }
 
-nix = { version = "0.31", features = ["user"] }
+nix = { version = "0.31", features = ["user", "process"] }
 fs2 = "0.4"
 rmcp = { version = "=0.16.0", features = ["server", "transport-io", "macros"] }
 tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7" }
 schemars = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }

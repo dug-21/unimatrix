@@ -195,6 +195,8 @@ context_briefing(role: "developer", task: "implement new MCP tool", feature: "vn
 
 7. **Near-duplicate detection.** Entries with cosine similarity >= 0.92 to existing entries are rejected as duplicates. Rephrase if a legitimate distinct entry is rejected.
 
+8. **Daemon log file is not rotated.** The daemon writes stdout/stderr to `~/.unimatrix/{hash}/unimatrix.log` in append mode. On long-running projects, monitor this file's size and truncate or archive it manually as needed.
+
 ---
 
 ## MCP Tool Reference
@@ -271,12 +273,15 @@ The `unimatrix` binary (or `npx unimatrix`) serves as both the MCP server and th
 
 ### Default Mode (no subcommand)
 
-Starts the MCP server over stdio. This is what the MCP server configuration invokes.
+Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdout to it. If no daemon is running, auto-starts one (waits up to 5 seconds for the socket to appear) before bridging. This is what the MCP server configuration invokes — no change to `.mcp.json` is required.
 
 ### Subcommands
 
 | Subcommand | Description | Key Flags |
 |------------|-------------|-----------|
+| `serve --daemon` | Start the MCP server as a detached background daemon. Daemonizes (fork/setsid), binds the MCP UDS socket (`unimatrix-mcp.sock`) and hook IPC socket, starts the background tick loop, and exits the launcher process. Fails non-zero if a healthy daemon is already running. Linux and macOS only. | `--daemon` |
+| `serve --stdio` | Start the MCP server in foreground stdio mode. Identical in behavior to the pre-daemon default — the server runs until stdin closes, then performs graceful shutdown and exits. Use for development and testing. | `--stdio` |
+| `stop` | Send SIGTERM to the running daemon and wait for it to exit (up to 10 seconds). Exits 0 on success, non-zero if no daemon is running or the PID file is absent/stale. | None |
 | `hook <EVENT>` | Handle a Claude Code lifecycle hook event. Reads JSON from stdin, connects to the running server via UDS. Designed for use in `.claude/settings.json` hook configuration, not direct user invocation. | Event name as positional arg. |
 | `export` | Export the knowledge base to JSONL format. No running server required. | `--output <PATH>` (defaults to stdout) |
 | `import` | Import a knowledge base from a JSONL export file. Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data) |
@@ -314,7 +319,11 @@ Single binary. The `hook` subcommand communicates with the running MCP server vi
 
 ### MCP Transport
 
-stdio transport via rmcp. Claude Code connects to the binary as an MCP server.
+Daemon mode (default): Unimatrix runs as a persistent background daemon (`unimatrix serve --daemon`) that accepts MCP connections over a Unix Domain Socket (`unimatrix-mcp.sock`, 0600 permissions). Claude Code spawns a lightweight bridge process (the default `unimatrix` invocation) per session; the bridge connects stdin/stdout to the daemon's UDS socket. The daemon survives client disconnection — background tick, vector index, and all in-memory state persist across sessions. Up to 32 concurrent MCP sessions are supported.
+
+Stdio mode (explicit): `unimatrix serve --stdio` starts the server in foreground stdio mode. Identical to the pre-daemon behavior; use for development and testing.
+
+The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`) are separate files. Hook IPC uses the existing length-framed binary protocol; MCP sessions use newline-delimited JSON-RPC over the MCP socket.
 
 ### Data Layout
 
@@ -323,6 +332,8 @@ stdio transport via rmcp. Claude Code connects to the binary as an MCP server.
   unimatrix.db               # SQLite knowledge database (schema v11)
   unimatrix.pid              # PID file with flock advisory lock
   unimatrix.sock             # Unix domain socket for hook IPC
+  unimatrix-mcp.sock         # Unix domain socket for MCP sessions (daemon mode)
+  unimatrix.log              # Daemon stdout/stderr log (append mode)
   vector/
     unimatrix-vector.hnsw2   # HNSW graph
     unimatrix-vector.meta    # Index metadata
