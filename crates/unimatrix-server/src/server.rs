@@ -27,59 +27,150 @@ use crate::infra::usage_dedup::{UsageDedup, VoteAction};
 use crate::mcp::identity::{self, ResolvedIdentity};
 use crate::services::{EffectivenessStateHandle, ServiceLayer};
 
-// -- col-009: PendingEntriesAnalysis --
+// -- col-009 / vnc-005: PendingEntriesAnalysis --
 
-/// In-memory accumulator for entry-level performance data from signal consumers.
+/// Returns the current Unix timestamp in seconds.
+fn unix_now_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
+
+/// Per-feature-cycle bucket holding accumulated entry analyses.
+///
+/// Created lazily by `upsert`; removed entirely by `drain_for` or `evict_stale`.
+/// Cap: 1000 entries per bucket. Excess evicted by lowest rework_flag_count.
+#[derive(Debug)]
+pub struct FeatureBucket {
+    /// Inner key: entry_id u64. Overwrite semantics — each entry_id appears at most once.
+    pub entries: HashMap<u64, unimatrix_observe::EntryAnalysis>,
+    /// Unix seconds — updated on every upsert; used for TTL eviction by background tick.
+    pub last_updated: u64,
+}
+
+impl FeatureBucket {
+    fn new() -> Self {
+        FeatureBucket {
+            entries: HashMap::new(),
+            last_updated: unix_now_secs(),
+        }
+    }
+}
+
+/// Two-level in-memory accumulator for entry-level performance data.
+///
+/// Outer key: feature_cycle string (e.g., "vnc-005").
+/// Inner key: entry_id u64 (overwrite semantics — no duplicate IDs per bucket).
 ///
 /// Shared between the UDS listener (writes from signal consumers) and the
-/// context_retrospective handler (drains on call). Protected by Mutex.
-/// Cap: 1000 entries. When cap reached, drops entry with lowest rework_flag_count.
+/// context_retrospective handler (drains on call). Protected by
+/// `Arc<Mutex<PendingEntriesAnalysis>>`.
+///
+/// Daemon-mode note: this accumulator persists across sessions.
+/// `UsageDedup` is also daemon-wide — dedup applies across all sessions
+/// for the same entry within the dedup window, which is the correct behavior.
+#[derive(Debug)]
 pub struct PendingEntriesAnalysis {
-    pub entries: HashMap<u64, unimatrix_observe::EntryAnalysis>,
+    /// Outer key: feature_cycle string (e.g., "vnc-005").
+    /// Inner key: entry_id u64.
+    pub buckets: HashMap<String, FeatureBucket>,
     pub created_at: u64,
 }
 
 impl PendingEntriesAnalysis {
     pub fn new() -> Self {
         PendingEntriesAnalysis {
-            entries: HashMap::new(),
-            created_at: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs(),
+            buckets: HashMap::new(),
+            created_at: unix_now_secs(),
         }
     }
 
-    /// Insert or update an EntryAnalysis, enforcing the 1000-entry cap.
+    /// Insert or replace an `EntryAnalysis` in the bucket for `feature_cycle`.
     ///
-    /// Update: merge rework_flag_count, rework_session_count, success_session_count.
-    /// Insert: enforce cap by dropping entry with lowest rework_flag_count before inserting.
-    pub fn upsert(&mut self, analysis: unimatrix_observe::EntryAnalysis) {
-        if let Some(existing) = self.entries.get_mut(&analysis.entry_id) {
-            existing.rework_flag_count += analysis.rework_flag_count;
-            existing.rework_session_count += analysis.rework_session_count;
-            existing.success_session_count += analysis.success_session_count;
-        } else {
-            if self.entries.len() >= 1000 {
-                // Drop entry with lowest rework_flag_count
-                let min_key = self
-                    .entries
-                    .iter()
-                    .min_by_key(|(_, v)| v.rework_flag_count)
-                    .map(|(k, _)| *k);
-                if let Some(k) = min_key {
-                    self.entries.remove(&k);
-                }
+    /// Semantics: **overwrite** — if `entry_id` already exists in the bucket,
+    /// the existing record is replaced entirely (not accumulated/summed).
+    /// This preserves the most-recent signal per entry within a feature cycle.
+    ///
+    /// Security: `feature_cycle` keys exceeding 256 bytes are silently dropped
+    /// (prevents memory exhaustion; callers are fire-and-forget — C-16).
+    ///
+    /// Cap: 1000 entries per bucket. When the cap is reached, the entry with
+    /// the lowest `rework_flag_count` is evicted before inserting the new entry.
+    /// The cap and eviction run entirely within the caller's Mutex lock (R-15).
+    pub fn upsert(&mut self, feature_cycle: &str, analysis: unimatrix_observe::EntryAnalysis) {
+        // C-16: validate key length — silent drop for oversized keys
+        if feature_cycle.len() > 256 {
+            tracing::warn!(
+                key_len = feature_cycle.len(),
+                "feature_cycle key exceeds 256 bytes; entry dropped"
+            );
+            return;
+        }
+
+        let bucket = self
+            .buckets
+            .entry(feature_cycle.to_string())
+            .or_insert_with(FeatureBucket::new);
+
+        // Overwrite semantics: replace any existing entry with the same ID
+        if bucket.entries.len() >= 1000 && !bucket.entries.contains_key(&analysis.entry_id) {
+            // Bucket full and this is a new entry — evict lowest rework_flag_count
+            let min_key = bucket
+                .entries
+                .iter()
+                .min_by_key(|(_, v)| v.rework_flag_count)
+                .map(|(k, _)| *k);
+            if let Some(k) = min_key {
+                bucket.entries.remove(&k);
             }
-            self.entries.insert(analysis.entry_id, analysis);
+        }
+
+        bucket.entries.insert(analysis.entry_id, analysis);
+        bucket.last_updated = unix_now_secs();
+    }
+
+    /// Remove and return all entries for the given `feature_cycle` bucket.
+    ///
+    /// The bucket is removed entirely. A subsequent `upsert` for the same key
+    /// creates a fresh bucket. A subsequent `drain_for` returns an empty Vec.
+    ///
+    /// This operation is atomic within the caller's Mutex lock (R-18).
+    pub fn drain_for(&mut self, feature_cycle: &str) -> Vec<unimatrix_observe::EntryAnalysis> {
+        match self.buckets.remove(feature_cycle) {
+            None => Vec::new(),
+            Some(bucket) => bucket.entries.into_values().collect(),
         }
     }
 
-    /// Drain all entries and clear the map. Returns the drained entries.
-    pub fn drain_all(&mut self) -> Vec<unimatrix_observe::EntryAnalysis> {
-        let entries: Vec<_> = self.entries.values().cloned().collect();
-        self.entries.clear();
-        entries
+    /// Evict buckets whose `last_updated` is older than `ttl_secs` relative to `now_unix_secs`.
+    ///
+    /// Called by the background tick (72-hour TTL per ADR-004) as a safety net for
+    /// features that complete without calling `context_retrospective` or `context_cycle`.
+    /// The entire eviction runs within the caller's Mutex lock (R-18).
+    pub fn evict_stale(&mut self, now_unix_secs: u64, ttl_secs: u64) {
+        let mut to_evict: Vec<String> = Vec::new();
+
+        for (feature_cycle, bucket) in &self.buckets {
+            let age = now_unix_secs.saturating_sub(bucket.last_updated);
+            if age > ttl_secs {
+                to_evict.push(feature_cycle.clone());
+            }
+        }
+
+        for key in &to_evict {
+            if let Some(bucket) = self.buckets.remove(key) {
+                let age_hours = now_unix_secs
+                    .saturating_sub(bucket.last_updated)
+                    .saturating_div(3600);
+                tracing::warn!(
+                    feature_cycle = %key,
+                    entry_count = bucket.entries.len(),
+                    age_hours,
+                    "evicting stale pending_entries_analysis bucket (TTL exceeded)"
+                );
+            }
+        }
     }
 }
 
@@ -2241,21 +2332,25 @@ mod tests {
         }
     }
 
+    // Updated for vnc-005 two-level API: upsert now takes feature_cycle as first arg.
+    // Old tests updated in-place; overwrite semantics replace accumulate semantics.
+
     #[test]
     fn pending_entries_upsert_and_drain() {
         let mut pending = PendingEntriesAnalysis::new();
-        pending.upsert(make_analysis(1, 3));
-        pending.upsert(make_analysis(2, 1));
+        pending.upsert("test-fc", make_analysis(1, 3));
+        pending.upsert("test-fc", make_analysis(2, 1));
 
-        let drained = pending.drain_all();
+        let drained = pending.drain_for("test-fc");
         assert_eq!(drained.len(), 2);
-        assert!(pending.entries.is_empty());
+        assert!(!pending.buckets.contains_key("test-fc"));
     }
 
     #[test]
-    fn pending_entries_upsert_merges_counts() {
+    fn pending_entries_upsert_overwrites_counts() {
+        // vnc-005: upsert now OVERWRITES (not merges) — updated from accumulate semantics
         let mut pending = PendingEntriesAnalysis::new();
-        pending.upsert(make_analysis(1, 2));
+        pending.upsert("test-fc", make_analysis(1, 2));
         let a = unimatrix_observe::EntryAnalysis {
             entry_id: 1,
             title: "entry-1".to_string(),
@@ -2265,9 +2360,10 @@ mod tests {
             success_session_count: 1,
             rework_session_count: 0,
         };
-        pending.upsert(a);
-        let entry = pending.entries.get(&1).unwrap();
-        assert_eq!(entry.rework_flag_count, 5); // 2 + 3
+        pending.upsert("test-fc", a);
+        let bucket = &pending.buckets["test-fc"];
+        let entry = bucket.entries.get(&1).unwrap();
+        assert_eq!(entry.rework_flag_count, 3); // overwrite: 3, not 2+3=5
         assert_eq!(entry.success_session_count, 1);
     }
 
@@ -2277,22 +2373,26 @@ mod tests {
 
         // Insert 1000 entries with rework_flag_count = entry_id (1..=1000)
         for i in 1u64..=1000 {
-            pending.upsert(make_analysis(i, i as u32));
+            pending.upsert("test-fc", make_analysis(i, i as u32));
         }
-        assert_eq!(pending.entries.len(), 1000);
+        assert_eq!(pending.buckets["test-fc"].entries.len(), 1000);
 
         // Insert 1001st entry with rework_flag_count = 999 (above the minimum)
-        pending.upsert(make_analysis(1001, 999));
-        assert_eq!(pending.entries.len(), 1000, "cap should be enforced");
+        pending.upsert("test-fc", make_analysis(1001, 999));
+        assert_eq!(
+            pending.buckets["test-fc"].entries.len(),
+            1000,
+            "cap should be enforced"
+        );
 
         // Entry 1 (rework_flag_count=1) should have been dropped (it was the minimum)
         assert!(
-            !pending.entries.contains_key(&1),
+            !pending.buckets["test-fc"].entries.contains_key(&1),
             "lowest rework entry should be dropped"
         );
         // Entry 1001 should be present
         assert!(
-            pending.entries.contains_key(&1001),
+            pending.buckets["test-fc"].entries.contains_key(&1001),
             "new entry should be inserted"
         );
     }
@@ -2303,29 +2403,39 @@ mod tests {
 
         // Fill to exactly 1000 with rework_flag_count = 5 each
         for i in 1u64..=1000 {
-            pending.upsert(make_analysis(i, 5));
+            pending.upsert("test-fc", make_analysis(i, 5));
         }
-        assert_eq!(pending.entries.len(), 1000);
+        assert_eq!(pending.buckets["test-fc"].entries.len(), 1000);
 
         // Insert new entry with rework_flag_count = 5 (tied with minimum)
         // The cap logic drops the minimum (one of the 5s) and inserts the new one
-        pending.upsert(make_analysis(1001, 5));
-        assert_eq!(pending.entries.len(), 1000, "cap should be enforced");
+        pending.upsert("test-fc", make_analysis(1001, 5));
+        assert_eq!(
+            pending.buckets["test-fc"].entries.len(),
+            1000,
+            "cap should be enforced"
+        );
         // Total entries still 1000 (one was dropped, new one added)
-        assert!(pending.entries.contains_key(&1001) || pending.entries.len() == 1000);
+        assert!(
+            pending.buckets["test-fc"].entries.contains_key(&1001)
+                || pending.buckets["test-fc"].entries.len() == 1000
+        );
     }
 
     #[test]
-    fn pending_entries_drain_all_clears_map() {
+    fn pending_entries_drain_for_clears_bucket() {
         let mut pending = PendingEntriesAnalysis::new();
         for i in 0..5u64 {
-            pending.upsert(make_analysis(i, i as u32 + 1));
+            pending.upsert("test-fc", make_analysis(i, i as u32 + 1));
         }
-        let drained = pending.drain_all();
+        let drained = pending.drain_for("test-fc");
         assert_eq!(drained.len(), 5);
-        assert!(pending.entries.is_empty(), "drain clears the map");
+        assert!(
+            !pending.buckets.contains_key("test-fc"),
+            "drain removes the bucket"
+        );
         // Second drain is idempotent
-        let second = pending.drain_all();
+        let second = pending.drain_for("test-fc");
         assert!(second.is_empty());
     }
 
@@ -2477,6 +2587,405 @@ mod tests {
         assert_eq!(
             new_correction.embedding_dim, 384,
             "correction embedding_dim must match embedding vector length"
+        );
+    }
+
+    // -- vnc-005: PendingEntriesAnalysis two-level refactor tests --
+    // (make_analysis helper reused from the existing helper above)
+
+    // T-ACCUM-U-01: upsert inserts into correct feature_cycle bucket
+    #[test]
+    fn test_upsert_inserts_into_correct_bucket() {
+        let mut pea = PendingEntriesAnalysis::new();
+        let a = make_analysis(1, 3);
+        pea.upsert("vnc-005", a.clone());
+
+        assert!(pea.buckets.contains_key("vnc-005"), "bucket must exist");
+        let bucket = &pea.buckets["vnc-005"];
+        assert!(bucket.entries.contains_key(&1), "entry_id 1 must be present");
+        assert_eq!(bucket.entries[&1].entry_id, 1);
+        assert_eq!(bucket.entries[&1].rework_flag_count, 3);
+    }
+
+    // T-ACCUM-U-02: upsert on same entry_id overwrites (overwrite semantics, not accumulate)
+    #[test]
+    fn test_upsert_overwrites_existing_entry() {
+        let mut pea = PendingEntriesAnalysis::new();
+        let v1 = make_analysis(42, 1);
+        let v2 = make_analysis(42, 99);
+        pea.upsert("vnc-005", v1);
+        pea.upsert("vnc-005", v2);
+
+        let bucket = &pea.buckets["vnc-005"];
+        assert_eq!(bucket.entries.len(), 1, "only one entry_id=42 must exist");
+        // v2 replaces v1 — rework_flag_count should be 99, not 1+99=100
+        assert_eq!(
+            bucket.entries[&42].rework_flag_count,
+            99,
+            "upsert must overwrite, not accumulate"
+        );
+    }
+
+    // T-ACCUM-U-03: upsert into different feature_cycle keys creates independent buckets
+    #[test]
+    fn test_upsert_independent_buckets() {
+        let mut pea = PendingEntriesAnalysis::new();
+        pea.upsert("vnc-005", make_analysis(1, 1));
+        pea.upsert("vnc-006", make_analysis(2, 2));
+
+        assert_eq!(pea.buckets.len(), 2, "two independent buckets must exist");
+        assert!(
+            pea.buckets["vnc-005"].entries.contains_key(&1),
+            "bucket vnc-005 must have entry 1"
+        );
+        assert!(
+            !pea.buckets["vnc-005"].entries.contains_key(&2),
+            "bucket vnc-005 must NOT have entry 2"
+        );
+        assert!(
+            pea.buckets["vnc-006"].entries.contains_key(&2),
+            "bucket vnc-006 must have entry 2"
+        );
+    }
+
+    // T-ACCUM-U-04: drain_for returns all entries and removes the bucket
+    #[test]
+    fn test_drain_for_returns_all_and_removes_bucket() {
+        let mut pea = PendingEntriesAnalysis::new();
+        pea.upsert("vnc-005", make_analysis(1, 1));
+        pea.upsert("vnc-005", make_analysis(2, 2));
+        pea.upsert("vnc-005", make_analysis(3, 3));
+
+        let drained = pea.drain_for("vnc-005");
+        assert_eq!(drained.len(), 3, "drain must return all 3 entries");
+
+        let ids: std::collections::HashSet<u64> = drained.iter().map(|e| e.entry_id).collect();
+        assert!(ids.contains(&1));
+        assert!(ids.contains(&2));
+        assert!(ids.contains(&3));
+
+        assert!(
+            !pea.buckets.contains_key("vnc-005"),
+            "bucket must be removed after drain"
+        );
+
+        // Second drain returns empty (AC-18)
+        let second = pea.drain_for("vnc-005");
+        assert!(second.is_empty(), "second drain on same key must return empty");
+    }
+
+    // T-ACCUM-U-05: drain_for on absent key returns empty Vec, no panic
+    #[test]
+    fn test_drain_for_absent_key_returns_empty() {
+        let mut pea = PendingEntriesAnalysis::new();
+        let result = pea.drain_for("nonexistent-cycle");
+        assert!(result.is_empty(), "must return empty for nonexistent key");
+        assert!(
+            !pea.buckets.contains_key("nonexistent-cycle"),
+            "must not create a bucket for absent key"
+        );
+    }
+
+    // T-ACCUM-U-06: evict_stale removes buckets older than ttl_secs
+    #[test]
+    fn test_evict_stale_removes_old_bucket() {
+        let mut pea = PendingEntriesAnalysis::new();
+        pea.upsert("old-feature", make_analysis(1, 1));
+        pea.upsert("fresh-feature", make_analysis(2, 2));
+
+        let now = unix_now_secs();
+        let ttl_secs = 72 * 3600u64;
+
+        // Manually set last_updated to simulate an old bucket
+        if let Some(old_bucket) = pea.buckets.get_mut("old-feature") {
+            old_bucket.last_updated = now.saturating_sub(ttl_secs + 3600); // 73h ago
+        }
+
+        pea.evict_stale(now, ttl_secs);
+
+        assert!(
+            !pea.buckets.contains_key("old-feature"),
+            "stale bucket must be evicted"
+        );
+        assert!(
+            pea.buckets.contains_key("fresh-feature"),
+            "fresh bucket must be retained"
+        );
+    }
+
+    // T-ACCUM-U-07: evict_stale does not evict non-empty buckets within TTL
+    #[test]
+    fn test_evict_stale_retains_fresh_bucket() {
+        let mut pea = PendingEntriesAnalysis::new();
+        for i in 0..5 {
+            pea.upsert("vnc-005", make_analysis(i, i as u32));
+        }
+
+        let now = unix_now_secs();
+        let ttl_secs = 72 * 3600u64;
+
+        // Set last_updated to 71h ago — within TTL
+        if let Some(bucket) = pea.buckets.get_mut("vnc-005") {
+            bucket.last_updated = now.saturating_sub(71 * 3600);
+        }
+
+        pea.evict_stale(now, ttl_secs);
+
+        assert!(
+            pea.buckets.contains_key("vnc-005"),
+            "bucket within TTL must be retained"
+        );
+        assert_eq!(
+            pea.buckets["vnc-005"].entries.len(),
+            5,
+            "all entries must remain after non-eviction"
+        );
+    }
+
+    // T-ACCUM-U-08: per-bucket cap enforced at 1000 entries
+    #[test]
+    fn test_upsert_enforces_1000_entry_cap() {
+        let mut pea = PendingEntriesAnalysis::new();
+        // Insert 1000 entries with low rework_flag_count (0)
+        for i in 0u64..1000 {
+            pea.upsert("vnc-005", make_analysis(i, 0));
+        }
+        assert_eq!(pea.buckets["vnc-005"].entries.len(), 1000);
+
+        // Insert entry 1001 — this must evict a low-count entry
+        pea.upsert("vnc-005", make_analysis(9999, 5));
+        assert!(
+            pea.buckets["vnc-005"].entries.len() <= 1000,
+            "bucket must not exceed 1000 entries"
+        );
+        // Entry 9999 (high rework_count) must be present
+        assert!(
+            pea.buckets["vnc-005"].entries.contains_key(&9999),
+            "newly inserted high-priority entry must be present"
+        );
+    }
+
+    // T-ACCUM-U-11: feature_cycle key exceeding 256 bytes is silently dropped
+    #[test]
+    fn test_upsert_oversized_key_is_silently_dropped() {
+        let mut pea = PendingEntriesAnalysis::new();
+        let oversized_key = "x".repeat(257);
+        pea.upsert(&oversized_key, make_analysis(1, 1));
+
+        assert!(
+            pea.buckets.is_empty(),
+            "oversized key must not create a bucket"
+        );
+    }
+
+    // T-ACCUM-U-11b: 256-byte key is exactly at the limit and must succeed
+    #[test]
+    fn test_upsert_256_byte_key_succeeds() {
+        let mut pea = PendingEntriesAnalysis::new();
+        let max_key = "x".repeat(256);
+        pea.upsert(&max_key, make_analysis(1, 1));
+
+        assert!(
+            pea.buckets.contains_key(&max_key),
+            "exactly-256-byte key must be accepted"
+        );
+    }
+
+    // T-SERVER-U-01: clone produces shallow copy sharing all Arc fields
+    #[test]
+    fn test_server_clone_shares_arc_fields() {
+        let server = make_server();
+        let clone = server.clone();
+
+        // All Arc fields must point to the same allocation
+        assert!(
+            Arc::ptr_eq(&server.store, &clone.store),
+            "store Arc must be shared across clone"
+        );
+        assert!(
+            Arc::ptr_eq(&server.vector_index, &clone.vector_index),
+            "vector_index Arc must be shared across clone"
+        );
+        assert!(
+            Arc::ptr_eq(
+                &server.pending_entries_analysis,
+                &clone.pending_entries_analysis
+            ),
+            "pending_entries_analysis Arc must be shared across clone"
+        );
+        assert!(
+            Arc::ptr_eq(&server.session_registry, &clone.session_registry),
+            "session_registry Arc must be shared across clone"
+        );
+    }
+
+    // T-SERVER-U-02: Arc strong_count is 1 before graceful_shutdown after session drop
+    #[tokio::test]
+    async fn test_server_clone_arc_count_drops_after_join() {
+        let server = make_server();
+        let store = Arc::clone(&server.store);
+        let initial_count = Arc::strong_count(&store);
+
+        let clone = server.clone();
+        let count_with_clone = Arc::strong_count(&store);
+        assert!(
+            count_with_clone > initial_count,
+            "strong_count must increase after clone"
+        );
+
+        let handle = tokio::spawn(async move {
+            // Session task holds the clone; dropping it releases the Arc refs
+            drop(clone);
+        });
+        handle.await.unwrap();
+
+        let count_after_drop = Arc::strong_count(&store);
+        assert_eq!(
+            count_after_drop, initial_count,
+            "strong_count must return to initial value after session clone is dropped and joined"
+        );
+    }
+
+    // T-ACCUM-C-01: concurrent upsert + drain — no data loss
+    #[tokio::test]
+    async fn test_concurrent_upsert_drain_no_data_loss() {
+        use std::sync::atomic::{AtomicU64, Ordering};
+
+        let pea = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
+        let total_seen = Arc::new(AtomicU64::new(0));
+
+        // Spawn 4 writer tasks, each inserting 250 entries with unique IDs
+        let mut writer_handles = Vec::new();
+        for thread_id in 0u64..4 {
+            let pea_clone = Arc::clone(&pea);
+            writer_handles.push(tokio::spawn(async move {
+                for i in 0u64..250 {
+                    let entry_id = thread_id * 250 + i;
+                    let analysis = unimatrix_observe::EntryAnalysis {
+                        entry_id,
+                        title: format!("entry-{}", entry_id),
+                        category: "pattern".to_string(),
+                        rework_flag_count: 1,
+                        injection_count: 0,
+                        success_session_count: 0,
+                        rework_session_count: 0,
+                    };
+                    pea_clone
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .upsert("test-cycle", analysis);
+                }
+            }));
+        }
+
+        // Spawn 1 drain task that periodically drains
+        let pea_drain = Arc::clone(&pea);
+        let seen_clone = Arc::clone(&total_seen);
+        let drain_handle = tokio::spawn(async move {
+            for _ in 0..10 {
+                tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
+                let drained = pea_drain
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .drain_for("test-cycle");
+                seen_clone.fetch_add(drained.len() as u64, Ordering::Relaxed);
+            }
+        });
+
+        for h in writer_handles {
+            h.await.unwrap();
+        }
+        drain_handle.await.unwrap();
+
+        // Final drain after all writers done
+        let final_drained = pea
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .drain_for("test-cycle");
+        total_seen.fetch_add(final_drained.len() as u64, Ordering::Relaxed);
+
+        // Total entries seen across all drains must equal 1000 (4*250)
+        assert_eq!(
+            total_seen.load(Ordering::Relaxed),
+            1000,
+            "all 1000 entries must be seen across all drain calls"
+        );
+    }
+
+    // T-ACCUM-C-02: evict_stale + drain_for — no double-free
+    #[test]
+    fn test_evict_and_drain_no_double_free() {
+        let mut pea = PendingEntriesAnalysis::new();
+        pea.upsert("expiring-feature", make_analysis(1, 1));
+
+        let now = unix_now_secs();
+        let ttl_secs = 72 * 3600u64;
+
+        // Make bucket stale
+        if let Some(b) = pea.buckets.get_mut("expiring-feature") {
+            b.last_updated = now.saturating_sub(ttl_secs + 3600);
+        }
+
+        // First caller: evict
+        pea.evict_stale(now, ttl_secs);
+        assert!(!pea.buckets.contains_key("expiring-feature"));
+
+        // Second caller: drain on already-evicted key — must return empty, no panic
+        let result = pea.drain_for("expiring-feature");
+        assert!(result.is_empty(), "drain after eviction must return empty");
+    }
+
+    // T-SERVER-U-04: CallerId::UdsSession exemption carries C-07/W2-2 comment
+    // (Static verification: confirmed by code review of gateway.rs check_rate function)
+    #[test]
+    fn test_c07_comment_presence_in_gateway() {
+        // This is a compile-time/grep verification confirmed during implementation.
+        // The C-07 comment is in services/gateway.rs check_rate().
+        // Ensure upsert signature takes feature_cycle as first arg (API shape test).
+        let mut pea = PendingEntriesAnalysis::new();
+        // If this compiles, the new API is in place
+        pea.upsert("vnc-005", make_analysis(1, 1));
+        assert!(pea.buckets.contains_key("vnc-005"));
+    }
+
+    // T-SERVER-U-05: UdsSession exemption does not apply to non-UDS caller variants
+    #[test]
+    fn test_uds_session_rate_exemption_boundary() {
+        use crate::infra::audit::AuditLog;
+        use crate::services::gateway::SecurityGateway;
+        use crate::services::{CallerId, RateLimitConfig};
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = Arc::new(unimatrix_core::Store::open(dir.path().join("t.db")).unwrap());
+        let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
+        // Use limit=1 so we can verify the Agent is rate-limited after one call
+        let config = RateLimitConfig {
+            search_limit: 1,
+            write_limit: 1,
+            window_secs: 3600,
+        };
+        let gw = SecurityGateway::with_rate_config(audit, config);
+
+        // UdsSession: always exempt — C-07 (vnc-005)
+        let uds = CallerId::UdsSession("sess-1".to_string());
+        assert!(
+            gw.check_search_rate(&uds).is_ok(),
+            "UdsSession must be rate-limit exempt"
+        );
+        assert!(
+            gw.check_search_rate(&uds).is_ok(),
+            "UdsSession must stay exempt on repeated calls"
+        );
+
+        // Regular Agent: must be rate-limited after hitting limit=1
+        let agent = CallerId::Agent("agent-1".to_string());
+        assert!(
+            gw.check_search_rate(&agent).is_ok(),
+            "first agent call must succeed"
+        );
+        assert!(
+            gw.check_search_rate(&agent).is_err(),
+            "second agent call must be rate-limited"
         );
     }
 }

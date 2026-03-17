@@ -54,7 +54,9 @@ impl RateLimiter {
     /// UdsSession callers are exempt (return Ok immediately).
     /// Poison recovery via `unwrap_or_else(|e| e.into_inner())`.
     fn check_rate(&self, caller: &CallerId, limit: u32) -> Result<(), ServiceError> {
-        // UdsSession exemption (structural, not conditional)
+        // C-07 (vnc-005): UdsSession exemption is local-only (UDS file-system gated).
+        // Must NOT extend to HTTP transport callers (W2-2). When HTTP transport is
+        // introduced, the HTTP CallerId variant MUST NOT inherit this exemption.
         if matches!(caller, CallerId::UdsSession(_)) {
             return Ok(());
         }
