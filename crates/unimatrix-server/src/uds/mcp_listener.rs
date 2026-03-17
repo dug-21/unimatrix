@@ -153,9 +153,13 @@ async fn run_mcp_acceptor(
                         // Do not break — continue accepting.
                     }
                     Ok((stream, _addr)) => {
-                        // C-15 / R-11: Enforce session cap AFTER accepting from OS queue.
-                        // Accepting first (rather than not accepting) drains the OS backlog
-                        // and lets the client see connection-close rather than ETIMEDOUT.
+                        // C-15 / R-11: Session cap — SOFT CAP until GH#302 is resolved.
+                        // active_count is incremented inside the spawned task, so the acceptor
+                        // may loop and spawn additional sessions before any fetch_add lands.
+                        // Under realistic single-client load (one Claude Code instance) the
+                        // overshoot never manifests. Fix: move fetch_add before tokio::spawn.
+                        // See GH#302. Accepting first drains the OS backlog so clients see
+                        // connection-close rather than ETIMEDOUT on cap rejection.
                         let current = active_count.load(Ordering::Relaxed);
                         if current >= MAX_CONCURRENT_SESSIONS {
                             tracing::warn!(

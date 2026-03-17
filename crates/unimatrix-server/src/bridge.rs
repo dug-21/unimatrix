@@ -72,6 +72,10 @@ pub async fn run_bridge(paths: &ProjectPaths) -> Result<(), ServerError> {
     if let Some(pid) = read_pid_file(&paths.pid_path) {
         if is_unimatrix_process(pid) {
             // Daemon is alive; wait briefly for the socket to become ready.
+            // Note: std::thread::sleep is used here intentionally. run_bridge runs in a
+            // single-purpose client process with no concurrent async tasks — there is nothing
+            // to starve. If this function ever moves into a shared daemon runtime, replace
+            // with tokio::time::sleep(..).await.
             std::thread::sleep(BRIDGE_STALE_RETRY_DELAY);
             if let Ok(stream) = try_connect(&paths.mcp_socket_path).await {
                 return do_bridge(stream).await;
