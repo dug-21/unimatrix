@@ -361,6 +361,9 @@ async fn tokio_main(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         audit,
         adapt_service,
         data_dir: paths.data_dir.clone(),
+        // vnc-005: stdio mode does not use MCP UDS socket or acceptor task
+        mcp_socket_guard: None,
+        mcp_acceptor_handle: None,
         socket_guard: Some(socket_guard),
         uds_handle: Some(uds_handle),
         tick_handle: Some(tick_handle),
