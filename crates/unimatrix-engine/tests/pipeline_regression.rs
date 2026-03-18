@@ -4,7 +4,7 @@
 //! forcing the developer to verify the new behavior is correct.
 
 use unimatrix_engine::confidence::{
-    W_BASE, W_CORR, W_FRESH, W_HELP, W_TRUST, W_USAGE, compute_confidence,
+    ConfidenceParams, W_BASE, W_CORR, W_FRESH, W_HELP, W_TRUST, W_USAGE, compute_confidence,
 };
 use unimatrix_engine::test_scenarios::*;
 
@@ -20,9 +20,9 @@ fn test_golden_confidence_values() {
     let good = profile_to_entry_record(&good_agent_entry(), 2, now);
     let auto = profile_to_entry_record(&auto_extracted_new(), 3, now);
 
-    let conf_expert = compute_confidence(&expert, now, 3.0, 3.0);
-    let conf_good = compute_confidence(&good, now, 3.0, 3.0);
-    let conf_auto = compute_confidence(&auto, now, 3.0, 3.0);
+    let conf_expert = compute_confidence(&expert, now, &ConfidenceParams::default());
+    let conf_good = compute_confidence(&good, now, &ConfidenceParams::default());
+    let conf_auto = compute_confidence(&auto, now, &ConfidenceParams::default());
 
     // Golden values computed at implementation time.
     // If these fail, weights or formula changed. See test_scenarios module docs.
@@ -85,7 +85,12 @@ fn test_ranking_stability() {
 
     let mut scored: Vec<(u64, f64)> = records
         .iter()
-        .map(|e| (e.id, compute_confidence(e, scenario.now, 3.0, 3.0)))
+        .map(|e| {
+            (
+                e.id,
+                compute_confidence(e, scenario.now, &ConfidenceParams::default()),
+            )
+        })
         .collect();
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
     let actual_ranking: Vec<u64> = scored.iter().map(|(id, _)| *id).collect();

@@ -628,6 +628,8 @@ mod tests {
             crate::services::confidence::ConfidenceState::default(),
         ));
         let supersession_state = crate::services::supersession::SupersessionState::new_handle();
+        // dsn-001: boosted_categories defaults to ["lesson-learned"] in test helper until
+        // startup-wiring threads config.knowledge.boosted_categories through.
         let search = SearchService::new(
             Arc::clone(store),
             vector_store,
@@ -638,6 +640,7 @@ mod tests {
             confidence_state,
             Arc::clone(&effectiveness_state), // crt-018b: shared handle
             supersession_state,               // GH #264: cold-start empty state for tests
+            std::collections::HashSet::from(["lesson-learned".to_string()]),
         );
 
         let service = BriefingService::new(

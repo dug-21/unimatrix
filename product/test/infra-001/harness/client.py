@@ -626,7 +626,7 @@ class UnimatrixClient:
             args["format"] = format
         return self.call_tool("context_enroll", args)
 
-    def context_retrospective(
+    def context_cycle_review(
         self,
         feature_cycle: str,
         *,
@@ -639,7 +639,7 @@ class UnimatrixClient:
             args["agent_id"] = agent_id
         if format is not None:
             args["format"] = format
-        return self.call_tool("context_retrospective", args, timeout=timeout)
+        return self.call_tool("context_cycle_review", args, timeout=timeout)
 
     def context_cycle(
         self,

@@ -52,7 +52,7 @@ def test_list_tools_returns_twelve(server):
         "context_briefing",
         "context_quarantine",
         "context_enroll",
-        "context_retrospective",
+        "context_cycle_review",
     ])
     assert tool_names == expected, f"Expected {expected}, got {tool_names}"
 

@@ -159,7 +159,7 @@ grep -i "[0-9]* MCP tool\|[0-9]* tool" README.md | head -5
 ```bash
 for TOOL in context_search context_lookup context_get context_store \
             context_correct context_deprecate context_quarantine \
-            context_status context_briefing context_enroll context_retrospective; do
+            context_status context_briefing context_enroll context_cycle_review; do
   grep "$TOOL" README.md > /dev/null && echo "PASS: $TOOL" || echo "FAIL: $TOOL missing"
 done
 # Expected: PASS for all. If count from T-13 differs, adjust list accordingly.

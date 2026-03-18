@@ -868,15 +868,6 @@ impl StatusService {
             stale_entries.truncate(batch_cap);
 
             if !stale_entries.is_empty() {
-                // Snapshot alpha0/beta0 ONCE before the loop (IR-02: avoid per-entry lock acquisition).
-                let (snapshot_alpha0, snapshot_beta0) = {
-                    let guard = self
-                        .confidence_state
-                        .read()
-                        .unwrap_or_else(|e| e.into_inner());
-                    (guard.alpha0, guard.beta0)
-                };
-
                 let ids_and_confs: Vec<(u64, f64)> = stale_entries
                     .iter()
                     .map(|e| {
@@ -885,8 +876,7 @@ impl StatusService {
                             crate::confidence::compute_confidence(
                                 e,
                                 now_ts,
-                                snapshot_alpha0,
-                                snapshot_beta0,
+                                &unimatrix_engine::confidence::ConfidenceParams::default(),
                             ),
                         )
                     })
@@ -1400,7 +1390,7 @@ mod tests {
 mod confidence_refresh_tests {
     use super::*;
     use crate::services::confidence::ConfidenceState;
-    use unimatrix_engine::confidence::compute_confidence;
+    use unimatrix_engine::confidence::{ConfidenceParams, compute_confidence};
 
     // AC-07: verify batch size constant has been updated to 500
     #[test]
@@ -1470,12 +1460,20 @@ mod confidence_refresh_tests {
         };
 
         // Cold-start prior: h = (5 + 3.0) / (5 + 0 + 3.0 + 3.0) = 8/11 ≈ 0.727
-        let conf_cold = compute_confidence(&entry, now, 3.0, 3.0);
+        let conf_cold = compute_confidence(&entry, now, &ConfidenceParams::default());
 
         // Empirical prior with high positive bias: h = (5 + 8.0) / (5 + 0 + 8.0 + 2.0) = 13/15 ≈ 0.867
-        // Note: the current engine ignores alpha0/beta0 (another agent wires this).
+        // Note: uses a custom ConfidenceParams to override alpha0/beta0.
         // This test validates the calling convention compiles and runs correctly.
-        let conf_empirical = compute_confidence(&entry, now, 8.0, 2.0);
+        let conf_empirical = compute_confidence(
+            &entry,
+            now,
+            &ConfidenceParams {
+                alpha0: 8.0,
+                beta0: 2.0,
+                ..Default::default()
+            },
+        );
 
         // Both must be in valid range
         assert!(

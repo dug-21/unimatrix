@@ -752,7 +752,7 @@ mod tests {
         let vector_config = VectorConfig::default();
         let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
 
-        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store)).unwrap());
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![]).unwrap());
         let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
         let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
         let embed_handle = EmbedServiceHandle::new();
@@ -772,6 +772,7 @@ mod tests {
             store,
             vector_index,
             adapt_service,
+            None, // use compiled default instructions
         )
     }
 }

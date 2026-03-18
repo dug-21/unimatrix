@@ -236,7 +236,7 @@ pub struct EnrollParams {
     pub format: Option<String>,
 }
 
-/// Parameters for the context_retrospective tool.
+/// Parameters for the context_cycle_review tool.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RetrospectiveParams {
     /// Feature cycle to analyze (e.g., "col-002").
@@ -254,7 +254,10 @@ pub struct RetrospectiveParams {
 pub struct CycleParams {
     /// Cycle action: "start" or "stop".
     pub r#type: String,
-    /// Feature cycle identifier (e.g., "col-022").
+    /// Topic identifying a bounded work unit tracked across its lifecycle.
+    /// Can be a software feature, incident, campaign, clinical trial, or any work unit a domain
+    /// tracks from start to completion. The format is domain-defined; Unimatrix treats it as an
+    /// opaque string identifier (e.g., "col-022", "inc-045", "trial-007").
     pub topic: String,
     /// Semantic keywords describing the feature work (max 5, each max 64 chars).
     pub keywords: Option<Vec<String>>,
@@ -1079,10 +1082,10 @@ impl UnimatrixServer {
     }
 
     #[tool(
-        name = "context_retrospective",
-        description = "Analyze observation data for a feature cycle. Parses session telemetry, attributes to feature, detects hotspots, computes metrics, and returns a self-contained report."
+        name = "context_cycle_review",
+        description = "Analyze observation data for a work cycle. Parses session telemetry, attributes to cycle, detects hotspots, computes metrics, and returns a self-contained report."
     )]
-    async fn context_retrospective(
+    async fn context_cycle_review(
         &self,
         Parameters(params): Parameters<RetrospectiveParams>,
     ) -> Result<CallToolResult, rmcp::model::ErrorData> {
@@ -1454,7 +1457,7 @@ impl UnimatrixServer {
             timestamp: 0,
             session_id: String::new(),
             agent_id: identity.agent_id,
-            operation: "context_retrospective".to_string(),
+            operation: "context_cycle_review".to_string(),
             target_ids: vec![],
             outcome: Outcome::Success,
             detail: format!("retrospective for {}", feature_cycle),
@@ -1502,7 +1505,7 @@ impl UnimatrixServer {
         description = "Declare the start or end of a feature cycle for this session. \
             Call with type='start' at session beginning to set feature attribution. \
             Call with type='stop' when feature work is complete. \
-            Attribution is best-effort via the hook path; confirm via context_retrospective."
+            Attribution is best-effort via the hook path; confirm via context_cycle_review."
     )]
     async fn context_cycle(
         &self,
@@ -1557,7 +1560,7 @@ impl UnimatrixServer {
         let response_text = format!(
             "Acknowledged: {} for topic '{}'. \
              Attribution is applied via the hook path (fire-and-forget). \
-             Use context_retrospective to confirm session attribution.",
+             Use context_cycle_review to confirm session attribution.",
             action, validated.topic
         );
 
@@ -1614,7 +1617,7 @@ fn build_lesson_learned_content(report: &unimatrix_observe::RetrospectiveReport)
 
 /// Fire-and-forget lesson-learned write using self.clone() + insert_with_audit (ADR-002).
 ///
-/// Called inside a tokio::spawn from context_retrospective. Embeds the content,
+/// Called inside a tokio::spawn from context_cycle_review. Embeds the content,
 /// checks for supersede, and writes via the standard insert_with_audit pipeline
 /// for atomic ENTRIES + VECTOR_MAP + HNSW + audit.
 async fn write_lesson_learned(
@@ -1731,7 +1734,7 @@ async fn write_lesson_learned(
         timestamp: 0,
         session_id: String::new(),
         agent_id: "cortical-implant".to_string(),
-        operation: "context_retrospective/lesson-learned".to_string(),
+        operation: "context_cycle_review/lesson-learned".to_string(),
         target_ids: vec![],
         outcome: Outcome::Success,
         detail: format!("auto-persist lesson-learned for {}", feature_cycle),
@@ -1766,7 +1769,11 @@ async fn write_lesson_learned(
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let conf = unimatrix_engine::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+        let conf = unimatrix_engine::confidence::compute_confidence(
+            &entry,
+            now,
+            &unimatrix_engine::confidence::ConfidenceParams::default(),
+        );
         let _ = server.store.update_confidence(new_id, conf).await;
     }
 

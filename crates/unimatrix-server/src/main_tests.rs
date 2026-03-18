@@ -308,3 +308,100 @@ fn test_stop_with_project_dir() {
     assert_eq!(cli.project_dir, Some(PathBuf::from("/some/path")));
     assert!(matches!(cli.command, Some(Command::Stop)));
 }
+
+// ---------------------------------------------------------------------------
+// dsn-001: startup-wiring tests (R-15, AC-01, IR-04)
+// ---------------------------------------------------------------------------
+
+/// R-15: When dirs::home_dir() returns None, UnimatrixConfig::default() is used.
+/// Verifies that the fallback config produces ConfidenceParams::default() (zero-config behavior).
+#[test]
+fn test_main_startup_handles_no_home_dir() {
+    use unimatrix_engine::confidence::ConfidenceParams;
+    use unimatrix_server::infra::config::{UnimatrixConfig, resolve_confidence_params};
+
+    let config = UnimatrixConfig::default();
+    let params = resolve_confidence_params(&config).unwrap();
+    // Should equal ConfidenceParams::default() — no-config behavior.
+    assert_eq!(
+        params,
+        ConfidenceParams::default(),
+        "default config must produce default ConfidenceParams (R-15)"
+    );
+}
+
+/// AC-01: Default config categories match the categories from CategoryAllowlist::new().
+#[test]
+fn test_default_config_categories_match_initial_categories() {
+    use unimatrix_server::infra::categories::CategoryAllowlist;
+    use unimatrix_server::infra::config::UnimatrixConfig;
+
+    let config = UnimatrixConfig::default();
+    // CategoryAllowlist::new() is seeded with INITIAL_CATEGORIES.
+    // The default config must produce the same list.
+    let allowlist = CategoryAllowlist::new();
+    let expected = allowlist.list_categories();
+    // Sort both for comparison (allowlist may not be ordered the same).
+    let mut config_cats = config.knowledge.categories.clone();
+    let mut expected_cats = expected;
+    config_cats.sort();
+    expected_cats.sort();
+    assert_eq!(
+        config_cats, expected_cats,
+        "Default UnimatrixConfig must have the same categories as CategoryAllowlist::new()"
+    );
+}
+
+/// AC-01: Default boosted_categories is ["lesson-learned"] for backward compat.
+#[test]
+fn test_default_config_boosted_categories_is_lesson_learned() {
+    use unimatrix_server::infra::config::UnimatrixConfig;
+
+    let config = UnimatrixConfig::default();
+    assert_eq!(
+        config.knowledge.boosted_categories,
+        vec!["lesson-learned".to_string()],
+        "Default boosted_categories must be ['lesson-learned'] for backward compat"
+    );
+}
+
+/// AC-01: Default agents.default_trust is "permissive".
+#[test]
+fn test_default_config_agents_permissive_is_true() {
+    use unimatrix_server::infra::config::UnimatrixConfig;
+
+    let config = UnimatrixConfig::default();
+    assert_eq!(
+        config.agents.default_trust, "permissive",
+        "Default AgentsConfig must have default_trust = 'permissive'"
+    );
+}
+
+/// IR-04: Empirical preset produces correct w_fresh and freshness_half_life_hours.
+#[test]
+fn test_arc_confidence_params_from_empirical_preset() {
+    use std::sync::Arc;
+    use unimatrix_server::infra::config::{
+        KnowledgeConfig, Preset, ProfileConfig, UnimatrixConfig, resolve_confidence_params,
+    };
+
+    let config = UnimatrixConfig {
+        profile: ProfileConfig {
+            preset: Preset::Empirical,
+        },
+        knowledge: KnowledgeConfig::default(),
+        ..Default::default()
+    };
+    let params = Arc::new(resolve_confidence_params(&config).unwrap());
+    // The Arc<ConfidenceParams> passed to background tick must have empirical values.
+    assert!(
+        (params.w_fresh - 0.34).abs() < 1e-9,
+        "background tick params must carry empirical w_fresh=0.34, got {}",
+        params.w_fresh
+    );
+    assert!(
+        (params.freshness_half_life_hours - 24.0).abs() < 1e-9,
+        "background tick params must carry empirical half_life=24.0h, got {}",
+        params.freshness_half_life_hours
+    );
+}

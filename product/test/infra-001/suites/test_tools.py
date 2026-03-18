@@ -765,28 +765,28 @@ def test_enrolled_agent_can_write(server):
     assert_tool_success(resp)
 
 
-# === context_retrospective (col-002) =====================================
+# === context_cycle_review (col-002) =====================================
 
 
 def test_retrospective_no_data_returns_error(server):
     """T-R01: Retrospective with no observation data returns error."""
-    resp = server.context_retrospective("col-999", agent_id="human")
+    resp = server.context_cycle_review("col-999", agent_id="human")
     assert_tool_error(resp, "observation")
 
 
 def test_retrospective_empty_feature_cycle_returns_error(server):
     """T-R02: Retrospective with empty feature_cycle returns validation error."""
-    resp = server.context_retrospective("", agent_id="human")
+    resp = server.context_cycle_review("", agent_id="human")
     assert_tool_error(resp)
 
 
 def test_retrospective_whitespace_feature_cycle_returns_error(server):
     """T-R03: Retrospective with whitespace-only feature_cycle returns error."""
-    resp = server.context_retrospective("   ", agent_id="human")
+    resp = server.context_cycle_review("   ", agent_id="human")
     assert_tool_error(resp)
 
 
-# === context_retrospective baseline comparison (col-002b) =================
+# === context_cycle_review baseline comparison (col-002b) =================
 
 import hashlib
 import json as _json
@@ -811,7 +811,7 @@ def _seed_observation_sql(db_path, feature_ids, num_records=20):
     """Seed observation data directly into the server's SQLite tables.
 
     Inserts rows into the `sessions` and `observations` tables so that
-    context_retrospective can find them via SqlObservationSource.
+    context_cycle_review can find them via SqlObservationSource.
 
     Returns a list of (feature_id, session_id) tuples for reference.
     """
@@ -890,11 +890,11 @@ def test_retrospective_baseline_present(server):
 
     # Generate MetricVectors for first 3 features
     for fid in features[:3]:
-        resp = server.context_retrospective(fid, agent_id="human", format="json", timeout=30.0)
+        resp = server.context_cycle_review(fid, agent_id="human", format="json", timeout=30.0)
         result = assert_tool_success(resp)
 
     # Now run on 4th feature -- should have baseline from 3 prior
-    resp = server.context_retrospective(features[3], agent_id="human", format="json", timeout=30.0)
+    resp = server.context_cycle_review(features[3], agent_id="human", format="json", timeout=30.0)
     result = assert_tool_success(resp)
 
     # Parse report and check for baseline_comparison
@@ -932,11 +932,11 @@ def test_retrospective_insufficient_baseline(server):
 
     # Generate MetricVectors for only 2 features
     for fid in features[:2]:
-        resp = server.context_retrospective(fid, agent_id="human", format="json", timeout=30.0)
+        resp = server.context_cycle_review(fid, agent_id="human", format="json", timeout=30.0)
         assert_tool_success(resp)
 
     # Run on 3rd feature -- only 2 prior vectors, insufficient for baseline
-    resp = server.context_retrospective(features[2], agent_id="human", format="json", timeout=30.0)
+    resp = server.context_cycle_review(features[2], agent_id="human", format="json", timeout=30.0)
     result = assert_tool_success(resp)
 
     if result.parsed and isinstance(result.parsed, dict):
@@ -963,7 +963,7 @@ def test_retrospective_21_rules_active(server):
     db_path = _compute_db_path(server.project_dir)
     _seed_observation_sql(db_path, features)
 
-    resp = server.context_retrospective(features[0], agent_id="human", format="json", timeout=30.0)
+    resp = server.context_cycle_review(features[0], agent_id="human", format="json", timeout=30.0)
     result = assert_tool_success(resp)
 
     if result.parsed and isinstance(result.parsed, dict):
@@ -980,7 +980,7 @@ def test_retrospective_21_rules_active(server):
     assert "metrics" in report, f"Expected metrics in report"
 
 
-# === context_retrospective format dispatch (vnc-011) =======================
+# === context_cycle_review format dispatch (vnc-011) =======================
 
 
 def test_retrospective_markdown_default(server):
@@ -993,7 +993,7 @@ def test_retrospective_markdown_default(server):
     db_path = _compute_db_path(server.project_dir)
     _seed_observation_sql(db_path, features)
 
-    resp = server.context_retrospective(features[0], agent_id="human", timeout=30.0)
+    resp = server.context_cycle_review(features[0], agent_id="human", timeout=30.0)
     result = assert_tool_success(resp)
     assert result.text.strip().startswith("# Retrospective:"), (
         f"Expected markdown header, got: {result.text[:100]}"
@@ -1006,7 +1006,7 @@ def test_retrospective_json_explicit(server):
     db_path = _compute_db_path(server.project_dir)
     _seed_observation_sql(db_path, features)
 
-    resp = server.context_retrospective(features[0], agent_id="human", format="json", timeout=30.0)
+    resp = server.context_cycle_review(features[0], agent_id="human", format="json", timeout=30.0)
     result = assert_tool_success(resp)
     parsed = _json.loads(result.text)
     assert isinstance(parsed, dict), f"Expected JSON object, got {type(parsed)}"
@@ -1019,7 +1019,7 @@ def test_retrospective_format_invalid(server):
     db_path = _compute_db_path(server.project_dir)
     _seed_observation_sql(db_path, features)
 
-    resp = server.context_retrospective(features[0], agent_id="human", format="xml", timeout=30.0)
+    resp = server.context_cycle_review(features[0], agent_id="human", format="xml", timeout=30.0)
     assert_tool_error(resp, "Unknown format")
 
 

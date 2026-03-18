@@ -398,7 +398,12 @@ pub fn assert_tau_above(ranking_a: &[u64], ranking_b: &[u64], min_tau: f64) {
 pub fn assert_confidence_ordering(entries: &[EntryRecord], expected_order: &[u64], now: u64) {
     let mut scored: Vec<(u64, f64)> = entries
         .iter()
-        .map(|e| (e.id, compute_confidence(e, now, 3.0, 3.0)))
+        .map(|e| {
+            (
+                e.id,
+                compute_confidence(e, now, &crate::confidence::ConfidenceParams::default()),
+            )
+        })
         .collect();
 
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));

@@ -296,6 +296,7 @@ impl ServiceLayer {
         adapt_service: Arc<AdaptationService>,
         audit: Arc<AuditLog>,
         usage_dedup: Arc<UsageDedup>,
+        boosted_categories: std::collections::HashSet<String>,
     ) -> Self {
         Self::with_rate_config(
             store,
@@ -307,6 +308,7 @@ impl ServiceLayer {
             audit,
             usage_dedup,
             RateLimitConfig::default(),
+            boosted_categories,
         )
     }
 
@@ -320,6 +322,7 @@ impl ServiceLayer {
         audit: Arc<AuditLog>,
         usage_dedup: Arc<UsageDedup>,
         rate_config: RateLimitConfig,
+        boosted_categories: std::collections::HashSet<String>,
     ) -> Self {
         let gateway = Arc::new(SecurityGateway::with_rate_config(
             Arc::clone(&audit),
@@ -355,6 +358,7 @@ impl ServiceLayer {
             Arc::clone(&confidence_state_handle),
             Arc::clone(&effectiveness_state),
             Arc::clone(&supersession_state),
+            boosted_categories,
         );
 
         let store_ops = StoreService::new(

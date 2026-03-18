@@ -99,10 +99,16 @@ impl SqlxStore {
     /// Look up an agent by ID, auto-enrolling as Restricted if not found.
     ///
     /// Returns the final agent record (existing or newly enrolled).
+    ///
+    /// When `session_caps` is `Some`, the provided capability set is used for newly enrolled
+    /// agents instead of the permissive/strict default. Existing agents are returned as-is.
+    /// When `session_caps` is `None`, the existing permissive/strict branch runs unchanged.
+    /// All pre-dsn-001 call sites pass `None` to preserve current behavior.
     pub async fn agent_resolve_or_enroll(
         &self,
         agent_id: &str,
         permissive: bool,
+        session_caps: Option<&[Capability]>,
     ) -> Result<AgentRecord> {
         // Read-first: avoid write lock for existing agents.
         if let Some(record) = self.agent_get(agent_id).await? {
@@ -110,14 +116,23 @@ impl SqlxStore {
         }
 
         let now = current_unix_seconds();
-        let default_caps: Vec<u8> = if permissive {
-            vec![
-                Capability::Read as u8,
-                Capability::Write as u8,
-                Capability::Search as u8,
-            ]
-        } else {
-            vec![Capability::Read as u8, Capability::Search as u8]
+        let default_caps: Vec<u8> = match session_caps {
+            Some(caps) => {
+                // Config-supplied capability set overrides permissive/strict default.
+                caps.iter().map(|c| *c as u8).collect()
+            }
+            None => {
+                // Existing permissive/strict branch — unchanged behavior.
+                if permissive {
+                    vec![
+                        Capability::Read as u8,
+                        Capability::Write as u8,
+                        Capability::Search as u8,
+                    ]
+                } else {
+                    vec![Capability::Read as u8, Capability::Search as u8]
+                }
+            }
         };
         let caps_json = serde_json::to_string(&default_caps)
             .map_err(|e| StoreError::Serialization(e.to_string()))?;
@@ -276,4 +291,83 @@ fn current_unix_seconds() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pool_config::PoolConfig;
+
+    async fn open_test_store() -> SqlxStore {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.db");
+        let store = SqlxStore::open(&path, PoolConfig::default())
+            .await
+            .expect("open test store");
+        // Leak dir so the db file stays alive for the test.
+        std::mem::forget(dir);
+        store
+    }
+
+    /// IR-02: session_caps=None + permissive=true → existing full capability set (Read+Write+Search).
+    #[tokio::test]
+    async fn test_agent_resolve_or_enroll_none_caps_uses_permissive_default() {
+        let store = open_test_store().await;
+        let record = store
+            .agent_resolve_or_enroll("test-agent-none", true, None)
+            .await
+            .unwrap();
+        assert!(record.capabilities.contains(&Capability::Read));
+        assert!(record.capabilities.contains(&Capability::Write));
+        assert!(record.capabilities.contains(&Capability::Search));
+    }
+
+    /// IR-02: session_caps=None + permissive=false → strict (Read+Search, no Write).
+    #[tokio::test]
+    async fn test_agent_resolve_or_enroll_none_caps_strict_default() {
+        let store = open_test_store().await;
+        let record = store
+            .agent_resolve_or_enroll("test-agent-strict", false, None)
+            .await
+            .unwrap();
+        assert!(record.capabilities.contains(&Capability::Read));
+        assert!(
+            !record.capabilities.contains(&Capability::Write),
+            "strict mode must not grant Write by default"
+        );
+    }
+
+    /// R-14/AC-06: session_caps=Some([Read, Search]) overrides permissive=true default.
+    #[tokio::test]
+    async fn test_agent_resolve_or_enroll_some_caps_overrides_permissive() {
+        let store = open_test_store().await;
+        let caps = [Capability::Read, Capability::Search];
+        let record = store
+            .agent_resolve_or_enroll("test-agent-caps", true, Some(&caps))
+            .await
+            .unwrap();
+        assert!(record.capabilities.contains(&Capability::Read));
+        assert!(record.capabilities.contains(&Capability::Search));
+        assert!(
+            !record.capabilities.contains(&Capability::Write),
+            "Some(session_caps) must override permissive default; Write must not be added"
+        );
+        assert_eq!(
+            record.capabilities.len(),
+            2,
+            "capabilities must be exactly the provided set, no extras"
+        );
+    }
+
+    /// R-14: session_caps=Some([Read]) only — exactly one capability stored.
+    #[tokio::test]
+    async fn test_agent_resolve_or_enroll_some_caps_read_only() {
+        let store = open_test_store().await;
+        let caps = [Capability::Read];
+        let record = store
+            .agent_resolve_or_enroll("test-agent-readonly", true, Some(&caps))
+            .await
+            .unwrap();
+        assert_eq!(record.capabilities, vec![Capability::Read]);
+    }
 }

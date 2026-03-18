@@ -123,12 +123,70 @@ pub fn usage_score(access_count: u32) -> f64 {
     result.min(1.0)
 }
 
+/// Parameters controlling all aspects of confidence computation.
+///
+/// `Default` reproduces the compiled constants exactly — the `collaborative`
+/// preset and all code paths that do not configure a preset produce identical
+/// results to the pre-dsn-001 binary.
+///
+/// The six `w_*` fields carry the per-domain weight vector set by the active
+/// preset (or `custom` weights from `[confidence]`). W3-1 will add
+/// `Option<LearnedWeights>` here without touching any call site that uses
+/// `Default`.
+///
+/// Weight sum invariant: w_base + w_usage + w_fresh + w_help + w_corr + w_trust == 0.92
+/// (tolerance: (sum - 0.92).abs() < 1e-9). Enforced by validate_config for custom
+/// presets; asserted by the SR-10 test for named presets.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConfidenceParams {
+    /// Weight for base quality (status + trust_source). Default: W_BASE (0.16)
+    pub w_base: f64,
+    /// Weight for usage frequency. Default: W_USAGE (0.16)
+    pub w_usage: f64,
+    /// Weight for freshness (recency of access). Default: W_FRESH (0.18)
+    pub w_fresh: f64,
+    /// Weight for helpfulness (Bayesian posterior). Default: W_HELP (0.12)
+    pub w_help: f64,
+    /// Weight for correction chain quality. Default: W_CORR (0.14)
+    pub w_corr: f64,
+    /// Weight for creator trust level. Default: W_TRUST (0.16)
+    pub w_trust: f64,
+    /// Freshness half-life in hours. Default: FRESHNESS_HALF_LIFE_HOURS (168.0)
+    pub freshness_half_life_hours: f64,
+    /// Bayesian prior positive pseudo-votes. Default: COLD_START_ALPHA (3.0)
+    pub alpha0: f64,
+    /// Bayesian prior negative pseudo-votes. Default: COLD_START_BETA (3.0)
+    pub beta0: f64,
+}
+
+impl Default for ConfidenceParams {
+    fn default() -> Self {
+        ConfidenceParams {
+            w_base: W_BASE,
+            w_usage: W_USAGE,
+            w_fresh: W_FRESH,
+            w_help: W_HELP,
+            w_corr: W_CORR,
+            w_trust: W_TRUST,
+            freshness_half_life_hours: FRESHNESS_HALF_LIFE_HOURS,
+            alpha0: COLD_START_ALPHA,
+            beta0: COLD_START_BETA,
+        }
+    }
+}
+
 /// Exponential decay from reference timestamp, returning a value in [0.0, 1.0].
 ///
 /// Uses `last_accessed_at` if > 0, otherwise falls back to `created_at`.
 /// Returns 0.0 when both timestamps are 0 (no reference).
 /// Returns 1.0 on clock skew (reference in the future).
-pub fn freshness_score(last_accessed_at: u64, created_at: u64, now: u64) -> f64 {
+/// Uses `params.freshness_half_life_hours` for the decay rate.
+pub fn freshness_score(
+    last_accessed_at: u64,
+    created_at: u64,
+    now: u64,
+    params: &ConfidenceParams,
+) -> f64 {
     let reference = if last_accessed_at > 0 {
         last_accessed_at
     } else {
@@ -145,7 +203,9 @@ pub fn freshness_score(last_accessed_at: u64, created_at: u64, now: u64) -> f64 
 
     let age_seconds = now - reference;
     let age_hours = age_seconds as f64 / 3600.0;
-    (-age_hours / FRESHNESS_HALF_LIFE_HOURS).exp()
+    // params.freshness_half_life_hours replaces the compiled FRESHNESS_HALF_LIFE_HOURS const.
+    // When params == ConfidenceParams::default(), behavior is identical to pre-dsn-001.
+    (-age_hours / params.freshness_half_life_hours).exp()
 }
 
 /// Helpfulness score using Bayesian Beta-Binomial posterior mean.
@@ -209,17 +269,31 @@ pub fn trust_score(trust_source: &str) -> f64 {
 /// Returns f64 in [0.0, 1.0]. All computation uses f64 natively.
 /// The function is pure: given the same inputs, it always returns the same output.
 ///
-/// `alpha0` and `beta0` are the Bayesian prior parameters for helpfulness scoring.
-/// Use `COLD_START_ALPHA` and `COLD_START_BETA` when no empirical prior is available.
-pub fn compute_confidence(entry: &EntryRecord, now: u64, alpha0: f64, beta0: f64) -> f64 {
+/// `params.w_*` control the six weight factors; `params.alpha0`/`params.beta0` are
+/// the Bayesian prior parameters for helpfulness scoring.
+/// Use `&ConfidenceParams::default()` to reproduce the pre-dsn-001 behavior exactly.
+pub fn compute_confidence(entry: &EntryRecord, now: u64, params: &ConfidenceParams) -> f64 {
     let b = base_score(entry.status, &entry.trust_source);
     let u = usage_score(entry.access_count);
-    let f = freshness_score(entry.last_accessed_at, entry.created_at, now);
-    let h = helpfulness_score(entry.helpful_count, entry.unhelpful_count, alpha0, beta0);
+    let f = freshness_score(entry.last_accessed_at, entry.created_at, now, params);
+    let h = helpfulness_score(
+        entry.helpful_count,
+        entry.unhelpful_count,
+        params.alpha0,
+        params.beta0,
+    );
     let c = correction_score(entry.correction_count);
     let t = trust_score(&entry.trust_source);
 
-    let composite = W_BASE * b + W_USAGE * u + W_FRESH * f + W_HELP * h + W_CORR * c + W_TRUST * t;
+    // params.w_* replace the compiled weight constants W_BASE, W_USAGE, etc.
+    // When params == ConfidenceParams::default(), the results are identical to
+    // the pre-dsn-001 formula — behavioral backward compatibility is guaranteed.
+    let composite = params.w_base * b
+        + params.w_usage * u
+        + params.w_fresh * f
+        + params.w_help * h
+        + params.w_corr * c
+        + params.w_trust * t;
 
     composite.clamp(0.0, 1.0)
 }
@@ -353,7 +427,7 @@ mod tests {
     #[test]
     fn freshness_just_accessed() {
         let now = 1_000_000u64;
-        let result = freshness_score(now, now, now);
+        let result = freshness_score(now, now, now, &ConfidenceParams::default());
         assert!((result - 1.0).abs() < 0.001);
     }
 
@@ -361,34 +435,40 @@ mod tests {
     fn freshness_one_week_ago() {
         let now = 1_000_000u64;
         let one_week_ago = now - 168 * 3600;
-        let result = freshness_score(one_week_ago, 0, now);
+        let result = freshness_score(one_week_ago, 0, now, &ConfidenceParams::default());
         assert!((result - 0.3679).abs() < 0.01);
     }
 
     #[test]
     fn freshness_fallback_to_created_at() {
         let now = 1_000_000u64;
-        let result = freshness_score(0, now, now);
+        let result = freshness_score(0, now, now, &ConfidenceParams::default());
         assert!((result - 1.0).abs() < 0.001);
     }
 
     #[test]
     fn freshness_both_timestamps_zero() {
         let now = 1_000_000u64;
-        assert_eq!(freshness_score(0, 0, now), 0.0);
+        assert_eq!(
+            freshness_score(0, 0, now, &ConfidenceParams::default()),
+            0.0
+        );
     }
 
     #[test]
     fn freshness_clock_skew() {
         let now = 1_000_000u64;
-        assert_eq!(freshness_score(now + 100, 0, now), 1.0);
+        assert_eq!(
+            freshness_score(now + 100, 0, now, &ConfidenceParams::default()),
+            1.0
+        );
     }
 
     #[test]
     fn freshness_very_old_entry() {
         let now = 100_000_000u64;
         let very_old = now - 365 * 24 * 3600;
-        let result = freshness_score(very_old, 0, now);
+        let result = freshness_score(very_old, 0, now, &ConfidenceParams::default());
         assert!(result >= 0.0 && result < 0.001);
     }
 
@@ -604,7 +684,7 @@ mod tests {
         // = 0.16*0.5 + 0.16*0.0 + 0.18*0.0 + 0.12*0.5 + 0.14*0.5 + 0.16*0.3
         // = 0.08 + 0.0 + 0.0 + 0.06 + 0.07 + 0.048 = 0.258
         let entry = make_test_entry(Status::Active, 0, 0, 0, 0, 0, 0, "");
-        let result = compute_confidence(&entry, 1_000_000, 3.0, 3.0);
+        let result = compute_confidence(&entry, 1_000_000, &ConfidenceParams::default());
         let expected = 0.16 * 0.5 + 0.16 * 0.0 + 0.18 * 0.0 + 0.12 * 0.5 + 0.14 * 0.5 + 0.16 * 0.3;
         assert!(
             (result - expected).abs() < 0.001,
@@ -616,7 +696,7 @@ mod tests {
     fn compute_confidence_all_max() {
         let now = 1_000_000u64;
         let entry = make_test_entry(Status::Active, 1000, now, now, 100, 0, 1, "human");
-        let result = compute_confidence(&entry, now, 3.0, 3.0);
+        let result = compute_confidence(&entry, now, &ConfidenceParams::default());
         assert!(result > 0.7, "expected > 0.7, got {result}");
         assert!(result <= 0.92, "expected <= 0.92, got {result}");
     }
@@ -629,8 +709,8 @@ mod tests {
             make_test_entry(Status::Active, 20, now - 1000, now - 2000, 5, 1, 1, "auto");
         let agent_entry =
             make_test_entry(Status::Active, 20, now - 1000, now - 2000, 5, 1, 1, "agent");
-        let conf_auto = compute_confidence(&auto_entry, now, 3.0, 3.0);
-        let conf_agent = compute_confidence(&agent_entry, now, 3.0, 3.0);
+        let conf_auto = compute_confidence(&auto_entry, now, &ConfidenceParams::default());
+        let conf_agent = compute_confidence(&agent_entry, now, &ConfidenceParams::default());
         assert!(
             conf_auto < conf_agent,
             "auto active ({conf_auto:.4}) should be < agent active ({conf_agent:.4})"
@@ -642,7 +722,7 @@ mod tests {
     #[test]
     fn compute_confidence_range_active_defaults() {
         let entry = make_test_entry(Status::Active, 0, 0, 0, 0, 0, 0, "");
-        let result = compute_confidence(&entry, 1_000_000, 3.0, 3.0);
+        let result = compute_confidence(&entry, 1_000_000, &ConfidenceParams::default());
         assert!(result >= 0.0);
         assert!(result <= 1.0);
     }
@@ -660,7 +740,7 @@ mod tests {
             100,
             "human",
         );
-        let result = compute_confidence(&entry, now, 3.0, 3.0);
+        let result = compute_confidence(&entry, now, &ConfidenceParams::default());
         assert!(result >= 0.0);
         assert!(result <= 1.0);
     }
@@ -668,7 +748,7 @@ mod tests {
     #[test]
     fn compute_confidence_range_extreme_timestamps() {
         let entry = make_test_entry(Status::Active, 0, u64::MAX, 0, 0, 0, 0, "agent");
-        let result = compute_confidence(&entry, 0, 3.0, 3.0);
+        let result = compute_confidence(&entry, 0, &ConfidenceParams::default());
         assert!(result >= 0.0);
         assert!(result <= 1.0);
     }
@@ -676,7 +756,7 @@ mod tests {
     #[test]
     fn compute_confidence_range_all_unhelpful() {
         let entry = make_test_entry(Status::Active, 50, 0, 0, 0, u32::MAX, 0, "");
-        let result = compute_confidence(&entry, 1_000_000, 3.0, 3.0);
+        let result = compute_confidence(&entry, 1_000_000, &ConfidenceParams::default());
         assert!(result >= 0.0);
         assert!(result <= 1.0);
     }
@@ -801,7 +881,7 @@ mod tests {
             2,
             "agent",
         );
-        let confidence = compute_confidence(&entry, now, 3.0, 3.0);
+        let confidence = compute_confidence(&entry, now, &ConfidenceParams::default());
         assert!(
             confidence >= 0.0 && confidence <= 1.0,
             "confidence out of range: {confidence}"
@@ -816,7 +896,7 @@ mod tests {
     fn compute_confidence_high_inputs_in_range() {
         let now = 1_000_000u64;
         let entry = make_test_entry(Status::Active, 1000, now, now, 100, 0, 1, "human");
-        let confidence = compute_confidence(&entry, now, 3.0, 3.0);
+        let confidence = compute_confidence(&entry, now, &ConfidenceParams::default());
         assert!(
             confidence >= 0.0 && confidence <= 1.0,
             "confidence out of range: {confidence}"
@@ -831,7 +911,7 @@ mod tests {
     fn compute_confidence_minimal_inputs_positive() {
         let now = 1_000_000u64;
         let entry = make_test_entry(Status::Active, 0, 0, 0, 0, 0, 0, "");
-        let confidence = compute_confidence(&entry, now, 3.0, 3.0);
+        let confidence = compute_confidence(&entry, now, &ConfidenceParams::default());
         assert!(
             confidence >= 0.0 && confidence <= 1.0,
             "confidence out of range: {confidence}"
@@ -958,6 +1038,173 @@ mod tests {
         assert!(
             result >= 0.0 && result <= 1.0,
             "result should be clamped, got {result}"
+        );
+    }
+
+    // -- dsn-001: ConfidenceParams struct and load-bearing field tests --
+
+    #[test]
+    fn test_confidence_params_has_nine_fields() {
+        // AC-27: If any field is missing or renamed, this test fails to compile.
+        let _p = ConfidenceParams {
+            w_base: 0.0,
+            w_usage: 0.0,
+            w_fresh: 0.0,
+            w_help: 0.0,
+            w_corr: 0.0,
+            w_trust: 0.0,
+            freshness_half_life_hours: 0.0,
+            alpha0: 0.0,
+            beta0: 0.0,
+        };
+    }
+
+    #[test]
+    fn test_confidence_params_default_values() {
+        // AC-22: Default must reproduce compiled constants exactly.
+        let p = ConfidenceParams::default();
+        assert!((p.w_base - 0.16).abs() < 1e-9, "w_base  must be 0.16");
+        assert!((p.w_usage - 0.16).abs() < 1e-9, "w_usage must be 0.16");
+        assert!((p.w_fresh - 0.18).abs() < 1e-9, "w_fresh must be 0.18");
+        assert!((p.w_help - 0.12).abs() < 1e-9, "w_help  must be 0.12");
+        assert!((p.w_corr - 0.14).abs() < 1e-9, "w_corr  must be 0.14");
+        assert!((p.w_trust - 0.16).abs() < 1e-9, "w_trust must be 0.16");
+        assert!(
+            (p.freshness_half_life_hours - 168.0).abs() < 1e-9,
+            "freshness_half_life_hours must be 168.0"
+        );
+        assert!((p.alpha0 - 3.0).abs() < 1e-9, "alpha0 must be 3.0");
+        assert!((p.beta0 - 3.0).abs() < 1e-9, "beta0  must be 3.0");
+    }
+
+    #[test]
+    fn test_confidence_params_default_weight_sum_invariant() {
+        // ConfidenceParams::default() sum must equal 0.92 (tolerance 1e-9).
+        let p = ConfidenceParams::default();
+        let sum = p.w_base + p.w_usage + p.w_fresh + p.w_help + p.w_corr + p.w_trust;
+        assert!(
+            (sum - 0.92).abs() < 1e-9,
+            "ConfidenceParams::default() weight sum must equal 0.92, got {sum:.12}"
+        );
+    }
+
+    #[test]
+    fn test_compute_confidence_uses_params_w_fresh() {
+        // R-01: compute_confidence must use params.w_fresh, not compiled W_FRESH.
+        // A compiled-constant implementation would return identical scores.
+        let now = 1_000_000u64;
+        let age_hours = 48u64;
+        let last = now - age_hours * 3600;
+        let entry = make_test_entry(Status::Active, 10, last, last, 5, 0, 1, "agent");
+
+        let params_default = ConfidenceParams::default(); // w_fresh = 0.18
+        let params_empirical = ConfidenceParams {
+            w_fresh: 0.34,
+            ..Default::default()
+        };
+
+        let score_default = compute_confidence(&entry, now, &params_default);
+        let score_empirical = compute_confidence(&entry, now, &params_empirical);
+
+        assert!(
+            (score_default - score_empirical).abs() > 0.01,
+            "compute_confidence must use params.w_fresh; got near-identical scores: \
+             default={:.6}, empirical={:.6}",
+            score_default,
+            score_empirical
+        );
+    }
+
+    #[test]
+    fn test_freshness_score_uses_params_half_life() {
+        // R-01: freshness_score must use params.freshness_half_life_hours.
+        let now = 1_000_000u64;
+        let one_hour_secs = 3600u64;
+        let age_hours = 24.0_f64;
+        let last = now - (age_hours as u64) * one_hour_secs;
+
+        let params_default = ConfidenceParams::default(); // half_life = 168.0h
+        let params_short = ConfidenceParams {
+            freshness_half_life_hours: 24.0,
+            ..Default::default()
+        };
+
+        let score_168 = freshness_score(last, last, now, &params_default);
+        let score_24 = freshness_score(last, last, now, &params_short);
+
+        // At 24h age with half_life=168h: score = exp(-24/168) ≈ 0.867
+        // At 24h age with half_life=24h:  score = exp(-1)      ≈ 0.368
+        assert!(
+            (score_168 - score_24).abs() > 0.1,
+            "freshness_score must use params.freshness_half_life_hours; \
+             score_168h={:.6}, score_24h={:.6}",
+            score_168,
+            score_24
+        );
+
+        // Verify expected exponential decay ratio.
+        let expected_ratio = (-24.0 / 168.0_f64).exp() / (-24.0 / 24.0_f64).exp();
+        let actual_ratio = score_168 / score_24;
+        assert!(
+            (actual_ratio - expected_ratio).abs() < 0.001,
+            "ratio mismatch: expected {:.6}, got {:.6}",
+            expected_ratio,
+            actual_ratio
+        );
+    }
+
+    #[test]
+    fn test_freshness_score_configurable_half_life() {
+        // AC-04: freshness_score with configurable half life.
+        let one_hour = 3600u64;
+        let now = 10_000_000u64;
+        let age_hours = 168u64; // 1 week old
+        let last = now - age_hours * one_hour;
+
+        let p_168 = ConfidenceParams::default(); // half_life = 168h
+        let p_24 = ConfidenceParams {
+            freshness_half_life_hours: 24.0,
+            ..Default::default()
+        };
+
+        let s_168 = freshness_score(last, last, now, &p_168);
+        let s_24 = freshness_score(last, last, now, &p_24);
+
+        // At 168h age with half_life=168h: score = exp(-1) ≈ 0.368 (one half-life elapsed).
+        assert!(
+            (s_168 - 0.368).abs() < 0.01,
+            "168h old with 168h half_life must be ~0.368; got {:.6}",
+            s_168
+        );
+        // At 168h age with half_life=24h: score = exp(-7) ≈ 0.0009 (7 half-lives).
+        assert!(
+            s_24 < 0.01,
+            "168h old with 24h half_life must be near zero; got {:.6}",
+            s_24
+        );
+        // The values must differ — compiled-constant impl would return same.
+        assert!((s_168 - s_24).abs() > 0.3);
+    }
+
+    #[test]
+    fn test_params_struct_update_syntax() {
+        // Verify struct update syntax works (used in test migration pattern).
+        let params = ConfidenceParams {
+            w_trust: 0.22,
+            ..Default::default()
+        };
+        assert!((params.w_trust - 0.22).abs() < 1e-9);
+        // Other fields are unchanged from default.
+        assert!((params.w_base - W_BASE).abs() < 1e-9);
+        assert!((params.freshness_half_life_hours - FRESHNESS_HALF_LIFE_HOURS).abs() < 1e-9);
+        // Score with modified w_trust must differ from default.
+        let now = 1_000_000u64;
+        let entry = make_test_entry(Status::Active, 10, now, now, 5, 0, 1, "human");
+        let default_score = compute_confidence(&entry, now, &ConfidenceParams::default());
+        let custom_score = compute_confidence(&entry, now, &params);
+        assert_ne!(
+            default_score, custom_score,
+            "different w_trust must produce different score"
         );
     }
 }

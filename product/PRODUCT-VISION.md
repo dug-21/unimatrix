@@ -29,7 +29,7 @@ its domain-agnostic foundations, and where new surface area has been accumulated
 | Lambda dimension weights hardcoded (freshness 0.35, graph 0.30, contradiction 0.20, embedding 0.15) | Critical | `confidence.rs` |
 | SERVER_INSTRUCTIONS const uses dev-workflow language | High | `server.rs` |
 | Initial category allowlist hardcoded (8 dev categories) | High | `categories.rs` |
-| `context_retrospective` tool name is SDLC-specific ("retrospective" is Agile vocabulary) | Medium | `tools.rs` |
+| `context_cycle_review` tool name is SDLC-specific ("retrospective" is Agile vocabulary) | Medium | `tools.rs` |
 | `context_cycle` parameter labels dev-specific (feature, sprint) — tool concept is domain-neutral | Low | `tools.rs` |
 | HookType enum tied to Claude Code events | Medium | `observations.rs` |
 | trust_source vocabulary dev-flavored ("agent","neural","auto") | Low | `confidence.rs` |
@@ -40,7 +40,7 @@ unit applies equally to a sprint, an incident, a measurement campaign, or a lega
 is dev-specific is the parameter vocabulary ("feature", "sprint"). W0-3 config externalizes
 those labels; the tool itself does not need to change.
 
-**Note on `context_retrospective` → `context_cycle_review`**: "Retrospective" is Agile/Scrum
+**Note on `context_cycle_review`**: "Retrospective" is Agile/Scrum
 vocabulary. The rename to `context_cycle_review` is domain-neutral ("review" applies to any
 cycle — post-incident review, campaign review, case review) and makes the pairing with
 `context_cycle` self-evident: you start/stop a cycle, then review it. This rename is
@@ -279,8 +279,7 @@ session_capabilities = ["Read", "Write", "Search"]
 # context_cycle tool parameter labels — rename for non-dev domains
 work_context_label = "feature"   # label shown in tool descriptions
 cycle_label = "cycle"
-# context_retrospective is renamed context_cycle_review:
-# "retrospective" is Agile vocabulary; "review" is domain-neutral
+# context_cycle_review: "retrospective" was Agile vocabulary; "review" is domain-neutral
 ```
 
 **Why first**: This is the single unlock for domain agnosticism. Every other
@@ -816,7 +815,7 @@ commit a synthesized entry until the full LLM output is available and hash-chain
 
 **When present, qualitatively upgrades:**
 
-- **context_retrospective** — 21 detection rules produce pattern-matched findings today.
+- **context_cycle_review** — 21 detection rules produce pattern-matched findings today.
   With LLM: genuinely reasoned recommendations. *"Three sessions this week showed the same
   re-search pattern on integration test setup. The convention entry is technically correct
   but missing the fixture initialization step every agent has had to rediscover."*

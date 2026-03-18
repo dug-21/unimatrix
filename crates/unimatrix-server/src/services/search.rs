@@ -107,6 +107,10 @@ pub(crate) struct SearchService {
     /// Eliminates 4x Store::query_by_status() calls from the search hot path.
     /// Rebuilt by the background tick (15-min); search reads under short read lock.
     supersession_state: SupersessionStateHandle,
+    /// dsn-001: config-driven provenance boost targets.
+    /// Constructed from config.knowledge.boosted_categories at SearchService construction.
+    /// Replaces the four hardcoded entry.category == "lesson-learned" comparisons.
+    boosted_categories: HashSet<String>,
 }
 
 /// Map an effectiveness category to its additive utility delta for search re-ranking.
@@ -137,6 +141,7 @@ impl SearchService {
         confidence_state: ConfidenceStateHandle,
         effectiveness_state: EffectivenessStateHandle,
         supersession_state: SupersessionStateHandle,
+        boosted_categories: HashSet<String>,
     ) -> Self {
         SearchService {
             store,
@@ -149,6 +154,7 @@ impl SearchService {
             effectiveness_state,
             cached_snapshot: EffectivenessSnapshot::new_shared(),
             supersession_state,
+            boosted_categories,
         }
     }
 
@@ -410,12 +416,12 @@ impl SearchService {
         // utility_delta is inside the penalty multiplication per ADR-003:
         // (rerank_score + delta + prov) * penalty
         results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-            let prov_a = if entry_a.category == "lesson-learned" {
+            let prov_a = if self.boosted_categories.contains(&entry_a.category) {
                 PROVENANCE_BOOST
             } else {
                 0.0
             };
-            let prov_b = if entry_b.category == "lesson-learned" {
+            let prov_b = if self.boosted_categories.contains(&entry_b.category) {
                 PROVENANCE_BOOST
             } else {
                 0.0
@@ -481,12 +487,12 @@ impl SearchService {
                     let base_b = rerank_score(*sim_b, entry_b.confidence, confidence_weight);
                     let boost_a = boost_map.get(&entry_a.id).copied().unwrap_or(0.0);
                     let boost_b = boost_map.get(&entry_b.id).copied().unwrap_or(0.0);
-                    let prov_a = if entry_a.category == "lesson-learned" {
+                    let prov_a = if self.boosted_categories.contains(&entry_a.category) {
                         PROVENANCE_BOOST
                     } else {
                         0.0
                     };
-                    let prov_b = if entry_b.category == "lesson-learned" {
+                    let prov_b = if self.boosted_categories.contains(&entry_b.category) {
                         PROVENANCE_BOOST
                     } else {
                         0.0

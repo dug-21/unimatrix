@@ -141,7 +141,7 @@ Step 4:       Return to human — REVIEW ENDS
 
 ```
 Coordinator:  uni-retro-scrum-master
-Phase 1:      Data gathering (context_retrospective + artifact review)
+Phase 1:      Data gathering (context_cycle_review + artifact review)
 Phase 2:      uni-architect (pattern/procedure extraction + ADR validation)
 Phase 3:      ADR supersession (if flagged, requires human approval)
 Phase 4:      Summary + outcome recording — RETRO ENDS

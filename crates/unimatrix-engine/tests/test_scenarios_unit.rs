@@ -1,7 +1,7 @@
 //! Unit tests for the test_scenarios shared infrastructure.
 
 use unimatrix_core::Status;
-use unimatrix_engine::confidence;
+use unimatrix_engine::confidence::{self, ConfidenceParams};
 use unimatrix_engine::test_scenarios::*;
 
 // T-KT-01: Identical rankings -> tau = 1.0
@@ -62,7 +62,7 @@ fn profile_round_trip_expert() {
     assert_eq!(entry.correction_count, 1);
     assert_eq!(entry.trust_source, "human");
 
-    let conf = confidence::compute_confidence(&entry, CANONICAL_NOW, 3.0, 3.0);
+    let conf = confidence::compute_confidence(&entry, CANONICAL_NOW, &ConfidenceParams::default());
     assert!(conf > 0.5, "expert should have high confidence, got {conf}");
 
     let b = confidence::base_score(entry.status, &entry.trust_source);
@@ -87,7 +87,7 @@ fn all_profiles_distinct_confidence() {
         .enumerate()
         .map(|(i, p)| {
             let entry = profile_to_entry_record(p, i as u64 + 1, CANONICAL_NOW);
-            confidence::compute_confidence(&entry, CANONICAL_NOW, 3.0, 3.0)
+            confidence::compute_confidence(&entry, CANONICAL_NOW, &ConfidenceParams::default())
         })
         .collect();
 

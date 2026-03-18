@@ -22,15 +22,31 @@ pub struct CategoryAllowlist {
 }
 
 impl CategoryAllowlist {
-    /// Create a new allowlist with the initial 8 categories.
-    pub fn new() -> Self {
+    /// Create a new allowlist seeded from the supplied category list.
+    ///
+    /// Called from `main.rs` startup wiring after config load:
+    ///   `CategoryAllowlist::from_categories(config.knowledge.categories)`
+    ///
+    /// The supplied list is assumed to have already been validated by
+    /// `validate_config` — no re-validation is performed here.
+    pub fn from_categories(cats: Vec<String>) -> Self {
         let mut set = HashSet::new();
-        for cat in INITIAL_CATEGORIES {
-            set.insert(cat.to_string());
+        for cat in cats {
+            set.insert(cat);
         }
         CategoryAllowlist {
             categories: RwLock::new(set),
         }
+    }
+
+    /// Create a new allowlist with the initial 8 categories.
+    ///
+    /// Unchanged signature — all existing call sites remain valid.
+    /// Delegates to `from_categories` to keep a single implementation path.
+    pub fn new() -> Self {
+        CategoryAllowlist::from_categories(
+            INITIAL_CATEGORIES.iter().map(|s| s.to_string()).collect(),
+        )
     }
 
     /// Validate a category string against the allowlist.
@@ -238,5 +254,111 @@ mod tests {
         // (depends on timing), but the initial categories must survive.
         assert!(list.contains(&"outcome".to_string()));
         assert!(list.contains(&"decision".to_string()));
+    }
+
+    // --- dsn-001: from_categories tests ---
+
+    #[test]
+    fn test_new_delegates_to_from_categories_initial() {
+        let from_new = CategoryAllowlist::new();
+        let from_cats = CategoryAllowlist::from_categories(
+            INITIAL_CATEGORIES.iter().map(|s| s.to_string()).collect(),
+        );
+        for cat in INITIAL_CATEGORIES {
+            assert_eq!(
+                from_new.validate(cat).is_ok(),
+                from_cats.validate(cat).is_ok(),
+                "new() and from_categories(INITIAL) differ for category '{}'",
+                cat
+            );
+        }
+    }
+
+    #[test]
+    fn test_new_allows_outcome_and_decision() {
+        let al = CategoryAllowlist::new();
+        assert!(
+            al.validate("outcome").is_ok(),
+            "outcome must be in default allowlist"
+        );
+        assert!(
+            al.validate("decision").is_ok(),
+            "decision must be in default allowlist"
+        );
+        assert!(
+            al.validate("pattern").is_ok(),
+            "pattern must be in default allowlist"
+        );
+        assert!(
+            al.validate("lesson-learned").is_ok(),
+            "lesson-learned must be in default"
+        );
+    }
+
+    #[test]
+    fn test_new_rejects_unknown_category() {
+        let al = CategoryAllowlist::new();
+        assert!(
+            al.validate("hypothetical_new_category").is_err(),
+            "unknown categories must be rejected by default allowlist"
+        );
+        assert!(
+            al.validate("ruling").is_err(),
+            "'ruling' (legal domain) must not be in default allowlist"
+        );
+    }
+
+    #[test]
+    fn test_from_categories_custom_list_replaces_defaults() {
+        let al = CategoryAllowlist::from_categories(vec!["custom-cat".into()]);
+        assert!(
+            al.validate("custom-cat").is_ok(),
+            "'custom-cat' must be allowed when in the supplied list"
+        );
+        assert!(
+            al.validate("outcome").is_err(),
+            "'outcome' must not be allowed when not in the custom list"
+        );
+        assert!(
+            al.validate("decision").is_err(),
+            "'decision' must not be allowed when not in the custom list"
+        );
+        assert!(
+            al.validate("lesson-learned").is_err(),
+            "'lesson-learned' must not be allowed when not in the custom list"
+        );
+    }
+
+    #[test]
+    fn test_from_categories_single_element_list() {
+        let al = CategoryAllowlist::from_categories(vec!["ruling".into()]);
+        assert!(al.validate("ruling").is_ok());
+        assert!(al.validate("outcome").is_err());
+    }
+
+    #[test]
+    fn test_from_categories_multiple_custom_categories() {
+        let cats = vec![
+            "ruling".into(),
+            "statute".into(),
+            "brief".into(),
+            "precedent".into(),
+        ];
+        let al = CategoryAllowlist::from_categories(cats.clone());
+        for cat in &cats {
+            assert!(al.validate(cat).is_ok(), "'{}' must be allowed", cat);
+        }
+        assert!(al.validate("decision").is_err());
+        assert!(al.validate("lesson-learned").is_err());
+    }
+
+    #[test]
+    fn test_from_categories_empty_list_accepts_nothing() {
+        let al = CategoryAllowlist::from_categories(vec![]);
+        // All categories rejected — degenerate but valid configuration.
+        assert!(al.validate("outcome").is_err());
+        assert!(al.validate("decision").is_err());
+        assert!(al.validate("custom-cat").is_err());
+        // Must not panic.
     }
 }

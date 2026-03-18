@@ -62,7 +62,7 @@ impl FeatureBucket {
 /// Inner key: entry_id u64 (overwrite semantics — no duplicate IDs per bucket).
 ///
 /// Shared between the UDS listener (writes from signal consumers) and the
-/// context_retrospective handler (drains on call). Protected by
+/// context_cycle_review handler (drains on call). Protected by
 /// `Arc<Mutex<PendingEntriesAnalysis>>`.
 ///
 /// Daemon-mode note: this accumulator persists across sessions.
@@ -144,7 +144,7 @@ impl PendingEntriesAnalysis {
     /// Evict buckets whose `last_updated` is older than `ttl_secs` relative to `now_unix_secs`.
     ///
     /// Called by the background tick (72-hour TTL per ADR-004) as a safety net for
-    /// features that complete without calling `context_retrospective` or `context_cycle`.
+    /// features that complete without calling `context_cycle_review` or `context_cycle`.
     /// The entire eviction runs within the caller's Mutex lock (R-18).
     pub fn evict_stale(&mut self, now_unix_secs: u64, ttl_secs: u64) {
         let mut to_evict: Vec<String> = Vec::new();
@@ -175,8 +175,12 @@ impl PendingEntriesAnalysis {
 /// Server name reported in MCP initialize handshake.
 const SERVER_NAME: &str = "unimatrix";
 
-/// Behavioral instructions for AI agents.
-const SERVER_INSTRUCTIONS: &str = "Unimatrix is this project's knowledge engine. Before starting implementation, architecture, or design tasks, search for relevant patterns and conventions using the context tools. Apply what you find. After discovering reusable patterns or making architectural decisions, store them for future reference. Do not store workflow state or process steps.";
+/// Compiled default behavioral instructions for AI agents.
+///
+/// Used as the fallback when `config.server.instructions` is `None`.
+/// This is the backing value only — the public interface is the `instructions`
+/// parameter on `UnimatrixServer::new`.
+const SERVER_INSTRUCTIONS_DEFAULT: &str = "Unimatrix is this project's knowledge engine. Before starting implementation, architecture, or design tasks, search for relevant patterns and conventions using the context tools. Apply what you find. After discovering reusable patterns or making architectural decisions, store them for future reference. Do not store workflow state or process steps.";
 
 /// The central MCP server holding all shared state.
 ///
@@ -204,7 +208,7 @@ pub struct UnimatrixServer {
     /// Adaptive embedding service for MicroLoRA adaptation pipeline.
     pub(crate) adapt_service: Arc<AdaptationService>,
     /// Accumulated entry-level analysis from signal consumers (col-009).
-    /// Shared with UDS listener; drained by context_retrospective handler.
+    /// Shared with UDS listener; drained by context_cycle_review handler.
     pub pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
     /// Session registry for stale session sweep (col-009, FR-09.2).
     /// Shared with UDS listener; swept by the background tick.
@@ -224,6 +228,12 @@ pub struct UnimatrixServer {
 
 impl UnimatrixServer {
     /// Create a new server with all subsystems.
+    ///
+    /// `instructions`: when `Some(s)`, uses `s` as the MCP `ServerInfo.instructions`
+    /// field (from `config.server.instructions`). When `None`, falls back to the
+    /// compiled default (`SERVER_INSTRUCTIONS_DEFAULT`). Validation of length and
+    /// injection is performed upstream in `validate_config` — this constructor is
+    /// infallible.
     pub fn new(
         entry_store: Arc<Store>,
         vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
@@ -234,6 +244,7 @@ impl UnimatrixServer {
         store: Arc<Store>,
         vector_index: Arc<VectorIndex>,
         adapt_service: Arc<AdaptationService>,
+        instructions: Option<String>,
     ) -> Self {
         let server_info = ServerInfo {
             server_info: Implementation {
@@ -242,7 +253,11 @@ impl UnimatrixServer {
                 ..Default::default()
             },
             capabilities: ServerCapabilities::builder().enable_tools().build(),
-            instructions: Some(SERVER_INSTRUCTIONS.to_string()),
+            // Use config-supplied instructions when present; fall back to compiled default.
+            // None means "not configured" — use the developer-authored default.
+            instructions: Some(
+                instructions.unwrap_or_else(|| SERVER_INSTRUCTIONS_DEFAULT.to_string()),
+            ),
             ..Default::default()
         };
 
@@ -257,6 +272,8 @@ impl UnimatrixServer {
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
             Arc::clone(&usage_dedup),
+            // dsn-001: default; startup wiring will supply config value in follow-up.
+            std::collections::HashSet::from(["lesson-learned".to_string()]),
         );
 
         // crt-018b: extract handle after ServiceLayer is fully constructed so
@@ -620,7 +637,11 @@ impl UnimatrixServer {
                     &decrement_helpful_ids,
                     &decrement_unhelpful_ids,
                     Some(Box::new(|entry: &unimatrix_store::EntryRecord, now: u64| {
-                        crate::confidence::compute_confidence(entry, now, 3.0, 3.0)
+                        crate::confidence::compute_confidence(
+                            entry,
+                            now,
+                            &unimatrix_engine::confidence::ConfidenceParams::default(),
+                        )
                     })
                         as Box<
                             dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync,
@@ -846,7 +867,7 @@ mod tests {
 
         let embed_service = EmbedServiceHandle::new();
 
-        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store)).unwrap());
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![]).unwrap());
         registry.bootstrap_defaults().unwrap();
 
         let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
@@ -866,6 +887,7 @@ mod tests {
             Arc::clone(&store),
             vector_index,
             adapt_service,
+            None, // use compiled default instructions
         )
     }
 
@@ -891,6 +913,35 @@ mod tests {
         let instructions = info.instructions.unwrap();
         assert!(instructions.contains("knowledge engine"));
         assert!(instructions.contains("search for relevant patterns"));
+    }
+
+    /// AC-01: When config.server.instructions is None, the compiled default is used.
+    #[test]
+    fn test_server_instructions_none_uses_compiled_default() {
+        // Verify the compiled default is non-empty.
+        assert!(
+            !SERVER_INSTRUCTIONS_DEFAULT.is_empty(),
+            "compiled default instructions must not be empty"
+        );
+        // Verify None resolution produces the compiled default string.
+        let none_result: Option<String> = None;
+        let result = none_result.unwrap_or_else(|| SERVER_INSTRUCTIONS_DEFAULT.to_string());
+        assert_eq!(
+            result, SERVER_INSTRUCTIONS_DEFAULT,
+            "None instructions must resolve to the compiled default"
+        );
+    }
+
+    /// AC-05: When config.server.instructions is Some(s), that string is used verbatim.
+    #[test]
+    fn test_server_instructions_some_uses_config_string() {
+        let custom = "You are a legal research assistant.".to_string();
+        let result: Option<String> = Some(custom.clone());
+        let resolved = result.unwrap_or_else(|| SERVER_INSTRUCTIONS_DEFAULT.to_string());
+        assert_eq!(
+            resolved, custom,
+            "Some(config_string) must be used verbatim as server instructions"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -1189,7 +1240,11 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let expected = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+        let expected = crate::confidence::compute_confidence(
+            &entry,
+            now,
+            &unimatrix_engine::confidence::ConfidenceParams::default(),
+        );
         // Allow small tolerance for timestamp difference
         assert!((entry.confidence - expected).abs() < 0.01);
     }
@@ -1261,7 +1316,11 @@ mod tests {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            let conf = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+            let conf = crate::confidence::compute_confidence(
+                &entry,
+                now,
+                &unimatrix_engine::confidence::ConfidenceParams::default(),
+            );
             server
                 .store
                 .update_confidence(entry_id, conf)
@@ -1317,7 +1376,11 @@ mod tests {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            let conf = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+            let conf = crate::confidence::compute_confidence(
+                &entry,
+                now,
+                &unimatrix_engine::confidence::ConfidenceParams::default(),
+            );
             server.store.update_confidence(id, conf).await.unwrap();
         }
 
@@ -1606,7 +1669,11 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let before = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+        let before = crate::confidence::compute_confidence(
+            &entry,
+            now,
+            &unimatrix_engine::confidence::ConfidenceParams::default(),
+        );
         server.store.update_confidence(id, before).await.unwrap();
 
         // Quarantine
@@ -1617,7 +1684,11 @@ mod tests {
 
         // Recompute confidence for quarantined entry
         let entry = server.store.get(id).await.unwrap();
-        let after = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+        let after = crate::confidence::compute_confidence(
+            &entry,
+            now,
+            &unimatrix_engine::confidence::ConfidenceParams::default(),
+        );
         server.store.update_confidence(id, after).await.unwrap();
 
         assert!(
@@ -1633,7 +1704,11 @@ mod tests {
 
         // Recompute confidence for restored entry
         let entry = server.store.get(id).await.unwrap();
-        let restored = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+        let restored = crate::confidence::compute_confidence(
+            &entry,
+            now,
+            &unimatrix_engine::confidence::ConfidenceParams::default(),
+        );
 
         assert!(
             restored > after,

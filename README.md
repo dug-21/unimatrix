@@ -199,6 +199,61 @@ context_briefing(role: "developer", task: "implement new MCP tool", feature: "vn
 
 ---
 
+## Configuration
+
+Unimatrix loads configuration from two optional TOML files at server startup. When neither file is present, all compiled defaults apply and no existing behavior changes.
+
+- `~/.unimatrix/config.toml` — global config, applies to every project on the machine.
+- `~/.unimatrix/{project-hash}/config.toml` — per-project override; values here shadow the global file, which shadows compiled defaults. List fields (`categories`, `boosted_categories`, `session_capabilities`) replace the global list entirely — there is no append behavior.
+
+Config is loaded once at startup. Changes require a server restart. A malformed file or a security validation failure aborts startup with a descriptive error.
+
+### Profile Presets
+
+The `[profile]` section selects a knowledge-lifecycle preset. Presets encode calibrated confidence weight vectors and freshness half-life values so operators identify their knowledge type rather than tuning ML weights directly.
+
+```toml
+[profile]
+preset = "collaborative"   # default — matches current compiled behavior
+```
+
+| Preset | Best for | Freshness half-life |
+|--------|----------|---------------------|
+| `collaborative` | Team-built knowledge, dev/research (default) | 168 h (1 week) |
+| `authoritative` | Policy, standards, legal precedents — source trust dominant | 8760 h (1 year) |
+| `operational` | Runbooks, incidents, procedures — freshness dominant | 720 h (1 month) |
+| `empirical` | Sensor feeds, metrics, time-series — recency critical | 24 h |
+| `custom` | Expert use — requires all six weights in `[confidence]` section | set explicitly |
+
+### Key Config Sections
+
+```toml
+[knowledge]
+# Replace the built-in 8-category list with domain-appropriate categories.
+# Values: lowercase, [a-z0-9_-], max 64 chars, up to 64 categories total.
+categories = ["outcome", "lesson-learned", "decision", "convention",
+              "pattern", "procedure", "duties", "reference"]
+# Categories that receive a provenance boost in search ranking.
+boosted_categories = ["lesson-learned"]
+# Freshness decay rate. Overrides the preset's built-in value when set.
+freshness_half_life_hours = 168.0
+
+[server]
+# MCP server instructions passed to every connecting agent during the initialize handshake.
+# Injection patterns are validated at load time; startup aborts if triggered.
+instructions = "..."
+
+[agents]
+# Auto-enroll behavior for unknown agents.
+# "permissive" grants [Read, Write, Search]; "strict" grants [Read, Search].
+default_trust = "permissive"
+session_capabilities = ["Read", "Write", "Search"]
+```
+
+Config files are validated for security at load time: world-writable files abort startup; group-writable files log a warning. `[server] instructions` is scanned for injection patterns before use.
+
+---
+
 ## MCP Tool Reference
 
 Unimatrix exposes 11 MCP tools. All tools accept `format: "summary" | "markdown" | "json"` as a common parameter.
@@ -215,7 +270,7 @@ Unimatrix exposes 11 MCP tools. All tools accept `format: "summary" | "markdown"
 | `context_status` | Get knowledge base health metrics. Shows entry counts, distributions, correction chains, coherence score, security metrics. **Admin only.** | When you need to assess knowledge base health. The `maintain` parameter is accepted but silently ignored — a background tick handles maintenance automatically. Key params: `topic`, `category`, `check_embeddings`. |
 | `context_briefing` | Get an orientation briefing for a role and task. Includes role conventions and task-relevant context. | At the start of any task to get oriented. Gated on `mcp-briefing` feature flag. Key params: `role` (required), `task` (required), `feature`, `max_tokens` (default 3000, range 500-10000). |
 | `context_enroll` | Enroll or update an agent's trust level and capabilities. **Admin only.** | When managing agent permissions. Protected agents (`system`, `human`) cannot be modified. Self-lockout prevention active. Key params: `target_agent_id` (required), `trust_level` (required), `capabilities` (required). |
-| `context_retrospective` | Analyze observation data for a feature cycle. Parses session telemetry, detects hotspots, computes metrics. | After a feature ships, to extract patterns and lessons. Key params: `feature_cycle` (required), `evidence_limit`, `format` ("markdown" default, "json"). |
+| `context_cycle_review` | Analyze observation data for a work cycle. Parses session telemetry, detects hotspots, computes metrics. | After a work cycle completes, to extract patterns and lessons. Key params: `feature_cycle` (required), `evidence_limit`, `format` ("markdown" default, "json"). |
 
 **`context_search` vs `context_lookup`**: `context_search` uses semantic similarity (natural language). `context_lookup` uses exact filters (topic, category, tags, status). Use search when exploring; use lookup when you know what you want.
 
@@ -263,7 +318,7 @@ Unimatrix uses 8 built-in knowledge categories. Category discipline matters for 
 | `duties` | Role duties for `context_briefing` orientation. | "Architect duties: read SCOPE.md, decompose into components, define integration surface, produce ADRs." |
 | `reference` | General reference material. | "ONNX Runtime 1.20.x compatibility matrix for supported platforms." |
 
-The category allowlist is runtime-extensible via `add_category()`, but the 8 built-in categories cover the primary use cases.
+The default category list can be replaced at startup via `[knowledge] categories` in `~/.unimatrix/config.toml`. The 8 built-in categories cover the primary use cases for software delivery; operators targeting other domains can supply a domain-appropriate list.
 
 ---
 
@@ -328,7 +383,10 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
 ### Data Layout
 
 ```
+~/.unimatrix/
+  config.toml                # Global config (optional — see Configuration section)
 ~/.unimatrix/{project-hash}/
+  config.toml                # Per-project config override (optional)
   unimatrix.db               # SQLite knowledge database (schema v11)
   unimatrix.pid              # PID file with flock advisory lock
   unimatrix.sock             # Unix domain socket for hook IPC
