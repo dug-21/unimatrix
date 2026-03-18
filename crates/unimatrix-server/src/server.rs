@@ -465,14 +465,19 @@ impl UnimatrixServer {
             .await
             .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-        // Write audit event (separate from data transaction)
+        // Write audit event (separate from data transaction) — fire-and-forget.
+        // GH #308: log_event() used block_in_place, starving the rmcp session loop
+        // when the analytics drain task held the single write connection.
         let audit_event_with_target = AuditEvent {
             target_ids: vec![id],
             ..audit_event
         };
-        self.audit
-            .log_event(audit_event_with_target)
-            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        {
+            let audit = Arc::clone(&self.audit);
+            tokio::spawn(async move {
+                let _ = audit.log_event_async(audit_event_with_target).await;
+            });
+        }
 
         // HNSW insert (after data commits)
         if !embedding.is_empty() {
@@ -518,14 +523,18 @@ impl UnimatrixServer {
                 other => ServerError::Core(CoreError::Store(other)),
             })?;
 
-        // Write audit event with both IDs
+        // Write audit event with both IDs — fire-and-forget.
+        // GH #308: same write-pool starvation fix as insert_with_audit.
         let audit_with_ids = AuditEvent {
             target_ids: vec![original_id, new_correction.id],
             ..audit_event
         };
-        self.audit
-            .log_event(audit_with_ids)
-            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        {
+            let audit = Arc::clone(&self.audit);
+            tokio::spawn(async move {
+                let _ = audit.log_event_async(audit_with_ids).await;
+            });
+        }
 
         // HNSW insert for the correction (after data commits)
         if !embedding.is_empty() {
@@ -826,9 +835,13 @@ impl UnimatrixServer {
             detail,
             ..audit_event
         };
-        self.audit
-            .log_event(audit_with_detail)
-            .map_err(|e| ServerError::Audit(e.to_string()))?;
+        // Fire-and-forget — GH #308: same write-pool starvation fix.
+        {
+            let audit = Arc::clone(&self.audit);
+            tokio::spawn(async move {
+                let _ = audit.log_event_async(audit_with_detail).await;
+            });
+        }
 
         Ok(record)
     }
@@ -1587,6 +1600,9 @@ mod tests {
             .await
             .unwrap();
 
+        // GH #308: audit is now fire-and-forget; sleep briefly to let the spawned task commit.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
         // Verify audit log has an entry
         let rows: Vec<(String, String, String)> = sqlx::query_as(
             "SELECT operation, target_ids, detail FROM audit_log WHERE operation = ?1",
@@ -1912,6 +1928,9 @@ mod tests {
             .quarantine_with_audit(id, Some("harmful".into()), make_audit_event("system"))
             .await
             .unwrap();
+
+        // GH #308: audit is now fire-and-forget; sleep briefly to let the spawned task commit.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         let detail: String = sqlx::query_scalar(
             "SELECT detail FROM audit_log WHERE operation = 'context_quarantine' ORDER BY event_id DESC LIMIT 1",
@@ -2751,5 +2770,101 @@ mod tests {
             gw.check_search_rate(&agent).is_err(),
             "second agent call must be rate-limited"
         );
+    }
+
+    // -- GH #308 regression: audit call sites in server.rs must not block --
+
+    /// Regression test for GH #308: insert_with_audit must return before the audit
+    /// event is written. The audit spawn must not hold the write connection across
+    /// an await point while the analytics drain task could be holding it.
+    ///
+    /// This test fires 10 concurrent insert_with_audit calls and verifies all
+    /// complete under 10s (well within the 5s WRITE_POOL_ACQUIRE_TIMEOUT that was
+    /// triggered by the blocking log_event() call).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_insert_with_audit_does_not_block_under_concurrent_writes() {
+        use tokio::time::{Duration, timeout};
+
+        let server = Arc::new(make_server().await);
+
+        let handles: Vec<_> = (0..10)
+            .map(|i| {
+                let server = Arc::clone(&server);
+                tokio::spawn(async move {
+                    let entry = unimatrix_core::NewEntry {
+                        title: format!("entry-{i}"),
+                        content: format!("content-{i}"),
+                        topic: "test".to_string(),
+                        category: "convention".to_string(),
+                        tags: vec![],
+                        source: "test".to_string(),
+                        status: unimatrix_core::Status::Active,
+                        created_by: String::new(),
+                        feature_cycle: String::new(),
+                        trust_source: String::new(),
+                    };
+                    let audit_event = crate::infra::audit::AuditEvent {
+                        event_id: 0,
+                        timestamp: 0,
+                        session_id: String::new(),
+                        agent_id: "test".to_string(),
+                        operation: "context_store".to_string(),
+                        target_ids: vec![],
+                        outcome: crate::infra::audit::Outcome::Success,
+                        detail: format!("gh308-regression-{i}"),
+                    };
+                    timeout(
+                        Duration::from_secs(10),
+                        server.insert_with_audit(entry, vec![], audit_event),
+                    )
+                    .await
+                    .expect("insert_with_audit timed out — GH #308 regression")
+                    .expect("insert_with_audit returned error")
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            handle.await.expect("task panicked");
+        }
+
+        // Yield to allow the spawned audit tasks to complete.
+        tokio::task::yield_now().await;
+
+        // Verify all 10 entries were inserted.
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM entries")
+            .fetch_one(server.store.read_pool_test())
+            .await
+            .unwrap();
+        assert_eq!(count, 10, "all 10 entries should be stored");
+    }
+
+    /// Regression test for GH #308: quarantine_with_audit / restore_with_audit
+    /// must not block the write pool. Verifies that calls complete promptly even
+    /// when concurrent audit writes are in flight.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_quarantine_restore_audit_does_not_block() {
+        use tokio::time::{Duration, timeout};
+
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
+
+        // quarantine — the audit spawn must not stall this call
+        timeout(
+            Duration::from_secs(10),
+            server.quarantine_with_audit(id, Some("gh308-test".into()), make_audit_event("system")),
+        )
+        .await
+        .expect("quarantine_with_audit timed out — GH #308 regression")
+        .expect("quarantine_with_audit returned error");
+
+        // restore — same check
+        timeout(
+            Duration::from_secs(10),
+            server.restore_with_audit(id, None, make_audit_event("system")),
+        )
+        .await
+        .expect("restore_with_audit timed out — GH #308 regression")
+        .expect("restore_with_audit returned error");
     }
 }
