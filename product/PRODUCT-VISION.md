@@ -130,7 +130,7 @@ end-to-end before containerization adds operational complexity.
 
 ---
 
-### W0-1: sqlx Migration — Connection Pools + Async-Native Storage (`nxs-011`)
+### W0-1: sqlx Migration — Connection Pools + Async-Native Storage — **COMPLETE** (`nxs-011`, PR #299)
 **What**: Replace `rusqlite` + `Mutex<Connection>` with `sqlx` + a dual-pool
 architecture. Three coordinated changes that deliver immediate scalability and
 unlock future backend flexibility.
@@ -254,9 +254,9 @@ capability system non-vestigial. Required before any multi-user or HTTP exposure
 **Effort**: Scoped in GH #293.
 
 **Security requirements:**
-- [Critical] `UNIMATRIX_SESSION_AGENT` must not fall back to a privileged default if
-  unset — the unset case must produce `[Read, Search]` only, never `[Read, Write, Search]`.
-  Writing without explicit identity configuration must be a deliberate opt-in.
+- [Critical] `UNIMATRIX_SESSION_AGENT` must be set — the server refuses to start if
+  absent or invalid. There is no degraded-access fallback. An unauthenticated STDIO
+  deployment has no operational use case and must not silently serve any requests.
 - [High] Env var value must be validated as a non-empty string matching
   `[a-zA-Z0-9_-]{1,64}` before use as `agent_id`; reject and refuse startup if the
   value would produce an agent_id that spoofs a protected agent (`system`, `human`).
