@@ -10,6 +10,8 @@ use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use unimatrix_engine::confidence::ConfidenceParams;
+
 use unimatrix_core::{
     CoreError, EmbedService, NewEntry, Store, VectorAdapter, VectorIndex, VectorStore,
 };
@@ -223,6 +225,7 @@ pub fn spawn_background_tick(
     contradiction_cache: ContradictionScanCacheHandle, // GH #278: shared with StatusService
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
+    confidence_params: Arc<ConfidenceParams>, // dsn-001: operator-configured weights
 ) -> tokio::task::JoinHandle<()> {
     // Outer supervisor — this handle is stored as tick_handle and aborted on shutdown.
     tokio::spawn(async move {
@@ -244,6 +247,7 @@ pub fn spawn_background_tick(
                 Arc::clone(&contradiction_cache),
                 Arc::clone(&audit_log),
                 auto_quarantine_cycles,
+                Arc::clone(&confidence_params),
             ));
 
             match inner_handle.await {
@@ -282,6 +286,7 @@ async fn background_tick_loop(
     contradiction_cache: ContradictionScanCacheHandle, // GH #278: threaded to run_single_tick
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
+    _confidence_params: Arc<ConfidenceParams>, // dsn-001: operator-configured weights (for future use in run_single_tick)
 ) {
     let tick_interval_secs = read_tick_interval();
     let mut interval = tokio::time::interval(Duration::from_secs(tick_interval_secs));

@@ -1,5 +1,6 @@
 //! Unimatrix knowledge engine entry point.
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -9,12 +10,14 @@ use rmcp::ServiceExt;
 use unimatrix_adapt::{AdaptConfig, AdaptationService};
 use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{CoreError, EmbedConfig, Store, VectorAdapter, VectorConfig, VectorIndex};
+use unimatrix_engine::confidence::ConfidenceParams;
 use unimatrix_server::error::ServerError;
 use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
+use unimatrix_server::infra::config::{UnimatrixConfig, load_config, resolve_confidence_params};
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
 use unimatrix_server::infra::pidfile;
-use unimatrix_server::infra::registry::AgentRegistry;
+use unimatrix_server::infra::registry::{AgentRegistry, Capability};
 use unimatrix_server::infra::shutdown::{self, LifecycleHandles};
 use unimatrix_server::infra::usage_dedup::UsageDedup;
 use unimatrix_server::project;
@@ -334,6 +337,56 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         "daemon project initialized"
     );
 
+    // ── dsn-001: Load external config ─────────────────────────────────────────────
+    // dirs::home_dir() returns None in rootless/container environments.
+    // When None: log a warning and proceed with compiled defaults (R-15).
+    let config = match dirs::home_dir() {
+        Some(home) => match load_config(&home, &paths.data_dir) {
+            Ok(cfg) => {
+                tracing::info!(preset = ?cfg.profile.preset, "config loaded");
+                cfg
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "config load failed; using compiled defaults");
+                UnimatrixConfig::default()
+            }
+        },
+        None => {
+            tracing::warn!("home directory not found; using compiled defaults (R-15)");
+            UnimatrixConfig::default()
+        }
+    };
+
+    // Resolve ConfidenceParams from preset/weights.
+    let confidence_params = Arc::new(resolve_confidence_params(&config).unwrap_or_else(|e| {
+        tracing::warn!(error = %e, "confidence params resolution failed; using defaults");
+        ConfidenceParams::default()
+    }));
+
+    // Extract concrete values for subsystem constructors.
+    // None of these are stored as Arc<UnimatrixConfig> on any struct (ADR-002).
+    let knowledge_categories: Vec<String> = config.knowledge.categories.clone();
+    let boosted_categories: HashSet<String> = config
+        .knowledge
+        .boosted_categories
+        .iter()
+        .cloned()
+        .collect();
+    let server_instructions: Option<String> = config.server.instructions.clone();
+    let permissive: bool = config.agents.default_trust == "permissive";
+    let session_caps: Vec<Capability> = config
+        .agents
+        .session_capabilities
+        .iter()
+        .filter_map(|s| match s.as_str() {
+            "Read" => Some(Capability::Read),
+            "Write" => Some(Capability::Write),
+            "Search" => Some(Capability::Search),
+            _ => None, // unreachable: validate_config guards this
+        })
+        .collect();
+    // ── end dsn-001 config load ────────────────────────────────────────────────────
+
     // Handle stale PID file before attempting to open the database.
     match pidfile::handle_stale_pid_file(&paths.pid_path, STALE_PROCESS_TIMEOUT) {
         Ok(true) => {}
@@ -387,7 +440,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     embed_handle.start_loading(EmbedConfig::default());
 
     // Initialize agent registry and bootstrap defaults.
-    let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![])?);
+    let registry = Arc::new(AgentRegistry::new(
+        Arc::clone(&store),
+        permissive,
+        session_caps,
+    )?);
     registry.bootstrap_defaults()?;
 
     // Initialize audit log.
@@ -398,8 +455,8 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
-    // Initialize category allowlist.
-    let categories = Arc::new(CategoryAllowlist::new());
+    // Initialize category allowlist from config (dsn-001).
+    let categories = Arc::new(CategoryAllowlist::from_categories(knowledge_categories));
 
     // Initialize adaptation service (crt-006).
     let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
@@ -429,8 +486,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&adapt_service),
         Arc::clone(&audit),
         Arc::clone(&usage_dedup),
-        // dsn-001: default until startup-wiring agent wires config.knowledge.boosted_categories.
-        std::collections::HashSet::from(["lesson-learned".to_string()]),
+        boosted_categories,
     );
 
     // Start UDS listener for hook IPC.
@@ -452,7 +508,6 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     // Build server (ADR-003: constructed once, cloned into each session task).
-    // instructions: None — startup-wiring agent (dsn-001) will pass config.server.instructions.
     let mut server = UnimatrixServer::new(
         Arc::clone(&store),
         async_vector_store,
@@ -463,7 +518,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&store),
         Arc::clone(&vector_index),
         Arc::clone(&adapt_service),
-        None,
+        server_instructions,
     );
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
@@ -496,6 +551,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         contradiction_cache_handle,
         Arc::clone(&audit),
         auto_quarantine_cycles,
+        Arc::clone(&confidence_params),
     );
 
     // Create daemon CancellationToken (ADR-002).
@@ -583,6 +639,56 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         "project initialized"
     );
 
+    // ── dsn-001: Load external config ─────────────────────────────────────────────
+    // dirs::home_dir() returns None in rootless/container environments.
+    // When None: log a warning and proceed with compiled defaults (R-15).
+    let config = match dirs::home_dir() {
+        Some(home) => match load_config(&home, &paths.data_dir) {
+            Ok(cfg) => {
+                tracing::info!(preset = ?cfg.profile.preset, "config loaded");
+                cfg
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "config load failed; using compiled defaults");
+                UnimatrixConfig::default()
+            }
+        },
+        None => {
+            tracing::warn!("home directory not found; using compiled defaults (R-15)");
+            UnimatrixConfig::default()
+        }
+    };
+
+    // Resolve ConfidenceParams from preset/weights.
+    let confidence_params = Arc::new(resolve_confidence_params(&config).unwrap_or_else(|e| {
+        tracing::warn!(error = %e, "confidence params resolution failed; using defaults");
+        ConfidenceParams::default()
+    }));
+
+    // Extract concrete values for subsystem constructors.
+    // None of these are stored as Arc<UnimatrixConfig> on any struct (ADR-002).
+    let knowledge_categories: Vec<String> = config.knowledge.categories.clone();
+    let boosted_categories: HashSet<String> = config
+        .knowledge
+        .boosted_categories
+        .iter()
+        .cloned()
+        .collect();
+    let server_instructions: Option<String> = config.server.instructions.clone();
+    let permissive: bool = config.agents.default_trust == "permissive";
+    let session_caps: Vec<Capability> = config
+        .agents
+        .session_capabilities
+        .iter()
+        .filter_map(|s| match s.as_str() {
+            "Read" => Some(Capability::Read),
+            "Write" => Some(Capability::Write),
+            "Search" => Some(Capability::Search),
+            _ => None, // unreachable: validate_config guards this
+        })
+        .collect();
+    // ── end dsn-001 config load ────────────────────────────────────────────────────
+
     // Handle stale PID file before attempting to open the database.
     match pidfile::handle_stale_pid_file(&paths.pid_path, STALE_PROCESS_TIMEOUT) {
         Ok(true) => {}
@@ -637,7 +743,11 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     embed_handle.start_loading(EmbedConfig::default());
 
     // Initialize agent registry and bootstrap defaults.
-    let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![])?);
+    let registry = Arc::new(AgentRegistry::new(
+        Arc::clone(&store),
+        permissive,
+        session_caps,
+    )?);
     registry.bootstrap_defaults()?;
 
     // Initialize audit log.
@@ -648,8 +758,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
-    // Initialize category allowlist.
-    let categories = Arc::new(CategoryAllowlist::new());
+    // Initialize category allowlist from config (dsn-001).
+    let categories = Arc::new(CategoryAllowlist::from_categories(knowledge_categories));
 
     // Initialize adaptation service (crt-006).
     let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
@@ -679,8 +789,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&adapt_service),
         Arc::clone(&audit),
         Arc::clone(&usage_dedup),
-        // dsn-001: default until startup-wiring agent wires config.knowledge.boosted_categories.
-        std::collections::HashSet::from(["lesson-learned".to_string()]),
+        boosted_categories,
     );
 
     // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009).
@@ -702,7 +811,6 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     // Build server.
-    // instructions: None here — startup-wiring agent (dsn-001) will pass config.server.instructions.
     let mut server = UnimatrixServer::new(
         Arc::clone(&store),
         async_vector_store,
@@ -713,7 +821,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&store),
         Arc::clone(&vector_index),
         Arc::clone(&adapt_service),
-        None,
+        server_instructions,
     );
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
@@ -749,6 +857,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         contradiction_cache_handle, // GH #278: shared with StatusService
         Arc::clone(&audit),         // crt-018b: for tick_skipped audit events
         auto_quarantine_cycles,     // crt-018b: auto-quarantine threshold
+        Arc::clone(&confidence_params),
     );
 
     // Prepare lifecycle handles for shutdown.
