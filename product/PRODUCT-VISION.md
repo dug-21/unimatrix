@@ -227,47 +227,23 @@ sync → async test conversion — the test surface is the long tail).
 
 ---
 
-### W0-2: Session Identity via Env Var — **tracked by GH #293**
-**What**: Replace `PERMISSIVE_AUTO_ENROLL = true` with env-var-configured session identity.
+### W0-2: Session Identity via Env Var — **DEFERRED** (GH #293 closed)
 
-- `UNIMATRIX_SESSION_AGENT` in `settings.json` → default agent_id for all tool calls
-- Auto-enroll the session agent at startup with capabilities defined in W0-3 config
-  `[agents] bootstrap` — not hardcoded as `[Read, Write, Search]`
-- `PERMISSIVE_AUTO_ENROLL` converted from compile-time const to env-var (default `false`)
-- Unknown/unconfigured callers get `[Read, Search]` only — no Write without a configured identity
-- `agent_id` per-call still works for audit attribution; identity no longer needs to be passed on every call
-- Forward-compatible: `UNIMATRIX_SESSION_AGENT` slot is replaced by OAuth token claims when HTTP transport arrives
+**Why deferred**: Design analysis revealed this adds no real security value before OAuth.
 
-**Reconcile with ADR #1839**: ADR #1839 (UNIMATRIX_CLIENT_TOKEN for STDIO) addresses
-token-based client identity for the same problem. Resolve whether W0-2 supersedes,
-extends, or layers on top of #1839 before implementation. Two diverging env-var
-identity mechanisms must not ship simultaneously.
+- **STDIO/local**: UDS socket is already 0600 (owner-only). `PERMISSIVE_AUTO_ENROLL=false`
+  adds friction not security — the LLM controls `agent_id` and retries until a name passes.
+- **HTTP/enterprise**: OAuth (W2-3) handles session authentication via non-spoofable JWT
+  claims. `UNIMATRIX_SESSION_AGENT` would be replaced immediately when HTTP transport ships.
 
-**Scope note**: Capability defaults for a configured session agent belong in W0-3 config
-(`[agents] bootstrap`) not hardcoded here — different domains need different defaults.
-`[Read, Write, Search]` is appropriate for the dev LLM workflow but should not be
-a compile-time assumption.
+**What happens instead**:
+- **W0-3**: `PERMISSIVE_AUTO_ENROLL` moves to config (default `true` for local dev ergonomics)
+- **W2-3**: JWT `sub` claim is the real non-spoofable identity. `PERMISSIVE_AUTO_ENROLL=false`
+  becomes meaningful and enforceable under OAuth. The per-call `agent_id` → registry →
+  capability resolution infrastructure (preserved) becomes a real access control layer.
 
-**Why first**: Eliminates the `agent_id: "human"` spoofing problem and makes the
-capability system non-vestigial. Required before any multi-user or HTTP exposure.
-
-**Effort**: Scoped in GH #293.
-
-**Security requirements:**
-- [Critical] `UNIMATRIX_SESSION_AGENT` must be set — the server refuses to start if
-  absent or invalid. There is no degraded-access fallback. An unauthenticated STDIO
-  deployment has no operational use case and must not silently serve any requests.
-- [High] Env var value must be validated as a non-empty string matching
-  `[a-zA-Z0-9_-]{1,64}` before use as `agent_id`; reject and refuse startup if the
-  value would produce an agent_id that spoofs a protected agent (`system`, `human`).
-- [High] When `PERMISSIVE_AUTO_ENROLL=false` (new default), the rejection path for
-  unknown callers must return a structured error — not silently fall back to a weaker
-  identity — so that misconfigured clients fail loudly rather than operating with
-  reduced privileges invisibly.
-- [Medium] The env var is set in `settings.json` (committed to the repository); treat
-  `UNIMATRIX_SESSION_AGENT` as a non-secret identifier, not a credential. Document that
-  it provides attribution only — it is not an authentication factor and must not be
-  relied upon as one until HTTP + OAuth lands in W2-3.
+**ADR #1839** (UNIMATRIX_CLIENT_TOKEN for STDIO) also deferred — same reasoning.
+**Unimatrix ADR**: Entry #2267.
 
 ---
 
