@@ -387,7 +387,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     embed_handle.start_loading(EmbedConfig::default());
 
     // Initialize agent registry and bootstrap defaults.
-    let registry = Arc::new(AgentRegistry::new(Arc::clone(&store))?);
+    let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![])?);
     registry.bootstrap_defaults()?;
 
     // Initialize audit log.
@@ -637,7 +637,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     embed_handle.start_loading(EmbedConfig::default());
 
     // Initialize agent registry and bootstrap defaults.
-    let registry = Arc::new(AgentRegistry::new(Arc::clone(&store))?);
+    let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![])?);
     registry.bootstrap_defaults()?;
 
     // Initialize audit log.
@@ -702,6 +702,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     // Build server.
+    // instructions: None here — startup-wiring agent (dsn-001) will pass config.server.instructions.
     let mut server = UnimatrixServer::new(
         Arc::clone(&store),
         async_vector_store,
@@ -712,6 +713,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&store),
         Arc::clone(&vector_index),
         Arc::clone(&adapt_service),
+        None,
     );
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);

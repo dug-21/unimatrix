@@ -231,7 +231,7 @@ impl UnimatrixServer {
     ///
     /// `instructions`: when `Some(s)`, uses `s` as the MCP `ServerInfo.instructions`
     /// field (from `config.server.instructions`). When `None`, falls back to the
-    /// compiled default (`SERVER_INSTRUCTIONS`). Validation of length and
+    /// compiled default (`SERVER_INSTRUCTIONS_DEFAULT`). Validation of length and
     /// injection is performed upstream in `validate_config` — this constructor is
     /// infallible.
     pub fn new(
@@ -867,7 +867,7 @@ mod tests {
 
         let embed_service = EmbedServiceHandle::new();
 
-        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store)).unwrap());
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![]).unwrap());
         registry.bootstrap_defaults().unwrap();
 
         let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
@@ -927,8 +927,7 @@ mod tests {
         let none_result: Option<String> = None;
         let result = none_result.unwrap_or_else(|| SERVER_INSTRUCTIONS_DEFAULT.to_string());
         assert_eq!(
-            result,
-            SERVER_INSTRUCTIONS_DEFAULT,
+            result, SERVER_INSTRUCTIONS_DEFAULT,
             "None instructions must resolve to the compiled default"
         );
     }

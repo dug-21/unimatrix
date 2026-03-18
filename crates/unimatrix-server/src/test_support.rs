@@ -121,6 +121,8 @@ impl TestHarness {
             audit,
             usage_dedup,
             rate_config,
+            // dsn-001: default; test harness preserves pre-dsn-001 behavior.
+            std::collections::HashSet::from(["lesson-learned".to_string()]),
         );
 
         Some(TestHarness { layer, store })
