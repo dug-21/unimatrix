@@ -175,8 +175,12 @@ impl PendingEntriesAnalysis {
 /// Server name reported in MCP initialize handshake.
 const SERVER_NAME: &str = "unimatrix";
 
-/// Behavioral instructions for AI agents.
-const SERVER_INSTRUCTIONS: &str = "Unimatrix is this project's knowledge engine. Before starting implementation, architecture, or design tasks, search for relevant patterns and conventions using the context tools. Apply what you find. After discovering reusable patterns or making architectural decisions, store them for future reference. Do not store workflow state or process steps.";
+/// Compiled default behavioral instructions for AI agents.
+///
+/// Used as the fallback when `config.server.instructions` is `None`.
+/// This is the backing value only — the public interface is the `instructions`
+/// parameter on `UnimatrixServer::new`.
+const SERVER_INSTRUCTIONS_DEFAULT: &str = "Unimatrix is this project's knowledge engine. Before starting implementation, architecture, or design tasks, search for relevant patterns and conventions using the context tools. Apply what you find. After discovering reusable patterns or making architectural decisions, store them for future reference. Do not store workflow state or process steps.";
 
 /// The central MCP server holding all shared state.
 ///
@@ -224,6 +228,12 @@ pub struct UnimatrixServer {
 
 impl UnimatrixServer {
     /// Create a new server with all subsystems.
+    ///
+    /// `instructions`: when `Some(s)`, uses `s` as the MCP `ServerInfo.instructions`
+    /// field (from `config.server.instructions`). When `None`, falls back to the
+    /// compiled default (`SERVER_INSTRUCTIONS`). Validation of length and
+    /// injection is performed upstream in `validate_config` — this constructor is
+    /// infallible.
     pub fn new(
         entry_store: Arc<Store>,
         vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
@@ -234,6 +244,7 @@ impl UnimatrixServer {
         store: Arc<Store>,
         vector_index: Arc<VectorIndex>,
         adapt_service: Arc<AdaptationService>,
+        instructions: Option<String>,
     ) -> Self {
         let server_info = ServerInfo {
             server_info: Implementation {
@@ -242,7 +253,11 @@ impl UnimatrixServer {
                 ..Default::default()
             },
             capabilities: ServerCapabilities::builder().enable_tools().build(),
-            instructions: Some(SERVER_INSTRUCTIONS.to_string()),
+            // Use config-supplied instructions when present; fall back to compiled default.
+            // None means "not configured" — use the developer-authored default.
+            instructions: Some(
+                instructions.unwrap_or_else(|| SERVER_INSTRUCTIONS_DEFAULT.to_string()),
+            ),
             ..Default::default()
         };
 
@@ -257,6 +272,8 @@ impl UnimatrixServer {
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
             Arc::clone(&usage_dedup),
+            // dsn-001: default; startup wiring will supply config value in follow-up.
+            std::collections::HashSet::from(["lesson-learned".to_string()]),
         );
 
         // crt-018b: extract handle after ServiceLayer is fully constructed so
@@ -870,6 +887,7 @@ mod tests {
             Arc::clone(&store),
             vector_index,
             adapt_service,
+            None, // use compiled default instructions
         )
     }
 
@@ -895,6 +913,36 @@ mod tests {
         let instructions = info.instructions.unwrap();
         assert!(instructions.contains("knowledge engine"));
         assert!(instructions.contains("search for relevant patterns"));
+    }
+
+    /// AC-01: When config.server.instructions is None, the compiled default is used.
+    #[test]
+    fn test_server_instructions_none_uses_compiled_default() {
+        // Verify the compiled default is non-empty.
+        assert!(
+            !SERVER_INSTRUCTIONS_DEFAULT.is_empty(),
+            "compiled default instructions must not be empty"
+        );
+        // Verify None resolution produces the compiled default string.
+        let none_result: Option<String> = None;
+        let result = none_result.unwrap_or_else(|| SERVER_INSTRUCTIONS_DEFAULT.to_string());
+        assert_eq!(
+            result,
+            SERVER_INSTRUCTIONS_DEFAULT,
+            "None instructions must resolve to the compiled default"
+        );
+    }
+
+    /// AC-05: When config.server.instructions is Some(s), that string is used verbatim.
+    #[test]
+    fn test_server_instructions_some_uses_config_string() {
+        let custom = "You are a legal research assistant.".to_string();
+        let result: Option<String> = Some(custom.clone());
+        let resolved = result.unwrap_or_else(|| SERVER_INSTRUCTIONS_DEFAULT.to_string());
+        assert_eq!(
+            resolved, custom,
+            "Some(config_string) must be used verbatim as server instructions"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]

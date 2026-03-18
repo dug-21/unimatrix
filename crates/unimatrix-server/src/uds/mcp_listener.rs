@@ -772,6 +772,7 @@ mod tests {
             store,
             vector_index,
             adapt_service,
+            None, // use compiled default instructions
         )
     }
 }

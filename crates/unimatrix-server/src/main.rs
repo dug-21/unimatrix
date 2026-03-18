@@ -429,6 +429,8 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&adapt_service),
         Arc::clone(&audit),
         Arc::clone(&usage_dedup),
+        // dsn-001: default until startup-wiring agent wires config.knowledge.boosted_categories.
+        std::collections::HashSet::from(["lesson-learned".to_string()]),
     );
 
     // Start UDS listener for hook IPC.
@@ -450,6 +452,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     // Build server (ADR-003: constructed once, cloned into each session task).
+    // instructions: None — startup-wiring agent (dsn-001) will pass config.server.instructions.
     let mut server = UnimatrixServer::new(
         Arc::clone(&store),
         async_vector_store,
@@ -460,6 +463,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&store),
         Arc::clone(&vector_index),
         Arc::clone(&adapt_service),
+        None,
     );
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
@@ -675,6 +679,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&adapt_service),
         Arc::clone(&audit),
         Arc::clone(&usage_dedup),
+        // dsn-001: default until startup-wiring agent wires config.knowledge.boosted_categories.
+        std::collections::HashSet::from(["lesson-learned".to_string()]),
     );
 
     // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009).

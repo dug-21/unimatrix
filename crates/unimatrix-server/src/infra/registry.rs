@@ -54,7 +54,7 @@ impl AgentRegistry {
     pub fn resolve_or_enroll(&self, agent_id: &str) -> Result<AgentRecord, ServerError> {
         block_sync(
             self.store
-                .agent_resolve_or_enroll(agent_id, PERMISSIVE_AUTO_ENROLL),
+                .agent_resolve_or_enroll(agent_id, PERMISSIVE_AUTO_ENROLL, None),
         )
         .map_err(|e| ServerError::Registry(e.to_string()))
     }
@@ -402,5 +402,69 @@ mod tests {
             result.is_ok(),
             "Fresh-install (anonymous) agent must pass Read gate"
         );
+    }
+
+    // --- dsn-001 tests: permissive flag + session_caps threading (R-14, IR-02, AC-06) ---
+
+    /// AC-06: permissive=false from config produces strict capability set (no Write).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_agent_registry_new_receives_permissive_flag() {
+        let store = make_store().await;
+        let registry = AgentRegistry::new(store, false, vec![]).unwrap();
+        let record = registry
+            .resolve_or_enroll("unknown-agent-strict-flag")
+            .unwrap();
+        assert!(
+            !record.capabilities.contains(&Capability::Write),
+            "permissive=false from config must produce strict capability set"
+        );
+        assert!(record.capabilities.contains(&Capability::Read));
+    }
+
+    /// IR-02: session_caps=empty + permissive=true falls back to permissive default (Write present).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_agent_registry_empty_session_caps_uses_permissive_default() {
+        let store = make_store().await;
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
+        let record = registry
+            .resolve_or_enroll("unknown-agent-permissive-default")
+            .unwrap();
+        assert!(record.capabilities.contains(&Capability::Read));
+        assert!(record.capabilities.contains(&Capability::Write));
+        assert!(record.capabilities.contains(&Capability::Search));
+    }
+
+    /// R-14 critical: session_caps from config are propagated as Some(...) to the store.
+    /// Even with permissive=true, configured session_caps override the default.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_agent_registry_session_caps_propagated_to_store() {
+        let store = make_store().await;
+        let session_caps = vec![Capability::Read, Capability::Search];
+        let registry = AgentRegistry::new(store, true, session_caps).unwrap();
+        let record = registry
+            .resolve_or_enroll("test-agent-configured-caps")
+            .unwrap();
+        assert!(record.capabilities.contains(&Capability::Read));
+        assert!(record.capabilities.contains(&Capability::Search));
+        assert!(
+            !record.capabilities.contains(&Capability::Write),
+            "session_caps = [Read, Search] must not result in Write capability"
+        );
+        assert_eq!(
+            record.capabilities.len(),
+            2,
+            "capabilities must be exactly the provided set, no extras"
+        );
+    }
+
+    /// R-14: session_caps=[Read] only — Write and Search absent.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_agent_registry_session_caps_read_only() {
+        let store = make_store().await;
+        let registry = AgentRegistry::new(store, true, vec![Capability::Read]).unwrap();
+        let record = registry
+            .resolve_or_enroll("test-agent-readonly-caps")
+            .unwrap();
+        assert_eq!(record.capabilities, vec![Capability::Read]);
     }
 }
