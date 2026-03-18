@@ -44,7 +44,9 @@
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists expected components from the architecture — actual file paths are filled during delivery.
+Stage 3a complete. All pseudocode and test-plan files produced. Two implementation notes from pseudocode agent:
+1. `ServiceLayer::new` and `with_rate_config` must grow a `boosted_categories: HashSet<String>` parameter — delivery agent for search-service must also update `services/mod.rs` and the UDS listener path.
+2. UDS listener's internal `ServiceLayer` construction defaults to `HashSet::from(["lesson-learned"])` for dsn-001 scope — documented known limitation.
 
 ---
 
