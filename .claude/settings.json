@@ -76,6 +76,17 @@
           }
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/workspaces/unimatrix/target/release/unimatrix hook PreCompact"
+          }
+        ]
+      }
     ]
   }
 }
