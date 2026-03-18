@@ -1,56 +1,70 @@
-# Agent Report: dsn-001-agent-1-architect
+# Agent Report: dsn-001-agent-1-architect (REVISED — Preset System)
 
 ## Status: COMPLETE
 
 ## Artifacts Produced
 
-- `/workspaces/unimatrix/product/features/dsn-001/architecture/ARCHITECTURE.md`
-- `/workspaces/unimatrix/product/features/dsn-001/architecture/ADR-001-confidence-params-struct.md` — Unimatrix #2284
-- `/workspaces/unimatrix/product/features/dsn-001/architecture/ADR-002-config-type-placement.md` — Unimatrix #2285
-- `/workspaces/unimatrix/product/features/dsn-001/architecture/ADR-003-two-level-config-merge.md` — Unimatrix #2286
-- `/workspaces/unimatrix/product/features/dsn-001/architecture/ADR-004-forward-compat-stubs.md` — Unimatrix #2287
+- `/workspaces/unimatrix/product/features/dsn-001/architecture/ARCHITECTURE.md` (overwritten)
+- `/workspaces/unimatrix/product/features/dsn-001/architecture/ADR-001-confidence-params-struct.md` (extended — Unimatrix #2284, needs context_correct update)
+- `/workspaces/unimatrix/product/features/dsn-001/architecture/ADR-002-config-type-placement.md` (updated — Unimatrix #2285, needs context_correct update)
+- `/workspaces/unimatrix/product/features/dsn-001/architecture/ADR-003-two-level-config-merge.md` (updated — Unimatrix #2286, needs context_correct update)
+- `/workspaces/unimatrix/product/features/dsn-001/architecture/ADR-004-forward-compat-stubs.md` (updated — Unimatrix #2287, needs context_correct update — stub promoted to live)
+- `/workspaces/unimatrix/product/features/dsn-001/architecture/ADR-005-preset-enum-and-weights.md` (new — needs context_store, Unimatrix ID TBD)
+- `/workspaces/unimatrix/product/features/dsn-001/architecture/ADR-006-preset-resolution-pipeline.md` (new — needs context_store, Unimatrix ID TBD)
+
+## Unimatrix Storage Required
+
+ADR-001 through ADR-004 (IDs #2284–#2287) must be updated via `context_correct`.
+ADR-005 and ADR-006 must be created via `context_store`.
+The Design Leader must complete these Unimatrix operations before closing the design session.
 
 ## Key Decisions
 
-1. **ADR-001**: `ConfidenceParams` struct in `unimatrix-engine` — absorbs `alpha0`,
-   `beta0`, and `freshness_half_life_hours` into a single context struct.
-   `compute_confidence(entry, now, &ConfidenceParams)` replaces four positional args.
-   W3-1 extends the struct without further API churn.
+1. **ADR-001 (extended)**: `ConfidenceParams` gains six weight fields (w_base,
+   w_usage, w_fresh, w_help, w_corr, w_trust). `Default` reproduces compiled
+   constants exactly. `compute_confidence` uses `params.w_*`. SR-02 resolved.
 
-2. **ADR-002**: `UnimatrixConfig` lives in `unimatrix-server/src/infra/config.rs`.
-   No `Arc<UnimatrixConfig>` crosses any crate boundary. Values extracted as plain
-   primitives: `bool`, `Vec<String>`, `Vec<Capability>`, `ConfidenceParams`.
-   `CategoryAllowlist::new()` delegates to `from_categories(INITIAL_CATEGORIES)` —
-   all existing tests remain valid unchanged.
+2. **ADR-002 (updated)**: `UnimatrixConfig` in `unimatrix-server`. `Preset` enum
+   and `confidence_params_from_preset` also in `unimatrix-server/src/infra/config.rs`.
+   `ConfidenceParams` crosses to engine as a value, not `Arc<Config>`.
 
-3. **ADR-003**: Two-level merge uses replace semantics. Per-project field absent =
-   falls through to global. Per-project field present = fully replaces. List fields
-   replace not append. Merge runs in `load_config()` after path resolution.
-   `dirs::home_dir()=None` degrades gracefully.
+3. **ADR-003 (updated)**: `custom` preset with no per-project `[confidence] weights`
+   does NOT inherit global weights — each level is self-contained.
 
-4. **ADR-004**: Empty `ConfidenceConfig` and `CycleConfig` stubs reserved in
-   `UnimatrixConfig` for W3-1. Zero fields, zero behavior, TOML namespace reserved.
+4. **ADR-004 (promoted)**: `ConfidenceConfig` is now a live struct with
+   `weights: Option<ConfidenceWeights>`. Active only for `preset = "custom"`.
+   `CycleConfig` stub removed from `UnimatrixConfig`.
+
+5. **ADR-005 (new)**: Preset enum and exact weight table (all rows verified = 0.92).
+   Ordering relationships validated against domain archetypes.
+
+6. **ADR-006 (new)**: Single resolution site `resolve_confidence_params()`. Explicit
+   `freshness_half_life_hours` precedence chain for all four preset/override combinations.
+
+## Exact Preset Weight Table (ADR-005)
+
+| Preset | w_base | w_usage | w_fresh | w_help | w_corr | w_trust | SUM  | half_life |
+|--------|--------|---------|---------|--------|--------|---------|------|-----------|
+| `collaborative` | 0.16 | 0.16 | 0.18 | 0.12 | 0.14 | 0.16 | **0.92** | 168.0h |
+| `authoritative` | 0.14 | 0.14 | 0.10 | 0.14 | 0.18 | 0.22 | **0.92** | 8760.0h |
+| `operational`   | 0.14 | 0.18 | 0.24 | 0.08 | 0.18 | 0.10 | **0.92** | 720.0h |
+| `empirical`     | 0.12 | 0.16 | 0.34 | 0.04 | 0.06 | 0.20 | **0.92** | 24.0h |
+
+All four sums verified to 0.92 exactly (Python IEEE 754 verification).
+
+## Critical Corrections for Delivery Team
+
+- Weight sum validation: use `(sum - 0.92).abs() < 1e-9`, NOT `sum <= 1.0`
+  (SCOPE.md config schema comment is wrong on this point)
+- `confidence_params_from_preset(Preset::Custom)` panics — logic error, only
+  `resolve_confidence_params(&config)` handles Custom
+- SR-10 test is mandatory before PR opens
 
 ## ADR File Paths (for synthesizer)
 
-- `product/features/dsn-001/architecture/ADR-001-confidence-params-struct.md`
-- `product/features/dsn-001/architecture/ADR-002-config-type-placement.md`
-- `product/features/dsn-001/architecture/ADR-003-two-level-config-merge.md`
-- `product/features/dsn-001/architecture/ADR-004-forward-compat-stubs.md`
-
-## Constraints for Delivery Team
-
-1. `toml = "0.8"` added to `unimatrix-server/Cargo.toml` only. Run `cargo tree`
-   after adding — pin as `toml = "0.8"` (not `^`) per SR-01.
-2. `ConfidenceParams` migration: all `compute_confidence` call sites change from
-   `(entry, now, alpha0, beta0)` to `(entry, now, &ConfidenceParams::default())`.
-   Tests that override one field use struct update syntax.
-3. `agent_resolve_or_enroll` gains third param `session_caps: Option<&[Capability]>`.
-   All existing call sites pass `None`.
-4. `context_retrospective` → `context_cycle_review` blast radius: Rust source,
-   protocol files, skill files, research docs, CLAUDE.md. Build passing is
-   necessary but not sufficient — audit all non-Rust files.
-5. `ContentScanner::global()` must be called once at the top of `load_config` to
-   force singleton initialization before `scan_title()` is invoked (SR-03).
-6. File permission check is `#[cfg(unix)]` only.
-7. `dirs::home_dir()=None` — warn and use defaults, do not abort.
+- `product/features/dsn-001/architecture/ADR-001-confidence-params-struct.md` — #2284 (updated)
+- `product/features/dsn-001/architecture/ADR-002-config-type-placement.md` — #2285 (updated)
+- `product/features/dsn-001/architecture/ADR-003-two-level-config-merge.md` — #2286 (updated)
+- `product/features/dsn-001/architecture/ADR-004-forward-compat-stubs.md` — #2287 (updated)
+- `product/features/dsn-001/architecture/ADR-005-preset-enum-and-weights.md` — TBD (new)
+- `product/features/dsn-001/architecture/ADR-006-preset-resolution-pipeline.md` — TBD (new)

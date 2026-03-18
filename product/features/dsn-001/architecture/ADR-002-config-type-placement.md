@@ -41,11 +41,19 @@ The only config values that cross into `unimatrix-store` are:
 
 Both are already expressible as primitive parameters on existing store methods.
 
+The `Preset` enum and preset resolution also live in `unimatrix-server`. The six
+weight values are extracted from the resolved `ConfidenceParams` (which lives in
+`unimatrix-engine`) and passed to `compute_confidence` — no server type crosses
+the engine boundary.
+
 ### Decision
 
-`UnimatrixConfig` and its sub-structs (`KnowledgeConfig`, `ServerConfig`,
-`AgentsConfig`, `ConfidenceConfig`, `CycleConfig`) live in
+`UnimatrixConfig` and its sub-structs (`ProfileConfig`, `KnowledgeConfig`,
+`ServerConfig`, `AgentsConfig`, `ConfidenceConfig`) live in
 `crates/unimatrix-server/src/infra/config.rs`.
+
+`Preset` enum and `ConfidenceParams::from_preset()` conversion also live in
+`unimatrix-server/src/infra/config.rs` (see ADR-005 and ADR-006 for design).
 
 The `toml` crate is added only to `unimatrix-server/Cargo.toml`.
 
@@ -57,10 +65,15 @@ extracts the concrete value and passes it as a plain parameter:
 |---|---|---|
 | `knowledge.categories` | server → `CategoryAllowlist` | `Vec<String>` at construction |
 | `knowledge.boosted_categories` | server → `SearchService` | `HashSet<String>` field |
-| `knowledge.freshness_half_life_hours` | server → engine | `ConfidenceParams` field (ADR-001) |
+| Active `ConfidenceParams` | server → engine | `ConfidenceParams` value (ADR-001) |
 | `agents.default_trust` | server → `AgentRegistry` | `bool` (permissive flag) |
 | `agents.session_capabilities` | server → store | `Vec<Capability>` parameter |
 | `server.instructions` | server-internal | Stays in `UnimatrixServer::new()` |
+
+`ConfidenceParams` itself lives in `unimatrix-engine` — it is NOT a server type. The
+server constructs it from the resolved preset (or custom weights) and passes it by
+value to engine functions. This satisfies the no-Arc-across-crate-boundary rule while
+giving the engine crate the full weight vector it needs.
 
 `CategoryAllowlist::new()` delegates to `CategoryAllowlist::from_categories(Vec<String>)`
 which replaces the hardcoded `INITIAL_CATEGORIES`. The existing `new()` calls
@@ -76,7 +89,9 @@ without modification (SR-07 resolved).
 - The server crate already owns `AgentRegistry` server-side logic; owning the config
   types that drive it is cohesive.
 - The `from_categories` constructor pattern unifies the test and production code
-  paths (SR-07: `new()` becomes a thin wrapper over `from_categories`).
+  paths.
+- `Preset` and `ProfileConfig` co-locate with `UnimatrixConfig` — the resolution
+  pipeline (ADR-006) is entirely within one file.
 
 **Harder:**
 - If a future crate outside `unimatrix-server` needs to apply config (e.g., a

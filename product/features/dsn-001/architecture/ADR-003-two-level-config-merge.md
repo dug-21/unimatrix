@@ -1,4 +1,4 @@
-## ADR-003: Two-Level Config Merge — Replace, Not Extend
+## ADR-003: Two-Level Config Merge — Replace Semantics
 
 ### Context
 
@@ -45,6 +45,16 @@ semantic would make it impossible for a per-project config to shrink the categor
 set, which is a valid use case (e.g., a read-only project that should accept only
 `reference` and `decision` categories).
 
+The `[profile] preset` field is a scalar — it follows last-wins. If the global config
+sets `preset = "authoritative"` and the per-project config sets `preset = "operational"`,
+the per-project value wins. If neither sets it, `collaborative` is the compiled
+default.
+
+The `[knowledge] freshness_half_life_hours` field, when present, overrides the preset's
+built-in default (see ADR-006 for the full precedence chain). The merge rule for this
+field is: per-project value wins over global value; absence at both levels means the
+preset's built-in value is used.
+
 **Where the merge happens**: The merge runs in the startup path after
 `ensure_data_directory()` returns `paths`. It is a pure function of two
 `UnimatrixConfig` values. The implementation is:
@@ -89,6 +99,15 @@ global config path is unresolvable; fall back to compiled defaults with a tracin
 warning (do not abort). Per SCOPE assumptions, this is a container/CI concern
 handled gracefully.
 
+**`[profile] preset` merge**: The preset field follows the same replace semantics.
+If per-project sets `preset = "custom"` and the global sets `preset = "operational"`,
+the per-project `custom` wins, and per-project `[confidence] weights` must be
+present. If per-project has `preset = "custom"` with no `[confidence] weights` and
+the global has them, the global `[confidence] weights` are NOT inherited — the
+per-project `custom` preset requires per-project weights to be explicit. This
+prevents cross-level implicit weight composition that would be impossible to reason
+about.
+
 ### Consequences
 
 **Easier:**
@@ -97,6 +116,7 @@ handled gracefully.
 - Validation is straightforward: validate each file independently, then merge.
 - The merge function is ~30 lines of explicit per-field code — readable, testable.
 - Aligned with serde's natural deserialization model.
+- The `preset` field merge is trivially correct: it's a scalar enum, last-wins.
 
 **Harder:**
 - An operator who wants to add one category to the global list in a per-project
@@ -104,3 +124,7 @@ handled gracefully.
   verbose but unambiguous.
 - The "non-default detection" merge requires `PartialEq` and `Default` on all
   sub-structs. Both are derivable and have no performance cost at startup.
+- If a per-project config sets `preset = "custom"` without weights, and the global
+  config has weights, startup aborts with "custom preset requires [confidence] weights
+  in the same file." This is the correct behavior (explicit per ADR-006) but may
+  surprise operators who expect cross-level inheritance.

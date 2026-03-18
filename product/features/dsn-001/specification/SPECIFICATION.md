@@ -2,481 +2,487 @@
 
 ## Objective
 
-Unimatrix is a domain-agnostic knowledge engine whose behavior is currently hard-coupled to software delivery vocabulary through compiled constants. This feature externalizes four groups of runtime constants to a two-level TOML configuration system (`~/.unimatrix/config.toml` global, `{data_dir}/config.toml` per-project), validated at startup with security-critical checks that abort on violation. It also performs a hardcoded rename of the `context_retrospective` MCP tool to `context_cycle_review` and neutralises the `CycleParams.topic` field documentation to remove domain-specific vocabulary.
+Unimatrix is a domain-agnostic knowledge engine whose behavior is currently hard-coupled to software delivery vocabulary through compiled constants. This feature externalizes four groups of runtime constants to a two-level TOML configuration system (`~/.unimatrix/config.toml` global, `~/.unimatrix/{hash}/config.toml` per-project), adds a `[profile]` preset system that maps knowledge-lifecycle archetypes to calibrated confidence weight vectors, and validates all security-critical config fields at startup with abort-on-violation semantics. Two hardcoded vocabulary fixes accompany the config work: `context_retrospective` is renamed to `context_cycle_review` across the entire codebase, and the `CycleParams.topic` field doc is neutralised to remove Agile/SDLC vocabulary.
 
 ---
 
 ## Functional Requirements
 
-### FR-001: Global config file loading
+### FR-01: Config File Loading
 
-The server MUST attempt to load `~/.unimatrix/config.toml` at startup. If the file does not exist, the server MUST start successfully using all compiled defaults. If the file is present and valid, settings MUST be applied before any subsystem is constructed and before any request is handled.
+The server loads `~/.unimatrix/config.toml` (global) and `~/.unimatrix/{hash}/config.toml` (per-project) at startup, after `ensure_data_directory()` resolves `ProjectPaths`, before any subsystem is constructed. When a file is absent, the compiled defaults apply with no error and no warning. When a file is present but malformed (TOML parse error or validation failure), startup aborts with a descriptive error identifying the file path and the violation.
 
-### FR-002: Per-project config file loading
+### FR-02: Two-Level Config Merge
 
-The server MUST attempt to load `{data_dir}/config.toml` (where `data_dir` is `~/.unimatrix/{sha256(canonical_project_root)[..16]}/`) as a second config layer. If the file does not exist, global config values apply. If the file is present and valid, per-project values MUST shadow the corresponding global values.
+Per-project config values shadow global values, which shadow compiled defaults. Merge semantics are replace (not append): a per-project field that is present overrides the entire corresponding global field; a per-project field that is absent falls through to the global value. For list fields (`categories`, `boosted_categories`, `session_capabilities`), a per-project list replaces the global list entirely — there is no append behavior. Both files are validated independently before merging; a violation in either aborts startup.
 
-### FR-003: Merge semantics
+### FR-03: Profile Preset System
 
-**Scalar fields** (strings, numbers, booleans): per-project value replaces global value. If absent from per-project config, the global value (or compiled default) is used.
+A `[profile]` TOML section with a single `preset` key selects one of five named behaviors: `authoritative`, `operational`, `empirical`, `collaborative`, or `custom`. Named presets expand to a fully-populated `ConfidenceParams` carrying all nine fields (six weights, `freshness_half_life_hours`, `alpha0`, `beta0`) without requiring any operator knowledge of the weight values. The default preset when `[profile]` is absent is `collaborative`. The `custom` preset activates the `[confidence]` section; named presets ignore `[confidence]` even if present.
 
-**List fields** (`categories`, `boosted_categories`, `session_capabilities`): a per-project list MUST entirely replace the corresponding global list. List fields are never appended or merged. Absence in the per-project config means the global list (or compiled default) is used unchanged.
+### FR-04: ConfidenceParams Struct Extension
 
-### FR-004: Config load insertion point
+`ConfidenceParams` in `unimatrix-engine/src/confidence.rs` is extended from three fields to nine fields: `w_base`, `w_usage`, `w_fresh`, `w_help`, `w_corr`, `w_trust` (all `f64`), plus the existing `freshness_half_life_hours`, `alpha0`, `beta0`. `Default` reproduces the compiled constants exactly (the `collaborative` preset). `compute_confidence` uses `params.w_*` instead of compiled weight constants. `freshness_score` uses `params.freshness_half_life_hours`. All callers of these functions update to pass `&ConfidenceParams`.
 
-Config MUST be loaded in `tokio_main_daemon` and `tokio_main_stdio` only. The load call MUST occur after `project::ensure_data_directory()` returns `paths` (since `paths.data_dir` is required for per-project config path resolution) and before any subsystem construction. `tokio_main_bridge`, `Command::Hook`, and export/import subcommands MUST NOT load config.
+### FR-05: Knowledge Category Externalization
 
-### FR-005: Externalize `[knowledge]` section
+When `[knowledge] categories` is set, the configured list replaces the compiled `INITIAL_CATEGORIES` (8 values) as the seed for `CategoryAllowlist`. A new `CategoryAllowlist::from_categories(Vec<String>)` constructor is added; the existing `CategoryAllowlist::new()` delegates to it using the compiled defaults. When no config is present, `new()` behavior is unchanged.
 
-Config MUST support the following `[knowledge]` section fields:
+### FR-06: Boosted Categories Externalization
 
-| Field | Type | Compiled default | Description |
-|-------|------|-----------------|-------------|
-| `categories` | `Vec<String>` | `["outcome","lesson-learned","decision","convention","pattern","procedure","duties","reference"]` | Domain category allowlist. Replaces `INITIAL_CATEGORIES`. |
-| `boosted_categories` | `Vec<String>` | `["lesson-learned"]` | Categories receiving the provenance boost in search re-ranking. |
-| `freshness_half_life_hours` | `f64` | `168.0` | Freshness decay half-life in hours. Replaces `FRESHNESS_HALF_LIFE_HOURS`. |
+When `[knowledge] boosted_categories` is set, `SearchService` builds its provenance-boost lookup from that list instead of the hardcoded `entry.category == "lesson-learned"` comparisons in `search.rs`. The field is stored as `HashSet<String>` at `SearchService` construction time. All four hardcoded string comparisons in `search.rs` are replaced with a `HashSet` lookup.
 
-### FR-006: Externalize `[server]` section
+### FR-07: Freshness Half-Life Externalization
 
-Config MUST support a `[server]` section with a single field:
+When `[knowledge] freshness_half_life_hours` is present, `freshness_score()` uses that value instead of the compiled `FRESHNESS_HALF_LIFE_HOURS` constant (168.0). The field uses `Option<f64>` — `None` means "absent from TOML, use preset's built-in value"; `Some(v)` means the operator explicitly supplied `v`. The compiled constant is retained as the backing value for `ConfidenceParams::default()` and the `collaborative` preset.
 
-| Field | Type | Compiled default | Description |
-|-------|------|-----------------|-------------|
-| `instructions` | `String` | Current `SERVER_INSTRUCTIONS` const | MCP server instructions returned during the initialize handshake. |
+### FR-08: Server Instructions Externalization
 
-### FR-007: Externalize `[agents]` section
+When `[server] instructions` is set, that string is used as `ServerInfo.instructions` in the MCP `initialize` handshake instead of the compiled `SERVER_INSTRUCTIONS` constant. The compiled constant is removed from `server.rs`.
 
-Config MUST support the following `[agents]` section fields:
+### FR-09: Agent Enrollment Externalization
 
-| Field | Type | Compiled default | Description |
-|-------|------|-----------------|-------------|
-| `default_trust` | `String` | `"permissive"` | Auto-enroll mode. `"permissive"` grants `[Read, Write, Search]`; `"strict"` grants `[Read, Search]`. |
-| `session_capabilities` | `Vec<String>` | `["Read","Write","Search"]` (permissive) | Explicit capability set for auto-enrolled agents. Overrides the `default_trust` capability derivation. |
+When `[agents] default_trust` and `session_capabilities` are set, unknown agents auto-enroll with the configured trust mode and capability set. `AgentRegistry::new(store, permissive: bool)` receives the `permissive` flag instead of reading `PERMISSIVE_AUTO_ENROLL`. `agent_resolve_or_enroll` in `unimatrix-store` gains a third parameter `session_caps: Option<&[Capability]>` — when `Some`, uses the provided capabilities; when `None`, uses the existing permissive/strict branch. All existing call sites pass `None`.
 
-### FR-008: Reserve `[confidence]` section
+### FR-10: Preset Resolution Pipeline
 
-`UnimatrixConfig` MUST include a `ConfidenceConfig` sub-struct with no fields and a `Default` impl. The `[confidence]` TOML section MUST be reserved and parseable (empty or absent) so that W3-1 can add fields without a config format break. No field in this section is consumed by W0-3.
+A single function `resolve_confidence_params(config: &UnimatrixConfig) -> Result<ConfidenceParams, ConfigError>` in `unimatrix-server/src/infra/config.rs` is the one location where preset selection converts to a populated `ConfidenceParams`. No other code determines which weight values or `freshness_half_life_hours` to use. Named presets use the ADR-005 weight table; `custom` uses `[confidence] weights` and `[knowledge] freshness_half_life_hours`. A helper `confidence_params_from_preset(preset: Preset) -> ConfidenceParams` (also in `config.rs`) constructs named-preset params for testing; calling it with `Preset::Custom` is a logic error and panics.
 
-### FR-009: Reserve `[cycle]` section
+### FR-11: `context_retrospective` → `context_cycle_review` Rename
 
-`UnimatrixConfig` MUST include a `CycleConfig` sub-struct with no fields and a `Default` impl. The `[cycle]` TOML section MUST be reserved and parseable (empty or absent) so that future features can add fields without a config format break. No field in this section is consumed by W0-3.
+The MCP tool formerly named `context_retrospective` is renamed to `context_cycle_review`. This is a hardcoded, non-configurable rename. The `#[tool(name = "...")]` attribute, the handler function name, and every reference across all crate types, test files, protocol files, skill files, research documents, and operational documents are updated in the same PR. No reference to `context_retrospective` remains anywhere in the repository after this change.
 
-### FR-010: File size enforcement
+### FR-12: CycleParams.topic Field Doc Update
 
-Before passing any config file to the TOML parser, the server MUST read at most 64 KB (65536 bytes). If the file exceeds this limit, startup MUST abort with an error identifying the file path and the size violation.
+The `CycleParams.topic` field doc comment in `tools.rs` no longer references "feature" as the canonical example. It conveys the domain-agnostic concept: a bounded unit of work tracked by any domain — feature, incident, campaign, case, sprint, or experiment.
 
-### FR-011: File permission enforcement (Unix only)
+### FR-13: Security Validation at Load Time
 
-On Unix systems (`#[cfg(unix)]`), the server MUST check file permissions on each config file it finds using `std::fs::metadata()` (follows symlinks):
+All security-critical config fields are validated in `validate_config()` immediately after TOML deserialization. Any violation aborts startup with a descriptive error. Validated fields: category name character set and length, category count, `boosted_categories` subset constraint, `freshness_half_life_hours` range, `instructions` length and injection scan, `preset` enum membership, custom weight presence and sum, `default_trust` allowlist, `session_capabilities` allowlist. There is no warn-and-continue path for security-critical fields.
 
-- World-writable (`mode & 0o002 != 0`): startup MUST abort with an error naming the file path and the violation.
-- Group-writable (`mode & 0o020 != 0`): the server MUST log a warning (tracing `warn!`) and continue startup.
+### FR-14: File Permission Enforcement
 
-This check applies independently to both the global and per-project config files. On non-Unix systems, these checks are skipped entirely.
+On Unix (`#[cfg(unix)]`), both config files are checked for world-writable permissions (`mode & 0o002 != 0`). A world-writable file aborts startup with an error identifying the file path and the violation. A group-writable file (`mode & 0o020 != 0`) logs a tracing warning and continues. This check runs before TOML parsing for each file. On non-Unix platforms the check is omitted.
 
-### FR-012: Post-parse field validation
+### FR-15: File Size Cap
 
-Immediately after deserialization, `validate_config()` MUST enforce all constraints listed in the Security Model section. Any single violation MUST abort startup with a descriptive error. No field silently falls back to a default after a violation is detected.
+Each config file is read with a 64 KB cap before being passed to the TOML parser. A file exceeding 64 KB causes startup to abort with an error before parsing begins.
 
-### FR-013: CategoryAllowlist seeding from config
+### FR-16: No-Config Backward Compatibility
 
-`CategoryAllowlist` MUST be constructed using the `categories` list from config (after validation). The existing `add_category()` method MUST be called in a loop to seed the allowlist. `CategoryAllowlist::new()` MUST continue to use the compiled `INITIAL_CATEGORIES` defaults (so existing tests that call `new()` remain valid). A `new_from_config(config: &KnowledgeConfig)` constructor (or equivalent) is the production path. `new()` MUST delegate to `new_from_config(&Default::default())` so test and production behavior share a single code path.
-
-### FR-014: Boosted-categories runtime replacement
-
-The four hardcoded `entry.category == "lesson-learned"` comparisons in `crates/unimatrix-server/src/services/search.rs` (lines 413, 418, 484, 489) MUST be replaced with a `HashSet<String>` membership test using the loaded `boosted_categories` set. After this change, no literal string `"lesson-learned"` in comparison position MUST remain in `search.rs`.
-
-### FR-015: Freshness half-life parameterization
-
-`FRESHNESS_HALF_LIFE_HOURS` in `crates/unimatrix-engine/src/confidence.rs` MUST NOT be used directly in `freshness_score()` computation. The loaded `freshness_half_life_hours` value MUST be threaded from the server config through the confidence computation call chain as a parameter. The compiled constant may remain as a documentation value but MUST NOT be the source of the runtime value once config is loaded.
-
-### FR-016: Agent auto-enroll config wiring
-
-`PERMISSIVE_AUTO_ENROLL` in `crates/unimatrix-server/src/infra/registry.rs` MUST be replaced by the configured `default_trust` value. `session_capabilities` from config MUST be used to derive the capability list passed to `agent_resolve_or_enroll`. The `permissive: bool` parameter to `SqlxStore::agent_resolve_or_enroll` is the insertion point; the capability list it selects MUST reflect the config value.
-
-### FR-017: Server instructions config wiring
-
-`SERVER_INSTRUCTIONS` const in `crates/unimatrix-server/src/server.rs` MUST be replaced by the loaded `[server] instructions` value when config is present. The compiled value is the default. `ServerInfo.instructions` at `server.rs:245` is the target field.
-
-### FR-018: `context_retrospective` renamed to `context_cycle_review`
-
-The `#[tool(name = "context_retrospective", ...)]` attribute in `tools.rs` MUST be changed to `#[tool(name = "context_cycle_review", ...)]`. The handler function name `context_retrospective` MUST be renamed to `context_cycle_review`. All other occurrences of `context_retrospective` as a tool name string or caller reference MUST be updated across the entire codebase. This rename is hardcoded, not configurable.
-
-### FR-019: `CycleParams.topic` field doc neutralised
-
-The doc comment on `CycleParams.topic` that currently reads `"Feature cycle identifier (e.g., 'col-022')"` MUST be replaced with language that communicates the domain-agnostic concept: a bounded work unit that a domain tracks, such as a feature, incident, campaign, case, or sprint. The example MUST NOT use software-delivery vocabulary as the only illustration.
-
-### FR-020: `dirs::home_dir()` `None` handling
-
-If `dirs::home_dir()` returns `None`, config loading MUST degrade gracefully: the server starts using compiled defaults, and a tracing `warn!` is emitted noting that the home directory could not be resolved. The server MUST NOT panic or abort startup in this case.
-
-### FR-021: Malformed TOML error handling
-
-If a config file is present, passes size and permission checks, but contains malformed TOML or fails deserialization, startup MUST abort with an error that identifies the file path and the parse error detail.
+When neither config file is present, all subsystems receive values identical to the pre-dsn-001 compiled defaults. No existing test is modified as a result of this feature. The `collaborative` preset equals `ConfidenceParams::default()` exactly — this invariant is enforced by a mandatory unit test (see AC-21).
 
 ---
 
 ## Non-Functional Requirements
 
-### NFR-001: Startup time impact
+### NFR-01: Performance — Startup Only
 
-Config loading, validation, and subsystem wiring MUST add no more than 5 ms to startup time on an average developer machine (SSD, local filesystem). TOML parsing of a 64 KB file with the `toml 0.8` crate is well under 1 ms; validation is O(n) on category count (≤ 64 entries); ContentScanner regex matching on an 8 KB instructions string is bounded. This requirement is verified by observation, not automated measurement.
+Config loading and validation runs exactly once per server start, in the main startup path before any request is handled. No config value is re-read, re-parsed, or re-validated during request handling or background ticks. The startup overhead budget for config load is under 5 ms (file reads + TOML parse + validation for typical config files under 4 KB).
 
-### NFR-002: Memory overhead
+### NFR-02: Memory
 
-`Arc<UnimatrixConfig>` shared across subsystems. The maximum memory contribution of config at runtime is bounded by: 64 categories × 64 bytes max each = 4 KB for categories; 8 KB for instructions; negligible for scalar fields. Total config memory overhead MUST NOT exceed 32 KB.
+The resolved `ConfidenceParams` is passed as `Arc<ConfidenceParams>` to the background tick task. No other subsystem retains a reference to `UnimatrixConfig` after startup completes. The config struct itself is not stored on any long-lived component.
 
-### NFR-003: Default-only startup compatibility
+### NFR-03: Crate Boundary
 
-When no config file exists at either path, all compiled defaults apply and all existing tests MUST pass without modification. This is the zero-config contract.
+No `Arc<UnimatrixConfig>` crosses any crate boundary. Config values that cross into `unimatrix-store` or `unimatrix-engine` are passed as plain primitive values: `bool`, `Vec<String>`, `HashSet<String>`, `Vec<Capability>`, or `ConfidenceParams`. The `toml` crate is added to `unimatrix-server/Cargo.toml` only.
 
-### NFR-004: Platform compatibility
+### NFR-04: Testability
 
-File permission checks MUST be gated with `#[cfg(unix)]`. The config loading path MUST compile and run correctly on Linux and macOS. Windows behavior: size and TOML validation apply; permission checks are skipped.
+`validate_config()` is independently testable without a running tokio runtime, store, or embedded server. The only external dependency it requires is `ContentScanner::global()`, which is a lazy singleton warmable before test calls. New tests extend the existing test infrastructure (fixtures, helpers) in `unimatrix-server`; they do not create isolated scaffolding.
 
-### NFR-005: Thread safety
+### NFR-05: No Schema Migration
 
-`Arc<UnimatrixConfig>` is the sharing mechanism. `UnimatrixConfig` fields are all `Send + Sync` (plain Rust types: `String`, `Vec<String>`, `f64`, `bool`). No `Mutex` is required on the config struct itself; it is immutable after startup.
+Config is purely runtime state. No new DB tables, no schema version bump, no migration path. Existing DB entries with `category = "lesson-learned"` continue to receive the provenance boost under the default config; behavior changes after config-driven restart only.
 
-### NFR-006: `toml` crate version pin
+### NFR-06: rmcp Version
 
-`toml = "0.8"` (exact pin, not caret) MUST be added to `unimatrix-server/Cargo.toml`. No other crate in the workspace currently depends on `toml`; pinning prevents transitive version drift.
+`rmcp = "=0.16.0"` is not changed. No rmcp API is modified by this feature.
+
+### NFR-07: Windows Compatibility
+
+File permission checking is gated `#[cfg(unix)]`. The server compiles and runs on Windows without the permission check. All other config behaviors are platform-independent.
 
 ---
 
 ## Acceptance Criteria
 
-Each criterion carries its ID from SCOPE.md. Verification method is stated for each.
+### Default / No-Config Behavior
 
-**AC-01** — When no `~/.unimatrix/config.toml` or per-project `config.toml` exists, the server starts with all compiled default values and all existing tests pass without modification.
-*Verification*: Run full test suite with no config files present. All tests pass.
+**AC-01** — When no `~/.unimatrix/config.toml` and no per-project `config.toml` exist, the server starts with all existing default values. All existing unit and integration tests pass without modification.
+- Verification: run the full test suite with no config files present; assert zero test changes.
 
-**AC-02** — When `[knowledge] categories` is set in config, the loaded list replaces the default 8-category allowlist and `CategoryAllowlist` reflects the new list for all validation calls.
-*Verification*: Unit test: construct `CategoryAllowlist` from a config with a custom category list; validate that a category from the custom list passes and a category from the default list fails.
+**AC-22** — When no `[profile]` section is present, the server uses the `collaborative` preset (current compiled defaults). The effective `ConfidenceParams` is equal to `ConfidenceParams::default()`.
+- Verification: unit test asserting `confidence_params_from_preset(Preset::Collaborative) == ConfidenceParams::default()` (the mandatory SR-10 test).
 
-**AC-03** — When `[knowledge] boosted_categories` is set, those categories receive the provenance boost in search re-ranking; no literal `"lesson-learned"` string comparison remains in `search.rs`.
-*Verification*: Code review confirms no `== "lesson-learned"` in `search.rs`. Unit test: configure `boosted_categories = ["custom-boost"]`, verify boost applied to that category and not to `"lesson-learned"`.
+### Knowledge Config
 
-**AC-04** — When `[knowledge] freshness_half_life_hours` is set, `freshness_score()` uses that value instead of the compiled `168.0` constant.
-*Verification*: Unit test: call `freshness_score()` with `half_life = 336.0`; verify that a 336-hour-old entry scores 0.5. No reference to `FRESHNESS_HALF_LIFE_HOURS` constant remains in `freshness_score()` body.
+**AC-02** — When `[knowledge] categories` is set to a valid list, `CategoryAllowlist` reflects that list instead of the compiled 8-category default.
+- Verification: construct `CategoryAllowlist::from_categories(vec![...])` with a custom list; assert that `is_allowed("outcome")` returns true only when "outcome" is in the custom list.
 
-**AC-05** — When `[server] instructions` is set, that string appears in `ServerInfo.instructions` returned during the MCP initialize handshake.
-*Verification*: Unit test: construct `UnimatrixServer` with a config containing a custom instructions string; verify `server_info.instructions == Some(custom_string)`.
+**AC-03** — When `[knowledge] boosted_categories` is set, those categories receive the provenance boost in search re-ranking. The hardcoded string comparison `entry.category == "lesson-learned"` no longer exists in `search.rs`.
+- Verification: grep for the literal string `"lesson-learned"` in `search.rs` — must not be found. Integration test with a custom `boosted_categories` showing boost applied to the configured category and not to "lesson-learned" when it is absent from the list.
 
-**AC-06** — When `[agents] default_trust` and `session_capabilities` are set, unknown agents auto-enroll with the configured capabilities.
-*Verification*: Unit test: configure `default_trust = "strict"`; call `agent_resolve_or_enroll` for an unknown agent; assert capabilities are `[Read, Search]`. Separate test: configure `session_capabilities = ["Read"]`; assert capabilities are `[Read]`.
+**AC-04** — When `[knowledge] freshness_half_life_hours` is set to a valid value, `freshness_score()` uses that value instead of 168.0.
+- Verification: unit test calling `freshness_score()` with a `ConfidenceParams` carrying the override value; assert the result differs from the default at a known age.
 
-**AC-07** — A per-project config at `{data_dir}/config.toml` overrides the global config for all keys it specifies; unspecified keys fall through to global or compiled defaults.
-*Verification*: Unit test: global config sets `freshness_half_life_hours = 500.0`; per-project config sets `freshness_half_life_hours = 24.0`; merged config reads `24.0`. Separate test: global sets `categories = ["a"]`; per-project specifies no `categories`; merged config reads `["a"]`.
+### Server Config
 
-**AC-08** — A config file with world-writable permissions (`mode & 0o002 != 0`) causes startup to abort with an error message identifying the file path and violation.
-*Verification*: Unit test (Unix only): write a temp config file, `chmod 777`; assert `load_config()` returns `Err` containing the file path.
+**AC-05** — When `[server] instructions` is set, that string appears in `ServerInfo.instructions` returned during the MCP `initialize` handshake.
+- Verification: integration test with a config file setting `instructions = "Test instructions"` and asserting the field appears in the `initialize` response.
 
-**AC-09** — A config file with group-writable permissions (`mode & 0o020 != 0`) logs a warning but does not abort startup.
-*Verification*: Unit test (Unix only): write a temp config file, `chmod 664`; assert `load_config()` returns `Ok` and a warning is emitted (captured via `tracing-test` or equivalent).
+### Agents Config
 
-**AC-10** — A `[knowledge] categories` entry with characters outside `[a-z0-9_-]`, length > 64, or a total category count > 64 causes startup to abort with a descriptive error.
-*Verification*: Unit tests: (a) category with uppercase → `Err`; (b) category with space → `Err`; (c) category of 65 chars → `Err`; (d) 65-element list → `Err`.
+**AC-06** — When `[agents] default_trust = "strict"` and `session_capabilities` are set, auto-enrolled unknown agents receive `[Read, Search]` (not `[Read, Write, Search]`).
+- Verification: integration test enrolling a new agent with strict config; assert the enrolled agent's capability set matches the configured value.
 
-**AC-11** — A `[knowledge] boosted_categories` value not present in `[knowledge] categories` causes startup to abort with an error naming the invalid value.
-*Verification*: Unit test: `categories = ["a","b"]`, `boosted_categories = ["c"]`; assert `Err` containing `"c"`.
+### Two-Level Merge
 
-**AC-12** — A `[server] instructions` value matching any injection pattern in `ContentScanner` causes startup to abort with an error identifying the triggering pattern category.
-*Verification*: Unit test: set `instructions` to a known injection-triggering string (from `ContentScanner` test corpus); assert `Err`.
+**AC-07** — A per-project config at `{data_dir}/config.toml` overrides the global `~/.unimatrix/config.toml` for all fields it specifies. Unspecified fields fall through to the global value or compiled defaults.
+- Verification: integration test with global config setting `categories = ["a", "b"]` and per-project setting `categories = ["c"]`; assert effective categories are `["c"]` only.
 
-**AC-13** — The MCP tool formerly named `context_retrospective` is now named `context_cycle_review`; all callers in protocols, skills, tests, and other files are updated; no occurrence of `context_retrospective` as a tool-name or caller reference remains in the codebase.
-*Verification*: `grep -r "context_retrospective" .` returns zero results after the rename (allowing only this specification document and historical feature docs). Integration test in `test_protocol.py` asserts `context_cycle_review` is in the server's tool list.
+### File Permissions
 
-**AC-14** — The `CycleParams.topic` field doc no longer references "feature" as the primary example; the doc communicates the domain-agnostic concept of a bounded work unit.
-*Verification*: Code review of `tools.rs:CycleParams.topic` doc comment.
+**AC-08** — A config file with world-writable permissions (`mode & 0o002 != 0`) causes server startup to abort with an error message identifying the file path and the violation.
+- Verification: unit test creating a temp file with mode 0o666, calling `check_permissions(path)`, asserting `Err(ConfigError::WorldWritable(...))`.
 
-**AC-15** — A config file exceeding 64 KB causes startup to abort with an error before TOML parsing begins.
-*Verification*: Unit test: write a temp file of 65537 bytes; assert `load_config()` returns `Err` before any TOML parse call.
+**AC-09** — A config file with group-writable permissions (`mode & 0o020 != 0`) logs a tracing warning and does not abort startup.
+- Verification: unit test with mode 0o664; assert `Ok(())` return and warning emission.
+
+### Validation — Knowledge
+
+**AC-10** — A `[knowledge] categories` entry containing characters outside `[a-z0-9_-]`, length > 64, or a total category count > 64 causes startup to abort with a descriptive error.
+- Verification: unit tests for each violation: invalid chars (e.g., "Cat!"), length 65, count 65.
+
+**AC-11** — A `[knowledge] boosted_categories` value not present in the validated `categories` set causes startup to abort with an error naming the invalid value.
+- Verification: unit test with `categories = ["a"]` and `boosted_categories = ["b"]`; assert error names "b".
 
 **AC-16** — A `[knowledge] freshness_half_life_hours` value of `0.0`, negative, `NaN`, or `Infinity` causes startup to abort with a descriptive error.
-*Verification*: Unit tests: one for each invalid value.
+- Verification: unit tests for each: `0.0`, `-1.0`, `f64::NAN`, `f64::INFINITY`.
 
-**AC-17** — A `[knowledge] freshness_half_life_hours` value greater than `87600.0` causes startup to abort with a descriptive error.
-*Verification*: Unit test: value `87600.1` → `Err`; value `87600.0` → `Ok`.
+**AC-17** — A `[knowledge] freshness_half_life_hours` value greater than `87600.0` (10 years) causes startup to abort with a descriptive error.
+- Verification: unit test with `87600.001`; assert error.
+
+### Validation — Server
+
+**AC-12** — A `[server] instructions` value matching any injection pattern in `ContentScanner` causes startup to abort with an error identifying the triggering pattern category.
+- Verification: unit test with a known injection string; assert `Err(ConfigError::InstructionsInjection(...))`.
+
+**AC-20** — A `[server] instructions` value exceeding 8 KB (8192 bytes) causes startup to abort with an error before `ContentScanner` runs.
+- Verification: unit test with a 8193-byte string; assert error before scan.
+
+### Validation — Preset
+
+**AC-23** — When `preset` is `authoritative`, `operational`, `empirical`, or `collaborative`, the corresponding weight vector and `freshness_half_life_hours` from the table below are used. The `[confidence]` section is ignored even if present. A warning is logged if `[confidence] weights` is present with a named preset.
+
+| Preset | w_base | w_usage | w_fresh | w_help | w_corr | w_trust | SUM  | half_life_h |
+|--------|--------|---------|---------|--------|--------|---------|------|-------------|
+| `collaborative` | 0.16 | 0.16 | 0.18 | 0.12 | 0.14 | 0.16 | 0.92 | 168.0 |
+| `authoritative` | 0.14 | 0.14 | 0.10 | 0.14 | 0.18 | 0.22 | 0.92 | 8760.0 |
+| `operational`   | 0.14 | 0.18 | 0.24 | 0.08 | 0.18 | 0.10 | 0.92 | 720.0 |
+| `empirical`     | 0.12 | 0.16 | 0.34 | 0.04 | 0.06 | 0.20 | 0.92 | 24.0 |
+
+- Verification: unit tests asserting `confidence_params_from_preset(Preset::Authoritative)` returns the exact values from this table. Confirm `[confidence] weights` values are not reflected in the resolved params when a named preset is active.
+
+**AC-24** — When `preset = "custom"`, all six `[confidence] weights` keys are required. Startup aborts with a descriptive error naming the missing field if any are absent.
+- Verification: unit test with `preset = custom` and `weights` missing entirely; assert error. Unit test with five of six keys; assert error naming the missing key.
+
+**AC-25** — `freshness_half_life_hours` precedence for all combinations:
+
+| `[profile] preset` | `[knowledge] freshness_half_life_hours` | Effective value |
+|--------------------|----------------------------------------|-----------------|
+| named (non-custom) | absent | Preset's built-in value from AC-23 table |
+| named (non-custom) | present | `[knowledge]` value (operator override) |
+| `custom` | absent | **Startup abort** — required for `custom` |
+| `custom` | present | `[knowledge]` value |
+
+- Verification: four unit tests, one per row. The `custom`+absent case asserts `Err(ConfigError::CustomPresetMissingHalfLife)`.
+
+**AC-26** — An unrecognised `preset` value causes startup to abort with an error listing the five valid values.
+- Verification: TOML deserialization of `preset = "unknown"` returns an error from serde before `validate_config` runs (because `Preset` uses `#[serde(rename_all = "lowercase")]` with no catch-all variant).
+
+### Validation — Agents
 
 **AC-18** — A `[agents] default_trust` value other than `"permissive"` or `"strict"` causes startup to abort with an error listing valid values.
-*Verification*: Unit test: `default_trust = "open"` → `Err` containing `["permissive","strict"]`.
+- Verification: unit test with `default_trust = "admin"`.
 
 **AC-19** — A `[agents] session_capabilities` list containing any value other than `"Read"`, `"Write"`, or `"Search"` (including `"Admin"`) causes startup to abort with an error.
-*Verification*: Unit test: `session_capabilities = ["Read","Admin"]` → `Err`.
+- Verification: unit test with `session_capabilities = ["Admin"]`.
 
-**AC-20** — A `[server] instructions` value exceeding 8 KB causes startup to abort with an error before `ContentScanner` runs.
-*Verification*: Unit test: `instructions` of 8193 bytes → `Err` before scanner invocation (verify by confirming error message identifies length, not injection).
+### Validation — File Size
 
-**AC-21** — All new validation paths have unit tests. All existing unit and integration tests continue to pass.
-*Verification*: `cargo test --workspace` passes with zero failures. New tests cover every new `Err` path in `validate_config()`.
+**AC-15** — A config file exceeding 64 KB causes startup to abort with an error before TOML parsing begins.
+- Verification: unit test writing a 65537-byte temp file; assert `Err(ConfigError::FileTooLarge(...))`.
+
+### Tool Rename
+
+**AC-13** — The MCP tool formerly named `context_retrospective` is now named `context_cycle_review`. No reference to `context_retrospective` remains in the repository (Rust source, Python tests, protocol files, skill files, research documents, or operational documents).
+- Verification: `grep -r "context_retrospective" .` in the repository root returns zero results. See SR-05 Rename Checklist below for the exhaustive file list.
+
+### CycleParams Doc
+
+**AC-14** — The `CycleParams.topic` field doc no longer references "feature" as the canonical example. The doc communicates the domain-agnostic concept of a bounded work unit tracked by any domain.
+- Verification: read `tools.rs`; assert the word "feature" does not appear as the primary example in the `topic` field doc.
+
+### Preset Cold-Start
+
+**AC-27** — The `ConfidenceParams` struct carries the effective weight vector (from the active preset or `custom` values) at startup. W3-1 reads this struct for GNN cold-start without any additional config parsing.
+- Verification: assert `ConfidenceParams` has exactly nine public fields (`w_base`, `w_usage`, `w_fresh`, `w_help`, `w_corr`, `w_trust`, `freshness_half_life_hours`, `alpha0`, `beta0`) and that `resolve_confidence_params` populates all of them regardless of which preset is active.
+
+### Test Coverage
+
+**AC-21** — All new validation paths have unit tests. The mandatory SR-10 test is present in `unimatrix-server`:
+```rust
+assert_eq!(
+    confidence_params_from_preset(Preset::Collaborative),
+    ConfidenceParams::default()
+);
+```
+All existing unit and integration tests continue to pass.
+- Verification: CI must be green. The SR-10 test must be present as a named test with the comment "SR-10: If this test fails, fix the weight table, not the test."
 
 ---
 
 ## Domain Models
 
-### `UnimatrixConfig`
+### UnimatrixConfig
 
-The top-level deserialization target. All sub-structs derive `serde::Deserialize` and `Default`. The `Default` impl for each sub-struct reproduces current hardcoded values exactly.
-
-```
-UnimatrixConfig {
-    knowledge: KnowledgeConfig,    // [knowledge] section
-    server:    ServerConfig,       // [server] section
-    agents:    AgentsConfig,       // [agents] section
-    confidence: ConfidenceConfig,  // [confidence] section — reserved, no fields
-    cycle:     CycleConfig,        // [cycle] section — reserved, no fields
-}
-```
-
-**KnowledgeConfig**
-
-| Field | Rust type | `Default` value |
-|-------|-----------|-----------------|
-| `categories` | `Vec<String>` | `INITIAL_CATEGORIES` (8 values) |
-| `boosted_categories` | `Vec<String>` | `vec!["lesson-learned"]` |
-| `freshness_half_life_hours` | `f64` | `168.0` |
-
-**ServerConfig**
-
-| Field | Rust type | `Default` value |
-|-------|-----------|-----------------|
-| `instructions` | `String` | `SERVER_INSTRUCTIONS` const value |
-
-**AgentsConfig**
-
-| Field | Rust type | `Default` value |
-|-------|-----------|-----------------|
-| `default_trust` | `String` | `"permissive"` |
-| `session_capabilities` | `Vec<String>` | `["Read","Write","Search"]` |
-
-**ConfidenceConfig** — empty struct, no fields, reserved for W3-1.
-
-**CycleConfig** — empty struct, no fields, reserved for future use.
-
-### Validation rules (enforced in `validate_config()`)
-
-| Field path | Constraint | Error on violation |
-|-----------|-----------|-------------------|
-| `knowledge.categories` each | matches `^[a-z0-9_-]+$`, length ≤ 64 | startup abort |
-| `knowledge.categories` total count | ≤ 64 | startup abort |
-| `knowledge.boosted_categories` each | must be a member of the validated `categories` set | startup abort, names invalid value |
-| `knowledge.freshness_half_life_hours` | finite (`!is_nan() && !is_infinite()`), `> 0.0`, `≤ 87600.0` | startup abort |
-| `server.instructions` length | `≤ 8192` bytes (UTF-8 byte length) | startup abort before scan |
-| `server.instructions` content | `ContentScanner::global().scan_title()` — no injection match | startup abort, names pattern category |
-| `agents.default_trust` | one of `{"permissive","strict"}` (exact, case-sensitive) | startup abort, lists valid values |
-| `agents.session_capabilities` each | one of `{"Read","Write","Search"}` (exact, case-sensitive; `Admin` excluded) | startup abort |
-
-### Load order and merge algorithm
+Top-level config struct in `unimatrix-server/src/infra/config.rs`. Five sub-structs, all optional in TOML (absent sections use compiled defaults via `#[serde(default)]`). `CycleConfig` is absent — removed; the vocabulary fix it reserved for is a hardcoded rename.
 
 ```
-fn load_config(paths: &ProjectPaths) -> Result<UnimatrixConfig>:
-    1. global_config = try_load_file("~/.unimatrix/config.toml")?
-       → on absent: UnimatrixConfig::default()
-       → on present: size_check → permission_check → toml::from_str → validate_config
-    2. project_config = try_load_file("{paths.data_dir}/config.toml")?
-       → same pipeline
-    3. merged = merge(global_config, project_config)
-       scalar fields:  project value replaces global if project file contained the section/field
-       list fields:    project list replaces global list if project file contained the section/field
-    4. return merged
+UnimatrixConfig
+  └── profile:    ProfileConfig     [profile]    — preset selection
+  └── knowledge:  KnowledgeConfig   [knowledge]  — categories, freshness
+  └── server:     ServerConfig      [server]     — instructions string
+  └── agents:     AgentsConfig      [agents]     — trust, capabilities
+  └── confidence: ConfidenceConfig  [confidence] — weights (custom only)
 ```
 
-The merge step distinguishes "field not present in file" from "field set to default value" by using `Option<T>` intermediate types during deserialization, then resolving to `T` during merge. The final `UnimatrixConfig` exposes only `T`, not `Option<T>`.
+### Preset
 
-### Ubiquitous language
+Enum in `unimatrix-server/src/infra/config.rs`. Five variants:
 
-| Term | Definition |
-|------|-----------|
-| **Global config** | `~/.unimatrix/config.toml` — applies to all server instances for a user |
-| **Per-project config** | `~/.unimatrix/{hash}/config.toml` — applies to one project's server instance |
-| **Compiled default** | The value hardcoded in Rust source that applies when no config is present |
-| **Category allowlist** | The set of valid category strings for knowledge entries; operator-configurable |
-| **Boosted categories** | The subset of categories that receive `PROVENANCE_BOOST` in search re-ranking |
-| **Provenance boost** | A fixed additive score (`PROVENANCE_BOOST = 0.02`) applied to entries in boosted categories during re-ranking |
-| **Freshness half-life** | Hours after which a knowledge entry's freshness score falls to 0.5 |
-| **Permissive mode** | Auto-enroll mode granting `[Read, Write, Search]` to unknown agents |
-| **Strict mode** | Auto-enroll mode granting `[Read, Search]` to unknown agents |
-| **validate_config** | The function that enforces all security-critical constraints after deserialization |
-| **World-writable** | Unix file mode bit `0o002` set; any local user can overwrite the file |
-| **Group-writable** | Unix file mode bit `0o020` set; any member of the file's group can overwrite it |
+| Variant | TOML string | Weight source |
+|---------|-------------|---------------|
+| `Collaborative` | `"collaborative"` | Compiled defaults (= `ConfidenceParams::default()`) |
+| `Authoritative` | `"authoritative"` | ADR-005 table |
+| `Operational` | `"operational"` | ADR-005 table |
+| `Empirical` | `"empirical"` | ADR-005 table |
+| `Custom` | `"custom"` | `[confidence] weights` + `[knowledge] freshness_half_life_hours` |
+
+Default: `Preset::Collaborative`. `#[serde(rename_all = "lowercase")]` maps TOML strings to enum variants; an unrecognised string is a serde error (fails before validation).
+
+### ConfidenceParams
+
+Struct in `unimatrix-engine/src/confidence.rs`. Nine fields. The single carrier for all confidence tuning parameters. `Default` reproduces compiled constants. W3-1 will add `Option<LearnedWeights>` without changing any call site using `Default`.
+
+| Field | Type | Default | Role |
+|-------|------|---------|------|
+| `w_base` | f64 | 0.16 | Weight: base quality (status + trust_source) |
+| `w_usage` | f64 | 0.16 | Weight: usage frequency |
+| `w_fresh` | f64 | 0.18 | Weight: freshness (recency) |
+| `w_help` | f64 | 0.12 | Weight: helpfulness (Bayesian posterior) |
+| `w_corr` | f64 | 0.14 | Weight: correction chain quality |
+| `w_trust` | f64 | 0.16 | Weight: creator trust level |
+| `freshness_half_life_hours` | f64 | 168.0 | Exponential decay parameter for `freshness_score()` |
+| `alpha0` | f64 | 3.0 | Bayesian prior — helpfulness alpha |
+| `beta0` | f64 | 3.0 | Bayesian prior — helpfulness beta |
+
+Sum invariant: `w_base + w_usage + w_fresh + w_help + w_corr + w_trust == 0.92` (tolerance `(sum - 0.92).abs() < 1e-9`). Not `<= 1.0` — the SCOPE.md comment is incorrect on this point; the ADR-005 invariant governs.
+
+### CategoryAllowlist
+
+Struct in `unimatrix-server/src/infra/categories.rs`. Two constructors:
+- `new()` — delegates to `from_categories(INITIAL_CATEGORIES.to_vec())`. Preserves all existing call sites.
+- `from_categories(cats: Vec<String>) -> Self` — seeds the allowlist from the supplied list. Called from `main.rs` after config load.
+
+### ConfigError
+
+Error type returned by `load_config`, `validate_config`, and `resolve_confidence_params`. Variants must include (at minimum): `FileTooLarge`, `WorldWritable`, `MalformedToml`, `InvalidCategoryChar`, `TooManyCategories`, `InvalidCategoryLength`, `BoostedCategoryNotInAllowlist`, `InvalidHalfLifeValue`, `HalfLifeOutOfRange`, `InstructionsTooLong`, `InstructionsInjection`, `InvalidDefaultTrust`, `InvalidSessionCapability`, `CustomPresetMissingWeights`, `CustomPresetMissingHalfLife`, `CustomWeightOutOfRange`, `CustomWeightSumInvariant`.
+
+### context_cycle_review (formerly context_retrospective)
+
+MCP tool that analyzes observation data for a named work cycle. The tool concept is domain-neutral. The rename removes the only remaining Agile-vocabulary MCP tool name. Internal operation (draining the cycle accumulator, running detection rules, generating the structured report) is unchanged by this feature.
 
 ---
 
 ## User Workflows
 
-### Workflow 1: Default (no config)
+### Workflow 1: Deploy Unimatrix for a New Domain (e.g., Legal)
 
-1. Operator installs and runs Unimatrix with no config files present.
-2. Server starts; `load_config()` finds no files; `UnimatrixConfig::default()` is used.
-3. All existing behavior is preserved identically.
+1. Operator creates `~/.unimatrix/config.toml`.
+2. Sets `[profile] preset = "authoritative"` — selects the weight vector calibrated for long-lived authoritative documents (W_TRUST dominant, W_FRESH minimal, half_life 8760h).
+3. Sets `[knowledge] categories` to legal-domain terms (e.g., `["ruling", "statute", "brief", "precedent", "memo"]`).
+4. Sets `[knowledge] boosted_categories = ["ruling"]` to elevate primary sources in search.
+5. Sets `[server] instructions` to domain-appropriate agent guidance.
+6. Starts the server. Validation runs; startup succeeds or aborts with a descriptive error.
+7. All confidence scoring uses the `authoritative` weight vector from the first knowledge entry onward.
 
-### Workflow 2: Domain customization (global config)
+### Workflow 2: Per-Project Override
 
-1. Operator creates `~/.unimatrix/config.toml` with domain-specific settings (e.g., legal knowledge base with `freshness_half_life_hours = 8760.0`, custom categories).
-2. Server starts; global config is loaded, size-checked, permission-checked, parsed, and validated.
-3. `CategoryAllowlist` is seeded from the configured category list; `freshness_score()` uses 8760.0; server instructions reflect operator's text.
-4. All subsequent knowledge operations use the domain-specific parameters.
+1. Operator has a global config with `preset = "authoritative"`.
+2. For a specific fast-moving project (e.g., an incident response system), creates `~/.unimatrix/{hash}/config.toml`.
+3. Sets `[profile] preset = "operational"` in the per-project file.
+4. The global `categories` apply (not overridden); the per-project `preset` overrides the global preset.
+5. Server uses `operational` weights (W_FRESH dominant, half_life 720h) for this project.
 
-### Workflow 3: Per-project override
+### Workflow 3: Expert Custom Weights
 
-1. Operator has a global config with `freshness_half_life_hours = 8760.0`.
-2. For a specific project, operator creates `~/.unimatrix/{hash}/config.toml` with `freshness_half_life_hours = 24.0`.
-3. Server starts for that project; global config loads first, per-project config loads second; merged config uses `24.0` for this project.
-4. Other projects (with no per-project config) continue using `8760.0`.
+1. Operator has domain science justification for a specific weight distribution.
+2. Sets `[profile] preset = "custom"` in config.
+3. Sets all six weights in `[confidence] weights = { base = ..., usage = ..., fresh = ..., help = ..., corr = ..., trust = ... }`.
+4. Sets `[knowledge] freshness_half_life_hours = ...` (required for `custom`).
+5. Server validates: all six keys present, each in `[0.0, 1.0]`, sum equals 0.92 within tolerance, `freshness_half_life_hours` present and in range.
 
-### Workflow 4: Security violation — startup abort
+### Workflow 4: Operator Calling context_cycle_review
 
-1. An adversary or misconfigured tool sets a config file to `0o666` (world-writable).
-2. Server startup reaches the permission check; detects `mode & 0o002 != 0`.
-3. Startup aborts with a message: `"config file {path} is world-writable; refusing to start"`.
-4. Operator corrects permissions (`chmod 600`) and restarts.
-
-### Workflow 5: Tool callers after rename
-
-1. Protocol or skill file calls `context_retrospective`.
-2. After this feature ships, the MCP tool no longer exists under that name.
-3. The rename to `context_cycle_review` must be applied to all caller files in the same PR.
-4. Callers use `context_cycle_review` going forward.
-
----
-
-## SR-05 Exhaustive Rename Checklist: `context_retrospective` → `context_cycle_review`
-
-This checklist covers every location where `context_retrospective` appears as a tool name, caller reference, string literal, or documentation identifier. Build passing is necessary but insufficient — all non-Rust files must be updated in the same PR.
-
-The search `grep -r "context_retrospective" .` was run against the full workspace. Results are grouped by file type and update requirement.
-
-### Rust source files (compiled — build will fail if missed)
-
-| File | Line(s) | What to change |
-|------|---------|----------------|
-| `crates/unimatrix-server/src/mcp/tools.rs` | `#[tool(name = "context_retrospective", ...)]` attr | Change to `name = "context_cycle_review"` |
-| `crates/unimatrix-server/src/mcp/tools.rs` | `async fn context_retrospective(` | Rename function to `context_cycle_review` |
-| `crates/unimatrix-server/src/mcp/tools.rs` | `operation: "context_retrospective".to_string()` (audit log, ~line 1457) | Change to `"context_cycle_review"` |
-| `crates/unimatrix-server/src/mcp/tools.rs` | `operation: "context_retrospective/lesson-learned".to_string()` (~line 1734) | Change to `"context_cycle_review/lesson-learned"` |
-| `crates/unimatrix-server/src/mcp/tools.rs` | `"context_cycle"` description mentions `context_retrospective` ("confirm via context_retrospective", ~line 1505 and ~line 1560) | Update both cross-references to `context_cycle_review` |
-| `crates/unimatrix-server/src/mcp/tools.rs` | Doc comment above `RetrospectiveParams` struct: "Parameters for the context_retrospective tool." | Update to `context_cycle_review` |
-| `crates/unimatrix-server/src/mcp/tools.rs` | Doc comment on `write_lesson_learned`: "Called inside a tokio::spawn from context_retrospective." (~line 1617) | Update to `context_cycle_review` |
-| `crates/unimatrix-server/src/server.rs` | Comment: "Shared with UDS listener; drained by context_retrospective handler." (~line 207) | Update comment |
-| `crates/unimatrix-server/src/server.rs` | Comment: "features that complete without calling `context_retrospective` or `context_cycle`." (~line 147) | Update comment |
-| `crates/unimatrix-server/src/server.rs` | Comment: "context_retrospective" in `PendingEntriesAnalysis` doc (~line 65) | Update comment |
-| `crates/unimatrix-observe/src/types.rs` | Comment: "Complete analysis output returned by context_retrospective." (~line 221) | Update to `context_cycle_review` |
-| `crates/unimatrix-observe/src/session_metrics.rs` | `assert_eq!(classify_tool("context_retrospective"), "other")` (~line 601) | Change test string to `"context_cycle_review"` |
-
-### Python integration test files (not compiled — build will not catch)
-
-| File | Line(s) | What to change |
-|------|---------|----------------|
-| `product/test/infra-001/harness/client.py` | `def context_retrospective(self, ...)` (~line 629) | Rename method to `context_cycle_review` |
-| `product/test/infra-001/harness/client.py` | `return self.call_tool("context_retrospective", args, ...)` (~line 642) | Change tool name string to `"context_cycle_review"` |
-| `product/test/infra-001/suites/test_tools.py` | Comment `# === context_retrospective (col-002)` (~line 768) | Update comment |
-| `product/test/infra-001/suites/test_tools.py` | Comment `# === context_retrospective baseline comparison (col-002b)` (~line 789) | Update comment |
-| `product/test/infra-001/suites/test_tools.py` | Comment `# === context_retrospective format dispatch (vnc-011)` (~line 983) | Update comment |
-| `product/test/infra-001/suites/test_tools.py` | All `server.context_retrospective(...)` call sites (~lines 773, 779, 785, 893, 897, 935, 939, 966, 996, 1009, 1022) | Rename all to `server.context_cycle_review(...)` |
-| `product/test/infra-001/suites/test_tools.py` | Comment "context_retrospective can find them via SqlObservationSource" (~line 814) | Update comment |
-| `product/test/infra-001/suites/test_protocol.py` | `"context_retrospective"` in expected tool list (~line 55) | Change to `"context_cycle_review"` |
-
-### Protocol and skill files (not compiled — build will not catch)
-
-| File | Line(s) | What to change |
-|------|---------|----------------|
-| `.claude/protocols/uni/uni-agent-routing.md` | "Data gathering (context_retrospective + artifact review)" (~line 151) | Change to `context_cycle_review` |
-| `.claude/skills/uni-retro/SKILL.md` | `mcp__unimatrix__context_retrospective(feature_cycle: "{feature-id}")` (~line 29) | Change to `mcp__unimatrix__context_cycle_review(feature_cycle: "{feature-id}")` |
-| `packages/unimatrix/skills/retro/SKILL.md` | Same call as above (~line 29) | Change to `mcp__unimatrix__context_cycle_review(...)` |
-
-### README and product documentation
-
-| File | Line(s) | What to change |
-|------|---------|----------------|
-| `README.md` | Table row for `context_retrospective` (~line 218) | Change tool name to `context_cycle_review` in the table row |
-
-### Verification step (required, not optional)
-
-After all updates: run `grep -r "context_retrospective" . --include="*.rs" --include="*.py" --include="*.md" --include="*.toml"` and confirm zero matches (excluding this SPECIFICATION.md and historical feature docs that are archival records, not callers).
+1. Agent invokes `context_cycle_review(feature_cycle: "col-999")`.
+2. Server routes to the renamed handler (previously `context_retrospective`).
+3. Output format and detection behavior are identical to the pre-dsn-001 tool.
+4. No protocol or skill file references the old name.
 
 ---
 
 ## Constraints
 
-**C-01** — `toml = "0.8"` must be added to `unimatrix-server/Cargo.toml` as an exact pin. The `toml` crate is not present anywhere in the workspace today. Run `cargo tree` post-add to surface transitive conflicts.
+### Technical Constraints
 
-**C-02** — `FRESHNESS_HALF_LIFE_HOURS` is in `unimatrix-engine`. The config value must be plumbed as a parameter through `freshness_score()` and `compute_confidence()`. The architect must resolve whether to use a bare `f64` parameter or a `ConfidenceParams` context struct. A `ConfidenceParams` struct is preferred: it absorbs future W3-1 additions without further API churn. Either decision is acceptable but must be recorded in an ADR.
+1. **`toml = "0.8"` pinned** — added to `unimatrix-server/Cargo.toml` only, not to `unimatrix-engine`, `unimatrix-store`, or `unimatrix-core`. Run `cargo tree` after adding to confirm no transitive version conflicts.
 
-**C-03** — `ContentScanner::global()` must be initialized before `load_config()` calls `scan_title()`. The startup ordering in `tokio_main_daemon`/`tokio_main_stdio` must be verified or enforced. If `ContentScanner::global()` is lazily initialized, its initialization must be triggered before config loading begins. If the ordering cannot be guaranteed by type-system constraints, a documented startup ordering comment and integration test coverage are required.
+2. **Weight sum invariant is `(sum - 0.92).abs() < 1e-9`** — not `sum <= 1.0`. The SCOPE.md config schema comment is incorrect. The ADR-005 invariant governs. All validation code and tests must use the 0.92 form.
 
-**C-04** — Config types (`UnimatrixConfig` and sub-structs) must be defined such that the `unimatrix-store` crate does not need to depend on `unimatrix-server` types. `session_capabilities` values must be passed to the store layer as plain `Vec<Capability>` values, not as `Arc<UnimatrixConfig>`. The architect decides whether config types live in `unimatrix-server/src/infra/config.rs` (simplest) or a thin shared crate.
+3. **`from_preset(Custom)` panics** — calling `confidence_params_from_preset(Preset::Custom)` is a logic error and panics by design. Only `resolve_confidence_params` handles the `Custom` path. Code review must ensure no direct call with `Custom` exists.
 
-**C-05** — `agent_bootstrap_defaults()` in `unimatrix-store` is out of scope. The bootstrap list (system, human, cortical-implant), their trust levels, and their full capability sets remain hardcoded. Only `PERMISSIVE_AUTO_ENROLL` and the auto-enroll session capabilities are externalised.
+4. **`FRESHNESS_HALF_LIFE_HOURS` lives in `unimatrix-engine`** — plumbing requires adding `freshness_half_life_hours` as a `ConfidenceParams` field and passing `params` through `freshness_score()`. The compiled constant is retained as the `Default` backing value but no longer used directly in computation.
 
-**C-06** — No schema migration is introduced. Config is purely runtime state. No DB tables or schema version bump.
+5. **`CategoryAllowlist::new()` must remain valid** — all existing test call sites use `new()`. This constructor must not be removed or changed in signature. It delegates to `from_categories(INITIAL_CATEGORIES.to_vec())`.
 
-**C-07** — File permission check is Unix-only (`#[cfg(unix)]`). `std::os::unix::fs::PermissionsExt::mode()` is not available on Windows.
+6. **`agent_resolve_or_enroll` third parameter defaults to `None`** — all existing call sites gain `None` as the third argument to preserve current behavior. No call site requires a store-level refactor beyond the parameter addition.
 
-**C-08** — `rmcp` version is pinned at `=0.16.0`. No version change is permitted.
+7. **File permission check is `#[cfg(unix)]` only** — `std::os::unix::fs::PermissionsExt` is not available on Windows. The feature compiles and runs on Windows without this check.
 
-**C-09** — The `[confidence]` and `[cycle]` sections are reserved stubs. They MUST NOT contain any active fields in W0-3. Their presence in `UnimatrixConfig` is purely a forward-compatibility hedge for W3-1 and future features.
+8. **`dirs::home_dir()` returning `None` must not panic** — if the home directory is unresolvable, degrade to compiled defaults with a `tracing::warn!` and continue. This handles CI and container environments.
 
-**C-10** — Per SCOPE.md non-goals: confidence dimension weights (`W_BASE`, `W_USAGE`, etc.), coherence gate lambda weights, `PROVENANCE_BOOST` magnitude, adaptive blend weight parameters, and per-session/per-agent config overrides are all explicitly out of scope for this feature.
+9. **`ContentScanner::global()` must be called at the top of `load_config`** — the singleton must be warmed before `validate_config()` calls `scan_title()`. A comment in `load_config` must document this ordering invariant.
 
-**C-11** — No `UNIMATRIX_CONFIG` environment variable for overriding the global config path is introduced by this feature.
+10. **Hook path and bridge mode are excluded** — `Command::Hook` is a sync path with a sub-50ms budget and must not load config. `tokio_main_bridge` does not run server subsystems. Export/import subcommands are offline tools. Config loading occurs only in `tokio_main_daemon` and `tokio_main_stdio`.
 
-**C-12** — Config is loaded once at startup; runtime reload without restart is not supported.
+11. **No `Arc<UnimatrixConfig>` crosses crate boundaries** — only plain primitive values are passed: `bool`, `Vec<String>`, `HashSet<String>`, `Vec<Capability>`, `ConfidenceParams`.
+
+12. **`CycleConfig` is removed from `UnimatrixConfig`** — it was never active; the vocabulary fix is a hardcoded rename. If prior spec or code referenced it, those references are removed.
+
+13. **Per-project `custom` preset requires per-project `[confidence] weights`** — per ADR-003, `custom` weights are not inherited from the global config. If the per-project config uses `preset = "custom"` without weights, and the global config has weights, startup aborts. Cross-level weight inheritance is explicitly prohibited.
 
 ---
 
 ## Dependencies
 
-| Dependency | Type | Notes |
-|-----------|------|-------|
-| `toml = "0.8"` | New crate dependency | Add to `unimatrix-server/Cargo.toml` as exact pin |
-| `serde` with `derive` feature | Existing | Already present in `unimatrix-server`; needed for `Deserialize` on config structs |
-| `dirs` crate | Existing | Already a dependency of `unimatrix-server`; used for `dirs::home_dir()` |
-| `ContentScanner` | Existing internal | `crates/unimatrix-server/src/infra/scanning.rs`; `scan_title()` used for instructions validation |
-| `CategoryAllowlist` | Existing internal | `crates/unimatrix-server/src/infra/categories.rs`; seeded from config |
-| `PERMISSIVE_AUTO_ENROLL` + `agent_resolve_or_enroll` | Existing internal | `crates/unimatrix-server/src/infra/registry.rs`, `crates/unimatrix-store/src/registry.rs` |
-| `SERVER_INSTRUCTIONS` | Existing internal | `crates/unimatrix-server/src/server.rs:179` |
-| `FRESHNESS_HALF_LIFE_HOURS` + `freshness_score()` | Existing internal | `crates/unimatrix-engine/src/confidence.rs:37,148` |
-| `PROVENANCE_BOOST` comparisons in `search.rs` | Existing internal | Lines 413, 418, 484, 489 in `crates/unimatrix-server/src/services/search.rs` |
-| `project::ensure_data_directory()` | Existing internal | Called in `main.rs`; provides `paths.data_dir` for per-project config resolution |
+| Dependency | Location | Version | Notes |
+|------------|----------|---------|-------|
+| `toml` | `unimatrix-server/Cargo.toml` | `"0.8"` (pinned, not `^`) | New dependency. Adds serde-based TOML parsing. |
+| `serde` | already present | existing | `Deserialize` derive on config structs. |
+| `dirs` | already present in `unimatrix-server` | existing | `dirs::home_dir()` for `~/.unimatrix/` resolution. |
+| `ContentScanner` | `unimatrix-server/src/infra/scanning.rs` | internal | `scan_title()` used for `[server] instructions` validation. |
+| `ConfidenceParams` | `unimatrix-engine/src/confidence.rs` | internal | Extended with six weight fields (ADR-001). |
+| `CategoryAllowlist` | `unimatrix-server/src/infra/categories.rs` | internal | New `from_categories` constructor (ADR-002). |
+| `AgentRegistry` | `unimatrix-server/src/infra/registry.rs` | internal | `new(store, permissive: bool)` — adds permissive param. |
+| `SqlxStore::agent_resolve_or_enroll` | `unimatrix-store/src/registry.rs` | internal | Adds third param `session_caps: Option<&[Capability]>`. |
+| `SearchService` | `unimatrix-server/src/services/search.rs` | internal | `boosted_categories: HashSet<String>` field replaces hardcoded comparison. |
+| `rmcp` | `unimatrix-server/Cargo.toml` | `=0.16.0` (pinned) | Unchanged. No API change. |
+
+---
+
+## SR-05 Rename Checklist: context_retrospective → context_cycle_review
+
+Build passing is not a sufficient gate for this rename. Protocol, skill, research, and documentation files are not compiled. Every file in this checklist must be updated in the same PR as the Rust source changes.
+
+### Rust Source Files
+
+| File | Reference type | What to change |
+|------|----------------|----------------|
+| `crates/unimatrix-server/src/mcp/tools.rs` | `#[tool(name = "context_retrospective")]` attribute | Change to `context_cycle_review` |
+| `crates/unimatrix-server/src/mcp/tools.rs` | `async fn context_retrospective(` handler function | Rename to `context_cycle_review` |
+| `crates/unimatrix-server/src/mcp/tools.rs` | `operation: "context_retrospective".to_string()` (audit log, line 1457) | Update to `context_cycle_review` |
+| `crates/unimatrix-server/src/mcp/tools.rs` | `operation: "context_retrospective/lesson-learned".to_string()` (line 1734) | Update to `context_cycle_review/lesson-learned` |
+| `crates/unimatrix-server/src/mcp/tools.rs` | `"Use context_retrospective to confirm..."` doc strings (lines 1505, 1560) | Update to `context_cycle_review` |
+| `crates/unimatrix-server/src/mcp/tools.rs` | `/// Parameters for the context_retrospective tool.` (line 239) | Update doc |
+| `crates/unimatrix-server/src/mcp/tools.rs` | `/// Called inside a tokio::spawn from context_retrospective.` (line 1617) | Update doc |
+| `crates/unimatrix-server/src/server.rs` | `/// context_retrospective handler (drains on call).` (line 65) | Update doc |
+| `crates/unimatrix-server/src/server.rs` | `/// features that complete without calling context_retrospective or context_cycle.` (line 147) | Update doc |
+| `crates/unimatrix-server/src/server.rs` | `/// Shared with UDS listener; drained by context_retrospective handler.` (line 207) | Update doc |
+| `crates/unimatrix-observe/src/types.rs` | `/// Complete analysis output returned by context_retrospective.` (line 221) | Update doc |
+| `crates/unimatrix-observe/src/session_metrics.rs` | `assert_eq!(classify_tool("context_retrospective"), "other");` (line 601) | Update test assertion to `context_cycle_review` |
+
+### Python Integration Test Files
+
+| File | Reference type | What to change |
+|------|----------------|----------------|
+| `product/test/infra-001/harness/client.py` | `def context_retrospective(` method definition (line 629) | Rename method to `context_cycle_review` |
+| `product/test/infra-001/harness/client.py` | `return self.call_tool("context_retrospective", args, ...)` (line 642) | Update tool name string |
+| `product/test/infra-001/suites/test_protocol.py` | `"context_retrospective"` in tool list (line 55) | Update to `context_cycle_review` |
+| `product/test/infra-001/suites/test_tools.py` | `# === context_retrospective (col-002) ===` section header (line 768) | Update comment |
+| `product/test/infra-001/suites/test_tools.py` | `resp = server.context_retrospective(...)` calls (lines 773, 779, 785) | Update to `context_cycle_review` |
+| `product/test/infra-001/suites/test_tools.py` | `# === context_retrospective baseline comparison (col-002b) ===` header (line 789) | Update comment |
+| `product/test/infra-001/suites/test_tools.py` | `context_retrospective can find them via SqlObservationSource.` doc string (line 814) | Update |
+| `product/test/infra-001/suites/test_tools.py` | `resp = server.context_retrospective(...)` calls (lines 893, 897, 935, 939, 966) | Update all to `context_cycle_review` |
+| `product/test/infra-001/suites/test_tools.py` | `# === context_retrospective format dispatch (vnc-011) ===` header (line 983) | Update |
+| `product/test/infra-001/suites/test_tools.py` | `resp = server.context_retrospective(...)` calls (lines 996, 1009, 1022) | Update all |
+
+### Protocol and Skill Files
+
+| File | Reference type | What to change |
+|------|----------------|----------------|
+| `.claude/skills/uni-retro/SKILL.md` | `mcp__unimatrix__context_retrospective(feature_cycle: ...)` (line 29) | Update to `context_cycle_review` |
+| `.claude/protocols/uni/uni-agent-routing.md` | `Data gathering (context_retrospective + artifact review)` (line 151) | Update |
+| `packages/unimatrix/skills/retro/SKILL.md` | `mcp__unimatrix__context_retrospective(feature_cycle: ...)` (line 29) | Update to `context_cycle_review` |
+| `product/workflow/base-001/protocol-evolved/uni-agent-routing.md` | `context_retrospective` reference | Update |
+
+### Product Vision and README
+
+| File | Reference type | What to change |
+|------|----------------|----------------|
+| `product/PRODUCT-VISION.md` | Multiple references to `context_retrospective` (lines 32, 43, 282, 819) | Update all |
+| `README.md` | Tool table row for `context_retrospective` (line 218) | Update tool name |
+| `product/ALPHA_UNIMATRIX_COMPLETED_VISION.md` | References to `context_retrospective` | Update |
+
+### Historical Feature and Research Documents
+
+The following files contain references in historical/completed-feature context. They describe what the tool was called when those features were implemented — these references are historical records and updating them would rewrite history. They are **deliberately excluded** from the rename:
+
+- All files under `product/features/col-002/`, `col-002b/`, `col-009/`, `col-010/`, `col-010b/`, `col-012/`, `col-014/`, `col-016/`, `col-017/`, `col-020/`, `col-020b/`, `col-022/` — these are completed feature artifacts.
+- All files under `product/features/vnc-005/`, `vnc-008/`, `vnc-009/`, `vnc-011/` — completed feature artifacts.
+- All files under `product/features/nxs-008/`, `nxs-009/` — completed feature artifacts.
+- All files under `product/research/ass-007/`, `ass-014/`, `ass-015/`, `ass-016/`, `ass-018/`, `ass-020/`, `ass-022/` — research findings.
+- All files under `product/features/crt-011/`, `crt-018/`, `crt-018b/` — completed/historical.
+- All files under `product/features/bugfix-236/` — historical bugfix record.
+- `product/research/optimizations/` — historical analysis.
+
+**Delivery team note**: The grep sweep `grep -r "context_retrospective" .` before the PR opens should show results only in the excluded historical files listed above. Any match outside those directories is a missed update that must be fixed before merge.
 
 ---
 
 ## NOT In Scope
 
-The following are explicitly excluded to prevent scope creep. Any implementation touching these areas is a variance that will be flagged.
-
-- **Confidence dimension weights** (`W_BASE`, `W_USAGE`, `W_FRESH`, `W_HELP`, `W_CORR`, `W_TRUST`) — not externalised; deferred to W3-1 GNN learning.
-- **Coherence gate lambda weights** (`freshness`, `graph`, `contradiction`, `embedding`) — not externalised; remain hardcoded in `coherence.rs`.
-- **`PROVENANCE_BOOST` magnitude** (`0.02`) — only which categories receive it is configurable; the magnitude is not.
-- **Adaptive blend weight parameters** (`observed_spread * 1.25`, clamp bounds `[0.15, 0.25]`) — part of the crt-019 adaptive system.
-- **`agent_bootstrap_defaults()` configurability** — full bootstrap list (system/human/cortical-implant), their trust levels, and full capability sets remain hardcoded.
-- **`[confidence]` section fields** — the `ConfidenceConfig` struct is reserved but empty in W0-3. No fields are added.
-- **`[cycle]` section fields** — the `CycleConfig` struct is reserved but empty in W0-3.
+- **Runtime config reload** — config is loaded once at startup; changes require a server restart.
+- **Environment variable override for config path** — no `UNIMATRIX_CONFIG` env var is introduced. Existing env vars (`UNIMATRIX_TICK_INTERVAL_SECS`, `UNIMATRIX_AUTO_QUARANTINE_CYCLES`) are not replaced or merged.
+- **Per-session or per-agent config** — config is global to the server instance.
+- **Schema migration** — no new DB tables; no schema version bump.
+- **OAuth / authentication config** — deferred per ADR #1839 (W0-2 deferral).
+- **Config tooling** — no `unimatrix config show` subcommand, no `--validate` flag.
+- **Domain packs** — dsn-001 provides the hook points; domain pack loading is a separate feature.
+- **Raw weight tuning as a primary interface** — operators select presets, not raw `W_TRUST = 0.22` values. `[confidence] weights` is the expert escape hatch only.
+- **Coherence gate lambda weights** (`confidence_freshness`, `graph_quality`, `embedding_consistency`, `contradiction_density`) — these are KB-health metric weights for `compute_lambda()`. They remain hardcoded in `coherence.rs` and are not configurable.
+- **`[cycle]` config section** — vocabulary fix for the cycle tool concept is a hardcoded rename, not runtime config. The `CycleConfig` stub is removed.
 - **Renaming `context_cycle`** — the name is already domain-neutral.
-- **Runtime config reload** — config is loaded once at startup; restart is required for changes.
-- **`UNIMATRIX_CONFIG` env var** — no env var override for global config path.
-- **Config tooling** (`validate` subcommand, `unimatrix config show`) — deferred.
-- **Domain packs** — W0-3 provides the hook points; domain pack loading is a separate feature.
-- **OAuth/auth config** — deferred per ADR #1839 (W0-2).
-- **Per-session or per-agent config overrides** — config is global to the server instance.
-- **Schema migration** — no DB changes.
-- **`toml` crate version > 0.8** — exact pin required; no upgrade in this feature.
+- **Externalizing `PROVENANCE_BOOST` magnitude** (0.02) — only which categories receive the boost is configurable, not its magnitude.
+- **Adaptive blend weight parameters** (`observed_spread * 1.25`, clamp bounds `[0.15, 0.25]`) — these are part of the crt-019 adaptive system, not static config.
+- **Full bootstrap agent list configurability** (`system`, `human`, `cortical-implant`) — only `default_trust` and `session_capabilities` are externalised. Full bootstrap configurability requires significant store-layer refactoring and adds no domain-agnosticism value.
+- **Bridge mode config** — `tokio_main_bridge` does not load config.
+- **Hook path config** — `Command::Hook` is a sync sub-50ms path and must not load config.
 
 ---
 
 ## Knowledge Stewardship
 
-Queried: `/uni-query-patterns` for config externalization, TOML startup validation, MCP tool rename patterns — no results (Unimatrix MCP server not callable from this agent context; codebase read directly as secondary evidence). Key conventions confirmed from codebase: `CategoryAllowlist` poison recovery via `.unwrap_or_else(|e| e.into_inner())`, `ContentScanner::global()` singleton pattern, `validate_*` function naming convention in `infra/validation.rs`, `Arc<T>` threading pattern for shared subsystem state.
-
----
-
-## Open Questions for the Architect
-
-**OQ-01 (SR-02, High priority)**: Should `freshness_score()` take a bare `freshness_half_life_hours: f64` parameter, or should a `ConfidenceParams` struct be introduced to absorb future W3-1 additions without further API churn? The struct costs 10 lines now and prevents another cross-crate API break at W3-1. Recommendation: use `ConfidenceParams` struct. The architect must decide and record in an ADR before touching engine code.
-
-**OQ-02 (SR-03)**: What is the exact initialization order of `ContentScanner::global()` relative to the config load insertion point in `tokio_main_daemon` and `tokio_main_stdio`? If the scanner is lazily initialized, is there a guarantee it is initialized before config loading begins? If not, the architect must either reorder initialization or delay the instructions validation step.
-
-**OQ-03 (SR-07, SR-08)**: Should `UnimatrixConfig` types live in `unimatrix-server/src/infra/config.rs` (simplest, avoids new crate), or in a thin `unimatrix-config` crate (shareable across crate boundary)? The store crate currently has no dependency on server-layer types. Passing plain `Vec<Capability>` values across the boundary avoids the dependency; this is the recommended approach, but the architect must confirm.
-
-**OQ-04 (SR-06, resolved in this spec)**: List field merge semantics: per-project list replaces global list entirely (not appended). This is specified in FR-003. The architect should confirm this is the intended operator UX before implementation begins.
+- Queried: /uni-query-patterns for config externalization specification AC patterns — no results (this is the first feature of its kind in this codebase; no prior config or externalization patterns are stored).

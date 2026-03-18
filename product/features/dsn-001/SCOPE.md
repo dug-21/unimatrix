@@ -6,16 +6,19 @@ Unimatrix is a domain-agnostic knowledge engine, but its behavior is hard-couple
 
 Additionally, two tools carry dev-workflow vocabulary that prevents Unimatrix from presenting itself as domain-neutral: `context_retrospective` uses Agile/Scrum terminology, and `CycleParams` describes its topic field in software-delivery terms.
 
+A secondary problem: even with externalised constants, operators who don't understand the confidence model cannot tune the 6-factor weight vector meaningfully. Asking them to set `W_TRUST = 0.24` without understanding its role produces random configuration. The confidence weight problem requires a different interface — domain-calibrated presets that encode the full multi-dimensional weight pattern, with `custom` as an expert escape hatch.
+
 ## Goals
 
 1. Load `~/.unimatrix/config.toml` (global) at server startup; apply settings before any request is handled.
-2. Support an optional per-project override at `{project_data_dir}/config.toml`; per-project values shadow global values, which shadow compiled defaults.
-3. Externalize four groups of constants to TOML-typed config sections: `[knowledge]`, `[server]`, `[agents]`, and `[inference]`.
-4. Validate all security-critical config values at load time; fail server startup on violation (reject, do not warn-and-continue).
-5. Apply file-permission checks at startup: reject world-writable config; log warning on group-writable.
-6. Preserve all compiled defaults unchanged when no config file is present so existing behavior is unaltered.
-7. Rename the `context_retrospective` tool to `context_cycle_review` — hardcoded, not configurable.
-8. Neutralise the `CycleParams` field doc for `topic` to communicate the domain-agnostic concept.
+2. Support an optional per-project override at `~/.unimatrix/{hash}/config.toml`; per-project values shadow global values, which shadow compiled defaults.
+3. Externalize constants to TOML-typed config sections: `[profile]`, `[knowledge]`, `[confidence]` (custom preset only), `[server]`, `[agents]`.
+4. Ship a `[profile] preset` system: four named knowledge-lifecycle presets (`authoritative`, `operational`, `empirical`, `collaborative`) plus `custom`. Named presets encode domain-calibrated weight vectors across all six confidence dimensions — operators identify their knowledge type, not ML weights. `custom` exposes raw `[confidence]` weights for expert use.
+5. Validate all security-critical config values at load time; fail server startup on violation (reject, do not warn-and-continue).
+6. Apply file-permission checks at startup: reject world-writable config; log warning on group-writable.
+7. Preserve all compiled defaults unchanged when no config file is present so existing behavior is unaltered (`collaborative` preset = current dev defaults).
+8. Rename the `context_retrospective` tool to `context_cycle_review` — hardcoded, not configurable.
+9. Neutralise the `CycleParams` field doc for `topic` to communicate the domain-agnostic concept.
 
 ## Non-Goals
 
@@ -26,8 +29,8 @@ Additionally, two tools carry dev-workflow vocabulary that prevents Unimatrix fr
 - OAuth or authentication config (`UNIMATRIX_CLIENT_TOKEN`) — deferred per ADR #1839 (W0-2).
 - Config tooling (validate subcommand, `unimatrix config show`) — out of scope for W0-3.
 - Domain packs — W0-3 enables them by providing the hook points; domain pack loading is a separate feature.
-- **Confidence dimension weights** (`W_BASE`, `W_USAGE`, `W_FRESH`, `W_HELP`, `W_CORR`, `W_TRUST`) — these are the 6-factor per-entry confidence scoring weights. W3-1 GNN will learn these automatically from usage. Externalising them provides no value: operators have no basis for tuning ML weights, and the GNN cold-start initialises from internal defaults, not operator config. These remain hardcoded until W3-1 replaces them with learned values.
-- **Coherence gate lambda weights** (`confidence_freshness`, `graph_quality`, `embedding_consistency`, `contradiction_density`) — these are the 4-factor KB-health metric weights used in `compute_lambda()`. Same reasoning: operators cannot meaningfully tune these, and no future wave learns them from config. They remain hardcoded constants in `coherence.rs`.
+- **Raw weight tuning as a primary interface** — operators are not asked to set `W_TRUST = 0.24` directly. The `[profile]` preset system is the primary interface; raw `[confidence]` weights are only active when `preset = "custom"` and are an expert escape hatch, not the expected path.
+- **Coherence gate lambda weights** (`confidence_freshness`, `graph_quality`, `embedding_consistency`, `contradiction_density`) — these are the 4-factor KB-health metric weights used in `compute_lambda()`. Operators cannot meaningfully tune these independently of domain science. They remain hardcoded constants in `coherence.rs` and are not part of any preset.
 - **`[cycle]` config section** — the tool concept is already domain-neutral; "feature" vocabulary in the tool description is addressed by the hardcoded rename/doc fix (Goal 7/8), not by runtime config.
 - Renaming `context_cycle` — the name is already domain-neutral.
 - Externalising `PROVENANCE_BOOST` magnitude (`0.02`) — the boost magnitude is not a domain-specific constant; only which categories receive it is domain-specific.
@@ -102,6 +105,18 @@ On Unix (Linux/macOS), `std::fs::metadata().permissions().mode()` gives the full
 ## Config Schema
 
 ```toml
+[profile]
+# Knowledge lifecycle preset. Sets all six confidence dimension weights and
+# freshness_half_life_hours to domain-calibrated starting values.
+# W3-1 GNN inherits these values as its cold-start and refines from there.
+#
+# "authoritative" — source matters most, changes rarely (policy, standards, precedents)
+# "operational"   — guides action, ages quickly (runbooks, incidents, procedures)
+# "empirical"     — derived from measurement, time-critical (sensors, metrics, feeds)
+# "collaborative" — built by a team, votes meaningful (dev, research) [DEFAULT]
+# "custom"        — read weights directly from [confidence] section below
+preset = "collaborative"
+
 [knowledge]
 # Domain-specific category allowlist. Replaces the compiled INITIAL_CATEGORIES (8 dev categories).
 # Each value: lowercase, [a-z0-9_-], max 64 chars. Total: ≤ 64 categories.
@@ -112,9 +127,17 @@ categories = ["outcome", "lesson-learned", "decision", "convention",
 # Must be a strict subset of `categories`.
 boosted_categories = ["lesson-learned"]
 
-# Freshness half-life in hours. How quickly knowledge decays in your domain.
+# Freshness half-life in hours. Overrides the preset's default when set.
 # Legal: 8760.0 (1 year). Air quality: 24.0 (1 day). Dev default: 168.0 (1 week).
+# Omit to use the preset's built-in value.
 freshness_half_life_hours = 168.0
+
+[confidence]
+# Only active when [profile] preset = "custom". Ignored for all named presets.
+# Expert escape hatch — use a named preset unless you have domain science
+# justification for specific values.
+# Each weight in [0.0, 1.0]. Sum must be ≤ 1.0. All six required when preset = "custom".
+weights = { base = 0.16, usage = 0.16, fresh = 0.18, help = 0.12, corr = 0.14, trust = 0.16 }
 
 [server]
 # Verbatim MCP server instructions returned during the initialize handshake.
@@ -129,6 +152,19 @@ default_trust = "permissive"
 # Default capability set for auto-enrolled agents (overrides default_trust caps).
 session_capabilities = ["Read", "Write", "Search"]
 ```
+
+### Preset Weight Table
+
+Exact values are an architect deliverable (require domain science validation before shipping). Illustrative profiles below — the ordering relationships are the invariants, not the specific numbers:
+
+| Preset | W_FRESH | W_TRUST | W_USAGE | W_CORR | W_HELP | W_BASE | half_life |
+|--------|---------|---------|---------|--------|--------|--------|-----------|
+| `authoritative` | low | high | low | high | moderate | standard | 8760h (1yr) |
+| `operational` | high | moderate | high | high | low | standard | 720h (1mo) |
+| `empirical` | very high | low | moderate | low | none | standard | 24h |
+| `collaborative` | moderate | moderate | moderate | moderate | moderate | standard | 168h (1wk) |
+
+`collaborative` = current compiled defaults (backward-compatible). W3-1 GNN cold-starts from whichever preset is active and refines toward actual usage — a non-dev domain starting at its correct preset converges significantly faster than one starting from `collaborative`.
 
 ## Config Security Model
 
@@ -154,6 +190,8 @@ All validation runs in `validate_config()` immediately after deserialization. An
 | `[knowledge].freshness_half_life_hours` | finite (`!is_nan() && !is_infinite()`), > 0.0, ≤ 87600.0 (10 years) | Division by zero in `freshness_score()`; NaN corruption throughout confidence scoring; absurd values making all knowledge permanently fresh or instantly stale |
 | `[server].instructions` length | ≤ 8 KB (8192 bytes) | Unbounded system-prompt injection payload; memory pressure |
 | `[server].instructions` content | `ContentScanner::global().scan_title()` — reject on any injection pattern | Prompt injection via operator-controlled system prompt |
+| `[profile].preset` | Must be one of `{"authoritative", "operational", "empirical", "collaborative", "custom"}` | Unknown preset silently using wrong weights |
+| `[confidence].weights` (custom only) | All six keys required; each in `[0.0, 1.0]`; sum ≤ 1.0; all finite | Weight misconfiguration corrupting all confidence scores |
 | `[agents].default_trust` | Must be one of `{"permissive", "strict"}` — strict allowlist | Arbitrary trust string reaching registry logic; unknown values silently defaulting |
 | `[agents].session_capabilities` each value | Must be one of `{"Read", "Write", "Search"}` — strict allowlist, `Admin` excluded | Privilege escalation: operator config granting Admin to all auto-enrolled agents |
 
@@ -224,6 +262,12 @@ Performed in a `validate_config()` function immediately after deserialization:
 - AC-12: A `[server] instructions` value matching any injection pattern in `ContentScanner` causes startup to abort with an error identifying the triggering pattern category.
 - AC-13: The MCP tool formerly named `context_retrospective` is now named `context_cycle_review`; all callers in protocols, skills, and tests are updated; no reference to `context_retrospective` remains in the codebase.
 - AC-14: The `CycleParams.topic` field doc no longer references "feature" as the canonical example; the doc communicates the domain-agnostic concept of a bounded work unit.
+- AC-22: When no `[profile]` section is present, the server uses the `collaborative` preset (current compiled defaults) — all existing tests pass unchanged.
+- AC-23: When `preset = "authoritative"`, `"operational"`, `"empirical"`, or `"collaborative"`, the corresponding compiled weight vector and `freshness_half_life_hours` are used; the `[confidence]` section is ignored even if present.
+- AC-24: When `preset = "custom"`, all six `[confidence] weights` are required; startup aborts with a descriptive error if any are absent.
+- AC-25: When `preset = "custom"` and `[knowledge] freshness_half_life_hours` is also set, the `[knowledge]` value takes precedence over any default; when only `[confidence]` is used, `freshness_half_life_hours` must also be specified there.
+- AC-26: An unrecognised `preset` value causes startup to abort with an error listing valid values.
+- AC-27: W3-1 cold-start reads the effective weight vector (from the active preset or `custom` values) — the `ConfidenceParams` struct carries these values at startup.
 - AC-15: A config file exceeding 64 KB causes startup to abort with an error before TOML parsing begins.
 - AC-16: A `[knowledge].freshness_half_life_hours` value of `0.0`, negative, `NaN`, or `Infinity` causes startup to abort with a descriptive error.
 - AC-17: A `[knowledge].freshness_half_life_hours` value greater than `87600.0` causes startup to abort with a descriptive error.
@@ -246,6 +290,12 @@ Performed in a `validate_config()` function immediately after deserialization:
 ## Open Questions
 
 None.
+
+## Vision Variance Resolutions
+
+- **VARIANCE-1 CLOSED** — Confidence weights are externalised via the `[profile]` preset system. Named presets encode domain-calibrated starting values across all six dimensions; `custom` exposes raw weights for experts. W3-1 cold-starts from the active preset, resolving the vision's cold-start requirement. ADR-004 forward-compat stub for `[confidence]` now has concrete purpose.
+- **VARIANCE-2 CLOSED** — `[cycle]` label configurability replaced with a hardcoded doc-fix. Accepted as sufficient; namespace reserved via ADR-004 stub.
+- **VARIANCE-3 CLOSED** — `default_trust = "permissive"` confirmed as correct default (W0-2 deferral rationale; OAuth/W2-3 will make `"strict"` meaningful). Vision example to be corrected in a documentation pass.
 
 ## Tracking
 

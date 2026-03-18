@@ -1,33 +1,49 @@
-# Agent Report: dsn-001-agent-2-spec
+# Agent Report: dsn-001-agent-2-spec (Revised)
 
 ## Output
 
-- `/workspaces/unimatrix/product/features/dsn-001/specification/SPECIFICATION.md`
+- `/workspaces/unimatrix/product/features/dsn-001/specification/SPECIFICATION.md` — overwritten with full revised specification incorporating the `[profile]` preset system, exact weight values, exhaustive SR-05 rename checklist, and all 27 ACs from SCOPE.md.
 
-## Key Decisions Made
+## Key Decisions
 
-**D-01: List fields replace, never append (SR-06 resolution)**
-FR-003 specifies that list fields (`categories`, `boosted_categories`, `session_capabilities`) are replaced entirely by a per-project value, never appended. This is the least-surprising operator behaviour: a per-project categories list is always authoritative for that project. The intermediate deserialization uses `Option<Vec<T>>` to distinguish "not specified" from "specified as default".
+### D-01: Preset weight table hardened with exact values from ADR-005
 
-**D-02: `[confidence]` and `[cycle]` sections reserved as empty stubs (SR-04 resolution)**
-FR-008 and FR-009 specify that `ConfidenceConfig` and `CycleConfig` are empty structs with `Default` impls, present in `UnimatrixConfig` but consuming no fields. This is the 10-line hedge that prevents a config format break when W3-1 adds `[confidence] weights`. The TOML sections are parseable now; operators can write empty `[confidence]` blocks in config without error.
+SCOPE.md left weight values as "architect deliverable." ADR-005 delivered exact values verified by sum checks. These are committed verbatim into AC-23 as a four-row table, eliminating SR-09. Delivery implements against exact numbers, not ordering relationships.
 
-**D-03: AC-13 grep verification is the authoritative completeness gate for the rename**
-The rename checklist in the SR-05 section enumerates 22 specific locations across Rust, Python, Markdown, and skill files. The post-rename `grep -r "context_retrospective"` check is required before the PR is considered complete. Historical feature docs (archival records) are acceptable exceptions.
+### D-02: Weight sum invariant is `(sum - 0.92).abs() < 1e-9`, not `<= 1.0`
 
-**D-04: `validate_config()` is a single function, not per-section functions**
-All post-parse validation runs in one `validate_config()` call immediately after deserialization, consistent with the `validate_*` naming convention observed in `infra/validation.rs`. This ensures the ContentScanner initialization ordering concern (OQ-02) is localized to one call site.
+SCOPE.md config schema comment says `sum must be <= 1.0`. ADR-004 and ADR-005 both explicitly override this. The specification calls out the discrepancy and makes the 0.92 invariant authoritative throughout (FR-04, AC-24, Domain Models).
 
-**D-05: `CategoryAllowlist::new()` delegates to `new_from_config(&Default::default())`**
-FR-013 requires this to prevent test/production divergence (SR-07). Tests calling `new()` exercise the same code path as production config-driven construction.
+### D-03: SR-05 rename checklist distinguishes live files from historical artifacts
 
-## Open Questions for Architect (copied from spec)
+The checklist identifies every live file requiring update by path and approximate line number. Historical completed-feature artifacts (col-002, vnc-005, etc.) and research documents are explicitly excluded as historical records — updating them would rewrite history, not fix a bug. The verification gate is `grep -r "context_retrospective" .` returning zero matches outside the excluded historical set.
 
-- **OQ-01 (High)**: `ConfidenceParams` struct vs. bare `f64` parameter for `freshness_score()`. Struct recommended to absorb W3-1 without further API churn.
-- **OQ-02 (Med)**: `ContentScanner::global()` initialization ordering vs. config load. Must be confirmed before implementation.
-- **OQ-03 (Med)**: Config type crate placement — `unimatrix-server/src/infra/config.rs` vs. thin shared crate. Passing plain `Vec<Capability>` across crate boundary avoids dependency issue.
-- **OQ-04 (Low, resolved in spec)**: List merge semantics confirmed as replace, not append. Architect should validate this matches intended operator UX.
+### D-04: `[knowledge] freshness_half_life_hours` precedence enumerated as a four-row truth table
+
+SR-11 flagged three sources of truth for one value. AC-25 renders the complete precedence as a four-row truth table (named/absent, named/present, custom/absent, custom/present). The custom+absent cell maps to a named `ConfigError` variant (`CustomPresetMissingHalfLife`). The single resolution site is `resolve_confidence_params()` (FR-10).
+
+### D-05: `CycleConfig` removed from `UnimatrixConfig`
+
+ADR-004 confirms the `CycleConfig` stub is removed in dsn-001, not retained. The prior specification version included it as a forward-compat stub; this is superseded. The specification reflects removal in FR-04, constraints, and the NOT in scope section.
+
+### D-06: `confidence_params_from_preset` is a free function in `unimatrix-server`, not a method on `ConfidenceParams`
+
+ADR-006 resolves the crate dependency problem: `ConfidenceParams` lives in `unimatrix-engine` and must not depend on `Preset` (a server type). The conversion function and the SR-10 test both live in `unimatrix-server/src/infra/config.rs`. Captured in FR-10, AC-22, AC-21.
+
+### D-07: Historical artifact exclusion policy is explicit in the specification
+
+The full grep sweep returns ~235 files. Most are completed-feature and research documents. The specification makes the exclusion policy explicit so delivery neither skips live files nor wastes time renaming historical records.
+
+## Open Questions
+
+None. All risks from SCOPE-RISK-ASSESSMENT.md are resolved by the architecture:
+- SR-02: `ConfidenceParams` extended to 9 fields (ADR-001) — FR-04.
+- SR-09: Exact preset values committed in ADR-005 and AC-23 table.
+- SR-10: Mandatory SR-10 test codified in AC-21.
+- SR-11: Four-row precedence table in AC-25; single resolution site in FR-10.
+- SR-12: `ConfidenceConfig` promoted from stub to live section (ADR-004) — FR-03.
+- SR-13: W3-1 unblocked by AC-27 asserting all nine `ConfidenceParams` fields are populated.
 
 ## Knowledge Stewardship
 
-Queried: `/uni-query-patterns` for config externalization, TOML startup validation — no results (Unimatrix MCP server not callable from this agent context; codebase read directly as secondary evidence).
+- Queried: /uni-query-patterns for config externalization specification AC patterns — no results (first externalization feature in this codebase; no prior patterns stored).

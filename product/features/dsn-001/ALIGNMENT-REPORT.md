@@ -1,12 +1,12 @@
 # Alignment Report: dsn-001
 
-> Reviewed: 2026-03-18
+> Reviewed: 2026-03-18 (re-review after preset system scope expansion)
 > Artifacts reviewed:
 >   - product/features/dsn-001/architecture/ARCHITECTURE.md
 >   - product/features/dsn-001/specification/SPECIFICATION.md
 >   - product/features/dsn-001/RISK-TEST-STRATEGY.md
-> Scope source: product/features/dsn-001/SCOPE.md
-> Scope risk source: product/features/dsn-001/SCOPE-RISK-ASSESSMENT.md
+> Scope source: product/features/dsn-001/SCOPE.md (updated — preset system added)
+> Scope risk source: product/features/dsn-001/SCOPE-RISK-ASSESSMENT.md (updated)
 > Vision source: product/PRODUCT-VISION.md
 
 ---
@@ -15,14 +15,26 @@
 
 | Check | Status | Notes |
 |-------|--------|-------|
-| Vision Alignment | WARN | Confidence dimension weights and lambda weights deliberately dropped from scope — vision W0-3 section includes them; decision is justified but is a vision deviation requiring acknowledgement |
-| Milestone Fit | PASS | Correctly placed at Wave 0; prerequisites satisfied; no W1/W2/W3 capabilities built prematurely |
-| Scope Gaps | PASS | All SCOPE.md goals are fully addressed in the three source documents |
-| Scope Additions | PASS | No items in source docs beyond what SCOPE.md asked for |
-| Architecture Consistency | PASS | All SCOPE-RISK-ASSESSMENT risks resolved by ADRs; architecture is self-consistent |
-| Risk Completeness | PASS | RISK-TEST-STRATEGY covers all 13 risks with prioritised scenarios; security risks fully analysed |
+| Vision Alignment | PASS | Preset system resolves VARIANCE-1; all prior WARNs closed |
+| Milestone Fit | PASS | Wave 0 scope maintained; no W1/W2/W3 capabilities introduced |
+| Scope Gaps | PASS | All SCOPE.md goals fully addressed in source documents |
+| Scope Additions | WARN | `[confidence]` field semantic differs from vision's W0-3 example — namespace divergence, not a delivery blocker |
+| Architecture Consistency | PASS | All SCOPE-RISK-ASSESSMENT risks resolved; ADR-005/006 close SR-02/SR-09/SR-10/SR-11/SR-13 |
+| Risk Completeness | PASS | RISK-TEST-STRATEGY covers 22 risks with 95+ scenarios; preset-specific risks R-01–R-12 fully specified |
 
-**Overall: WARN — one documented vision deviation requires human acknowledgement before delivery.**
+**Overall: WARN — one documentation-level namespace divergence to acknowledge; no delivery blockers.**
+
+---
+
+## Prior Variances — Disposition
+
+All three WARNs from the first alignment report are resolved:
+
+| Prior Variance | Resolution | Status |
+|---------------|------------|--------|
+| VARIANCE-1: Confidence weights not in `ConfidenceParams` — W3-1 cold-start path broken | Preset system extends `ConfidenceParams` to 9 fields (ADR-001); `resolve_confidence_params()` populates all six `w_*` fields; AC-27 mandates W3-1 reads this struct directly (ARCHITECTURE §W3-1, SCOPE.md §AC-27) | CLOSED |
+| VARIANCE-2: `[cycle]` label doc-fix accepted as sufficient | Confirmed: hardcoded rename of `context_retrospective` → `context_cycle_review` and `CycleParams.topic` doc neutralisation are delivered as FR-11/FR-12; `CycleConfig` stub removed per ADR-004 update | CLOSED |
+| VARIANCE-3: `default_trust = "permissive"` default correctness | Confirmed as correct default consistent with W0-2 deferral rationale; source documents are internally consistent | CLOSED |
 
 ---
 
@@ -30,145 +42,107 @@
 
 | Type | Item | Details |
 |------|------|---------|
-| Simplification | `[confidence]` lambda weights | In SCOPE.md non-goals (deliberately excluded). PRODUCT-VISION W0-3 includes them as interim fix. Source docs carry forward the exclusion — see Variances section. |
-| Simplification | `[cycle]` label parameters | In SCOPE.md non-goals. PRODUCT-VISION W0-3 includes `work_context_label`/`cycle_label` as runtime-configurable. Source docs implement doc-fix only. — see Variances section. |
-| Simplification | `[agents].bootstrap` list | PRODUCT-VISION W0-3 shows a configurable `bootstrap` agent list. SCOPE.md explicitly excludes `agent_bootstrap_defaults()` configurability. Source docs confirm exclusion with rationale. Consistent across all three docs. |
-| Simplification | `[agents].default_trust` default | Vision shows `"restricted"` as the `default_trust` default; source docs use `"permissive"` (matching current compiled constant). A "permissive" default is consistent with the deferred W0-2 rationale (no security value before OAuth), but diverges from the vision's stated default string. |
-| Addition | `ConfidenceConfig` and `CycleConfig` forward-compat stubs (ADR-004) | Not in SCOPE.md goals, but explicitly recommended in SCOPE-RISK-ASSESSMENT SR-04. Stubs are justified hedges for W3-1 compatibility. Addressed in SPECIFICATION FR-008/FR-009 and ARCHITECTURE §forward-compat stubs. These directly serve the vision's W3-1 section. |
+| Gap | None | All SCOPE.md goals (1–9) and acceptance criteria (AC-01 through AC-27) are present in source documents |
+| Addition | `[confidence]` semantic payload differs from vision's W0-3 example | Vision's W0-3 `[confidence] weights` shows lambda/coherence-gate weights (`freshness=0.35, graph=0.30, contradiction=0.20, embedding=0.15`); source docs' `[confidence] weights` carries the six scoring factor weights (`w_base`, `w_usage`, etc.). Same TOML key, different semantics. See Variances section. |
+| Simplification | Coherence gate lambda weights excluded | SCOPE.md non-goal, consistent with first review. Source docs confirm exclusion; `coherence.rs` constants remain hardcoded. Justified: operators cannot tune these without ML expertise. No change from prior report. |
+| Simplification | `[cycle]` runtime label config excluded | CycleConfig stub removed (ADR-004 update). Hardcoded rename + doc-fix accepted as sufficient. No change from prior report. |
+| Simplification | Bootstrap agent list not configurable | Only `default_trust` and `session_capabilities` externalised. Full bootstrap list configurability explicitly out of scope. Consistent across all documents. |
 
 ---
 
 ## Variances Requiring Approval
 
-### VARIANCE-1 (WARN): Confidence dimension weights (`[confidence] weights`) excluded from W0-3
+### WARN-1: `[confidence]` TOML key semantic divergence from vision's W0-3 example
 
-**What**: SCOPE.md non-goals explicitly drop the four lambda weights
-(`confidence_freshness`, `graph_quality`, `embedding_consistency`, `contradiction_density`)
-from W0-3 scope. All three source documents are consistent with this exclusion.
-The `ConfidenceConfig` struct is reserved as an empty stub (ADR-004) so W3-1 can add
-fields without a format break.
+**What**: The vision's W0-3 config block (PRODUCT-VISION.md line 261–264) shows:
 
-However, the PRODUCT-VISION W0-3 section includes these weights as a first-class
-deliverable:
+```toml
+[confidence]
+# Lambda dimension weights — previously hardcoded in confidence.rs
+weights = { freshness = 0.35, graph = 0.30, contradiction = 0.20, embedding = 0.15 }
+```
 
-> "The confidence dimension weights (freshness 0.35, graph 0.30, contradiction 0.20,
-> embedding 0.15) are domain-specific constants. A legal knowledge base needs high
-> `w_trust`, low `w_fresh`. An air quality deployment needs the inverse. Externalizing
-> these is the interim fix that bridges the gap until W3-1's GNN learns them
-> automatically. Without this, the confidence system remains domain-coupled through
-> all of Wave 1 and 2."
+These are the four **coherence gate lambda weights** used in `compute_lambda()` (`confidence_freshness`, `graph_quality`, `embedding_consistency`, `contradiction_density`).
 
-The SCOPE.md rationale for dropping them is:
+The source documents' `[confidence]` section (SCOPE.md §Config Schema, ARCHITECTURE §ConfidenceConfig, SPECIFICATION §FR-03) carries the six **confidence scoring factor weights**:
 
-> "W3-1 GNN will learn these automatically from usage. Externalising them provides
-> no value: operators have no basis for tuning ML weights, and the GNN cold-start
-> initialises from internal defaults, not operator config."
+```toml
+[confidence]
+weights = { base = 0.16, usage = 0.16, fresh = 0.18, help = 0.12, corr = 0.14, trust = 0.16 }
+```
 
-**Why it matters**: This is a direct tension with the vision's stated reasoning.
-The vision's argument is that the confidence dimension weights are *domain-specific
-operator constants* needed for non-dev domains before W3-1 converges. The SCOPE.md
-argument is that they are *ML weights* that operators cannot meaningfully tune and
-that W3-1 cold-starts from hardcoded defaults anyway.
+These are a different set of weights — they feed `compute_confidence()`, not `compute_lambda()`. The lambda coherence weights are explicitly out of scope (SCOPE.md non-goals, third bullet from last).
 
-The W3-1 section of the vision explicitly states:
+**Why it matters**: The `[confidence]` namespace in TOML now carries a different semantic payload than what the product vision described. If a future feature attempts to externalise the lambda weights by adding to `[confidence]`, it would collide with the six scoring factor weights already occupying `[confidence].weights`. W3-1's cold-start design references `W0-3 [confidence] weights` (vision lines 705-706, 708-712) — the vision's author intended the lambda weights; the source docs deliver the scoring factor weights. Both are needed for W3-1. If W3-1's design takes the vision literally and looks for `[confidence].weights = { freshness, graph, contradiction, embedding }`, it will find a differently-structured field.
 
-> "A missing or stale weight vector degrades gracefully to the config-defined defaults
-> (W0-3 `[confidence] weights`)."
+**Important nuance**: The source docs' six scoring factor weights are what W3-1 actually needs for cold-start (the GNN outputs `[w_base, w_usage, w_fresh, w_help, w_corr, w_trust]` — vision line 698). The vision's W3-1 section correctly describes the cold-start requirement. The vision's W0-3 config example shows the wrong weights (lambda weights instead of scoring factor weights). The source documents are arguably more correct than the vision example on this point.
 
-If W0-3 ships without a `[confidence] weights` field, W3-1's cold-start path as
-described in the vision has no config-defined default to fall back to — it must either
-define its own config format (creating a potential conflict) or use hardcoded dev-domain
-constants (defeating the domain-agnosticism goal for non-dev deployments).
+**Recommendation**: Accept the source documents' interpretation. Update the vision's W0-3 config block to show the six scoring factor weights (matching the source docs) rather than the lambda weights. Lambda weight externalization (if ever needed) should target a distinct TOML key (e.g., `[coherence]`). This is a documentation correction to the vision, not a code change.
 
-The `[confidence]` empty stub (ADR-004) reserves the TOML namespace, so a format break
-is avoided. But the *semantic* gap remains: W3-1 will need to add `weights` to
-`ConfidenceConfig` before its cold-start can use operator-configured values.
-
-**Recommendation**: Human must decide one of:
-1. **Accept deferral** — Acknowledge that W3-1 will add `weights` to `ConfidenceConfig`
-   when that feature is scoped. Update the vision's W0-3 description to reflect that
-   lambda weights are deferred to the W3-1 design phase. The empty stub ensures no
-   format break. Current dsn-001 scope is correct as written.
-2. **Add minimal stub fields** — Add empty `weights` field stubs to `ConfidenceConfig`
-   now (with `None` defaults) so the W3-1 design has a concrete hook point and the
-   vision's cold-start fallback path is addressable without a later format change.
-3. **Restore scope** — Add the lambda weights to W0-3 scope. This aligns with the
-   vision text but contradicts the SCOPE.md rationale.
-
-**Note**: This is a scope decision made with clear reasoning. It does not block
-delivery — the empty stub fully satisfies the forward-compatibility requirement.
-Human approval of the deferral is the lowest-friction resolution.
+No delivery blocker. The source documents are internally consistent and correctly satisfy W3-1's cold-start requirement per AC-27.
 
 ---
 
-### VARIANCE-2 (WARN): `[cycle]` label configuration excluded from W0-3
+## Preset System Alignment Assessment
 
-**What**: SCOPE.md non-goals exclude the `[cycle]` section from runtime configuration.
-The source docs implement a hardcoded doc-fix on `CycleParams.topic` (FR-019) and
-reserve `[cycle]` as an empty stub (FR-009). No runtime-configurable label parameters
-are delivered.
+The following questions were evaluated per the review mandate.
 
-The PRODUCT-VISION W0-3 section includes:
+### Q1: Lifecycle vocabulary ("authoritative", "operational", "empirical", "collaborative") vs. domain-agnostic framing
 
-> ```toml
-> [cycle]
-> # context_cycle tool parameter labels — rename for non-dev domains
-> work_context_label = "feature"   # label shown in tool descriptions
-> cycle_label = "cycle"
-> ```
+**Finding: PASS**
 
-SCOPE.md rationale for the exclusion:
+The vision's domain-agnostic principle is "Any knowledge-intensive domain... runs on the same engine, configured not rebuilt." The preset names are knowledge *lifecycle archetypes*, not domain names. Naming them by knowledge behaviour (authoritative, operational, empirical, collaborative) rather than by industry (legal, SRE, science, dev) is *more* domain-agnostic than the alternatives.
 
-> "The tool concept is already domain-neutral; 'feature' vocabulary in the tool
-> description is addressed by the hardcoded rename/doc fix (Goal 7/8), not by
-> runtime config."
+Evidence of vision alignment:
+- `authoritative` — encodes long-lived high-trust knowledge regardless of domain (legal, policy, standards). A legal operator and an aviation-standards operator both recognise their knowledge in this preset.
+- `operational` — encodes action-oriented time-sensitive knowledge (runbooks, incident procedures, SOPs) without naming any specific industry.
+- `empirical` — encodes measurement-derived knowledge (sensors, metrics, feeds) applicable to environmental monitoring, scientific research, SRE metrics alike.
+- `collaborative` — encodes team-built knowledge under revision (dev, research), matches the current compiled defaults.
 
-**Why it matters**: The vision includes `[cycle]` label configurability as part of
-the domain-agnosticism unlock. The SCOPE.md approach of a hardcoded doc-fix partially
-addresses the concern (the doc comment will reference multiple domain examples, not
-only "feature"). However, an operator deploying for SRE or legal cannot change the
-tool description vocabulary without recompiling.
+The vision explicitly lists "environmental monitoring, SRE operations, scientific research, regulatory compliance" as target domains (story section, line 15). All four map cleanly onto these archetypes without the preset names being dev-specific.
 
-This is a lower-severity gap than VARIANCE-1: the `CycleParams.topic` doc-fix
-(FR-019) provides meaningful improvement, and the stub reserves the namespace.
-The tool's parameter is a free-form string field anyway, so non-dev operators can
-supply their domain's identifier without a config change.
+### Q2: Preset system's relationship to W3-1 GNN cold-start
 
-**Recommendation**: Human must decide one of:
-1. **Accept deferral** — The doc-fix (FR-019) is sufficient for W0-3. The `[cycle]`
-   stub reserves the namespace. Label configurability can be added if a real deployment
-   requires it. Current dsn-001 scope is correct as written.
-2. **Restore scope** — Add `work_context_label` and `cycle_label` to `CycleConfig`
-   and wire them to the tool description generation path. This aligns with the vision
-   but adds implementation complexity not justified by current operator demand.
+**Finding: PASS — VARIANCE-1 fully resolved**
 
-**Note**: Given that `feature_cycle` and `topic` are free-form strings (per the vision's
-own note on these fields), the practical impact of not having configurable labels is
-lower than VARIANCE-1's impact on W3-1 cold-start.
+The vision's W3-1 section (lines 705-712) states:
 
----
+> "A missing or stale weight vector degrades gracefully to the config-defined defaults (W0-3 `[confidence] weights`). W3-1's cold-start initializes from the weights in `[confidence] weights` config, not hardcoded dev-domain constants."
 
-### VARIANCE-3 (WARN): `[agents].default_trust` default diverges from vision's stated value
+The source documents satisfy this requirement:
+1. `ConfidenceParams` is extended to nine fields including all six `w_*` weights (ADR-001, ARCHITECTURE §2, SPECIFICATION FR-04).
+2. `resolve_confidence_params()` is the single site that converts preset selection to a populated `ConfidenceParams` (ADR-006, ARCHITECTURE §1, SPECIFICATION FR-10).
+3. AC-27 explicitly mandates: "W3-1 reads this struct for GNN cold-start without any additional config parsing."
+4. `ConfidenceParams` in `unimatrix-engine` is the natural W3-1 integration point — W3-1 will add `Option<LearnedWeights>` to the struct without changing any call site using `Default` (ARCHITECTURE §2, SPECIFICATION §Domain Models/ConfidenceParams).
 
-**What**: PRODUCT-VISION W0-3 shows `default_trust = "restricted"` as the example
-config value. All three source documents use `"permissive"` as the compiled default,
-matching the current `PERMISSIVE_AUTO_ENROLL = true` constant.
+A non-dev domain operator selecting `preset = "authoritative"` cold-starts W3-1 with w_trust=0.22 (dominant), w_fresh=0.10 (minimal) — a legal domain's correct starting point. The GNN then refines from calibrated starting weights rather than the dev-domain collaborative defaults.
 
-SCOPE.md does not explicitly address this default value discrepancy.
+The prior gap (weights never entering `ConfidenceParams`) is resolved. The W3-1 prerequisite is satisfied.
 
-**Why it matters**: The vision's W0-2 deferral rationale explains that `PERMISSIVE_AUTO_ENROLL=false`
-adds no security value before OAuth. However, showing `"restricted"` in the vision's
-W0-3 config example creates an implicit signal that the default should change with
-config externalization. If operators read the vision's example config and set nothing,
-they may expect `"restricted"` behavior but get `"permissive"`.
+### Q3: `custom` preset exposing raw weights — vision principle conflict
 
-This is a documentation inconsistency rather than a functional variance — the source
-docs are internally consistent and correctly preserve the current default.
+**Finding: PASS** (one minor observation noted as part of WARN-1 above)
 
-**Recommendation**: Confirm that `"permissive"` is the intended compiled default for
-W0-3 (consistent with the W0-2 deferral rationale). Update the vision's W0-3 config
-example to show `"permissive"` to avoid operator confusion, or add a note explaining
-the default. No code change required.
+The vision's security section for W0-3 states: "Confidence weights must sum to ≤ 1.0 and each weight must be in [0.0, 1.0]; reject config on violation." The source documents use `(sum - 0.92).abs() < 1e-9` as the invariant (ADR-005, SPECIFICATION §Constraints #2, RISK-TEST-STRATEGY R-03/R-09), not `≤ 1.0`. This discrepancy is between the vision's security note and the ADR. The ADR governs delivery (confirmed by SPECIFICATION and RISK-TEST-STRATEGY). The vision's `≤ 1.0` comment was approximate and is superseded by ADR-005. Not a functional problem.
+
+The `custom` preset concept is consistent with the vision's principle that operators who have domain science justification can use raw weights. The preset system makes `custom` the escape hatch rather than the primary interface — which aligns with the vision's intent that operators "identify their knowledge type, not ML weights." The design choice (named presets first, custom as expert path) is more aligned with the vision than the vision's own config example, which shows raw weights with no higher-level abstraction.
+
+### Q4: Weight values in ADR-005 vs. vision's domain examples
+
+**Finding: PASS**
+
+The vision's W0-3 description (line 291-295) gives directional guidance: "legal knowledge base needs high w_trust, low w_fresh. An air quality deployment needs the inverse."
+
+Against the ADR-005 locked weight table (ARCHITECTURE §Preset Weight Table, SPECIFICATION AC-23):
+
+| Domain example | Matching preset | w_trust | w_fresh | Vision direction |
+|---------------|----------------|---------|---------|-----------------|
+| Legal / policy | `authoritative` | 0.22 (highest across all presets) | 0.10 (lowest) | High trust, low fresh — MATCH |
+| Air quality / sensors | `empirical` | 0.20 | 0.34 (highest) | High fresh, lower trust — MATCH |
+| SRE / incidents | `operational` | 0.10 (lowest) | 0.24 | Action-oriented, time-sensitive — CONSISTENT |
+| Dev / research | `collaborative` | 0.16 | 0.18 | Balanced — MATCH (compiled defaults) |
+
+All four vision domain examples map correctly onto the preset weight table. The ordering relationships the vision implies are satisfied by the numeric values.
 
 ---
 
@@ -176,186 +150,70 @@ the default. No code change required.
 
 ### Vision Alignment
 
-The overall feature direction — moving hardcoded constants to operator-configurable
-TOML config to enable domain-agnostic deployment without recompiling — is fully
-aligned with the vision's core principle:
+The core vision principle — "any knowledge-intensive domain runs on the same engine, configured not rebuilt" — is now fully operationalised by this feature. The preset system resolves the most significant prior gap (confidence weights domain-coupled through compiled defaults) without requiring operators to understand ML weight vectors.
 
-> "Any knowledge-intensive domain — environmental monitoring, SRE operations,
-> scientific research, regulatory compliance — runs on the same engine, configured
-> not rebuilt."
+Vision Critical Gaps addressed by this feature (from PRODUCT-VISION.md §The Critical Gaps):
+- "Freshness half-life hardcoded at 168h" — CRITICAL — addressed via preset built-in values + `[knowledge] freshness_half_life_hours` override (FR-07, AC-04)
+- "`lesson-learned` category name hardcoded in scoring" — CRITICAL — addressed by `boosted_categories` externalisation (FR-06, AC-03)
+- "SERVER_INSTRUCTIONS const uses dev-workflow language" — HIGH — addressed (FR-08, AC-05)
+- "Initial category allowlist hardcoded" — HIGH — addressed (FR-05, AC-02)
+- "`context_retrospective` tool name is SDLC-specific" — MEDIUM — addressed (FR-11, AC-13)
+- "Confidence weights hardcoded — cannot adapt to domain or usage" (Intelligence & Confidence table) — HIGH — addressed via preset system (FR-03/FR-04, AC-22–27)
 
-The vision's Critical Gaps table lists W0-3 items explicitly:
-- "Freshness half-life hardcoded at 168h" — CRITICAL — addressed by FR-005 / AC-04
-- "`lesson-learned` category name hardcoded in scoring" — CRITICAL — addressed by FR-014
-- "SERVER_INSTRUCTIONS const uses dev-workflow language" — HIGH — addressed by FR-017
-- "Initial category allowlist hardcoded" — HIGH — addressed by FR-013
-- "`context_retrospective` tool name is SDLC-specific" — MEDIUM — addressed by FR-018
+The only vision Critical Gap in the domain-coupling table not addressed remains "Lambda dimension weights hardcoded" — these are the coherence gate weights, not the scoring factor weights. This is a deliberate, documented exclusion (SCOPE.md non-goals). The exclusion is correct: these weights feed `compute_lambda()`, not `compute_confidence()`, and W3-1 does not reference them for cold-start.
 
-The feature delivers all vision-listed items for W0-3 **except** the lambda dimension
-weights, which are listed as CRITICAL in the Critical Gaps table
-("Lambda dimension weights hardcoded") and included in the vision's W0-3 config block.
-This is VARIANCE-1 above.
-
-The vision's security requirements for W0-3 are fully addressed:
-- ContentScanner validation of `[server].instructions` — FR-012 / AC-12
-- File permission enforcement — FR-011 / AC-08 / AC-09
-- Category character allowlist and count ceiling — FR-012 / AC-10
-- `boosted_categories` subset validation — AC-11
-- Confidence weight sum/range validation — not applicable (weights deferred to W3-1)
-
-The `context_retrospective` → `context_cycle_review` rename is directly supported
-by the vision:
-
-> "The rename to `context_cycle_review` is domain-neutral ('review' applies to any
-> cycle — post-incident review, campaign review, case review') and makes the pairing
-> with `context_cycle` self-evident: you start/stop a cycle, then review it. This
-> rename is a W0-3 scope addition — low-effort, high clarity gain."
-
-All three source documents handle this rename comprehensively (SR-05 exhaustive
-checklist in SPECIFICATION.md §SR-05; ARCHITECTURE §8; RISK-TEST-STRATEGY R-01).
-
----
+The vision's security requirements for W0-3 are all satisfied by FR-13/FR-14/FR-15 and their corresponding acceptance criteria (AC-08 through AC-20, AC-24–26). The RISK-TEST-STRATEGY provides full coverage of all five security risk surfaces.
 
 ### Milestone Fit
 
-dsn-001 is correctly positioned as a Wave 0 prerequisite. Evidence:
+dsn-001 remains correctly positioned as a Wave 0 prerequisite after scope expansion.
 
-1. The vision states W0-3's purpose explicitly: "This is the single unlock for domain
-   agnosticism. Every other domain-coupling gap either disappears... or becomes trivially
-   fixable via config."
+The preset system addition does not introduce any Wave 1+ capabilities. Evidence:
+1. No new MCP tools, no schema changes, no ML components (ARCHITECTURE §Overview).
+2. No GNN training infrastructure introduced — `ConfidenceParams` is extended as a data carrier for W3-1, not as an ML subsystem.
+3. The W3-1 forward-compatibility design (`Option<LearnedWeights>` slot noted in ARCHITECTURE §2 and SPECIFICATION §Domain Models) is a structural anticipation of a future extension, not pre-implementation of W3-1 logic.
+4. The hook path, bridge mode, export/import subcommands, and background tick are correctly excluded from config loading (ARCHITECTURE §Config distribution, SCOPE.md §Server Startup Path).
 
-2. No Wave 1, Wave 2, or Wave 3 capabilities are introduced. The feature is purely a
-   startup-path change: config loaded once, values distributed to subsystems. No new
-   MCP tools, no schema changes, no ML components.
-
-3. The architecture correctly defers `tokio_main_bridge`, `Command::Hook`, and
-   export/import subcommands from config loading (ARCHITECTURE §Config distribution).
-   This shows appropriate restraint — no over-engineering.
-
-4. The `[inference]` section from the vision (GGUF model path for W3-3) is not
-   introduced in this feature, correctly deferring it to W3-3 scope. The `[confidence]`
-   and `[cycle]` stubs are the only forward-compat elements, and both are empty.
-
-5. The vision's W3-1 dependency on `[confidence] weights` is addressed via the empty
-   stub (ADR-004), which satisfies the format-compatibility requirement even if the
-   semantic content is deferred.
-
----
+Milestone discipline is maintained.
 
 ### Architecture Review
 
-The architecture is sound and self-consistent. All four SCOPE-RISK-ASSESSMENT risks
-assigned to the architecture phase are resolved:
+The architecture is self-consistent across all six ADRs. Post-expansion additions are sound:
 
-- **SR-02** (ConfidenceParams API change) → ADR-001: `ConfidenceParams` struct.
-  Correct choice — absorbs W3-1 API extension without further engine churn. The struct
-  includes `alpha0` and `beta0` fields alongside `freshness_half_life_hours`, which is
-  a minimal but forward-looking design.
+**ADR-005 (Preset Enum and Weight Table)**: The enum design (`#[serde(rename_all = "lowercase")]` with no catch-all variant) is the correct approach — invalid strings fail at deserialization before `validate_config()` runs, providing the earliest possible rejection. The locked weight table (ARCHITECTURE §Preset Weight Table) provides a single authoritative source for delivery. The constraint that all rows must sum to exactly 0.92 (not ≤ 1.0) is consistently stated and the SR-10 mandatory test enforces the `collaborative` row equality invariant.
 
-- **SR-04** (forward-compat stubs) → ADR-004: Empty `ConfidenceConfig` and `CycleConfig`.
-  These reserve the TOML namespace. However, as noted in VARIANCE-1, the semantic gap
-  for W3-1 cold-start remains open — the stub prevents a format break but does not
-  provide the operator-facing defaults that the vision's W3-1 section requires.
+**ADR-006 (Preset Resolution Pipeline)**: Single resolution site in `resolve_confidence_params()` with an explicit precedence chain is the right architectural choice. The `freshness_half_life_hours` precedence table (ARCHITECTURE §`freshness_half_life_hours` Precedence Chain) covers all four cases including the `custom`+absent startup-abort case. No ambiguity remains about which value wins.
 
-- **SR-06** (merge semantics) → ADR-003: Replace semantics for list fields.
-  This matches SPECIFICATION.md FR-003. The merge uses `Option<T>` intermediate
-  deserialization to distinguish "explicitly set to default" from "absent" — this is
-  the correct approach to avoid the R-03 false-negative risk.
+**`from_preset(Custom)` panic design**: The deliberate panic on direct `Custom` invocation (enforced by design, documented in SPECIFICATION Constraint #3, tested by R-18) is an acceptable pattern given that `resolve_confidence_params()` is the only valid call site. Code review is the enforcement mechanism; no type-system guard exists, which is noted but acceptable.
 
-- **SR-07** (CategoryAllowlist constructor split) → ADR-002: `new()` delegates to
-  `from_categories(INITIAL_CATEGORIES)`. Clean resolution — single code path.
-  The architecture note on this point (§3) is clear and correct.
-
-- **SR-08** (crate boundary) → ADR-002 + plain parameter crossing. The architecture
-  explicitly avoids `Arc<UnimatrixConfig>` crossing the crate boundary into
-  `unimatrix-store`. Plain `Vec<Capability>` values cross instead. This is the
-  right call — it avoids circular dependencies and keeps `unimatrix-store` config-agnostic.
-
-One architecture detail warrants delivery-team attention: the `ContentScanner::global()`
-warm-up ordering constraint (SR-03) is resolved via a documented invariant
-(`let _scanner = ContentScanner::global()` at top of `load_config`) rather than a
-type-system guarantee. This is acceptable given the existing codebase pattern but
-must be verified in code review (not just by build passing). RISK-TEST-STRATEGY R-04
-correctly flags this.
-
----
+**ContentScanner ordering constraint** (ARCHITECTURE §Integration Points): The explicit `let _scanner = ContentScanner::global()` warm call at the top of `load_config` with a required comment is a runtime ordering guarantee. This is a delivery-team responsibility (ARCHITECTURE Constraint #10), not a structural guarantee. RISK-TEST-STRATEGY R-13 correctly categorises this as a code-review gate.
 
 ### Specification Review
 
-The specification is complete and well-structured. All 21 acceptance criteria from
-SCOPE.md are carried forward intact. The specification adds:
+The specification is complete and precisely specified. All 27 acceptance criteria from SCOPE.md are present and traceable. The preset additions (FR-03, FR-04, FR-10, AC-22–27) are fully coherent with the base config spec. Notable precision:
 
-- FR-008 and FR-009 (forward-compat stubs) — justified by SCOPE-RISK-ASSESSMENT SR-04
-  and fully consistent with the non-goal language in SCOPE.md ("Architect should
-  forward-design the `UnimatrixConfig` struct with placeholder sections").
-- FR-020 (`dirs::home_dir()` None handling) — not in SCOPE.md but required for
-  correctness in container environments. An essential robustness requirement, not scope
-  creep.
-- FR-021 (malformed TOML error handling) — similarly essential; absence would leave
-  an unspecified failure mode.
+- The `[knowledge] freshness_half_life_hours` precedence matrix (AC-25) covers all four combinations explicitly, matching ADR-006.
+- The weight sum invariant (SPECIFICATION §Constraints #2) correctly uses `(sum - 0.92).abs() < 1e-9` and flags the SCOPE.md config-comment error (`≤ 1.0`) as incorrect.
+- The SR-05 rename checklist covers 31 specific file locations across 14 files — comprehensive and correct.
+- The domain model for `ConfigError` enumerates all required variants including preset-specific ones (`CustomPresetMissingWeights`, `CustomPresetMissingHalfLife`, `CustomWeightSumInvariant`).
 
-The SR-05 exhaustive rename checklist (SPECIFICATION.md §SR-05) is comprehensive:
-12 Rust file locations + 9 Python test file locations + 3 protocol/skill file locations
-+ 1 README location. The zero-match grep verification step is correctly designated
-as mandatory (not optional) before PR merge.
-
-The domain models section (§Domain Models) cleanly captures the merge algorithm,
-including the key detail that `Option<T>` intermediate types are used during
-deserialization to correctly distinguish field-presence from field-value. This
-resolves the R-03 risk at the spec level.
-
-One specification gap: SCOPE.md §Edge Cases notes that an empty `categories = []`
-list is unaddressed — "the constraint is ≤ 64 but no minimum." This ambiguity is
-present in the specification's validation table (no minimum-count constraint). The
-RISK-TEST-STRATEGY flags this in §Edge Cases ("Either reject... or accept as degenerate
-but valid config. The spec does not explicitly address..."). **The spec should clarify
-whether `categories = []` is a valid config.** This is a minor gap but could cause
-inconsistent behavior at the boundary.
-
----
+One specification item from the prior review remains open: empty `categories = []` boundary behaviour is not defined. SPECIFICATION §Domain Models and §FR-05 describe the per-element validation constraints but do not specify a minimum count. The RISK-TEST-STRATEGY EC-01 flags this as requiring documentation. **This is a minor open item for the delivery team to resolve** (accept empty list as degenerate-but-valid, or reject with a minimum-count constraint). No acceptance criterion exists for this case.
 
 ### Risk Strategy Review
 
-The RISK-TEST-STRATEGY is thorough. Key strengths:
+The RISK-TEST-STRATEGY is thorough and correctly expanded for the preset system. Preset-specific risks are well-specified:
 
-1. **R-01** (rename checklist miss) is correctly prioritized as Critical with concrete
-   test scenarios — zero-match grep as a mandatory gate, plus integration test asserting
-   both presence of new name AND absence of old name. This is the right approach for a
-   blast-radius rename.
+- **R-01 (ConfidenceParams call site migration)**: Concrete verification — grep for constant names outside Default impls, plus behavioral unit test using `empirical` w_fresh (0.34 vs 0.18 provides sharp signal). Critical priority is correct.
+- **R-02 (SR-10 regression)**: The mandatory test with the required comment text (`"SR-10: If this test fails, fix the weight table, not the test"`) is the single most important safety net in the entire test strategy. Correctly designated Critical.
+- **R-03 (sum invariant)**: The `0.95` test case (detecting the `≤ 1.0` implementation mistake) is the critical regression detector. Both sides of the `1e-9` boundary tested.
+- **R-08 (`[confidence]` silently active for named presets)**: Low likelihood but high severity — warn-and-ignore behavior tested separately from the resolved value test. Correct.
+- **R-09 (wrong sum invariant)**: Overlaps R-03 — both correctly specified and both required.
 
-2. **R-02** (ConfidenceParams migration) identifies 13 specific call-site files.
-   This level of specificity is valuable for the delivery agent. The grep-for-constant
-   scenario (asserting `FRESHNESS_HALF_LIFE_HOURS` does not appear in non-comment,
-   non-Default contexts) is a clean mechanical verification.
-
-3. **R-03** (merge false-negative) correctly identifies the `PartialEq`-with-`Default`
-   detection pitfall and recommends the `Option<T>` approach — which the specification
-   has already adopted. This alignment between risk strategy and specification is good.
-
-4. **Security risks** are fully analysed: `[server].instructions` injection surface,
-   `[knowledge].categories` as knowledge base gate, `[agents].session_capabilities`
-   Admin exclusion, and TOCTOU on permission check. Each includes a threat model
-   (what untrusted input, damage, blast radius) and a concrete test.
-
-5. The **scope risk traceability table** at the end of RISK-TEST-STRATEGY correctly
-   maps all 8 SCOPE-RISK-ASSESSMENT risks to architecture risks and their resolutions.
-   This is clean cross-document traceability.
-
-One gap: RISK-TEST-STRATEGY §Edge Cases notes that `categories = []` is an unspecified
-boundary (matching the specification gap noted above). R-05 (stub silent acceptance)
-identifies a testing requirement but also notes it is an "operator-experience risk"
-with no runtime mitigation — acceptable given that the `[confidence]` and `[cycle]`
-stubs are explicitly designed as empty forward-compat structures.
+The five mandatory pre-PR gates identified in the RISK-TEST-STRATEGY (SR-10 test, grep sweep, AC-25 unit tests, 0.92 sum invariant, named-preset immunity to `[confidence]`) are the right set.
 
 ---
 
 ## Knowledge Stewardship
 
-- Queried: `/uni-query-patterns` for topic `vision` — Unimatrix MCP server not callable
-  from this agent context; no results returned. Secondary evidence drawn from prior
-  MEMORY.md entries and codebase conventions.
-- Stored: nothing novel to store — the vision-vs-scope deviation pattern (documented
-  product vision includes items that a scoped feature deliberately excludes with rationale)
-  is a general design discipline concern, not a dsn-001-specific pattern. If the same
-  type of vision deviation (feature drops scope from vision with rationale) appears
-  across two or more additional features, it warrants a stored pattern entry.
+- Queried: `/uni-query-patterns` for topic `vision` — result: entry #2063 (single-file topology scope/vision language check, nxs-011). Not directly applicable to this feature. No prior alignment patterns for preset system design exist.
+- Stored: entry #2298 "Config key semantic divergence: same TOML key, different weights payload than vision example" via `/uni-store-pattern` — the `[confidence]` namespace carries scoring factor weights in source docs vs. lambda/coherence weights in the vision example. Generalizable pattern: verify TOML key semantic payload matches vision example, not just key name. Applicable to any future feature that externalizes a second class of "weights" into config.
