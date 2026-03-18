@@ -218,7 +218,7 @@ pub struct AttributionMetadata {
     pub total_session_count: usize,
 }
 
-/// Complete analysis output returned by context_retrospective.
+/// Complete analysis output returned by context_cycle_review.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RetrospectiveReport {
     /// The feature analyzed.

@@ -34,7 +34,7 @@ The product vision explicitly calls for both: a comprehensive README (features, 
 
 **README.md (310 lines, exists):** Contains a product description, feature overview (knowledge engine, MCP tools table, confidence scoring details, coherence gate, security, hook-driven delivery, observation pipeline), architecture section (8 crates table, data layout), getting started (prerequisites, build, MCP config, hooks config, usage examples, CLI flags), test instructions, knowledge categories, and project structure. Several sections are stale:
 - References redb in the architecture table, project structure, and data layout despite SQLite migration (nxs-008)
-- Lists 11 tools in the MCP table (missing `context_retrospective` which was added in vnc-011, and the table header says 12 but only lists 11 entries -- `context_retrospective` row is present but description is cut)
+- Lists 11 tools in the MCP table (missing `context_cycle_review` which was added in vnc-011, and the table header says 12 but only lists 11 entries -- `context_cycle_review` row is present but description is cut)
 - Data layout shows `.redb` file extension
 - Crate descriptions reference redb
 - Test count says "1,500+" (actual is higher after recent features)
@@ -59,7 +59,7 @@ Each tool has a `name`, `description` (one sentence), and typed parameters with 
 | `context_status` | Health metrics and maintenance | maintain=true behavior, coherence dimensions |
 | `context_briefing` | Role+task orientation | Token budget, role/task parameters, hook integration |
 | `context_enroll` | Manage agent trust/capabilities | Trust hierarchy, capability list, admin-only |
-| `context_retrospective` | Analyze session telemetry | Feature cycle parameter, evidence limit, format options |
+| `context_cycle_review` | Analyze session telemetry | Feature cycle parameter, evidence limit, format options |
 
 ### Skills (14 skills in `.claude/skills/`)
 

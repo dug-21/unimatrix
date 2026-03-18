@@ -79,7 +79,7 @@ nan-005 rewrites the Unimatrix README as a comprehensive external-facing documen
 ### FR-04: MCP Tool Reference Section
 
 **FR-04a**: The MCP Tool Reference MUST document all 12 tools. The 12 tools are (verified from `tools.rs`):
-`context_search`, `context_lookup`, `context_get`, `context_store`, `context_correct`, `context_deprecate`, `context_quarantine`, `context_status`, `context_briefing`, `context_enroll`, `context_retrospective`
+`context_search`, `context_lookup`, `context_get`, `context_store`, `context_correct`, `context_deprecate`, `context_quarantine`, `context_status`, `context_briefing`, `context_enroll`, `context_cycle_review`
 
 Wait — that is 11. The README currently lists 11 tools and the SCOPE.md says 12. Verification required: the PRODUCT-VISION.md lists 12 in its MCP Server section but names only 11 in the vinculum bullet. The `tools.rs` file contains exactly 11 `#[tool(...)]` annotated handlers. **The README must state the correct count (11 tools) or the 12th tool must be confirmed to exist.** This is a verifiable fact the implementation agent must confirm before authoring. See Open Question OQ-01.
 
@@ -97,7 +97,7 @@ Wait — that is 11. The README currently lists 11 tools and the SCOPE.md says 1
   - `context_status`: `topic`, `category`, `check_embeddings`, `maintain`, `format`
   - `context_briefing`: `role` (required), `task` (required), `feature`, `max_tokens` (default 3000, range 500-10000), `format`
   - `context_enroll`: `target_agent_id` (required), `trust_level` (required), `capabilities` (required), `agent_id`, `format`
-  - `context_retrospective`: `feature_cycle` (required), `evidence_limit`, `format` ("markdown" default, "json")
+  - `context_cycle_review`: `feature_cycle` (required), `evidence_limit`, `format` ("markdown" default, "json")
 - When-to-use note that distinguishes it from similar tools (specifically: search vs. lookup, correct vs. deprecate vs. quarantine)
 - Capability requirement where non-obvious (Admin-only: `context_status`, `context_quarantine`, `context_enroll`)
 
@@ -411,7 +411,7 @@ A Claude Code lifecycle event routed to the `unimatrix-server hook <EVENT>` subc
 ### Workflow 4: Retrospective Analysis
 
 1. Human invokes `/retro {feature-id}` after PR merge
-2. `/retro` calls `context_retrospective(feature_cycle: "{feature-id}")` to retrieve observation-based findings
+2. `/retro` calls `context_cycle_review(feature_cycle: "{feature-id}")` to retrieve observation-based findings
 3. `/retro` spawns `uni-architect` to extract patterns, procedures, and lessons
 4. Extracted knowledge stored in Unimatrix under appropriate categories
 5. `/record-outcome` records the retrospective completion
@@ -489,7 +489,7 @@ nan-005 introduces no new Rust crates, npm packages, or external services.
 
 ## Open Questions
 
-**OQ-01 — Tool Count**: SCOPE.md states 12 MCP tools. PRODUCT-VISION.md's vinculum description lists 12 including `context_retrospective`. Counting `#[tool(...)]` annotations in `tools.rs` yields 11 handlers. The discrepancy may be a documentation count error or `context_retrospective` may be defined in a separate file. The implementation agent must verify the exact count before authoring the README tool reference table. Recommendation: if 11 tools exist, state 11; if 12 exist, state 12.
+**OQ-01 — Tool Count**: SCOPE.md states 12 MCP tools. PRODUCT-VISION.md's vinculum description lists 12 including `context_cycle_review`. Counting `#[tool(...)]` annotations in `tools.rs` yields 11 handlers. The discrepancy may be a documentation count error or `context_cycle_review` may be defined in a separate file. The implementation agent must verify the exact count before authoring the README tool reference table. Recommendation: if 11 tools exist, state 11; if 12 exist, state 12.
 
 **OQ-02 — MicroLoRA / unimatrix-adapt Description Level**: The README currently describes MicroLoRA at a technical depth (InfoNCE loss, EWC++ regularization, contrastive learning). SCOPE.md says the README should cover "what users experience, not how it works internally" and "architecture section is minimal." However, MicroLoRA is explicitly called out in the SCOPE.md Core Capabilities framing as a differentiator. The implementation agent must determine whether MicroLoRA's technical details belong in Core Capabilities (user-facing value framing) or should be omitted. Recommendation: mention MicroLoRA by name as "adaptive embeddings that tune to project-specific usage patterns" without the technical details (InfoNCE, EWC++).
 

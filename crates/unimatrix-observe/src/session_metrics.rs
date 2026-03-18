@@ -598,7 +598,7 @@ mod tests {
         assert_eq!(classify_tool("context_briefing"), "other");
         assert_eq!(classify_tool("context_status"), "other");
         assert_eq!(classify_tool("context_enroll"), "other");
-        assert_eq!(classify_tool("context_retrospective"), "other");
+        assert_eq!(classify_tool("context_cycle_review"), "other");
         assert_eq!(classify_tool("mcp__unimatrix__context_briefing"), "other");
         assert_eq!(classify_tool("mcp__unimatrix__context_status"), "other");
     }
