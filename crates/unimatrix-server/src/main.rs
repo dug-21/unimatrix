@@ -7,10 +7,8 @@ use std::time::Duration;
 use clap::{Parser, Subcommand};
 use rmcp::ServiceExt;
 use unimatrix_adapt::{AdaptConfig, AdaptationService};
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-use unimatrix_core::{
-    CoreError, EmbedConfig, Store, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex,
-};
+use unimatrix_core::async_wrappers::AsyncVectorStore;
+use unimatrix_core::{CoreError, EmbedConfig, Store, VectorAdapter, VectorConfig, VectorIndex};
 use unimatrix_server::error::ServerError;
 use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
@@ -348,7 +346,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Open database with retry loop for lock contention.
-    let store = open_store_with_retry(&paths.db_path)?;
+    let store = open_store_with_retry(&paths.db_path).await?;
 
     // Acquire PID guard (flock + write PID).
     let _pid_guard = match pidfile::PidGuard::acquire(&paths.pid_path) {
@@ -373,6 +371,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("loading existing vector index");
         Arc::new(
             VectorIndex::load(Arc::clone(&store), vector_config, &paths.vector_dir)
+                .await
                 .map_err(|e| ServerError::Core(CoreError::Vector(e)))?,
         )
     } else {
@@ -395,10 +394,8 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
 
     // Build adapters and async wrappers.
-    let store_adapter = StoreAdapter::new(Arc::clone(&store));
     let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
 
-    let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
     let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
     // Initialize category allowlist.
@@ -427,7 +424,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&store),
         Arc::clone(&vector_index),
         Arc::clone(&async_vector_store),
-        Arc::clone(&async_entry_store),
+        Arc::clone(&store),
         Arc::clone(&embed_handle),
         Arc::clone(&adapt_service),
         Arc::clone(&audit),
@@ -441,7 +438,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&store),
         Arc::clone(&embed_handle),
         Arc::clone(&async_vector_store),
-        Arc::clone(&async_entry_store),
+        Arc::clone(&store),
         Arc::clone(&adapt_service),
         Arc::clone(&session_registry),
         Arc::clone(&pending_entries_analysis),
@@ -453,9 +450,8 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     // Build server (ADR-003: constructed once, cloned into each session task).
-    let async_entry_store_for_tick = Arc::clone(&async_entry_store);
     let mut server = UnimatrixServer::new(
-        async_entry_store,
+        Arc::clone(&store),
         async_vector_store,
         Arc::clone(&embed_handle),
         Arc::clone(&registry),
@@ -486,7 +482,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&embed_handle),
         Arc::clone(&adapt_service),
         Arc::clone(&session_registry),
-        async_entry_store_for_tick,
+        Arc::clone(&store),
         Arc::clone(&pending_entries_analysis),
         Arc::clone(&server.tick_metadata),
         None,
@@ -595,7 +591,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Open database with retry loop for lock contention.
-    let store = open_store_with_retry(&paths.db_path)?;
+    let store = open_store_with_retry(&paths.db_path).await?;
 
     // Acquire PID guard (flock + write PID) now that we hold the database lock.
     // PidGuard::drop will remove the PID file and release the lock on exit.
@@ -621,6 +617,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("loading existing vector index");
         Arc::new(
             VectorIndex::load(Arc::clone(&store), vector_config, &paths.vector_dir)
+                .await
                 .map_err(|e| ServerError::Core(CoreError::Vector(e)))?,
         )
     } else {
@@ -643,10 +640,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
 
     // Build adapters and async wrappers.
-    let store_adapter = StoreAdapter::new(Arc::clone(&store));
     let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
 
-    let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
     let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
     // Initialize category allowlist.
@@ -675,7 +670,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&store),
         Arc::clone(&vector_index),
         Arc::clone(&async_vector_store),
-        Arc::clone(&async_entry_store),
+        Arc::clone(&store),
         Arc::clone(&embed_handle),
         Arc::clone(&adapt_service),
         Arc::clone(&audit),
@@ -689,7 +684,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&store),
         Arc::clone(&embed_handle),
         Arc::clone(&async_vector_store),
-        Arc::clone(&async_entry_store),
+        Arc::clone(&store),
         Arc::clone(&adapt_service),
         Arc::clone(&session_registry),
         Arc::clone(&pending_entries_analysis),
@@ -701,9 +696,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     // Build server.
-    let async_entry_store_for_tick = Arc::clone(&async_entry_store);
     let mut server = UnimatrixServer::new(
-        async_entry_store,
+        Arc::clone(&store),
         async_vector_store,
         Arc::clone(&embed_handle),
         Arc::clone(&registry),
@@ -737,7 +731,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&embed_handle),
         Arc::clone(&adapt_service),
         Arc::clone(&session_registry),
-        async_entry_store_for_tick,
+        Arc::clone(&store),
         Arc::clone(&pending_entries_analysis),
         Arc::clone(&server.tick_metadata),
         None, // TrainingService: wired in future integration step
@@ -856,7 +850,15 @@ fn handle_version(project_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error
     if let Some(dir) = project_dir {
         let paths = project::ensure_data_directory(Some(&dir), None)
             .map_err(|e| ServerError::ProjectInit(e.to_string()))?;
-        let _store = Store::open(&paths.db_path)?;
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()?;
+        let _store = rt
+            .block_on(Store::open(
+                &paths.db_path,
+                unimatrix_store::PoolConfig::default(),
+            ))
+            .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
         eprintln!("database initialized at {}", paths.db_path.display());
     }
 
@@ -898,12 +900,12 @@ const DB_OPEN_RETRY_BASE_MS: u64 = 1000;
 /// Retries up to `DB_OPEN_MAX_ATTEMPTS` times with exponential backoff
 /// (1s, 2s, 4s). This gives a stale process time to release the SQLite
 /// lock after receiving SIGTERM in `handle_stale_pid_file` (#146).
-fn open_store_with_retry(
+async fn open_store_with_retry(
     db_path: &std::path::Path,
 ) -> Result<Arc<Store>, Box<dyn std::error::Error>> {
     let mut last_err = None;
     for attempt in 1..=DB_OPEN_MAX_ATTEMPTS {
-        match Store::open(db_path) {
+        match Store::open(db_path, unimatrix_store::PoolConfig::default()).await {
             Ok(store) => {
                 if attempt > 1 {
                     tracing::info!(attempt, "database opened after retry");
@@ -920,7 +922,7 @@ fn open_store_with_retry(
                         error = %e,
                         "database open failed, retrying"
                     );
-                    std::thread::sleep(Duration::from_millis(delay_ms));
+                    tokio::time::sleep(Duration::from_millis(delay_ms)).await;
                 }
                 last_err = Some(e);
             }

@@ -385,7 +385,7 @@ mod tests {
     // T-LISTEN-U-01: start_mcp_uds_listener binds socket with 0600 permissions
     // -----------------------------------------------------------------------
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_start_mcp_uds_listener_permissions_0600() {
         use crate::infra::shutdown::new_daemon_token;
 
@@ -424,7 +424,7 @@ mod tests {
     // T-LISTEN-U-05: shutdown_token cancellation breaks accept loop
     // -----------------------------------------------------------------------
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_shutdown_token_breaks_accept_loop() {
         use crate::infra::shutdown::new_daemon_token;
 
@@ -456,7 +456,7 @@ mod tests {
     // T-LISTEN-U-02 variant: start_mcp_uds_listener rejects oversized path
     // -----------------------------------------------------------------------
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_start_mcp_uds_listener_rejects_oversized_path() {
         use crate::infra::shutdown::new_daemon_token;
 
@@ -480,7 +480,7 @@ mod tests {
     // T-LISTEN-U-03: retain(is_finished) sweep bounds handle Vec size
     // -----------------------------------------------------------------------
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_retain_sweep_bounds_vec_size() {
         // Spawn 100 tasks that complete immediately, then verify the accept loop's
         // retain sweep (C-12 / R-10) reduces the Vec to near-zero.
@@ -527,7 +527,7 @@ mod tests {
     // T-LISTEN-U-05 variant: stale socket is removed before bind
     // -----------------------------------------------------------------------
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_stale_socket_unlinked_before_bind() {
         use crate::infra::shutdown::new_daemon_token;
 
@@ -557,7 +557,7 @@ mod tests {
     // T-LISTEN-U-04: Session count enforced — 33rd connection immediately dropped
     // -----------------------------------------------------------------------
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_session_cap_enforced_at_32() {
         use crate::infra::shutdown::new_daemon_token;
         use tokio::net::UnixStream;
@@ -624,7 +624,7 @@ mod tests {
     // T-LISTEN-E-02: 100 sequential connect/disconnect cycles — Vec stays bounded
     // -----------------------------------------------------------------------
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_sequential_cycles_vec_bounded() {
         use crate::infra::shutdown::new_daemon_token;
         use tokio::net::UnixStream;
@@ -674,7 +674,7 @@ mod tests {
     // not panic. The `serve` call returns an Err when the client closes the
     // connection before the MCP initialize handshake — that is expected behavior.
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_sr01_transport_wrapping_compiles_and_runs() {
         use tokio::net::UnixListener;
 
@@ -724,9 +724,8 @@ mod tests {
     fn build_test_server(dir: &TempDir) -> UnimatrixServer {
         use std::sync::Arc;
         use unimatrix_adapt::{AdaptConfig, AdaptationService};
-        use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-        use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
-        use unimatrix_store::Store;
+        use unimatrix_core::async_wrappers::AsyncVectorStore;
+        use unimatrix_core::{VectorAdapter, VectorConfig};
         use unimatrix_vector::VectorIndex;
 
         use crate::infra::audit::AuditLog;
@@ -738,7 +737,18 @@ mod tests {
         let vector_dir = dir.path().join("vector");
         std::fs::create_dir_all(&vector_dir).unwrap();
 
-        let store = Arc::new(Store::open(&db_path).unwrap());
+        // Bridge async SqlxStore::open to this sync helper.
+        // build_test_server is called from #[tokio::test(flavor = "multi_thread")] (async runtime already running),
+        // so we must use block_in_place — creating a new runtime would panic.
+        let store = Arc::new(
+            tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(unimatrix_store::SqlxStore::open(
+                    &db_path,
+                    unimatrix_store::pool_config::PoolConfig::default(),
+                ))
+            })
+            .unwrap(),
+        );
         let vector_config = VectorConfig::default();
         let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
 
@@ -747,15 +757,13 @@ mod tests {
         let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
         let embed_handle = EmbedServiceHandle::new();
 
-        let store_adapter = StoreAdapter::new(Arc::clone(&store));
         let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
-        let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
         let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
         let categories = Arc::new(CategoryAllowlist::new());
 
         UnimatrixServer::new(
-            async_entry_store,
+            Arc::clone(&store),
             async_vector_store,
             embed_handle,
             registry,

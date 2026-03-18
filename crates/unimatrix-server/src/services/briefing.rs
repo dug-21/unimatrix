@@ -7,8 +7,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use unimatrix_core::async_wrappers::AsyncEntryStore;
-use unimatrix_core::{EntryRecord, QueryFilter, Status, StoreAdapter};
+use unimatrix_core::{CoreError, EntryRecord, QueryFilter, Status, Store};
 use unimatrix_engine::effectiveness::EffectivenessCategory;
 
 use crate::infra::audit::{AuditEvent, Outcome};
@@ -28,7 +27,7 @@ use crate::services::{AuditContext, CallerId, ServiceError};
 /// active, token budget, and whether semantic search is invoked.
 #[derive(Clone)]
 pub(crate) struct BriefingService {
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     search: SearchService,
     gateway: Arc<SecurityGateway>,
     semantic_k: usize,
@@ -146,7 +145,7 @@ fn parse_semantic_k_from(value: Option<String>) -> usize {
 
 impl BriefingService {
     pub(crate) fn new(
-        entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+        entry_store: Arc<Store>,
         search: SearchService,
         gateway: Arc<SecurityGateway>,
         semantic_k: usize,
@@ -251,7 +250,7 @@ impl BriefingService {
                         time_range: None,
                     })
                     .await
-                    .map_err(ServiceError::Core)?;
+                    .map_err(|e| ServiceError::Core(CoreError::Store(e)))?;
 
                 // S4: exclude quarantined (defense-in-depth)
                 conv_entries.retain(|e| !SecurityGateway::is_quarantined(&e.status));
@@ -578,8 +577,8 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-    use unimatrix_core::{NewEntry, Store, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex};
+    use unimatrix_core::async_wrappers::AsyncVectorStore;
+    use unimatrix_core::{NewEntry, Store, VectorAdapter, VectorConfig, VectorIndex};
     use unimatrix_engine::effectiveness::EffectivenessCategory;
 
     use crate::infra::audit::AuditLog;
@@ -588,15 +587,20 @@ mod tests {
     use crate::services::search::SearchService;
     use crate::services::{AuditContext, AuditSource};
 
-    fn make_test_store() -> (tempfile::TempDir, Arc<Store>) {
+    async fn make_test_store() -> (tempfile::TempDir, Arc<Store>) {
         let dir = tempfile::tempdir().expect("tempdir");
-        let store = Arc::new(Store::open(dir.path().join("test.db")).expect("open store"));
+        let store = Arc::new(
+            unimatrix_store::SqlxStore::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            )
+            .await
+            .expect("open store"),
+        );
         (dir, store)
     }
 
-    fn make_briefing_service(
-        store: &Arc<Store>,
-    ) -> (BriefingService, Arc<AsyncEntryStore<StoreAdapter>>) {
+    fn make_briefing_service(store: &Arc<Store>) -> (BriefingService, Arc<Store>) {
         make_briefing_service_with_effectiveness(
             store,
             crate::services::effectiveness::EffectivenessState::new_handle(),
@@ -606,9 +610,8 @@ mod tests {
     fn make_briefing_service_with_effectiveness(
         store: &Arc<Store>,
         effectiveness_state: crate::services::effectiveness::EffectivenessStateHandle,
-    ) -> (BriefingService, Arc<AsyncEntryStore<StoreAdapter>>) {
-        let store_adapter = StoreAdapter::new(Arc::clone(store));
-        let entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
+    ) -> (BriefingService, Arc<Store>) {
+        let entry_store = Arc::clone(store);
         let vector_index = Arc::new(
             VectorIndex::new(Arc::clone(store), VectorConfig::default()).expect("vector index"),
         );
@@ -628,7 +631,7 @@ mod tests {
         let search = SearchService::new(
             Arc::clone(store),
             vector_store,
-            Arc::clone(&entry_store),
+            Arc::clone(store),
             embed_service,
             adapt_service,
             Arc::clone(&gateway),
@@ -638,14 +641,14 @@ mod tests {
         );
 
         let service = BriefingService::new(
-            Arc::clone(&entry_store),
+            Arc::clone(store),
             search,
             gateway,
             3, // default semantic_k for existing tests
             effectiveness_state,
         );
 
-        (service, entry_store)
+        (service, Arc::clone(store))
     }
 
     fn test_audit_ctx() -> AuditContext {
@@ -660,7 +663,7 @@ mod tests {
     }
 
     /// Insert a test entry into the store. Returns the auto-generated entry ID.
-    fn store_entry(
+    async fn store_entry(
         store: &Arc<Store>,
         title: &str,
         content: &str,
@@ -681,14 +684,14 @@ mod tests {
             feature_cycle: String::new(),
             trust_source: String::new(),
         };
-        store.insert(entry).expect("insert")
+        store.insert(entry).await.expect("insert")
     }
 
     // -- T-BS-01: Convention lookup with role --
 
     #[tokio::test]
     async fn convention_lookup_with_role() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let id1 = store_entry(
@@ -699,7 +702,8 @@ mod tests {
             "architect",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id2 = store_entry(
             &store,
             "Conv 2",
@@ -708,7 +712,8 @@ mod tests {
             "architect",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         let params = BriefingParams {
             role: Some("architect".to_string()),
@@ -738,7 +743,7 @@ mod tests {
 
     #[tokio::test]
     async fn convention_lookup_skipped_when_no_role() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let _id = store_entry(
@@ -749,7 +754,8 @@ mod tests {
             "dev",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         let params = BriefingParams {
             role: None,
@@ -772,7 +778,7 @@ mod tests {
 
     #[tokio::test]
     async fn convention_lookup_skipped_when_disabled() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let _id = store_entry(
@@ -783,7 +789,8 @@ mod tests {
             "dev",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         let params = BriefingParams {
             role: Some("dev".to_string()),
@@ -806,7 +813,7 @@ mod tests {
 
     #[tokio::test]
     async fn semantic_search_isolation_when_disabled() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         // Embed service not started — would fail if SearchService were called
@@ -833,7 +840,7 @@ mod tests {
 
     #[tokio::test]
     async fn semantic_search_embed_not_ready() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let _id = store_entry(
@@ -844,7 +851,8 @@ mod tests {
             "dev",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         // Embed service not started — will trigger EmbedNotReady
         let params = BriefingParams {
@@ -871,7 +879,7 @@ mod tests {
 
     #[tokio::test]
     async fn injection_history_basic_processing() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let id_dec = store_entry(
@@ -882,7 +890,8 @@ mod tests {
             "architecture",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id_conv = store_entry(
             &store,
             "Coding Convention",
@@ -891,7 +900,8 @@ mod tests {
             "rust",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id_pat = store_entry(
             &store,
             "Error Handling",
@@ -900,7 +910,8 @@ mod tests {
             "rust",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         let params = BriefingParams {
             role: None,
@@ -942,7 +953,7 @@ mod tests {
 
     #[tokio::test]
     async fn injection_history_deduplication() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let id = store_entry(
@@ -953,7 +964,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         let params = BriefingParams {
             role: None,
@@ -993,7 +1005,7 @@ mod tests {
 
     #[tokio::test]
     async fn injection_history_quarantine_exclusion() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let id_active = store_entry(
@@ -1004,7 +1016,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id_quarantined = store_entry(
             &store,
             "Quarantined",
@@ -1013,7 +1026,8 @@ mod tests {
             "test",
             vec![],
             Status::Quarantined,
-        );
+        )
+        .await;
 
         let params = BriefingParams {
             role: None,
@@ -1047,7 +1061,7 @@ mod tests {
 
     #[tokio::test]
     async fn injection_history_deleted_entry_skipped() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let id = store_entry(
@@ -1058,7 +1072,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         // Entry 99999 does not exist
 
         let params = BriefingParams {
@@ -1091,7 +1106,7 @@ mod tests {
 
     #[tokio::test]
     async fn injection_history_deprecated_entries_excluded() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let id = store_entry(
@@ -1102,7 +1117,8 @@ mod tests {
             "test",
             vec![],
             Status::Deprecated,
-        );
+        )
+        .await;
 
         let params = BriefingParams {
             role: None,
@@ -1129,7 +1145,7 @@ mod tests {
 
     #[tokio::test]
     async fn token_budget_truncates_conventions() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         // Each entry ~350 chars (title + content + 50)
@@ -1142,7 +1158,8 @@ mod tests {
             "dev",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let _id2 = store_entry(
             &store,
             "Conv 2",
@@ -1151,7 +1168,8 @@ mod tests {
             "dev",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let _id3 = store_entry(
             &store,
             "Conv 3",
@@ -1160,7 +1178,8 @@ mod tests {
             "dev",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         // Budget: 500 tokens * 4 = 2000 chars. Each entry ~356 chars. Max ~5 entries.
         // With 3 entries at ~356 each = ~1068, all should fit.
@@ -1187,43 +1206,52 @@ mod tests {
 
     #[tokio::test]
     async fn token_budget_proportional_injection() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         // Create entries that test proportional allocation
         let mut ids = Vec::new();
         for _i in 0..3 {
-            ids.push(store_entry(
-                &store,
-                "Decision",
-                "Decision content here",
-                "decision",
-                "arch",
-                vec![],
-                Status::Active,
-            ));
+            ids.push(
+                store_entry(
+                    &store,
+                    "Decision",
+                    "Decision content here",
+                    "decision",
+                    "arch",
+                    vec![],
+                    Status::Active,
+                )
+                .await,
+            );
         }
         for _i in 0..3 {
-            ids.push(store_entry(
-                &store,
-                "Pattern",
-                "Pattern content here",
-                "pattern",
-                "arch",
-                vec![],
-                Status::Active,
-            ));
+            ids.push(
+                store_entry(
+                    &store,
+                    "Pattern",
+                    "Pattern content here",
+                    "pattern",
+                    "arch",
+                    vec![],
+                    Status::Active,
+                )
+                .await,
+            );
         }
         for _i in 0..3 {
-            ids.push(store_entry(
-                &store,
-                "Conv",
-                "Convention content here",
-                "convention",
-                "arch",
-                vec![],
-                Status::Active,
-            ));
+            ids.push(
+                store_entry(
+                    &store,
+                    "Conv",
+                    "Convention content here",
+                    "convention",
+                    "arch",
+                    vec![],
+                    Status::Active,
+                )
+                .await,
+            );
         }
 
         let history: Vec<InjectionEntry> = ids
@@ -1259,7 +1287,7 @@ mod tests {
 
     #[tokio::test]
     async fn token_budget_minimum_boundary() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let id = store_entry(
@@ -1270,7 +1298,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         let params = BriefingParams {
             role: None,
@@ -1298,7 +1327,7 @@ mod tests {
 
     #[tokio::test]
     async fn validation_role_too_long() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let params = BriefingParams {
@@ -1322,7 +1351,7 @@ mod tests {
 
     #[tokio::test]
     async fn validation_task_too_long() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let params = BriefingParams {
@@ -1346,7 +1375,7 @@ mod tests {
 
     #[tokio::test]
     async fn validation_max_tokens_too_low() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let params = BriefingParams {
@@ -1368,7 +1397,7 @@ mod tests {
 
     #[tokio::test]
     async fn validation_max_tokens_too_high() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let params = BriefingParams {
@@ -1392,7 +1421,7 @@ mod tests {
 
     #[tokio::test]
     async fn validation_task_control_chars() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let params = BriefingParams {
@@ -1416,7 +1445,7 @@ mod tests {
 
     #[tokio::test]
     async fn empty_knowledge_base() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let params = BriefingParams {
@@ -1441,7 +1470,7 @@ mod tests {
 
     #[tokio::test]
     async fn feature_tagged_conventions_sorted_first() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let _id_general = store_entry(
@@ -1452,7 +1481,8 @@ mod tests {
             "dev",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id_feature = store_entry(
             &store,
             "Feature Conv",
@@ -1461,7 +1491,8 @@ mod tests {
             "dev",
             vec!["vnc-007".to_string()],
             Status::Active,
-        );
+        )
+        .await;
 
         let params = BriefingParams {
             role: Some("dev".to_string()),
@@ -1488,7 +1519,7 @@ mod tests {
 
     #[tokio::test]
     async fn all_injection_entries_quarantined() {
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let (service, _es) = make_briefing_service(&store);
 
         let id1 = store_entry(
@@ -1499,7 +1530,8 @@ mod tests {
             "test",
             vec![],
             Status::Quarantined,
-        );
+        )
+        .await;
         let id2 = store_entry(
             &store,
             "Q2",
@@ -1508,7 +1540,8 @@ mod tests {
             "test",
             vec![],
             Status::Quarantined,
-        );
+        )
+        .await;
         let id3 = store_entry(
             &store,
             "Q3",
@@ -1517,7 +1550,8 @@ mod tests {
             "test",
             vec![],
             Status::Quarantined,
-        );
+        )
+        .await;
 
         let params = BriefingParams {
             role: None,
@@ -1662,7 +1696,7 @@ mod tests {
     #[tokio::test]
     async fn test_injection_sort_confidence_is_primary_key() {
         // High-confidence Ineffective must rank above low-confidence Effective (R-09)
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
 
         let id_a = store_entry(
@@ -1673,7 +1707,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id_b = store_entry(
             &store,
             "Low Conf Effective",
@@ -1682,7 +1717,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         // Populate effectiveness: A=Ineffective, B=Effective
         {
@@ -1738,7 +1774,7 @@ mod tests {
     #[tokio::test]
     async fn test_injection_sort_effectiveness_is_tiebreaker() {
         // Equal confidence: Effective must rank above Ineffective (AC-07)
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
 
         let id_a = store_entry(
@@ -1749,7 +1785,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id_b = store_entry(
             &store,
             "Equal Conf Effective",
@@ -1758,7 +1795,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         {
             let mut guard = effectiveness_handle
@@ -1813,7 +1851,7 @@ mod tests {
     #[tokio::test]
     async fn test_injection_sort_equal_confidence_equal_effectiveness() {
         // Both Effective at equal confidence: sort is stable (no preference)
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
 
         let id_a = store_entry(
@@ -1824,7 +1862,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id_b = store_entry(
             &store,
             "Entry B",
@@ -1833,7 +1872,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         {
             let mut guard = effectiveness_handle
@@ -1884,7 +1924,7 @@ mod tests {
     async fn test_injection_sort_three_entries_mixed() {
         // A: 0.70 Effective; B: 0.80 Ineffective; C: 0.70 Ineffective
         // Expected: B (0.80, prio=-1), A (0.70, prio=2), C (0.70, prio=-1)
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
 
         let id_a = store_entry(
@@ -1895,7 +1935,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id_b = store_entry(
             &store,
             "B 0.80 Ineffective",
@@ -1904,7 +1945,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id_c = store_entry(
             &store,
             "C 0.70 Ineffective",
@@ -1913,7 +1955,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         {
             let mut guard = effectiveness_handle
@@ -1981,7 +2024,7 @@ mod tests {
     #[tokio::test]
     async fn test_convention_sort_feature_tag_overrides_effectiveness() {
         // Feature-tagged Ineffective must rank above non-feature-tagged Effective (AC-08)
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
 
         let id_a = store_entry(
@@ -1992,7 +2035,8 @@ mod tests {
             "dev",
             vec!["crt-018b".to_string()],
             Status::Active,
-        );
+        )
+        .await;
         let id_b = store_entry(
             &store,
             "NonFeature Effective",
@@ -2001,7 +2045,8 @@ mod tests {
             "dev",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         {
             let mut guard = effectiveness_handle
@@ -2046,7 +2091,7 @@ mod tests {
     #[tokio::test]
     async fn test_convention_sort_effectiveness_tiebreaker_no_feature() {
         // No feature tag: equal confidence — Effective ranks above Ineffective (AC-08)
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
 
         let id_a = store_entry(
@@ -2057,7 +2102,8 @@ mod tests {
             "dev",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id_b = store_entry(
             &store,
             "Conv Effective",
@@ -2066,7 +2112,8 @@ mod tests {
             "dev",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         {
             let mut guard = effectiveness_handle
@@ -2115,7 +2162,7 @@ mod tests {
     #[tokio::test]
     async fn test_briefing_with_empty_effectiveness_state_no_panic() {
         // Cold start: empty EffectivenessState, all priorities=0, sort=confidence-only
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         // Default new_handle() is empty — cold start
         let (service, _es) = make_briefing_service(&store);
 
@@ -2127,7 +2174,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
         let id_b = store_entry(
             &store,
             "Entry B",
@@ -2136,7 +2184,8 @@ mod tests {
             "test",
             vec![],
             Status::Active,
-        );
+        )
+        .await;
 
         let params = BriefingParams {
             role: None,
@@ -2177,12 +2226,12 @@ mod tests {
     // crt-018b: ADR-004 — BriefingService constructor requires EffectivenessStateHandle
     // ---------------------------------------------------------------------------
 
-    #[test]
-    fn test_briefing_service_new_requires_handle() {
+    #[tokio::test]
+    async fn test_briefing_service_new_requires_handle() {
         // Construct BriefingService with a valid EffectivenessStateHandle.
         // The fact that Option<EffectivenessStateHandle> is not accepted is
         // guaranteed by the type system (ADR-004 compile-time safety).
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
         let (service, _es) = make_briefing_service_with_effectiveness(&store, effectiveness_handle);
         // Construction succeeded — assert the service is functional by checking
@@ -2194,10 +2243,10 @@ mod tests {
     // crt-018b: R-06 — EffectivenessSnapshot shared across BriefingService clones
     // ---------------------------------------------------------------------------
 
-    #[test]
-    fn test_briefing_service_clones_share_snapshot() {
+    #[tokio::test]
+    async fn test_briefing_service_clones_share_snapshot() {
         // Clone shares the same Arc<Mutex<EffectivenessSnapshot>> backing object.
-        let (_dir, store) = make_test_store();
+        let (_dir, store) = make_test_store().await;
         let effectiveness_handle = crate::services::effectiveness::EffectivenessState::new_handle();
 
         let (service_b1, _es) =

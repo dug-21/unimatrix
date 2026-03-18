@@ -1,7 +1,9 @@
 #![forbid(unsafe_code)]
 
+pub(crate) mod analytics;
 mod error;
 mod hash;
+pub mod pool_config;
 mod schema;
 
 pub mod counters;
@@ -10,12 +12,14 @@ pub mod metrics;
 mod migration;
 mod migration_compat;
 pub mod read;
-mod txn;
 mod write;
 mod write_ext;
 
+mod audit;
 pub mod injection_log;
+pub mod observations;
 pub mod query_log;
+pub mod registry;
 pub mod sessions;
 pub mod signal;
 pub mod topic_deliveries;
@@ -23,11 +27,8 @@ pub mod topic_deliveries;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_helpers;
 
-// Re-export rusqlite for downstream crates that use direct SQL
-pub use rusqlite;
-
 // Re-exports: schema types (backend-agnostic)
-pub use error::{Result, StoreError};
+pub use error::{PoolKind, Result, StoreError};
 pub use hash::compute_content_hash;
 pub use injection_log::InjectionLogRecord;
 pub use metrics::{MetricVector, PhaseMetrics, UNIVERSAL_METRICS_FIELDS, UniversalMetrics};
@@ -43,6 +44,10 @@ pub use sessions::{
 pub use signal::{SignalRecord, SignalSource, SignalType};
 pub use topic_deliveries::TopicDeliveryRecord;
 
-// Re-exports: SQLite backend
-pub use db::Store;
-pub use txn::SqliteWriteTransaction;
+// Re-exports: sqlx backend
+pub use analytics::AnalyticsWrite;
+pub use db::SqlxStore;
+pub use observations::{ObservationRow, ShadowEvalRow};
+pub use pool_config::{
+    ANALYTICS_QUEUE_CAPACITY, PoolConfig, READ_POOL_ACQUIRE_TIMEOUT, WRITE_POOL_ACQUIRE_TIMEOUT,
+};

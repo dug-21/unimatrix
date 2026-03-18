@@ -5,7 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use unimatrix_store::Store;
+use unimatrix_store::SqlxStore;
 
 /// Maximum entries to consider for co-access pair generation.
 /// 10 entries = 45 pairs. Beyond this, pairs are not generated.
@@ -80,7 +80,7 @@ fn co_access_boost(count: u32, max_boost: f64) -> f64 {
 pub fn compute_search_boost(
     anchor_ids: &[u64],
     result_ids: &[u64],
-    store: &Store,
+    store: &SqlxStore,
     staleness_cutoff: u64,
     deprecated_ids: &HashSet<u64>,
 ) -> HashMap<u64, f64> {
@@ -102,7 +102,7 @@ pub fn compute_search_boost(
 pub fn compute_briefing_boost(
     anchor_ids: &[u64],
     result_ids: &[u64],
-    store: &Store,
+    store: &SqlxStore,
     staleness_cutoff: u64,
     deprecated_ids: &HashSet<u64>,
 ) -> HashMap<u64, f64> {
@@ -120,7 +120,7 @@ pub fn compute_briefing_boost(
 fn compute_boost_internal(
     anchor_ids: &[u64],
     result_ids: &[u64],
-    store: &Store,
+    store: &SqlxStore,
     staleness_cutoff: u64,
     max_boost: f64,
     deprecated_ids: &HashSet<u64>,
@@ -134,7 +134,9 @@ fn compute_boost_internal(
             continue;
         }
 
-        let partners = match store.get_co_access_partners(anchor_id, staleness_cutoff) {
+        let partners = match tokio::runtime::Handle::current()
+            .block_on(store.get_co_access_partners(anchor_id, staleness_cutoff))
+        {
             Ok(p) => p,
             Err(e) => {
                 tracing::warn!("co-access partner lookup failed for {anchor_id}: {e}");

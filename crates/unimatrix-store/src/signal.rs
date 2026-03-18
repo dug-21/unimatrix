@@ -4,14 +4,12 @@
 // then deleted. Uses SQL columns with JSON for entry_ids (ADR-007).
 
 use serde::{Deserialize, Serialize};
+use sqlx::Row;
 
-use crate::db::Store;
-use crate::error::{Result, StoreError};
+use crate::db::{SqlxStore, map_pool_timeout};
+use crate::error::{PoolKind, Result, StoreError};
 
 /// A single confidence signal record in the SIGNAL_QUEUE work queue.
-///
-/// Created at session end (Stop hook), consumed by dual consumers
-/// (confidence pipeline and retrospective pipeline), then deleted.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SignalRecord {
     pub signal_id: u64,
@@ -65,7 +63,7 @@ impl TryFrom<u8> for SignalSource {
 /// Serialize a SignalRecord to bincode bytes using the serde-compatible path.
 ///
 /// Retained for migration compatibility and public re-export.
-pub fn serialize_signal(record: &SignalRecord) -> Result<Vec<u8>> {
+pub fn serialize_signal(record: &SignalRecord) -> crate::error::Result<Vec<u8>> {
     let bytes = bincode::serde::encode_to_vec(record, bincode::config::standard())?;
     Ok(bytes)
 }
@@ -73,146 +71,115 @@ pub fn serialize_signal(record: &SignalRecord) -> Result<Vec<u8>> {
 /// Deserialize a SignalRecord from bincode bytes using the serde-compatible path.
 ///
 /// Retained for migration compatibility and public re-export.
-pub fn deserialize_signal(bytes: &[u8]) -> Result<SignalRecord> {
+pub fn deserialize_signal(bytes: &[u8]) -> crate::error::Result<SignalRecord> {
     let (record, _) =
         bincode::serde::decode_from_slice::<SignalRecord, _>(bytes, bincode::config::standard())?;
     Ok(record)
 }
 
-/// Construct a SignalRecord from a SQL row.
-fn signal_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SignalRecord> {
-    let entry_ids_json: String = row.get("entry_ids")?;
-    let entry_ids: Vec<u64> = serde_json::from_str(&entry_ids_json).unwrap_or_default();
-    Ok(SignalRecord {
-        signal_id: row.get::<_, i64>("signal_id")? as u64,
-        session_id: row.get("session_id")?,
-        created_at: row.get::<_, i64>("created_at")? as u64,
-        entry_ids,
-        signal_type: SignalType::try_from(row.get::<_, i64>("signal_type")? as u8)
-            .unwrap_or(SignalType::Helpful),
-        signal_source: SignalSource::try_from(row.get::<_, i64>("signal_source")? as u8)
-            .unwrap_or(SignalSource::ImplicitOutcome),
-    })
-}
-
-impl Store {
-    /// Insert a SignalRecord into signal_queue.
+impl SqlxStore {
+    /// Insert a SignalRecord (analytics write via enqueue_analytics).
     ///
-    /// Allocates a new signal_id from the counters table (next_signal_id).
-    /// Enforces the 10,000-record cap: if the queue is at or above 10,000 records,
-    /// deletes the oldest record (lowest signal_id) before inserting.
-    /// Returns the allocated signal_id.
-    pub fn insert_signal(&self, record: &SignalRecord) -> Result<u64> {
-        let conn = self.lock_conn();
-        conn.execute_batch("BEGIN IMMEDIATE")
-            .map_err(StoreError::Sqlite)?;
-
-        let result = (|| -> Result<u64> {
-            // 1. Read and increment next_signal_id
-            let next_id = crate::counters::read_counter(&conn, "next_signal_id")?;
-            crate::counters::set_counter(&conn, "next_signal_id", next_id + 1)?;
-
-            // 2. Enforce cap: if queue >= 10_000, delete the oldest
-            let current_len: i64 = conn
-                .query_row("SELECT COUNT(*) FROM signal_queue", [], |row| row.get(0))
-                .map_err(StoreError::Sqlite)?;
-            if current_len >= 10_000 {
-                conn.execute(
-                    "DELETE FROM signal_queue WHERE signal_id = (\
-                        SELECT MIN(signal_id) FROM signal_queue\
-                    )",
-                    [],
-                )
-                .map_err(StoreError::Sqlite)?;
-            }
-
-            // 3. Serialize entry_ids as JSON (ADR-007)
-            let entry_ids_json = serde_json::to_string(&record.entry_ids)
-                .map_err(|e| StoreError::Serialization(e.to_string()))?;
-
-            // 4. Insert with SQL columns
-            conn.execute(
-                "INSERT INTO signal_queue (signal_id, session_id, created_at, \
-                    entry_ids, signal_type, signal_source) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                rusqlite::params![
-                    next_id as i64,
-                    &record.session_id,
-                    record.created_at as i64,
-                    &entry_ids_json,
-                    record.signal_type as u8 as i64,
-                    record.signal_source as u8 as i64,
-                ],
-            )
-            .map_err(StoreError::Sqlite)?;
-
-            Ok(next_id)
-        })();
-
-        match result {
-            Ok(id) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
-                Ok(id)
-            }
-            Err(e) => {
-                let _ = conn.execute_batch("ROLLBACK");
-                Err(e)
-            }
-        }
+    /// The `signal_id` field is ignored — the drain task serializes entry_ids to JSON
+    /// and inserts using the queued values. Returns 0 for the allocated signal_id
+    /// (ID allocation now happens asynchronously in the drain task via write_pool).
+    /// Insert a signal record directly into the write pool.
+    ///
+    /// Writes directly (not via analytics drain) to ensure immediate visibility
+    /// for consumers like `run_confidence_consumer` and `drain_signals` that
+    /// read signals immediately after insertion.
+    pub async fn insert_signal(&self, record: &SignalRecord) -> Result<()> {
+        let entry_ids_json = serde_json::to_string(&record.entry_ids).unwrap_or_default();
+        sqlx::query(
+            "INSERT INTO signal_queue (session_id, created_at, entry_ids, signal_type, signal_source)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+        )
+        .bind(&record.session_id)
+        .bind(record.created_at as i64)
+        .bind(&entry_ids_json)
+        .bind(record.signal_type as u8 as i64)
+        .bind(record.signal_source as u8 as i64)
+        .execute(&self.write_pool)
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+        Ok(())
     }
 
     /// Drain all SignalRecords of the given signal_type from signal_queue.
-    pub fn drain_signals(&self, signal_type: SignalType) -> Result<Vec<SignalRecord>> {
-        let conn = self.lock_conn();
-        conn.execute_batch("BEGIN IMMEDIATE")
-            .map_err(StoreError::Sqlite)?;
+    ///
+    /// Uses write_pool directly (DELETE is a write operation).
+    pub async fn drain_signals(&self, signal_type: SignalType) -> Result<Vec<SignalRecord>> {
+        let mut txn = self
+            .write_pool
+            .begin()
+            .await
+            .map_err(|e| map_pool_timeout(e, PoolKind::Write))?;
 
-        let result = (|| -> Result<Vec<SignalRecord>> {
-            // SELECT matching signals
-            let mut stmt = conn
-                .prepare(
-                    "SELECT signal_id, session_id, created_at, entry_ids, \
-                        signal_type, signal_source \
-                     FROM signal_queue WHERE signal_type = ?1 ORDER BY signal_id",
-                )
-                .map_err(StoreError::Sqlite)?;
+        let rows = sqlx::query(
+            "SELECT signal_id, session_id, created_at, entry_ids, \
+                signal_type, signal_source \
+             FROM signal_queue WHERE signal_type = ?1 ORDER BY signal_id",
+        )
+        .bind(signal_type as u8 as i64)
+        .fetch_all(&mut *txn)
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
 
-            let records: Vec<SignalRecord> = stmt
-                .query_map(rusqlite::params![signal_type as u8 as i64], signal_from_row)
-                .map_err(StoreError::Sqlite)?
-                .collect::<rusqlite::Result<Vec<_>>>()
-                .map_err(StoreError::Sqlite)?;
+        let records: Vec<SignalRecord> = rows
+            .iter()
+            .map(|row| -> Result<SignalRecord> {
+                let entry_ids_json: String = row
+                    .try_get("entry_ids")
+                    .map_err(|e| StoreError::Database(e.into()))?;
+                let entry_ids: Vec<u64> = serde_json::from_str(&entry_ids_json).unwrap_or_default();
+                Ok(SignalRecord {
+                    signal_id: row
+                        .try_get::<i64, _>("signal_id")
+                        .map_err(|e| StoreError::Database(e.into()))?
+                        as u64,
+                    session_id: row
+                        .try_get("session_id")
+                        .map_err(|e| StoreError::Database(e.into()))?,
+                    created_at: row
+                        .try_get::<i64, _>("created_at")
+                        .map_err(|e| StoreError::Database(e.into()))?
+                        as u64,
+                    entry_ids,
+                    signal_type: SignalType::try_from(
+                        row.try_get::<i64, _>("signal_type")
+                            .map_err(|e| StoreError::Database(e.into()))?
+                            as u8,
+                    )
+                    .unwrap_or(SignalType::Helpful),
+                    signal_source: SignalSource::try_from(
+                        row.try_get::<i64, _>("signal_source")
+                            .map_err(|e| StoreError::Database(e.into()))?
+                            as u8,
+                    )
+                    .unwrap_or(SignalSource::ImplicitOutcome),
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
 
-            drop(stmt);
+        sqlx::query("DELETE FROM signal_queue WHERE signal_type = ?1")
+            .bind(signal_type as u8 as i64)
+            .execute(&mut *txn)
+            .await
+            .map_err(|e| StoreError::Database(e.into()))?;
 
-            // DELETE matching signals
-            conn.execute(
-                "DELETE FROM signal_queue WHERE signal_type = ?1",
-                rusqlite::params![signal_type as u8 as i64],
-            )
-            .map_err(StoreError::Sqlite)?;
+        txn.commit()
+            .await
+            .map_err(|e| StoreError::Database(e.into()))?;
 
-            Ok(records)
-        })();
-
-        match result {
-            Ok(drained) => {
-                conn.execute_batch("COMMIT").map_err(StoreError::Sqlite)?;
-                Ok(drained)
-            }
-            Err(e) => {
-                let _ = conn.execute_batch("ROLLBACK");
-                Err(e)
-            }
-        }
+        Ok(records)
     }
 
     /// Return the total count of all records in signal_queue.
-    pub fn signal_queue_len(&self) -> Result<u64> {
-        let conn = self.lock_conn();
-        let count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM signal_queue", [], |row| row.get(0))
-            .map_err(StoreError::Sqlite)?;
+    pub async fn signal_queue_len(&self) -> Result<u64> {
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM signal_queue")
+            .fetch_one(self.read_pool())
+            .await
+            .map_err(|e| StoreError::Database(e.into()))?;
         Ok(count as u64)
     }
 }

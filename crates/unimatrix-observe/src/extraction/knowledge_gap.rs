@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 
 use unimatrix_core::HookType;
-use unimatrix_store::Store;
+use unimatrix_store::SqlxStore;
 
 use super::{ExtractionRule, ProposedEntry};
 use crate::types::ObservationRecord;
@@ -18,7 +18,11 @@ impl ExtractionRule for KnowledgeGapRule {
         "knowledge-gap"
     }
 
-    fn evaluate(&self, observations: &[ObservationRecord], _store: &Store) -> Vec<ProposedEntry> {
+    fn evaluate(
+        &self,
+        observations: &[ObservationRecord],
+        _store: &SqlxStore,
+    ) -> Vec<ProposedEntry> {
         // Collect zero-result context_search calls grouped by query and session
         let mut query_sessions: HashMap<String, HashSet<String>> = HashMap::new();
 
@@ -115,17 +119,19 @@ mod tests {
         }
     }
 
-    fn make_store() -> Store {
+    async fn make_store() -> SqlxStore {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("test.db");
         // Leak the tempdir so it isn't cleaned up while the Store is alive
         std::mem::forget(dir);
-        Store::open(&path).expect("open store")
+        SqlxStore::open(&path, unimatrix_store::pool_config::PoolConfig::default())
+            .await
+            .expect("open store")
     }
 
-    #[test]
-    fn produces_gap_from_two_sessions() {
-        let store = make_store();
+    #[tokio::test]
+    async fn produces_gap_from_two_sessions() {
+        let store = make_store().await;
         let observations = vec![
             make_search_obs("session-1", "deployment rollback", Some(0), None),
             make_search_obs("session-2", "deployment rollback", Some(0), None),
@@ -138,9 +144,9 @@ mod tests {
         assert_eq!(proposals[0].source_features.len(), 2);
     }
 
-    #[test]
-    fn no_gap_from_single_session() {
-        let store = make_store();
+    #[tokio::test]
+    async fn no_gap_from_single_session() {
+        let store = make_store().await;
         let observations = vec![make_search_obs(
             "session-1",
             "deployment rollback",
@@ -152,9 +158,9 @@ mod tests {
         assert!(proposals.is_empty());
     }
 
-    #[test]
-    fn no_gap_when_results_found() {
-        let store = make_store();
+    #[tokio::test]
+    async fn no_gap_when_results_found() {
+        let store = make_store().await;
         let observations = vec![
             make_search_obs(
                 "session-1",
@@ -174,9 +180,9 @@ mod tests {
         assert!(proposals.is_empty());
     }
 
-    #[test]
-    fn normalizes_query_case() {
-        let store = make_store();
+    #[tokio::test]
+    async fn normalizes_query_case() {
+        let store = make_store().await;
         let observations = vec![
             make_search_obs("session-1", "Deployment Rollback", Some(0), None),
             make_search_obs("session-2", "deployment rollback", Some(0), None),
@@ -186,9 +192,9 @@ mod tests {
         assert_eq!(proposals.len(), 1);
     }
 
-    #[test]
-    fn detects_zero_via_snippet() {
-        let store = make_store();
+    #[tokio::test]
+    async fn detects_zero_via_snippet() {
+        let store = make_store().await;
         let observations = vec![
             make_search_obs("session-1", "test query", None, Some("No results found")),
             make_search_obs("session-2", "test query", None, Some("No results")),
@@ -198,9 +204,9 @@ mod tests {
         assert_eq!(proposals.len(), 1);
     }
 
-    #[test]
-    fn confidence_scales_with_features() {
-        let store = make_store();
+    #[tokio::test]
+    async fn confidence_scales_with_features() {
+        let store = make_store().await;
         let observations = vec![
             make_search_obs("s1", "missing topic", Some(0), None),
             make_search_obs("s2", "missing topic", Some(0), None),
@@ -214,9 +220,9 @@ mod tests {
         assert!((proposals[0].extraction_confidence - 0.8).abs() < 0.01);
     }
 
-    #[test]
-    fn confidence_capped_at_0_8() {
-        let store = make_store();
+    #[tokio::test]
+    async fn confidence_capped_at_0_8() {
+        let store = make_store().await;
         let mut observations = Vec::new();
         for i in 0..10 {
             observations.push(make_search_obs(

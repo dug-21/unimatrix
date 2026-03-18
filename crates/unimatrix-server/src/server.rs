@@ -6,13 +6,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{
-    CoreError, EmbedService, EntryRecord, NewEntry, Store, StoreAdapter, VectorAdapter, VectorIndex,
+    CoreError, EmbedService, EntryRecord, NewEntry, Store, VectorAdapter, VectorIndex,
 };
-use unimatrix_store::read::{ENTRY_COLUMNS, entry_from_row, load_tags_for_entries};
-use unimatrix_store::rusqlite;
-use unimatrix_store::{StoreError, compute_content_hash, status_counter_key};
+use unimatrix_store::StoreError;
 
 use unimatrix_adapt::AdaptationService;
 
@@ -185,8 +183,8 @@ const SERVER_INSTRUCTIONS: &str = "Unimatrix is this project's knowledge engine.
 /// All fields are Arc-wrapped so Clone is cheap (required by rmcp).
 #[derive(Clone)]
 pub struct UnimatrixServer {
-    /// Async entry store for knowledge operations.
-    pub(crate) entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    /// Store for knowledge lookup operations.
+    pub(crate) entry_store: Arc<Store>,
     /// Async vector store for similarity search.
     pub(crate) vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
     /// Lazy-loading embedding service.
@@ -227,7 +225,7 @@ pub struct UnimatrixServer {
 impl UnimatrixServer {
     /// Create a new server with all subsystems.
     pub fn new(
-        entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+        entry_store: Arc<Store>,
         vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
         embed_service: Arc<EmbedServiceHandle>,
         registry: Arc<AgentRegistry>,
@@ -409,168 +407,76 @@ impl UnimatrixServer {
         }
     }
 
-    /// Insert a new entry and write an audit event in a single write transaction.
+    /// Insert a new entry and write an audit event.
     ///
-    /// Uses direct SQL with named params (ADR-004, nxs-008).
-    /// The HNSW vector insertion happens after the transaction commits.
+    /// Uses async SqlxStore methods (nxs-011).
+    /// The HNSW vector insertion happens after the data transaction commits.
     pub(crate) async fn insert_with_audit(
         &self,
         entry: NewEntry,
         embedding: Vec<f32>,
         audit_event: AuditEvent,
     ) -> Result<(u64, EntryRecord), ServerError> {
-        let store = Arc::clone(&self.store);
-        let audit_log = Arc::clone(&self.audit);
         let data_id = self.vector_index.allocate_data_id();
         let embedding_dim = embedding.len() as u16;
+        let entry_category = entry.category.clone();
+        let entry_feature_cycle = entry.feature_cycle.clone();
 
-        let (entry_id, record) =
-            tokio::task::spawn_blocking(move || -> Result<(u64, EntryRecord), ServerError> {
-                let txn = store
-                    .begin_write()
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                let conn = &*txn.guard;
-
-                let id = unimatrix_store::counters::next_entry_id(conn)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-                let content_hash = compute_content_hash(&entry.title, &entry.content);
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-
-                let record = EntryRecord {
-                    id,
-                    title: entry.title,
-                    content: entry.content,
-                    topic: entry.topic,
-                    category: entry.category,
-                    tags: entry.tags,
-                    source: entry.source,
-                    status: entry.status,
-                    confidence: 0.0,
-                    created_at: now,
-                    updated_at: now,
-                    last_accessed_at: 0,
-                    access_count: 0,
-                    supersedes: None,
-                    superseded_by: None,
-                    correction_count: 0,
-                    embedding_dim,
-                    created_by: entry.created_by.clone(),
-                    modified_by: entry.created_by,
-                    content_hash,
-                    previous_hash: String::new(),
-                    version: 1,
-                    feature_cycle: entry.feature_cycle,
-                    trust_source: entry.trust_source,
-                    helpful_count: 0,
-                    unhelpful_count: 0,
-                    pre_quarantine_status: None,
-                };
-
-                // INSERT into entries with named params (ADR-004)
-                conn.execute(
-                    "INSERT INTO entries (id, title, content, topic, category, source,
-                    status, confidence, created_at, updated_at, last_accessed_at,
-                    access_count, supersedes, superseded_by, correction_count,
-                    embedding_dim, created_by, modified_by, content_hash,
-                    previous_hash, version, feature_cycle, trust_source,
-                    helpful_count, unhelpful_count)
-                 VALUES (:id, :title, :content, :topic, :category, :source,
-                    :status, :confidence, :created_at, :updated_at, :last_accessed_at,
-                    :access_count, :supersedes, :superseded_by, :correction_count,
-                    :embedding_dim, :created_by, :modified_by, :content_hash,
-                    :previous_hash, :version, :feature_cycle, :trust_source,
-                    :helpful_count, :unhelpful_count)",
-                    rusqlite::named_params! {
-                        ":id": id as i64,
-                        ":title": &record.title,
-                        ":content": &record.content,
-                        ":topic": &record.topic,
-                        ":category": &record.category,
-                        ":source": &record.source,
-                        ":status": record.status as u8 as i64,
-                        ":confidence": record.confidence,
-                        ":created_at": record.created_at as i64,
-                        ":updated_at": record.updated_at as i64,
-                        ":last_accessed_at": record.last_accessed_at as i64,
-                        ":access_count": record.access_count as i64,
-                        ":supersedes": record.supersedes.map(|v| v as i64),
-                        ":superseded_by": record.superseded_by.map(|v| v as i64),
-                        ":correction_count": record.correction_count as i64,
-                        ":embedding_dim": record.embedding_dim as i64,
-                        ":created_by": &record.created_by,
-                        ":modified_by": &record.modified_by,
-                        ":content_hash": &record.content_hash,
-                        ":previous_hash": &record.previous_hash,
-                        ":version": record.version as i64,
-                        ":feature_cycle": &record.feature_cycle,
-                        ":trust_source": &record.trust_source,
-                        ":helpful_count": record.helpful_count as i64,
-                        ":unhelpful_count": record.unhelpful_count as i64,
-                    },
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-                // Insert tags
-                for tag in &record.tags {
-                    conn.execute(
-                        "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
-                        rusqlite::params![id as i64, tag],
-                    )
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                }
-
-                // Insert vector mapping
-                conn.execute(
-                    "INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)",
-                    rusqlite::params![id as i64, data_id as i64],
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-                // Outcome index (if applicable)
-                if record.category == "outcome" && !record.feature_cycle.is_empty() {
-                    conn.execute(
-                    "INSERT OR IGNORE INTO outcome_index (feature_cycle, entry_id) VALUES (?1, ?2)",
-                    rusqlite::params![&record.feature_cycle, id as i64],
-                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                }
-
-                // Status counter
-                unimatrix_store::counters::increment_counter(
-                    conn,
-                    status_counter_key(record.status),
-                    1,
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-                // Audit event
-                let audit_event_with_target = AuditEvent {
-                    target_ids: vec![id],
-                    ..audit_event
-                };
-                audit_log.write_in_txn(&txn, audit_event_with_target)?;
-
-                txn.commit()
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                Ok((id, record))
-            })
+        // Insert entry (handles tags + counter atomically)
+        let id = self
+            .store
+            .insert(entry)
             .await
-            .map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
+            .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
+        // Insert vector mapping
+        self.store
+            .put_vector_mapping(id, data_id)
+            .await
+            .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+        // Insert into outcome_index if applicable (idempotent)
+        self.store
+            .insert_outcome_index_if_applicable(id, &entry_category, &entry_feature_cycle)
+            .await
+            .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+        // Read back the full record (with tags)
+        let record = self
+            .store
+            .get(id)
+            .await
+            .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+        // Write audit event (separate from data transaction)
+        let audit_event_with_target = AuditEvent {
+            target_ids: vec![id],
+            ..audit_event
+        };
+        self.audit
+            .log_event(audit_event_with_target)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
+
+        // HNSW insert (after data commits)
         if !embedding.is_empty() {
             self.vector_index
-                .insert_hnsw_only(entry_id, data_id, &embedding)
+                .insert_hnsw_only(id, data_id, &embedding)
                 .map_err(|e| ServerError::Core(CoreError::Vector(e)))?;
         }
 
-        Ok((entry_id, record))
+        // Seed embedding_dim into the returned record
+        let record_with_dim = EntryRecord {
+            embedding_dim,
+            ..record
+        };
+
+        Ok((id, record_with_dim))
     }
 
-    /// Correct an existing entry: deprecate original, create correction, both
-    /// in a single write transaction with audit. Uses direct SQL (ADR-004, nxs-008).
+    /// Correct an existing entry: deprecate original, create correction, with audit.
+    ///
+    /// Uses async SqlxStore methods (nxs-011).
+    /// The HNSW vector insertion happens after the data transaction commits.
     ///
     /// Returns (deprecated_original, new_correction).
     pub(crate) async fn correct_with_audit(
@@ -580,216 +486,31 @@ impl UnimatrixServer {
         embedding: Vec<f32>,
         audit_event: AuditEvent,
     ) -> Result<(EntryRecord, EntryRecord), ServerError> {
-        let store = Arc::clone(&self.store);
-        let audit_log = Arc::clone(&self.audit);
         let data_id = self.vector_index.allocate_data_id();
         let embedding_dim = embedding.len() as u16;
 
-        let (deprecated_original, new_correction) = tokio::task::spawn_blocking(
-            move || -> Result<(EntryRecord, EntryRecord), ServerError> {
-                let txn = store
-                    .begin_write()
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                let conn = &*txn.guard;
-
-                // 1. Read original entry via entry_from_row
-                use unimatrix_store::rusqlite::OptionalExtension;
-                let mut original: EntryRecord = conn
-                    .query_row(
-                        &format!("SELECT {} FROM entries WHERE id = ?1", ENTRY_COLUMNS),
-                        rusqlite::params![original_id as i64],
-                        entry_from_row,
-                    )
-                    .optional()
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?
-                    .ok_or(ServerError::Core(CoreError::Store(
-                        StoreError::EntryNotFound(original_id),
-                    )))?;
-
-                // Load tags for original
-                let tag_map = load_tags_for_entries(conn, &[original_id])
-                    .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-                if let Some(tags) = tag_map.get(&original_id) {
-                    original.tags = tags.clone();
+        // Atomically deprecate original and insert correction
+        let (deprecated_original, new_correction) = self
+            .store
+            .correct_entry(original_id, correction_entry, data_id, embedding_dim)
+            .await
+            .map_err(|e| match e {
+                StoreError::InvalidInput { field, reason } => {
+                    ServerError::InvalidInput { field, reason }
                 }
+                other => ServerError::Core(CoreError::Store(other)),
+            })?;
 
-                // 2. Verify original is not already deprecated or quarantined
-                if original.status == unimatrix_store::Status::Deprecated {
-                    return Err(ServerError::InvalidInput {
-                        field: "original_id".to_string(),
-                        reason: "cannot correct a deprecated entry".to_string(),
-                    });
-                }
-                if original.status == unimatrix_store::Status::Quarantined {
-                    return Err(ServerError::InvalidInput {
-                        field: "original_id".to_string(),
-                        reason: "cannot correct quarantined entry; restore first".to_string(),
-                    });
-                }
+        // Write audit event with both IDs
+        let audit_with_ids = AuditEvent {
+            target_ids: vec![original_id, new_correction.id],
+            ..audit_event
+        };
+        self.audit
+            .log_event(audit_with_ids)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
 
-                // 3. Generate new entry ID
-                let new_id = unimatrix_store::counters::next_entry_id(conn)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-                // 4. Deprecate original (direct column UPDATE)
-                let old_status = original.status;
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-
-                conn.execute(
-                    "UPDATE entries SET status = ?1, superseded_by = ?2, \
-                 correction_count = correction_count + 1, updated_at = ?3 \
-                 WHERE id = ?4",
-                    rusqlite::params![
-                        unimatrix_store::Status::Deprecated as u8 as i64,
-                        new_id as i64,
-                        now as i64,
-                        original_id as i64
-                    ],
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-                // Update status counters
-                unimatrix_store::counters::decrement_counter(
-                    conn,
-                    status_counter_key(old_status),
-                    1,
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-                unimatrix_store::counters::increment_counter(
-                    conn,
-                    status_counter_key(unimatrix_store::Status::Deprecated),
-                    1,
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-                // Update original record for return value
-                original.status = unimatrix_store::Status::Deprecated;
-                original.superseded_by = Some(new_id);
-                original.correction_count += 1;
-                original.updated_at = now;
-
-                // 5. Build correction EntryRecord
-                let content_hash =
-                    compute_content_hash(&correction_entry.title, &correction_entry.content);
-                let correction = EntryRecord {
-                    id: new_id,
-                    title: correction_entry.title,
-                    content: correction_entry.content,
-                    topic: correction_entry.topic,
-                    category: correction_entry.category,
-                    tags: correction_entry.tags,
-                    source: correction_entry.source,
-                    status: correction_entry.status,
-                    confidence: 0.0,
-                    created_at: now,
-                    updated_at: now,
-                    last_accessed_at: 0,
-                    access_count: 0,
-                    supersedes: Some(original_id),
-                    superseded_by: None,
-                    correction_count: 0,
-                    embedding_dim,
-                    created_by: correction_entry.created_by.clone(),
-                    modified_by: correction_entry.created_by,
-                    content_hash,
-                    previous_hash: String::new(),
-                    version: 1,
-                    feature_cycle: correction_entry.feature_cycle,
-                    trust_source: correction_entry.trust_source,
-                    helpful_count: 0,
-                    unhelpful_count: 0,
-                    pre_quarantine_status: None,
-                };
-
-                // 6. INSERT correction with named params (ADR-004)
-                conn.execute(
-                    "INSERT INTO entries (id, title, content, topic, category, source,
-                    status, confidence, created_at, updated_at, last_accessed_at,
-                    access_count, supersedes, superseded_by, correction_count,
-                    embedding_dim, created_by, modified_by, content_hash,
-                    previous_hash, version, feature_cycle, trust_source,
-                    helpful_count, unhelpful_count)
-                 VALUES (:id, :title, :content, :topic, :category, :source,
-                    :status, :confidence, :created_at, :updated_at, :last_accessed_at,
-                    :access_count, :supersedes, :superseded_by, :correction_count,
-                    :embedding_dim, :created_by, :modified_by, :content_hash,
-                    :previous_hash, :version, :feature_cycle, :trust_source,
-                    :helpful_count, :unhelpful_count)",
-                    rusqlite::named_params! {
-                        ":id": correction.id as i64,
-                        ":title": &correction.title,
-                        ":content": &correction.content,
-                        ":topic": &correction.topic,
-                        ":category": &correction.category,
-                        ":source": &correction.source,
-                        ":status": correction.status as u8 as i64,
-                        ":confidence": correction.confidence,
-                        ":created_at": correction.created_at as i64,
-                        ":updated_at": correction.updated_at as i64,
-                        ":last_accessed_at": correction.last_accessed_at as i64,
-                        ":access_count": correction.access_count as i64,
-                        ":supersedes": correction.supersedes.map(|v| v as i64),
-                        ":superseded_by": correction.superseded_by.map(|v| v as i64),
-                        ":correction_count": correction.correction_count as i64,
-                        ":embedding_dim": correction.embedding_dim as i64,
-                        ":created_by": &correction.created_by,
-                        ":modified_by": &correction.modified_by,
-                        ":content_hash": &correction.content_hash,
-                        ":previous_hash": &correction.previous_hash,
-                        ":version": correction.version as i64,
-                        ":feature_cycle": &correction.feature_cycle,
-                        ":trust_source": &correction.trust_source,
-                        ":helpful_count": correction.helpful_count as i64,
-                        ":unhelpful_count": correction.unhelpful_count as i64,
-                    },
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-                // 7. Insert tags for correction
-                for tag in &correction.tags {
-                    conn.execute(
-                        "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
-                        rusqlite::params![new_id as i64, tag],
-                    )
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                }
-
-                // 8. Insert vector mapping
-                conn.execute(
-                    "INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)",
-                    rusqlite::params![new_id as i64, data_id as i64],
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-                // 9. Status counter for correction
-                unimatrix_store::counters::increment_counter(
-                    conn,
-                    status_counter_key(correction.status),
-                    1,
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-                // 10. Write audit event with both IDs
-                let audit_with_ids = AuditEvent {
-                    target_ids: vec![original_id, new_id],
-                    ..audit_event
-                };
-                audit_log.write_in_txn(&txn, audit_with_ids)?;
-
-                // 11. Commit
-                txn.commit()
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-
-                Ok((original, correction))
-            },
-        )
-        .await
-        .map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
-
-        // HNSW insert for the correction (after commit)
+        // HNSW insert for the correction (after data commits)
         if !embedding.is_empty() {
             self.vector_index
                 .insert_hnsw_only(new_correction.id, data_id, &embedding)
@@ -888,48 +609,44 @@ impl UnimatrixServer {
             }
         });
 
-        let usage_result = tokio::task::spawn_blocking(move || {
-            // Single lock acquisition for all DB writes
-            if let Err(e) = store.record_usage_with_confidence(
-                &all_ids,
-                &access_ids,
-                &helpful_ids,
-                &unhelpful_ids,
-                &decrement_helpful_ids,
-                &decrement_unhelpful_ids,
-                Some(Box::new(|entry: &unimatrix_store::EntryRecord, now: u64| {
-                    crate::confidence::compute_confidence(entry, now, 3.0, 3.0)
-                })
-                    as Box<
-                        dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send,
-                    >),
-            ) {
+        let usage_result = {
+            // All DB writes are async — call directly (we're already in an async context)
+            let res = store
+                .record_usage_with_confidence(
+                    &all_ids,
+                    &access_ids,
+                    &helpful_ids,
+                    &unhelpful_ids,
+                    &decrement_helpful_ids,
+                    &decrement_unhelpful_ids,
+                    Some(Box::new(|entry: &unimatrix_store::EntryRecord, now: u64| {
+                        crate::confidence::compute_confidence(entry, now, 3.0, 3.0)
+                    })
+                        as Box<
+                            dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync,
+                        >),
+                )
+                .await;
+            if let Err(e) = res {
                 tracing::warn!("usage recording failed: {e}");
             }
 
             if let Some((feature_str, ids)) = feature_recording {
-                if let Err(e) = store.record_feature_entries(&feature_str, &ids) {
-                    tracing::warn!("feature entry recording failed: {e}");
+                if let Err(e) = store.record_feature_entries(&feature_str, &ids).await {
+                    tracing::warn!("failed to record feature entries: {e}");
                 }
             }
 
             if let Some(pairs) = co_access_pairs {
-                if let Err(e) = store.record_co_access_pairs(&pairs) {
-                    tracing::warn!("co-access recording failed: {e}");
-                }
+                store.record_co_access_pairs(&pairs);
             }
-        })
-        .await;
+            Ok::<(), std::convert::Infallible>(())
+        };
 
-        match usage_result {
-            Ok(()) => {}
-            Err(e) => {
-                tracing::warn!("usage recording task failed: {e}");
-            }
-        }
+        let _ = usage_result;
 
         // Step 5b-c: Adaptation training (separate spawn_blocking since it
-        // does embedding work, not just DB writes)
+        // does CPU-intensive embedding work)
         if let Some(adapt_pairs) = pairs_for_adapt {
             self.adapt_service.record_training_pairs(&adapt_pairs);
 
@@ -938,8 +655,9 @@ impl UnimatrixServer {
             let store_for_train = Arc::clone(&self.store);
             let _ = tokio::task::spawn_blocking(move || {
                 if let Some(adapter) = embed_svc.try_get_adapter_sync() {
+                    let handle = tokio::runtime::Handle::current();
                     let embed_fn = |entry_id: u64| -> Option<Vec<f32>> {
-                        let entry = store_for_train.get(entry_id).ok()?;
+                        let entry = handle.block_on(store_for_train.get(entry_id)).ok()?;
                         adapter.embed_entry(&entry.title, &entry.content).ok()
                     };
                     adapt_svc.try_train_step(&embed_fn);
@@ -993,10 +711,10 @@ impl UnimatrixServer {
     ) -> Result<EntryRecord, ServerError> {
         // Fetch entry to read pre_quarantine_status
         let entry = self
-            .entry_store
+            .store
             .get(entry_id)
             .await
-            .map_err(ServerError::Core)?;
+            .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
         let restore_to = entry
             .pre_quarantine_status
             .and_then(|v| unimatrix_store::Status::try_from(v).ok())
@@ -1012,7 +730,8 @@ impl UnimatrixServer {
     }
 
     /// Shared implementation for status-change operations (deprecate, quarantine, restore).
-    /// Uses direct SQL with &*txn.guard (ADR-004, nxs-008).
+    ///
+    /// Uses async SqlxStore.update_entry_status_extended (nxs-011).
     async fn change_status_with_audit(
         &self,
         entry_id: u64,
@@ -1021,8 +740,6 @@ impl UnimatrixServer {
         audit_event: AuditEvent,
         set_modified_by: bool,
     ) -> Result<EntryRecord, ServerError> {
-        let store = Arc::clone(&self.store);
-        let audit_log = Arc::clone(&self.audit);
         let action_name = match new_status {
             unimatrix_store::Status::Deprecated => "deprecated",
             unimatrix_store::Status::Quarantined => "quarantined",
@@ -1030,113 +747,67 @@ impl UnimatrixServer {
             unimatrix_store::Status::Proposed => "proposed",
         };
 
-        let record = tokio::task::spawn_blocking(move || -> Result<EntryRecord, ServerError> {
-            let txn = store.begin_write()
-                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            let conn = &*txn.guard;
+        // Idempotency: read current status before making any change
+        let current = self
+            .store
+            .get(entry_id)
+            .await
+            .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // 1. Read existing entry status and current fields
-            use unimatrix_store::rusqlite::OptionalExtension;
-            let mut record: EntryRecord = conn
-                .query_row(
-                    &format!("SELECT {} FROM entries WHERE id = ?1", ENTRY_COLUMNS),
-                    rusqlite::params![entry_id as i64],
-                    entry_from_row,
-                )
-                .optional()
-                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?
-                .ok_or(ServerError::Core(CoreError::Store(
-                    StoreError::EntryNotFound(entry_id),
-                )))?;
+        if new_status == unimatrix_store::Status::Deprecated
+            && current.status == unimatrix_store::Status::Deprecated
+        {
+            return Ok(current);
+        }
 
-            // Load tags
-            let tag_map = load_tags_for_entries(conn, &[entry_id])
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            if let Some(tags) = tag_map.get(&entry_id) {
-                record.tags = tags.clone();
-            }
+        // Compute pre_quarantine_status for the update
+        let pre_q_value: Option<u8> = if new_status == unimatrix_store::Status::Quarantined {
+            Some(current.status as u8)
+        } else {
+            None
+        };
 
-            // 2. Idempotency check for deprecate
-            if new_status == unimatrix_store::Status::Deprecated
-                && record.status == unimatrix_store::Status::Deprecated
-            {
-                return Ok(record);
-            }
+        // Note: pre_quarantine_status info for audit, captured before the update
+        let old_status_u8 = current.status as u8;
+        let old_pre_q = current.pre_quarantine_status;
 
-            // 3. Update status via direct SQL
-            let old_status = record.status;
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
+        // Perform status update with optional modified_by
+        let modified_by_str: Option<String> = if set_modified_by {
+            Some(audit_event.agent_id.clone())
+        } else {
+            None
+        };
+        let record = self
+            .store
+            .update_entry_status_extended(
+                entry_id,
+                new_status,
+                modified_by_str.as_deref(),
+                pre_q_value,
+            )
+            .await
+            .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
 
-            // vnc-010: set pre_quarantine_status when quarantining, clear when restoring
-            let old_pre_q = record.pre_quarantine_status;
-            let pre_q_value: Option<i64> = if new_status == unimatrix_store::Status::Quarantined {
-                Some(old_status as u8 as i64)
-            } else {
-                None
-            };
-
-            if set_modified_by {
-                conn.execute(
-                    "UPDATE entries SET status = ?1, modified_by = ?2, updated_at = ?3, pre_quarantine_status = ?4 WHERE id = ?5",
-                    rusqlite::params![
-                        new_status as u8 as i64,
-                        &audit_event.agent_id,
-                        now as i64,
-                        pre_q_value,
-                        entry_id as i64
-                    ],
-                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                record.modified_by = audit_event.agent_id.clone();
-            } else {
-                conn.execute(
-                    "UPDATE entries SET status = ?1, updated_at = ?2, pre_quarantine_status = ?3 WHERE id = ?4",
-                    rusqlite::params![
-                        new_status as u8 as i64,
-                        now as i64,
-                        pre_q_value,
-                        entry_id as i64
-                    ],
-                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-            }
-
-            record.status = new_status;
-            record.updated_at = now;
-            record.pre_quarantine_status = pre_q_value.map(|v| v as u8);
-
-            // 4. Update status counters
-            unimatrix_store::counters::decrement_counter(conn, status_counter_key(old_status), 1)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-            unimatrix_store::counters::increment_counter(conn, status_counter_key(new_status), 1)
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-            // 5. Write audit event (vnc-010: include pre_quarantine_status)
-            let pre_q_info = if new_status == unimatrix_store::Status::Quarantined {
-                format!(" (pre_quarantine_status={})", old_status as u8)
-            } else if let Some(pq) = old_pre_q {
-                // This is a restore — note what we restored from
-                format!(" (restored from pre_quarantine_status={})", pq)
-            } else {
-                String::new()
-            };
-            let detail = match &reason {
-                Some(r) => format!("{action_name} entry #{entry_id}{pre_q_info}: {r}"),
-                None => format!("{action_name} entry #{entry_id}{pre_q_info}"),
-            };
-            let audit_with_detail = AuditEvent {
-                target_ids: vec![entry_id],
-                detail,
-                ..audit_event
-            };
-            audit_log.write_in_txn(&txn, audit_with_detail)?;
-
-            // 6. Commit
-            txn.commit()
-                .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-            Ok(record)
-        }).await.map_err(|e| ServerError::Core(CoreError::JoinError(e.to_string())))??;
+        // Build audit detail with pre_quarantine info
+        let pre_q_info = if new_status == unimatrix_store::Status::Quarantined {
+            format!(" (pre_quarantine_status={old_status_u8})")
+        } else if let Some(pq) = old_pre_q {
+            format!(" (restored from pre_quarantine_status={pq})")
+        } else {
+            String::new()
+        };
+        let detail = match &reason {
+            Some(r) => format!("{action_name} entry #{entry_id}{pre_q_info}: {r}"),
+            None => format!("{action_name} entry #{entry_id}{pre_q_info}"),
+        };
+        let audit_with_detail = AuditEvent {
+            target_ids: vec![entry_id],
+            detail,
+            ..audit_event
+        };
+        self.audit
+            .log_event(audit_with_detail)
+            .map_err(|e| ServerError::Audit(e.to_string()))?;
 
         Ok(record)
     }
@@ -1154,14 +825,17 @@ mod tests {
     use super::*;
     use serde_json;
 
-    pub(crate) fn make_server() -> UnimatrixServer {
+    pub(crate) async fn make_server() -> UnimatrixServer {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("test.db");
-        let store = Arc::new(Store::open(&path).unwrap());
+        let store = Arc::new(
+            Store::open(&path, unimatrix_store::pool_config::PoolConfig::default())
+                .await
+                .expect("open store"),
+        );
         std::mem::forget(dir);
 
-        let store_adapter = StoreAdapter::new(Arc::clone(&store));
-        let entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
+        let entry_store = Arc::clone(&store);
 
         // Use a minimal VectorIndex
         let vector_config = unimatrix_core::VectorConfig::default();
@@ -1195,23 +869,23 @@ mod tests {
         )
     }
 
-    #[test]
-    fn test_get_info_name() {
-        let server = make_server();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_get_info_name() {
+        let server = make_server().await;
         let info = rmcp::ServerHandler::get_info(&server);
         assert_eq!(info.server_info.name, "unimatrix");
     }
 
-    #[test]
-    fn test_get_info_version_nonempty() {
-        let server = make_server();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_get_info_version_nonempty() {
+        let server = make_server().await;
         let info = rmcp::ServerHandler::get_info(&server);
         assert!(!info.server_info.version.is_empty());
     }
 
-    #[test]
-    fn test_get_info_instructions() {
-        let server = make_server();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_get_info_instructions() {
+        let server = make_server().await;
         let info = rmcp::ServerHandler::get_info(&server);
         assert!(info.instructions.is_some());
         let instructions = info.instructions.unwrap();
@@ -1219,9 +893,9 @@ mod tests {
         assert!(instructions.contains("search for relevant patterns"));
     }
 
-    #[test]
-    fn test_get_info_has_tools_capability() {
-        let server = make_server();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_get_info_has_tools_capability() {
+        let server = make_server().await;
         let info = rmcp::ServerHandler::get_info(&server);
         assert!(
             info.capabilities.tools.is_some(),
@@ -1229,15 +903,15 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_server_is_clone() {
-        let server = make_server();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_server_is_clone() {
+        let server = make_server().await;
         let _clone = server.clone();
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_resolve_agent_with_id() {
-        let server = make_server();
+        let server = make_server().await;
         let identity = server
             .resolve_agent(&Some("human".to_string()))
             .await
@@ -1249,16 +923,16 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_resolve_agent_without_id() {
-        let server = make_server();
+        let server = make_server().await;
         let identity = server.resolve_agent(&None).await.unwrap();
         assert_eq!(identity.agent_id, "anonymous");
     }
 
     // -- crt-001: record_usage_for_entries tests --
 
-    fn insert_test_entry(store: &unimatrix_core::Store) -> u64 {
+    async fn insert_test_entry(store: &unimatrix_core::Store) -> u64 {
         let entry = unimatrix_core::NewEntry {
             title: "Test".to_string(),
             content: "Content".to_string(),
@@ -1271,122 +945,122 @@ mod tests {
             feature_cycle: String::new(),
             trust_source: String::new(),
         };
-        store.insert(entry).unwrap()
+        store.insert(entry).await.unwrap()
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_record_usage_for_entries_updates_access() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         server
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
 
-        let r = server.store.get(id).unwrap();
+        let r = server.store.get(id).await.unwrap();
         assert_eq!(r.access_count, 1);
         assert!(r.last_accessed_at > 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_record_usage_for_entries_empty_ids() {
-        let server = make_server();
+        let server = make_server().await;
         // Should return immediately without error
         server
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[], None, None)
             .await;
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_record_usage_for_entries_access_dedup() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // First call: access_count increments
         server
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
-        assert_eq!(server.store.get(id).unwrap().access_count, 1);
+        assert_eq!(server.store.get(id).await.unwrap().access_count, 1);
 
         // Second call: same agent, same entry -> deduped (access_count stays 1)
         server
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
-        assert_eq!(server.store.get(id).unwrap().access_count, 1);
+        assert_eq!(server.store.get(id).await.unwrap().access_count, 1);
 
         // Different agent: access_count increments again
         server
             .record_usage_for_entries("other-agent", TrustLevel::Internal, &[id], None, None)
             .await;
-        assert_eq!(server.store.get(id).unwrap().access_count, 2);
+        assert_eq!(server.store.get(id).await.unwrap().access_count, 2);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_record_usage_for_entries_helpful_vote() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         server
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], Some(true), None)
             .await;
 
-        let r = server.store.get(id).unwrap();
+        let r = server.store.get(id).await.unwrap();
         assert_eq!(r.helpful_count, 1);
         assert_eq!(r.unhelpful_count, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_record_usage_for_entries_unhelpful_vote() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         server
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], Some(false), None)
             .await;
 
-        let r = server.store.get(id).unwrap();
+        let r = server.store.get(id).await.unwrap();
         assert_eq!(r.helpful_count, 0);
         assert_eq!(r.unhelpful_count, 1);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_record_usage_for_entries_helpful_none() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         server
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
 
-        let r = server.store.get(id).unwrap();
+        let r = server.store.get(id).await.unwrap();
         assert_eq!(r.helpful_count, 0);
         assert_eq!(r.unhelpful_count, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_record_usage_for_entries_vote_correction() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // First: vote unhelpful
         server
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], Some(false), None)
             .await;
-        assert_eq!(server.store.get(id).unwrap().unhelpful_count, 1);
+        assert_eq!(server.store.get(id).await.unwrap().unhelpful_count, 1);
 
         // Correction: vote helpful (should flip)
         server
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], Some(true), None)
             .await;
-        let r = server.store.get(id).unwrap();
+        let r = server.store.get(id).await.unwrap();
         assert_eq!(r.helpful_count, 1);
         assert_eq!(r.unhelpful_count, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_record_usage_for_entries_feature_internal_agent() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         server
             .record_usage_for_entries(
@@ -1399,27 +1073,20 @@ mod tests {
             .await;
 
         // Verify feature_entries populated via SQL
-        let conn = server.store.lock_conn();
-        let found: Vec<u64> = {
-            let mut stmt = conn
-                .prepare(
-                    "SELECT entry_id FROM feature_entries WHERE feature_id = ?1 ORDER BY entry_id",
-                )
-                .unwrap();
-            stmt.query_map(rusqlite::params!["crt-001"], |row| {
-                Ok(row.get::<_, i64>(0)? as u64)
-            })
-            .unwrap()
-            .collect::<rusqlite::Result<Vec<_>>>()
-            .unwrap()
-        };
-        assert_eq!(found, vec![id]);
+        let found: Vec<i64> = sqlx::query_scalar(
+            "SELECT entry_id FROM feature_entries WHERE feature_id = ?1 ORDER BY entry_id",
+        )
+        .bind("crt-001")
+        .fetch_all(server.store.read_pool_test())
+        .await
+        .unwrap();
+        assert_eq!(found, vec![id as i64]);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_record_usage_for_entries_feature_restricted_agent_ignored() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         server
             .record_usage_for_entries(
@@ -1432,21 +1099,19 @@ mod tests {
             .await;
 
         // Verify feature_entries NOT populated (Restricted ignored)
-        let conn = server.store.lock_conn();
-        let count: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?1",
-                rusqlite::params!["crt-001"],
-                |row| row.get(0),
-            )
-            .unwrap();
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?1")
+                .bind("crt-001")
+                .fetch_one(server.store.read_pool_test())
+                .await
+                .unwrap();
         assert_eq!(count, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_record_usage_for_entries_feature_privileged_agent() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         server
             .record_usage_for_entries(
@@ -1458,21 +1123,19 @@ mod tests {
             )
             .await;
 
-        let conn = server.store.lock_conn();
-        let count: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?1",
-                rusqlite::params!["crt-001"],
-                |row| row.get(0),
-            )
-            .unwrap();
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?1")
+                .bind("crt-001")
+                .fetch_one(server.store.read_pool_test())
+                .await
+                .unwrap();
         assert_eq!(count, 1);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_record_usage_for_entries_vote_after_access_only() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // First: access only (no helpful param)
         server
@@ -1484,20 +1147,20 @@ mod tests {
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], Some(true), None)
             .await;
 
-        let r = server.store.get(id).unwrap();
+        let r = server.store.get(id).await.unwrap();
         assert_eq!(r.access_count, 1, "access deduped");
         assert_eq!(r.helpful_count, 1, "vote recorded");
     }
 
     // -- crt-002: Confidence on retrieval path (T-20 through T-23) --
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_confidence_updated_on_retrieval() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // Before retrieval: confidence is 0.0
-        assert_eq!(server.store.get(id).unwrap().confidence, 0.0);
+        assert_eq!(server.store.get(id).await.unwrap().confidence, 0.0);
 
         // Trigger retrieval
         server
@@ -1505,23 +1168,23 @@ mod tests {
             .await;
 
         // After retrieval: confidence > 0.0
-        let r = server.store.get(id).unwrap();
+        let r = server.store.get(id).await.unwrap();
         assert!(
             r.confidence > 0.0,
             "confidence should be updated after retrieval"
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_confidence_matches_formula() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         server
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
 
-        let entry = server.store.get(id).unwrap();
+        let entry = server.store.get(id).await.unwrap();
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -1531,22 +1194,22 @@ mod tests {
         assert!((entry.confidence - expected).abs() < 0.01);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_confidence_evolves_with_multiple_retrievals() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // First retrieval
         server
             .record_usage_for_entries("agent-a", TrustLevel::Internal, &[id], None, None)
             .await;
-        let after_first = server.store.get(id).unwrap().confidence;
+        let after_first = server.store.get(id).await.unwrap().confidence;
 
         // Second retrieval (different agent to avoid access dedup)
         server
             .record_usage_for_entries("agent-b", TrustLevel::Internal, &[id], None, None)
             .await;
-        let after_second = server.store.get(id).unwrap().confidence;
+        let after_second = server.store.get(id).await.unwrap().confidence;
 
         // Confidence should change (access_count went from 1 to 2)
         assert_ne!(
@@ -1557,9 +1220,9 @@ mod tests {
 
     // -- crt-002: Confidence on mutation paths (T-24 through T-28) --
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_confidence_seeded_on_insert() {
-        let server = make_server();
+        let server = make_server().await;
 
         let entry = unimatrix_core::NewEntry {
             title: "Test".to_string(),
@@ -1593,16 +1256,20 @@ mod tests {
 
         // Seed confidence (simulating what context_store does)
         {
-            let entry = server.store.get(entry_id).unwrap();
+            let entry = server.store.get(entry_id).await.unwrap();
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
             let conf = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
-            server.store.update_confidence(entry_id, conf).unwrap();
+            server
+                .store
+                .update_confidence(entry_id, conf)
+                .await
+                .unwrap();
         }
 
-        let r = server.store.get(entry_id).unwrap();
+        let r = server.store.get(entry_id).await.unwrap();
         assert!(r.confidence > 0.0, "confidence should be seeded on insert");
         // Agent-authored entry, just inserted (crt-019 weights):
         // base=0.5, usage=0.0, fresh≈1.0 (just created), help=0.5, corr=0.5, trust=0.5
@@ -1614,17 +1281,17 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_confidence_recomputed_on_deprecation() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // First retrieval to give it some confidence
         server
             .record_usage_for_entries("test-agent", TrustLevel::Internal, &[id], None, None)
             .await;
 
-        let before_deprecation = server.store.get(id).unwrap().confidence;
+        let before_deprecation = server.store.get(id).await.unwrap().confidence;
         assert!(before_deprecation > 0.0);
 
         // Deprecate
@@ -1645,16 +1312,16 @@ mod tests {
 
         // Recompute confidence for deprecated entry
         {
-            let entry = server.store.get(id).unwrap();
+            let entry = server.store.get(id).await.unwrap();
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
             let conf = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
-            server.store.update_confidence(id, conf).unwrap();
+            server.store.update_confidence(id, conf).await.unwrap();
         }
 
-        let after_deprecation = server.store.get(id).unwrap().confidence;
+        let after_deprecation = server.store.get(id).await.unwrap().confidence;
         assert!(
             after_deprecation < before_deprecation,
             "confidence should decrease after deprecation (base_score 0.5 -> 0.2)"
@@ -1676,10 +1343,10 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_quarantine_active_entry() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         let updated = server
             .quarantine_with_audit(id, Some("test reason".into()), make_audit_event("system"))
@@ -1689,27 +1356,24 @@ mod tests {
         assert_eq!(updated.status, unimatrix_store::Status::Quarantined);
         assert_eq!(updated.modified_by, "system");
 
-        let fetched = server.store.get(id).unwrap();
+        let fetched = server.store.get(id).await.unwrap();
         assert_eq!(fetched.status, unimatrix_store::Status::Quarantined);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_quarantine_updates_status_index() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         server
             .quarantine_with_audit(id, None, make_audit_event("system"))
             .await
             .unwrap();
 
-        let conn = server.store.lock_conn();
-        let status: i64 = conn
-            .query_row(
-                "SELECT status FROM entries WHERE id = ?1",
-                rusqlite::params![id as i64],
-                |row| row.get(0),
-            )
+        let status: i64 = sqlx::query_scalar("SELECT status FROM entries WHERE id = ?1")
+            .bind(id as i64)
+            .fetch_one(server.store.read_pool_test())
+            .await
             .unwrap();
         assert_eq!(
             status,
@@ -1718,21 +1382,29 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_quarantine_updates_counters() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
-        let before_active = server.store.read_counter("total_active").unwrap();
-        let before_quarantined = server.store.read_counter("total_quarantined").unwrap();
+        let before_active = server.store.read_counter("total_active").await.unwrap();
+        let before_quarantined = server
+            .store
+            .read_counter("total_quarantined")
+            .await
+            .unwrap();
 
         server
             .quarantine_with_audit(id, None, make_audit_event("system"))
             .await
             .unwrap();
 
-        let after_active = server.store.read_counter("total_active").unwrap();
-        let after_quarantined = server.store.read_counter("total_quarantined").unwrap();
+        let after_active = server.store.read_counter("total_active").await.unwrap();
+        let after_quarantined = server
+            .store
+            .read_counter("total_quarantined")
+            .await
+            .unwrap();
 
         assert_eq!(
             after_active,
@@ -1746,10 +1418,10 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_restore_quarantined_entry() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // Quarantine first
         server
@@ -1757,7 +1429,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            server.store.get(id).unwrap().status,
+            server.store.get(id).await.unwrap().status,
             unimatrix_store::Status::Quarantined
         );
 
@@ -1769,17 +1441,17 @@ mod tests {
 
         assert_eq!(updated.status, unimatrix_store::Status::Active);
         assert_eq!(
-            server.store.get(id).unwrap().status,
+            server.store.get(id).await.unwrap().status,
             unimatrix_store::Status::Active
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_restore_updates_counters() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
-        let initial_active = server.store.read_counter("total_active").unwrap();
+        let initial_active = server.store.read_counter("total_active").await.unwrap();
 
         // Quarantine
         server
@@ -1794,8 +1466,12 @@ mod tests {
             .unwrap();
 
         // Counters should return to original values
-        let final_active = server.store.read_counter("total_active").unwrap();
-        let final_quarantined = server.store.read_counter("total_quarantined").unwrap();
+        let final_active = server.store.read_counter("total_active").await.unwrap();
+        let final_quarantined = server
+            .store
+            .read_counter("total_quarantined")
+            .await
+            .unwrap();
 
         assert_eq!(
             final_active, initial_active,
@@ -1807,10 +1483,10 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_restore_updates_status_index() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // Quarantine then restore
         server
@@ -1822,13 +1498,10 @@ mod tests {
             .await
             .unwrap();
 
-        let conn = server.store.lock_conn();
-        let status: i64 = conn
-            .query_row(
-                "SELECT status FROM entries WHERE id = ?1",
-                rusqlite::params![id as i64],
-                |row| row.get(0),
-            )
+        let status: i64 = sqlx::query_scalar("SELECT status FROM entries WHERE id = ?1")
+            .bind(id as i64)
+            .fetch_one(server.store.read_pool_test())
+            .await
             .unwrap();
         assert_eq!(
             status,
@@ -1837,10 +1510,10 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_quarantine_writes_audit_event() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         server
             .quarantine_with_audit(
@@ -1852,16 +1525,16 @@ mod tests {
             .unwrap();
 
         // Verify audit log has an entry
-        let conn = server.store.lock_conn();
-        let mut stmt = conn
-            .prepare("SELECT operation, target_ids, detail FROM audit_log WHERE operation = ?1")
-            .unwrap();
+        let rows: Vec<(String, String, String)> = sqlx::query_as(
+            "SELECT operation, target_ids, detail FROM audit_log WHERE operation = ?1",
+        )
+        .bind("context_quarantine")
+        .fetch_all(server.store.read_pool_test())
+        .await
+        .unwrap();
         let mut found = false;
-        let mut rows = stmt.query(rusqlite::params!["context_quarantine"]).unwrap();
-        while let Some(row) = rows.next().unwrap() {
-            let target_ids_json: String = row.get(1).unwrap();
-            let target_ids: Vec<u64> = serde_json::from_str(&target_ids_json).unwrap();
-            let detail: String = row.get(2).unwrap();
+        for (_, target_ids_json, detail) in &rows {
+            let target_ids: Vec<u64> = serde_json::from_str(target_ids_json).unwrap();
             if target_ids.contains(&id) {
                 assert!(detail.contains("quarantined"));
                 assert!(detail.contains("suspicious content"));
@@ -1871,10 +1544,10 @@ mod tests {
         assert!(found, "audit event for quarantine should exist");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_correct_rejects_quarantined() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // Quarantine the entry
         server
@@ -1922,19 +1595,19 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_quarantine_confidence_decreases() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // Compute initial confidence
-        let entry = server.store.get(id).unwrap();
+        let entry = server.store.get(id).await.unwrap();
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
         let before = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
-        server.store.update_confidence(id, before).unwrap();
+        server.store.update_confidence(id, before).await.unwrap();
 
         // Quarantine
         server
@@ -1943,9 +1616,9 @@ mod tests {
             .unwrap();
 
         // Recompute confidence for quarantined entry
-        let entry = server.store.get(id).unwrap();
+        let entry = server.store.get(id).await.unwrap();
         let after = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
-        server.store.update_confidence(id, after).unwrap();
+        server.store.update_confidence(id, after).await.unwrap();
 
         assert!(
             after < before,
@@ -1959,7 +1632,7 @@ mod tests {
             .unwrap();
 
         // Recompute confidence for restored entry
-        let entry = server.store.get(id).unwrap();
+        let entry = server.store.get(id).await.unwrap();
         let restored = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
 
         assert!(
@@ -1968,9 +1641,9 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_quarantine_nonexistent_entry_fails() {
-        let server = make_server();
+        let server = make_server().await;
 
         let result = server
             .quarantine_with_audit(99999, None, make_audit_event("system"))
@@ -1986,7 +1659,7 @@ mod tests {
 
     /// Helper: insert entry and deprecate it, returning the entry id.
     async fn insert_and_deprecate(server: &UnimatrixServer) -> u64 {
-        let id = insert_test_entry(&server.store);
+        let id = insert_test_entry(&server.store).await;
         let audit_event = crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
@@ -2002,16 +1675,16 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            server.store.get(id).unwrap().status,
+            server.store.get(id).await.unwrap().status,
             unimatrix_store::Status::Deprecated
         );
         id
     }
 
     // AC-1: Quarantine from Deprecated status
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_quarantine_deprecated_entry() {
-        let server = make_server();
+        let server = make_server().await;
         let id = insert_and_deprecate(&server).await;
 
         let updated = server
@@ -2026,16 +1699,16 @@ mod tests {
         assert_eq!(updated.status, unimatrix_store::Status::Quarantined);
         assert_eq!(updated.pre_quarantine_status, Some(1)); // Deprecated = 1
 
-        let fetched = server.store.get(id).unwrap();
+        let fetched = server.store.get(id).await.unwrap();
         assert_eq!(fetched.status, unimatrix_store::Status::Quarantined);
         assert_eq!(fetched.pre_quarantine_status, Some(1));
     }
 
     // AC-3: Quarantine from Active sets pre_quarantine_status=0
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_quarantine_active_sets_pre_quarantine_status() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         let updated = server
             .quarantine_with_audit(id, None, make_audit_event("system"))
@@ -2047,9 +1720,9 @@ mod tests {
     }
 
     // AC-4: Restore to pre-quarantine status (Deprecated round-trip)
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_restore_to_deprecated() {
-        let server = make_server();
+        let server = make_server().await;
         let id = insert_and_deprecate(&server).await;
 
         // Quarantine from Deprecated
@@ -2069,10 +1742,10 @@ mod tests {
     }
 
     // AC-5: Restore with NULL pre_quarantine_status falls back to Active
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_restore_null_pre_quarantine_falls_back_to_active() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // Quarantine the entry
         server
@@ -2081,14 +1754,11 @@ mod tests {
             .unwrap();
 
         // Manually clear pre_quarantine_status to NULL to simulate pre-migration entry
-        {
-            let conn = server.store.lock_conn();
-            conn.execute(
-                "UPDATE entries SET pre_quarantine_status = NULL WHERE id = ?1",
-                rusqlite::params![id as i64],
-            )
+        sqlx::query("UPDATE entries SET pre_quarantine_status = NULL WHERE id = ?1")
+            .bind(id as i64)
+            .execute(server.store.write_pool_server())
+            .await
             .unwrap();
-        }
 
         // Restore -- should fall back to Active
         let restored = server
@@ -2100,13 +1770,17 @@ mod tests {
     }
 
     // AC-8: Counter integrity for Deprecated quarantine round-trip
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_counter_integrity_deprecated_round_trip() {
-        let server = make_server();
+        let server = make_server().await;
         let id = insert_and_deprecate(&server).await;
 
-        let before_deprecated = server.store.read_counter("total_deprecated").unwrap();
-        let before_quarantined = server.store.read_counter("total_quarantined").unwrap();
+        let before_deprecated = server.store.read_counter("total_deprecated").await.unwrap();
+        let before_quarantined = server
+            .store
+            .read_counter("total_quarantined")
+            .await
+            .unwrap();
 
         // Quarantine from Deprecated
         server
@@ -2114,8 +1788,12 @@ mod tests {
             .await
             .unwrap();
 
-        let mid_deprecated = server.store.read_counter("total_deprecated").unwrap();
-        let mid_quarantined = server.store.read_counter("total_quarantined").unwrap();
+        let mid_deprecated = server.store.read_counter("total_deprecated").await.unwrap();
+        let mid_quarantined = server
+            .store
+            .read_counter("total_quarantined")
+            .await
+            .unwrap();
         assert_eq!(
             mid_deprecated,
             before_deprecated - 1,
@@ -2133,8 +1811,12 @@ mod tests {
             .await
             .unwrap();
 
-        let after_deprecated = server.store.read_counter("total_deprecated").unwrap();
-        let after_quarantined = server.store.read_counter("total_quarantined").unwrap();
+        let after_deprecated = server.store.read_counter("total_deprecated").await.unwrap();
+        let after_quarantined = server
+            .store
+            .read_counter("total_quarantined")
+            .await
+            .unwrap();
         assert_eq!(
             after_deprecated, before_deprecated,
             "deprecated counter should return to initial"
@@ -2146,9 +1828,9 @@ mod tests {
     }
 
     // AC-9: Audit trail includes pre_quarantine_status
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_quarantine_audit_includes_pre_quarantine_status() {
-        let server = make_server();
+        let server = make_server().await;
         let id = insert_and_deprecate(&server).await;
 
         server
@@ -2156,14 +1838,12 @@ mod tests {
             .await
             .unwrap();
 
-        let conn = server.store.lock_conn();
-        let detail: String = conn
-            .query_row(
-                "SELECT detail FROM audit_log WHERE operation = 'context_quarantine' ORDER BY event_id DESC LIMIT 1",
-                [],
-                |row| row.get(0),
-            )
-            .unwrap();
+        let detail: String = sqlx::query_scalar(
+            "SELECT detail FROM audit_log WHERE operation = 'context_quarantine' ORDER BY event_id DESC LIMIT 1",
+        )
+        .fetch_one(server.store.read_pool_test())
+        .await
+        .unwrap();
 
         assert!(
             detail.contains("pre_quarantine_status=1"),
@@ -2172,10 +1852,10 @@ mod tests {
     }
 
     // AC-10: Restore with invalid pre_quarantine_status falls back to Active
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_restore_invalid_pre_quarantine_falls_back_to_active() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
         // Quarantine the entry
         server
@@ -2184,14 +1864,11 @@ mod tests {
             .unwrap();
 
         // Manually set pre_quarantine_status to invalid value (99)
-        {
-            let conn = server.store.lock_conn();
-            conn.execute(
-                "UPDATE entries SET pre_quarantine_status = 99 WHERE id = ?1",
-                rusqlite::params![id as i64],
-            )
+        sqlx::query("UPDATE entries SET pre_quarantine_status = 99 WHERE id = ?1")
+            .bind(id as i64)
+            .execute(server.store.write_pool_server())
+            .await
             .unwrap();
-        }
 
         // Restore -- should fall back to Active
         let restored = server
@@ -2203,16 +1880,20 @@ mod tests {
     }
 
     // AC-7: Migration v7->v8 (tested at store level)
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_migration_v7_to_v8_backfill() {
         // Create a database at v7 schema, quarantine an entry, then re-open
         // (which triggers migration) and verify backfill
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("migrate.db");
 
-        // Create db at current schema (v8)
+        let pool_config = unimatrix_store::pool_config::PoolConfig::default();
+
+        // Create db at current schema
         {
-            let store = unimatrix_store::Store::open(&path).unwrap();
+            let store = unimatrix_store::SqlxStore::open(&path, pool_config.clone())
+                .await
+                .unwrap();
             // Insert an entry and manually quarantine it with old logic (no pre_quarantine_status)
             let entry = unimatrix_core::NewEntry {
                 title: "Test".to_string(),
@@ -2226,47 +1907,44 @@ mod tests {
                 feature_cycle: String::new(),
                 trust_source: String::new(),
             };
-            let id = store.insert(entry).unwrap();
+            let id = store.insert(entry).await.unwrap();
 
             // Simulate a v7 quarantine (status=3 but no pre_quarantine_status)
-            let conn = store.lock_conn();
-            conn.execute(
+            sqlx::query(
                 "UPDATE entries SET status = 3, pre_quarantine_status = NULL WHERE id = ?1",
-                rusqlite::params![id as i64],
             )
+            .bind(id as i64)
+            .execute(store.write_pool_server())
+            .await
             .unwrap();
 
             // Set schema version back to 7 to trigger migration on next open
-            conn.execute(
-                "UPDATE counters SET value = 7 WHERE name = 'schema_version'",
-                [],
-            )
-            .unwrap();
+            sqlx::query("UPDATE counters SET value = 7 WHERE name = 'schema_version'")
+                .execute(store.write_pool_server())
+                .await
+                .unwrap();
         }
 
         // Re-open -- triggers v7->v8 migration
         {
-            let store = unimatrix_store::Store::open(&path).unwrap();
-            let conn = store.lock_conn();
+            let store = unimatrix_store::SqlxStore::open(&path, pool_config.clone())
+                .await
+                .unwrap();
 
             // Verify schema version is now current (12, col-022 keywords migration)
-            let version: i64 = conn
-                .query_row(
-                    "SELECT value FROM counters WHERE name = 'schema_version'",
-                    [],
-                    |row| row.get(0),
-                )
-                .unwrap();
+            let version: i64 =
+                sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
+                    .fetch_one(store.read_pool_test())
+                    .await
+                    .unwrap();
             assert_eq!(version, 12);
 
             // Verify backfill: quarantined entry should have pre_quarantine_status = 0
-            let pre_q: Option<i64> = conn
-                .query_row(
-                    "SELECT pre_quarantine_status FROM entries WHERE status = 3",
-                    [],
-                    |row| row.get(0),
-                )
-                .unwrap();
+            let pre_q: Option<i64> =
+                sqlx::query_scalar("SELECT pre_quarantine_status FROM entries WHERE status = 3")
+                    .fetch_optional(store.read_pool_test())
+                    .await
+                    .unwrap();
             assert_eq!(
                 pre_q,
                 Some(0),
@@ -2276,26 +1954,25 @@ mod tests {
 
         // Re-open again to verify idempotency
         {
-            let store = unimatrix_store::Store::open(&path).unwrap();
-            let conn = store.lock_conn();
-            let version: i64 = conn
-                .query_row(
-                    "SELECT value FROM counters WHERE name = 'schema_version'",
-                    [],
-                    |row| row.get(0),
-                )
+            let store = unimatrix_store::SqlxStore::open(&path, pool_config.clone())
+                .await
                 .unwrap();
+            let version: i64 =
+                sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
+                    .fetch_one(store.read_pool_test())
+                    .await
+                    .unwrap();
             assert_eq!(version, 12, "schema version should remain 12 on re-open");
         }
     }
 
     // R-05: Existing Active->Quarantined->Active path still works identically
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_active_quarantine_restore_round_trip_still_works() {
-        let server = make_server();
-        let id = insert_test_entry(&server.store);
+        let server = make_server().await;
+        let id = insert_test_entry(&server.store).await;
 
-        let initial_active = server.store.read_counter("total_active").unwrap();
+        let initial_active = server.store.read_counter("total_active").await.unwrap();
 
         // Quarantine from Active
         let quarantined = server
@@ -2314,7 +1991,7 @@ mod tests {
         assert_eq!(restored.pre_quarantine_status, None);
 
         // Counters should return to initial
-        let final_active = server.store.read_counter("total_active").unwrap();
+        let final_active = server.store.read_counter("total_active").await.unwrap();
         assert_eq!(final_active, initial_active);
     }
 
@@ -2441,9 +2118,9 @@ mod tests {
 
     // -- col-010b: embedding_dim tests (T-LL-08..10) --
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn insert_with_audit_sets_embedding_dim() {
-        let server = make_server();
+        let server = make_server().await;
         let entry = NewEntry {
             title: "test".to_string(),
             content: "test content".to_string(),
@@ -2478,12 +2155,12 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn insert_with_audit_empty_embedding_skips_hnsw() {
         // Empty embedding = ONNX model not loaded or embedding failed.
         // Entry is still written to store (searchable by topic/category/tags),
         // HNSW insert is skipped, embedding_dim is 0.
-        let server = make_server();
+        let server = make_server().await;
         let entry = NewEntry {
             title: "test".to_string(),
             content: "test content".to_string(),
@@ -2519,9 +2196,9 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn correct_with_audit_sets_embedding_dim() {
-        let server = make_server();
+        let server = make_server().await;
         // First insert an entry to correct
         let entry = NewEntry {
             title: "original".to_string(),
@@ -2797,9 +2474,9 @@ mod tests {
     }
 
     // T-SERVER-U-01: clone produces shallow copy sharing all Arc fields
-    #[test]
-    fn test_server_clone_shares_arc_fields() {
-        let server = make_server();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_server_clone_shares_arc_fields() {
+        let server = make_server().await;
         let clone = server.clone();
 
         // All Arc fields must point to the same allocation
@@ -2825,9 +2502,9 @@ mod tests {
     }
 
     // T-SERVER-U-02: Arc strong_count is 1 before graceful_shutdown after session drop
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_server_clone_arc_count_drops_after_join() {
-        let server = make_server();
+        let server = make_server().await;
         let store = Arc::clone(&server.store);
         let initial_count = Arc::strong_count(&store);
 
@@ -2852,7 +2529,7 @@ mod tests {
     }
 
     // T-ACCUM-C-01: concurrent upsert + drain — no data loss
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_concurrent_upsert_drain_no_data_loss() {
         use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -2954,14 +2631,21 @@ mod tests {
     }
 
     // T-SERVER-U-05: UdsSession exemption does not apply to non-UDS caller variants
-    #[test]
-    fn test_uds_session_rate_exemption_boundary() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_uds_session_rate_exemption_boundary() {
         use crate::infra::audit::AuditLog;
         use crate::services::gateway::SecurityGateway;
         use crate::services::{CallerId, RateLimitConfig};
 
         let dir = tempfile::TempDir::new().unwrap();
-        let store = Arc::new(unimatrix_core::Store::open(dir.path().join("t.db")).unwrap());
+        let store = Arc::new(
+            unimatrix_store::SqlxStore::open(
+                &dir.path().join("t.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            )
+            .await
+            .unwrap(),
+        );
         let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
         // Use limit=1 so we can verify the Agent is rate-limited after one call
         let config = RateLimitConfig {

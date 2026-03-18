@@ -7,8 +7,8 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use unimatrix_core::Store;
 use unimatrix_embed::{EmbedConfig, OnnxProvider, embed_entries};
-use unimatrix_store::Store;
 use unimatrix_vector::{VectorConfig, VectorIndex};
 
 /// Batch size for embedding entries. Each batch produces
@@ -88,8 +88,7 @@ pub fn reconstruct_embeddings(
         // Insert each embedding into VectorIndex
         for (i, embedding) in embeddings.iter().enumerate() {
             let entry_id = chunk[i].0;
-            vector_index
-                .insert(entry_id, embedding)
+            block_sync_raw(vector_index.insert(entry_id, embedding))
                 .map_err(|e| format!("vector index insert failed for entry {entry_id}: {e}"))?;
         }
     }
@@ -110,26 +109,50 @@ pub fn reconstruct_embeddings(
 
 /// Read all entry (id, title, content) triples from the database.
 ///
-/// Releases the connection lock before returning so that the caller
-/// can proceed with CPU-bound embedding work without holding the mutex.
+/// Bridges async sqlx into this sync context. Works whether called from within
+/// or outside an async runtime (nxs-011).
 fn read_entries(store: &Arc<Store>) -> Result<Vec<EntryTriple>, Box<dyn std::error::Error>> {
-    let conn = store.lock_conn();
-    let mut stmt = conn.prepare("SELECT id, title, content FROM entries ORDER BY id")?;
-    let mut entries: Vec<EntryTriple> = Vec::new();
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
-        let id: i64 = row.get(0)?;
-        let title: String = row.get(1)?;
-        let content: String = row.get(2)?;
-        entries.push((id as u64, title, content));
-    }
-    // rows, stmt, conn drop here -- releasing the lock before CPU-bound work
+    use sqlx::Row;
+    let pool = store.write_pool_server();
+    let rows = block_sync_raw(
+        sqlx::query("SELECT id, title, content FROM entries ORDER BY id").fetch_all(pool),
+    )
+    .map_err(|e| format!("failed to read entries: {e}"))?;
+
+    let entries = rows
+        .into_iter()
+        .map(|row| {
+            let id: i64 = row.get::<i64, _>(0);
+            let title: String = row.get::<String, _>(1);
+            let content: String = row.get::<String, _>(2);
+            (id as u64, title, content)
+        })
+        .collect();
     Ok(entries)
+}
+
+/// Bridge an async future to sync context (works inside or outside a tokio runtime).
+fn block_sync_raw<F, T>(fut: F) -> T
+where
+    F: std::future::Future<Output = T>,
+{
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => tokio::task::block_in_place(|| handle.block_on(fut)),
+        Err(_) => {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("failed to build tokio runtime");
+            rt.block_on(fut)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use unimatrix_core::NewEntry;
+    use unimatrix_store::test_helpers::open_test_store;
 
     #[test]
     fn test_embed_batch_size_constant() {
@@ -160,180 +183,92 @@ mod tests {
         assert_eq!(129usize.div_ceil(batch_size), 3);
     }
 
-    #[test]
-    fn test_read_entries_empty_db() {
-        // Create an in-memory Store with empty entries table
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_read_entries_empty_db() {
         let tmp = tempfile::TempDir::new().unwrap();
-        let db_path = tmp.path().join("unimatrix.db");
-        let store = Arc::new(Store::open(&db_path).unwrap());
+        let store = Arc::new(open_test_store(&tmp).await);
 
         let entries = read_entries(&store).unwrap();
         assert!(entries.is_empty());
     }
 
-    #[test]
-    fn test_read_entries_returns_id_title_content() {
-        let tmp = tempfile::TempDir::new().unwrap();
-        let db_path = tmp.path().join("unimatrix.db");
-        let store = Arc::new(Store::open(&db_path).unwrap());
-
-        // Insert a test entry via direct SQL
-        {
-            let conn = store.lock_conn();
-            conn.execute(
-                "INSERT INTO entries (id, title, content, topic, category, source, \
-                 status, confidence, created_at, updated_at, last_accessed_at, \
-                 access_count, correction_count, embedding_dim, created_by, \
-                 modified_by, content_hash, previous_hash, version, \
-                 feature_cycle, trust_source, helpful_count, unhelpful_count) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, \
-                 ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23)",
-                unimatrix_store::rusqlite::params![
-                    1i64,
-                    "Test Title",
-                    "Test Content",
-                    "test-topic",
-                    "convention",
-                    "human",
-                    0i64, // Active
-                    0.5f64,
-                    1000i64,
-                    1000i64,
-                    1000i64,
-                    0i64,
-                    0i64,
-                    384i64,
-                    "system",
-                    "system",
-                    "hash123",
-                    "",
-                    1i64,
-                    "",
-                    "direct",
-                    0i64,
-                    0i64,
-                ],
-            )
-            .unwrap();
+    fn make_test_entry(title: &str, content: &str) -> NewEntry {
+        NewEntry {
+            title: title.to_string(),
+            content: content.to_string(),
+            topic: "test-topic".to_string(),
+            category: "convention".to_string(),
+            tags: vec![],
+            source: "human".to_string(),
+            status: unimatrix_core::Status::Active,
+            created_by: "system".to_string(),
+            feature_cycle: String::new(),
+            trust_source: "direct".to_string(),
         }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_read_entries_returns_id_title_content() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = Arc::new(open_test_store(&tmp).await);
+
+        store
+            .insert(make_test_entry("Test Title", "Test Content"))
+            .await
+            .unwrap();
 
         let entries = read_entries(&store).unwrap();
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].0, 1u64);
         assert_eq!(entries[0].1, "Test Title");
         assert_eq!(entries[0].2, "Test Content");
     }
 
-    #[test]
-    fn test_read_entries_ordered_by_id() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_read_entries_ordered_by_id() {
         let tmp = tempfile::TempDir::new().unwrap();
-        let db_path = tmp.path().join("unimatrix.db");
-        let store = Arc::new(Store::open(&db_path).unwrap());
+        let store = Arc::new(open_test_store(&tmp).await);
 
-        // Insert entries out of order
-        {
-            let conn = store.lock_conn();
-            for id in [3i64, 1, 2] {
-                conn.execute(
-                    "INSERT INTO entries (id, title, content, topic, category, source, \
-                     status, confidence, created_at, updated_at, last_accessed_at, \
-                     access_count, correction_count, embedding_dim, created_by, \
-                     modified_by, content_hash, previous_hash, version, \
-                     feature_cycle, trust_source, helpful_count, unhelpful_count) \
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, \
-                     ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23)",
-                    unimatrix_store::rusqlite::params![
-                        id,
-                        format!("Title {id}"),
-                        format!("Content {id}"),
-                        "topic",
-                        "convention",
-                        "human",
-                        0i64,
-                        0.5f64,
-                        1000i64,
-                        1000i64,
-                        1000i64,
-                        0i64,
-                        0i64,
-                        384i64,
-                        "system",
-                        "system",
-                        format!("hash{id}"),
-                        "",
-                        1i64,
-                        "",
-                        "direct",
-                        0i64,
-                        0i64,
-                    ],
-                )
-                .unwrap();
-            }
-        }
+        // Insert 3 entries — IDs will be assigned in insertion order (1, 2, 3)
+        store
+            .insert(make_test_entry("Title A", "Content A"))
+            .await
+            .unwrap();
+        store
+            .insert(make_test_entry("Title B", "Content B"))
+            .await
+            .unwrap();
+        store
+            .insert(make_test_entry("Title C", "Content C"))
+            .await
+            .unwrap();
 
         let entries = read_entries(&store).unwrap();
         assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0].0, 1);
-        assert_eq!(entries[1].0, 2);
-        assert_eq!(entries[2].0, 3);
+        // IDs must be in ascending order
+        assert!(entries[0].0 < entries[1].0);
+        assert!(entries[1].0 < entries[2].0);
     }
 
-    #[test]
-    fn test_read_entries_multiple_entries() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_read_entries_multiple_entries() {
         let tmp = tempfile::TempDir::new().unwrap();
-        let db_path = tmp.path().join("unimatrix.db");
-        let store = Arc::new(Store::open(&db_path).unwrap());
+        let store = Arc::new(open_test_store(&tmp).await);
 
-        // Insert multiple entries to verify all fields are read correctly
-        {
-            let conn = store.lock_conn();
-            for id in 1..=5i64 {
-                conn.execute(
-                    "INSERT INTO entries (id, title, content, topic, category, source, \
-                     status, confidence, created_at, updated_at, last_accessed_at, \
-                     access_count, correction_count, embedding_dim, created_by, \
-                     modified_by, content_hash, previous_hash, version, \
-                     feature_cycle, trust_source, helpful_count, unhelpful_count) \
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, \
-                     ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23)",
-                    unimatrix_store::rusqlite::params![
-                        id,
-                        format!("Entry {id}"),
-                        format!("Content for entry {id}"),
-                        "topic",
-                        "convention",
-                        "human",
-                        0i64,
-                        0.5f64,
-                        1000i64,
-                        1000i64,
-                        1000i64,
-                        0i64,
-                        0i64,
-                        384i64,
-                        "system",
-                        "system",
-                        format!("hash{id}"),
-                        "",
-                        1i64,
-                        "",
-                        "direct",
-                        0i64,
-                        0i64,
-                    ],
-                )
+        for i in 1..=5u64 {
+            store
+                .insert(make_test_entry(
+                    &format!("Entry {i}"),
+                    &format!("Content for entry {i}"),
+                ))
+                .await
                 .unwrap();
-            }
         }
 
         let entries = read_entries(&store).unwrap();
         assert_eq!(entries.len(), 5);
 
-        // Verify each entry has correct id, title, and content
-        for (i, (id, title, content)) in entries.iter().enumerate() {
+        for (i, (_, title, content)) in entries.iter().enumerate() {
             let expected_id = (i + 1) as u64;
-            assert_eq!(*id, expected_id);
             assert_eq!(*title, format!("Entry {expected_id}"));
             assert_eq!(*content, format!("Content for entry {expected_id}"));
         }

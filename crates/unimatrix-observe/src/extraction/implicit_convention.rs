@@ -5,7 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use unimatrix_store::Store;
+use unimatrix_store::SqlxStore;
 
 use super::{ExtractionRule, ProposedEntry, extract_file_path, is_file_tool};
 use crate::types::ObservationRecord;
@@ -17,7 +17,11 @@ impl ExtractionRule for ImplicitConventionRule {
         "implicit-convention"
     }
 
-    fn evaluate(&self, observations: &[ObservationRecord], _store: &Store) -> Vec<ProposedEntry> {
+    fn evaluate(
+        &self,
+        observations: &[ObservationRecord],
+        _store: &SqlxStore,
+    ) -> Vec<ProposedEntry> {
         let all_sessions: HashSet<String> =
             observations.iter().map(|o| o.session_id.clone()).collect();
 
@@ -125,16 +129,18 @@ mod tests {
         }
     }
 
-    fn make_store() -> Store {
+    async fn make_store() -> SqlxStore {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("test.db");
         std::mem::forget(dir);
-        Store::open(&path).expect("open store")
+        SqlxStore::open(&path, unimatrix_store::pool_config::PoolConfig::default())
+            .await
+            .expect("open store")
     }
 
-    #[test]
-    fn convention_from_three_sessions() {
-        let store = make_store();
+    #[tokio::test]
+    async fn convention_from_three_sessions() {
+        let store = make_store().await;
         let observations = vec![
             make_file_obs(
                 "s1",
@@ -171,9 +177,9 @@ mod tests {
         assert_eq!(proposals[0].category, "convention");
     }
 
-    #[test]
-    fn no_convention_with_partial_consistency() {
-        let store = make_store();
+    #[tokio::test]
+    async fn no_convention_with_partial_consistency() {
+        let store = make_store().await;
         let observations = vec![
             make_file_obs("s1", "Read", "/workspaces/unimatrix/CLAUDE.md"),
             make_file_obs("s2", "Read", "/workspaces/unimatrix/CLAUDE.md"),
@@ -198,9 +204,9 @@ mod tests {
         // For a proper partial test, we need different dirs.
     }
 
-    #[test]
-    fn no_convention_below_min_sessions() {
-        let store = make_store();
+    #[tokio::test]
+    async fn no_convention_below_min_sessions() {
+        let store = make_store().await;
         let observations = vec![
             make_file_obs("s1", "Read", "/workspaces/unimatrix/CLAUDE.md"),
             make_file_obs("s2", "Read", "/workspaces/unimatrix/CLAUDE.md"),
@@ -210,9 +216,9 @@ mod tests {
         assert!(proposals.is_empty());
     }
 
-    #[test]
-    fn partial_consistency_with_distinct_dirs() {
-        let store = make_store();
+    #[tokio::test]
+    async fn partial_consistency_with_distinct_dirs() {
+        let store = make_store().await;
         let observations = vec![
             make_file_obs("s1", "Read", "/workspaces/unimatrix/crates/core/src/lib.rs"),
             make_file_obs("s2", "Read", "/workspaces/unimatrix/crates/core/src/lib.rs"),
@@ -231,9 +237,9 @@ mod tests {
         assert!(core_proposals.is_empty());
     }
 
-    #[test]
-    fn confidence_scales_with_sessions() {
-        let store = make_store();
+    #[tokio::test]
+    async fn confidence_scales_with_sessions() {
+        let store = make_store().await;
         let observations = vec![
             make_file_obs("s1", "Read", "/workspaces/unimatrix/CLAUDE.md"),
             make_file_obs("s2", "Read", "/workspaces/unimatrix/CLAUDE.md"),
@@ -248,16 +254,16 @@ mod tests {
         assert!((proposals[0].extraction_confidence - 0.75).abs() < 0.01);
     }
 
-    #[test]
-    fn normalize_path_pattern_workspace() {
+    #[tokio::test]
+    async fn normalize_path_pattern_workspace() {
         assert_eq!(
             normalize_path_pattern("/workspaces/unimatrix/crates/core/src/lib.rs"),
             "crates/core/src/"
         );
     }
 
-    #[test]
-    fn normalize_path_pattern_root() {
+    #[tokio::test]
+    async fn normalize_path_pattern_root() {
         assert_eq!(
             normalize_path_pattern("/workspaces/unimatrix/CLAUDE.md"),
             "(root)"

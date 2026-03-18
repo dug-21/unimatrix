@@ -25,6 +25,7 @@ unimatrix-learn = { path = "../unimatrix-learn" }
 
 nix = { version = "0.31", features = ["user", "process"] }
 fs2 = "0.4"
+sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "macros"] }
 rmcp = { version = "=0.16.0", features = ["server", "transport-io", "macros"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7" }

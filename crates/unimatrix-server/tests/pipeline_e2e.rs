@@ -72,16 +72,22 @@ async fn test_active_above_deprecated() {
         Status::Deprecated,
     );
 
-    let active_id = harness.store().insert(active_entry).expect("insert active");
+    let active_id = harness
+        .store()
+        .insert(active_entry)
+        .await
+        .expect("insert active");
     let deprecated_id = harness
         .store()
         .insert(deprecated_entry)
+        .await
         .expect("insert deprecated");
 
     // Deprecate the second entry
     harness
         .store()
         .update_status(deprecated_id, Status::Deprecated)
+        .await
         .expect("deprecate");
 
     // Rebuild vector index with embeddings
@@ -129,7 +135,11 @@ async fn test_supersession_injection() {
         "convention",
         Status::Active,
     );
-    let original_id = harness.store().insert(original).expect("insert original");
+    let original_id = harness
+        .store()
+        .insert(original)
+        .await
+        .expect("insert original");
 
     // Store successor entry
     let successor = test_entry(
@@ -138,18 +148,28 @@ async fn test_supersession_injection() {
         "convention",
         Status::Active,
     );
-    let successor_id = harness.store().insert(successor).expect("insert successor");
+    let successor_id = harness
+        .store()
+        .insert(successor)
+        .await
+        .expect("insert successor");
 
     // Set supersession relationship: deprecate and set superseded_by via update
     harness
         .store()
         .update_status(original_id, Status::Deprecated)
+        .await
         .expect("deprecate");
-    let mut original_record: EntryRecord = harness.store().get(original_id).expect("get original");
+    let mut original_record: EntryRecord = harness
+        .store()
+        .get(original_id)
+        .await
+        .expect("get original");
     original_record.superseded_by = Some(successor_id);
     harness
         .store()
         .update(original_record)
+        .await
         .expect("update superseded_by");
 
     rebuild_embeddings(&harness, &[original_id, successor_id]).await;
@@ -197,10 +217,11 @@ async fn test_provenance_boost() {
         Status::Active,
     );
 
-    let lesson_id = harness.store().insert(lesson).expect("insert lesson");
+    let lesson_id = harness.store().insert(lesson).await.expect("insert lesson");
     let convention_id = harness
         .store()
         .insert(convention)
+        .await
         .expect("insert convention");
 
     rebuild_embeddings(&harness, &[lesson_id, convention_id]).await;
@@ -257,23 +278,14 @@ async fn test_co_access_boost() {
         Status::Active,
     );
 
-    let id1 = harness.store().insert(entry1).expect("insert 1");
-    let id2 = harness.store().insert(entry2).expect("insert 2");
-    let id3 = harness.store().insert(entry3).expect("insert 3");
+    let id1 = harness.store().insert(entry1).await.expect("insert 1");
+    let id2 = harness.store().insert(entry2).await.expect("insert 2");
+    let id3 = harness.store().insert(entry3).await.expect("insert 3");
 
     // Record co-access between entries 1 and 2 (multiple times to build signal)
-    harness
-        .store()
-        .record_co_access_pairs(&[(id1, id2)])
-        .expect("co-access");
-    harness
-        .store()
-        .record_co_access_pairs(&[(id1, id2)])
-        .expect("co-access 2");
-    harness
-        .store()
-        .record_co_access_pairs(&[(id1, id2)])
-        .expect("co-access 3");
+    harness.store().record_co_access_pairs(&[(id1, id2)]);
+    harness.store().record_co_access_pairs(&[(id1, id2)]);
+    harness.store().record_co_access_pairs(&[(id1, id2)]);
 
     rebuild_embeddings(&harness, &[id1, id2, id3]).await;
 
@@ -347,7 +359,7 @@ async fn test_golden_regression() {
 
     let mut ids = Vec::new();
     for entry in entries {
-        let id = harness.store().insert(entry).expect("insert");
+        let id = harness.store().insert(entry).await.expect("insert");
         ids.push(id);
     }
 

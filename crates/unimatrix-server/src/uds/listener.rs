@@ -12,19 +12,22 @@ use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use unimatrix_adapt::AdaptationService;
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-use unimatrix_core::{EmbedService, NewEntry, Status, StoreAdapter, VectorAdapter};
+use unimatrix_core::Store;
+use unimatrix_core::async_wrappers::AsyncVectorStore;
+use unimatrix_core::{EmbedService, NewEntry, Status, VectorAdapter};
 use unimatrix_engine::auth;
 use unimatrix_engine::coaccess::generate_pairs;
 use unimatrix_engine::confidence::rerank_score;
 use unimatrix_engine::wire::{
     ERR_INVALID_PAYLOAD, EntryPayload, HookRequest, HookResponse, MAX_PAYLOAD_SIZE,
 };
-use unimatrix_store::Store;
 use unimatrix_store::{
     InjectionLogRecord, QueryLogRecord, SessionLifecycleStatus, SessionRecord, SignalRecord,
     SignalSource, SignalType,
 };
+
+// sqlx is used in insert_observation / insert_observations_batch for raw queries.
+use sqlx;
 
 use std::collections::HashSet;
 use std::sync::Mutex;
@@ -168,7 +171,7 @@ pub async fn start_uds_listener(
     store: Arc<Store>,
     embed_service: Arc<EmbedServiceHandle>,
     vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
     pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
@@ -221,7 +224,7 @@ async fn accept_loop(
     store: Arc<Store>,
     embed_service: Arc<EmbedServiceHandle>,
     vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
     pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
@@ -288,7 +291,7 @@ async fn handle_connection(
     store: Arc<Store>,
     embed_service: Arc<EmbedServiceHandle>,
     vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
     pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
@@ -406,7 +409,7 @@ async fn dispatch_request(
     store: &Arc<Store>,
     embed_service: &Arc<EmbedServiceHandle>,
     _vector_store: &Arc<AsyncVectorStore<VectorAdapter>>,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     _adapt_service: &Arc<AdaptationService>,
     server_version: &str,
     session_registry: &SessionRegistry,
@@ -459,7 +462,7 @@ async fn dispatch_request(
                 clean_feature.clone(),
             );
 
-            // col-010: Persist SessionRecord to SESSIONS table (fire-and-forget)
+            // col-010: Persist SessionRecord to SESSIONS table
             {
                 let record = SessionRecord {
                     session_id: session_id.clone(),
@@ -473,16 +476,10 @@ async fn dispatch_request(
                     total_injections: 0,
                     keywords: None,
                 };
-                let store_clone = Arc::clone(store);
-                spawn_blocking_fire_and_forget(move || {
-                    if let Err(e) = store_clone.insert_session(&record) {
-                        tracing::warn!(
-                            session_id = %record.session_id,
-                            error = %e,
-                            "UDS: SESSIONS insert failed"
-                        );
-                    }
-                });
+                // insert_session writes directly to the write pool for immediate visibility.
+                if let Err(e) = store.insert_session(&record).await {
+                    tracing::warn!("failed to persist session record: {e}");
+                }
             }
 
             // Pre-warm embedding model (FR-04)
@@ -620,8 +617,10 @@ async fn dispatch_request(
                     let store_fc = Arc::clone(store);
                     let sid = event.session_id.clone();
                     let fc_owned = fc_clean;
-                    spawn_blocking_fire_and_forget(move || {
-                        if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc_owned) {
+                    let _ = tokio::spawn(async move {
+                        if let Err(e) =
+                            update_session_feature_cycle(&store_fc, &sid, &fc_owned).await
+                        {
                             tracing::warn!(error = %e, "#198: feature_cycle persist failed");
                         }
                     });
@@ -646,9 +645,9 @@ async fn dispatch_request(
                         );
                         let store_eager = Arc::clone(store);
                         let sid = event.session_id.clone();
-                        spawn_blocking_fire_and_forget(move || {
+                        let _ = tokio::spawn(async move {
                             if let Err(e) =
-                                update_session_feature_cycle(&store_eager, &sid, &winner)
+                                update_session_feature_cycle(&store_eager, &sid, &winner).await
                             {
                                 tracing::warn!(
                                     error = %e,
@@ -699,8 +698,9 @@ async fn dispatch_request(
                         let store_fc = Arc::clone(store);
                         let sid = event.session_id.clone();
                         let fc_owned = fc_clean;
-                        spawn_blocking_fire_and_forget(move || {
-                            if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc_owned)
+                        let _ = tokio::spawn(async move {
+                            if let Err(e) =
+                                update_session_feature_cycle(&store_fc, &sid, &fc_owned).await
                             {
                                 tracing::warn!(
                                     error = %e,
@@ -744,9 +744,10 @@ async fn dispatch_request(
                         );
                         let store_eager = Arc::clone(store);
                         let sid_owned = sid.to_string();
-                        spawn_blocking_fire_and_forget(move || {
+                        let _ = tokio::spawn(async move {
                             if let Err(e) =
                                 update_session_feature_cycle(&store_eager, &sid_owned, &winner)
+                                    .await
                             {
                                 tracing::warn!(
                                     error = %e,
@@ -1025,16 +1026,8 @@ async fn handle_context_search(
                 })
                 .collect();
             let store_clone = Arc::clone(store);
-            let sid_clone = sid.clone();
             spawn_blocking_fire_and_forget(move || {
-                if let Err(e) = store_clone.insert_injection_log_batch(&records) {
-                    tracing::warn!(
-                        session_id = %sid_clone,
-                        count = records.len(),
-                        error = %e,
-                        "INJECTION_LOG batch write failed"
-                    );
-                }
+                store_clone.insert_injection_log_batch(&records);
             });
         }
     }
@@ -1055,16 +1048,8 @@ async fn handle_context_search(
             );
 
             let store_clone = Arc::clone(store);
-            let sid_clone = sid.clone();
             spawn_blocking_fire_and_forget(move || {
-                if let Err(e) = store_clone.insert_query_log(&record) {
-                    tracing::warn!(
-                        session_id = %sid_clone,
-                        query_len = record.query_text.len(),
-                        error = %e,
-                        "query_log write failed"
-                    );
-                }
+                store_clone.insert_query_log(&record);
             });
         }
     }
@@ -1081,10 +1066,8 @@ async fn handle_context_search(
             if !pairs.is_empty() {
                 let store_clone = Arc::clone(store);
                 // Fire-and-forget: don't await (FR-05.5)
-                let _ = tokio::task::spawn_blocking(move || {
-                    if let Err(e) = store_clone.record_co_access_pairs(&pairs) {
-                        tracing::warn!("co-access recording failed: {e}");
-                    }
+                spawn_blocking_fire_and_forget(move || {
+                    store_clone.record_co_access_pairs(&pairs);
                 });
             }
         }
@@ -1425,7 +1408,7 @@ async fn process_session_close(
     hook_outcome: &str,
     store: &Arc<Store>,
     session_registry: &SessionRegistry,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
 ) -> HookResponse {
     // col-010: capture session metadata before drain (state is removed by drain)
@@ -1457,8 +1440,8 @@ async fn process_session_close(
             let store_fc = Arc::clone(store);
             let sid = sweep_result.session_id.clone();
             let fc_owned = fc.clone();
-            spawn_blocking_fire_and_forget(move || {
-                if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc_owned) {
+            let _ = tokio::spawn(async move {
+                if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc_owned).await {
                     tracing::warn!(error = %e, "#198: stale session feature_cycle persist failed");
                 }
             });
@@ -1516,17 +1499,19 @@ async fn process_session_close(
             let status_clone = final_status.clone();
             let outcome_owned = outcome_str.to_string();
             let fc = final_feature_cycle.clone();
-            spawn_blocking_fire_and_forget(move || {
-                let result = store_clone.update_session(&sid, |r| {
-                    r.status = status_clone;
-                    r.ended_at = Some(unix_now_secs());
-                    r.outcome = Some(outcome_owned.clone());
-                    r.total_injections = injection_count;
-                    r.compaction_count = compaction_count;
-                    if let Some(ref topic) = fc {
-                        r.feature_cycle = Some(topic.clone());
-                    }
-                });
+            let _ = tokio::spawn(async move {
+                let result = store_clone
+                    .update_session(&sid, |r| {
+                        r.status = status_clone;
+                        r.ended_at = Some(unix_now_secs());
+                        r.outcome = Some(outcome_owned.clone());
+                        r.total_injections = injection_count;
+                        r.compaction_count = compaction_count;
+                        if let Some(ref topic) = fc {
+                            r.feature_cycle = Some(topic.clone());
+                        }
+                    })
+                    .await;
                 if let Err(e) = result {
                     tracing::warn!(
                         session_id = %sid,
@@ -1569,49 +1554,49 @@ async fn process_session_close(
 /// Loads observations for the session, runs `attribute_sessions` for each unique
 /// candidate feature, returns the feature with the most attributed observations.
 fn content_based_attribution_fallback(store: &Store, session_id: &str) -> Option<String> {
+    use sqlx::Row as _;
     use unimatrix_observe::types::{HookType, ObservationRecord, ParsedSession};
 
-    // Acquire lock, run query, release lock BEFORE processing.
-    // The lock must not be held during candidate extraction or attribute_sessions()
-    // to avoid blocking other spawn_blocking DB operations (fix for #169).
-    let records: Vec<ObservationRecord> = {
-        let conn = store.lock_conn();
-        let mut stmt = conn
-            .prepare(
+    // Use block_in_place to bridge async sqlx into this sync context.
+    // block_in_place works in both spawn_blocking and multi_thread test contexts.
+    let pool = store.write_pool_server();
+    let rows = tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(
+            sqlx::query(
                 "SELECT session_id, ts_millis, hook, tool, input FROM observations \
                  WHERE session_id = ?1 ORDER BY ts_millis ASC",
             )
-            .ok()?;
+            .bind(session_id)
+            .fetch_all(pool),
+        )
+    })
+    .ok()?;
 
-        let result: Vec<ObservationRecord> = stmt
-            .query_map(unimatrix_store::rusqlite::params![session_id], |row| {
-                let session_id: String = row.get(0)?;
-                let ts_millis: i64 = row.get(1)?;
-                let hook_str: String = row.get(2)?;
-                let tool: Option<String> = row.get(3)?;
-                let input_str: Option<String> = row.get(4)?;
-                Ok(ObservationRecord {
-                    ts: (ts_millis / 1000) as u64,
-                    hook: match hook_str.as_str() {
-                        "PreToolUse" => HookType::PreToolUse,
-                        "PostToolUse" => HookType::PostToolUse,
-                        "SubagentStart" => HookType::SubagentStart,
-                        "SubagentStop" => HookType::SubagentStop,
-                        _ => HookType::PreToolUse,
-                    },
-                    session_id,
-                    tool,
-                    input: input_str.map(|s| serde_json::Value::String(s)),
-                    response_size: None,
-                    response_snippet: None,
-                })
-            })
-            .ok()?
-            .filter_map(|r| r.ok())
-            .collect();
-        result
-        // conn (MutexGuard) dropped here — lock released before processing
-    };
+    let records: Vec<ObservationRecord> = rows
+        .into_iter()
+        .map(|row| {
+            let session_id: String = row.get::<String, _>(0);
+            let ts_millis: i64 = row.get::<i64, _>(1);
+            let hook_str: String = row.get::<String, _>(2);
+            let tool: Option<String> = row.get::<Option<String>, _>(3);
+            let input_str: Option<String> = row.get::<Option<String>, _>(4);
+            ObservationRecord {
+                ts: (ts_millis / 1000) as u64,
+                hook: match hook_str.as_str() {
+                    "PreToolUse" => HookType::PreToolUse,
+                    "PostToolUse" => HookType::PostToolUse,
+                    "SubagentStart" => HookType::SubagentStart,
+                    "SubagentStop" => HookType::SubagentStop,
+                    _ => HookType::PreToolUse,
+                },
+                session_id,
+                tool,
+                input: input_str.map(serde_json::Value::String),
+                response_size: None,
+                response_snippet: None,
+            }
+        })
+        .collect();
 
     if records.is_empty() {
         return None;
@@ -1623,7 +1608,7 @@ fn content_based_attribution_fallback(store: &Store, session_id: &str) -> Option
         if let Some(input) = &record.input {
             let input_str = match input {
                 serde_json::Value::String(s) => s.clone(),
-                _ => serde_json::to_string(input).unwrap_or_default(),
+                _ => serde_json::to_string(&input).unwrap_or_default(),
             };
             if let Some(id) = unimatrix_observe::extract_topic_signal(&input_str) {
                 candidates.insert(id);
@@ -1695,20 +1680,22 @@ fn write_auto_outcome_entry(
 
     let store_clone = Arc::clone(store);
     let sid = session_id.to_string();
-    spawn_blocking_fire_and_forget(move || match store_clone.insert(entry) {
-        Ok(entry_id) => {
-            tracing::debug!(
-                session_id = %sid,
-                entry_id = %entry_id,
-                "Auto-outcome entry written"
-            );
-        }
-        Err(e) => {
-            tracing::warn!(
-                session_id = %sid,
-                error = %e,
-                "Auto-outcome write failed"
-            );
+    let _ = tokio::spawn(async move {
+        match store_clone.insert(entry).await {
+            Ok(entry_id) => {
+                tracing::debug!(
+                    session_id = %sid,
+                    entry_id = %entry_id,
+                    "Auto-outcome entry written"
+                );
+            }
+            Err(e) => {
+                tracing::warn!(
+                    session_id = %sid,
+                    error = %e,
+                    "Auto-outcome write failed"
+                );
+            }
         }
     });
 }
@@ -1745,25 +1732,8 @@ pub(crate) async fn write_signals_to_queue(output: &SignalOutput, store: &Arc<St
         signal_source,
     };
 
-    // Use spawn_blocking to keep store.lock_conn() off the async runtime (#176).
-    let store = Arc::clone(store);
-    let session_id = output.session_id.clone();
-    match tokio::task::spawn_blocking(move || store.insert_signal(&record)).await {
-        Ok(Ok(_)) => {}
-        Ok(Err(e)) => {
-            tracing::warn!(
-                session_id = %session_id,
-                error = %e,
-                "write_signals_to_queue: failed to insert signal"
-            );
-        }
-        Err(e) => {
-            tracing::warn!(
-                session_id = %session_id,
-                error = %e,
-                "write_signals_to_queue: spawn_blocking failed"
-            );
-        }
+    if let Err(e) = store.insert_signal(&record).await {
+        tracing::error!("Failed to insert signal record: {e}");
     }
 }
 
@@ -1774,27 +1744,18 @@ pub(crate) async fn write_signals_to_queue(output: &SignalOutput, store: &Arc<St
 /// Pass an empty string for sessions with no feature cycle attribution.
 pub(crate) async fn run_confidence_consumer(
     store: &Arc<Store>,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
     feature_cycle: &str,
 ) {
     // Step 1: Drain all Helpful signals in one transaction.
-    // Use spawn_blocking to keep store.lock_conn() off the async runtime (#176).
-    let store_drain = Arc::clone(store);
-    let signals =
-        match tokio::task::spawn_blocking(move || store_drain.drain_signals(SignalType::Helpful))
-            .await
-        {
-            Ok(Ok(s)) => s,
-            Ok(Err(e)) => {
-                tracing::warn!(error = %e, "run_confidence_consumer: drain_signals failed");
-                return;
-            }
-            Err(e) => {
-                tracing::warn!(error = %e, "run_confidence_consumer: spawn_blocking failed");
-                return;
-            }
-        };
+    let signals = match store.drain_signals(SignalType::Helpful).await {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::warn!(error = %e, "run_confidence_consumer: drain_signals failed");
+            return;
+        }
+    };
 
     if signals.is_empty() {
         return;
@@ -1809,11 +1770,9 @@ pub(crate) async fn run_confidence_consumer(
     }
 
     // Step 3: Increment helpful_count for all unique entries (via crt-002 path)
-    // Uses spawn_blocking since record_usage_with_confidence is synchronous.
     let entry_ids_vec: Vec<u64> = all_entry_ids.iter().copied().collect();
-    let store_clone = Arc::clone(store);
-    if let Err(e) = tokio::task::spawn_blocking(move || {
-        store_clone.record_usage_with_confidence(
+    if let Err(e) = store
+        .record_usage_with_confidence(
             &entry_ids_vec,
             &[],            // access_ids: no access count bump for implicit signals
             &entry_ids_vec, // helpful_ids: all signal entries
@@ -1822,11 +1781,9 @@ pub(crate) async fn run_confidence_consumer(
             &[],
             None,
         )
-    })
-    .await
+        .await
     {
-        // spawn_blocking join error — warn and continue
-        tracing::warn!(error = %e, "run_confidence_consumer: spawn_blocking failed");
+        tracing::warn!(error = %e, "run_confidence_consumer: record_usage_with_confidence failed");
     }
     // Note: per-entry failures (entry deleted) are handled inside record_usage_with_confidence
     // by skipping entries that no longer exist.
@@ -1927,26 +1884,17 @@ pub(crate) async fn run_confidence_consumer(
 pub(crate) async fn run_retrospective_consumer(
     store: &Arc<Store>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     feature_cycle: &str,
 ) {
     // Step 1: Drain all Flagged signals.
-    // Use spawn_blocking to keep store.lock_conn() off the async runtime (#176).
-    let store_drain = Arc::clone(store);
-    let signals =
-        match tokio::task::spawn_blocking(move || store_drain.drain_signals(SignalType::Flagged))
-            .await
-        {
-            Ok(Ok(s)) => s,
-            Ok(Err(e)) => {
-                tracing::warn!(error = %e, "run_retrospective_consumer: drain_signals failed");
-                return;
-            }
-            Err(e) => {
-                tracing::warn!(error = %e, "run_retrospective_consumer: spawn_blocking failed");
-                return;
-            }
-        };
+    let signals = match store.drain_signals(SignalType::Flagged).await {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::warn!(error = %e, "run_retrospective_consumer: drain_signals failed");
+            return;
+        }
+    };
 
     if signals.is_empty() {
         return;
@@ -2088,42 +2036,44 @@ fn majority_vote(signals: &std::collections::HashMap<String, TopicTally>) -> Opt
 }
 
 /// Update the feature_cycle column for a session in the sessions table (col-017).
-fn update_session_feature_cycle(
+async fn update_session_feature_cycle(
     store: &Store,
     session_id: &str,
     feature_cycle: &str,
 ) -> Result<(), unimatrix_store::StoreError> {
-    store.update_session(session_id, |r| {
-        r.feature_cycle = Some(feature_cycle.to_string());
-    })
+    store
+        .update_session(session_id, |r| {
+            r.feature_cycle = Some(feature_cycle.to_string());
+        })
+        .await
 }
 
 /// Public wrapper for `update_session_feature_cycle` (#198).
 ///
 /// Needed by status.rs to persist feature_cycle for stale sessions resolved during sweep.
-pub(crate) fn update_session_feature_cycle_pub(
+pub(crate) async fn update_session_feature_cycle_pub(
     store: &Store,
     session_id: &str,
     feature_cycle: &str,
 ) -> Result<(), unimatrix_store::StoreError> {
-    update_session_feature_cycle(store, session_id, feature_cycle)
+    update_session_feature_cycle(store, session_id, feature_cycle).await
 }
 
 // -- col-022: Cycle event helpers --
 
 /// Persist keywords JSON string to the session record (col-022, ADR-003).
 ///
-/// Uses the existing `store.update_session` read-modify-write pattern.
-/// Validation happens upstream in `validate_cycle_params`; this function
-/// stores the string as-is.
-fn update_session_keywords(
+/// Uses a direct targeted UPDATE rather than read-modify-write to avoid
+/// SQLITE_BUSY_SNAPSHOT races with the concurrent feature_cycle persist task.
+/// Validation happens upstream; this function stores the string as-is.
+async fn update_session_keywords(
     store: &Store,
     session_id: &str,
     keywords_json: &str,
 ) -> Result<(), unimatrix_store::StoreError> {
-    store.update_session(session_id, |record| {
-        record.keywords = Some(keywords_json.to_string());
-    })
+    store
+        .update_session_keywords(session_id, keywords_json)
+        .await
 }
 
 /// Handle a `cycle_start` event: force-set attribution + keywords persistence (col-022, ADR-002).
@@ -2192,8 +2142,8 @@ fn handle_cycle_start(
         let store_fc = Arc::clone(store);
         let sid = event.session_id.clone();
         let fc = feature_cycle.clone();
-        spawn_blocking_fire_and_forget(move || {
-            if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc) {
+        let _ = tokio::spawn(async move {
+            if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc).await {
                 tracing::warn!(error = %e, "col-022: feature_cycle persist failed");
             }
         });
@@ -2205,8 +2155,8 @@ fn handle_cycle_start(
         if !keywords_json.is_empty() {
             let store_kw = Arc::clone(store);
             let sid = event.session_id.clone();
-            spawn_blocking_fire_and_forget(move || {
-                if let Err(e) = update_session_keywords(&store_kw, &sid, &keywords_json) {
+            let _ = tokio::spawn(async move {
+                if let Err(e) = update_session_keywords(&store_kw, &sid, &keywords_json).await {
                     tracing::warn!(error = %e, "col-022: keywords persist failed");
                 }
             });
@@ -2323,77 +2273,92 @@ fn extract_response_fields(payload: &serde_json::Value) -> (Option<i64>, Option<
 }
 
 /// Insert a single observation row into the observations table.
+///
+/// Called from within a `spawn_blocking` context; uses `block_on` to bridge
+/// the async sqlx pool into this sync environment.
 fn insert_observation(
     store: &Store,
     obs: &ObservationRow,
 ) -> Result<(), unimatrix_store::StoreError> {
-    let conn = store.lock_conn();
-    conn.execute(
-        "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        unimatrix_store::rusqlite::params![
-            obs.session_id,
-            obs.ts_millis,
-            obs.hook,
-            obs.tool,
-            obs.input,
-            obs.response_size,
-            obs.response_snippet,
-            obs.topic_signal,
-        ],
-    ).map_err(unimatrix_store::StoreError::Sqlite)?;
+    let pool = store.write_pool_server();
+    tokio::runtime::Handle::current()
+        .block_on(
+            sqlx::query(
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            )
+            .bind(&obs.session_id)
+            .bind(obs.ts_millis)
+            .bind(&obs.hook)
+            .bind(&obs.tool)
+            .bind(&obs.input)
+            .bind(obs.response_size)
+            .bind(&obs.response_snippet)
+            .bind(&obs.topic_signal)
+            .execute(pool),
+        )
+        .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
     Ok(())
 }
 
 /// Insert a batch of observations in a single transaction.
+///
+/// Uses `block_on(async { pool.begin().await ... })` so that BEGIN, all
+/// INSERTs, and COMMIT are guaranteed to run on the same connection.
+/// Raw `BEGIN`/`COMMIT` executed against the pool directly is unsafe because
+/// each `.execute(pool)` call may acquire a different connection.
 fn insert_observations_batch(
     store: &Store,
     batch: &[ObservationRow],
 ) -> Result<(), unimatrix_store::StoreError> {
-    let conn = store.lock_conn();
-    conn.execute_batch("BEGIN")
-        .map_err(unimatrix_store::StoreError::Sqlite)?;
-    let result = (|| -> Result<(), unimatrix_store::StoreError> {
+    if batch.is_empty() {
+        return Ok(());
+    }
+    let pool = store.write_pool_server();
+    let handle = tokio::runtime::Handle::current();
+    handle.block_on(async {
+        let mut txn = pool
+            .begin()
+            .await
+            .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
         for obs in batch {
-            conn.execute(
+            sqlx::query(
                 "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-                unimatrix_store::rusqlite::params![
-                    obs.session_id,
-                    obs.ts_millis,
-                    obs.hook,
-                    obs.tool,
-                    obs.input,
-                    obs.response_size,
-                    obs.response_snippet,
-                    obs.topic_signal,
-                ],
-            ).map_err(unimatrix_store::StoreError::Sqlite)?;
+            )
+            .bind(&obs.session_id)
+            .bind(obs.ts_millis)
+            .bind(&obs.hook)
+            .bind(&obs.tool)
+            .bind(&obs.input)
+            .bind(obs.response_size)
+            .bind(&obs.response_snippet)
+            .bind(&obs.topic_signal)
+            .execute(&mut *txn)
+            .await
+            .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
         }
-        Ok(())
-    })();
-    match result {
-        Ok(()) => {
-            conn.execute_batch("COMMIT")
-                .map_err(unimatrix_store::StoreError::Sqlite)?;
-            Ok(())
-        }
-        Err(e) => {
-            let _ = conn.execute_batch("ROLLBACK");
-            Err(e)
-        }
-    }
+        txn.commit()
+            .await
+            .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use unimatrix_engine::wire::ImplantEvent;
+    use unimatrix_store::test_helpers::open_test_store;
 
     // -- Helpers --
 
-    fn make_store() -> Arc<Store> {
-        Arc::new(Store::open(&tempfile::TempDir::new().unwrap().path().join("test.db")).unwrap())
+    async fn make_store() -> Arc<Store> {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = Arc::new(open_test_store(&tmp).await);
+        // Leak TempDir so the database file is not deleted during the test.
+        // Acceptable for test infrastructure on Linux (file stays accessible via fd).
+        std::mem::forget(tmp);
+        store
     }
 
     fn make_embed_service() -> Arc<EmbedServiceHandle> {
@@ -2412,10 +2377,9 @@ mod tests {
         store: &Arc<Store>,
     ) -> (
         Arc<AsyncVectorStore<VectorAdapter>>,
-        Arc<AsyncEntryStore<StoreAdapter>>,
+        Arc<Store>,
         Arc<AdaptationService>,
     ) {
-        let store_adapter = StoreAdapter::new(Arc::clone(store));
         let vector_index = Arc::new(
             unimatrix_core::VectorIndex::new(
                 Arc::clone(store),
@@ -2424,19 +2388,18 @@ mod tests {
             .unwrap(),
         );
         let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
-        let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
         let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
         let adapt_service = Arc::new(AdaptationService::new(
             unimatrix_adapt::AdaptConfig::default(),
         ));
-        (async_vector_store, async_entry_store, adapt_service)
+        (async_vector_store, Arc::clone(store), adapt_service)
     }
 
     fn make_services(
         store: &Arc<Store>,
         embed: &Arc<EmbedServiceHandle>,
         vs: &Arc<AsyncVectorStore<VectorAdapter>>,
-        es: &Arc<AsyncEntryStore<StoreAdapter>>,
+        es: &Arc<Store>,
         adapt: &Arc<AdaptationService>,
     ) -> crate::services::ServiceLayer {
         let vector_index = Arc::new(
@@ -2508,7 +2471,7 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_ping_returns_pong() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -2534,7 +2497,7 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_session_register_returns_ack() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -2567,7 +2530,7 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_session_close_returns_ack() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -2600,7 +2563,7 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_record_event_returns_ack() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -2633,7 +2596,7 @@ mod tests {
     // variants are handled, so this test verifies Briefing returns BriefingContent.
     #[tokio::test]
     async fn dispatch_briefing_returns_content() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -2664,7 +2627,7 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_context_search_embed_not_ready() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service(); // Not started -- EmbedNotReady
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -2704,7 +2667,7 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_session_close_clears_coaccess_via_registry() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = SessionRegistry::new();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -2741,7 +2704,7 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_compact_payload_empty_session_returns_briefing() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -2780,7 +2743,7 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_compact_payload_increments_compaction_count() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -3041,7 +3004,7 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_compact_payload_primary_path_uses_injection_history() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -3071,8 +3034,8 @@ mod tests {
             feature_cycle: String::new(),
             trust_source: String::new(),
         };
-        let id1 = store.insert(entry1).unwrap();
-        let id2 = store.insert(entry2).unwrap();
+        let id1 = store.insert(entry1).await.unwrap();
+        let id2 = store.insert(entry2).await.unwrap();
 
         // Register session and record injections
         registry.register_session(
@@ -3138,7 +3101,7 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_compact_payload_primary_path_sorts_by_confidence() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -3167,8 +3130,8 @@ mod tests {
             feature_cycle: String::new(),
             trust_source: String::new(),
         };
-        let id_low = store.insert(low).unwrap();
-        let id_high = store.insert(high).unwrap();
+        let id_low = store.insert(low).await.unwrap();
+        let id_high = store.insert(high).await.unwrap();
 
         registry.register_session("s1", None, None);
         // Inject low first, then high — output should still sort high-confidence first
@@ -3305,7 +3268,7 @@ mod tests {
 
     // -- crt-011: Consumer dedup tests --
 
-    fn insert_test_entry_for_signal(store: &Store) -> u64 {
+    async fn insert_test_entry_for_signal(store: &Store) -> u64 {
         let entry = unimatrix_store::NewEntry {
             title: "Test entry".to_string(),
             content: "Test content for signal consumer".to_string(),
@@ -3318,7 +3281,7 @@ mod tests {
             feature_cycle: String::new(),
             trust_source: "agent".to_string(),
         };
-        store.insert(entry).expect("insert test entry")
+        store.insert(entry).await.expect("insert test entry")
     }
 
     fn make_signal(session_id: &str, entry_ids: Vec<u64>, signal_type: SignalType) -> SignalRecord {
@@ -3339,18 +3302,20 @@ mod tests {
     /// should increment success_session_count only once per entry.
     #[tokio::test]
     async fn test_confidence_consumer_dedup_same_session() {
-        let store = make_store();
+        let store = make_store().await;
         let pending = make_pending();
         let (_, entry_store, _) = make_dispatch_deps(&store);
 
-        let entry_id = insert_test_entry_for_signal(&store);
+        let entry_id = insert_test_entry_for_signal(&store).await;
 
         // Insert two signals with SAME session_id, both referencing entry_id
         store
             .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful))
+            .await
             .unwrap();
         store
             .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful))
+            .await
             .unwrap();
 
         // vnc-005: pass feature_cycle to consumer; use "" as default
@@ -3372,18 +3337,20 @@ mod tests {
     /// success_session_count once per session (total 2).
     #[tokio::test]
     async fn test_confidence_consumer_different_sessions_count_separately() {
-        let store = make_store();
+        let store = make_store().await;
         let pending = make_pending();
         let (_, entry_store, _) = make_dispatch_deps(&store);
 
-        let entry_id = insert_test_entry_for_signal(&store);
+        let entry_id = insert_test_entry_for_signal(&store).await;
 
         // Insert two signals with DIFFERENT session_ids
         store
             .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Helpful))
+            .await
             .unwrap();
         store
             .insert_signal(&make_signal("sess-B", vec![entry_id], SignalType::Helpful))
+            .await
             .unwrap();
 
         // vnc-005: pass feature_cycle to consumer; use "" as default
@@ -3405,18 +3372,20 @@ mod tests {
     /// rework_session_count only once but rework_flag_count twice.
     #[tokio::test]
     async fn test_retrospective_consumer_rework_session_dedup() {
-        let store = make_store();
+        let store = make_store().await;
         let pending = make_pending();
         let (_, entry_store, _) = make_dispatch_deps(&store);
 
-        let entry_id = insert_test_entry_for_signal(&store);
+        let entry_id = insert_test_entry_for_signal(&store).await;
 
         // Insert two Flagged signals with SAME session_id
         store
             .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
+            .await
             .unwrap();
         store
             .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
+            .await
             .unwrap();
 
         // vnc-005: pass feature_cycle to consumer; use "" as default
@@ -3443,21 +3412,24 @@ mod tests {
     /// rework_session_count only once.
     #[tokio::test]
     async fn test_retrospective_consumer_flag_count_not_deduped() {
-        let store = make_store();
+        let store = make_store().await;
         let pending = make_pending();
         let (_, entry_store, _) = make_dispatch_deps(&store);
 
-        let entry_id = insert_test_entry_for_signal(&store);
+        let entry_id = insert_test_entry_for_signal(&store).await;
 
         // Insert three Flagged signals with SAME session_id
         store
             .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
+            .await
             .unwrap();
         store
             .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
+            .await
             .unwrap();
         store
             .insert_signal(&make_signal("sess-A", vec![entry_id], SignalType::Flagged))
+            .await
             .unwrap();
 
         // vnc-005: pass feature_cycle to consumer; use "" as default
@@ -3589,127 +3561,75 @@ mod tests {
         assert_eq!(majority_vote(&signals), Some("a".to_string()));
     }
 
-    // -- #169: content_based_attribution_fallback lock scope tests --
+    // -- #169: content_based_attribution_fallback tests --
 
-    #[test]
-    fn test_attribution_fallback_empty_session_returns_none() {
-        let store = make_store();
-        // No observations inserted — should return None without deadlock
+    async fn insert_observation(store: &Store, session_id: &str, ts: i64, input: &str) {
+        sqlx::query(
+            "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+        )
+        .bind(session_id)
+        .bind(ts)
+        .bind("PreToolUse")
+        .bind("Read")
+        .bind(input)
+        .execute(store.write_pool_server())
+        .await
+        .expect("insert observation");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_attribution_fallback_empty_session_returns_none() {
+        let store = make_store().await;
+        // No observations inserted — should return None
         let result = content_based_attribution_fallback(&store, "nonexistent-session");
         assert_eq!(result, None);
     }
 
-    #[test]
-    fn test_attribution_fallback_no_topic_signals_returns_none() {
-        let store = make_store();
-        // Insert observation with no feature signal in the input
-        let conn = store.lock_conn();
-        conn.execute(
-            "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
-             VALUES (?1, ?2, ?3, ?4, ?5)",
-            unimatrix_store::rusqlite::params![
-                "sess-169",
-                1000i64,
-                "PreToolUse",
-                "Read",
-                "some random text with no feature IDs",
-            ],
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_attribution_fallback_no_topic_signals_returns_none() {
+        let store = make_store().await;
+        insert_observation(
+            &store,
+            "sess-169",
+            1000,
+            "some random text with no feature IDs",
         )
-        .unwrap();
-        drop(conn);
-
+        .await;
         let result = content_based_attribution_fallback(&store, "sess-169");
         assert_eq!(result, None);
     }
 
-    #[test]
-    fn test_attribution_fallback_returns_best_topic() {
-        let store = make_store();
-        // Insert observations with feature signals
-        let conn = store.lock_conn();
-        conn.execute(
-            "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
-             VALUES (?1, ?2, ?3, ?4, ?5)",
-            unimatrix_store::rusqlite::params![
-                "sess-169",
-                1000i64,
-                "PreToolUse",
-                "Read",
-                "product/features/col-017/SCOPE.md",
-            ],
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_attribution_fallback_returns_best_topic() {
+        let store = make_store().await;
+        insert_observation(
+            &store,
+            "sess-169",
+            1000,
+            "product/features/col-017/SCOPE.md",
         )
-        .unwrap();
-        conn.execute(
-            "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
-             VALUES (?1, ?2, ?3, ?4, ?5)",
-            unimatrix_store::rusqlite::params![
-                "sess-169",
-                2000i64,
-                "PreToolUse",
-                "Read",
-                "product/features/col-017/IMPL.md",
-            ],
-        )
-        .unwrap();
-        drop(conn);
-
+        .await;
+        insert_observation(&store, "sess-169", 2000, "product/features/col-017/IMPL.md").await;
         let result = content_based_attribution_fallback(&store, "sess-169");
         assert_eq!(result, Some("col-017".to_string()));
     }
 
-    #[test]
-    fn test_attribution_fallback_does_not_hold_lock_during_processing() {
-        // Regression test for #169: verify the connection lock is released
-        // before processing begins, so concurrent DB operations don't deadlock.
-        let store = make_store();
-
-        // Insert observations with feature signals
-        {
-            let conn = store.lock_conn();
-            for i in 0..10 {
-                conn.execute(
-                    "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
-                     VALUES (?1, ?2, ?3, ?4, ?5)",
-                    unimatrix_store::rusqlite::params![
-                        "sess-169-lock",
-                        (1000 + i) as i64,
-                        "PreToolUse",
-                        "Read",
-                        format!("product/features/col-017/file{}.md", i),
-                    ],
-                )
-                .unwrap();
-            }
-        }
-
-        // Run attribution fallback on one thread while concurrently writing
-        // to the store on another. If the lock is held during processing,
-        // the concurrent write will block and the test will effectively hang.
-        let store_clone = Arc::clone(&store);
-        let writer = std::thread::spawn(move || {
-            // Small delay to let the fallback start its query
-            std::thread::sleep(std::time::Duration::from_millis(5));
-            // This write must not be blocked by the fallback holding the lock
-            let conn = store_clone.lock_conn();
-            conn.execute(
-                "INSERT INTO observations (session_id, ts_millis, hook, tool, input) \
-                 VALUES (?1, ?2, ?3, ?4, ?5)",
-                unimatrix_store::rusqlite::params![
-                    "sess-other",
-                    9999i64,
-                    "PreToolUse",
-                    "Write",
-                    "unrelated write",
-                ],
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_attribution_fallback_multi_observation_returns_best_topic() {
+        // Verify attribution picks the most-signalled feature across observations.
+        let store = make_store().await;
+        for i in 0..10 {
+            insert_observation(
+                &store,
+                "sess-169-lock",
+                1000 + i as i64,
+                &format!("product/features/col-017/file{i}.md"),
             )
-            .unwrap();
-        });
-
+            .await;
+        }
         let result = content_based_attribution_fallback(&store, "sess-169-lock");
         assert_eq!(result, Some("col-017".to_string()));
-
-        // Writer must complete without timeout
-        writer.join().expect("writer thread should not deadlock");
     }
 
     // -- col-019: extract_response_fields tests --
@@ -3917,7 +3837,7 @@ mod tests {
     // -- col-018: UserPromptSubmit observation tests --
 
     /// Helper: query the observations table for rows matching session_id.
-    fn query_observations(
+    async fn query_observations(
         store: &Store,
         session_id: &str,
     ) -> Vec<(
@@ -3928,29 +3848,33 @@ mod tests {
         Option<String>,
         Option<String>,
     )> {
-        let conn = store.lock_conn();
-        let mut stmt = conn.prepare(
-            "SELECT session_id, ts_millis, hook, tool, input, topic_signal FROM observations WHERE session_id = ?1"
-        ).unwrap();
-        stmt.query_map(unimatrix_store::rusqlite::params![session_id], |row| {
-            Ok((
-                row.get::<_, String>(0).unwrap(),
-                row.get::<_, i64>(1).unwrap(),
-                row.get::<_, String>(2).unwrap(),
-                row.get::<_, Option<String>>(3).unwrap(),
-                row.get::<_, Option<String>>(4).unwrap(),
-                row.get::<_, Option<String>>(5).unwrap(),
-            ))
-        })
-        .unwrap()
-        .map(|r| r.unwrap())
-        .collect()
+        use sqlx::Row as _;
+        let rows = sqlx::query(
+            "SELECT session_id, ts_millis, hook, tool, input, topic_signal \
+             FROM observations WHERE session_id = ?1",
+        )
+        .bind(session_id)
+        .fetch_all(store.read_pool_test())
+        .await
+        .expect("query observations");
+        rows.into_iter()
+            .map(|row| {
+                (
+                    row.get::<String, _>(0),
+                    row.get::<i64, _>(1),
+                    row.get::<String, _>(2),
+                    row.get::<Option<String>, _>(3),
+                    row.get::<Option<String>, _>(4),
+                    row.get::<Option<String>, _>(5),
+                )
+            })
+            .collect()
     }
 
     #[tokio::test]
     async fn col018_context_search_creates_observation() {
         // T-01, AC-01: ContextSearch with valid session_id produces observation row
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -3981,7 +3905,7 @@ mod tests {
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
 
-        let rows = query_observations(&store, "sess-obs-1");
+        let rows = query_observations(&store, "sess-obs-1").await;
         assert_eq!(rows.len(), 1, "expected exactly 1 observation row");
         let (sid, ts, hook, tool, input, topic) = &rows[0];
         assert_eq!(sid, "sess-obs-1");
@@ -3995,7 +3919,7 @@ mod tests {
     #[tokio::test]
     async fn col018_topic_signal_from_feature_id() {
         // T-03, AC-02: Prompt containing feature ID produces topic_signal
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -4025,7 +3949,7 @@ mod tests {
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
 
-        let rows = query_observations(&store, "sess-topic-1");
+        let rows = query_observations(&store, "sess-topic-1").await;
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].5.as_deref(), Some("col-018"));
     }
@@ -4033,7 +3957,7 @@ mod tests {
     #[tokio::test]
     async fn col018_topic_signal_null_for_generic_prompt() {
         // T-04, AC-09: Generic prompt has no topic_signal
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -4063,7 +3987,7 @@ mod tests {
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
 
-        let rows = query_observations(&store, "sess-generic-1");
+        let rows = query_observations(&store, "sess-generic-1").await;
         assert_eq!(rows.len(), 1);
         assert!(
             rows[0].5.is_none(),
@@ -4074,7 +3998,7 @@ mod tests {
     #[tokio::test]
     async fn col018_topic_signal_from_file_path() {
         // T-05, AC-02: Prompt with file path containing feature ID
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -4104,7 +4028,7 @@ mod tests {
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
 
-        let rows = query_observations(&store, "sess-path-1");
+        let rows = query_observations(&store, "sess-path-1").await;
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].5.as_deref(), Some("col-018"));
     }
@@ -4112,7 +4036,7 @@ mod tests {
     #[tokio::test]
     async fn col018_long_prompt_truncated() {
         // T-06, AC-08: Prompt > 4096 chars truncated in observation input
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -4143,7 +4067,7 @@ mod tests {
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
 
-        let rows = query_observations(&store, "sess-trunc-1");
+        let rows = query_observations(&store, "sess-trunc-1").await;
         assert_eq!(rows.len(), 1);
         let input = rows[0].4.as_ref().expect("input should be present");
         assert_eq!(input.len(), 4096, "input should be truncated to 4096 chars");
@@ -4152,7 +4076,7 @@ mod tests {
     #[tokio::test]
     async fn col018_prompt_at_limit_not_truncated() {
         // T-07, AC-08: Prompt exactly 4096 chars stored fully
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -4183,7 +4107,7 @@ mod tests {
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
 
-        let rows = query_observations(&store, "sess-exact-1");
+        let rows = query_observations(&store, "sess-exact-1").await;
         assert_eq!(rows.len(), 1);
         let input = rows[0].4.as_ref().expect("input should be present");
         assert_eq!(input.len(), 4096);
@@ -4193,7 +4117,7 @@ mod tests {
     #[tokio::test]
     async fn col018_session_id_none_skips_observation() {
         // T-08, AC-06: No observation when session_id is None
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -4224,9 +4148,9 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(50));
 
         // No observation written
-        let conn = store.lock_conn();
-        let count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM observations", [], |r| r.get(0))
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM observations")
+            .fetch_one(store.read_pool_test())
+            .await
             .unwrap();
         assert_eq!(
             count, 0,
@@ -4243,7 +4167,7 @@ mod tests {
     #[tokio::test]
     async fn col018_empty_query_skips_observation() {
         // T-09, AC-07: No observation when query is empty
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -4273,14 +4197,14 @@ mod tests {
         tokio::task::yield_now().await;
         std::thread::sleep(std::time::Duration::from_millis(50));
 
-        let rows = query_observations(&store, "sess-empty-1");
+        let rows = query_observations(&store, "sess-empty-1").await;
         assert_eq!(rows.len(), 0, "no observation for empty query");
     }
 
     #[tokio::test]
     async fn col018_search_results_unchanged_with_observation() {
         // T-10/T-11, AC-04: Search results identical with observation side effect
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = make_registry();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -4323,7 +4247,7 @@ mod tests {
     #[tokio::test]
     async fn col018_topic_signal_accumulated_in_session_registry() {
         // T-12, AC-03: Topic signal recorded in session registry
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let registry = SessionRegistry::new();
         registry.register_session("sess-reg-1", None, None);
@@ -4380,7 +4304,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_cycle_start_sets_feature_force() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
         let registry = make_registry();
@@ -4413,7 +4337,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_cycle_start_overwrites_heuristic_attribution() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
         let registry = make_registry();
@@ -4446,7 +4370,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_cycle_start_already_matches() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
         let registry = make_registry();
@@ -4479,7 +4403,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_cycle_start_unknown_session() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
         let registry = make_registry();
@@ -4510,7 +4434,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_cycle_start_persists_keywords() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
         let registry = make_registry();
@@ -4529,6 +4453,7 @@ mod tests {
                 total_injections: 0,
                 keywords: None,
             })
+            .await
             .unwrap();
 
         let event = make_cycle_event(
@@ -4559,6 +4484,7 @@ mod tests {
 
         let session = store
             .get_session("s1")
+            .await
             .unwrap()
             .expect("session row should exist");
         assert_eq!(session.keywords.as_deref(), Some(r#"["attr","lifecycle"]"#));
@@ -4566,7 +4492,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_cycle_start_no_keywords_field() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
         let registry = make_registry();
@@ -4585,6 +4511,7 @@ mod tests {
                 total_injections: 0,
                 keywords: None,
             })
+            .await
             .unwrap();
 
         let event = make_cycle_event(
@@ -4612,6 +4539,7 @@ mod tests {
 
         let session = store
             .get_session("s1")
+            .await
             .unwrap()
             .expect("session row should exist");
         assert_eq!(session.keywords, None);
@@ -4619,7 +4547,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_cycle_stop_does_not_modify_feature() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
         let registry = make_registry();
@@ -4652,7 +4580,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_cycle_stop_without_prior_start() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
         let registry = make_registry();
@@ -4684,7 +4612,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_cycle_start_missing_feature_cycle() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
         let registry = make_registry();
@@ -4713,7 +4641,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cycle_start_then_heuristic_is_noop() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
         let registry = make_registry();
@@ -4767,9 +4695,9 @@ mod tests {
 
     // -- col-022: update_session_keywords unit tests --
 
-    #[test]
-    fn test_update_session_keywords_valid() {
-        let store = make_store();
+    #[tokio::test]
+    async fn test_update_session_keywords_valid() {
+        let store = make_store().await;
         store
             .insert_session(&SessionRecord {
                 session_id: "s1".to_string(),
@@ -4783,27 +4711,34 @@ mod tests {
                 total_injections: 0,
                 keywords: None,
             })
+            .await
             .unwrap();
 
-        update_session_keywords(&store, "s1", r#"["a","b"]"#).unwrap();
+        update_session_keywords(&store, "s1", r#"["a","b"]"#)
+            .await
+            .unwrap();
 
         let session = store
             .get_session("s1")
+            .await
             .unwrap()
             .expect("session should exist");
         assert_eq!(session.keywords.as_deref(), Some(r#"["a","b"]"#));
     }
 
-    #[test]
-    fn test_update_session_keywords_unknown_session() {
-        let store = make_store();
-        let result = update_session_keywords(&store, "unknown", "[]");
-        assert!(result.is_err());
+    #[tokio::test]
+    async fn test_update_session_keywords_unknown_session() {
+        // update_session_keywords is a no-op on unknown sessions (0 rows affected).
+        // Sessions may be GC'd or events may arrive out-of-order; fire-and-forget
+        // callers swallow this result regardless.
+        let store = make_store().await;
+        let result = update_session_keywords(&store, "unknown", "[]").await;
+        assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_update_session_keywords_malformed_json() {
-        let store = make_store();
+    #[tokio::test]
+    async fn test_update_session_keywords_malformed_json() {
+        let store = make_store().await;
         store
             .insert_session(&SessionRecord {
                 session_id: "s1".to_string(),
@@ -4817,12 +4752,16 @@ mod tests {
                 total_injections: 0,
                 keywords: None,
             })
+            .await
             .unwrap();
 
-        update_session_keywords(&store, "s1", "not-json").unwrap();
+        update_session_keywords(&store, "s1", "not-json")
+            .await
+            .unwrap();
 
         let session = store
             .get_session("s1")
+            .await
             .unwrap()
             .expect("session should exist");
         assert_eq!(session.keywords.as_deref(), Some("not-json"));
@@ -4836,7 +4775,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dispatch_cycle_start_empty_keywords_stored() {
-        let store = make_store();
+        let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
         let registry = make_registry();
@@ -4855,6 +4794,7 @@ mod tests {
                 total_injections: 0,
                 keywords: None,
             })
+            .await
             .unwrap();
 
         let event = make_cycle_event(
@@ -4885,6 +4825,7 @@ mod tests {
 
         let session = store
             .get_session("s1")
+            .await
             .unwrap()
             .expect("session row should exist");
         assert_eq!(session.keywords.as_deref(), Some("[]"));

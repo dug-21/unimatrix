@@ -15,7 +15,7 @@ pub mod shadow;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use unimatrix_store::Store;
+use unimatrix_store::SqlxStore;
 
 use crate::types::ObservationRecord;
 
@@ -27,7 +27,8 @@ pub trait ExtractionRule: Send {
     /// Unique rule name.
     fn name(&self) -> &str;
     /// Analyze observations and produce proposed entries.
-    fn evaluate(&self, observations: &[ObservationRecord], store: &Store) -> Vec<ProposedEntry>;
+    fn evaluate(&self, observations: &[ObservationRecord], store: &SqlxStore)
+    -> Vec<ProposedEntry>;
 }
 
 /// A proposed knowledge entry produced by an extraction rule.
@@ -203,7 +204,7 @@ pub fn default_extraction_rules() -> Vec<Box<dyn ExtractionRule>> {
 /// Run all extraction rules against observations and return proposals.
 pub fn run_extraction_rules(
     observations: &[ObservationRecord],
-    store: &Store,
+    store: &SqlxStore,
     rules: &[Box<dyn ExtractionRule>],
 ) -> Vec<ProposedEntry> {
     let mut proposals = Vec::new();

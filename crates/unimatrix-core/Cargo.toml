@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [features]
-async = ["dep:tokio"]
+async = []
 test-support = [
   "unimatrix-store/test-support",
   "unimatrix-vector/test-support",
@@ -19,7 +19,7 @@ unimatrix-vector = { path = "../unimatrix-vector" }
 unimatrix-embed = { path = "../unimatrix-embed" }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { version = "1", features = ["rt"], optional = true }
+tokio = { version = "1", features = ["rt"] }
 
 [dev-dependencies]
 tempfile = "3"

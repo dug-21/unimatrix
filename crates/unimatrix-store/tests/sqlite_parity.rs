@@ -8,7 +8,7 @@
 
 #![cfg(feature = "test-support")]
 
-use unimatrix_store::test_helpers::{TestDb, TestEntry, assert_index_consistent};
+use unimatrix_store::test_helpers::{TestEntry, assert_index_consistent, open_test_store};
 use unimatrix_store::{QueryFilter, Status, StoreError, TimeRange};
 
 fn now_secs() -> u64 {
@@ -18,74 +18,102 @@ fn now_secs() -> u64 {
         .as_secs()
 }
 
+/// Flush the analytics queue by closing and re-opening the store.
+async fn flush(
+    store: unimatrix_store::SqlxStore,
+    dir: &tempfile::TempDir,
+) -> unimatrix_store::SqlxStore {
+    store.close().await.expect("close");
+    open_test_store(dir).await
+}
+
 // === BASIC CRUD ===
 
-#[test]
-fn test_insert_and_get() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_insert_and_get() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
     let entry = TestEntry::new("auth", "convention").build();
-    let id = db.store().insert(entry).unwrap();
+    let id = store.insert(entry).await.unwrap();
     assert!(id >= 1);
 
-    let record = db.store().get(id).unwrap();
+    let record = store.get(id).await.unwrap();
     assert_eq!(record.id, id);
     assert_eq!(record.topic, "auth");
     assert_eq!(record.category, "convention");
     assert_eq!(record.status, Status::Active);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_exists() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_exists() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
     let entry = TestEntry::new("test", "pattern").build();
-    let id = db.store().insert(entry).unwrap();
-    assert!(db.store().exists(id).unwrap());
-    assert!(!db.store().exists(99999).unwrap());
+    let id = store.insert(entry).await.unwrap();
+    assert!(store.exists(id).await.unwrap());
+    assert!(!store.exists(99999).await.unwrap());
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_insert_multiple_sequential_ids() {
-    let db = TestDb::new();
-    let id1 = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
-    let id2 = db.store().insert(TestEntry::new("c", "d").build()).unwrap();
-    let id3 = db.store().insert(TestEntry::new("e", "f").build()).unwrap();
+#[tokio::test]
+async fn test_insert_multiple_sequential_ids() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id1 = store
+        .insert(TestEntry::new("a", "b").build())
+        .await
+        .unwrap();
+    let id2 = store
+        .insert(TestEntry::new("c", "d").build())
+        .await
+        .unwrap();
+    let id3 = store
+        .insert(TestEntry::new("e", "f").build())
+        .await
+        .unwrap();
     assert_eq!(id2, id1 + 1);
     assert_eq!(id3, id2 + 1);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_get_not_found() {
-    let db = TestDb::new();
-    let result = db.store().get(42);
+#[tokio::test]
+async fn test_get_not_found() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let result = store.get(42).await;
     assert!(matches!(result, Err(StoreError::EntryNotFound(42))));
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_update() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_update() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
     let entry = TestEntry::new("old-topic", "old-cat")
         .with_tags(&["tag1"])
         .build();
-    let id = db.store().insert(entry).unwrap();
+    let id = store.insert(entry).await.unwrap();
 
-    let mut record = db.store().get(id).unwrap();
+    let mut record = store.get(id).await.unwrap();
     record.topic = "new-topic".to_string();
     record.category = "new-cat".to_string();
     record.tags = vec!["tag2".to_string(), "tag3".to_string()];
-    db.store().update(record).unwrap();
+    store.update(record).await.unwrap();
 
-    let record = db.store().get(id).unwrap();
+    let record = store.get(id).await.unwrap();
     assert_eq!(record.topic, "new-topic");
     assert_eq!(record.category, "new-cat");
     assert_eq!(record.tags, vec!["tag2".to_string(), "tag3".to_string()]);
-    assert_index_consistent(db.store(), id);
+    assert_index_consistent(&store, id).await;
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_update_not_found() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_update_not_found() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
     let entry = TestEntry::new("a", "b").build();
-    // Create a fake EntryRecord with nonexistent id
     let fake_record = unimatrix_store::EntryRecord {
         id: 999,
         title: entry.title,
@@ -115,178 +143,201 @@ fn test_update_not_found() {
         unhelpful_count: 0,
         pre_quarantine_status: None,
     };
-    let result = db.store().update(fake_record);
+    let result = store.update(fake_record).await;
     assert!(matches!(result, Err(StoreError::EntryNotFound(999))));
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_update_status() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_update_status() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
     let entry = TestEntry::new("topic", "cat").build();
-    let id = db.store().insert(entry).unwrap();
+    let id = store.insert(entry).await.unwrap();
 
-    db.store().update_status(id, Status::Deprecated).unwrap();
-    let record = db.store().get(id).unwrap();
+    store.update_status(id, Status::Deprecated).await.unwrap();
+    let record = store.get(id).await.unwrap();
     assert_eq!(record.status, Status::Deprecated);
-    assert_index_consistent(db.store(), id);
+    assert_index_consistent(&store, id).await;
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_delete() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_delete() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
     let entry = TestEntry::new("topic", "cat").build();
-    let id = db.store().insert(entry).unwrap();
-    db.store().delete(id).unwrap();
-    assert!(!db.store().exists(id).unwrap());
+    let id = store.insert(entry).await.unwrap();
+    store.delete(id).await.unwrap();
+    assert!(!store.exists(id).await.unwrap());
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_delete_not_found() {
-    let db = TestDb::new();
-    let result = db.store().delete(999);
+#[tokio::test]
+async fn test_delete_not_found() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let result = store.delete(999).await;
     assert!(matches!(result, Err(StoreError::EntryNotFound(999))));
+    store.close().await.unwrap();
 }
 
 // === QUERY OPERATIONS ===
 
-#[test]
-fn test_query_by_topic() {
-    let db = TestDb::new();
-    let id1 = db
-        .store()
+#[tokio::test]
+async fn test_query_by_topic() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id1 = store
         .insert(TestEntry::new("auth", "conv").build())
+        .await
         .unwrap();
-    let _id2 = db
-        .store()
+    let _id2 = store
         .insert(TestEntry::new("logging", "conv").build())
+        .await
         .unwrap();
-    let id3 = db
-        .store()
+    let id3 = store
         .insert(TestEntry::new("auth", "pattern").build())
+        .await
         .unwrap();
 
-    let results = db.store().query_by_topic("auth").unwrap();
+    let results = store.query_by_topic("auth").await.unwrap();
     let ids: Vec<u64> = results.iter().map(|r| r.id).collect();
     assert!(ids.contains(&id1));
     assert!(ids.contains(&id3));
     assert_eq!(ids.len(), 2);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_query_by_category() {
-    let db = TestDb::new();
-    let id1 = db
-        .store()
+#[tokio::test]
+async fn test_query_by_category() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id1 = store
         .insert(TestEntry::new("a", "convention").build())
+        .await
         .unwrap();
-    let _id2 = db
-        .store()
+    let _id2 = store
         .insert(TestEntry::new("b", "decision").build())
+        .await
         .unwrap();
 
-    let results = db.store().query_by_category("convention").unwrap();
+    let results = store.query_by_category("convention").await.unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].id, id1);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_query_by_tags() {
-    let db = TestDb::new();
-    let id1 = db
-        .store()
+#[tokio::test]
+async fn test_query_by_tags() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id1 = store
         .insert(
             TestEntry::new("a", "b")
                 .with_tags(&["rust", "async"])
                 .build(),
         )
+        .await
         .unwrap();
-    let _id2 = db
-        .store()
+    let _id2 = store
         .insert(TestEntry::new("c", "d").with_tags(&["rust"]).build())
+        .await
         .unwrap();
 
-    // Both have "rust"
-    let results = db.store().query_by_tags(&["rust".to_string()]).unwrap();
+    let results = store.query_by_tags(&["rust".to_string()]).await.unwrap();
     assert_eq!(results.len(), 2);
 
-    // Only id1 has both "rust" AND "async"
-    let results = db
-        .store()
+    let results = store
         .query_by_tags(&["rust".to_string(), "async".to_string()])
+        .await
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].id, id1);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_query_by_status() {
-    let db = TestDb::new();
-    let id1 = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
-    let id2 = db.store().insert(TestEntry::new("c", "d").build()).unwrap();
-    db.store().update_status(id2, Status::Deprecated).unwrap();
+#[tokio::test]
+async fn test_query_by_status() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id1 = store
+        .insert(TestEntry::new("a", "b").build())
+        .await
+        .unwrap();
+    let id2 = store
+        .insert(TestEntry::new("c", "d").build())
+        .await
+        .unwrap();
+    store.update_status(id2, Status::Deprecated).await.unwrap();
 
-    let active = db.store().query_by_status(Status::Active).unwrap();
+    let active = store.query_by_status(Status::Active).await.unwrap();
     assert_eq!(active.len(), 1);
     assert_eq!(active[0].id, id1);
 
-    let deprecated = db.store().query_by_status(Status::Deprecated).unwrap();
+    let deprecated = store.query_by_status(Status::Deprecated).await.unwrap();
     assert_eq!(deprecated.len(), 1);
     assert_eq!(deprecated[0].id, id2);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_query_by_time_range() {
-    let db = TestDb::new();
-    let _id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
+#[tokio::test]
+async fn test_query_by_time_range() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let _id = store
+        .insert(TestEntry::new("a", "b").build())
+        .await
+        .unwrap();
     let now = now_secs();
 
-    // Wide range should find it
-    let results = db
-        .store()
+    let results = store
         .query_by_time_range(TimeRange {
             start: now - 10,
             end: now + 10,
         })
+        .await
         .unwrap();
     assert!(!results.is_empty());
 
-    // Future range should not
-    let results = db
-        .store()
+    let results = store
         .query_by_time_range(TimeRange {
             start: now + 1000,
             end: now + 2000,
         })
+        .await
         .unwrap();
     assert!(results.is_empty());
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_combined_query() {
-    let db = TestDb::new();
-    let id1 = db
-        .store()
+#[tokio::test]
+async fn test_combined_query() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id1 = store
         .insert(
             TestEntry::new("auth", "convention")
                 .with_tags(&["rust"])
                 .build(),
         )
+        .await
         .unwrap();
-    let _id2 = db
-        .store()
+    let _id2 = store
         .insert(
             TestEntry::new("auth", "decision")
                 .with_tags(&["rust"])
                 .build(),
         )
+        .await
         .unwrap();
-    let _id3 = db
-        .store()
+    let _id3 = store
         .insert(
             TestEntry::new("logging", "convention")
                 .with_tags(&["rust"])
                 .build(),
         )
+        .await
         .unwrap();
 
     let filter = QueryFilter {
@@ -296,43 +347,52 @@ fn test_combined_query() {
         status: Some(Status::Active),
         time_range: None,
     };
-    let results = db.store().query(filter).unwrap();
+    let results = store.query(filter).await.unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].id, id1);
+    store.close().await.unwrap();
 }
 
 // === USAGE AND CONFIDENCE ===
 
-#[test]
-fn test_record_usage() {
-    let db = TestDb::new();
-    let id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
-
-    // Record usage with helpful vote
-    db.store()
-        .record_usage(&[id], &[id], &[id], &[], &[], &[])
+#[tokio::test]
+async fn test_record_usage() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id = store
+        .insert(TestEntry::new("a", "b").build())
+        .await
         .unwrap();
-    let record = db.store().get(id).unwrap();
+
+    store
+        .record_usage(&[id], &[id], &[id], &[], &[], &[])
+        .await
+        .unwrap();
+    let record = store.get(id).await.unwrap();
     assert_eq!(record.access_count, 1);
     assert_eq!(record.helpful_count, 1);
     assert!(record.last_accessed_at > 0);
 
-    // Record usage with unhelpful vote
-    db.store()
+    store
         .record_usage(&[id], &[id], &[], &[id], &[], &[])
+        .await
         .unwrap();
-    let record = db.store().get(id).unwrap();
+    let record = store.get(id).await.unwrap();
     assert_eq!(record.access_count, 2);
     assert_eq!(record.unhelpful_count, 1);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_record_usage_with_confidence() {
-    let db = TestDb::new();
-    let id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
+#[tokio::test]
+async fn test_record_usage_with_confidence() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id = store
+        .insert(TestEntry::new("a", "b").build())
+        .await
+        .unwrap();
 
-    // Use confidence function that returns a fixed value
-    db.store()
+    store
         .record_usage_with_confidence(
             &[id],
             &[id],
@@ -342,200 +402,216 @@ fn test_record_usage_with_confidence() {
             &[],
             Some(
                 Box::new(|_record: &unimatrix_store::EntryRecord, _now: u64| 0.85_f64)
-                    as Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send>,
+                    as Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync>,
             ),
         )
+        .await
         .unwrap();
-    let record = db.store().get(id).unwrap();
+    let record = store.get(id).await.unwrap();
     assert_eq!(record.confidence, 0.85);
     assert_eq!(record.helpful_count, 1);
+    store.close().await.unwrap();
 }
 
-/// R-11 gate: Verify the store does NOT deduplicate IDs in record_usage_with_confidence.
-///
-/// The store loops over `all_ids` (outer loop), and checks `access_ids` via a HashSet
-/// for set-membership. When `all_ids = [id, id]`, the UPDATE executes twice for the
-/// same row, producing access_count += 2.
-///
-/// This means the flat_map repeat approach IS viable:
-///   access_weight=2 -> all_ids=[id,id], access_ids=[id,id] -> access_count += 2
-#[test]
-fn test_r11_store_does_not_deduplicate_duplicate_all_ids() {
-    let db = TestDb::new();
-    let id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
-
-    let initial = db.store().get(id).unwrap().access_count;
-
-    // Pass the same ID twice in both all_ids and access_ids
-    db.store()
-        .record_usage_with_confidence(
-            &[id, id], // all_ids: duplicate — store loops over this, so UPDATE runs twice
-            &[id, id], // access_ids: duplicate
-            &[],
-            &[],
-            &[],
-            &[],
-            None,
-        )
+#[tokio::test]
+async fn test_r11_store_does_not_deduplicate_duplicate_all_ids() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id = store
+        .insert(TestEntry::new("a", "b").build())
+        .await
         .unwrap();
 
-    let after = db.store().get(id).unwrap().access_count;
-    // Store does NOT deduplicate: access_count += 2
+    let initial = store.get(id).await.unwrap().access_count;
+
+    store
+        .record_usage_with_confidence(&[id, id], &[id, id], &[], &[], &[], &[], None)
+        .await
+        .unwrap();
+
+    let after = store.get(id).await.unwrap().access_count;
     assert_eq!(
         after,
         initial + 2,
         "store does not deduplicate all_ids: duplicate ID increments access_count by 2"
     );
+    store.close().await.unwrap();
 }
 
-/// R-11 fallback: increment_access_counts applies extra increments correctly.
-///
-/// When access_weight = 2, record_usage_with_confidence applies +1, then
-/// increment_access_counts applies the additional +1. Net result: access_count += 2.
-#[test]
-fn test_increment_access_counts_applies_extra_increment() {
-    let db = TestDb::new();
-    let id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
-
-    let initial = db.store().get(id).unwrap().access_count;
-
-    // Step 1: normal record (dedup-compatible, increments by 1)
-    db.store()
-        .record_usage_with_confidence(&[id], &[id], &[], &[], &[], &[], None)
+#[tokio::test]
+async fn test_increment_access_counts_applies_extra_increment() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id = store
+        .insert(TestEntry::new("a", "b").build())
+        .await
         .unwrap();
 
-    // Step 2: extra increment for access_weight - 1 = 1
-    db.store().increment_access_counts(&[id], 1).unwrap();
+    let initial = store.get(id).await.unwrap().access_count;
 
-    let after = db.store().get(id).unwrap().access_count;
+    store
+        .record_usage_with_confidence(&[id], &[id], &[], &[], &[], &[], None)
+        .await
+        .unwrap();
+    store.increment_access_counts(&[id], 1).await.unwrap();
+
+    let after = store.get(id).await.unwrap().access_count;
     assert_eq!(
         after,
         initial + 2,
         "record_usage (+1) + increment_access_counts (+1) = access_count += 2"
     );
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_update_confidence() {
-    let db = TestDb::new();
-    let id = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
+#[tokio::test]
+async fn test_update_confidence() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id = store
+        .insert(TestEntry::new("a", "b").build())
+        .await
+        .unwrap();
 
-    db.store().update_confidence(id, 0.92).unwrap();
-    let record = db.store().get(id).unwrap();
+    store.update_confidence(id, 0.92).await.unwrap();
+    let record = store.get(id).await.unwrap();
     assert_eq!(record.confidence, 0.92);
+    store.close().await.unwrap();
 }
 
 // === VECTOR MAP ===
 
-#[test]
-fn test_vector_mapping() {
-    let db = TestDb::new();
-    db.store().put_vector_mapping(1, 100).unwrap();
-    db.store().put_vector_mapping(2, 200).unwrap();
+#[tokio::test]
+async fn test_vector_mapping() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    store.put_vector_mapping(1, 100).await.unwrap();
+    store.put_vector_mapping(2, 200).await.unwrap();
 
-    assert_eq!(db.store().get_vector_mapping(1).unwrap(), Some(100));
-    assert_eq!(db.store().get_vector_mapping(2).unwrap(), Some(200));
-    assert_eq!(db.store().get_vector_mapping(3).unwrap(), None);
+    assert_eq!(store.get_vector_mapping(1).await.unwrap(), Some(100));
+    assert_eq!(store.get_vector_mapping(2).await.unwrap(), Some(200));
+    assert_eq!(store.get_vector_mapping(3).await.unwrap(), None);
 
-    let mappings = db.store().iter_vector_mappings().unwrap();
+    let mappings = store.iter_vector_mappings().await.unwrap();
     assert_eq!(mappings.len(), 2);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_rewrite_vector_map() {
-    let db = TestDb::new();
-    db.store().put_vector_mapping(1, 100).unwrap();
-    db.store().put_vector_mapping(2, 200).unwrap();
+#[tokio::test]
+async fn test_rewrite_vector_map() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    store.put_vector_mapping(1, 100).await.unwrap();
+    store.put_vector_mapping(2, 200).await.unwrap();
 
-    db.store()
+    store
         .rewrite_vector_map(&[(10, 1000), (20, 2000)])
+        .await
         .unwrap();
-    assert_eq!(db.store().get_vector_mapping(1).unwrap(), None);
-    assert_eq!(db.store().get_vector_mapping(10).unwrap(), Some(1000));
-    assert_eq!(db.store().get_vector_mapping(20).unwrap(), Some(2000));
+    assert_eq!(store.get_vector_mapping(1).await.unwrap(), None);
+    assert_eq!(store.get_vector_mapping(10).await.unwrap(), Some(1000));
+    assert_eq!(store.get_vector_mapping(20).await.unwrap(), Some(2000));
+    store.close().await.unwrap();
 }
 
 // === FEATURE ENTRIES ===
 
-#[test]
-fn test_record_feature_entries() {
-    let db = TestDb::new();
-    let id1 = db.store().insert(TestEntry::new("a", "b").build()).unwrap();
-    let id2 = db.store().insert(TestEntry::new("c", "d").build()).unwrap();
-    db.store()
-        .record_feature_entries("col-001", &[id1, id2])
+#[tokio::test]
+async fn test_record_feature_entries() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let id1 = store
+        .insert(TestEntry::new("a", "b").build())
+        .await
         .unwrap();
-    // No panic = success (feature_entries is write-only from Store API)
+    let id2 = store
+        .insert(TestEntry::new("c", "d").build())
+        .await
+        .unwrap();
+    store
+        .record_feature_entries("col-001", &[id1, id2])
+        .await
+        .unwrap();
+    store.close().await.unwrap();
 }
 
 // === CO-ACCESS ===
 
-#[test]
-fn test_co_access_roundtrip() {
-    let db = TestDb::new();
-    let now = now_secs();
+#[tokio::test]
+async fn test_co_access_roundtrip() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
-    db.store()
-        .record_co_access_pairs(&[(1, 2), (1, 3)])
-        .unwrap();
+    store.record_co_access_pairs(&[(1, 2), (1, 3)]);
+    let store = flush(store, &dir).await;
 
-    let partners = db.store().get_co_access_partners(1, 0).unwrap();
+    let partners = store.get_co_access_partners(1, 0).await.unwrap();
     assert_eq!(partners.len(), 2);
 
-    let (total, active) = db.store().co_access_stats(0).unwrap();
+    let (total, active) = store.co_access_stats(0).await.unwrap();
     assert_eq!(total, 2);
     assert_eq!(active, 2);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_co_access_increment() {
-    let db = TestDb::new();
-    let now = now_secs();
+#[tokio::test]
+async fn test_co_access_increment() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
-    db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
-    db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
+    store.record_co_access_pairs(&[(1, 2)]);
+    store.record_co_access_pairs(&[(1, 2)]);
+    let store = flush(store, &dir).await;
 
-    let partners = db.store().get_co_access_partners(1, 0).unwrap();
+    let partners = store.get_co_access_partners(1, 0).await.unwrap();
     assert_eq!(partners.len(), 1);
     assert_eq!(partners[0].1.count, 2);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_co_access_self_pair_skipped() {
-    let db = TestDb::new();
-    db.store().record_co_access_pairs(&[(1, 1)]).unwrap();
-    let (total, _) = db.store().co_access_stats(0).unwrap();
+#[tokio::test]
+async fn test_co_access_self_pair_skipped() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    store.record_co_access_pairs(&[(1, 1)]);
+    let store = flush(store, &dir).await;
+    let (total, _) = store.co_access_stats(0).await.unwrap();
     assert_eq!(total, 0);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_cleanup_stale_co_access() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_cleanup_stale_co_access() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
-    db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
-    db.store().record_co_access_pairs(&[(3, 4)]).unwrap();
+    store.record_co_access_pairs(&[(1, 2)]);
+    store.record_co_access_pairs(&[(3, 4)]);
+    let store = flush(store, &dir).await;
 
-    // Cleanup with a future cutoff removes all pairs
     let future = now_secs() + 1000;
-    let deleted = db.store().cleanup_stale_co_access(future).unwrap();
+    let deleted = store.cleanup_stale_co_access(future).await.unwrap();
     assert_eq!(deleted, 2);
 
-    let (total, _) = db.store().co_access_stats(0).unwrap();
+    let (total, _) = store.co_access_stats(0).await.unwrap();
     assert_eq!(total, 0);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_top_co_access_pairs() {
-    let db = TestDb::new();
-    let now = now_secs();
+#[tokio::test]
+async fn test_top_co_access_pairs() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
-    db.store().record_co_access_pairs(&[(1, 2)]).unwrap();
-    db.store().record_co_access_pairs(&[(1, 2)]).unwrap(); // count=2
-    db.store().record_co_access_pairs(&[(3, 4)]).unwrap(); // count=1
+    store.record_co_access_pairs(&[(1, 2)]);
+    store.record_co_access_pairs(&[(1, 2)]); // count=2
+    store.record_co_access_pairs(&[(3, 4)]); // count=1
+    let store = flush(store, &dir).await;
 
-    let top = db.store().top_co_access_pairs(10, 0).unwrap();
+    let top = store.top_co_access_pairs(10, 0).await.unwrap();
     assert_eq!(top.len(), 2);
     assert_eq!(top[0].1.count, 2); // highest count first
+    store.close().await.unwrap();
 }
 
 // === OBSERVATION METRICS (nxs-009: typed API) ===
@@ -543,7 +619,6 @@ fn test_top_co_access_pairs() {
 use std::collections::BTreeMap;
 use unimatrix_store::{MetricVector, PhaseMetrics, UNIVERSAL_METRICS_FIELDS, UniversalMetrics};
 
-/// Build a fully populated MetricVector for testing.
 fn sample_metric_vector() -> MetricVector {
     let mut phases = BTreeMap::new();
     phases.insert(
@@ -597,23 +672,24 @@ fn sample_metric_vector() -> MetricVector {
     }
 }
 
-#[test]
-fn test_store_and_get_metrics() {
-    // AC-02: Store roundtrip with 21 universal metrics, 3 phases, non-zero computed_at
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_store_and_get_metrics() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
     let mv = sample_metric_vector();
-    db.store().store_metrics("col-001", &mv).unwrap();
+    store.store_metrics("col-001", &mv);
+    let store = flush(store, &dir).await;
 
-    let got = db.store().get_metrics("col-001").unwrap().unwrap();
+    let got = store.get_metrics("col-001").await.unwrap().unwrap();
     assert_eq!(got, mv);
-
-    assert!(db.store().get_metrics("nonexistent").unwrap().is_none());
+    assert!(store.get_metrics("nonexistent").await.unwrap().is_none());
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_store_metrics_replace_phases() {
-    // AC-03: Replace semantics — phases ["3a","3b"] -> ["3a","3c"]
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_store_metrics_replace_phases() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
     let mut mv1 = MetricVector::default();
     mv1.computed_at = 100;
@@ -631,7 +707,8 @@ fn test_store_metrics_replace_phases() {
             tool_call_count: 10,
         },
     );
-    db.store().store_metrics("col-001", &mv1).unwrap();
+    store.store_metrics("col-001", &mv1);
+    let store = flush(store, &dir).await;
 
     let mut mv2 = MetricVector::default();
     mv2.computed_at = 200;
@@ -649,36 +726,40 @@ fn test_store_metrics_replace_phases() {
             tool_call_count: 12,
         },
     );
-    db.store().store_metrics("col-001", &mv2).unwrap();
+    store.store_metrics("col-001", &mv2);
+    let store = flush(store, &dir).await;
 
-    let got = db.store().get_metrics("col-001").unwrap().unwrap();
-    assert_eq!(got, mv2);
+    let got = store.get_metrics("col-001").await.unwrap().unwrap();
+    assert_eq!(got.computed_at, mv2.computed_at);
     assert_eq!(got.phases.len(), 2);
     assert!(got.phases.contains_key("3a"));
     assert!(got.phases.contains_key("3c"));
     assert!(!got.phases.contains_key("3b"));
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_store_metrics_empty_phases() {
-    // AC-12: Empty phases roundtrip
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_store_metrics_empty_phases() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
     let mv = MetricVector {
         computed_at: 500,
         universal: UniversalMetrics::default(),
         phases: BTreeMap::new(),
     };
-    db.store().store_metrics("empty-phases", &mv).unwrap();
+    store.store_metrics("empty-phases", &mv);
+    let store = flush(store, &dir).await;
 
-    let got = db.store().get_metrics("empty-phases").unwrap().unwrap();
+    let got = store.get_metrics("empty-phases").await.unwrap().unwrap();
     assert_eq!(got, mv);
     assert!(got.phases.is_empty());
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_list_all_metrics() {
-    // AC-04: List all with correct phase attachment
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_list_all_metrics() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
     let mut mv_a = MetricVector::default();
     mv_a.computed_at = 100;
@@ -709,58 +790,57 @@ fn test_list_all_metrics() {
         },
     );
 
-    let mv_c = MetricVector::default(); // no phases
+    let mv_c = MetricVector::default();
 
-    db.store().store_metrics("a-feature", &mv_a).unwrap();
-    db.store().store_metrics("b-feature", &mv_b).unwrap();
-    db.store().store_metrics("c-feature", &mv_c).unwrap();
+    store.store_metrics("a-feature", &mv_a);
+    store.store_metrics("b-feature", &mv_b);
+    store.store_metrics("c-feature", &mv_c);
+    let store = flush(store, &dir).await;
 
-    let all = db.store().list_all_metrics().unwrap();
+    let all = store.list_all_metrics().await.unwrap();
     assert_eq!(all.len(), 3);
 
-    // Ordered by feature_cycle
     assert_eq!(all[0].0, "a-feature");
     assert_eq!(all[1].0, "b-feature");
     assert_eq!(all[2].0, "c-feature");
 
-    // Verify phase attachment
     assert_eq!(all[0].1, mv_a);
     assert_eq!(all[1].1, mv_b);
     assert_eq!(all[2].1, mv_c);
     assert_eq!(all[0].1.phases.len(), 1);
     assert_eq!(all[1].1.phases.len(), 2);
     assert!(all[2].1.phases.is_empty());
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_list_all_metrics_overlapping_phases() {
-    // R-04: Multiple features with overlapping phase names
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_list_all_metrics_overlapping_phases() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
-    for i in 0..5 {
+    for i in 0..5_u64 {
         let mut mv = MetricVector::default();
-        mv.computed_at = i as u64 * 100;
-        mv.universal.total_tool_calls = i as u64 * 10;
+        mv.computed_at = i * 100;
+        mv.universal.total_tool_calls = i * 10;
         mv.phases.insert(
             "3a".to_string(),
             PhaseMetrics {
-                duration_secs: i as u64 * 10,
-                tool_call_count: i as u64,
+                duration_secs: i * 10,
+                tool_call_count: i,
             },
         );
         mv.phases.insert(
             "3b".to_string(),
             PhaseMetrics {
-                duration_secs: i as u64 * 20,
-                tool_call_count: i as u64 * 2,
+                duration_secs: i * 20,
+                tool_call_count: i * 2,
             },
         );
-        db.store()
-            .store_metrics(&format!("feature-{i:03}"), &mv)
-            .unwrap();
+        store.store_metrics(&format!("feature-{i:03}"), &mv);
     }
+    let store = flush(store, &dir).await;
 
-    let all = db.store().list_all_metrics().unwrap();
+    let all = store.list_all_metrics().await.unwrap();
     assert_eq!(all.len(), 5);
 
     for (i, (fc, mv)) in all.iter().enumerate() {
@@ -769,12 +849,13 @@ fn test_list_all_metrics_overlapping_phases() {
         assert_eq!(mv.phases["3a"].duration_secs, i as u64 * 10);
         assert_eq!(mv.phases["3b"].tool_call_count, i as u64 * 2);
     }
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_delete_cascade_phases() {
-    // AC-07: Delete cascade removes phase rows
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_delete_cascade_phases() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
     let mut mv = sample_metric_vector();
     mv.phases.insert(
@@ -784,100 +865,87 @@ fn test_delete_cascade_phases() {
             tool_call_count: 3,
         },
     );
-    db.store().store_metrics("cascade-test", &mv).unwrap();
+    store.store_metrics("cascade-test", &mv);
+    let store = flush(store, &dir).await;
 
-    // Verify phases exist
-    let got = db.store().get_metrics("cascade-test").unwrap().unwrap();
+    let got = store.get_metrics("cascade-test").await.unwrap().unwrap();
     assert_eq!(got.phases.len(), 4);
 
-    // Delete parent row directly via SQL
-    {
-        let conn = db.store().lock_conn();
-        conn.execute(
-            "DELETE FROM observation_metrics WHERE feature_cycle = ?1",
-            unimatrix_store::rusqlite::params!["cascade-test"],
-        )
+    // Delete parent row via sqlx
+    sqlx::query("DELETE FROM observation_metrics WHERE feature_cycle = ?1")
+        .bind("cascade-test")
+        .execute(store.write_pool_test())
+        .await
         .unwrap();
-    }
 
-    // Verify get returns None
-    assert!(db.store().get_metrics("cascade-test").unwrap().is_none());
+    assert!(store.get_metrics("cascade-test").await.unwrap().is_none());
 
-    // Verify no orphaned phase rows
-    {
-        let conn = db.store().lock_conn();
-        let count: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM observation_phase_metrics WHERE feature_cycle = ?1",
-                unimatrix_store::rusqlite::params!["cascade-test"],
-                |row| row.get(0),
-            )
-            .unwrap();
-        assert_eq!(count, 0, "CASCADE should have removed phase rows");
-    }
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM observation_phase_metrics WHERE feature_cycle = ?1",
+    )
+    .bind("cascade-test")
+    .fetch_one(store.read_pool_test())
+    .await
+    .unwrap();
+    assert_eq!(count, 0, "CASCADE should have removed phase rows");
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_schema_column_count() {
-    // AC-01: observation_metrics has 23 columns, observation_phase_metrics exists with 4 columns
-    let db = TestDb::new();
-    let conn = db.store().lock_conn();
+#[tokio::test]
+async fn test_schema_column_count() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
-    let metric_cols: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM pragma_table_info('observation_metrics')",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap();
+    let metric_cols: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('observation_metrics')")
+            .fetch_one(store.read_pool_test())
+            .await
+            .unwrap();
     assert_eq!(
         metric_cols, 23,
         "observation_metrics should have 23 columns"
     );
 
-    let phase_cols: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM pragma_table_info('observation_phase_metrics')",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap();
+    let phase_cols: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('observation_phase_metrics')")
+            .fetch_one(store.read_pool_test())
+            .await
+            .unwrap();
     assert_eq!(
         phase_cols, 4,
         "observation_phase_metrics should have 4 columns"
     );
 
-    // Verify no BLOB column
-    let has_blob: bool = conn
-        .query_row(
-            "SELECT COUNT(*) FROM pragma_table_info('observation_metrics') WHERE type = 'BLOB'",
-            [],
-            |row| Ok(row.get::<_, i64>(0)? > 0),
-        )
-        .unwrap();
-    assert!(
-        !has_blob,
+    let has_blob: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM pragma_table_info('observation_metrics') WHERE type = 'BLOB'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .unwrap();
+    assert_eq!(
+        has_blob, 0,
         "observation_metrics should not have a BLOB column"
     );
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_column_field_alignment() {
-    // R-03: SQL columns match Rust struct field names
-    let db = TestDb::new();
-    let conn = db.store().lock_conn();
+#[tokio::test]
+async fn test_column_field_alignment() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
-    // Get column names from SQLite (skip feature_cycle and computed_at which are not in UniversalMetrics)
-    let mut stmt = conn
-        .prepare("SELECT name FROM pragma_table_info('observation_metrics') ORDER BY cid")
-        .unwrap();
-    let sql_columns: Vec<String> = stmt
-        .query_map([], |row| row.get(0))
-        .unwrap()
-        .collect::<rusqlite::Result<_>>()
-        .unwrap();
+    use sqlx::Row;
+    let rows =
+        sqlx::query("SELECT name FROM pragma_table_info('observation_metrics') ORDER BY cid")
+            .fetch_all(store.read_pool_test())
+            .await
+            .unwrap();
 
-    // Skip first two columns (feature_cycle, computed_at)
+    let sql_columns: Vec<String> = rows
+        .iter()
+        .map(|r| r.try_get::<String, _>(0).unwrap())
+        .collect();
+
     let universal_columns: Vec<&str> = sql_columns
         .iter()
         .skip(2) // feature_cycle, computed_at
@@ -900,95 +968,86 @@ fn test_column_field_alignment() {
             sql_col, rust_field
         );
     }
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_sql_analytics_query() {
-    // AC-13: SQL analytics query works without Rust-side deserialization
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_sql_analytics_query() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
     let mut mv1 = MetricVector::default();
     mv1.universal.session_count = 10;
     mv1.universal.total_tool_calls = 100;
-    db.store().store_metrics("feature-a", &mv1).unwrap();
+    store.store_metrics("feature-a", &mv1);
 
     let mut mv2 = MetricVector::default();
     mv2.universal.session_count = 3;
     mv2.universal.total_tool_calls = 30;
-    db.store().store_metrics("feature-b", &mv2).unwrap();
+    store.store_metrics("feature-b", &mv2);
+    let store = flush(store, &dir).await;
 
-    // Raw SQL query without any Rust deserialization
-    let conn = db.store().lock_conn();
-    let mut stmt = conn.prepare(
-        "SELECT feature_cycle, total_tool_calls FROM observation_metrics WHERE session_count > 5"
-    ).unwrap();
-    let results: Vec<(String, i64)> = stmt
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
-        .unwrap()
-        .collect::<rusqlite::Result<_>>()
-        .unwrap();
+    use sqlx::Row;
+    let rows = sqlx::query(
+        "SELECT feature_cycle, total_tool_calls FROM observation_metrics WHERE session_count > 5",
+    )
+    .fetch_all(store.read_pool_test())
+    .await
+    .unwrap();
 
-    assert_eq!(results.len(), 1);
-    assert_eq!(results[0].0, "feature-a");
-    assert_eq!(results[0].1, 100);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].try_get::<String, _>(0).unwrap(), "feature-a");
+    assert_eq!(rows[0].try_get::<i64, _>(1).unwrap(), 100);
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_schema_version_is_12() {
-    // C-04: Schema version must be exactly 12 (col-022)
-    let db = TestDb::new();
-    let version = db.store().read_counter("schema_version").unwrap();
+#[tokio::test]
+async fn test_schema_version_is_12() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(version, 12, "schema version must be 12 after col-022");
+    store.close().await.unwrap();
 }
 
 // === COUNTERS ===
 
-#[test]
-fn test_read_counter() {
-    let db = TestDb::new();
-    // schema_version should be current (9) after creation
-    let version = db.store().read_counter("schema_version").unwrap();
+#[tokio::test]
+async fn test_read_counter() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+    let version = store.read_counter("schema_version").await.unwrap();
     assert!(version >= 9, "schema_version should be >= 9, got {version}");
 
-    // next_entry_id should be 1 initially
-    let next = db.store().read_counter("next_entry_id").unwrap();
+    let next = store.read_counter("next_entry_id").await.unwrap();
     assert_eq!(next, 1);
 
-    // nonexistent returns 0
-    let missing = db.store().read_counter("nonexistent").unwrap();
+    let missing = store.read_counter("nonexistent").await.unwrap();
     assert_eq!(missing, 0);
+    store.close().await.unwrap();
 }
 
 // === SCHEMA DDL: topic_deliveries and query_log (nxs-010) ===
 
-#[test]
-fn test_create_tables_topic_deliveries_schema() {
-    // AC-01: topic_deliveries has 9 columns with correct names, types, and constraints
-    let db = TestDb::new();
-    let conn = db.store().lock_conn();
+#[tokio::test]
+async fn test_create_tables_topic_deliveries_schema() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
-    // Collect column info
-    let mut stmt = conn.prepare(
+    use sqlx::Row;
+    let rows = sqlx::query(
         "SELECT name, type, \"notnull\", dflt_value, pk FROM pragma_table_info('topic_deliveries') ORDER BY cid"
-    ).unwrap();
-    let columns: Vec<(String, String, i64, Option<String>, i64)> = stmt
-        .query_map([], |row| {
-            Ok((
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                row.get(3)?,
-                row.get(4)?,
-            ))
-        })
-        .unwrap()
-        .collect::<rusqlite::Result<_>>()
-        .unwrap();
+    )
+    .fetch_all(store.read_pool_test())
+    .await
+    .unwrap();
 
-    assert_eq!(columns.len(), 9, "topic_deliveries should have 9 columns");
+    assert_eq!(rows.len(), 9, "topic_deliveries should have 9 columns");
 
-    // Verify column names in order
-    let names: Vec<&str> = columns.iter().map(|c| c.0.as_str()).collect();
+    let names: Vec<String> = rows
+        .iter()
+        .map(|r| r.try_get::<String, _>(0).unwrap())
+        .collect();
     assert_eq!(
         names,
         vec![
@@ -1005,28 +1064,56 @@ fn test_create_tables_topic_deliveries_schema() {
     );
 
     // topic is TEXT PRIMARY KEY (pk = 1)
-    assert_eq!(columns[0].1, "TEXT");
-    assert_eq!(columns[0].4, 1, "topic must be primary key");
+    assert_eq!(rows[0].try_get::<String, _>(1).unwrap(), "TEXT");
+    assert_eq!(
+        rows[0].try_get::<i64, _>(4).unwrap(),
+        1,
+        "topic must be primary key"
+    );
 
     // created_at is INTEGER NOT NULL
-    assert_eq!(columns[1].1, "INTEGER");
-    assert_eq!(columns[1].2, 1, "created_at must be NOT NULL");
+    assert_eq!(rows[1].try_get::<String, _>(1).unwrap(), "INTEGER");
+    assert_eq!(
+        rows[1].try_get::<i64, _>(2).unwrap(),
+        1,
+        "created_at must be NOT NULL"
+    );
 
     // completed_at is nullable
-    assert_eq!(columns[2].2, 0, "completed_at must be nullable");
+    assert_eq!(
+        rows[2].try_get::<i64, _>(2).unwrap(),
+        0,
+        "completed_at must be nullable"
+    );
 
     // status has default 'active'
-    assert_eq!(columns[3].2, 1, "status must be NOT NULL");
-    assert_eq!(columns[3].3.as_deref(), Some("'active'"));
+    assert_eq!(
+        rows[3].try_get::<i64, _>(2).unwrap(),
+        1,
+        "status must be NOT NULL"
+    );
+    assert_eq!(
+        rows[3].try_get::<Option<String>, _>(3).unwrap().as_deref(),
+        Some("'active'")
+    );
 
     // github_issue is nullable
-    assert_eq!(columns[4].2, 0, "github_issue must be nullable");
+    assert_eq!(
+        rows[4].try_get::<i64, _>(2).unwrap(),
+        0,
+        "github_issue must be nullable"
+    );
 
-    // total_sessions, total_tool_calls, total_duration_secs default to 0
+    // counter columns have NOT NULL + DEFAULT 0
     for i in 5..=7 {
-        assert_eq!(columns[i].2, 1, "{} must be NOT NULL", names[i]);
         assert_eq!(
-            columns[i].3.as_deref(),
+            rows[i].try_get::<i64, _>(2).unwrap(),
+            1,
+            "{} must be NOT NULL",
+            names[i]
+        );
+        assert_eq!(
+            rows[i].try_get::<Option<String>, _>(3).unwrap().as_deref(),
             Some("0"),
             "{} must default to 0",
             names[i]
@@ -1034,35 +1121,33 @@ fn test_create_tables_topic_deliveries_schema() {
     }
 
     // phases_completed is nullable
-    assert_eq!(columns[8].2, 0, "phases_completed must be nullable");
+    assert_eq!(
+        rows[8].try_get::<i64, _>(2).unwrap(),
+        0,
+        "phases_completed must be nullable"
+    );
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_create_tables_query_log_schema() {
-    // AC-02: query_log has 9 columns with correct names, types, and constraints
-    let db = TestDb::new();
-    let conn = db.store().lock_conn();
+#[tokio::test]
+async fn test_create_tables_query_log_schema() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
-    let mut stmt = conn.prepare(
+    use sqlx::Row;
+    let rows = sqlx::query(
         "SELECT name, type, \"notnull\", dflt_value, pk FROM pragma_table_info('query_log') ORDER BY cid"
-    ).unwrap();
-    let columns: Vec<(String, String, i64, Option<String>, i64)> = stmt
-        .query_map([], |row| {
-            Ok((
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                row.get(3)?,
-                row.get(4)?,
-            ))
-        })
-        .unwrap()
-        .collect::<rusqlite::Result<_>>()
-        .unwrap();
+    )
+    .fetch_all(store.read_pool_test())
+    .await
+    .unwrap();
 
-    assert_eq!(columns.len(), 9, "query_log should have 9 columns");
+    assert_eq!(rows.len(), 9, "query_log should have 9 columns");
 
-    let names: Vec<&str> = columns.iter().map(|c| c.0.as_str()).collect();
+    let names: Vec<String> = rows
+        .iter()
+        .map(|r| r.try_get::<String, _>(0).unwrap())
+        .collect();
     assert_eq!(
         names,
         vec![
@@ -1078,40 +1163,66 @@ fn test_create_tables_query_log_schema() {
         ]
     );
 
-    // query_id is INTEGER PRIMARY KEY
-    assert_eq!(columns[0].1, "INTEGER");
-    assert_eq!(columns[0].4, 1, "query_id must be primary key");
+    assert_eq!(rows[0].try_get::<String, _>(1).unwrap(), "INTEGER");
+    assert_eq!(
+        rows[0].try_get::<i64, _>(4).unwrap(),
+        1,
+        "query_id must be primary key"
+    );
 
-    // session_id and query_text are TEXT NOT NULL
-    assert_eq!(columns[1].1, "TEXT");
-    assert_eq!(columns[1].2, 1, "session_id must be NOT NULL");
-    assert_eq!(columns[2].1, "TEXT");
-    assert_eq!(columns[2].2, 1, "query_text must be NOT NULL");
+    assert_eq!(rows[1].try_get::<String, _>(1).unwrap(), "TEXT");
+    assert_eq!(
+        rows[1].try_get::<i64, _>(2).unwrap(),
+        1,
+        "session_id must be NOT NULL"
+    );
+    assert_eq!(rows[2].try_get::<String, _>(1).unwrap(), "TEXT");
+    assert_eq!(
+        rows[2].try_get::<i64, _>(2).unwrap(),
+        1,
+        "query_text must be NOT NULL"
+    );
 
-    // source is TEXT NOT NULL
-    assert_eq!(columns[8].1, "TEXT");
-    assert_eq!(columns[8].2, 1, "source must be NOT NULL");
+    assert_eq!(rows[8].try_get::<String, _>(1).unwrap(), "TEXT");
+    assert_eq!(
+        rows[8].try_get::<i64, _>(2).unwrap(),
+        1,
+        "source must be NOT NULL"
+    );
 
-    // result_entry_ids, similarity_scores, retrieval_mode are nullable
-    assert_eq!(columns[5].2, 0, "result_entry_ids must be nullable");
-    assert_eq!(columns[6].2, 0, "similarity_scores must be nullable");
-    assert_eq!(columns[7].2, 0, "retrieval_mode must be nullable");
+    assert_eq!(
+        rows[5].try_get::<i64, _>(2).unwrap(),
+        0,
+        "result_entry_ids must be nullable"
+    );
+    assert_eq!(
+        rows[6].try_get::<i64, _>(2).unwrap(),
+        0,
+        "similarity_scores must be nullable"
+    );
+    assert_eq!(
+        rows[7].try_get::<i64, _>(2).unwrap(),
+        0,
+        "retrieval_mode must be nullable"
+    );
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_create_tables_query_log_indexes() {
-    // AC-03: query_log has idx_query_log_session and idx_query_log_ts indexes
-    let db = TestDb::new();
-    let conn = db.store().lock_conn();
+#[tokio::test]
+async fn test_create_tables_query_log_indexes() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
-    let mut stmt = conn
-        .prepare("SELECT name FROM pragma_index_list('query_log') WHERE origin != 'pk'")
+    use sqlx::Row;
+    let rows = sqlx::query("SELECT name FROM pragma_index_list('query_log') WHERE origin != 'pk'")
+        .fetch_all(store.read_pool_test())
+        .await
         .unwrap();
-    let index_names: Vec<String> = stmt
-        .query_map([], |row| row.get(0))
-        .unwrap()
-        .collect::<rusqlite::Result<_>>()
-        .unwrap();
+
+    let index_names: Vec<String> = rows
+        .iter()
+        .map(|r| r.try_get::<String, _>(0).unwrap())
+        .collect();
 
     assert!(
         index_names.len() >= 2,
@@ -1128,62 +1239,58 @@ fn test_create_tables_query_log_indexes() {
         "missing idx_query_log_ts, found: {:?}",
         index_names
     );
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_create_tables_query_log_autoincrement() {
-    // R-03: AUTOINCREMENT creates sqlite_sequence table
-    let db = TestDb::new();
-    let conn = db.store().lock_conn();
+#[tokio::test]
+async fn test_create_tables_query_log_autoincrement() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
-    let count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap();
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .unwrap();
     assert_eq!(
         count, 1,
         "sqlite_sequence table must exist (AUTOINCREMENT creates it)"
     );
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_create_tables_idempotent() {
-    // AC-05: Opening the same database twice causes no errors
-    let dir = tempfile::TempDir::new().expect("failed to create temp dir");
+#[tokio::test]
+async fn test_create_tables_idempotent() {
+    let dir = tempfile::TempDir::new().unwrap();
     let path = dir.path().join("test.db");
 
-    let _store1 = unimatrix_store::Store::open(&path).expect("first open should succeed");
-    drop(_store1);
+    let store1 = unimatrix_store::SqlxStore::open(&path, Default::default())
+        .await
+        .expect("first open should succeed");
+    store1.close().await.unwrap();
 
-    let store2 = unimatrix_store::Store::open(&path).expect("second open should succeed");
+    let store2 = unimatrix_store::SqlxStore::open(&path, Default::default())
+        .await
+        .expect("second open should succeed");
 
-    // Verify tables still exist with correct column counts
-    let conn = store2.lock_conn();
-
-    let td_cols: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM pragma_table_info('topic_deliveries')",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap();
+    let td_cols: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('topic_deliveries')")
+            .fetch_one(store2.read_pool_test())
+            .await
+            .unwrap();
     assert_eq!(
         td_cols, 9,
         "topic_deliveries should still have 9 columns after re-open"
     );
 
-    let ql_cols: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM pragma_table_info('query_log')",
-            [],
-            |row| row.get(0),
-        )
+    let ql_cols: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('query_log')")
+        .fetch_one(store2.read_pool_test())
+        .await
         .unwrap();
     assert_eq!(
         ql_cols, 9,
         "query_log should still have 9 columns after re-open"
     );
+    store2.close().await.unwrap();
 }

@@ -5,7 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use unimatrix_store::Store;
+use unimatrix_store::SqlxStore;
 
 use super::{ExtractionRule, ProposedEntry};
 use crate::detection;
@@ -18,7 +18,11 @@ impl ExtractionRule for RecurringFrictionRule {
         "recurring-friction"
     }
 
-    fn evaluate(&self, observations: &[ObservationRecord], _store: &Store) -> Vec<ProposedEntry> {
+    fn evaluate(
+        &self,
+        observations: &[ObservationRecord],
+        _store: &SqlxStore,
+    ) -> Vec<ProposedEntry> {
         // Group observations by session
         let mut session_records: HashMap<String, Vec<ObservationRecord>> = HashMap::new();
         for obs in observations {
@@ -79,11 +83,13 @@ mod tests {
     use super::*;
     use unimatrix_core::HookType;
 
-    fn make_store() -> Store {
+    async fn make_store() -> SqlxStore {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("test.db");
         std::mem::forget(dir);
-        Store::open(&path).expect("open store")
+        SqlxStore::open(&path, unimatrix_store::pool_config::PoolConfig::default())
+            .await
+            .expect("open store")
     }
 
     /// Create observations that will trigger the PermissionRetriesRule.
@@ -104,9 +110,9 @@ mod tests {
             .collect()
     }
 
-    #[test]
-    fn recurring_friction_from_three_sessions() {
-        let store = make_store();
+    #[tokio::test]
+    async fn recurring_friction_from_three_sessions() {
+        let store = make_store().await;
         let mut observations = Vec::new();
         for i in 0..3 {
             observations.extend(make_permission_friction_obs(&format!("s{}", i)));
@@ -127,9 +133,9 @@ mod tests {
         );
     }
 
-    #[test]
-    fn no_friction_from_two_sessions() {
-        let store = make_store();
+    #[tokio::test]
+    async fn no_friction_from_two_sessions() {
+        let store = make_store().await;
         let mut observations = Vec::new();
         for i in 0..2 {
             observations.extend(make_permission_friction_obs(&format!("s{}", i)));
@@ -145,9 +151,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn confidence_scales() {
-        let store = make_store();
+    #[tokio::test]
+    async fn confidence_scales() {
+        let store = make_store().await;
         let mut observations = Vec::new();
         for i in 0..5 {
             observations.extend(make_permission_friction_obs(&format!("s{}", i)));
@@ -160,9 +166,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn empty_observations() {
-        let store = make_store();
+    #[tokio::test]
+    async fn empty_observations() {
+        let store = make_store().await;
         let rule = RecurringFrictionRule;
         let proposals = rule.evaluate(&[], &store);
         assert!(proposals.is_empty());

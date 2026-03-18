@@ -88,7 +88,7 @@ Domain pack documentation must make this explicit to prevent operators from leav
 These are not features. They are the structural preconditions that everything
 else depends on. None changes external behavior.
 
-### W0-0: Daemon Mode ← **do this first**
+### W0-0: Daemon Mode — **COMPLETE** (`vnc-005`, PR #295)
 **What**: Transform Unimatrix from a per-session stdio process into a persistent
 background daemon that survives MCP client disconnection.
 
@@ -130,72 +130,100 @@ end-to-end before containerization adds operational complexity.
 
 ---
 
-### W0-1: Two-Database Split
-**What**: Separate the single `unimatrix.db` into `knowledge.db` (integrity chain)
-and `analytics.db` (learning layer). Each database gets its own independent
-SQLite connection. The analytics write queue consumer **owns its connection directly**
-— no `Mutex<Connection>`, no `spawn_blocking` for analytics writes.
+### W0-1: sqlx Migration — Connection Pools + Async-Native Storage (`nxs-011`)
+**What**: Replace `rusqlite` + `Mutex<Connection>` with `sqlx` + a dual-pool
+architecture. Three coordinated changes that deliver immediate scalability and
+unlock future backend flexibility.
+
+**Dual connection pool**
 
 ```
-knowledge.db  → entries, entry_tags, vector_map, counters,
-                agent_registry, audit_log,
-                sessions*,         ← see durability note below
-                feature_entries*   ← see durability note below
-
-analytics.db  → co_access, graph_edges (new), observation_metrics,
-                injection_log, signal_queue, query_log,
-                shadow_evaluations, outcome_index,
-                topic_deliveries, confidence_weights (new)
+read_pool:  SqlitePool { max_connections: 6-8 }  ← concurrent reads, no blocking
+write_pool: SqlitePool { max_connections: 2 }     ← serialized hot-path writes
 ```
 
-**Write queue architecture**: The analytics write queue is a bounded async channel.
-The queue consumer is a dedicated async task that owns the `analytics.db` connection
-and drains the channel directly — no `spawn_blocking`, no `Mutex`. Simple SQL writes
-are sub-millisecond and safe to run on the async task. The queue must have an explicit
-bounded depth with a defined shed-under-load policy (drop with logging) to prevent
-unbounded growth under burst signal pressure.
+MCP hot-path writes (entries, entry_tags, audit_log, agent_registry, vector_map,
+counters) go directly through `write_pool`. Analytics writes (co_access, sessions,
+injection_log, query_log, signal_queue, observations, observation_metrics,
+shadow_evaluations, feature_entries, topic_deliveries, outcome_index) are routed
+through a bounded async write queue that drains through `write_pool` — batching up
+to 50 events or 500ms per commit. MCP hot-path latency is isolated from background
+analytics volume without splitting the database file.
 
-**Durability decision required**: `sessions` and `feature_entries` are causal
-preconditions for `knowledge.db` writes — implicit vote attribution (crt-020) depends
-on session records, and feature cycle lifecycle attribution depends on feature_entries.
-"Eventually consistent" is the wrong durability model for these tables. Two options:
+**Analytics write queue**
 
-- Option A (recommended): Keep `sessions` and `feature_entries` in `knowledge.db`.
-  These are low-volume tables; the single-writer overhead is acceptable.
-- Option B: Create a "durable analytics" connection with synchronous writes,
-  separate from the async-queue `analytics.db` connection.
+```rust
+enum AnalyticsWrite {
+    CoAccess { id_a: u64, id_b: u64 },
+    SessionUpdate { session_id: String, ... },
+    ObservationEvent { session_id: String, hook: String, ... },
+    QueryLog { ... },
+    // W1-1 adds: GraphEdge { ... }
+    // W3-1 adds: ConfidenceWeightUpdate { ... }
+}
+// Drain task owns a write_pool connection; commits batches of ≤50 or every 500ms.
+// Bounded channel (capacity 1000); shed-under-load: drop analytics writes + log.
+// Hot-path integrity writes (entries, audit_log) bypass queue entirely — never dropped.
+```
 
-Resolve this decision before implementation begins.
+**Async-native storage layer**
 
-**Why first**: Every subsequent addition writes to `analytics.db`. Without this split,
-each new background worker competes with MCP request writes. With it, MCP hot path
-writes to `knowledge.db` with zero contention — forever. The two-DB split relaxes
-write contention but **does not** address CPU-bound ML inference pressure on the
-`spawn_blocking` pool — that is addressed separately in W1-2.
+`Store` methods become async. All `spawn_blocking(|| store.X())` call sites in the
+server are removed — DB operations are native async tasks. The `AsyncEntryStore`
+bridge wrapper (which existed solely to adapt sync DB calls for async callers) is
+retired. Background tick DB calls become proper tokio tasks.
 
-**Integrity**: `knowledge.db` is the trust-critical file. Back up frequently.
-`analytics.db` is the learning layer — eventually consistent, self-healing on restart.
-A crash in analytics never affects the integrity chain. However, all analytics-derived
-data used on the search hot path (graph edges, confidence weights) must be cached
-in memory (`Arc<RwLock<_>>` rebuilt by tick) — the search hot path must never read
-`analytics.db` directly at query time.
+**Backend abstraction**
 
-**Effort**: 3-4 days (connection routing, write queue, durability decision).
+`sqlx` supports SQLite and PostgreSQL with the same query API and pool interface.
+Application code is identical for both backends. When centralized deployment demands
+PostgreSQL: change the connection string, provision a server, resolve the handful of
+SQLite-specific pragma statements. No application logic rewrite. No new architectural
+patterns. Every W1 and W2 feature built on this foundation is automatically
+PostgreSQL-compatible.
+
+**sqlx compile-time query checking**: `sqlx::query!()` macros verify SQL against the
+schema at compile time — SQL errors are compiler errors. Use `SQLX_OFFLINE=true` with
+a committed `sqlx-data.json` schema cache. CI regenerates the cache via
+`cargo sqlx prepare` after schema changes.
+
+**Migration system**: existing `migration.rs` logic is preserved and executed through
+sqlx connections for W0-1. Migration to sqlx's built-in migration runner is a
+follow-on concern, not in scope here.
+
+**Rayon thread pool is orthogonal**: CPU-bound ML inference (NLI in W1-2, GNN in
+W3-1) runs on a dedicated rayon pool bridged to tokio via oneshot channel. Independent
+of database architecture — comes in with NLI (W1-2), not here.
+
+**Why not a database split**: A split solves SQLite write contention by splitting the
+file. `sqlx` + dual pool solves the same contention without splitting data, without
+cross-database join limitations, without an irreversible migration, and positions the
+codebase for a backend swap that a split never could. At centralized scale where
+SQLite genuinely cannot keep up, PostgreSQL is the answer — not two SQLite files.
+
+**Why now**: Every W1 and W2 feature built before this migration adds another
+`spawn_blocking` DB call site that must later be unwound. The `Mutex<Connection>`
+prevents concurrent reads that WAL mode would otherwise allow for free. Taking this
+medicine once at the foundation layer costs 1.5–2 weeks. The same migration after
+W1 and W2 are built costs significantly more and risks regressions across all of them.
+
+**Effort**: 1.5–2 weeks (storage crate: rusqlite → sqlx, dual pool, write queue;
+server crate: spawn_blocking removal, async service methods; test infrastructure:
+sync → async test conversion — the test surface is the long tail).
 
 **Security requirements:**
-- [High] Enforce separate file-system permissions on `knowledge.db` vs `analytics.db` —
-  `knowledge.db` should be owner-read-write only (0600); `analytics.db` can be
-  group-readable. Compromise of analytics data must not yield the integrity chain.
-- [High] The async write queue draining to `analytics.db` must authenticate writes —
-  queue entries must carry the originating `agent_id` and a monotonic sequence number
-  so that queue replay attacks cannot inject un-attributed edges or observation events.
-- [Medium] Cross-database consistency invariant: if an entry is deprecated in
-  `knowledge.db` and the analytics write queue is mid-flight with a co-access or
-  confidence update for that entry, the queue consumer must tolerate and discard stale
-  writes without error — validate target entry existence before applying analytics updates.
-- [Low] No foreign key enforcement exists across the DB boundary; document that
-  `analytics.db` referential integrity is eventually-consistent and must never be
-  trusted for security decisions (only `knowledge.db` is authoritative).
+- [High] Write pool `max_connections` must be capped (≤ 2 for SQLite); an unbounded
+  write pool allows concurrent writers and risks WAL corruption under contention.
+- [High] The analytics write queue shed policy (drop + log) applies only to analytics
+  writes. Hot-path integrity writes (entries, audit_log, agent_registry) bypass the
+  queue entirely and must never be dropped under any load condition.
+- [Medium] `sqlx-data.json` schema cache must be regenerated and committed after every
+  schema change; a stale cache silently disables compile-time SQL validation for
+  modified queries.
+- [Medium] `SQLX_OFFLINE=true` must be enforced in CI builds; without it, a missing
+  `DATABASE_URL` causes builds to silently fall back to unchecked queries.
+- [Low] Pool `acquire_timeout` must be configured to return a structured error under
+  write saturation rather than blocking indefinitely.
 
 ---
 
@@ -877,7 +905,7 @@ available RAM) before enabling in production.
 W0-0: Daemon mode (UDS, persistent) ─────────────────────────────────────────┐
                                                                                ▼
 Wave 0 (prerequisites — W0-1/2/3 in parallel, after W0-0)
-  W0-1: Two-DB split ──────────────────────────────────────────────────────┐
+  W0-1: sqlx migration / dual pool (nxs-011) ──────────────────────────────┐
   W0-2: Client token security ─────────────────────────────────────────────┤
   W0-3: Config externalization (incl. confidence weights, cycle labels) ───┤
                                                                              │
@@ -910,14 +938,14 @@ Wave 3 cannot start until Wave 1 is complete AND sufficient usage data exists
 | Wave | Items | Estimated Effort | Gate Condition |
 |------|-------|-----------------|----------------|
 | W0-0 | Daemon mode | ~3 days | — (do first) |
-| W0 | 3 items | ~1.5 weeks | W0-0 complete |
+| W0 | 3 items | ~3.5 weeks | W0-0 complete (nxs-011 is the long tail at 1.5–2 weeks) |
 | W1 | 3 items | ~2.5 weeks | W0 complete (detection rule rewrite adds to W1-3) |
 | W2 | 3 items | ~2 weeks | W0 complete (parallel with W1; rmcp HTTP verification needed) |
 | W3-3 | GGUF module | ~1-2 weeks | User opt-in; proof-of-concept validation first |
 | W3-1 | GNN learning | ~1-2 weeks | W1 complete + usage data; training loop design first |
 | W3-2 | Synthesis | ~1 week | W3-1 + W3-3 both deployed |
 
-**Total to domain-agnostic, securely deployed, scalable platform**: ~6-7 weeks of focused work.
+**Total to domain-agnostic, securely deployed, scalable platform**: ~8-9 weeks of focused work.
 Wave 3 trails by however long it takes for daemon usage data to accumulate (weeks to months).
 
 ---
@@ -929,11 +957,11 @@ Every wave maintains these non-negotiables:
 - **Hash chain integrity**: `content_hash` / `previous_hash` on every entry — untouched by any wave
 - **Correction chain model**: `supersedes`/`superseded_by` — extended by W1-1 but not modified
 - **Immutable audit log**: every operation attributed and logged — W0-2 strengthens this
-- **ACID storage**: SQLite transactional guarantees — W0-1 splits but doesn't weaken
+- **ACID storage**: SQLite transactional guarantees — W0-1 migrates the driver but doesn't weaken the guarantees
 - **Single binary**: all waves add capability to the same binary, not new services
 - **Zero infrastructure**: container is optional, not required; daemon + UDS works without it
 - **In-memory hot path**: all analytics-derived search data (graph, weights, co-access)
-  cached in `Arc<RwLock<_>>` rebuilt by tick — `analytics.db` never read directly at query time
+  cached in `Arc<RwLock<_>>` rebuilt by tick — never read from the database directly at query time
 
 The integrity chain is the product's defensible moat. The roadmap is designed
 around it, not in spite of it.
@@ -1094,12 +1122,17 @@ across projects is a cross-project observation leakage risk — session patterns
 logs, and topic attributions from one project would appear in another project's
 retrospectives. Per-project for both is the only safe model.
 
-**Decision 4: W0-1 sessions/feature_entries durability**
+**Decision 4: W0-1 write pool topology**
 
-Resolve before W0-1 implementation: move `sessions` and `feature_entries` to
-`knowledge.db` (Option A, recommended) or create a synchronous "durable analytics"
-connection (Option B). These tables are causal preconditions for `knowledge.db`
-writes and cannot tolerate eventual consistency.
+Two concrete choices before implementation begins:
+
+- **Pool sizing**: `read_pool` max_connections (6-8 recommended; tune to deployment
+  hardware) and `write_pool` max_connections (cap at 2; SQLite WAL arbitrates
+  concurrent writers, so >2 adds latency without throughput benefit).
+- **Analytics queue capacity and shed policy**: bounded channel capacity (1000
+  recommended) and what happens at capacity (drop + log is correct; analytics data
+  is eventually consistent and self-heals — integrity writes bypass the queue entirely
+  so the shed policy never touches the trust-critical path).
 
 ---
 

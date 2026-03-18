@@ -12,17 +12,18 @@ pub mod async_wrappers;
 pub use error::CoreError;
 
 // Traits
-pub use traits::{EmbedService, EntryStore, VectorStore};
+pub use traits::{EmbedService, VectorStore};
 
 // Adapters
-pub use adapters::{EmbedAdapter, StoreAdapter, VectorAdapter};
+pub use adapters::{EmbedAdapter, VectorAdapter};
 
 // Observation types (col-013 ADR-002: moved from unimatrix-observe)
 pub use observation::{HookType, ObservationRecord, ObservationStats, ParsedSession};
 
 // Domain types from unimatrix-store
 pub use unimatrix_store::{
-    DatabaseConfig, EntryRecord, NewEntry, QueryFilter, Status, Store, StoreError, TimeRange,
+    DatabaseConfig, EntryRecord, NewEntry, QueryFilter, SqlxStore, SqlxStore as Store, Status,
+    StoreError, TimeRange,
 };
 
 // Metric types from unimatrix-store (nxs-009 ADR-001)

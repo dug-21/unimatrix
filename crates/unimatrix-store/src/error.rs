@@ -1,4 +1,21 @@
 use std::fmt;
+use std::time::Duration;
+
+/// Identifies which pool caused a `PoolTimeout` error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PoolKind {
+    Read,
+    Write,
+}
+
+impl fmt::Display for PoolKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PoolKind::Read => write!(f, "read"),
+            PoolKind::Write => write!(f, "write"),
+        }
+    }
+}
 
 /// All errors returned by the storage engine.
 #[derive(Debug)]
@@ -6,8 +23,25 @@ pub enum StoreError {
     /// Entry with the given ID was not found.
     EntryNotFound(u64),
 
-    /// rusqlite error (SQLite backend).
-    Sqlite(rusqlite::Error),
+    /// sqlx database error.
+    Database(Box<dyn std::error::Error + Send + Sync>),
+
+    /// Database open failed (pool construction or connection error).
+    Open(Box<dyn std::error::Error + Send + Sync>),
+
+    /// Invalid pool configuration (e.g., write_max_connections > 2).
+    InvalidPoolConfig { reason: String },
+
+    /// Pool acquire timeout elapsed.
+    PoolTimeout { pool: PoolKind, elapsed: Duration },
+
+    /// migrate_if_needed() failed. Pool construction did not proceed.
+    Migration {
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+
+    /// Drain task join handle resolved with a panic.
+    DrainTaskPanic,
 
     /// Bincode serialization failed.
     Serialization(String),
@@ -15,18 +49,37 @@ pub enum StoreError {
     /// Bincode deserialization failed.
     Deserialization(String),
 
-    /// Invalid status byte (not 0, 1, or 2).
+    /// Invalid status byte (not 0, 1, 2, or 3).
     InvalidStatus(u8),
+
+    /// Invalid input for an operation (e.g., correcting a deprecated entry).
+    InvalidInput { field: String, reason: String },
 }
 
 impl fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StoreError::EntryNotFound(id) => write!(f, "entry not found: {id}"),
-            StoreError::Sqlite(e) => write!(f, "sqlite error: {e}"),
+            StoreError::Database(e) => write!(f, "database error: {e}"),
+            StoreError::Open(e) => write!(f, "database open failed: {e}"),
+            StoreError::InvalidPoolConfig { reason } => {
+                write!(f, "invalid pool config: {reason}")
+            }
+            StoreError::PoolTimeout { pool, elapsed } => {
+                write!(
+                    f,
+                    "{pool} pool acquire timeout after {:.3}s",
+                    elapsed.as_secs_f64()
+                )
+            }
+            StoreError::Migration { source } => write!(f, "migration failed: {source}"),
+            StoreError::DrainTaskPanic => write!(f, "analytics drain task panicked"),
             StoreError::Serialization(msg) => write!(f, "serialization error: {msg}"),
             StoreError::Deserialization(msg) => write!(f, "deserialization error: {msg}"),
             StoreError::InvalidStatus(byte) => write!(f, "invalid status byte: {byte}"),
+            StoreError::InvalidInput { field, reason } => {
+                write!(f, "invalid input for '{field}': {reason}")
+            }
         }
     }
 }
@@ -34,15 +87,23 @@ impl fmt::Display for StoreError {
 impl std::error::Error for StoreError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            StoreError::Sqlite(e) => Some(e),
+            StoreError::Database(e) => Some(e.as_ref()),
+            StoreError::Open(e) => Some(e.as_ref()),
+            StoreError::Migration { source } => Some(source.as_ref()),
             _ => None,
         }
     }
 }
 
-impl From<rusqlite::Error> for StoreError {
-    fn from(e: rusqlite::Error) -> Self {
-        StoreError::Sqlite(e)
+impl From<sqlx::Error> for StoreError {
+    fn from(e: sqlx::Error) -> Self {
+        match e {
+            sqlx::Error::PoolTimedOut => StoreError::PoolTimeout {
+                pool: PoolKind::Write,
+                elapsed: crate::pool_config::WRITE_POOL_ACQUIRE_TIMEOUT,
+            },
+            other => StoreError::Database(other.into()),
+        }
     }
 }
 
@@ -118,5 +179,48 @@ mod tests {
 
         let err = StoreError::Serialization("test".into());
         assert!(err.source().is_none());
+    }
+
+    #[test]
+    fn test_error_display_invalid_pool_config() {
+        let err = StoreError::InvalidPoolConfig {
+            reason: "write_max exceeds 2".into(),
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("invalid pool config"), "got: {msg}");
+        assert!(msg.contains("write_max exceeds 2"), "got: {msg}");
+    }
+
+    #[test]
+    fn test_error_display_pool_timeout() {
+        let err = StoreError::PoolTimeout {
+            pool: PoolKind::Write,
+            elapsed: Duration::from_secs(5),
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("write"), "got: {msg}");
+        assert!(msg.contains("timeout"), "got: {msg}");
+    }
+
+    #[test]
+    fn test_pool_kind_display() {
+        assert_eq!(PoolKind::Read.to_string(), "read");
+        assert_eq!(PoolKind::Write.to_string(), "write");
+    }
+
+    #[test]
+    fn test_error_display_migration() {
+        let err = StoreError::Migration {
+            source: "migration step failed".into(),
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("migration failed"), "got: {msg}");
+    }
+
+    #[test]
+    fn test_error_display_drain_task_panic() {
+        let err = StoreError::DrainTaskPanic;
+        let msg = err.to_string();
+        assert!(msg.contains("drain task panicked"), "got: {msg}");
     }
 }

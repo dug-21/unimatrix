@@ -11,7 +11,7 @@ use serde_json::Value;
 use tempfile::TempDir;
 use unimatrix_server::export::run_export;
 use unimatrix_server::project;
-use unimatrix_store::Store;
+use unimatrix_store::SqlxStore;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -26,6 +26,19 @@ fn setup_project() -> (TempDir, std::path::PathBuf) {
     let project_dir = TempDir::new().expect("create project temp dir");
     let paths = project::ensure_data_directory(Some(project_dir.path()), None).unwrap();
     (project_dir, paths.db_path)
+}
+
+/// Open a SqlxStore synchronously from a db_path (for use in sync test helpers).
+fn open_store(db_path: &Path) -> SqlxStore {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(SqlxStore::open(
+        db_path,
+        unimatrix_store::pool_config::PoolConfig::default(),
+    ))
+    .expect("open store")
 }
 
 /// Run export to a buffer by writing to a file then reading it back.
@@ -45,8 +58,8 @@ fn parse_lines(output: &str) -> Vec<Value> {
 }
 
 /// Insert a representative entry with all 26 columns filled.
-fn insert_full_entry(conn: &rusqlite::Connection, id: i64) {
-    conn.execute(
+async fn insert_full_entry(pool: &sqlx::SqlitePool, id: i64) {
+    sqlx::query(
         "INSERT INTO entries (
             id, title, content, topic, category, source, status, confidence,
             created_at, updated_at, last_accessed_at, access_count,
@@ -63,89 +76,91 @@ fn insert_full_entry(conn: &rusqlite::Connection, id: i64) {
             7, 'nan-001', 'human',
             12, 2, NULL
         )",
-        rusqlite::params![id],
     )
+    .bind(id)
+    .execute(pool)
+    .await
     .unwrap();
 }
 
 /// Populate a database with representative data across all 8 tables.
-fn populate_representative_data(conn: &rusqlite::Connection) {
+async fn populate_representative_data(pool: &sqlx::SqlitePool) {
     // 3 entries
-    for id in [1, 2, 3] {
-        insert_full_entry(conn, id);
+    for id in [1i64, 2, 3] {
+        insert_full_entry(pool, id).await;
     }
 
     // Entry tags
-    for (entry_id, tag) in [(1, "rust"), (1, "export"), (2, "testing"), (3, "data")] {
-        conn.execute(
-            "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
-            rusqlite::params![entry_id, tag],
-        )
-        .unwrap();
+    for (entry_id, tag) in [(1i64, "rust"), (1, "export"), (2, "testing"), (3, "data")] {
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)")
+            .bind(entry_id)
+            .bind(tag)
+            .execute(pool)
+            .await
+            .unwrap();
     }
 
     // Co-access pairs
-    conn.execute(
-        "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (1, 2, 5, 1700000000)",
-        [],
-    ).unwrap();
-    conn.execute(
-        "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (2, 3, 3, 1700000001)",
-        [],
-    ).unwrap();
+    sqlx::query("INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (1, 2, 5, 1700000000)")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (2, 3, 3, 1700000001)")
+        .execute(pool)
+        .await
+        .unwrap();
 
     // Feature entries
-    conn.execute(
-        "INSERT INTO feature_entries (feature_id, entry_id) VALUES ('nan-001', 1)",
-        [],
-    )
-    .unwrap();
-    conn.execute(
-        "INSERT INTO feature_entries (feature_id, entry_id) VALUES ('nan-001', 2)",
-        [],
-    )
-    .unwrap();
+    sqlx::query("INSERT INTO feature_entries (feature_id, entry_id) VALUES ('nan-001', 1)")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO feature_entries (feature_id, entry_id) VALUES ('nan-001', 2)")
+        .execute(pool)
+        .await
+        .unwrap();
 
     // Outcome index
-    conn.execute(
-        "INSERT INTO outcome_index (feature_cycle, entry_id) VALUES ('nan-001', 1)",
-        [],
-    )
-    .unwrap();
-    conn.execute(
-        "INSERT INTO outcome_index (feature_cycle, entry_id) VALUES ('crt-001', 3)",
-        [],
-    )
-    .unwrap();
+    sqlx::query("INSERT INTO outcome_index (feature_cycle, entry_id) VALUES ('nan-001', 1)")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO outcome_index (feature_cycle, entry_id) VALUES ('crt-001', 3)")
+        .execute(pool)
+        .await
+        .unwrap();
 
     // Agent registry
-    conn.execute(
+    sqlx::query(
         "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
          allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
          VALUES ('bot-1', 2, '[\"Admin\",\"Read\"]', '[\"security\"]', '[\"decision\"]', 1700000000, 1700000001, 1)",
-        [],
-    ).unwrap();
-    conn.execute(
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
         "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
          allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
          VALUES ('bot-2', 1, '[]', NULL, NULL, 1700000002, 1700000003, 1)",
-        [],
     )
+    .execute(pool)
+    .await
     .unwrap();
 
     // Audit log
-    for i in 1..=3 {
-        conn.execute(
+    for i in 1i64..=3 {
+        sqlx::query(
             "INSERT INTO audit_log (event_id, timestamp, session_id, agent_id,
              operation, target_ids, outcome, detail)
              VALUES (?1, 1700000000 + ?1, 'sess-1', 'bot-1', 'store', '[1,2]', 0, 'ok')",
-            rusqlite::params![i],
         )
+        .bind(i)
+        .execute(pool)
+        .await
         .unwrap();
     }
 }
-
-use unimatrix_store::rusqlite;
 
 // ---------------------------------------------------------------------------
 // T-EM-11 / AC-17: Full export with representative data across all 8 tables
@@ -153,11 +168,12 @@ use unimatrix_store::rusqlite;
 #[test]
 fn test_full_export_representative_data() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
-        populate_representative_data(&conn);
-    }
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(populate_representative_data(store.write_pool_server()));
     drop(store);
 
     let output_dir = TempDir::new().unwrap();
@@ -218,7 +234,7 @@ fn test_full_export_representative_data() {
 fn test_empty_database_export() {
     let (project_dir, db_path) = setup_project();
     // Just opening the store creates the schema
-    let _store = Store::open(&db_path).unwrap();
+    let _store = open_store(&db_path);
     drop(_store);
 
     let output_dir = TempDir::new().unwrap();
@@ -250,11 +266,12 @@ fn test_empty_database_export() {
 #[test]
 fn test_deterministic_output() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
-        populate_representative_data(&conn);
-    }
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(populate_representative_data(store.write_pool_server()));
     drop(store);
 
     let output_dir = TempDir::new().unwrap();
@@ -302,10 +319,13 @@ fn test_deterministic_output() {
 #[test]
 fn test_excluded_tables_not_present() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
-        insert_full_entry(&conn, 1);
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(async {
+        insert_full_entry(store.write_pool_server(), 1).await;
         // Try inserting into excluded tables that exist in the schema.
         // These may or may not exist depending on schema version, so we
         // silently ignore errors from non-existent tables.
@@ -315,9 +335,9 @@ fn test_excluded_tables_not_present() {
             "INSERT OR IGNORE INTO query_log (id, session_id, query, timestamp) VALUES (1, 's1', 'test', 1)",
         ];
         for sql in &excluded_tables_inserts {
-            let _ = conn.execute(sql, []);
+            let _ = sqlx::query(sql).execute(store.write_pool_server()).await;
         }
-    }
+    });
     drop(store);
 
     let output_dir = TempDir::new().unwrap();
@@ -354,11 +374,12 @@ fn test_excluded_tables_not_present() {
 #[test]
 fn test_table_emission_order() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
-        populate_representative_data(&conn);
-    }
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(populate_representative_data(store.write_pool_server()));
     drop(store);
 
     let output_dir = TempDir::new().unwrap();
@@ -399,45 +420,45 @@ fn test_table_emission_order() {
 #[test]
 fn test_row_ordering_within_tables() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(async {
         // Insert entries out of order
-        for id in [5, 2, 8, 1] {
-            insert_full_entry(&conn, id);
+        for id in [5i64, 2, 8, 1] {
+            insert_full_entry(store.write_pool_server(), id).await;
         }
 
         // Insert tags out of order
-        conn.execute(
-            "INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'zebra')",
-            [],
-        )
-        .unwrap();
-        conn.execute(
-            "INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'apple')",
-            [],
-        )
-        .unwrap();
-        conn.execute(
-            "INSERT INTO entry_tags (entry_id, tag) VALUES (2, 'mango')",
-            [],
-        )
-        .unwrap();
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'zebra')")
+            .execute(store.write_pool_server())
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'apple')")
+            .execute(store.write_pool_server())
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (2, 'mango')")
+            .execute(store.write_pool_server())
+            .await
+            .unwrap();
 
         // Insert co_access out of order
-        conn.execute(
-            "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (3, 5, 1, 1)",
-            [],
-        ).unwrap();
-        conn.execute(
-            "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (1, 2, 1, 1)",
-            [],
-        ).unwrap();
-        conn.execute(
-            "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (2, 4, 1, 1)",
-            [],
-        ).unwrap();
-    }
+        sqlx::query("INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (3, 5, 1, 1)")
+            .execute(store.write_pool_server())
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (1, 2, 1, 1)")
+            .execute(store.write_pool_server())
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (2, 4, 1, 1)")
+            .execute(store.write_pool_server())
+            .await
+            .unwrap();
+    });
     drop(store);
 
     let output_dir = TempDir::new().unwrap();
@@ -502,11 +523,12 @@ fn test_row_ordering_within_tables() {
 #[test]
 fn test_output_file_path() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
-        insert_full_entry(&conn, 1);
-    }
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(insert_full_entry(store.write_pool_server(), 1));
     drop(store);
 
     let output_dir = TempDir::new().unwrap();
@@ -529,13 +551,16 @@ fn test_output_file_path() {
 #[test]
 fn test_header_validation() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
-        for id in 1..=3 {
-            insert_full_entry(&conn, id);
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(async {
+        for id in 1i64..=3 {
+            insert_full_entry(store.write_pool_server(), id).await;
         }
-    }
+    });
     drop(store);
 
     let output_dir = TempDir::new().unwrap();
@@ -568,10 +593,13 @@ fn test_header_validation() {
 #[test]
 fn test_entries_all_26_columns() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
-        conn.execute(
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(
+        sqlx::query(
             "INSERT INTO entries (
                 id, title, content, topic, category, source, status, confidence,
                 created_at, updated_at, last_accessed_at, access_count,
@@ -588,10 +616,10 @@ fn test_entries_all_26_columns() {
                 7, 'crt-002', 'human',
                 12, 2, 0
             )",
-            [],
         )
-        .unwrap();
-    }
+        .execute(store.write_pool_server()),
+    )
+    .unwrap();
     drop(store);
 
     let output_dir = TempDir::new().unwrap();
@@ -644,28 +672,33 @@ fn test_entries_all_26_columns() {
 #[test]
 fn test_null_handling_nullable_columns() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(async {
         // Entry with all nullable fields NULL
-        conn.execute(
+        sqlx::query(
             "INSERT INTO entries (
                 id, title, content, topic, category, source, created_at, updated_at,
                 supersedes, superseded_by, pre_quarantine_status
             ) VALUES (1, 'test', 'c', 't', 'p', 's', 1, 1, NULL, NULL, NULL)",
-            [],
         )
+        .execute(store.write_pool_server())
+        .await
         .unwrap();
 
         // Agent with nullable fields NULL
-        conn.execute(
+        sqlx::query(
             "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
              allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
              VALUES ('bot-null', 0, '[]', NULL, NULL, 1, 1, 1)",
-            [],
         )
+        .execute(store.write_pool_server())
+        .await
         .unwrap();
-    }
+    });
     drop(store);
 
     let output_dir = TempDir::new().unwrap();
@@ -720,11 +753,12 @@ fn test_null_handling_nullable_columns() {
 #[test]
 fn test_every_non_header_line_has_table() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
-        populate_representative_data(&conn);
-    }
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(populate_representative_data(store.write_pool_server()));
     drop(store);
 
     let output_dir = TempDir::new().unwrap();
@@ -766,11 +800,12 @@ fn test_every_non_header_line_has_table() {
 #[test]
 fn test_all_8_tables_with_row_counts() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
-        populate_representative_data(&conn);
-    }
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(populate_representative_data(store.write_pool_server()));
     drop(store);
 
     let output_dir = TempDir::new().unwrap();
@@ -800,7 +835,7 @@ fn test_all_8_tables_with_row_counts() {
 #[test]
 fn test_error_on_invalid_output_path() {
     let (project_dir, db_path) = setup_project();
-    let _store = Store::open(&db_path).unwrap();
+    let _store = open_store(&db_path);
     drop(_store);
 
     let bad_path = std::path::Path::new("/nonexistent_dir_12345/export.jsonl");
@@ -837,29 +872,35 @@ fn test_project_dir_isolation() {
     let (project_b, db_b) = setup_project();
 
     // Populate A with "alpha" entry
-    let store_a = Store::open(&db_a).unwrap();
-    {
-        let conn = store_a.lock_conn();
-        conn.execute(
+    let store_a = open_store(&db_a);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(
+        sqlx::query(
             "INSERT INTO entries (id, title, content, topic, category, source, created_at, updated_at)
              VALUES (1, 'alpha', 'alpha content', 't', 'p', 's', 1, 1)",
-            [],
         )
-        .unwrap();
-    }
+        .execute(store_a.write_pool_test()),
+    )
+    .unwrap();
     drop(store_a);
 
     // Populate B with "beta" entry
-    let store_b = Store::open(&db_b).unwrap();
-    {
-        let conn = store_b.lock_conn();
-        conn.execute(
+    let store_b = open_store(&db_b);
+    let rt2 = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt2.block_on(
+        sqlx::query(
             "INSERT INTO entries (id, title, content, topic, category, source, created_at, updated_at)
              VALUES (1, 'beta', 'beta content', 't', 'p', 's', 1, 1)",
-            [],
         )
-        .unwrap();
-    }
+        .execute(store_b.write_pool_test()),
+    )
+    .unwrap();
     drop(store_b);
 
     let output_dir = TempDir::new().unwrap();
@@ -891,42 +932,50 @@ fn test_project_dir_isolation() {
 #[test]
 fn test_performance_500_entries() {
     let (project_dir, db_path) = setup_project();
-    let store = Store::open(&db_path).unwrap();
-    {
-        let conn = store.lock_conn();
-        for id in 1..=500 {
-            conn.execute(
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(async {
+        for id in 1i64..=500 {
+            sqlx::query(
                 "INSERT INTO entries (
                     id, title, content, topic, category, source, status, confidence,
                     created_at, updated_at
                 ) VALUES (?1, 'Entry ' || ?1, 'Content for entry ' || ?1,
                           'topic', 'pattern', 'perf-test', 0, 0.5, 1700000000, 1700000000)",
-                rusqlite::params![id],
             )
+            .bind(id)
+            .execute(store.write_pool_server())
+            .await
             .unwrap();
         }
         // Add tags (2 per entry)
-        for id in 1..=500 {
-            conn.execute(
-                "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, 'tag-a')",
-                rusqlite::params![id],
-            )
-            .unwrap();
-            conn.execute(
-                "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, 'tag-b')",
-                rusqlite::params![id],
-            )
-            .unwrap();
+        for id in 1i64..=500 {
+            sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (?1, 'tag-a')")
+                .bind(id)
+                .execute(store.write_pool_server())
+                .await
+                .unwrap();
+            sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (?1, 'tag-b')")
+                .bind(id)
+                .execute(store.write_pool_server())
+                .await
+                .unwrap();
         }
         // Add co_access (1 per entry pair for first 100)
-        for id in 1..=100 {
-            conn.execute(
+        for id in 1i64..=100 {
+            sqlx::query(
                 "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (?1, ?2, 1, 1)",
-                rusqlite::params![id, id + 1],
             )
+            .bind(id)
+            .bind(id + 1)
+            .execute(store.write_pool_server())
+            .await
             .unwrap();
         }
-    }
+    });
     drop(store);
 
     let output_dir = TempDir::new().unwrap();

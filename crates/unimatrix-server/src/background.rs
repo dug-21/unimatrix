@@ -10,9 +10,8 @@ use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use unimatrix_core::async_wrappers::AsyncEntryStore;
 use unimatrix_core::{
-    CoreError, EmbedService, NewEntry, Store, StoreAdapter, VectorAdapter, VectorIndex, VectorStore,
+    CoreError, EmbedService, NewEntry, Store, VectorAdapter, VectorIndex, VectorStore,
 };
 use unimatrix_learn::TrainingService;
 use unimatrix_learn::models::{ConventionScorer, SignalClassifier};
@@ -23,8 +22,7 @@ use unimatrix_observe::extraction::{
     quality_gate, run_extraction_rules,
 };
 use unimatrix_observe::types::{HookType, ObservationRecord};
-use unimatrix_store::Status;
-use unimatrix_store::rusqlite;
+use unimatrix_store::{ShadowEvalRow, Status};
 
 use unimatrix_adapt::AdaptationService;
 
@@ -181,32 +179,23 @@ pub fn init_neural_enhancer() -> Option<(NeuralEnhancer, ShadowEvaluator)> {
 
 /// Persist shadow evaluation logs to the shadow_evaluations table.
 fn persist_shadow_evaluations(store: &Store, logs: &[ShadowLogEntry]) {
-    let conn = store.lock_conn();
-    let mut stmt = match conn.prepare_cached(
-        "INSERT INTO shadow_evaluations
-         (timestamp, rule_name, rule_category, neural_category,
-          neural_confidence, convention_score, rule_accepted, digest)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-    ) {
-        Ok(s) => s,
-        Err(e) => {
-            tracing::warn!("failed to prepare shadow_evaluations insert: {e}");
-            return;
-        }
-    };
-    for log in logs {
-        if let Err(e) = stmt.execute(rusqlite::params![
-            log.timestamp as i64,
-            log.rule_name,
-            log.rule_category,
-            log.neural_category,
-            log.neural_confidence as f64,
-            log.convention_score as f64,
-            log.rule_accepted as i32,
-            log.digest_bytes,
-        ]) {
-            tracing::warn!("failed to insert shadow evaluation: {e}");
-        }
+    let rows: Vec<ShadowEvalRow> = logs
+        .iter()
+        .map(|log| ShadowEvalRow {
+            timestamp: log.timestamp as i64,
+            rule_name: log.rule_name.clone(),
+            rule_category: log.rule_category.clone(),
+            neural_category: log.neural_category.clone(),
+            neural_confidence: log.neural_confidence as f64,
+            convention_score: log.convention_score as f64,
+            rule_accepted: log.rule_accepted as i32,
+            digest_bytes: Some(log.digest_bytes.clone()),
+        })
+        .collect();
+    if let Err(e) =
+        tokio::runtime::Handle::current().block_on(store.insert_shadow_evaluations(&rows))
+    {
+        tracing::warn!("failed to insert shadow evaluations: {e}");
     }
 }
 
@@ -224,7 +213,7 @@ pub fn spawn_background_tick(
     embed_service: Arc<EmbedServiceHandle>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     pending_entries: Arc<Mutex<PendingEntriesAnalysis>>,
     tick_metadata: Arc<Mutex<TickMetadata>>,
     training_service: Option<Arc<TrainingService>>,
@@ -283,7 +272,7 @@ async fn background_tick_loop(
     embed_service: Arc<EmbedServiceHandle>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     pending_entries: Arc<Mutex<PendingEntriesAnalysis>>,
     tick_metadata: Arc<Mutex<TickMetadata>>,
     _training_service: Option<Arc<TrainingService>>,
@@ -376,7 +365,7 @@ async fn run_single_tick(
     embed_service: &Arc<EmbedServiceHandle>,
     adapt_service: &Arc<AdaptationService>,
     session_registry: &SessionRegistry,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     pending_entries: &Arc<Mutex<PendingEntriesAnalysis>>,
     tick_metadata: &Arc<Mutex<TickMetadata>>,
     extraction_ctx: &mut ExtractionContext,
@@ -436,15 +425,14 @@ async fn run_single_tick(
     }
 
     // GH #264 fix: Rebuild supersession graph cache after maintenance tick completes.
-    // Runs inside spawn_blocking because Store uses Mutex<Connection> (sync).
-    // Wrapped in TICK_TIMEOUT (GH #266) so an abandoned blocking thread cannot
-    // hold the mutex indefinitely and block MCP handler spawn_blocking calls.
+    // Uses tokio::spawn (nxs-011: Store is now async sqlx, not sync Mutex<Connection>).
+    // Wrapped in TICK_TIMEOUT (GH #266) so a slow rebuild does not block the tick loop.
     // On timeout the existing cached state is retained (guard is not updated).
     {
         let store_clone = Arc::clone(store);
         match tokio::time::timeout(
             TICK_TIMEOUT,
-            tokio::task::spawn_blocking(move || SupersessionState::rebuild(&store_clone)),
+            tokio::spawn(async move { SupersessionState::rebuild(&store_clone).await }),
         )
         .await
         {
@@ -582,7 +570,7 @@ async fn run_single_tick(
 async fn maintenance_tick(
     status_svc: &StatusService,
     session_registry: &SessionRegistry,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     pending_entries: &Arc<Mutex<PendingEntriesAnalysis>>,
     effectiveness_state: &EffectivenessStateHandle,
     audit_log: &Arc<AuditLog>,
@@ -779,18 +767,9 @@ async fn process_auto_quarantine(
                 )
             });
 
-        // Quarantine via synchronous store path inside spawn_blocking (NFR-05).
-        // `Store::update_status` is the synchronous quarantine primitive.
-        let store_clone = Arc::clone(store);
-        let quarantine_result = tokio::task::spawn_blocking(move || {
-            store_clone
-                .update_status(entry_id, Status::Quarantined)
-                .map_err(|e| e.to_string())
-        })
-        .await;
-
-        match quarantine_result {
-            Ok(Ok(())) => {
+        // Quarantine via direct async await (nxs-011: Store is now async sqlx).
+        match store.update_status(entry_id, Status::Quarantined).await {
+            Ok(()) => {
                 // Quarantine succeeded — reset consecutive_bad_cycles counter (idempotent).
                 // Re-acquire write lock for counter reset only.
                 // `generation` is NOT incremented — search/briefing paths do not need to
@@ -817,7 +796,7 @@ async fn process_auto_quarantine(
 
                 quarantined.push(entry_id);
             }
-            Ok(Err(store_error)) => {
+            Err(store_error) => {
                 // Quarantine SQL failed (e.g., entry already quarantined or deleted).
                 // Do NOT reset counter — entry may still qualify next tick.
                 // Do NOT abort loop — continue to next candidate (R-03).
@@ -825,14 +804,6 @@ async fn process_auto_quarantine(
                     entry_id = entry_id,
                     error = %store_error,
                     "auto-quarantine: update_status failed, skipping entry"
-                );
-            }
-            Err(join_error) => {
-                // spawn_blocking panicked.
-                tracing::warn!(
-                    entry_id = entry_id,
-                    error = %join_error,
-                    "auto-quarantine: spawn_blocking join error, skipping entry"
                 );
             }
         }
@@ -957,60 +928,43 @@ fn parse_hook_type(s: &str) -> HookType {
 ///
 /// Returns `(records, new_watermark)` where `new_watermark` is the maximum
 /// observation `id` seen in the batch (unchanged from `watermark` if empty).
-/// The batch is bounded to `EXTRACTION_BATCH_SIZE` rows so that the
-/// `Mutex<Connection>` hold time is bounded regardless of backlog size. (#279)
+/// The batch is bounded to `EXTRACTION_BATCH_SIZE` rows. (#279)
 ///
 /// Extracted from `extraction_tick` for unit testability of the batch/watermark
 /// logic without requiring the full embedding pipeline.
-fn fetch_observation_batch(
+async fn fetch_observation_batch(
     store: &Store,
     watermark: u64,
 ) -> Result<(Vec<ObservationRecord>, u64), ServiceError> {
-    let conn = store.lock_conn();
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, ts_millis, hook, session_id, tool, input, response_size, response_snippet
-             FROM observations WHERE id > ?1 ORDER BY id ASC LIMIT ?2",
-        )
-        .map_err(|e| {
-            ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Sqlite(e)))
-        })?;
+    use sqlx::Row;
+    let pool = store.write_pool_server();
+    let rows = sqlx::query(
+        "SELECT id, ts_millis, hook, session_id, tool, input, response_size, response_snippet
+         FROM observations WHERE id > ?1 ORDER BY id ASC LIMIT ?2",
+    )
+    .bind(watermark as i64)
+    .bind(EXTRACTION_BATCH_SIZE)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| {
+        ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Database(
+            e.to_string().into(),
+        )))
+    })?;
 
     let mut records = Vec::new();
     let mut max_id = watermark;
-    let rows = stmt
-        .query_map(
-            rusqlite::params![watermark as i64, EXTRACTION_BATCH_SIZE],
-            |row| {
-                let id: i64 = row.get(0)?;
-                let ts: i64 = row.get(1)?;
-                let hook_str: String = row.get(2)?;
-                let session_id: String = row.get(3)?;
-                let tool: Option<String> = row.get(4)?;
-                let input_str: Option<String> = row.get(5)?;
-                let response_size: Option<i64> = row.get(6)?;
-                let snippet: Option<String> = row.get(7)?;
-                Ok((
-                    id,
-                    ts,
-                    hook_str,
-                    session_id,
-                    tool,
-                    input_str,
-                    response_size,
-                    snippet,
-                ))
-            },
-        )
-        .map_err(|e| {
-            ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Sqlite(e)))
-        })?;
 
     for row in rows {
-        let (id, ts, hook_str, session_id, tool, input_str, response_size, snippet) =
-            row.map_err(|e| {
-                ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Sqlite(e)))
-            })?;
+        let id: i64 = row.get::<i64, _>(0);
+        let ts: i64 = row.get::<i64, _>(1);
+        let hook_str: String = row.get::<String, _>(2);
+        let session_id: String = row.get::<String, _>(3);
+        let tool: Option<String> = row.get::<Option<String>, _>(4);
+        let input_str: Option<String> = row.get::<Option<String>, _>(5);
+        let response_size: Option<i64> = row.get::<Option<i64>, _>(6);
+        let snippet: Option<String> = row.get::<Option<String>, _>(7);
+
         if id as u64 > max_id {
             max_id = id as u64;
         }
@@ -1046,12 +1000,9 @@ async fn extraction_tick(
     let store_clone = Arc::clone(store);
     let watermark = ctx.last_watermark;
 
-    // 1. Query new observations since watermark (spawn_blocking).
-    // Bounded to EXTRACTION_BATCH_SIZE rows to cap Mutex<Connection> hold time. (#279)
-    let (observations, new_watermark) =
-        tokio::task::spawn_blocking(move || fetch_observation_batch(&store_clone, watermark))
-            .await
-            .map_err(|e| ServiceError::Core(CoreError::JoinError(e.to_string())))??;
+    // 1. Query new observations since watermark (async sqlx, nxs-011).
+    // Bounded to EXTRACTION_BATCH_SIZE rows. (#279)
+    let (observations, new_watermark) = fetch_observation_batch(&store_clone, watermark).await?;
 
     if observations.is_empty() {
         return Ok(ctx.stats.clone());
@@ -1208,18 +1159,16 @@ async fn extraction_tick(
                     trust_source: trust_source.to_string(),
                 };
 
-                let store_for_entry = Arc::clone(&store_for_insert);
-                match tokio::task::spawn_blocking(move || store_for_entry.insert(new_entry)).await {
-                    Ok(Ok(id)) => {
+                // Direct await (nxs-011: store.insert is now async sqlx, tokio::spawn
+                // triggers lifetime constraint errors with sqlx::Acquire).
+                match store_for_insert.insert(new_entry).await {
+                    Ok(id) => {
                         tracing::info!(entry_id = id, rule = %rule_name, "auto-extracted entry stored");
                         ctx.stats.entries_extracted_total += 1;
                         *ctx.stats.rules_fired.entry(rule_name).or_insert(0) += 1;
                     }
-                    Ok(Err(e)) => {
-                        tracing::warn!(rule = %rule_name, error = %e, "failed to store extracted entry");
-                    }
                     Err(e) => {
-                        tracing::warn!(rule = %rule_name, error = %e, "store task panicked");
+                        tracing::warn!(rule = %rule_name, error = %e, "failed to store extracted entry");
                     }
                 }
             }
@@ -1241,6 +1190,8 @@ mod tests {
     use unimatrix_engine::effectiveness::EffectivenessCategory;
 
     use crate::services::effectiveness::EffectivenessState;
+    #[allow(unused_imports)]
+    use sqlx::Row;
 
     // ---------------------------------------------------------------------------
     // Legacy tests (preserved)
@@ -1877,49 +1828,51 @@ mod tests {
     // ---------------------------------------------------------------------------
 
     /// Read the most recent audit_log rows (up to `limit`) from a store.
-    fn read_recent_audit_events(
-        store: &unimatrix_store::Store,
+    async fn read_recent_audit_events(
+        store: &unimatrix_store::SqlxStore,
         limit: i64,
     ) -> Vec<unimatrix_store::AuditEvent> {
-        let conn = store.lock_conn();
-        let mut stmt = match conn.prepare(
+        use sqlx::Row;
+        let pool = store.write_pool_server();
+        let rows = sqlx::query(
             "SELECT event_id, timestamp, session_id, agent_id, operation,
                     target_ids, outcome, detail
              FROM audit_log ORDER BY event_id DESC LIMIT ?1",
-        ) {
-            Ok(s) => s,
-            Err(_) => return vec![],
-        };
-        let rows = match stmt.query_map(unimatrix_store::rusqlite::params![limit], |row| {
-            let target_ids_json: String = row.get("target_ids")?;
-            let target_ids: Vec<u64> = serde_json::from_str(&target_ids_json).unwrap_or_default();
-            Ok(unimatrix_store::AuditEvent {
-                event_id: row.get::<_, i64>("event_id")? as u64,
-                timestamp: row.get::<_, i64>("timestamp")? as u64,
-                session_id: row.get("session_id")?,
-                agent_id: row.get("agent_id")?,
-                operation: row.get("operation")?,
-                target_ids,
-                outcome: Outcome::try_from(row.get::<_, i64>("outcome")? as u8)
-                    .unwrap_or(Outcome::Error),
-                detail: row.get("detail")?,
+        )
+        .bind(limit)
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
+
+        rows.into_iter()
+            .filter_map(|row| {
+                let target_ids_json: String = row.get::<String, _>(5);
+                let target_ids: Vec<u64> =
+                    serde_json::from_str(&target_ids_json).unwrap_or_default();
+                Some(unimatrix_store::AuditEvent {
+                    event_id: row.get::<i64, _>(0) as u64,
+                    timestamp: row.get::<i64, _>(1) as u64,
+                    session_id: row.get::<String, _>(2),
+                    agent_id: row.get::<String, _>(3),
+                    operation: row.get::<String, _>(4),
+                    target_ids,
+                    outcome: Outcome::try_from(row.get::<i64, _>(6) as u8)
+                        .unwrap_or(Outcome::Error),
+                    detail: row.get::<String, _>(7),
+                })
             })
-        }) {
-            Ok(r) => r,
-            Err(_) => return vec![],
-        };
-        rows.filter_map(|r| r.ok()).collect()
+            .collect()
     }
 
-    #[test]
-    fn test_emit_auto_quarantine_audit_detail_fields() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_emit_auto_quarantine_audit_detail_fields() {
         use crate::infra::audit::AuditLog;
         use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
 
         let tmp = TempDir::new().expect("tempdir");
-        let db_path = tmp.path().join("test.db");
 
-        let store = Arc::new(unimatrix_store::Store::open(&db_path).expect("store open"));
+        let store = Arc::new(open_test_store(&tmp).await);
         let audit_log = Arc::new(AuditLog::new(Arc::clone(&store)));
 
         emit_auto_quarantine_audit(
@@ -1933,7 +1886,7 @@ mod tests {
             3,
         );
 
-        let events = read_recent_audit_events(&store, 10);
+        let events = read_recent_audit_events(&store, 10).await;
         let event = events
             .iter()
             .find(|e| e.operation == "auto_quarantine")
@@ -1971,20 +1924,20 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_emit_tick_skipped_audit_detail_fields() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_emit_tick_skipped_audit_detail_fields() {
         use crate::infra::audit::AuditLog;
         use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
 
         let tmp = TempDir::new().expect("tempdir");
-        let db_path = tmp.path().join("test2.db");
 
-        let store = Arc::new(unimatrix_store::Store::open(&db_path).expect("store open"));
+        let store = Arc::new(open_test_store(&tmp).await);
         let audit_log = Arc::new(AuditLog::new(Arc::clone(&store)));
 
         emit_tick_skipped_audit(&audit_log, "db locked".to_string());
 
-        let events = read_recent_audit_events(&store, 10);
+        let events = read_recent_audit_events(&store, 10).await;
         let event = events
             .iter()
             .find(|e| e.operation == "tick_skipped")
@@ -2210,28 +2163,32 @@ mod tests {
     //
     // These tests verify that the observation fetch is bounded to
     // EXTRACTION_BATCH_SIZE rows per call and that the watermark advances
-    // correctly across multiple calls.  No ONNX model is required — the helper
-    // function is synchronous and only touches SQLite.
+    // correctly across multiple calls.  No ONNX model is required.
     // ---------------------------------------------------------------------------
 
     /// Insert `count` observations into the store, returning the session_id used.
-    fn insert_n_observations(store: &unimatrix_store::Store, count: usize) -> String {
+    async fn insert_n_observations(store: &unimatrix_store::SqlxStore, count: usize) -> String {
         let session_id = "test-session-batch".to_string();
-        let conn = store.lock_conn();
-        // Ensure a session row exists (observations table has no FK, but tests
-        // that use sessions table helpers in observation.rs do insert one).
-        let _ = conn.execute(
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT OR IGNORE INTO sessions (session_id, feature_cycle, started_at, status)
              VALUES (?1, NULL, 1700000000, 0)",
-            rusqlite::params![&session_id],
-        );
+        )
+        .bind(&session_id)
+        .execute(pool)
+        .await
+        .expect("insert session");
+
         for i in 0..count {
-            conn.execute(
+            sqlx::query(
                 "INSERT INTO observations
                  (session_id, ts_millis, hook, tool, input, response_size, response_snippet)
                  VALUES (?1, ?2, 'PreToolUse', 'Read', NULL, NULL, NULL)",
-                rusqlite::params![&session_id, 1_700_000_000_000_i64 + i as i64],
             )
+            .bind(&session_id)
+            .bind(1_700_000_000_000_i64 + i as i64)
+            .execute(pool)
+            .await
             .expect("insert observation");
         }
         session_id
@@ -2239,18 +2196,19 @@ mod tests {
 
     /// AC-01: First batch returns exactly EXTRACTION_BATCH_SIZE rows when backlog
     /// exceeds the limit.
-    #[test]
-    fn test_fetch_observation_batch_first_batch_capped_at_batch_size() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_fetch_observation_batch_first_batch_capped_at_batch_size() {
         use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
         let tmp = TempDir::new().expect("tempdir");
-        let store =
-            unimatrix_store::Store::open(tmp.path().join("obs_batch.db")).expect("store open");
+        let store = open_test_store(&tmp).await;
 
         let total: usize = (EXTRACTION_BATCH_SIZE as usize) + 200; // 1200
-        insert_n_observations(&store, total);
+        insert_n_observations(&store, total).await;
 
-        let (records, new_watermark) =
-            fetch_observation_batch(&store, 0).expect("fetch must succeed");
+        let (records, new_watermark) = fetch_observation_batch(&store, 0)
+            .await
+            .expect("fetch must succeed");
 
         assert_eq!(
             records.len(),
@@ -2265,20 +2223,24 @@ mod tests {
 
     /// AC-02: Second call advances watermark by another EXTRACTION_BATCH_SIZE rows
     /// when remaining backlog >= batch size.
-    #[test]
-    fn test_fetch_observation_batch_second_call_advances_watermark() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_fetch_observation_batch_second_call_advances_watermark() {
         use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
         let tmp = TempDir::new().expect("tempdir");
-        let store =
-            unimatrix_store::Store::open(tmp.path().join("obs_batch2.db")).expect("store open");
+        let store = open_test_store(&tmp).await;
 
         let total: usize = EXTRACTION_BATCH_SIZE as usize * 2 + 200; // 2200
-        insert_n_observations(&store, total);
+        insert_n_observations(&store, total).await;
 
-        let (_, wm1) = fetch_observation_batch(&store, 0).expect("first fetch");
+        let (_, wm1) = fetch_observation_batch(&store, 0)
+            .await
+            .expect("first fetch");
         assert_eq!(wm1, EXTRACTION_BATCH_SIZE as u64);
 
-        let (records2, wm2) = fetch_observation_batch(&store, wm1).expect("second fetch");
+        let (records2, wm2) = fetch_observation_batch(&store, wm1)
+            .await
+            .expect("second fetch");
         assert_eq!(
             records2.len(),
             EXTRACTION_BATCH_SIZE as usize,
@@ -2293,19 +2255,23 @@ mod tests {
 
     /// AC-03: Third call (remainder) returns only the leftover rows and watermark
     /// advances to the maximum id in the store.
-    #[test]
-    fn test_fetch_observation_batch_remainder_processed_on_third_tick() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_fetch_observation_batch_remainder_processed_on_third_tick() {
         use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
         let tmp = TempDir::new().expect("tempdir");
-        let store =
-            unimatrix_store::Store::open(tmp.path().join("obs_batch3.db")).expect("store open");
+        let store = open_test_store(&tmp).await;
 
         let remainder = 200_usize;
         let total: usize = EXTRACTION_BATCH_SIZE as usize + remainder; // 1200
-        insert_n_observations(&store, total);
+        insert_n_observations(&store, total).await;
 
-        let (_, wm1) = fetch_observation_batch(&store, 0).expect("first fetch");
-        let (records2, wm2) = fetch_observation_batch(&store, wm1).expect("second fetch");
+        let (_, wm1) = fetch_observation_batch(&store, 0)
+            .await
+            .expect("first fetch");
+        let (records2, wm2) = fetch_observation_batch(&store, wm1)
+            .await
+            .expect("second fetch");
 
         assert_eq!(
             records2.len(),
@@ -2319,15 +2285,16 @@ mod tests {
     }
 
     /// AC-04: Empty store returns empty records and watermark unchanged.
-    #[test]
-    fn test_fetch_observation_batch_empty_store_returns_empty() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_fetch_observation_batch_empty_store_returns_empty() {
         use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
         let tmp = TempDir::new().expect("tempdir");
-        let store =
-            unimatrix_store::Store::open(tmp.path().join("obs_empty.db")).expect("store open");
+        let store = open_test_store(&tmp).await;
 
-        let (records, new_watermark) =
-            fetch_observation_batch(&store, 0).expect("fetch must succeed on empty store");
+        let (records, new_watermark) = fetch_observation_batch(&store, 0)
+            .await
+            .expect("fetch must succeed on empty store");
 
         assert!(records.is_empty(), "empty store must return no records");
         assert_eq!(
@@ -2337,21 +2304,25 @@ mod tests {
     }
 
     /// AC-05: Batch does not re-process rows already past the watermark.
-    #[test]
-    fn test_fetch_observation_batch_no_reprocessing_past_watermark() {
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_fetch_observation_batch_no_reprocessing_past_watermark() {
         use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
         let tmp = TempDir::new().expect("tempdir");
-        let store =
-            unimatrix_store::Store::open(tmp.path().join("obs_nowm.db")).expect("store open");
+        let store = open_test_store(&tmp).await;
 
-        insert_n_observations(&store, 50);
+        insert_n_observations(&store, 50).await;
 
         // First call: consume all 50
-        let (recs1, wm1) = fetch_observation_batch(&store, 0).expect("first fetch");
+        let (recs1, wm1) = fetch_observation_batch(&store, 0)
+            .await
+            .expect("first fetch");
         assert_eq!(recs1.len(), 50);
 
         // Second call: nothing left past watermark
-        let (recs2, wm2) = fetch_observation_batch(&store, wm1).expect("second fetch");
+        let (recs2, wm2) = fetch_observation_batch(&store, wm1)
+            .await
+            .expect("second fetch");
         assert!(
             recs2.is_empty(),
             "no rows must be returned after watermark catches up"
