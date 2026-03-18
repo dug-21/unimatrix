@@ -51,6 +51,8 @@ pub struct PoolConfig {
 
     /// Maximum concurrent write connections. Hard cap: must be ≤ 2 (AC-09, NF-01).
     /// Values > 2 are rejected at open time with `StoreError::InvalidPoolConfig`.
+    /// Default is 1 to serialize all writes and avoid SQLITE_BUSY_SNAPSHOT under
+    /// concurrent WAL transactions (fire-and-forget usage recording pattern).
     pub write_max_connections: u32,
 
     /// Timeout for acquiring a read pool connection (ADR-001).
@@ -65,11 +67,13 @@ pub struct PoolConfig {
 impl Default for PoolConfig {
     /// Production-safe defaults per ADR-001.
     ///
-    /// `read_max=8`, `write_max=2`, `read_timeout=2s`, `write_timeout=5s`.
+    /// `read_max=8`, `write_max=1`, `read_timeout=2s`, `write_timeout=5s`.
+    /// write_max=1 serializes all writes, preventing SQLITE_BUSY_SNAPSHOT conflicts
+    /// from concurrent deferred WAL transactions (fire-and-forget usage recording).
     fn default() -> Self {
         Self {
             read_max_connections: 8,
-            write_max_connections: 2,
+            write_max_connections: 1,
             read_acquire_timeout: READ_POOL_ACQUIRE_TIMEOUT,
             write_acquire_timeout: WRITE_POOL_ACQUIRE_TIMEOUT,
         }
@@ -131,13 +135,17 @@ impl PoolConfig {
 /// Every connection in the pool — including lazily-created ones — receives these PRAGMAs
 /// because they are applied via `SqliteConnectOptions::pragma()` at connection-open time.
 pub(crate) fn build_connect_options(path: &Path) -> SqliteConnectOptions {
+    // `.busy_timeout()` calls `sqlite3_busy_timeout()` at the C-API level at
+    // connection-open time — before any PRAGMA executes. The PRAGMA below is
+    // belt-and-suspenders for any connection path that doesn't go through here.
     SqliteConnectOptions::new()
         .filename(path)
+        .busy_timeout(Duration::from_secs(10))
         .pragma("journal_mode", "WAL")
         .pragma("synchronous", "NORMAL")
         .pragma("wal_autocheckpoint", "1000")
         .pragma("foreign_keys", "ON")
-        .pragma("busy_timeout", "5000") // milliseconds
+        .pragma("busy_timeout", "10000") // milliseconds — belt-and-suspenders
         .pragma("cache_size", "-16384") // negative = kibibytes
         .create_if_missing(true)
 }
@@ -155,7 +163,7 @@ pub(crate) async fn apply_pragmas_to_connection(
     conn.execute("PRAGMA synchronous = NORMAL").await?;
     conn.execute("PRAGMA wal_autocheckpoint = 1000").await?;
     conn.execute("PRAGMA foreign_keys = ON").await?;
-    conn.execute("PRAGMA busy_timeout = 5000").await?;
+    conn.execute("PRAGMA busy_timeout = 10000").await?;
     conn.execute("PRAGMA cache_size = -16384").await?;
     Ok(())
 }
@@ -172,7 +180,7 @@ mod tests {
     fn test_pool_config_default_values() {
         let cfg = PoolConfig::default();
         assert_eq!(cfg.read_max_connections, 8);
-        assert_eq!(cfg.write_max_connections, 2);
+        assert_eq!(cfg.write_max_connections, 1);
         assert_eq!(cfg.read_acquire_timeout, Duration::from_secs(2));
         assert_eq!(cfg.write_acquire_timeout, Duration::from_secs(5));
     }
