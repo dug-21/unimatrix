@@ -2301,8 +2301,10 @@ fn insert_observation(
 
 /// Insert a batch of observations in a single transaction.
 ///
-/// Called from within a `spawn_blocking` context; uses `block_on` to bridge
-/// the async sqlx pool into this sync environment.
+/// Uses `block_on(async { pool.begin().await ... })` so that BEGIN, all
+/// INSERTs, and COMMIT are guaranteed to run on the same connection.
+/// Raw `BEGIN`/`COMMIT` executed against the pool directly is unsafe because
+/// each `.execute(pool)` call may acquire a different connection.
 fn insert_observations_batch(
     store: &Store,
     batch: &[ObservationRow],
@@ -2312,43 +2314,32 @@ fn insert_observations_batch(
     }
     let pool = store.write_pool_server();
     let handle = tokio::runtime::Handle::current();
-    handle
-        .block_on(sqlx::query("BEGIN").execute(pool))
-        .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
-    let result = (|| -> Result<(), unimatrix_store::StoreError> {
+    handle.block_on(async {
+        let mut txn = pool
+            .begin()
+            .await
+            .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
         for obs in batch {
-            handle
-                .block_on(
-                    sqlx::query(
-                        "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal)
-                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-                    )
-                    .bind(&obs.session_id)
-                    .bind(obs.ts_millis)
-                    .bind(&obs.hook)
-                    .bind(&obs.tool)
-                    .bind(&obs.input)
-                    .bind(obs.response_size)
-                    .bind(&obs.response_snippet)
-                    .bind(&obs.topic_signal)
-                    .execute(pool),
-                )
-                .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
+            sqlx::query(
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            )
+            .bind(&obs.session_id)
+            .bind(obs.ts_millis)
+            .bind(&obs.hook)
+            .bind(&obs.tool)
+            .bind(&obs.input)
+            .bind(obs.response_size)
+            .bind(&obs.response_snippet)
+            .bind(&obs.topic_signal)
+            .execute(&mut *txn)
+            .await
+            .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
         }
-        Ok(())
-    })();
-    match result {
-        Ok(()) => {
-            handle
-                .block_on(sqlx::query("COMMIT").execute(pool))
-                .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
-            Ok(())
-        }
-        Err(e) => {
-            let _ = handle.block_on(sqlx::query("ROLLBACK").execute(pool));
-            Err(e)
-        }
-    }
+        txn.commit()
+            .await
+            .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))
+    })
 }
 
 #[cfg(test)]

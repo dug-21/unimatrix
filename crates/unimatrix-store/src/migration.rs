@@ -563,22 +563,22 @@ async fn run_v5_to_v6_migration(txn: &mut sqlx::Transaction<'_, sqlx::Sqlite>) -
     // Step 9: Migrate audit_log
     migrate_audit_log_v5_to_v6(txn).await?;
 
-    // Step 10: Drop old tables
-    for table in &[
-        "entries",
-        "topic_index",
-        "category_index",
-        "tag_index",
-        "time_index",
-        "status_index",
-        "co_access",
-        "sessions",
-        "injection_log",
-        "signal_queue",
-        "agent_registry",
-        "audit_log",
+    // Step 10: Drop old tables (inline literals — no format! interpolation)
+    for sql in &[
+        "DROP TABLE IF EXISTS entries",
+        "DROP TABLE IF EXISTS topic_index",
+        "DROP TABLE IF EXISTS category_index",
+        "DROP TABLE IF EXISTS tag_index",
+        "DROP TABLE IF EXISTS time_index",
+        "DROP TABLE IF EXISTS status_index",
+        "DROP TABLE IF EXISTS co_access",
+        "DROP TABLE IF EXISTS sessions",
+        "DROP TABLE IF EXISTS injection_log",
+        "DROP TABLE IF EXISTS signal_queue",
+        "DROP TABLE IF EXISTS agent_registry",
+        "DROP TABLE IF EXISTS audit_log",
     ] {
-        sqlx::query(&format!("DROP TABLE IF EXISTS {table}"))
+        sqlx::query(sql)
             .execute(&mut **txn)
             .await
             .map_err(|e| StoreError::Migration {
@@ -586,17 +586,17 @@ async fn run_v5_to_v6_migration(txn: &mut sqlx::Transaction<'_, sqlx::Sqlite>) -
             })?;
     }
 
-    // Step 11: Rename new tables
-    for (old, new) in &[
-        ("entries_v6", "entries"),
-        ("co_access_v6", "co_access"),
-        ("sessions_v6", "sessions"),
-        ("injection_log_v6", "injection_log"),
-        ("signal_queue_v6", "signal_queue"),
-        ("agent_registry_v6", "agent_registry"),
-        ("audit_log_v6", "audit_log"),
+    // Step 11: Rename new tables (inline literals — no format! interpolation)
+    for sql in &[
+        "ALTER TABLE entries_v6 RENAME TO entries",
+        "ALTER TABLE co_access_v6 RENAME TO co_access",
+        "ALTER TABLE sessions_v6 RENAME TO sessions",
+        "ALTER TABLE injection_log_v6 RENAME TO injection_log",
+        "ALTER TABLE signal_queue_v6 RENAME TO signal_queue",
+        "ALTER TABLE agent_registry_v6 RENAME TO agent_registry",
+        "ALTER TABLE audit_log_v6 RENAME TO audit_log",
     ] {
-        sqlx::query(&format!("ALTER TABLE {old} RENAME TO {new}"))
+        sqlx::query(sql)
             .execute(&mut **txn)
             .await
             .map_err(|e| StoreError::Migration {
