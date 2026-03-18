@@ -858,9 +858,14 @@ fn emit_tick_skipped_audit(audit_log: &Arc<AuditLog>, error_reason: String) {
         detail: format!("background tick compute_report failed: {}", error_reason),
     };
 
-    if let Err(e) = audit_log.log_event(event) {
-        tracing::warn!(error = %e, "failed to emit tick_skipped audit event");
-    }
+    // Fire-and-forget — GH #308: log_event() used block_in_place which starved
+    // the rmcp session loop when the analytics drain task held the write connection.
+    let audit = Arc::clone(audit_log);
+    tokio::spawn(async move {
+        if let Err(e) = audit.log_event_async(event).await {
+            tracing::warn!(error = %e, "failed to emit tick_skipped audit event");
+        }
+    });
 }
 
 /// Emit an `auto_quarantine` audit event for a successfully quarantined entry.
@@ -908,14 +913,18 @@ fn emit_auto_quarantine_audit(
         detail,
     };
 
-    if let Err(e) = audit_log.log_event(event) {
-        tracing::warn!(
-            entry_id = entry_id,
-            error = %e,
-            "auto-quarantine: failed to write audit event"
-        );
-        // Do not escalate — quarantine succeeded even if audit write fails.
-    }
+    // Fire-and-forget — GH #308: same write-pool starvation fix as emit_tick_skipped_audit.
+    // Do not escalate — quarantine succeeded even if audit write fails.
+    let audit = Arc::clone(audit_log);
+    tokio::spawn(async move {
+        if let Err(e) = audit.log_event_async(event).await {
+            tracing::warn!(
+                entry_id = entry_id,
+                error = %e,
+                "auto-quarantine: failed to write audit event"
+            );
+        }
+    });
 }
 
 /// Parse a hook type string into a HookType enum.
@@ -1891,6 +1900,10 @@ mod tests {
             3,
         );
 
+        // GH #308: emit_auto_quarantine_audit now spawns a task (fire-and-forget).
+        // Sleep briefly to let the spawned task acquire the DB connection and commit.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
         let events = read_recent_audit_events(&store, 10).await;
         let event = events
             .iter()
@@ -1941,6 +1954,10 @@ mod tests {
         let audit_log = Arc::new(AuditLog::new(Arc::clone(&store)));
 
         emit_tick_skipped_audit(&audit_log, "db locked".to_string());
+
+        // GH #308: emit_tick_skipped_audit now spawns a task (fire-and-forget).
+        // Sleep briefly to let the spawned task acquire the DB connection and commit.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         let events = read_recent_audit_events(&store, 10).await;
         let event = events
