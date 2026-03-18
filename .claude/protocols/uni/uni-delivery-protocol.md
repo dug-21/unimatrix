@@ -77,6 +77,11 @@ The Delivery Leader spawns both agents in parallel (ONE message):
 Task(subagent_type: "uni-pseudocode",
   prompt: "Your agent ID: {feature-id}-agent-1-pseudocode
 
+    Before starting, search Unimatrix for relevant patterns and this feature's ADRs:
+    - context_search(query: '{feature area} patterns conventions', category: 'pattern')
+    - context_search(query: '{feature-id} architectural decisions', category: 'decision', topic: '{feature-id}')
+    Fall back to reading ADR files in product/features/{id}/architecture/ if results are insufficient.
+
     Read these files before starting:
     - product/features/{id}/IMPLEMENTATION-BRIEF.md
     - product/features/{id}/architecture/ARCHITECTURE.md
@@ -96,6 +101,11 @@ Task(subagent_type: "uni-tester",
   prompt: "Your agent ID: {feature-id}-agent-2-testplan
 
     PHASE: Test Plan Design (Stage 3a)
+
+    Before starting, search Unimatrix for this feature's ADRs and relevant test patterns:
+    - context_search(query: '{feature-id} architectural decisions', category: 'decision', topic: '{feature-id}')
+    - context_search(query: '{feature area} testing patterns edge cases')
+    Fall back to reading ADR files in product/features/{id}/architecture/ if results are insufficient.
 
     Read these files before starting:
     - product/features/{id}/IMPLEMENTATION-BRIEF.md
@@ -203,6 +213,11 @@ For each wave (in order):
 ```
 Task(subagent_type: "uni-rust-dev",
   prompt: "Your agent ID: {feature-id}-agent-3-{component-1}
+
+    Before implementing, search Unimatrix for relevant patterns and this feature's ADRs:
+    - context_search(query: '{component area} implementation patterns', category: 'pattern')
+    - context_search(query: '{feature-id} architectural decisions', category: 'decision', topic: '{feature-id}')
+    Fall back to reading ADR files in product/features/{id}/architecture/ if results are insufficient.
 
     Read these files before starting:
     - product/features/{id}/IMPLEMENTATION-BRIEF.md

@@ -134,6 +134,7 @@ The Design Leader spawns two specialists in parallel:
 - Technology decisions with rationale
 - Integration points and dependencies
 - ADRs as individual files in `architecture/`
+- **Store each ADR in Unimatrix** immediately after writing the file — `context_store(category: "decision", topic: "{feature-id}", feature_cycle: "{feature-id}", title: "{ADR title}", tags: ["adr", "{feature-id}"])` — so delivery agents can retrieve decisions via search without reading every ADR file
 
 **uni-specification → Specification** (`specification/SPECIFICATION.md`)
 
@@ -154,7 +155,12 @@ Each specialist receives:
 Task(subagent_type: "uni-architect", prompt: "Your agent ID: {id}-agent-1-architect
     ...
     Read scope risk assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
-    Address SR-XX risks in your architecture decisions where applicable. ...")
+    Address SR-XX risks in your architecture decisions where applicable.
+
+    After writing each ADR file, store it in Unimatrix:
+    context_store(category: 'decision', topic: '{feature-id}', feature_cycle: '{feature-id}',
+      title: '{ADR title}', tags: ['adr', '{feature-id}'], content: '{full ADR content}')
+    ...")
 Task(subagent_type: "uni-specification", prompt: "Your agent ID: {id}-agent-2-spec
     ...
     Read scope risk assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
