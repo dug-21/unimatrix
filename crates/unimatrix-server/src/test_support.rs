@@ -10,10 +10,8 @@ use std::sync::Arc;
 
 use unimatrix_adapt::AdaptationService;
 use unimatrix_core::Store;
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-use unimatrix_core::{
-    EntryRecord, QueryFilter, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex,
-};
+use unimatrix_core::async_wrappers::AsyncVectorStore;
+use unimatrix_core::{EntryRecord, QueryFilter, VectorAdapter, VectorConfig, VectorIndex};
 use unimatrix_embed::EmbedConfig;
 
 use crate::infra::audit::AuditLog;
@@ -76,10 +74,9 @@ impl TestHarness {
                 .expect("failed to create vector index"),
         );
 
-        let store_adapter = StoreAdapter::new(Arc::clone(&store));
         let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
 
-        let entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
+        let entry_store = Arc::clone(&store);
         let vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
         let embed_handle = EmbedServiceHandle::new();

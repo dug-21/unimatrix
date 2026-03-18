@@ -4,9 +4,9 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{
-    EmbedService, EntryRecord, QueryFilter, Status, Store, StoreAdapter, VectorAdapter,
+    CoreError, EmbedService, EntryRecord, QueryFilter, Status, Store, VectorAdapter,
 };
 
 use unimatrix_adapt::AdaptationService;
@@ -87,7 +87,7 @@ pub(crate) struct ScoredEntry {
 pub(crate) struct SearchService {
     store: Arc<Store>,
     vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     embed_service: Arc<EmbedServiceHandle>,
     adapt_service: Arc<AdaptationService>,
     gateway: Arc<SecurityGateway>,
@@ -130,7 +130,7 @@ impl SearchService {
     pub(crate) fn new(
         store: Arc<Store>,
         vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-        entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+        entry_store: Arc<Store>,
         embed_service: Arc<EmbedServiceHandle>,
         adapt_service: Arc<AdaptationService>,
         gateway: Arc<SecurityGateway>,
@@ -242,7 +242,7 @@ impl SearchService {
                 .entry_store
                 .query(filter.clone())
                 .await
-                .map_err(ServiceError::Core)?;
+                .map_err(|e| ServiceError::Core(CoreError::Store(e)))?;
             let allowed_ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
             if allowed_ids.is_empty() {
                 vec![]

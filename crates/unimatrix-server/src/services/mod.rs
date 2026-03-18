@@ -6,8 +6,8 @@
 use std::fmt;
 use std::sync::Arc;
 
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-use unimatrix_core::{CoreError, Store, StoreAdapter, VectorAdapter, VectorIndex};
+use unimatrix_core::async_wrappers::AsyncVectorStore;
+use unimatrix_core::{CoreError, Store, VectorAdapter, VectorIndex};
 use unimatrix_store::StoreError;
 
 use unimatrix_adapt::AdaptationService;
@@ -291,7 +291,7 @@ impl ServiceLayer {
         store: Arc<Store>,
         vector_index: Arc<VectorIndex>,
         vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-        entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+        entry_store: Arc<Store>,
         embed_service: Arc<EmbedServiceHandle>,
         adapt_service: Arc<AdaptationService>,
         audit: Arc<AuditLog>,
@@ -314,7 +314,7 @@ impl ServiceLayer {
         store: Arc<Store>,
         vector_index: Arc<VectorIndex>,
         vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-        entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+        entry_store: Arc<Store>,
         embed_service: Arc<EmbedServiceHandle>,
         adapt_service: Arc<AdaptationService>,
         audit: Arc<AuditLog>,

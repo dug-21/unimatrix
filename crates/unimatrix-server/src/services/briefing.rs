@@ -7,8 +7,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use unimatrix_core::async_wrappers::AsyncEntryStore;
-use unimatrix_core::{EntryRecord, QueryFilter, Status, StoreAdapter};
+use unimatrix_core::{CoreError, EntryRecord, QueryFilter, Status, Store};
 use unimatrix_engine::effectiveness::EffectivenessCategory;
 
 use crate::infra::audit::{AuditEvent, Outcome};
@@ -28,7 +27,7 @@ use crate::services::{AuditContext, CallerId, ServiceError};
 /// active, token budget, and whether semantic search is invoked.
 #[derive(Clone)]
 pub(crate) struct BriefingService {
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     search: SearchService,
     gateway: Arc<SecurityGateway>,
     semantic_k: usize,
@@ -146,7 +145,7 @@ fn parse_semantic_k_from(value: Option<String>) -> usize {
 
 impl BriefingService {
     pub(crate) fn new(
-        entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+        entry_store: Arc<Store>,
         search: SearchService,
         gateway: Arc<SecurityGateway>,
         semantic_k: usize,
@@ -251,7 +250,7 @@ impl BriefingService {
                         time_range: None,
                     })
                     .await
-                    .map_err(ServiceError::Core)?;
+                    .map_err(|e| ServiceError::Core(CoreError::Store(e)))?;
 
                 // S4: exclude quarantined (defense-in-depth)
                 conv_entries.retain(|e| !SecurityGateway::is_quarantined(&e.status));
@@ -578,8 +577,8 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-    use unimatrix_core::{NewEntry, Store, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex};
+    use unimatrix_core::async_wrappers::AsyncVectorStore;
+    use unimatrix_core::{NewEntry, Store, VectorAdapter, VectorConfig, VectorIndex};
     use unimatrix_engine::effectiveness::EffectivenessCategory;
 
     use crate::infra::audit::AuditLog;
@@ -601,9 +600,7 @@ mod tests {
         (dir, store)
     }
 
-    fn make_briefing_service(
-        store: &Arc<Store>,
-    ) -> (BriefingService, Arc<AsyncEntryStore<StoreAdapter>>) {
+    fn make_briefing_service(store: &Arc<Store>) -> (BriefingService, Arc<Store>) {
         make_briefing_service_with_effectiveness(
             store,
             crate::services::effectiveness::EffectivenessState::new_handle(),
@@ -613,9 +610,8 @@ mod tests {
     fn make_briefing_service_with_effectiveness(
         store: &Arc<Store>,
         effectiveness_state: crate::services::effectiveness::EffectivenessStateHandle,
-    ) -> (BriefingService, Arc<AsyncEntryStore<StoreAdapter>>) {
-        let store_adapter = StoreAdapter::new(Arc::clone(store));
-        let entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
+    ) -> (BriefingService, Arc<Store>) {
+        let entry_store = Arc::clone(store);
         let vector_index = Arc::new(
             VectorIndex::new(Arc::clone(store), VectorConfig::default()).expect("vector index"),
         );
@@ -635,7 +631,7 @@ mod tests {
         let search = SearchService::new(
             Arc::clone(store),
             vector_store,
-            Arc::clone(&entry_store),
+            Arc::clone(store),
             embed_service,
             adapt_service,
             Arc::clone(&gateway),
@@ -645,14 +641,14 @@ mod tests {
         );
 
         let service = BriefingService::new(
-            Arc::clone(&entry_store),
+            Arc::clone(store),
             search,
             gateway,
             3, // default semantic_k for existing tests
             effectiveness_state,
         );
 
-        (service, entry_store)
+        (service, Arc::clone(store))
     }
 
     fn test_audit_ctx() -> AuditContext {

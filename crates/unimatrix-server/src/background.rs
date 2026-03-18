@@ -10,9 +10,8 @@ use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use unimatrix_core::async_wrappers::AsyncEntryStore;
 use unimatrix_core::{
-    CoreError, EmbedService, NewEntry, Store, StoreAdapter, VectorAdapter, VectorIndex, VectorStore,
+    CoreError, EmbedService, NewEntry, Store, VectorAdapter, VectorIndex, VectorStore,
 };
 use unimatrix_learn::TrainingService;
 use unimatrix_learn::models::{ConventionScorer, SignalClassifier};
@@ -214,7 +213,7 @@ pub fn spawn_background_tick(
     embed_service: Arc<EmbedServiceHandle>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     pending_entries: Arc<Mutex<PendingEntriesAnalysis>>,
     tick_metadata: Arc<Mutex<TickMetadata>>,
     training_service: Option<Arc<TrainingService>>,
@@ -273,7 +272,7 @@ async fn background_tick_loop(
     embed_service: Arc<EmbedServiceHandle>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     pending_entries: Arc<Mutex<PendingEntriesAnalysis>>,
     tick_metadata: Arc<Mutex<TickMetadata>>,
     _training_service: Option<Arc<TrainingService>>,
@@ -366,7 +365,7 @@ async fn run_single_tick(
     embed_service: &Arc<EmbedServiceHandle>,
     adapt_service: &Arc<AdaptationService>,
     session_registry: &SessionRegistry,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     pending_entries: &Arc<Mutex<PendingEntriesAnalysis>>,
     tick_metadata: &Arc<Mutex<TickMetadata>>,
     extraction_ctx: &mut ExtractionContext,
@@ -571,7 +570,7 @@ async fn run_single_tick(
 async fn maintenance_tick(
     status_svc: &StatusService,
     session_registry: &SessionRegistry,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     pending_entries: &Arc<Mutex<PendingEntriesAnalysis>>,
     effectiveness_state: &EffectivenessStateHandle,
     audit_log: &Arc<AuditLog>,

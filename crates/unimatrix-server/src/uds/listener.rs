@@ -13,8 +13,8 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use unimatrix_adapt::AdaptationService;
 use unimatrix_core::Store;
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-use unimatrix_core::{EmbedService, NewEntry, Status, StoreAdapter, VectorAdapter};
+use unimatrix_core::async_wrappers::AsyncVectorStore;
+use unimatrix_core::{EmbedService, NewEntry, Status, VectorAdapter};
 use unimatrix_engine::auth;
 use unimatrix_engine::coaccess::generate_pairs;
 use unimatrix_engine::confidence::rerank_score;
@@ -171,7 +171,7 @@ pub async fn start_uds_listener(
     store: Arc<Store>,
     embed_service: Arc<EmbedServiceHandle>,
     vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
     pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
@@ -224,7 +224,7 @@ async fn accept_loop(
     store: Arc<Store>,
     embed_service: Arc<EmbedServiceHandle>,
     vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
     pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
@@ -291,7 +291,7 @@ async fn handle_connection(
     store: Arc<Store>,
     embed_service: Arc<EmbedServiceHandle>,
     vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-    entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: Arc<Store>,
     adapt_service: Arc<AdaptationService>,
     session_registry: Arc<SessionRegistry>,
     pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
@@ -409,7 +409,7 @@ async fn dispatch_request(
     store: &Arc<Store>,
     embed_service: &Arc<EmbedServiceHandle>,
     _vector_store: &Arc<AsyncVectorStore<VectorAdapter>>,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     _adapt_service: &Arc<AdaptationService>,
     server_version: &str,
     session_registry: &SessionRegistry,
@@ -1408,7 +1408,7 @@ async fn process_session_close(
     hook_outcome: &str,
     store: &Arc<Store>,
     session_registry: &SessionRegistry,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
 ) -> HookResponse {
     // col-010: capture session metadata before drain (state is removed by drain)
@@ -1744,7 +1744,7 @@ pub(crate) async fn write_signals_to_queue(output: &SignalOutput, store: &Arc<St
 /// Pass an empty string for sessions with no feature cycle attribution.
 pub(crate) async fn run_confidence_consumer(
     store: &Arc<Store>,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
     feature_cycle: &str,
 ) {
@@ -1884,7 +1884,7 @@ pub(crate) async fn run_confidence_consumer(
 pub(crate) async fn run_retrospective_consumer(
     store: &Arc<Store>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
-    entry_store: &Arc<AsyncEntryStore<StoreAdapter>>,
+    entry_store: &Arc<Store>,
     feature_cycle: &str,
 ) {
     // Step 1: Drain all Flagged signals.
@@ -2071,7 +2071,9 @@ async fn update_session_keywords(
     session_id: &str,
     keywords_json: &str,
 ) -> Result<(), unimatrix_store::StoreError> {
-    store.update_session_keywords(session_id, keywords_json).await
+    store
+        .update_session_keywords(session_id, keywords_json)
+        .await
 }
 
 /// Handle a `cycle_start` event: force-set attribution + keywords persistence (col-022, ADR-002).
@@ -2375,10 +2377,9 @@ mod tests {
         store: &Arc<Store>,
     ) -> (
         Arc<AsyncVectorStore<VectorAdapter>>,
-        Arc<AsyncEntryStore<StoreAdapter>>,
+        Arc<Store>,
         Arc<AdaptationService>,
     ) {
-        let store_adapter = StoreAdapter::new(Arc::clone(store));
         let vector_index = Arc::new(
             unimatrix_core::VectorIndex::new(
                 Arc::clone(store),
@@ -2387,19 +2388,18 @@ mod tests {
             .unwrap(),
         );
         let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
-        let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
         let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
         let adapt_service = Arc::new(AdaptationService::new(
             unimatrix_adapt::AdaptConfig::default(),
         ));
-        (async_vector_store, async_entry_store, adapt_service)
+        (async_vector_store, Arc::clone(store), adapt_service)
     }
 
     fn make_services(
         store: &Arc<Store>,
         embed: &Arc<EmbedServiceHandle>,
         vs: &Arc<AsyncVectorStore<VectorAdapter>>,
-        es: &Arc<AsyncEntryStore<StoreAdapter>>,
+        es: &Arc<Store>,
         adapt: &Arc<AdaptationService>,
     ) -> crate::services::ServiceLayer {
         let vector_index = Arc::new(

@@ -6,9 +6,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{
-    CoreError, EmbedService, EntryRecord, NewEntry, Store, StoreAdapter, VectorAdapter, VectorIndex,
+    CoreError, EmbedService, EntryRecord, NewEntry, Store, VectorAdapter, VectorIndex,
 };
 use unimatrix_store::StoreError;
 
@@ -183,8 +183,8 @@ const SERVER_INSTRUCTIONS: &str = "Unimatrix is this project's knowledge engine.
 /// All fields are Arc-wrapped so Clone is cheap (required by rmcp).
 #[derive(Clone)]
 pub struct UnimatrixServer {
-    /// Async entry store for knowledge operations.
-    pub(crate) entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    /// Store for knowledge lookup operations.
+    pub(crate) entry_store: Arc<Store>,
     /// Async vector store for similarity search.
     pub(crate) vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
     /// Lazy-loading embedding service.
@@ -225,7 +225,7 @@ pub struct UnimatrixServer {
 impl UnimatrixServer {
     /// Create a new server with all subsystems.
     pub fn new(
-        entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+        entry_store: Arc<Store>,
         vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
         embed_service: Arc<EmbedServiceHandle>,
         registry: Arc<AgentRegistry>,
@@ -711,10 +711,10 @@ impl UnimatrixServer {
     ) -> Result<EntryRecord, ServerError> {
         // Fetch entry to read pre_quarantine_status
         let entry = self
-            .entry_store
+            .store
             .get(entry_id)
             .await
-            .map_err(ServerError::Core)?;
+            .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
         let restore_to = entry
             .pre_quarantine_status
             .and_then(|v| unimatrix_store::Status::try_from(v).ok())
@@ -835,8 +835,7 @@ mod tests {
         );
         std::mem::forget(dir);
 
-        let store_adapter = StoreAdapter::new(Arc::clone(&store));
-        let entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
+        let entry_store = Arc::clone(&store);
 
         // Use a minimal VectorIndex
         let vector_config = unimatrix_core::VectorConfig::default();

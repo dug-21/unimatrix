@@ -5,9 +5,9 @@
 
 use std::sync::Arc;
 
-use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
+use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{
-    CoreError, EmbedService, EntryRecord, NewEntry, Store, StoreAdapter, VectorAdapter, VectorIndex,
+    CoreError, EmbedService, EntryRecord, NewEntry, Store, VectorAdapter, VectorIndex,
 };
 use unimatrix_store::StoreError;
 
@@ -47,7 +47,7 @@ pub(crate) struct StoreService {
     #[allow(dead_code)]
     pub(crate) vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
     #[allow(dead_code)]
-    pub(crate) entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+    pub(crate) entry_store: Arc<Store>,
     pub(crate) embed_service: Arc<EmbedServiceHandle>,
     pub(crate) adapt_service: Arc<AdaptationService>,
     pub(crate) gateway: Arc<SecurityGateway>,
@@ -60,7 +60,7 @@ impl StoreService {
         store: Arc<Store>,
         vector_index: Arc<VectorIndex>,
         vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-        entry_store: Arc<AsyncEntryStore<StoreAdapter>>,
+        entry_store: Arc<Store>,
         embed_service: Arc<EmbedServiceHandle>,
         adapt_service: Arc<AdaptationService>,
         gateway: Arc<SecurityGateway>,

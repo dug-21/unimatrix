@@ -264,8 +264,8 @@ mod tests {
     #[tokio::test]
     async fn test_shutdown_drops_release_all_store_refs() {
         use unimatrix_adapt::{AdaptConfig, AdaptationService};
-        use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-        use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
+        use unimatrix_core::async_wrappers::AsyncVectorStore;
+        use unimatrix_core::{VectorAdapter, VectorConfig};
 
         use crate::infra::audit::AuditLog;
         use crate::infra::embed_handle::EmbedServiceHandle;
@@ -288,9 +288,7 @@ mod tests {
         let embed_handle = EmbedServiceHandle::new();
         let usage_dedup = Arc::new(UsageDedup::new());
 
-        let store_adapter = StoreAdapter::new(Arc::clone(&store));
         let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
-        let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
         let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
         // Build ServiceLayer (vnc-006) — this holds 5+ Arc<Store> clones
@@ -298,7 +296,7 @@ mod tests {
             Arc::clone(&store),
             Arc::clone(&vector_index),
             Arc::clone(&async_vector_store),
-            Arc::clone(&async_entry_store),
+            Arc::clone(&store),
             Arc::clone(&embed_handle),
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
@@ -324,7 +322,6 @@ mod tests {
         };
 
         // Drop remaining locals that held Arc clones (mirrors tokio_main ownership)
-        drop(async_entry_store);
         drop(async_vector_store);
         drop(embed_handle);
         drop(usage_dedup);
@@ -353,8 +350,8 @@ mod tests {
     #[tokio::test]
     async fn test_shutdown_fails_without_service_layer_drop() {
         use unimatrix_adapt::{AdaptConfig, AdaptationService};
-        use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-        use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
+        use unimatrix_core::async_wrappers::AsyncVectorStore;
+        use unimatrix_core::{VectorAdapter, VectorConfig};
 
         use crate::infra::audit::AuditLog;
         use crate::infra::embed_handle::EmbedServiceHandle;
@@ -376,9 +373,7 @@ mod tests {
         let embed_handle = EmbedServiceHandle::new();
         let usage_dedup = Arc::new(UsageDedup::new());
 
-        let store_adapter = StoreAdapter::new(Arc::clone(&store));
         let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
-        let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
         let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
         // Build ServiceLayer — holds internal Arc<Store> clones
@@ -386,7 +381,7 @@ mod tests {
             Arc::clone(&store),
             Arc::clone(&vector_index),
             Arc::clone(&async_vector_store),
-            Arc::clone(&async_entry_store),
+            Arc::clone(&store),
             Arc::clone(&embed_handle),
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
@@ -394,7 +389,6 @@ mod tests {
         );
 
         // Drop locals except ServiceLayer
-        drop(async_entry_store);
         drop(async_vector_store);
         drop(embed_handle);
         drop(usage_dedup);

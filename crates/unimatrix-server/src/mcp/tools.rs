@@ -404,11 +404,9 @@ impl UnimatrixServer {
         // 4. Branch: ID-based vs filter-based
         let (result, target_ids) = if let Some(id) = params.id {
             let id = validated_id(id).map_err(rmcp::ErrorData::from)?;
-            let entry = self
-                .entry_store
-                .get(id)
-                .await
-                .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+            let entry = self.entry_store.get(id).await.map_err(|e| {
+                rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
+            })?;
             let ids = vec![entry.id];
             (format_single_entry(&entry, ctx.format), ids)
         } else {
@@ -425,11 +423,9 @@ impl UnimatrixServer {
                 status,
                 time_range: None,
             };
-            let mut entries = self
-                .entry_store
-                .query(filter)
-                .await
-                .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+            let mut entries = self.entry_store.query(filter).await.map_err(|e| {
+                rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
+            })?;
             entries.truncate(limit);
             let ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
             (format_lookup_results(&entries, ctx.format), ids)
@@ -576,11 +572,9 @@ impl UnimatrixServer {
 
         // 3. Get entry
         let id = validated_id(params.id).map_err(rmcp::ErrorData::from)?;
-        let entry = self
-            .entry_store
-            .get(id)
-            .await
-            .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+        let entry = self.entry_store.get(id).await.map_err(|e| {
+            rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
+        })?;
 
         // 4. Format response
         let result = format_single_entry(&entry, ctx.format);
@@ -641,11 +635,9 @@ impl UnimatrixServer {
         let original_id = params.original_id as u64;
 
         // 4. Get original entry (needed for field inheritance below)
-        let original = self
-            .entry_store
-            .get(original_id)
-            .await
-            .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+        let original = self.entry_store.get(original_id).await.map_err(|e| {
+            rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
+        })?;
 
         // Note: deprecated check is handled authoritatively inside StoreService.correct()'s
         // write transaction. No pre-check here to avoid TOCTOU.
@@ -723,11 +715,9 @@ impl UnimatrixServer {
         let entry_id = params.id as u64;
 
         // 4. Get entry (verify exists + idempotency check)
-        let entry = self
-            .entry_store
-            .get(entry_id)
-            .await
-            .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+        let entry = self.entry_store.get(entry_id).await.map_err(|e| {
+            rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
+        })?;
 
         // 5. Idempotency: if already deprecated, return success immediately
         if entry.status == Status::Deprecated {
@@ -943,11 +933,9 @@ impl UnimatrixServer {
 
         // 6. Fetch entry (verify exists)
         let entry_id = validated_id(params.id).map_err(rmcp::ErrorData::from)?;
-        let entry = self
-            .entry_store
-            .get(entry_id)
-            .await
-            .map_err(|e| rmcp::ErrorData::from(crate::error::ServerError::Core(e)))?;
+        let entry = self.entry_store.get(entry_id).await.map_err(|e| {
+            rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
+        })?;
 
         // 7. Action dispatch
         match action {

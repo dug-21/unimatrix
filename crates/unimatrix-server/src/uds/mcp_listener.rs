@@ -724,8 +724,8 @@ mod tests {
     fn build_test_server(dir: &TempDir) -> UnimatrixServer {
         use std::sync::Arc;
         use unimatrix_adapt::{AdaptConfig, AdaptationService};
-        use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
-        use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
+        use unimatrix_core::async_wrappers::AsyncVectorStore;
+        use unimatrix_core::{VectorAdapter, VectorConfig};
         use unimatrix_vector::VectorIndex;
 
         use crate::infra::audit::AuditLog;
@@ -757,15 +757,13 @@ mod tests {
         let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
         let embed_handle = EmbedServiceHandle::new();
 
-        let store_adapter = StoreAdapter::new(Arc::clone(&store));
         let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
-        let async_entry_store = Arc::new(AsyncEntryStore::new(Arc::new(store_adapter)));
         let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
         let categories = Arc::new(CategoryAllowlist::new());
 
         UnimatrixServer::new(
-            async_entry_store,
+            Arc::clone(&store),
             async_vector_store,
             embed_handle,
             registry,

@@ -8,7 +8,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sqlx::Row;
-use unimatrix_core::async_wrappers::AsyncEntryStore;
 use unimatrix_core::{CoreError, EmbedService, Store, VectorAdapter, VectorIndex};
 use unimatrix_store::EntryRecord;
 use unimatrix_store::sessions::{DELETE_THRESHOLD_SECS, TIMED_OUT_THRESHOLD_SECS};
@@ -823,7 +822,7 @@ impl StatusService {
         active_entries: &[EntryRecord],
         report: &mut StatusReport,
         session_registry: &SessionRegistry,
-        entry_store: &Arc<AsyncEntryStore<unimatrix_core::StoreAdapter>>,
+        entry_store: &Arc<Store>,
         pending_entries_analysis: &Arc<std::sync::Mutex<PendingEntriesAnalysis>>,
     ) -> Result<MaintenanceResult, ServiceError> {
         let now_ts = SystemTime::now()
