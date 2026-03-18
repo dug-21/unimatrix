@@ -79,7 +79,8 @@ impl StoreService {
                 other => ServiceError::Core(CoreError::Store(other)),
             })?;
 
-        // Audit event (after transaction commits)
+        // Audit event (after transaction commits) — fire-and-forget.
+        // GH #302: same write-pool starvation fix as store_ops.rs insert().
         let audit_event_with_ids = AuditEvent {
             event_id: 0,
             timestamp: 0,
@@ -90,9 +91,12 @@ impl StoreService {
             outcome: Outcome::Success,
             detail: format!("corrected entry #{original_id}"),
         };
-        self.audit.log_event(audit_event_with_ids).map_err(|e| {
-            ServiceError::Core(CoreError::Store(StoreError::Database(e.to_string().into())))
-        })?;
+        {
+            let audit = Arc::clone(&self.audit);
+            tokio::spawn(async move {
+                let _ = audit.log_event_async(audit_event_with_ids).await;
+            });
+        }
 
         // Step 4: HNSW insert for correction (after commit)
         if !embedding.is_empty() {

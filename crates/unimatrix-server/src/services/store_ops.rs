@@ -5,13 +5,11 @@
 
 use std::sync::Arc;
 
+use unimatrix_adapt::AdaptationService;
 use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{
     CoreError, EmbedService, EntryRecord, NewEntry, Store, VectorAdapter, VectorIndex,
 };
-use unimatrix_store::StoreError;
-
-use unimatrix_adapt::AdaptationService;
 
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
@@ -207,14 +205,20 @@ impl StoreService {
             .await
             .map_err(|e| ServiceError::Core(CoreError::Store(e)))?;
 
-        // 5. Audit event
+        // 5. Audit event — fire-and-forget to avoid blocking the write pool.
+        // GH #302: the synchronous log_event() call used block_in_place, which
+        // raced with the analytics drain task holding the single write connection,
+        // causing a 5s pool-acquire timeout on context_store.
         let audit_event_with_target = AuditEvent {
             target_ids: vec![entry_id],
             ..audit_event
         };
-        self.audit.log_event(audit_event_with_target).map_err(|e| {
-            ServiceError::Core(CoreError::Store(StoreError::Database(e.to_string().into())))
-        })?;
+        {
+            let audit = Arc::clone(&self.audit);
+            tokio::spawn(async move {
+                let _ = audit.log_event_async(audit_event_with_target).await;
+            });
+        }
 
         // Wrap record with correct embedding_dim
         let record = EntryRecord {

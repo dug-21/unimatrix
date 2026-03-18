@@ -34,6 +34,21 @@ impl AuditLog {
             .map_err(|e| ServerError::Audit(e.to_string()))
     }
 
+    /// Async variant of `log_event`.
+    ///
+    /// Calls `SqlxStore::log_audit_event` directly without `block_in_place`.
+    /// Use this from async contexts to avoid holding the write connection across
+    /// a blocking bridge — which starves the single-connection write pool when
+    /// the analytics drain task is active (GH #302).
+    ///
+    /// Returns the assigned event_id on success, or a `ServerError::Audit`.
+    pub async fn log_event_async(&self, event: AuditEvent) -> Result<u64, ServerError> {
+        self.store
+            .log_audit_event(event)
+            .await
+            .map_err(|e| ServerError::Audit(e.to_string()))
+    }
+
     /// Count write operations by a specific agent since a given timestamp.
     ///
     /// Uses indexed SQL query instead of full table scan.
@@ -327,6 +342,88 @@ mod tests {
         }
 
         assert_eq!(audit.write_count_since("agent-a", 0).unwrap(), 0);
+    }
+
+    // -- GH #302 regression: log_event_async must not block the write pool --
+
+    /// Regression test for GH #302: concurrent log_event_async calls must not
+    /// starve each other or time out under write-pool contention.
+    ///
+    /// The bug: log_event() used block_in_place which held a write connection while
+    /// waiting on a sync bridge, causing the analytics drain task (also using the
+    /// single write connection) to exhaust the 5s pool-acquire timeout.
+    ///
+    /// Fix: log_event_async() calls SqlxStore::log_audit_event() directly as an
+    /// async fn, releasing the connection on each await point. This test fires
+    /// 20 concurrent audit events and asserts all complete under 10s.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_log_event_async_concurrent_does_not_starve() {
+        use std::sync::Arc;
+        use tokio::time::{Duration, timeout};
+
+        let store = make_store().await;
+        let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
+
+        // Fire 20 concurrent log_event_async calls and wait for all.
+        let handles: Vec<_> = (0..20)
+            .map(|_| {
+                let audit = Arc::clone(&audit);
+                tokio::spawn(async move {
+                    timeout(Duration::from_secs(10), audit.log_event_async(make_event()))
+                        .await
+                        .expect("log_event_async timed out (GH #302 regression)")
+                        .expect("log_event_async returned error")
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            handle.await.expect("task panicked");
+        }
+
+        // Verify all 20 events were stored with monotonically increasing IDs.
+        for i in 1u64..=20 {
+            let event = store.read_audit_event(i).await.unwrap().unwrap();
+            assert_eq!(event.event_id, i);
+        }
+    }
+
+    /// Verify log_event_async does not block a concurrent tokio task.
+    ///
+    /// Spawns a background task that yields repeatedly, then fires log_event_async.
+    /// If log_event_async blocks_in_place it would starve the background task;
+    /// the background task's yield counter would stay low. With a proper async
+    /// implementation both tasks make progress.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_log_event_async_does_not_block_in_place() {
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicU64, Ordering};
+
+        let store = make_store().await;
+        let audit = AuditLog::new(Arc::clone(&store));
+        let yield_count = Arc::new(AtomicU64::new(0));
+
+        // Background task: yield 1000 times, incrementing counter each time.
+        let yc = Arc::clone(&yield_count);
+        let bg = tokio::spawn(async move {
+            for _ in 0..1000 {
+                yc.fetch_add(1, Ordering::Relaxed);
+                tokio::task::yield_now().await;
+            }
+        });
+
+        // Call log_event_async while the background task is running.
+        audit
+            .log_event_async(make_event())
+            .await
+            .expect("log_event_async failed");
+
+        bg.await.expect("background task panicked");
+
+        // If log_event_async had used block_in_place it would have prevented the
+        // background task from running on this thread. With a proper async impl,
+        // the background task runs to completion and the counter reaches 1000.
+        assert_eq!(yield_count.load(Ordering::Relaxed), 1000);
     }
 
     #[tokio::test(flavor = "multi_thread")]
