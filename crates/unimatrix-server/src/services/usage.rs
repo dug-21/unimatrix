@@ -194,19 +194,13 @@ impl UsageService {
             }
         });
 
-        // R-01: Snapshot alpha0/beta0 from ConfidenceState on the async thread before
-        // entering spawn_blocking. The read lock is held briefly; the values are moved
-        // into the closure so the blocking thread needs no lock at all (FM-03, ADR-001).
-        let (alpha0, beta0) = {
-            let guard = self
-                .confidence_state
-                .read()
-                .unwrap_or_else(|e| e.into_inner());
-            (guard.alpha0, guard.beta0)
-        };
         let confidence_fn: Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync> =
             Box::new(move |entry, now| {
-                crate::confidence::compute_confidence(entry, now, alpha0, beta0)
+                crate::confidence::compute_confidence(
+                    entry,
+                    now,
+                    &unimatrix_engine::confidence::ConfidenceParams::default(),
+                )
             });
 
         let _ = tokio::spawn(async move {
@@ -300,15 +294,6 @@ impl UsageService {
             return;
         }
 
-        // Snapshot alpha0/beta0 before spawn (same pattern as record_mcp_usage, ADR-001).
-        let (alpha0, beta0) = {
-            let guard = self
-                .confidence_state
-                .read()
-                .unwrap_or_else(|e| e.into_inner());
-            (guard.alpha0, guard.beta0)
-        };
-
         let store = Arc::clone(&self.store);
         let _ = tokio::spawn(async move {
             // Async usage recording (nxs-011)
@@ -322,7 +307,11 @@ impl UsageService {
                     &[],
                     Some(
                         Box::new(move |entry: &unimatrix_store::EntryRecord, now: u64| {
-                            crate::confidence::compute_confidence(entry, now, alpha0, beta0)
+                            crate::confidence::compute_confidence(
+                                entry,
+                                now,
+                                &unimatrix_engine::confidence::ConfidenceParams::default(),
+                            )
                         })
                             as Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync>,
                     ),

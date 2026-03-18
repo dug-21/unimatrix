@@ -62,7 +62,7 @@ impl FeatureBucket {
 /// Inner key: entry_id u64 (overwrite semantics — no duplicate IDs per bucket).
 ///
 /// Shared between the UDS listener (writes from signal consumers) and the
-/// context_retrospective handler (drains on call). Protected by
+/// context_cycle_review handler (drains on call). Protected by
 /// `Arc<Mutex<PendingEntriesAnalysis>>`.
 ///
 /// Daemon-mode note: this accumulator persists across sessions.
@@ -144,7 +144,7 @@ impl PendingEntriesAnalysis {
     /// Evict buckets whose `last_updated` is older than `ttl_secs` relative to `now_unix_secs`.
     ///
     /// Called by the background tick (72-hour TTL per ADR-004) as a safety net for
-    /// features that complete without calling `context_retrospective` or `context_cycle`.
+    /// features that complete without calling `context_cycle_review` or `context_cycle`.
     /// The entire eviction runs within the caller's Mutex lock (R-18).
     pub fn evict_stale(&mut self, now_unix_secs: u64, ttl_secs: u64) {
         let mut to_evict: Vec<String> = Vec::new();
@@ -204,7 +204,7 @@ pub struct UnimatrixServer {
     /// Adaptive embedding service for MicroLoRA adaptation pipeline.
     pub(crate) adapt_service: Arc<AdaptationService>,
     /// Accumulated entry-level analysis from signal consumers (col-009).
-    /// Shared with UDS listener; drained by context_retrospective handler.
+    /// Shared with UDS listener; drained by context_cycle_review handler.
     pub pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
     /// Session registry for stale session sweep (col-009, FR-09.2).
     /// Shared with UDS listener; swept by the background tick.
@@ -620,7 +620,11 @@ impl UnimatrixServer {
                     &decrement_helpful_ids,
                     &decrement_unhelpful_ids,
                     Some(Box::new(|entry: &unimatrix_store::EntryRecord, now: u64| {
-                        crate::confidence::compute_confidence(entry, now, 3.0, 3.0)
+                        crate::confidence::compute_confidence(
+                            entry,
+                            now,
+                            &unimatrix_engine::confidence::ConfidenceParams::default(),
+                        )
                     })
                         as Box<
                             dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync,
@@ -1189,7 +1193,11 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let expected = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+        let expected = crate::confidence::compute_confidence(
+            &entry,
+            now,
+            &unimatrix_engine::confidence::ConfidenceParams::default(),
+        );
         // Allow small tolerance for timestamp difference
         assert!((entry.confidence - expected).abs() < 0.01);
     }
@@ -1261,7 +1269,11 @@ mod tests {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            let conf = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+            let conf = crate::confidence::compute_confidence(
+                &entry,
+                now,
+                &unimatrix_engine::confidence::ConfidenceParams::default(),
+            );
             server
                 .store
                 .update_confidence(entry_id, conf)
@@ -1317,7 +1329,11 @@ mod tests {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            let conf = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+            let conf = crate::confidence::compute_confidence(
+                &entry,
+                now,
+                &unimatrix_engine::confidence::ConfidenceParams::default(),
+            );
             server.store.update_confidence(id, conf).await.unwrap();
         }
 
@@ -1606,7 +1622,11 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let before = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+        let before = crate::confidence::compute_confidence(
+            &entry,
+            now,
+            &unimatrix_engine::confidence::ConfidenceParams::default(),
+        );
         server.store.update_confidence(id, before).await.unwrap();
 
         // Quarantine
@@ -1617,7 +1637,11 @@ mod tests {
 
         // Recompute confidence for quarantined entry
         let entry = server.store.get(id).await.unwrap();
-        let after = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+        let after = crate::confidence::compute_confidence(
+            &entry,
+            now,
+            &unimatrix_engine::confidence::ConfidenceParams::default(),
+        );
         server.store.update_confidence(id, after).await.unwrap();
 
         assert!(
@@ -1633,7 +1657,11 @@ mod tests {
 
         // Recompute confidence for restored entry
         let entry = server.store.get(id).await.unwrap();
-        let restored = crate::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+        let restored = crate::confidence::compute_confidence(
+            &entry,
+            now,
+            &unimatrix_engine::confidence::ConfidenceParams::default(),
+        );
 
         assert!(
             restored > after,

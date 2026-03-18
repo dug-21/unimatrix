@@ -120,12 +120,6 @@ impl ConfidenceService {
         let store = Arc::clone(&self.store);
         let ids = entry_ids.to_vec();
 
-        // Snapshot the prior BEFORE spawn_blocking (on async thread — no lock issues).
-        let (alpha0, beta0) = {
-            let guard = self.state.read().unwrap_or_else(|e| e.into_inner());
-            (guard.alpha0, guard.beta0)
-        };
-
         let _ = tokio::spawn(async move {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -136,7 +130,9 @@ impl ConfidenceService {
                 match store.get(id).await {
                     Ok(entry) => {
                         let conf = unimatrix_engine::confidence::compute_confidence(
-                            &entry, now, alpha0, beta0,
+                            &entry,
+                            now,
+                            &unimatrix_engine::confidence::ConfidenceParams::default(),
                         );
                         if let Err(e) = store.update_confidence(id, conf).await {
                             tracing::warn!("confidence recompute failed for {id}: {e}");

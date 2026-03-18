@@ -4,8 +4,9 @@
 //! for standard scenarios, and that each signal contributes meaningfully.
 
 use unimatrix_engine::confidence::{
-    W_BASE, W_CORR, W_FRESH, W_HELP, W_TRUST, W_USAGE, base_score, compute_confidence,
-    correction_score, freshness_score, helpfulness_score, trust_score, usage_score,
+    ConfidenceParams, W_BASE, W_CORR, W_FRESH, W_HELP, W_TRUST, W_USAGE, base_score,
+    compute_confidence, correction_score, freshness_score, helpfulness_score, trust_score,
+    usage_score,
 };
 use unimatrix_engine::test_scenarios::*;
 
@@ -95,7 +96,12 @@ fn confidence_with_adjusted_weight(
     let scores = [
         base_score(entry.status, &entry.trust_source),
         usage_score(entry.access_count),
-        freshness_score(entry.last_accessed_at, entry.created_at, now),
+        freshness_score(
+            entry.last_accessed_at,
+            entry.created_at,
+            now,
+            &ConfidenceParams::default(),
+        ),
         helpfulness_score(entry.helpful_count, entry.unhelpful_count, alpha0, beta0),
         correction_score(entry.correction_count),
         trust_score(&entry.trust_source),
@@ -125,7 +131,12 @@ fn test_weight_sensitivity() {
     // Original ranking
     let mut original_scored: Vec<(u64, f64)> = records
         .iter()
-        .map(|e| (e.id, compute_confidence(e, scenario.now, 3.0, 3.0)))
+        .map(|e| {
+            (
+                e.id,
+                compute_confidence(e, scenario.now, &ConfidenceParams::default()),
+            )
+        })
         .collect();
     original_scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
     let original_ranking: Vec<u64> = original_scored.iter().map(|(id, _)| *id).collect();
@@ -230,8 +241,8 @@ macro_rules! ablation_test {
         fn $name() {
             let now = CANONICAL_NOW;
             let (high, low) = ablation_pair($signal, now);
-            let conf_high = compute_confidence(&high, now, 3.0, 3.0);
-            let conf_low = compute_confidence(&low, now, 3.0, 3.0);
+            let conf_high = compute_confidence(&high, now, &ConfidenceParams::default());
+            let conf_low = compute_confidence(&low, now, &ConfidenceParams::default());
             assert!(
                 conf_high > conf_low,
                 "{}: high={conf_high:.6}, low={conf_low:.6} — expected high > low",
@@ -267,7 +278,7 @@ fn test_boundary_all_zero() {
         category: "decision",
     };
     let entry = profile_to_entry_record(&profile, 1, CANONICAL_NOW);
-    let conf = compute_confidence(&entry, CANONICAL_NOW, 3.0, 3.0);
+    let conf = compute_confidence(&entry, CANONICAL_NOW, &ConfidenceParams::default());
     assert!(
         (0.0..=1.0).contains(&conf),
         "all-zero confidence {conf} out of range"
@@ -289,7 +300,7 @@ fn test_boundary_all_max() {
         category: "decision",
     };
     let entry = profile_to_entry_record(&profile, 1, CANONICAL_NOW);
-    let conf = compute_confidence(&entry, CANONICAL_NOW, 3.0, 3.0);
+    let conf = compute_confidence(&entry, CANONICAL_NOW, &ConfidenceParams::default());
     assert!(
         (0.0..=1.0).contains(&conf),
         "all-max confidence {conf} out of range"
@@ -340,8 +351,8 @@ fn auto_vs_agent_spread() {
         let auto_entry = profile_to_entry_record(&auto_profile, 1, now);
         let agent_entry = profile_to_entry_record(&agent_profile, 2, now);
 
-        let conf_auto = compute_confidence(&auto_entry, now, 3.0, 3.0);
-        let conf_agent = compute_confidence(&agent_entry, now, 3.0, 3.0);
+        let conf_auto = compute_confidence(&auto_entry, now, &ConfidenceParams::default());
+        let conf_agent = compute_confidence(&agent_entry, now, &ConfidenceParams::default());
 
         assert!(
             conf_agent > conf_auto,
@@ -376,7 +387,7 @@ fn test_cal_spread_synthetic_population() {
             category: "decision",
         };
         let e = profile_to_entry_record(&p, i + 1, now);
-        confidences.push(compute_confidence(&e, now, 3.0, 3.0));
+        confidences.push(compute_confidence(&e, now, &ConfidenceParams::default()));
     }
 
     // 30 moderate-signal agent entries
@@ -394,7 +405,7 @@ fn test_cal_spread_synthetic_population() {
             category: "decision",
         };
         let e = profile_to_entry_record(&p, i + 11, now);
-        confidences.push(compute_confidence(&e, now, 3.0, 3.0));
+        confidences.push(compute_confidence(&e, now, &ConfidenceParams::default()));
     }
 
     // 10 high-signal human entries
@@ -412,7 +423,7 @@ fn test_cal_spread_synthetic_population() {
             category: "decision",
         };
         let e = profile_to_entry_record(&p, i + 41, now);
-        confidences.push(compute_confidence(&e, now, 3.0, 3.0));
+        confidences.push(compute_confidence(&e, now, &ConfidenceParams::default()));
     }
 
     confidences.sort_by(|a, b| a.partial_cmp(b).unwrap());
