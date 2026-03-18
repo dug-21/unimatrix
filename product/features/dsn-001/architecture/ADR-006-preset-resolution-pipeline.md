@@ -217,6 +217,44 @@ if config.profile.preset == Preset::Custom {
 }
 ```
 
+### W3-1 Extension Point
+
+`resolve_confidence_params` is designed as a single, ordered resolution pipeline. W3-1
+(GNN adaptive weight learning) **must not** re-apply config preset weights on every
+restart — doing so would overwrite learned values and reset the model.
+
+**The contract**: The config preset is a cold-start seed, not a persistent override.
+Once W3-1 has stored a learned weight vector in `analytics.db`, those values supersede
+the config preset for all subsequent restarts.
+
+W3-1 extends the pipeline by inserting a priority-0 check at the top of
+`resolve_confidence_params`:
+
+```rust
+// Priority 0 (W3-1 adds this): check for stored learned weights
+if let Some(learned) = load_learned_weights(data_dir)? {
+    // Learned weights exist — config preset is the cold-start seed only.
+    // Return immediately; config is not consulted for weight values.
+    return Ok(learned);
+}
+// Priority 1 (dsn-001): fall through to config-based resolution
+// This path runs on first initialization, before W3-1 has stored anything.
+```
+
+`load_learned_weights(data_dir: &Path) -> Result<Option<ConfidenceParams>, ConfigError>`
+is a W3-1 deliverable. It reads from the `confidence_weights` table in `analytics.db`
+(W3-1 schema). If the table does not exist or contains no rows → returns `Ok(None)`,
+and the config preset provides the cold-start vector.
+
+**dsn-001 delivery**: The W3-1 extension point is documented here. dsn-001 does **not**
+implement `load_learned_weights` — `analytics.db` and the `confidence_weights` table
+are W3-1 scope. The function stub is not required in dsn-001; the design contract
+is the deliverable.
+
+**Invariant W3-1 must maintain**: After storing a learned weight vector, W3-1 must
+ensure `load_learned_weights` returns `Some(_)` on every subsequent startup so the
+config preset path is never taken again for that project.
+
 ### Consequences
 
 **Easier:**
@@ -230,6 +268,8 @@ if config.profile.preset == Preset::Custom {
   the type level — no ambiguous zero-vs-absent issue in merge logic.
 - `validate_config` catches all `custom` configuration errors at startup rather than
   at first confidence computation call.
+- W3-1 extension point is pre-designed: the priority-0 hook site is documented and
+  the contract is clear before W3-1 design begins.
 
 **Harder:**
 - `from_preset(Custom)` panics by design — calling it directly is a logic error. Code
@@ -241,3 +281,6 @@ if config.profile.preset == Preset::Custom {
 - Operators who set `preset = "custom"` must specify both `[confidence] weights` AND
   `[knowledge] freshness_half_life_hours`. Forgetting either causes startup abort. The
   error message must clearly identify which field is missing.
+- W3-1 carries the responsibility of ensuring `load_learned_weights` reliably returns
+  `Some(_)` once learning has begun. A bug in that path would silently reset learned
+  weights to the config preset on restart.

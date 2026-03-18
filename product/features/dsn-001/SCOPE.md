@@ -36,6 +36,7 @@ A secondary problem: even with externalised constants, operators who don't under
 - Externalising `PROVENANCE_BOOST` magnitude (`0.02`) — the boost magnitude is not a domain-specific constant; only which categories receive it is domain-specific.
 - Externalising adaptive blend weight parameters (`observed_spread * 1.25`, clamp bounds `[0.15, 0.25]`) — these are part of the crt-019 adaptive system, not static config.
 - **`UNIMATRIX_CONFIG` env var** — no env var override for the global config path. Low complexity to add later if CI/container deployments require it; no evidence of that need today.
+- **Initialize-once semantics for W3-1 learned weights** — the config preset is a cold-start seed only. Once W3-1 (GNN adaptive learning) has stored a learned weight vector in `analytics.db`, those values must persist across restarts and must not be overwritten by the config preset. This lifecycle enforcement is W3-1's responsibility: W3-1 extends `resolve_confidence_params()` with a priority-0 check (`load_learned_weights`) that returns stored weights when they exist, bypassing config entirely. dsn-001 documents the extension point in ADR-006 but does not implement it — `analytics.db` and the `confidence_weights` table do not exist until W3-1.
 
 ## Background Research
 
