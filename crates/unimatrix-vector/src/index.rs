@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use anndists::dist::DistDot;
 use hnsw_rs::prelude::*;
-use unimatrix_store::Store;
+use unimatrix_store::SqlxStore;
 
 use crate::config::VectorConfig;
 use crate::error::{Result, VectorError};
@@ -48,7 +48,7 @@ impl IdMap {
 /// `VectorIndex` is `Send + Sync` and shareable via `Arc<VectorIndex>`.
 pub struct VectorIndex {
     hnsw: RwLock<Hnsw<'static, f32, DistDot>>,
-    store: Arc<Store>,
+    store: Arc<SqlxStore>,
     config: VectorConfig,
     next_data_id: AtomicU64,
     id_map: RwLock<IdMap>,
@@ -58,7 +58,7 @@ impl VectorIndex {
     /// Create a new empty vector index.
     ///
     /// The index starts in insert mode with zero vectors.
-    pub fn new(store: Arc<Store>, config: VectorConfig) -> Result<Self> {
+    pub fn new(store: Arc<SqlxStore>, config: VectorConfig) -> Result<Self> {
         let hnsw = Hnsw::<f32, DistDot>::new(
             config.max_nb_connection,
             config.max_elements,
@@ -80,7 +80,7 @@ impl VectorIndex {
     /// Used by the persistence module during load.
     pub(crate) fn from_parts(
         hnsw: Hnsw<'static, f32, DistDot>,
-        store: Arc<Store>,
+        store: Arc<SqlxStore>,
         config: VectorConfig,
         next_data_id: u64,
         id_map_data: Vec<(u64, u64)>,
@@ -138,7 +138,7 @@ impl VectorIndex {
     /// If the entry already has a vector (re-embedding), the old point remains
     /// in hnsw_rs but is tracked as stale. VECTOR_MAP is overwritten with the
     /// new data ID.
-    pub fn insert(&self, entry_id: u64, embedding: &[f32]) -> Result<()> {
+    pub async fn insert(&self, entry_id: u64, embedding: &[f32]) -> Result<()> {
         self.validate_dimension(embedding)?;
         self.validate_embedding(embedding)?;
 
@@ -155,7 +155,7 @@ impl VectorIndex {
         }
 
         // Write to VECTOR_MAP (crash-safe)
-        self.store.put_vector_mapping(entry_id, data_id)?;
+        self.store.put_vector_mapping(entry_id, data_id).await?;
 
         // Update IdMap
         {
@@ -354,7 +354,7 @@ impl VectorIndex {
 
     /// Get a reference to the store (used by test helpers and persistence).
     #[cfg(any(test, feature = "test-support"))]
-    pub(crate) fn store(&self) -> &Arc<Store> {
+    pub(crate) fn store(&self) -> &Arc<SqlxStore> {
         &self.store
     }
 
@@ -378,7 +378,7 @@ impl VectorIndex {
     ///
     /// Embeddings remain f32 (HNSW domain). The caller obtains embeddings
     /// via the embed service and passes pre-computed pairs.
-    pub fn compact(&self, embeddings: Vec<(u64, Vec<f32>)>) -> Result<()> {
+    pub async fn compact(&self, embeddings: Vec<(u64, Vec<f32>)>) -> Result<()> {
         // Step 1: Build new HNSW graph
         let new_hnsw = Hnsw::<f32, DistDot>::new(
             self.config.max_nb_connection,
@@ -404,7 +404,7 @@ impl VectorIndex {
 
         // Step 2: Write VECTOR_MAP first (ADR-004: VECTOR_MAP-first ordering)
         // If this fails, return error -- old graph untouched
-        self.store.rewrite_vector_map(&vector_map_entries)?;
+        self.store.rewrite_vector_map(&vector_map_entries).await?;
 
         // Step 3: Atomic in-memory swap
         {
@@ -462,11 +462,11 @@ mod tests {
 
     // -- Priority 1: R-02 Dimension Mismatch (FIRST) --
 
-    #[test]
-    fn test_insert_wrong_dimension_128() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_wrong_dimension_128() {
+        let tvi = TestVectorIndex::new().await;
         let emb = vec![0.0f32; 128];
-        let result = tvi.vi().insert(1, &emb);
+        let result = tvi.vi().insert(1, &emb).await;
         assert!(matches!(
             result,
             Err(VectorError::DimensionMismatch {
@@ -476,11 +476,11 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_insert_wrong_dimension_512() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_wrong_dimension_512() {
+        let tvi = TestVectorIndex::new().await;
         let emb = vec![0.0f32; 512];
-        let result = tvi.vi().insert(1, &emb);
+        let result = tvi.vi().insert(1, &emb).await;
         assert!(matches!(
             result,
             Err(VectorError::DimensionMismatch {
@@ -490,10 +490,10 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_insert_wrong_dimension_0() {
-        let tvi = TestVectorIndex::new();
-        let result = tvi.vi().insert(1, &[]);
+    #[tokio::test]
+    async fn test_insert_wrong_dimension_0() {
+        let tvi = TestVectorIndex::new().await;
+        let result = tvi.vi().insert(1, &[]).await;
         assert!(matches!(
             result,
             Err(VectorError::DimensionMismatch {
@@ -503,11 +503,11 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_insert_wrong_dimension_383() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_wrong_dimension_383() {
+        let tvi = TestVectorIndex::new().await;
         let emb = vec![0.0f32; 383];
-        let result = tvi.vi().insert(1, &emb);
+        let result = tvi.vi().insert(1, &emb).await;
         assert!(matches!(
             result,
             Err(VectorError::DimensionMismatch {
@@ -517,11 +517,11 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_insert_wrong_dimension_385() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_wrong_dimension_385() {
+        let tvi = TestVectorIndex::new().await;
         let emb = vec![0.0f32; 385];
-        let result = tvi.vi().insert(1, &emb);
+        let result = tvi.vi().insert(1, &emb).await;
         assert!(matches!(
             result,
             Err(VectorError::DimensionMismatch {
@@ -531,11 +531,11 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_search_wrong_dimension() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_search_wrong_dimension() {
+        let tvi = TestVectorIndex::new().await;
         let emb = random_normalized_embedding(384);
-        tvi.vi().insert(1, &emb).unwrap();
+        tvi.vi().insert(1, &emb).await.unwrap();
         let query = vec![0.0f32; 128];
         let result = tvi.vi().search(&query, 10, 32);
         assert!(matches!(
@@ -547,67 +547,67 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_search_filtered_wrong_dimension() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_search_filtered_wrong_dimension() {
+        let tvi = TestVectorIndex::new().await;
         let query = vec![0.0f32; 256];
         let result = tvi.vi().search_filtered(&query, 10, 32, &[1]);
         assert!(matches!(result, Err(VectorError::DimensionMismatch { .. })));
     }
 
-    #[test]
-    fn test_insert_correct_dimension_succeeds() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_correct_dimension_succeeds() {
+        let tvi = TestVectorIndex::new().await;
         let emb = random_normalized_embedding(384);
-        let result = tvi.vi().insert(1, &emb);
+        let result = tvi.vi().insert(1, &emb).await;
         assert!(result.is_ok());
     }
 
     // -- Priority 1: W2 Invalid Embedding Validation --
 
-    #[test]
-    fn test_insert_nan_embedding() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_nan_embedding() {
+        let tvi = TestVectorIndex::new().await;
         let mut emb = random_normalized_embedding(384);
         emb[10] = f32::NAN;
-        let result = tvi.vi().insert(1, &emb);
+        let result = tvi.vi().insert(1, &emb).await;
         assert!(matches!(result, Err(VectorError::InvalidEmbedding(_))));
     }
 
-    #[test]
-    fn test_insert_infinity_embedding() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_infinity_embedding() {
+        let tvi = TestVectorIndex::new().await;
         let mut emb = random_normalized_embedding(384);
         emb[0] = f32::INFINITY;
-        let result = tvi.vi().insert(1, &emb);
+        let result = tvi.vi().insert(1, &emb).await;
         assert!(matches!(result, Err(VectorError::InvalidEmbedding(_))));
     }
 
-    #[test]
-    fn test_insert_neg_infinity_embedding() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_neg_infinity_embedding() {
+        let tvi = TestVectorIndex::new().await;
         let mut emb = random_normalized_embedding(384);
         emb[0] = f32::NEG_INFINITY;
-        let result = tvi.vi().insert(1, &emb);
+        let result = tvi.vi().insert(1, &emb).await;
         assert!(matches!(result, Err(VectorError::InvalidEmbedding(_))));
     }
 
-    #[test]
-    fn test_search_nan_query() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_search_nan_query() {
+        let tvi = TestVectorIndex::new().await;
         let emb = random_normalized_embedding(384);
-        tvi.vi().insert(1, &emb).unwrap();
+        tvi.vi().insert(1, &emb).await.unwrap();
         let mut query = random_normalized_embedding(384);
         query[5] = f32::NAN;
         let result = tvi.vi().search(&query, 10, 32);
         assert!(matches!(result, Err(VectorError::InvalidEmbedding(_))));
     }
 
-    #[test]
-    fn test_search_infinity_query() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_search_infinity_query() {
+        let tvi = TestVectorIndex::new().await;
         let emb = random_normalized_embedding(384);
-        tvi.vi().insert(1, &emb).unwrap();
+        tvi.vi().insert(1, &emb).await.unwrap();
         let mut query = random_normalized_embedding(384);
         query[0] = f32::INFINITY;
         let result = tvi.vi().search(&query, 10, 32);
@@ -616,37 +616,37 @@ mod tests {
 
     // -- Priority 2: R-01 IdMap Desync --
 
-    #[test]
-    fn test_insert_idmap_consistent_with_vector_map() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_idmap_consistent_with_vector_map() {
+        let tvi = TestVectorIndex::new().await;
         let emb = random_normalized_embedding(384);
-        tvi.vi().insert(1, &emb).unwrap();
+        tvi.vi().insert(1, &emb).await.unwrap();
 
         assert!(tvi.vi().contains(1));
-        let data_id = tvi.store().get_vector_mapping(1).unwrap();
+        let data_id = tvi.store().get_vector_mapping(1).await.unwrap();
         assert!(data_id.is_some());
     }
 
-    #[test]
-    fn test_insert_100_vectors_all_consistent() {
-        let tvi = TestVectorIndex::new();
-        let ids = seed_vectors(tvi.vi(), tvi.store(), 100);
+    #[tokio::test]
+    async fn test_insert_100_vectors_all_consistent() {
+        let tvi = TestVectorIndex::new().await;
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 100).await;
         for id in &ids {
             assert!(tvi.vi().contains(*id));
-            assert!(tvi.store().get_vector_mapping(*id).unwrap().is_some());
+            assert!(tvi.store().get_vector_mapping(*id).await.unwrap().is_some());
         }
     }
 
-    #[test]
-    fn test_reembed_idmap_updated() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_reembed_idmap_updated() {
+        let tvi = TestVectorIndex::new().await;
         let emb_a = random_normalized_embedding(384);
-        tvi.vi().insert(1, &emb_a).unwrap();
-        let old_data_id = tvi.store().get_vector_mapping(1).unwrap().unwrap();
+        tvi.vi().insert(1, &emb_a).await.unwrap();
+        let old_data_id = tvi.store().get_vector_mapping(1).await.unwrap().unwrap();
 
         let emb_b = random_normalized_embedding(384);
-        tvi.vi().insert(1, &emb_b).unwrap();
-        let new_data_id = tvi.store().get_vector_mapping(1).unwrap().unwrap();
+        tvi.vi().insert(1, &emb_b).await.unwrap();
+        let new_data_id = tvi.store().get_vector_mapping(1).await.unwrap().unwrap();
 
         assert_ne!(old_data_id, new_data_id);
         assert!(tvi.vi().contains(1));
@@ -654,10 +654,10 @@ mod tests {
 
     // -- Priority 3: R-03 Filtered Search --
 
-    #[test]
-    fn test_filtered_search_restricts_results() {
-        let tvi = TestVectorIndex::new();
-        let ids = seed_vectors(tvi.vi(), tvi.store(), 10);
+    #[tokio::test]
+    async fn test_filtered_search_restricts_results() {
+        let tvi = TestVectorIndex::new().await;
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 10).await;
         let allowed = vec![ids[0], ids[1], ids[2]];
         let query = random_normalized_embedding(384);
         let results = tvi.vi().search_filtered(&query, 10, 32, &allowed).unwrap();
@@ -671,19 +671,19 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_filtered_search_empty_allow_list() {
-        let tvi = TestVectorIndex::new();
-        seed_vectors(tvi.vi(), tvi.store(), 5);
+    #[tokio::test]
+    async fn test_filtered_search_empty_allow_list() {
+        let tvi = TestVectorIndex::new().await;
+        seed_vectors(tvi.vi(), tvi.store(), 5).await;
         let query = random_normalized_embedding(384);
         let results = tvi.vi().search_filtered(&query, 10, 32, &[]).unwrap();
         assert!(results.is_empty());
     }
 
-    #[test]
-    fn test_filtered_search_unknown_ids() {
-        let tvi = TestVectorIndex::new();
-        seed_vectors(tvi.vi(), tvi.store(), 5);
+    #[tokio::test]
+    async fn test_filtered_search_unknown_ids() {
+        let tvi = TestVectorIndex::new().await;
+        seed_vectors(tvi.vi(), tvi.store(), 5).await;
         let query = random_normalized_embedding(384);
         let results = tvi
             .vi()
@@ -692,10 +692,10 @@ mod tests {
         assert!(results.is_empty());
     }
 
-    #[test]
-    fn test_filtered_search_mixed_known_unknown() {
-        let tvi = TestVectorIndex::new();
-        let ids = seed_vectors(tvi.vi(), tvi.store(), 5);
+    #[tokio::test]
+    async fn test_filtered_search_mixed_known_unknown() {
+        let tvi = TestVectorIndex::new().await;
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 5).await;
         let query = random_normalized_embedding(384);
         let allowed = vec![ids[0], 9999];
         let results = tvi.vi().search_filtered(&query, 10, 32, &allowed).unwrap();
@@ -705,12 +705,12 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_filtered_search_exclusion() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_filtered_search_exclusion() {
+        let tvi = TestVectorIndex::new().await;
         let emb = random_normalized_embedding(384);
-        tvi.vi().insert(1, &emb).unwrap();
-        tvi.vi().insert(2, &emb).unwrap(); // same embedding
+        tvi.vi().insert(1, &emb).await.unwrap();
+        tvi.vi().insert(2, &emb).await.unwrap(); // same embedding
 
         // Filter to exclude entry 2
         let results = tvi.vi().search_filtered(&emb, 10, 32, &[1]).unwrap();
@@ -720,99 +720,108 @@ mod tests {
 
     // -- Priority 4: R-06 Re-Embedding --
 
-    #[test]
-    fn test_reembed_search_finds_latest() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_reembed_search_finds_latest() {
+        let tvi = TestVectorIndex::new().await;
         let emb_a = random_normalized_embedding(384);
-        tvi.vi().insert(1, &emb_a).unwrap();
+        tvi.vi().insert(1, &emb_a).await.unwrap();
 
         let emb_b = random_normalized_embedding(384);
-        tvi.vi().insert(1, &emb_b).unwrap(); // re-embed
+        tvi.vi().insert(1, &emb_b).await.unwrap(); // re-embed
 
         let results = tvi.vi().search(&emb_b, 1, 32).unwrap();
         assert!(!results.is_empty());
         assert_eq!(results[0].entry_id, 1);
     }
 
-    #[test]
-    fn test_reembed_contains_still_true() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_reembed_contains_still_true() {
+        let tvi = TestVectorIndex::new().await;
         tvi.vi()
             .insert(1, &random_normalized_embedding(384))
+            .await
             .unwrap();
         tvi.vi()
             .insert(1, &random_normalized_embedding(384))
+            .await
             .unwrap();
         assert!(tvi.vi().contains(1));
     }
 
-    #[test]
-    fn test_reembed_stale_count() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_reembed_stale_count() {
+        let tvi = TestVectorIndex::new().await;
         tvi.vi()
             .insert(1, &random_normalized_embedding(384))
+            .await
             .unwrap();
         assert_eq!(tvi.vi().stale_count(), 0);
         tvi.vi()
             .insert(1, &random_normalized_embedding(384))
+            .await
             .unwrap();
         assert_eq!(tvi.vi().stale_count(), 1);
     }
 
-    #[test]
-    fn test_reembed_point_count_increases() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_reembed_point_count_increases() {
+        let tvi = TestVectorIndex::new().await;
         tvi.vi()
             .insert(1, &random_normalized_embedding(384))
+            .await
             .unwrap();
         assert_eq!(tvi.vi().point_count(), 1);
         tvi.vi()
             .insert(1, &random_normalized_embedding(384))
+            .await
             .unwrap();
         assert_eq!(tvi.vi().point_count(), 2);
     }
 
-    #[test]
-    fn test_reembed_5_times() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_reembed_5_times() {
+        let tvi = TestVectorIndex::new().await;
         for _ in 0..5 {
             tvi.vi()
                 .insert(1, &random_normalized_embedding(384))
+                .await
                 .unwrap();
         }
         assert_eq!(tvi.vi().stale_count(), 4);
         assert_eq!(tvi.vi().point_count(), 5);
         assert!(tvi.vi().contains(1));
-        assert!(tvi.store().get_vector_mapping(1).unwrap().is_some());
+        assert!(tvi.store().get_vector_mapping(1).await.unwrap().is_some());
     }
 
-    #[test]
-    fn test_reembed_vector_map_updated() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_reembed_vector_map_updated() {
+        let tvi = TestVectorIndex::new().await;
         tvi.vi()
             .insert(1, &random_normalized_embedding(384))
+            .await
             .unwrap();
-        let first = tvi.store().get_vector_mapping(1).unwrap().unwrap();
+        let first = tvi.store().get_vector_mapping(1).await.unwrap().unwrap();
         tvi.vi()
             .insert(1, &random_normalized_embedding(384))
+            .await
             .unwrap();
-        let second = tvi.store().get_vector_mapping(1).unwrap().unwrap();
+        let second = tvi.store().get_vector_mapping(1).await.unwrap().unwrap();
         assert_ne!(first, second);
     }
 
     // -- Priority 6: R-07 Empty Index --
 
-    #[test]
-    fn test_search_empty_index() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_search_empty_index() {
+        let tvi = TestVectorIndex::new().await;
         let query = random_normalized_embedding(384);
         let results = tvi.vi().search(&query, 10, 32).unwrap();
         assert!(results.is_empty());
     }
 
-    #[test]
-    fn test_search_filtered_empty_index() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_search_filtered_empty_index() {
+        let tvi = TestVectorIndex::new().await;
         let query = random_normalized_embedding(384);
         let results = tvi
             .vi()
@@ -821,31 +830,31 @@ mod tests {
         assert!(results.is_empty());
     }
 
-    #[test]
-    fn test_point_count_empty() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_point_count_empty() {
+        let tvi = TestVectorIndex::new().await;
         assert_eq!(tvi.vi().point_count(), 0);
     }
 
-    #[test]
-    fn test_contains_empty() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_contains_empty() {
+        let tvi = TestVectorIndex::new().await;
         assert!(!tvi.vi().contains(42));
     }
 
-    #[test]
-    fn test_stale_count_empty() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_stale_count_empty() {
+        let tvi = TestVectorIndex::new().await;
         assert_eq!(tvi.vi().stale_count(), 0);
     }
 
     // -- Priority 7: R-08 Similarity Scores --
 
-    #[test]
-    fn test_self_similarity() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_self_similarity() {
+        let tvi = TestVectorIndex::new().await;
         let emb = random_normalized_embedding(384);
-        tvi.vi().insert(1, &emb).unwrap();
+        tvi.vi().insert(1, &emb).await.unwrap();
         let results = tvi.vi().search(&emb, 1, 32).unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].entry_id, 1);
@@ -856,16 +865,16 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_orthogonal_similarity() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_orthogonal_similarity() {
+        let tvi = TestVectorIndex::new().await;
         let mut emb_a = vec![0.0f32; 384];
         emb_a[0] = 1.0;
         let mut emb_b = vec![0.0f32; 384];
         emb_b[1] = 1.0;
 
-        tvi.vi().insert(1, &emb_a).unwrap();
-        tvi.vi().insert(2, &emb_b).unwrap();
+        tvi.vi().insert(1, &emb_a).await.unwrap();
+        tvi.vi().insert(2, &emb_b).await.unwrap();
 
         let results = tvi.vi().search(&emb_a, 2, 32).unwrap();
         assert_eq!(results[0].entry_id, 1);
@@ -883,10 +892,10 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_results_sorted_descending() {
-        let tvi = TestVectorIndex::new();
-        seed_vectors(tvi.vi(), tvi.store(), 20);
+    #[tokio::test]
+    async fn test_results_sorted_descending() {
+        let tvi = TestVectorIndex::new().await;
+        seed_vectors(tvi.vi(), tvi.store(), 20).await;
         let query = random_normalized_embedding(384);
         let results = tvi.vi().search(&query, 10, 32).unwrap();
         assert_results_sorted(&results);
@@ -894,9 +903,9 @@ mod tests {
 
     // -- Priority 9: R-10 Self-Search Validation (AC-13) --
 
-    #[test]
-    fn test_self_search_50_entries() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_self_search_50_entries() {
+        let tvi = TestVectorIndex::new().await;
         let mut embeddings = Vec::new();
         let mut ids = Vec::new();
 
@@ -914,8 +923,8 @@ mod tests {
                 feature_cycle: String::new(),
                 trust_source: String::new(),
             };
-            let eid = tvi.store().insert(entry).unwrap();
-            tvi.vi().insert(eid, &emb).unwrap();
+            let eid = tvi.store().insert(entry).await.unwrap();
+            tvi.vi().insert(eid, &emb).await.unwrap();
             embeddings.push(emb);
             ids.push(eid);
         }
@@ -932,79 +941,80 @@ mod tests {
 
     // -- AC-02: New Empty Index --
 
-    #[test]
-    fn test_new_index_empty() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_new_index_empty() {
+        let tvi = TestVectorIndex::new().await;
         assert_eq!(tvi.vi().point_count(), 0);
         assert!(!tvi.vi().contains(1));
         assert_eq!(tvi.vi().stale_count(), 0);
     }
 
-    #[test]
-    fn test_new_index_config() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_new_index_config() {
+        let tvi = TestVectorIndex::new().await;
         assert_eq!(tvi.vi().config().dimension, 384);
         assert_eq!(tvi.vi().config().max_nb_connection, 16);
     }
 
     // -- AC-15: Send + Sync --
 
-    #[test]
-    fn test_vector_index_send_sync() {
+    #[tokio::test]
+    async fn test_vector_index_send_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<VectorIndex>();
     }
 
     // -- Edge Cases --
 
-    #[test]
-    fn test_search_top_k_zero() {
-        let tvi = TestVectorIndex::new();
-        seed_vectors(tvi.vi(), tvi.store(), 5);
+    #[tokio::test]
+    async fn test_search_top_k_zero() {
+        let tvi = TestVectorIndex::new().await;
+        seed_vectors(tvi.vi(), tvi.store(), 5).await;
         let query = random_normalized_embedding(384);
         let results = tvi.vi().search(&query, 0, 32).unwrap();
         assert!(results.is_empty());
     }
 
-    #[test]
-    fn test_search_top_k_larger_than_index() {
-        let tvi = TestVectorIndex::new();
-        seed_vectors(tvi.vi(), tvi.store(), 3);
+    #[tokio::test]
+    async fn test_search_top_k_larger_than_index() {
+        let tvi = TestVectorIndex::new().await;
+        seed_vectors(tvi.vi(), tvi.store(), 3).await;
         let query = random_normalized_embedding(384);
         let results = tvi.vi().search(&query, 100, 32).unwrap();
         assert!(results.len() <= 3);
     }
 
-    #[test]
-    fn test_search_ef_less_than_top_k() {
-        let tvi = TestVectorIndex::new();
-        seed_vectors(tvi.vi(), tvi.store(), 10);
+    #[tokio::test]
+    async fn test_search_ef_less_than_top_k() {
+        let tvi = TestVectorIndex::new().await;
+        seed_vectors(tvi.vi(), tvi.store(), 10).await;
         let query = random_normalized_embedding(384);
         let results = tvi.vi().search(&query, 10, 1).unwrap();
         assert!(!results.is_empty());
     }
 
-    #[test]
-    fn test_data_id_uniqueness() {
-        let tvi = TestVectorIndex::new();
-        let ids = seed_vectors(tvi.vi(), tvi.store(), 100);
-        let data_ids: HashSet<u64> = ids
-            .iter()
-            .map(|&id| tvi.store().get_vector_mapping(id).unwrap().unwrap())
-            .collect();
+    #[tokio::test]
+    async fn test_data_id_uniqueness() {
+        let tvi = TestVectorIndex::new().await;
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 100).await;
+        let mut data_ids: HashSet<u64> = HashSet::new();
+        for &id in &ids {
+            let data_id = tvi.store().get_vector_mapping(id).await.unwrap().unwrap();
+            data_ids.insert(data_id);
+        }
         assert_eq!(data_ids.len(), 100);
     }
 
-    #[test]
-    fn test_usize_at_least_8_bytes() {
+    #[tokio::test]
+    async fn test_usize_at_least_8_bytes() {
         assert!(std::mem::size_of::<usize>() >= 8);
     }
 
     // -- C5 vnc-003: allocate_data_id + insert_hnsw_only --
 
-    #[test]
-    fn test_allocate_data_id_monotonic() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_allocate_data_id_monotonic() {
+        let tvi = TestVectorIndex::new().await;
         let mut prev = tvi.vi().allocate_data_id();
         for _ in 0..9 {
             let next = tvi.vi().allocate_data_id();
@@ -1013,21 +1023,21 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_allocate_data_id_starts_at_zero() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_allocate_data_id_starts_at_zero() {
+        let tvi = TestVectorIndex::new().await;
         assert_eq!(tvi.vi().allocate_data_id(), 0);
         assert_eq!(tvi.vi().allocate_data_id(), 1);
     }
 
-    #[test]
-    fn test_insert_hnsw_only_searchable() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_hnsw_only_searchable() {
+        let tvi = TestVectorIndex::new().await;
         let data_id = tvi.vi().allocate_data_id();
         let emb = random_normalized_embedding(384);
 
         // Manually write VECTOR_MAP (simulating server combined txn)
-        tvi.store().put_vector_mapping(1, data_id).unwrap();
+        tvi.store().put_vector_mapping(1, data_id).await.unwrap();
 
         // Insert into HNSW only
         tvi.vi().insert_hnsw_only(1, data_id, &emb).unwrap();
@@ -1038,18 +1048,18 @@ mod tests {
         assert_eq!(results[0].entry_id, 1);
     }
 
-    #[test]
-    fn test_insert_hnsw_only_validates_dimension() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_hnsw_only_validates_dimension() {
+        let tvi = TestVectorIndex::new().await;
         let data_id = tvi.vi().allocate_data_id();
         let emb = vec![0.0f32; 128]; // wrong dimension
         let result = tvi.vi().insert_hnsw_only(1, data_id, &emb);
         assert!(matches!(result, Err(VectorError::DimensionMismatch { .. })));
     }
 
-    #[test]
-    fn test_insert_hnsw_only_validates_nan() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_hnsw_only_validates_nan() {
+        let tvi = TestVectorIndex::new().await;
         let data_id = tvi.vi().allocate_data_id();
         let mut emb = random_normalized_embedding(384);
         emb[0] = f32::NAN;
@@ -1057,9 +1067,9 @@ mod tests {
         assert!(matches!(result, Err(VectorError::InvalidEmbedding(_))));
     }
 
-    #[test]
-    fn test_insert_hnsw_only_no_vector_map_write() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_hnsw_only_no_vector_map_write() {
+        let tvi = TestVectorIndex::new().await;
         let data_id = tvi.vi().allocate_data_id();
         let emb = random_normalized_embedding(384);
 
@@ -1067,81 +1077,85 @@ mod tests {
         tvi.vi().insert_hnsw_only(1, data_id, &emb).unwrap();
 
         // VECTOR_MAP should NOT have a mapping (insert_hnsw_only skips it)
-        assert!(tvi.store().get_vector_mapping(1).unwrap().is_none());
+        assert!(tvi.store().get_vector_mapping(1).await.unwrap().is_none());
         // But HNSW point count increased
         assert_eq!(tvi.vi().point_count(), 1);
         // And IdMap knows about the entry
         assert!(tvi.vi().contains(1));
     }
 
-    #[test]
-    fn test_insert_hnsw_only_idmap_updated() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_hnsw_only_idmap_updated() {
+        let tvi = TestVectorIndex::new().await;
         let data_id = tvi.vi().allocate_data_id();
         let emb = random_normalized_embedding(384);
         tvi.vi().insert_hnsw_only(1, data_id, &emb).unwrap();
         assert!(tvi.vi().contains(1));
     }
 
-    #[test]
-    fn test_existing_insert_still_works() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_existing_insert_still_works() {
+        let tvi = TestVectorIndex::new().await;
         let emb = random_normalized_embedding(384);
-        tvi.vi().insert(1, &emb).unwrap();
+        tvi.vi().insert(1, &emb).await.unwrap();
         // VECTOR_MAP written
-        assert!(tvi.store().get_vector_mapping(1).unwrap().is_some());
+        assert!(tvi.store().get_vector_mapping(1).await.unwrap().is_some());
         // Searchable
         let results = tvi.vi().search(&emb, 1, 32).unwrap();
         assert_eq!(results[0].entry_id, 1);
     }
 
-    #[test]
-    fn test_allocate_then_insert_hnsw_sequence() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_allocate_then_insert_hnsw_sequence() {
+        let tvi = TestVectorIndex::new().await;
         let emb = random_normalized_embedding(384);
 
         // Full GH #14 fix sequence:
         // 1. Allocate data_id
         let data_id = tvi.vi().allocate_data_id();
         // 2. Write VECTOR_MAP externally (server's combined txn)
-        tvi.store().put_vector_mapping(42, data_id).unwrap();
+        tvi.store().put_vector_mapping(42, data_id).await.unwrap();
         // 3. Insert into HNSW only
         tvi.vi().insert_hnsw_only(42, data_id, &emb).unwrap();
 
         // Verify end-to-end
         assert!(tvi.vi().contains(42));
-        assert_eq!(tvi.store().get_vector_mapping(42).unwrap(), Some(data_id));
+        assert_eq!(
+            tvi.store().get_vector_mapping(42).await.unwrap(),
+            Some(data_id)
+        );
         let results = tvi.vi().search(&emb, 1, 32).unwrap();
         assert_eq!(results[0].entry_id, 42);
     }
 
-    #[test]
-    fn test_insert_point_count() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_point_count() {
+        let tvi = TestVectorIndex::new().await;
         assert_eq!(tvi.vi().point_count(), 0);
         tvi.vi()
             .insert(1, &random_normalized_embedding(384))
+            .await
             .unwrap();
         assert_eq!(tvi.vi().point_count(), 1);
-        seed_vectors(tvi.vi(), tvi.store(), 10);
+        seed_vectors(tvi.vi(), tvi.store(), 10).await;
         assert_eq!(tvi.vi().point_count(), 11);
     }
 
     // -- crt-005: Vector Compaction Tests --
 
     // IT-C3-01: Compact eliminates stale nodes
-    #[test]
-    fn test_compact_eliminates_stale_nodes() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_compact_eliminates_stale_nodes() {
+        let tvi = TestVectorIndex::new().await;
         let dim = 384;
 
         // Insert 10 entries via normal path (creates store entries + vectors)
-        let ids = seed_vectors(tvi.vi(), tvi.store(), 10);
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 10).await;
 
         // Create stale nodes: re-embed 3 entries (old data_ids become stale)
         for &id in &ids[0..3] {
             let new_emb = random_normalized_embedding(dim);
-            tvi.vi().insert(id, &new_emb).unwrap();
+            tvi.vi().insert(id, &new_emb).await.unwrap();
         }
         assert!(
             tvi.vi().stale_count() > 0,
@@ -1155,7 +1169,7 @@ mod tests {
             .collect();
 
         // Compact
-        tvi.vi().compact(embeddings).unwrap();
+        tvi.vi().compact(embeddings).await.unwrap();
 
         assert_eq!(
             tvi.vi().stale_count(),
@@ -1172,10 +1186,10 @@ mod tests {
     // IT-C3-02: Search results consistent before and after compaction
     // Pre-existing: GH#288 — flaky with 5-point dataset; HNSW non-determinism
     // after compact() causes different result sets ~1/3 of runs.
-    #[test]
+    #[tokio::test]
     #[ignore = "Pre-existing: GH#288 — flaky, HNSW non-determinism with 5-point dataset"]
-    fn test_compact_search_consistency() {
-        let tvi = TestVectorIndex::new();
+    async fn test_compact_search_consistency() {
+        let tvi = TestVectorIndex::new().await;
         let dim = 384;
 
         // Insert entries with known embeddings
@@ -1193,9 +1207,9 @@ mod tests {
                 feature_cycle: String::new(),
                 trust_source: String::new(),
             };
-            let entry_id = tvi.store().insert(entry).unwrap();
+            let entry_id = tvi.store().insert(entry).await.unwrap();
             let emb = random_normalized_embedding(dim);
-            tvi.vi().insert(entry_id, &emb).unwrap();
+            tvi.vi().insert(entry_id, &emb).await.unwrap();
             embeddings.push((entry_id, emb));
         }
 
@@ -1205,7 +1219,7 @@ mod tests {
         let ids_before: HashSet<u64> = results_before.iter().map(|r| r.entry_id).collect();
 
         // Compact with same embeddings
-        tvi.vi().compact(embeddings.clone()).unwrap();
+        tvi.vi().compact(embeddings.clone()).await.unwrap();
 
         // Search after compaction
         let results_after = tvi.vi().search(&query, 5, 32).unwrap();
@@ -1218,23 +1232,23 @@ mod tests {
     }
 
     // IT-C3-03: VECTOR_MAP updated after compaction
-    #[test]
-    fn test_compact_vector_map_updated() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_compact_vector_map_updated() {
+        let tvi = TestVectorIndex::new().await;
         let dim = 384;
 
-        let ids = seed_vectors(tvi.vi(), tvi.store(), 5);
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 5).await;
 
         // Compact
         let embeddings: Vec<(u64, Vec<f32>)> = ids
             .iter()
             .map(|&id| (id, random_normalized_embedding(dim)))
             .collect();
-        tvi.vi().compact(embeddings).unwrap();
+        tvi.vi().compact(embeddings).await.unwrap();
 
         // Verify VECTOR_MAP has sequential data_ids
         for (idx, &entry_id) in ids.iter().enumerate() {
-            let data_id = tvi.store().get_vector_mapping(entry_id).unwrap();
+            let data_id = tvi.store().get_vector_mapping(entry_id).await.unwrap();
             assert_eq!(
                 data_id,
                 Some(idx as u64),
@@ -1244,16 +1258,17 @@ mod tests {
     }
 
     // IT-C3-04: point_count equals active entries after compaction
-    #[test]
-    fn test_compact_point_count() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_compact_point_count() {
+        let tvi = TestVectorIndex::new().await;
         let dim = 384;
 
         // Insert 10, create 5 stale
-        let ids = seed_vectors(tvi.vi(), tvi.store(), 10);
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 10).await;
         for &id in &ids[0..5] {
             tvi.vi()
                 .insert(id, &random_normalized_embedding(dim))
+                .await
                 .unwrap();
         }
         // point_count includes stale nodes
@@ -1264,18 +1279,18 @@ mod tests {
             .iter()
             .map(|&id| (id, random_normalized_embedding(dim)))
             .collect();
-        tvi.vi().compact(embeddings).unwrap();
+        tvi.vi().compact(embeddings).await.unwrap();
 
         assert_eq!(tvi.vi().point_count(), 10);
     }
 
     // IT-C3-05: Compact failure leaves old index intact
-    #[test]
-    fn test_compact_failure_preserves_old_index() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_compact_failure_preserves_old_index() {
+        let tvi = TestVectorIndex::new().await;
         let dim = 384;
 
-        let ids = seed_vectors(tvi.vi(), tvi.store(), 5);
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 5).await;
         let old_stale = tvi.vi().stale_count();
 
         // Attempt compact with wrong dimension -- should fail
@@ -1283,7 +1298,7 @@ mod tests {
             .iter()
             .map(|&id| (id, vec![0.0f32; 128])) // wrong dimension
             .collect();
-        let result = tvi.vi().compact(bad_embeddings);
+        let result = tvi.vi().compact(bad_embeddings).await;
         assert!(result.is_err(), "compact with wrong dimension should fail");
 
         // Old index should still work
@@ -1301,22 +1316,22 @@ mod tests {
     }
 
     // IT-C3-06: Insert after compact works correctly
-    #[test]
-    fn test_insert_after_compact() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_insert_after_compact() {
+        let tvi = TestVectorIndex::new().await;
         let dim = 384;
 
-        let ids = seed_vectors(tvi.vi(), tvi.store(), 5);
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 5).await;
 
         // Compact
         let embeddings: Vec<(u64, Vec<f32>)> = ids
             .iter()
             .map(|&id| (id, random_normalized_embedding(dim)))
             .collect();
-        tvi.vi().compact(embeddings).unwrap();
+        tvi.vi().compact(embeddings).await.unwrap();
 
         // Insert 3 new entries
-        let new_ids = seed_vectors(tvi.vi(), tvi.store(), 3);
+        let new_ids = seed_vectors(tvi.vi(), tvi.store(), 3).await;
 
         assert_eq!(
             tvi.vi().point_count(),
@@ -1337,23 +1352,23 @@ mod tests {
     }
 
     // IT-C3-07: Compact with empty embeddings
-    #[test]
-    fn test_compact_empty_embeddings() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_compact_empty_embeddings() {
+        let tvi = TestVectorIndex::new().await;
 
-        seed_vectors(tvi.vi(), tvi.store(), 5);
+        seed_vectors(tvi.vi(), tvi.store(), 5).await;
 
         // Compact with empty vec
-        tvi.vi().compact(Vec::new()).unwrap();
+        tvi.vi().compact(Vec::new()).await.unwrap();
 
         assert_eq!(tvi.vi().stale_count(), 0);
         assert_eq!(tvi.vi().point_count(), 0);
     }
 
     // IT-C3-08: Compact with zero stale nodes (harmless rebuild)
-    #[test]
-    fn test_compact_no_stale_nodes() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_compact_no_stale_nodes() {
+        let tvi = TestVectorIndex::new().await;
         let dim = 384;
 
         // Insert entries with known embeddings
@@ -1371,16 +1386,16 @@ mod tests {
                 feature_cycle: String::new(),
                 trust_source: String::new(),
             };
-            let entry_id = tvi.store().insert(entry).unwrap();
+            let entry_id = tvi.store().insert(entry).await.unwrap();
             let emb = random_normalized_embedding(dim);
-            tvi.vi().insert(entry_id, &emb).unwrap();
+            tvi.vi().insert(entry_id, &emb).await.unwrap();
             embeddings.push((entry_id, emb.clone()));
         }
 
         assert_eq!(tvi.vi().stale_count(), 0, "no stale nodes before compact");
 
         // Compact with same embeddings
-        tvi.vi().compact(embeddings.clone()).unwrap();
+        tvi.vi().compact(embeddings.clone()).await.unwrap();
 
         assert_eq!(tvi.vi().stale_count(), 0);
         assert_eq!(tvi.vi().point_count(), 5);
@@ -1391,9 +1406,9 @@ mod tests {
     }
 
     // IT-C3-12: Similarity scores within epsilon after compaction
-    #[test]
-    fn test_compact_similarity_scores_stable() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_compact_similarity_scores_stable() {
+        let tvi = TestVectorIndex::new().await;
         let dim = 384;
 
         // Insert entries with known embeddings
@@ -1411,9 +1426,9 @@ mod tests {
                 feature_cycle: String::new(),
                 trust_source: String::new(),
             };
-            let entry_id = tvi.store().insert(entry).unwrap();
+            let entry_id = tvi.store().insert(entry).await.unwrap();
             let emb = random_normalized_embedding(dim);
-            tvi.vi().insert(entry_id, &emb).unwrap();
+            tvi.vi().insert(entry_id, &emb).await.unwrap();
             embeddings.push((entry_id, emb));
         }
 
@@ -1422,7 +1437,7 @@ mod tests {
         let results_before = tvi.vi().search(&query, 5, 32).unwrap();
 
         // Compact with same embeddings
-        tvi.vi().compact(embeddings.clone()).unwrap();
+        tvi.vi().compact(embeddings.clone()).await.unwrap();
 
         // Search after
         let results_after = tvi.vi().search(&query, 5, 32).unwrap();
@@ -1448,13 +1463,13 @@ mod tests {
     /// This is a deterministic regression guard: if get_embedding still used
     /// get_layer_iterator(0) it would return None for points assigned level >= 1,
     /// causing this assertion to fail.
-    #[test]
-    fn test_get_embedding_returns_some_for_all_points_regardless_of_layer() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_get_embedding_returns_some_for_all_points_regardless_of_layer() {
+        let tvi = TestVectorIndex::new().await;
 
         // 200 points: probability that ALL land on layer 0 is (15/16)^200 < 10^-6.
         // In practice hnsw_rs uses max_nb_connection=16 => P(level>=1) ~= 1/16 per point.
-        let ids = seed_vectors(tvi.vi(), tvi.store(), 200);
+        let ids = seed_vectors(tvi.vi(), tvi.store(), 200).await;
 
         let mut missing = Vec::new();
         for &id in &ids {
@@ -1474,9 +1489,9 @@ mod tests {
     /// Verify that get_embedding returns the correct vector (round-trips).
     /// Uses a single known embedding stored via insert_hnsw_only so the
     /// data_id is predictable and the layer assignment is random.
-    #[test]
-    fn test_get_embedding_value_matches_inserted_vector() {
-        let tvi = TestVectorIndex::new();
+    #[tokio::test]
+    async fn test_get_embedding_value_matches_inserted_vector() {
+        let tvi = TestVectorIndex::new().await;
         let dim = 384;
 
         // Insert 50 entries; for each, verify the retrieved embedding is
@@ -1495,9 +1510,9 @@ mod tests {
                 feature_cycle: String::new(),
                 trust_source: String::new(),
             };
-            let entry_id = tvi.store().insert(entry).unwrap();
+            let entry_id = tvi.store().insert(entry).await.unwrap();
             let emb = random_normalized_embedding(dim);
-            tvi.vi().insert(entry_id, &emb).unwrap();
+            tvi.vi().insert(entry_id, &emb).await.unwrap();
             embeddings.push((entry_id, emb));
         }
 

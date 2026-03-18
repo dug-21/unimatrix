@@ -1,31 +1,37 @@
 //! Per-table INSERT functions for the import pipeline.
 //!
-//! All functions use `rusqlite::params![]` for parameterized queries.
+//! All functions are async and use sqlx parameterized queries.
 //! No string interpolation (ADR-002).
+//!
+//! All functions accept `&mut SqliteConnection` (not `&SqlitePool`) because they
+//! execute within a `BEGIN IMMEDIATE` transaction. Using the pool would dispatch
+//! each INSERT to a potentially different connection, causing SQLITE_BUSY (code 5)
+//! as that second connection cannot acquire a write lock while the first holds it.
 
-use unimatrix_store::rusqlite::{Connection, params};
+use sqlx::sqlite::SqliteConnection;
 
 use crate::format::{
     AgentRegistryRow, AuditLogRow, CoAccessRow, CounterRow, EntryRow, EntryTagRow, FeatureEntryRow,
     OutcomeIndexRow,
 };
 
-pub(super) fn insert_counter(
-    conn: &Connection,
+pub(super) async fn insert_counter(
+    conn: &mut SqliteConnection,
     r: &CounterRow,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    conn.execute(
-        "INSERT OR REPLACE INTO counters (name, value) VALUES (?1, ?2)",
-        params![r.name, r.value],
-    )?;
+    sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES (?1, ?2)")
+        .bind(&r.name)
+        .bind(r.value)
+        .execute(&mut *conn)
+        .await?;
     Ok(())
 }
 
-pub(super) fn insert_entry(
-    conn: &Connection,
+pub(super) async fn insert_entry(
+    conn: &mut SqliteConnection,
     r: &EntryRow,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    conn.execute(
+    sqlx::query(
         "INSERT INTO entries (
             id, title, content, topic, category, source, status, confidence,
             created_at, updated_at, last_accessed_at, access_count,
@@ -41,124 +47,132 @@ pub(super) fn insert_entry(
             ?21, ?22, ?23,
             ?24, ?25, ?26
         )",
-        params![
-            r.id,
-            r.title,
-            r.content,
-            r.topic,
-            r.category,
-            r.source,
-            r.status,
-            r.confidence,
-            r.created_at,
-            r.updated_at,
-            r.last_accessed_at,
-            r.access_count,
-            r.supersedes,
-            r.superseded_by,
-            r.correction_count,
-            r.embedding_dim,
-            r.created_by,
-            r.modified_by,
-            r.content_hash,
-            r.previous_hash,
-            r.version,
-            r.feature_cycle,
-            r.trust_source,
-            r.helpful_count,
-            r.unhelpful_count,
-            r.pre_quarantine_status,
-        ],
-    )?;
+    )
+    .bind(r.id)
+    .bind(&r.title)
+    .bind(&r.content)
+    .bind(&r.topic)
+    .bind(&r.category)
+    .bind(&r.source)
+    .bind(r.status)
+    .bind(r.confidence)
+    .bind(r.created_at)
+    .bind(r.updated_at)
+    .bind(r.last_accessed_at)
+    .bind(r.access_count)
+    .bind(r.supersedes)
+    .bind(r.superseded_by)
+    .bind(r.correction_count)
+    .bind(r.embedding_dim)
+    .bind(&r.created_by)
+    .bind(&r.modified_by)
+    .bind(&r.content_hash)
+    .bind(&r.previous_hash)
+    .bind(r.version)
+    .bind(&r.feature_cycle)
+    .bind(&r.trust_source)
+    .bind(r.helpful_count)
+    .bind(r.unhelpful_count)
+    .bind(r.pre_quarantine_status)
+    .execute(&mut *conn)
+    .await?;
     Ok(())
 }
 
-pub(super) fn insert_entry_tag(
-    conn: &Connection,
+pub(super) async fn insert_entry_tag(
+    conn: &mut SqliteConnection,
     r: &EntryTagRow,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    conn.execute(
-        "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
-        params![r.entry_id, r.tag],
-    )?;
+    sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)")
+        .bind(r.entry_id)
+        .bind(&r.tag)
+        .execute(&mut *conn)
+        .await?;
     Ok(())
 }
 
-pub(super) fn insert_co_access(
-    conn: &Connection,
+pub(super) async fn insert_co_access(
+    conn: &mut SqliteConnection,
     r: &CoAccessRow,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    conn.execute(
+    sqlx::query(
         "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (?1, ?2, ?3, ?4)",
-        params![r.entry_id_a, r.entry_id_b, r.count, r.last_updated],
-    )?;
+    )
+    .bind(r.entry_id_a)
+    .bind(r.entry_id_b)
+    .bind(r.count)
+    .bind(r.last_updated)
+    .execute(&mut *conn)
+    .await?;
     Ok(())
 }
 
-pub(super) fn insert_feature_entry(
-    conn: &Connection,
+pub(super) async fn insert_feature_entry(
+    conn: &mut SqliteConnection,
     r: &FeatureEntryRow,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    conn.execute(
-        "INSERT INTO feature_entries (feature_id, entry_id) VALUES (?1, ?2)",
-        params![r.feature_id, r.entry_id],
-    )?;
+    sqlx::query("INSERT INTO feature_entries (feature_id, entry_id) VALUES (?1, ?2)")
+        .bind(&r.feature_id)
+        .bind(r.entry_id)
+        .execute(&mut *conn)
+        .await?;
     Ok(())
 }
 
-pub(super) fn insert_outcome_index(
-    conn: &Connection,
+pub(super) async fn insert_outcome_index(
+    conn: &mut SqliteConnection,
     r: &OutcomeIndexRow,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    conn.execute(
-        "INSERT INTO outcome_index (feature_cycle, entry_id) VALUES (?1, ?2)",
-        params![r.feature_cycle, r.entry_id],
-    )?;
+    sqlx::query("INSERT INTO outcome_index (feature_cycle, entry_id) VALUES (?1, ?2)")
+        .bind(&r.feature_cycle)
+        .bind(r.entry_id)
+        .execute(&mut *conn)
+        .await?;
     Ok(())
 }
 
-pub(super) fn insert_agent_registry(
-    conn: &Connection,
+pub(super) async fn insert_agent_registry(
+    conn: &mut SqliteConnection,
     r: &AgentRegistryRow,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    conn.execute(
+    sqlx::query(
         "INSERT INTO agent_registry (
             agent_id, trust_level, capabilities, allowed_topics,
             allowed_categories, enrolled_at, last_seen_at, active
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![
-            r.agent_id,
-            r.trust_level,
-            r.capabilities,
-            r.allowed_topics,
-            r.allowed_categories,
-            r.enrolled_at,
-            r.last_seen_at,
-            r.active,
-        ],
-    )?;
+    )
+    .bind(&r.agent_id)
+    .bind(r.trust_level)
+    .bind(&r.capabilities)
+    .bind(&r.allowed_topics)
+    .bind(&r.allowed_categories)
+    .bind(r.enrolled_at)
+    .bind(r.last_seen_at)
+    .bind(r.active)
+    .execute(&mut *conn)
+    .await?;
     Ok(())
 }
 
-pub(super) fn insert_audit_log(
-    conn: &Connection,
+pub(super) async fn insert_audit_log(
+    conn: &mut SqliteConnection,
     r: &AuditLogRow,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    conn.execute(
+    sqlx::query(
         "INSERT INTO audit_log (
             event_id, timestamp, session_id, agent_id,
             operation, target_ids, outcome, detail
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![
-            r.event_id,
-            r.timestamp,
-            r.session_id,
-            r.agent_id,
-            r.operation,
-            r.target_ids,
-            r.outcome,
-            r.detail,
-        ],
-    )?;
+    )
+    .bind(r.event_id)
+    .bind(r.timestamp)
+    .bind(&r.session_id)
+    .bind(&r.agent_id)
+    .bind(&r.operation)
+    .bind(&r.target_ids)
+    .bind(r.outcome)
+    .bind(&r.detail)
+    .execute(&mut *conn)
+    .await?;
     Ok(())
 }

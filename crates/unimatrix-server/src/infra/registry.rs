@@ -1,13 +1,11 @@
 //! Agent registry: identity, trust levels, and capabilities.
 //!
-//! Uses direct SQL against the agent_registry table (ADR-004, nxs-008).
-//! Types re-exported from unimatrix_store::schema.
+//! Rewritten for nxs-011: all database access via async SqlxStore methods.
+//! Delegates to unimatrix_store::SqlxStore agent_* methods.
 
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 
-use unimatrix_store::Store;
-use unimatrix_store::rusqlite::{self, OptionalExtension};
+use unimatrix_store::SqlxStore;
 
 // Re-export types so existing `use crate::infra::registry::*` imports keep working.
 pub use unimatrix_store::{AgentRecord, Capability, TrustLevel};
@@ -31,12 +29,12 @@ const PROTECTED_AGENTS: &[&str] = &["system", "human"];
 
 /// Manages agent identity, trust levels, and capabilities.
 pub struct AgentRegistry {
-    store: Arc<Store>,
+    store: Arc<SqlxStore>,
 }
 
 impl AgentRegistry {
     /// Create a new registry backed by the given store.
-    pub fn new(store: Arc<Store>) -> Result<Self, ServerError> {
+    pub fn new(store: Arc<SqlxStore>) -> Result<Self, ServerError> {
         Ok(AgentRegistry { store })
     }
 
@@ -46,190 +44,24 @@ impl AgentRegistry {
     /// "cortical-implant" (Internal trust) agents on first run.
     /// Idempotent -- safe to call on every startup.
     pub fn bootstrap_defaults(&self) -> Result<(), ServerError> {
-        let now = current_unix_seconds();
-        let conn = self.store.lock_conn();
-        conn.execute_batch("BEGIN IMMEDIATE")
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
-
-        let result = (|| -> Result<(), ServerError> {
-            // Bootstrap "system" if not present
-            let exists: bool = conn
-                .query_row(
-                    "SELECT 1 FROM agent_registry WHERE agent_id = 'system'",
-                    [],
-                    |_| Ok(true),
-                )
-                .optional()
-                .map_err(|e| ServerError::Registry(e.to_string()))?
-                .unwrap_or(false);
-
-            if !exists {
-                let caps_json = serde_json::to_string(&[
-                    Capability::Read as u8,
-                    Capability::Write as u8,
-                    Capability::Search as u8,
-                    Capability::Admin as u8,
-                ])
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-                conn.execute(
-                    "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
-                        allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
-                     VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4, 1)",
-                    rusqlite::params![
-                        "system",
-                        TrustLevel::System as u8 as i64,
-                        &caps_json,
-                        now as i64
-                    ],
-                )
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-            }
-
-            // Bootstrap "human" if not present
-            let exists: bool = conn
-                .query_row(
-                    "SELECT 1 FROM agent_registry WHERE agent_id = 'human'",
-                    [],
-                    |_| Ok(true),
-                )
-                .optional()
-                .map_err(|e| ServerError::Registry(e.to_string()))?
-                .unwrap_or(false);
-
-            if !exists {
-                let caps_json = serde_json::to_string(&[
-                    Capability::Read as u8,
-                    Capability::Write as u8,
-                    Capability::Search as u8,
-                    Capability::Admin as u8,
-                ])
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-                conn.execute(
-                    "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
-                        allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
-                     VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4, 1)",
-                    rusqlite::params![
-                        "human",
-                        TrustLevel::Privileged as u8 as i64,
-                        &caps_json,
-                        now as i64
-                    ],
-                )
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-            }
-
-            // Bootstrap "cortical-implant" if not present (col-006)
-            let exists: bool = conn
-                .query_row(
-                    "SELECT 1 FROM agent_registry WHERE agent_id = 'cortical-implant'",
-                    [],
-                    |_| Ok(true),
-                )
-                .optional()
-                .map_err(|e| ServerError::Registry(e.to_string()))?
-                .unwrap_or(false);
-
-            if !exists {
-                let caps_json =
-                    serde_json::to_string(&[Capability::Read as u8, Capability::Search as u8])
-                        .map_err(|e| ServerError::Registry(e.to_string()))?;
-                conn.execute(
-                    "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
-                        allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
-                     VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4, 1)",
-                    rusqlite::params![
-                        "cortical-implant",
-                        TrustLevel::Internal as u8 as i64,
-                        &caps_json,
-                        now as i64
-                    ],
-                )
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-            }
-
-            Ok(())
-        })();
-
-        match result {
-            Ok(()) => {
-                conn.execute_batch("COMMIT")
-                    .map_err(|e| ServerError::Registry(e.to_string()))?;
-                Ok(())
-            }
-            Err(e) => {
-                let _ = conn.execute_batch("ROLLBACK");
-                Err(e)
-            }
-        }
+        block_sync(self.store.agent_bootstrap_defaults())
+            .map_err(|e| ServerError::Registry(e.to_string()))
     }
 
     /// Look up an agent by ID, auto-enrolling as Restricted if unknown.
     ///
     /// Uses a read-first optimization to avoid write transactions for known agents.
     pub fn resolve_or_enroll(&self, agent_id: &str) -> Result<AgentRecord, ServerError> {
-        let conn = self.store.lock_conn();
-
-        // Read-first: check if agent exists
-        let record = conn
-            .query_row(
-                "SELECT agent_id, trust_level, capabilities, allowed_topics,
-                        allowed_categories, enrolled_at, last_seen_at, active
-                 FROM agent_registry WHERE agent_id = ?1",
-                rusqlite::params![agent_id],
-                agent_from_row,
-            )
-            .optional()
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
-
-        if let Some(r) = record {
-            return Ok(r);
-        }
-
-        // Not found: auto-enroll as Restricted
-        let now = current_unix_seconds();
-        let default_caps = if PERMISSIVE_AUTO_ENROLL {
-            vec![Capability::Read, Capability::Write, Capability::Search]
-        } else {
-            vec![Capability::Read, Capability::Search]
-        };
-        let caps_json = serialize_capabilities(&default_caps)?;
-
-        conn.execute(
-            "INSERT OR IGNORE INTO agent_registry (agent_id, trust_level, capabilities,
-                allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
-             VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4, 1)",
-            rusqlite::params![
-                agent_id,
-                TrustLevel::Restricted as u8 as i64,
-                &caps_json,
-                now as i64
-            ],
-        )
-        .map_err(|e| ServerError::Registry(e.to_string()))?;
-
-        // Re-read (handles INSERT OR IGNORE race where another thread inserted first)
-        conn.query_row(
-            "SELECT agent_id, trust_level, capabilities, allowed_topics,
-                    allowed_categories, enrolled_at, last_seen_at, active
-             FROM agent_registry WHERE agent_id = ?1",
-            rusqlite::params![agent_id],
-            agent_from_row,
+        block_sync(
+            self.store
+                .agent_resolve_or_enroll(agent_id, PERMISSIVE_AUTO_ENROLL),
         )
         .map_err(|e| ServerError::Registry(e.to_string()))
     }
 
     /// Check if an agent has a specific capability.
     pub fn has_capability(&self, agent_id: &str, cap: Capability) -> Result<bool, ServerError> {
-        let conn = self.store.lock_conn();
-        let record = conn
-            .query_row(
-                "SELECT agent_id, trust_level, capabilities, allowed_topics,
-                        allowed_categories, enrolled_at, last_seen_at, active
-                 FROM agent_registry WHERE agent_id = ?1",
-                rusqlite::params![agent_id],
-                agent_from_row,
-            )
-            .optional()
+        let record = block_sync(self.store.agent_get(agent_id))
             .map_err(|e| ServerError::Registry(e.to_string()))?
             .ok_or_else(|| ServerError::Registry(format!("agent '{agent_id}' not found")))?;
         Ok(record.capabilities.contains(&cap))
@@ -251,14 +83,8 @@ impl AgentRegistry {
 
     /// Update the last_seen_at timestamp for an agent.
     pub fn update_last_seen(&self, agent_id: &str) -> Result<(), ServerError> {
-        let now = current_unix_seconds();
-        let conn = self.store.lock_conn();
-        conn.execute(
-            "UPDATE agent_registry SET last_seen_at = ?1 WHERE agent_id = ?2",
-            rusqlite::params![now as i64, agent_id],
-        )
-        .map_err(|e| ServerError::Registry(e.to_string()))?;
-        Ok(())
+        block_sync(self.store.agent_update_last_seen(agent_id))
+            .map_err(|e| ServerError::Registry(e.to_string()))
     }
 
     /// Enroll a new agent or update an existing agent's trust level and capabilities.
@@ -284,137 +110,56 @@ impl AgentRegistry {
             return Err(ServerError::SelfLockout);
         }
 
-        let conn = self.store.lock_conn();
+        let (created, agent) = block_sync(self.store.agent_enroll(
+            target_id,
+            trust_level,
+            capabilities,
+        ))
+        .map_err(|e| ServerError::Registry(e.to_string()))?;
 
-        // 3. Check if target already exists
-        let existing = conn
-            .query_row(
-                "SELECT agent_id, trust_level, capabilities, allowed_topics,
-                        allowed_categories, enrolled_at, last_seen_at, active
-                 FROM agent_registry WHERE agent_id = ?1",
-                rusqlite::params![target_id],
-                agent_from_row,
-            )
-            .optional()
-            .map_err(|e| ServerError::Registry(e.to_string()))?;
-
-        let now = current_unix_seconds();
-        let caps_json = serialize_capabilities(&capabilities)?;
-
-        // 4. Build the agent record and persist
-        let (created, record) = match existing {
-            Some(existing_record) => {
-                // UPDATE: preserve enrolled_at, active, allowed_topics, allowed_categories
-                conn.execute(
-                    "UPDATE agent_registry SET trust_level = ?1, capabilities = ?2,
-                        last_seen_at = ?3 WHERE agent_id = ?4",
-                    rusqlite::params![trust_level as u8 as i64, &caps_json, now as i64, target_id],
-                )
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-
-                let updated = AgentRecord {
-                    agent_id: target_id.to_string(),
-                    trust_level,
-                    capabilities,
-                    allowed_topics: existing_record.allowed_topics,
-                    allowed_categories: existing_record.allowed_categories,
-                    enrolled_at: existing_record.enrolled_at,
-                    last_seen_at: now,
-                    active: existing_record.active,
-                };
-                (false, updated)
-            }
-            None => {
-                // CREATE: new agent with defaults
-                conn.execute(
-                    "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
-                        allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
-                     VALUES (?1, ?2, ?3, NULL, NULL, ?4, ?4, 1)",
-                    rusqlite::params![target_id, trust_level as u8 as i64, &caps_json, now as i64],
-                )
-                .map_err(|e| ServerError::Registry(e.to_string()))?;
-
-                let new_agent = AgentRecord {
-                    agent_id: target_id.to_string(),
-                    trust_level,
-                    capabilities,
-                    allowed_topics: None,
-                    allowed_categories: None,
-                    enrolled_at: now,
-                    last_seen_at: now,
-                    active: true,
-                };
-                (true, new_agent)
-            }
-        };
-
-        Ok(EnrollResult {
-            created,
-            agent: record,
-        })
+        Ok(EnrollResult { created, agent })
     }
 }
 
-/// Get the current time as unix seconds.
-fn current_unix_seconds() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-}
-
-/// Construct an AgentRecord from a SQL row.
-fn agent_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AgentRecord> {
-    let caps_json: String = row.get("capabilities")?;
-    let cap_ints: Vec<u8> = serde_json::from_str(&caps_json).unwrap_or_default();
-    let capabilities: Vec<Capability> = cap_ints
-        .iter()
-        .filter_map(|&v| Capability::try_from(v).ok())
-        .collect();
-
-    let topics_json: Option<String> = row.get("allowed_topics")?;
-    let allowed_topics: Option<Vec<String>> =
-        topics_json.map(|j| serde_json::from_str(&j).unwrap_or_default());
-
-    let cats_json: Option<String> = row.get("allowed_categories")?;
-    let allowed_categories: Option<Vec<String>> =
-        cats_json.map(|j| serde_json::from_str(&j).unwrap_or_default());
-
-    Ok(AgentRecord {
-        agent_id: row.get("agent_id")?,
-        trust_level: TrustLevel::try_from(row.get::<_, i64>("trust_level")? as u8)
-            .unwrap_or(TrustLevel::Restricted),
-        capabilities,
-        allowed_topics,
-        allowed_categories,
-        enrolled_at: row.get::<_, i64>("enrolled_at")? as u64,
-        last_seen_at: row.get::<_, i64>("last_seen_at")? as u64,
-        active: row.get::<_, i64>("active")? != 0,
-    })
-}
-
-/// Serialize capabilities as JSON array of u8 discriminants.
-fn serialize_capabilities(capabilities: &[Capability]) -> Result<String, ServerError> {
-    let cap_ints: Vec<u8> = capabilities.iter().map(|c| *c as u8).collect();
-    serde_json::to_string(&cap_ints).map_err(|e| ServerError::Registry(e.to_string()))
+/// Bridge an async future to sync context.
+///
+/// When called from within a multi-thread tokio runtime, uses `block_in_place`
+/// to avoid nesting runtimes. When called from a sync context (no runtime),
+/// creates a temporary current-thread runtime.
+fn block_sync<F, T, E>(fut: F) -> Result<T, E>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+{
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => tokio::task::block_in_place(|| handle.block_on(fut)),
+        Err(_) => {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("failed to build tokio runtime");
+            rt.block_on(fut)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use unimatrix_store::pool_config::PoolConfig;
 
-    fn make_store() -> Arc<Store> {
+    async fn make_store() -> Arc<SqlxStore> {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("test.db");
-        // Leak TempDir to keep it alive for the test
-        let store = Store::open(&path).unwrap();
+        let store = SqlxStore::open(&path, PoolConfig::default())
+            .await
+            .expect("open store");
         std::mem::forget(dir);
         Arc::new(store)
     }
 
-    #[test]
-    fn test_bootstrap_creates_system_and_human() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_bootstrap_creates_system_and_human() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
@@ -434,9 +179,9 @@ mod tests {
         assert_eq!(human.trust_level, TrustLevel::Privileged);
     }
 
-    #[test]
-    fn test_bootstrap_idempotent() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_bootstrap_idempotent() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
@@ -447,43 +192,41 @@ mod tests {
         assert_eq!(first.enrolled_at, second.enrolled_at);
     }
 
-    #[test]
-    fn test_enroll_unknown_agent() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_enroll_unknown_agent() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         let agent = registry.resolve_or_enroll("unknown-agent-123").unwrap();
         assert_eq!(agent.trust_level, TrustLevel::Restricted);
-        // PERMISSIVE_AUTO_ENROLL=true grants Write to unknown agents
         assert_eq!(
             agent.capabilities,
             vec![Capability::Read, Capability::Write, Capability::Search]
         );
     }
 
-    #[test]
-    fn test_enrolled_agent_has_write_when_permissive() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_enrolled_agent_has_write_when_permissive() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
 
         let agent = registry.resolve_or_enroll("new-agent").unwrap();
-        // PERMISSIVE_AUTO_ENROLL=true grants Write
         assert!(agent.capabilities.contains(&Capability::Write));
     }
 
-    #[test]
-    fn test_enrolled_agent_lacks_admin() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_enrolled_agent_lacks_admin() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
 
         let agent = registry.resolve_or_enroll("new-agent").unwrap();
         assert!(!agent.capabilities.contains(&Capability::Admin));
     }
 
-    #[test]
-    fn test_resolve_existing_agent() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_resolve_existing_agent() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
@@ -500,9 +243,9 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_has_capability_true() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_has_capability_true() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
@@ -510,13 +253,12 @@ mod tests {
         assert!(registry.has_capability("human", Capability::Write).unwrap());
     }
 
-    #[test]
-    fn test_has_capability_false() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_has_capability_false() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
 
         registry.resolve_or_enroll("agent-x").unwrap();
-        // PERMISSIVE_AUTO_ENROLL=true grants Write, but Admin is never auto-granted
         assert!(
             !registry
                 .has_capability("agent-x", Capability::Admin)
@@ -524,9 +266,9 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_require_capability_ok() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_require_capability_ok() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
@@ -537,182 +279,34 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_require_capability_denied() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_require_capability_denied() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
 
         registry.resolve_or_enroll("agent-x").unwrap();
-        // Admin is never auto-granted, so this should be denied
         let result = registry.require_capability("agent-x", Capability::Admin);
         assert!(matches!(result, Err(ServerError::CapabilityDenied { .. })));
     }
 
-    #[test]
-    fn test_update_last_seen() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_update_last_seen() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         let before = registry.resolve_or_enroll("human").unwrap();
-        // Sleep briefly so timestamp changes
         std::thread::sleep(std::time::Duration::from_millis(10));
         registry.update_last_seen("human").unwrap();
         let after = registry.resolve_or_enroll("human").unwrap();
 
         assert!(after.last_seen_at >= before.last_seen_at);
-        // Capabilities should not change
         assert_eq!(before.capabilities, after.capabilities);
     }
 
-    #[test]
-    fn test_enroll_anonymous() {
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-
-        let agent = registry.resolve_or_enroll("anonymous").unwrap();
-        assert_eq!(agent.trust_level, TrustLevel::Restricted);
-        // PERMISSIVE_AUTO_ENROLL=true grants Write to anonymous too
-        assert_eq!(
-            agent.capabilities,
-            vec![Capability::Read, Capability::Write, Capability::Search]
-        );
-    }
-
-    #[test]
-    fn test_permissive_auto_enroll_grants_read_write_search() {
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-
-        // When PERMISSIVE_AUTO_ENROLL is true, unknown agents get [Read, Write, Search]
-        let agent = registry.resolve_or_enroll("brand-new-agent").unwrap();
-        assert_eq!(agent.trust_level, TrustLevel::Restricted);
-        assert!(agent.capabilities.contains(&Capability::Read));
-        assert!(agent.capabilities.contains(&Capability::Write));
-        assert!(agent.capabilities.contains(&Capability::Search));
-        assert!(!agent.capabilities.contains(&Capability::Admin));
-    }
-
-    // -- alc-002: enroll_agent --
-
-    #[test]
-    fn test_enroll_new_agent_created() {
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-        registry.bootstrap_defaults().unwrap();
-
-        let result = registry
-            .enroll_agent(
-                "human",
-                "new-agent",
-                TrustLevel::Internal,
-                vec![Capability::Read, Capability::Write, Capability::Search],
-            )
-            .unwrap();
-
-        assert!(result.created);
-        assert_eq!(result.agent.trust_level, TrustLevel::Internal);
-        assert_eq!(
-            result.agent.capabilities,
-            vec![Capability::Read, Capability::Write, Capability::Search]
-        );
-        assert!(result.agent.active);
-    }
-
-    #[test]
-    fn test_enroll_new_agent_enrolled_at_set() {
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-        registry.bootstrap_defaults().unwrap();
-
-        let result = registry
-            .enroll_agent(
-                "human",
-                "new-agent",
-                TrustLevel::Internal,
-                vec![Capability::Read],
-            )
-            .unwrap();
-
-        assert!(result.agent.enrolled_at > 0);
-    }
-
-    #[test]
-    fn test_enroll_update_existing_agent() {
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-        registry.bootstrap_defaults().unwrap();
-
-        // Auto-enroll as Restricted
-        let original = registry.resolve_or_enroll("worker").unwrap();
-        assert_eq!(original.trust_level, TrustLevel::Restricted);
-
-        // Update via enrollment
-        let result = registry
-            .enroll_agent(
-                "human",
-                "worker",
-                TrustLevel::Internal,
-                vec![Capability::Read, Capability::Write, Capability::Search],
-            )
-            .unwrap();
-
-        assert!(!result.created);
-        assert_eq!(result.agent.trust_level, TrustLevel::Internal);
-        assert_eq!(
-            result.agent.capabilities,
-            vec![Capability::Read, Capability::Write, Capability::Search]
-        );
-    }
-
-    #[test]
-    fn test_enroll_update_preserves_enrolled_at() {
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-        registry.bootstrap_defaults().unwrap();
-
-        let original = registry.resolve_or_enroll("worker").unwrap();
-        let original_enrolled_at = original.enrolled_at;
-
-        // Brief pause to ensure timestamps would differ
-        std::thread::sleep(std::time::Duration::from_millis(10));
-
-        let result = registry
-            .enroll_agent(
-                "human",
-                "worker",
-                TrustLevel::Internal,
-                vec![Capability::Read, Capability::Write],
-            )
-            .unwrap();
-
-        assert_eq!(result.agent.enrolled_at, original_enrolled_at);
-    }
-
-    #[test]
-    fn test_enroll_update_preserves_active() {
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-        registry.bootstrap_defaults().unwrap();
-
-        let original = registry.resolve_or_enroll("worker").unwrap();
-        assert!(original.active);
-
-        let result = registry
-            .enroll_agent(
-                "human",
-                "worker",
-                TrustLevel::Internal,
-                vec![Capability::Read],
-            )
-            .unwrap();
-
-        assert!(result.agent.active);
-    }
-
-    #[test]
-    fn test_enroll_rejects_system() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_enroll_rejects_system() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
@@ -725,75 +319,12 @@ mod tests {
         assert!(matches!(result, Err(ServerError::ProtectedAgent { .. })));
     }
 
-    #[test]
-    fn test_enroll_rejects_human() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_enroll_self_without_admin_rejected() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
-        // Pre-enroll an admin agent
-        registry
-            .enroll_agent(
-                "human",
-                "admin-agent",
-                TrustLevel::Internal,
-                vec![Capability::Read, Capability::Admin],
-            )
-            .unwrap();
-
-        let result = registry.enroll_agent(
-            "admin-agent",
-            "human",
-            TrustLevel::Internal,
-            vec![Capability::Read],
-        );
-        assert!(matches!(result, Err(ServerError::ProtectedAgent { .. })));
-    }
-
-    #[test]
-    fn test_enroll_allows_case_different_system() {
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-        registry.bootstrap_defaults().unwrap();
-
-        // "SYSTEM" (uppercase) is NOT "system" -- case-sensitive IDs
-        let result = registry.enroll_agent(
-            "human",
-            "SYSTEM",
-            TrustLevel::Internal,
-            vec![Capability::Read],
-        );
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_enroll_protected_no_state_change() {
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-        registry.bootstrap_defaults().unwrap();
-
-        let before = registry.resolve_or_enroll("system").unwrap();
-
-        // Attempt to modify protected agent -- should fail
-        let _ = registry.enroll_agent(
-            "human",
-            "system",
-            TrustLevel::Restricted,
-            vec![Capability::Read],
-        );
-
-        let after = registry.resolve_or_enroll("system").unwrap();
-        assert_eq!(before.trust_level, after.trust_level);
-        assert_eq!(before.capabilities, after.capabilities);
-    }
-
-    #[test]
-    fn test_enroll_self_without_admin_rejected() {
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-        registry.bootstrap_defaults().unwrap();
-
-        // Pre-enroll admin-agent with Admin
         registry
             .enroll_agent(
                 "human",
@@ -803,7 +334,6 @@ mod tests {
             )
             .unwrap();
 
-        // Self-enrollment without Admin -> SelfLockout
         let result = registry.enroll_agent(
             "admin-agent",
             "admin-agent",
@@ -813,13 +343,12 @@ mod tests {
         assert!(matches!(result, Err(ServerError::SelfLockout)));
     }
 
-    #[test]
-    fn test_enroll_self_with_admin_allowed() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_enroll_self_with_admin_allowed() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
-        // Pre-enroll admin-agent
         registry
             .enroll_agent(
                 "human",
@@ -829,7 +358,6 @@ mod tests {
             )
             .unwrap();
 
-        // Self-enrollment retaining Admin -> OK
         let result = registry
             .enroll_agent(
                 "admin-agent",
@@ -843,72 +371,12 @@ mod tests {
         assert!(result.agent.capabilities.contains(&Capability::Admin));
     }
 
-    #[test]
-    fn test_enroll_sequential_updates() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_status_read_cap_non_admin_agent_passes() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();
 
-        // First enrollment
-        registry
-            .enroll_agent(
-                "human",
-                "agent-x",
-                TrustLevel::Internal,
-                vec![Capability::Read, Capability::Write],
-            )
-            .unwrap();
-
-        // Second enrollment with different trust level
-        let result = registry
-            .enroll_agent(
-                "human",
-                "agent-x",
-                TrustLevel::Restricted,
-                vec![Capability::Read],
-            )
-            .unwrap();
-
-        assert_eq!(result.agent.trust_level, TrustLevel::Restricted);
-        assert_eq!(result.agent.capabilities, vec![Capability::Read]);
-    }
-
-    #[test]
-    fn test_enroll_then_resolve() {
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-        registry.bootstrap_defaults().unwrap();
-
-        // Enroll with Write capability
-        registry
-            .enroll_agent(
-                "human",
-                "new-agent",
-                TrustLevel::Internal,
-                vec![Capability::Read, Capability::Write, Capability::Search],
-            )
-            .unwrap();
-
-        // Resolve should return the enrolled record, not re-enroll as Restricted
-        let resolved = registry.resolve_or_enroll("new-agent").unwrap();
-        assert_eq!(resolved.trust_level, TrustLevel::Internal);
-        assert!(resolved.capabilities.contains(&Capability::Write));
-    }
-
-    // -- bugfix/252: context_status Read-capability gate --
-
-    #[test]
-    fn test_status_read_cap_non_admin_agent_passes() {
-        // A Restricted agent with only Read+Search capabilities should pass a
-        // Read capability check -- this mirrors the context_status gate after
-        // the fix (Admin -> Read).
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-        registry.bootstrap_defaults().unwrap();
-
-        // Auto-enrolled Restricted agent gets [Read, Search] in non-permissive
-        // mode, or [Read, Write, Search] in permissive mode.  Either way it
-        // holds Read.
         let _agent = registry.resolve_or_enroll("restricted-reader").unwrap();
 
         let result = registry.require_capability("restricted-reader", Capability::Read);
@@ -918,32 +386,10 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_status_read_cap_non_admin_agent_lacks_admin() {
-        // The same Restricted agent must NOT pass an Admin capability check,
-        // confirming the old gate was blocking read-only queries.
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_status_anonymous_fresh_install_passes_read_gate() {
+        let store = make_store().await;
         let registry = AgentRegistry::new(store).unwrap();
-        registry.bootstrap_defaults().unwrap();
-
-        registry.resolve_or_enroll("restricted-reader-2").unwrap();
-
-        let result = registry.require_capability("restricted-reader-2", Capability::Admin);
-        assert!(
-            matches!(result, Err(ServerError::CapabilityDenied { .. })),
-            "Restricted agent must not pass Admin gate"
-        );
-    }
-
-    #[test]
-    fn test_status_anonymous_fresh_install_passes_read_gate() {
-        // Simulates a fresh-install scenario: no prior enrollment, agent
-        // resolved on first access.  Must pass the Read gate used by
-        // context_status after the fix.
-        let store = make_store();
-        let registry = AgentRegistry::new(store).unwrap();
-        // Intentionally skip bootstrap_defaults to simulate a fresh install
-        // where system/human have not yet been set up.
 
         let agent = registry.resolve_or_enroll("brand-new-fresh-agent").unwrap();
         assert!(

@@ -9,15 +9,9 @@ license.workspace = true
 test-support = ["dep:tempfile"]
 
 [dependencies]
-rusqlite = { version = "0.34", features = ["bundled"] }
-# Wave 2 (nxs-011): add sqlx and remove rusqlite atomically.
-# sqlx CANNOT coexist with rusqlite: both depend on libsqlite3-sys at incompatible
-# pre-1.0 semver versions (rusqlite 0.34 → ^0.32.0; sqlx-sqlite 0.8 → ^0.30.1),
-# and both declare links = "sqlite3", which Cargo forbids for multiple packages.
-# Wave 2 must: (1) remove rusqlite from this file, (2) add sqlx, tokio, tracing below.
-#   sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "macros"] }
-#   tokio = { version = "1", features = ["rt", "sync", "time", "macros"] }
-#   tracing = "0.1"
+sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "macros"] }
+tokio = { version = "1", features = ["rt", "sync", "time", "macros"] }
+tracing = "0.1"
 serde = { workspace = true }
 serde_json = { workspace = true }
 bincode = { workspace = true }
@@ -27,5 +21,4 @@ tempfile = { version = "3", optional = true }
 
 [dev-dependencies]
 tempfile = "3"
-# Wave 2: uncomment when tokio is added.
-# tokio = { version = "1", features = ["rt", "sync", "time", "macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["rt", "sync", "time", "macros", "rt-multi-thread"] }

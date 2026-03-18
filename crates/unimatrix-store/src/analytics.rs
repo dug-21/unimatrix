@@ -1,15 +1,11 @@
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
 
 use sqlx::sqlite::SqlitePool;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
-use crate::pool_config::{ANALYTICS_QUEUE_CAPACITY, DRAIN_BATCH_SIZE, DRAIN_FLUSH_INTERVAL};
-
-// Re-export ANALYTICS_QUEUE_CAPACITY for convenience — single authoritative source
-// is pool_config.rs; this avoids callers needing to know which module owns it.
-pub use crate::pool_config::ANALYTICS_QUEUE_CAPACITY as ANALYTICS_QUEUE_CAP;
+use crate::pool_config::{DRAIN_BATCH_SIZE, DRAIN_FLUSH_INTERVAL};
 
 /// All analytics write operations routed through the bounded channel.
 ///
@@ -146,6 +142,24 @@ pub enum AnalyticsWrite {
         feature_cycle: String,
         entry_id: u64,
     },
+
+    /// Table: `observation_phase_metrics` — insert/replace by (feature_cycle, phase_name).
+    ///
+    /// Written atomically with `ObservationMetric` by `store_metrics()` (OQ-NEW-01).
+    /// Phase rows reference observation_metrics via FK (DELETE CASCADE on feature_cycle).
+    ObservationPhaseMetric {
+        feature_cycle: String,
+        phase_name: String,
+        duration_secs: i64,
+        tool_call_count: i64,
+    },
+
+    /// Table: `observation_phase_metrics` — delete all rows for a feature cycle.
+    ///
+    /// Enqueued by `store_metrics()` BEFORE new `ObservationPhaseMetric` events so that
+    /// stale phase rows from a previous call are removed before the new set is inserted.
+    /// Callers must enqueue this before phase inserts in the same `enqueue_analytics` sequence.
+    DeleteObservationPhases { feature_cycle: String },
     // Future Wave 1+ variants (not defined here):
     //   GraphEdge { .. }              — W1-1 NLI graph edges
     //   ConfidenceWeightUpdate { .. } — W3-1
@@ -155,6 +169,9 @@ impl AnalyticsWrite {
     /// Returns the variant name as a `&'static str` for structured WARN log messages
     /// emitted when an event is shed from a full queue.
     pub(crate) fn variant_name(&self) -> &'static str {
+        // #[allow(unreachable_patterns)]: catch-all is unreachable within this crate
+        // but required by external crates matching #[non_exhaustive] enums (FR-17, C-08).
+        #[allow(unreachable_patterns)]
         match self {
             AnalyticsWrite::CoAccess { .. } => "CoAccess",
             AnalyticsWrite::SessionUpdate { .. } => "SessionUpdate",
@@ -167,6 +184,8 @@ impl AnalyticsWrite {
             AnalyticsWrite::FeatureEntry { .. } => "FeatureEntry",
             AnalyticsWrite::TopicDelivery { .. } => "TopicDelivery",
             AnalyticsWrite::OutcomeIndex { .. } => "OutcomeIndex",
+            AnalyticsWrite::ObservationPhaseMetric { .. } => "ObservationPhaseMetric",
+            AnalyticsWrite::DeleteObservationPhases { .. } => "DeleteObservationPhases",
             // Catch-all for future #[non_exhaustive] variants.
             _ => "Unknown",
         }
@@ -335,6 +354,9 @@ async fn execute_analytics_write(
     txn: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
     event: AnalyticsWrite,
 ) -> Result<(), sqlx::Error> {
+    // #[allow(unreachable_patterns)]: catch-all is unreachable within this crate
+    // but required by external crates matching #[non_exhaustive] enums (FR-17, C-08).
+    #[allow(unreachable_patterns)]
     match event {
         AnalyticsWrite::CoAccess { id_a, id_b } => {
             // Normalize order to satisfy schema CHECK (entry_id_a < entry_id_b).
@@ -675,6 +697,35 @@ async fn execute_analytics_write(
             .await?;
         }
 
+        AnalyticsWrite::ObservationPhaseMetric {
+            feature_cycle,
+            phase_name,
+            duration_secs,
+            tool_call_count,
+        } => {
+            sqlx::query(
+                "INSERT INTO observation_phase_metrics
+                    (feature_cycle, phase_name, duration_secs, tool_call_count)
+                 VALUES (?1, ?2, ?3, ?4)
+                 ON CONFLICT (feature_cycle, phase_name) DO UPDATE SET
+                    duration_secs   = excluded.duration_secs,
+                    tool_call_count = excluded.tool_call_count",
+            )
+            .bind(feature_cycle)
+            .bind(phase_name)
+            .bind(duration_secs)
+            .bind(tool_call_count)
+            .execute(&mut **txn)
+            .await?;
+        }
+
+        AnalyticsWrite::DeleteObservationPhases { feature_cycle } => {
+            sqlx::query("DELETE FROM observation_phase_metrics WHERE feature_cycle = ?1")
+                .bind(feature_cycle)
+                .execute(&mut **txn)
+                .await?;
+        }
+
         // Catch-all for future #[non_exhaustive] variants (FR-17, C-08).
         // Logs at DEBUG and returns Ok to allow the drain task to continue.
         _ => {
@@ -703,6 +754,7 @@ fn current_unix_seconds() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pool_config::ANALYTICS_QUEUE_CAPACITY;
 
     #[test]
     fn test_analytics_write_variant_names() {

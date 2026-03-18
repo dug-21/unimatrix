@@ -6,7 +6,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use unimatrix_store::Store;
+use unimatrix_store::SqlxStore;
+use unimatrix_store::pool_config::PoolConfig;
 
 use crate::config::VectorConfig;
 use crate::index::{SearchResult, VectorIndex};
@@ -18,22 +19,26 @@ use crate::index::{SearchResult, VectorIndex};
 pub struct TestVectorIndex {
     _dir: tempfile::TempDir,
     dir_path: PathBuf,
-    store: Arc<Store>,
+    store: Arc<SqlxStore>,
     index: VectorIndex,
 }
 
 impl TestVectorIndex {
     /// Create a new test VectorIndex with default configuration.
-    pub fn new() -> Self {
-        Self::with_config(VectorConfig::default())
+    pub async fn new() -> Self {
+        Self::with_config(VectorConfig::default()).await
     }
 
     /// Create a new test VectorIndex with custom configuration.
-    pub fn with_config(config: VectorConfig) -> Self {
+    pub async fn with_config(config: VectorConfig) -> Self {
         let dir = tempfile::TempDir::new().expect("failed to create temp dir");
         let dir_path = dir.path().to_path_buf();
         let db_path = dir.path().join("test.db");
-        let store = Arc::new(Store::open(&db_path).expect("failed to open test store"));
+        let store = Arc::new(
+            SqlxStore::open(&db_path, PoolConfig::default())
+                .await
+                .expect("failed to open test store"),
+        );
         let index = VectorIndex::new(store.clone(), config).expect("failed to create test index");
 
         TestVectorIndex {
@@ -50,7 +55,7 @@ impl TestVectorIndex {
     }
 
     /// Get the store (for VECTOR_MAP verification and entry insertion).
-    pub fn store(&self) -> &Arc<Store> {
+    pub fn store(&self) -> &Arc<SqlxStore> {
         &self.store
     }
 
@@ -117,7 +122,7 @@ pub fn assert_results_sorted(results: &[SearchResult]) {
 ///
 /// Creates store entries first (needed for VECTOR_MAP consistency),
 /// then inserts random embeddings.
-pub fn seed_vectors(vi: &VectorIndex, store: &Store, count: usize) -> Vec<u64> {
+pub async fn seed_vectors(vi: &VectorIndex, store: &SqlxStore, count: usize) -> Vec<u64> {
     let dim = vi.config().dimension;
     let mut ids = Vec::with_capacity(count);
 
@@ -134,10 +139,14 @@ pub fn seed_vectors(vi: &VectorIndex, store: &Store, count: usize) -> Vec<u64> {
             feature_cycle: String::new(),
             trust_source: String::new(),
         };
-        let entry_id = store.insert(entry).expect("failed to insert store entry");
+        let entry_id = store
+            .insert(entry)
+            .await
+            .expect("failed to insert store entry");
 
         let embedding = random_normalized_embedding(dim);
         vi.insert(entry_id, &embedding)
+            .await
             .expect("failed to insert vector");
 
         ids.push(entry_id);

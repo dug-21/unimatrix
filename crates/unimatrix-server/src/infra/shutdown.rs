@@ -23,7 +23,7 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 use unimatrix_adapt::AdaptationService;
-use unimatrix_store::Store;
+use unimatrix_store::SqlxStore;
 use unimatrix_vector::VectorIndex;
 
 use crate::error::ServerError;
@@ -41,7 +41,7 @@ use crate::uds::listener::SocketGuard;
 /// `graceful_shutdown` enforces drop order explicitly via `take()` calls.
 pub struct LifecycleHandles {
     /// The Store Arc for compaction via try_unwrap.
-    pub store: Arc<Store>,
+    pub store: Arc<SqlxStore>,
     /// The VectorIndex Arc for dump.
     pub vector_index: Arc<VectorIndex>,
     /// Directory for vector dump files.
@@ -172,9 +172,9 @@ pub async fn graceful_shutdown(mut handles: LifecycleHandles) -> Result<(), Serv
 
     // Step 3: Try to unwrap Store for compaction.
     match Arc::try_unwrap(handles.store) {
-        Ok(mut store) => {
+        Ok(store) => {
             tracing::info!("compacting database");
-            match store.compact() {
+            match store.compact().await {
                 Ok(()) => tracing::info!("database compacted successfully"),
                 Err(e) => tracing::warn!(error = %e, "compact failed, continuing exit"),
             }
@@ -216,12 +216,21 @@ pub async fn shutdown_signal() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use unimatrix_store::pool_config::PoolConfig;
 
-    #[test]
-    fn test_try_unwrap_succeeds_when_sole_owner() {
+    async fn open_store(path: &std::path::Path) -> Arc<SqlxStore> {
+        Arc::new(
+            SqlxStore::open(path, PoolConfig::default())
+                .await
+                .expect("open store"),
+        )
+    }
+
+    #[tokio::test]
+    async fn test_try_unwrap_succeeds_when_sole_owner() {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("test.db");
-        let store = Arc::new(Store::open(&path).unwrap());
+        let store = open_store(&path).await;
 
         // Only one reference exists
         assert_eq!(Arc::strong_count(&store), 1);
@@ -229,11 +238,11 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_try_unwrap_fails_with_outstanding_refs() {
+    #[tokio::test]
+    async fn test_try_unwrap_fails_with_outstanding_refs() {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("test.db");
-        let store = Arc::new(Store::open(&path).unwrap());
+        let store = open_store(&path).await;
         let _clone = Arc::clone(&store);
 
         assert_eq!(Arc::strong_count(&store), 2);
@@ -241,27 +250,19 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_compact_succeeds_after_unwrap() {
+    #[tokio::test]
+    async fn test_compact_succeeds_after_unwrap() {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("test.db");
-        let store = Arc::new(Store::open(&path).unwrap());
+        let store = open_store(&path).await;
 
-        let mut owned = Arc::try_unwrap(store).ok().expect("should be sole owner");
-        owned.compact().unwrap();
+        let owned = Arc::try_unwrap(store).ok().expect("should be sole owner");
+        owned.compact().await.unwrap();
     }
 
-    /// Verify that the shutdown drop sequence releases ALL Arc<Store> clones,
-    /// including the ServiceLayer introduced in vnc-006 (#92).
-    ///
-    /// Before the fix, ServiceLayer was not in LifecycleHandles, so
-    /// Arc::try_unwrap(store) always failed after vnc-006.
-    ///
-    /// Updated for vnc-005: LifecycleHandles now has two new Option fields
-    /// (mcp_socket_guard, mcp_acceptor_handle) — both set to None here
-    /// because stdio mode does not use them.
-    #[test]
-    fn test_shutdown_drops_release_all_store_refs() {
+    /// Verify that the shutdown drop sequence releases ALL Arc<Store> clones.
+    #[tokio::test]
+    async fn test_shutdown_drops_release_all_store_refs() {
         use unimatrix_adapt::{AdaptConfig, AdaptationService};
         use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
         use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
@@ -276,7 +277,7 @@ mod tests {
         let vector_dir = dir.path().join("vector");
         std::fs::create_dir_all(&vector_dir).unwrap();
 
-        let store = Arc::new(Store::open(&db_path).unwrap());
+        let store = open_store(&db_path).await;
         let vector_config = VectorConfig::default();
         let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
 
@@ -349,9 +350,8 @@ mod tests {
     }
 
     /// Verify that WITHOUT dropping ServiceLayer, Arc::try_unwrap fails.
-    /// This is the regression test: proves the bug existed before the fix.
-    #[test]
-    fn test_shutdown_fails_without_service_layer_drop() {
+    #[tokio::test]
+    async fn test_shutdown_fails_without_service_layer_drop() {
         use unimatrix_adapt::{AdaptConfig, AdaptationService};
         use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
         use unimatrix_core::{StoreAdapter, VectorAdapter, VectorConfig};
@@ -366,7 +366,7 @@ mod tests {
         let vector_dir = dir.path().join("vector");
         std::fs::create_dir_all(&vector_dir).unwrap();
 
-        let store = Arc::new(Store::open(&db_path).unwrap());
+        let store = open_store(&db_path).await;
         let vector_config = VectorConfig::default();
         let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
 
@@ -421,11 +421,8 @@ mod tests {
     // --- vnc-005 new tests ---
 
     /// T-SHUT-U-03: LifecycleHandles has mcp_socket_guard and mcp_acceptor_handle fields.
-    ///
-    /// Verifies both new fields are present and correctly typed by constructing
-    /// the struct in a test and checking Option<_> semantics.
-    #[test]
-    fn test_lifecycle_handles_has_vnc005_fields() {
+    #[tokio::test]
+    async fn test_lifecycle_handles_has_vnc005_fields() {
         use unimatrix_adapt::{AdaptConfig, AdaptationService};
         use unimatrix_core::VectorConfig;
 
@@ -434,7 +431,7 @@ mod tests {
         let vector_dir = dir.path().join("vector");
         std::fs::create_dir_all(&vector_dir).unwrap();
 
-        let store = Arc::new(Store::open(&db_path).unwrap());
+        let store = open_store(&db_path).await;
         let vector_config = VectorConfig::default();
         let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
 
@@ -502,12 +499,8 @@ mod tests {
     }
 
     /// T-SHUT-U-04 (structural): drop ordering is enforced by the take() sequence.
-    ///
-    /// This test verifies that after running the Step 0 / Step 0a sequence in order,
-    /// both MCP fields are None (consumed), confirming they were processed before the
-    /// hook IPC fields.
-    #[test]
-    fn test_drop_ordering_mcp_before_hook_ipc() {
+    #[tokio::test]
+    async fn test_drop_ordering_mcp_before_hook_ipc() {
         use unimatrix_adapt::{AdaptConfig, AdaptationService};
         use unimatrix_core::VectorConfig;
 
@@ -516,7 +509,7 @@ mod tests {
         let vector_dir = dir.path().join("vector");
         std::fs::create_dir_all(&vector_dir).unwrap();
 
-        let store = Arc::new(Store::open(&db_path).unwrap());
+        let store = open_store(&db_path).await;
         let vector_config = VectorConfig::default();
         let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
 

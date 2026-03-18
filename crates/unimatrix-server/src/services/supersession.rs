@@ -85,11 +85,11 @@ impl SupersessionState {
     /// `use_fallback` is set to `false` by this function; the search path sets it back
     /// to `true` transiently if `build_supersession_graph` returns `CycleDetected`.
     /// This is safe because the search path rebuilds the graph on each call (Option A).
-    pub fn rebuild(store: &Store) -> Result<Self, StoreError> {
-        // Single lock_conn() + single SQL SELECT (GH #266).
+    pub async fn rebuild(store: &Store) -> Result<Self, StoreError> {
+        // Single async SQL SELECT (GH #266, nxs-011).
         // Replaces 4x query_by_status() calls that held the mutex 4 times
         // and caused contention against concurrent MCP spawn_blocking calls.
-        let all_entries = store.query_all_entries()?;
+        let all_entries = store.query_all_entries().await?;
         Ok(SupersessionState {
             all_entries,
             use_fallback: false,

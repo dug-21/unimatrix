@@ -5,8 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use unimatrix_store::Store;
-use unimatrix_store::rusqlite;
+use unimatrix_store::SqlxStore;
 
 use super::{ExtractionRule, ProposedEntry};
 use crate::types::ObservationRecord;
@@ -18,7 +17,11 @@ impl ExtractionRule for DeadKnowledgeRule {
         "dead-knowledge"
     }
 
-    fn evaluate(&self, observations: &[ObservationRecord], store: &Store) -> Vec<ProposedEntry> {
+    fn evaluate(
+        &self,
+        observations: &[ObservationRecord],
+        store: &SqlxStore,
+    ) -> Vec<ProposedEntry> {
         // 1. Get session timestamps, sorted newest first
         let mut session_times: HashMap<String, u64> = HashMap::new();
         for obs in observations {
@@ -137,35 +140,25 @@ fn extract_entry_ids(snippet: &str) -> Vec<u64> {
 
 /// Query active entries with access_count > 0.
 /// Returns (id, title, access_count) tuples.
-fn query_accessed_active_entries(store: &Store) -> Result<Vec<(u64, String, u32)>, String> {
-    let conn = store.lock_conn();
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, title, access_count FROM entries \
-             WHERE status = ?1 AND access_count > 0",
-        )
-        .map_err(|e| e.to_string())?;
-
-    let rows = stmt
-        .query_map(
-            rusqlite::params![unimatrix_store::Status::Active as u8 as i64],
-            |row| {
-                let id: i64 = row.get(0)?;
-                let title: String = row.get(1)?;
-                let access_count: i64 = row.get(2)?;
-                Ok((id as u64, title, access_count as u32))
-            },
-        )
-        .map_err(|e| e.to_string())?;
-
-    let mut entries = Vec::new();
-    for row in rows {
-        match row {
-            Ok(entry) => entries.push(entry),
-            Err(_) => continue,
+fn query_accessed_active_entries(store: &SqlxStore) -> Result<Vec<(u64, String, u32)>, String> {
+    let entries = match tokio::runtime::Handle::try_current() {
+        Ok(handle) => tokio::task::block_in_place(|| {
+            handle.block_on(store.query_by_status(unimatrix_store::Status::Active))
+        }),
+        Err(_) => {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(store.query_by_status(unimatrix_store::Status::Active))
         }
     }
-    Ok(entries)
+    .map_err(|e| e.to_string())?;
+    Ok(entries
+        .into_iter()
+        .filter(|e| e.access_count > 0)
+        .map(|e| (e.id, e.title.clone(), e.access_count))
+        .collect())
 }
 
 #[cfg(test)]
@@ -190,16 +183,18 @@ mod tests {
         }
     }
 
-    fn make_store() -> Store {
+    async fn make_store() -> SqlxStore {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("test.db");
         std::mem::forget(dir);
-        Store::open(&path).expect("open store")
+        SqlxStore::open(&path, unimatrix_store::pool_config::PoolConfig::default())
+            .await
+            .expect("open store")
     }
 
-    #[test]
-    fn needs_at_least_five_sessions() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn needs_at_least_five_sessions() {
+        let store = make_store().await;
         let observations: Vec<ObservationRecord> = (0..4)
             .map(|i| make_obs(&format!("s{}", i), 1000 + i as u64, None, None))
             .collect();
@@ -207,9 +202,9 @@ mod tests {
         assert!(rule.evaluate(&observations, &store).is_empty());
     }
 
-    #[test]
-    fn no_proposals_with_empty_store() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn no_proposals_with_empty_store() {
+        let store = make_store().await;
         let observations: Vec<ObservationRecord> = (0..6)
             .map(|i| make_obs(&format!("s{}", i), 1000 + i as u64, None, None))
             .collect();
@@ -218,30 +213,30 @@ mod tests {
         assert!(proposals.is_empty()); // no entries in store
     }
 
-    #[test]
-    fn extract_entry_ids_from_json() {
+    #[tokio::test]
+    async fn extract_entry_ids_from_json() {
         let snippet = r#"{"id": 42, "title": "test"} and {"id": 99}"#;
         let ids = extract_entry_ids(snippet);
         assert!(ids.contains(&42));
         assert!(ids.contains(&99));
     }
 
-    #[test]
-    fn extract_entry_ids_from_hash() {
+    #[tokio::test]
+    async fn extract_entry_ids_from_hash() {
         let snippet = "Found entry #15 and #27";
         let ids = extract_entry_ids(snippet);
         assert!(ids.contains(&15));
         assert!(ids.contains(&27));
     }
 
-    #[test]
-    fn extract_entry_ids_empty() {
+    #[tokio::test]
+    async fn extract_entry_ids_empty() {
         assert!(extract_entry_ids("no ids here").is_empty());
     }
 
-    #[test]
-    fn dead_knowledge_with_accessed_entry() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn dead_knowledge_with_accessed_entry() {
+        let store = make_store().await;
 
         // Insert an entry and bump its access count
         let entry = unimatrix_store::NewEntry {
@@ -256,10 +251,11 @@ mod tests {
             feature_cycle: "test-feature".to_string(),
             trust_source: "human".to_string(),
         };
-        let id = store.insert(entry).expect("insert");
+        let id = store.insert(entry).await.expect("insert");
         // Bump access_count via record_usage (batch API)
         store
             .record_usage(&[id], &[id], &[], &[], &[], &[])
+            .await
             .expect("record usage");
 
         // Create 6 sessions where recent ones don't access this entry
@@ -281,9 +277,9 @@ mod tests {
         assert_eq!(proposals[0].extraction_confidence, 0.5);
     }
 
-    #[test]
-    fn no_dead_knowledge_if_recently_accessed() {
-        let store = make_store();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn no_dead_knowledge_if_recently_accessed() {
+        let store = make_store().await;
 
         let entry = unimatrix_store::NewEntry {
             title: "Active entry".to_string(),
@@ -297,10 +293,11 @@ mod tests {
             feature_cycle: "test-feature".to_string(),
             trust_source: "human".to_string(),
         };
-        let id = store.insert(entry).expect("insert");
+        let id = store.insert(entry).await.expect("insert");
         // Bump access_count via record_usage (batch API)
         store
             .record_usage(&[id], &[id], &[], &[], &[], &[])
+            .await
             .expect("record usage");
 
         // Most recent session's snippet references this entry ID

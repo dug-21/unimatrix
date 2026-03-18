@@ -3,36 +3,53 @@
 //! Available within this crate via `#[cfg(test)]` and to downstream crates
 //! via the `test-support` feature flag.
 
-use crate::Store;
+use crate::SqlxStore;
+use crate::pool_config::PoolConfig;
 use crate::schema::{NewEntry, Status, TimeRange};
 
-/// A test database backed by a temporary directory.
+/// Open a test store in the given temporary directory.
 ///
-/// Creates a fresh database on construction and automatically
-/// cleans up the temporary directory when dropped.
+/// Creates or opens `test.db` under `dir.path()`.
+pub async fn open_test_store(dir: &tempfile::TempDir) -> SqlxStore {
+    let path = dir.path().join("test.db");
+    SqlxStore::open(&path, PoolConfig::default())
+        .await
+        .expect("failed to open test database")
+}
+
+/// A self-contained test database that owns its temporary directory.
+///
+/// Used by integration tests that need a `&SqlxStore` without managing
+/// the `TempDir` lifetime manually.
 pub struct TestDb {
+    store: SqlxStore,
     _dir: tempfile::TempDir,
-    store: Store,
+}
+
+impl TestDb {
+    /// Create a new in-memory-backed test store.
+    ///
+    /// Panics if the runtime is not available (must be called within a tokio context
+    /// or via `tokio::runtime::Handle::current().block_on`).
+    pub fn new() -> Self {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("failed to build tokio runtime");
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = rt.block_on(open_test_store(&dir));
+        Self { store, _dir: dir }
+    }
+
+    /// Return a reference to the underlying store.
+    pub fn store(&self) -> &SqlxStore {
+        &self.store
+    }
 }
 
 impl Default for TestDb {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl TestDb {
-    /// Create a new test database in a temporary directory.
-    pub fn new() -> Self {
-        let dir = tempfile::TempDir::new().expect("failed to create temp dir");
-        let path = dir.path().join("test.db");
-        let store = Store::open(&path).expect("failed to open test database");
-        TestDb { _dir: dir, store }
-    }
-
-    /// Get a reference to the store.
-    pub fn store(&self) -> &Store {
-        &self.store
     }
 }
 
@@ -137,54 +154,59 @@ impl TestEntry {
 /// Verify that an entry is correctly represented in all index tables.
 ///
 /// Panics with a descriptive message if any index is inconsistent.
-pub fn assert_index_consistent(store: &Store, entry_id: u64) {
+pub async fn assert_index_consistent(store: &SqlxStore, entry_id: u64) {
     let record = store
         .get(entry_id)
-        .unwrap_or_else(|_| panic!("entry {entry_id} should exist in ENTRIES"));
+        .await
+        .unwrap_or_else(|_| panic!("entry {entry_id} should exist in entries"));
 
-    // Verify TOPIC_INDEX
-    let topic_results = store.query_by_topic(&record.topic).unwrap();
+    // Verify topic index
+    let topic_results = store.query_by_topic(&record.topic).await.unwrap();
     assert!(
         topic_results.iter().any(|r| r.id == entry_id),
-        "entry {entry_id} not found in TOPIC_INDEX for topic '{}'",
+        "entry {entry_id} not found in topic index for topic '{}'",
         record.topic
     );
 
-    // Verify CATEGORY_INDEX
-    let cat_results = store.query_by_category(&record.category).unwrap();
+    // Verify category index
+    let cat_results = store.query_by_category(&record.category).await.unwrap();
     assert!(
         cat_results.iter().any(|r| r.id == entry_id),
-        "entry {entry_id} not found in CATEGORY_INDEX for category '{}'",
+        "entry {entry_id} not found in category index for category '{}'",
         record.category
     );
 
-    // Verify TAG_INDEX
+    // Verify tag index
     for tag in &record.tags {
-        let tag_results = store.query_by_tags(std::slice::from_ref(tag)).unwrap();
+        let tag_results = store
+            .query_by_tags(std::slice::from_ref(tag))
+            .await
+            .unwrap();
         assert!(
             tag_results.iter().any(|r| r.id == entry_id),
-            "entry {entry_id} not found in TAG_INDEX for tag '{tag}'"
+            "entry {entry_id} not found in tag index for tag '{tag}'"
         );
     }
 
-    // Verify STATUS_INDEX
-    let status_results = store.query_by_status(record.status).unwrap();
+    // Verify status index
+    let status_results = store.query_by_status(record.status).await.unwrap();
     assert!(
         status_results.iter().any(|r| r.id == entry_id),
-        "entry {entry_id} not found in STATUS_INDEX for status {:?}",
+        "entry {entry_id} not found in status index for status {:?}",
         record.status
     );
 
-    // Verify TIME_INDEX
+    // Verify time index
     let time_results = store
         .query_by_time_range(TimeRange {
             start: record.created_at,
             end: record.created_at,
         })
+        .await
         .unwrap();
     assert!(
         time_results.iter().any(|r| r.id == entry_id),
-        "entry {entry_id} not found in TIME_INDEX for created_at {}",
+        "entry {entry_id} not found in time index for created_at {}",
         record.created_at
     );
 }
@@ -192,43 +214,44 @@ pub fn assert_index_consistent(store: &Store, entry_id: u64) {
 /// Verify that an entry is NOT present in index positions for the given old values.
 ///
 /// Used after updates to confirm stale index entries were removed.
-pub fn assert_index_absent(
-    store: &Store,
+pub async fn assert_index_absent(
+    store: &SqlxStore,
     entry_id: u64,
     old_topic: &str,
     old_category: &str,
     old_tags: &[String],
     _old_status: Status,
 ) {
-    // Check topic -- but only if the entry's current topic differs
-    let current = store.get(entry_id).ok();
+    let current = store.get(entry_id).await.ok();
     let current_topic = current.as_ref().map(|r| r.topic.as_str());
 
     if current_topic != Some(old_topic) {
-        let topic_results = store.query_by_topic(old_topic).unwrap();
+        let topic_results = store.query_by_topic(old_topic).await.unwrap();
         assert!(
             !topic_results.iter().any(|r| r.id == entry_id),
-            "entry {entry_id} still found in TOPIC_INDEX for old topic '{old_topic}'"
+            "entry {entry_id} still found in topic index for old topic '{old_topic}'"
         );
     }
 
     let current_category = current.as_ref().map(|r| r.category.as_str());
     if current_category != Some(old_category) {
-        let cat_results = store.query_by_category(old_category).unwrap();
+        let cat_results = store.query_by_category(old_category).await.unwrap();
         assert!(
             !cat_results.iter().any(|r| r.id == entry_id),
-            "entry {entry_id} still found in CATEGORY_INDEX for old category '{old_category}'"
+            "entry {entry_id} still found in category index for old category '{old_category}'"
         );
     }
 
-    // Check old tags that are not in current tags
     let current_tags: Vec<String> = current.as_ref().map(|r| r.tags.clone()).unwrap_or_default();
     for tag in old_tags {
         if !current_tags.contains(tag) {
-            let tag_results = store.query_by_tags(std::slice::from_ref(tag)).unwrap();
+            let tag_results = store
+                .query_by_tags(std::slice::from_ref(tag))
+                .await
+                .unwrap();
             assert!(
                 !tag_results.iter().any(|r| r.id == entry_id),
-                "entry {entry_id} still found in TAG_INDEX for old tag '{tag}'"
+                "entry {entry_id} still found in tag index for old tag '{tag}'"
             );
         }
     }
@@ -237,7 +260,7 @@ pub fn assert_index_absent(
 /// Seed a database with a deterministic set of entries for testing.
 ///
 /// Returns the IDs of all inserted entries.
-pub fn seed_entries(store: &Store, count: usize) -> Vec<u64> {
+pub async fn seed_entries(store: &SqlxStore, count: usize) -> Vec<u64> {
     let topics = ["auth", "logging", "database", "api", "testing"];
     let categories = ["convention", "decision", "pattern"];
     let all_tags = ["rust", "error", "async", "testing", "performance"];
@@ -253,7 +276,7 @@ pub fn seed_entries(store: &Store, count: usize) -> Vec<u64> {
             .with_tags(&tags)
             .with_title(&format!("Entry {i}"))
             .build();
-        let id = store.insert(entry).unwrap();
+        let id = store.insert(entry).await.unwrap();
         ids.push(id);
     }
     ids

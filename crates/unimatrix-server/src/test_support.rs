@@ -9,12 +9,12 @@ use std::path::Path;
 use std::sync::Arc;
 
 use unimatrix_adapt::AdaptationService;
+use unimatrix_core::Store;
 use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 use unimatrix_core::{
     EntryRecord, QueryFilter, StoreAdapter, VectorAdapter, VectorConfig, VectorIndex,
 };
 use unimatrix_embed::EmbedConfig;
-use unimatrix_store::Store;
 
 use crate::infra::audit::AuditLog;
 use crate::infra::embed_handle::EmbedServiceHandle;
@@ -64,7 +64,10 @@ impl TestHarness {
             return None;
         }
 
-        let store = Store::open(store_path).expect("failed to open test store");
+        let store =
+            unimatrix_store::SqlxStore::open(store_path, unimatrix_store::PoolConfig::default())
+                .await
+                .expect("failed to open test store");
         let store = Arc::new(store);
 
         let vector_config = VectorConfig::default();

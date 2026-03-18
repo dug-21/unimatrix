@@ -338,11 +338,18 @@ impl SecurityGateway {
     /// Create a permissive gateway for unit tests (no-op audit, unlimited rate).
     #[cfg(test)]
     pub(crate) fn new_permissive() -> Self {
-        use unimatrix_store::Store;
-        let dir = tempfile::tempdir().expect("failed to create tempdir");
-        let store = Store::open(dir.path().join("test.db")).expect("failed to open test store");
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("runtime");
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = rt
+            .block_on(unimatrix_store::SqlxStore::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            ))
+            .expect("store");
         let audit = AuditLog::new(Arc::new(store));
-        // Leak the tempdir so it persists for the test lifetime
         std::mem::forget(dir);
         SecurityGateway {
             audit: Arc::new(audit),
@@ -629,9 +636,17 @@ mod tests {
         write_limit: u32,
         window_secs: u64,
     ) -> SecurityGateway {
-        use unimatrix_store::Store;
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("runtime");
         let dir = tempfile::tempdir().expect("tempdir");
-        let store = Store::open(dir.path().join("test.db")).expect("store");
+        let store = rt
+            .block_on(unimatrix_store::SqlxStore::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            ))
+            .expect("store");
         let audit = AuditLog::new(Arc::new(store));
         std::mem::forget(dir);
         SecurityGateway {
@@ -727,9 +742,17 @@ mod tests {
 
     #[test]
     fn with_rate_config_uses_custom_limits() {
-        use unimatrix_store::Store;
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("runtime");
         let dir = tempfile::tempdir().expect("tempdir");
-        let store = Store::open(dir.path().join("test.db")).expect("store");
+        let store = rt
+            .block_on(unimatrix_store::SqlxStore::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            ))
+            .expect("store");
         let audit = Arc::new(AuditLog::new(Arc::new(store)));
         std::mem::forget(dir);
 

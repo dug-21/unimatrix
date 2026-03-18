@@ -62,11 +62,11 @@ pub struct PoolConfig {
     pub write_acquire_timeout: Duration,
 }
 
-impl PoolConfig {
+impl Default for PoolConfig {
     /// Production-safe defaults per ADR-001.
     ///
     /// `read_max=8`, `write_max=2`, `read_timeout=2s`, `write_timeout=5s`.
-    pub fn default() -> Self {
+    fn default() -> Self {
         Self {
             read_max_connections: 8,
             write_max_connections: 2,
@@ -74,7 +74,9 @@ impl PoolConfig {
             write_acquire_timeout: WRITE_POOL_ACQUIRE_TIMEOUT,
         }
     }
+}
 
+impl PoolConfig {
     /// Reduced timeouts and connection counts for test contexts (ADR-001).
     ///
     /// Shorter timeouts prevent test suite slowdown when exercising saturation
@@ -94,30 +96,24 @@ impl PoolConfig {
     /// - `write_max_connections > 2` (SQLite WAL writer cap, AC-09)
     /// - `write_max_connections == 0` (pool would be unusable)
     /// - `read_max_connections == 0` (pool would be unusable)
-    ///
-    /// NOTE (Wave 2): This currently uses `StoreError::Deserialization` as a
-    /// temporary carrier because `StoreError::InvalidPoolConfig { reason: String }`
-    /// does not exist yet. Wave 2's error.rs rewrite must:
-    ///   1. Add `InvalidPoolConfig { reason: String }` to `StoreError`
-    ///   2. Replace `StoreError::Deserialization(...)` below with
-    ///      `StoreError::InvalidPoolConfig { reason: ... }`
-    /// The function signature (`Result<(), StoreError>`) does not change.
     pub(crate) fn validate(&self) -> Result<(), StoreError> {
         if self.write_max_connections > 2 {
-            return Err(StoreError::Deserialization(format!(
-                "write_pool max_connections {} exceeds hard cap of 2 (SQLite WAL writer limit)",
-                self.write_max_connections
-            )));
+            return Err(StoreError::InvalidPoolConfig {
+                reason: format!(
+                    "write_pool max_connections {} exceeds hard cap of 2 (SQLite WAL writer limit)",
+                    self.write_max_connections
+                ),
+            });
         }
         if self.write_max_connections == 0 {
-            return Err(StoreError::Deserialization(
-                "write_pool max_connections must be at least 1".to_string(),
-            ));
+            return Err(StoreError::InvalidPoolConfig {
+                reason: "write_pool max_connections must be at least 1".to_string(),
+            });
         }
         if self.read_max_connections == 0 {
-            return Err(StoreError::Deserialization(
-                "read_pool max_connections must be at least 1".to_string(),
-            ));
+            return Err(StoreError::InvalidPoolConfig {
+                reason: "read_pool max_connections must be at least 1".to_string(),
+            });
         }
         // Zero-duration timeouts are technically valid (immediate fail on any
         // saturation). Allowed — tests may use them for controlled failure scenarios.

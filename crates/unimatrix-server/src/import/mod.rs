@@ -2,8 +2,8 @@
 //!
 //! Restores a Unimatrix knowledge base from a nan-001 JSONL export dump,
 //! preserving all learned signals (confidence, helpful/unhelpful counts,
-//! co-access pairs, correction chains). Runs synchronously with no tokio
-//! runtime, following the existing `hook`/`export` subcommand pattern.
+//! co-access pairs, correction chains). Creates a local tokio runtime for
+//! async sqlx access (nxs-011).
 //!
 //! The import runs in two phases (ADR-004):
 //! 1. Database restore: header validation, pre-flight, JSONL ingestion, hash check
@@ -18,8 +18,10 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use unimatrix_store::rusqlite::{self, Connection, params};
-use unimatrix_store::{Store, compute_content_hash};
+use sqlx::Row;
+use sqlx::SqlitePool;
+use sqlx::sqlite::SqliteConnection;
+use unimatrix_store::{SqlxStore, compute_content_hash};
 
 use crate::format::{ExportHeader, ExportRow};
 use crate::project;
@@ -44,10 +46,44 @@ pub struct ImportCounts {
 
 /// Run the import pipeline.
 ///
-/// Opens the database via `Store::open()`, validates the JSONL header,
-/// ingests all rows in a single IMMEDIATE transaction, validates hashes,
-/// then commits. Embedding reconstruction is called after DB commit.
+/// Supports being called from both sync and async contexts. When an existing
+/// tokio runtime is detected, uses `block_in_place` to avoid nesting runtimes.
+/// When called from a sync context, creates a new current-thread runtime.
 pub fn run_import(
+    project_dir: Option<&Path>,
+    input: &Path,
+    skip_hash_validation: bool,
+    force: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => {
+            // Already inside an async runtime — use block_in_place to avoid nesting.
+            tokio::task::block_in_place(|| {
+                handle.block_on(run_import_async(
+                    project_dir,
+                    input,
+                    skip_hash_validation,
+                    force,
+                ))
+            })
+        }
+        Err(_) => {
+            // No existing runtime — create one.
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?;
+            rt.block_on(run_import_async(
+                project_dir,
+                input,
+                skip_hash_validation,
+                force,
+            ))
+        }
+    }
+}
+
+/// Async implementation of the import pipeline.
+async fn run_import_async(
     project_dir: Option<&Path>,
     input: &Path,
     skip_hash_validation: bool,
@@ -55,7 +91,14 @@ pub fn run_import(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Phase 1: Setup
     let paths = project::ensure_data_directory(project_dir, None)?;
-    let store = Arc::new(Store::open(&paths.db_path)?);
+    let store = Arc::new(
+        SqlxStore::open(
+            &paths.db_path,
+            unimatrix_store::pool_config::PoolConfig::default(),
+        )
+        .await?,
+    );
+    let pool = store.write_pool_server();
 
     // Phase 2: Open and parse header
     let file = File::open(input)?;
@@ -66,13 +109,12 @@ pub fn run_import(
     let header = parse_header(&header_line)?;
 
     // Phase 3: Pre-flight checks
-    let conn = store.lock_conn();
-    let db_schema_version: i64 = conn.query_row(
-        "SELECT value FROM counters WHERE name = 'schema_version'",
-        [],
-        |row| row.get(0),
-    )?;
-    check_preflight(&conn, force, &paths)?;
+    let db_schema_version: i64 =
+        sqlx::query_scalar::<_, i64>("SELECT value FROM counters WHERE name = 'schema_version'")
+            .fetch_one(pool)
+            .await?;
+
+    check_preflight(pool, force, &paths).await?;
 
     // Phase 4: Validate header against DB
     if header.format_version != 1 {
@@ -92,8 +134,9 @@ pub fn run_import(
 
     // Phase 5: Force-drop if needed
     if force {
-        let entry_count: i64 =
-            conn.query_row("SELECT COUNT(*) FROM entries", [], |row| row.get(0))?;
+        let entry_count: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM entries")
+            .fetch_one(pool)
+            .await?;
         if entry_count > 0 {
             eprintln!(
                 "WARNING: --force specified. Dropping {} existing entries and all associated data in {}.",
@@ -101,25 +144,32 @@ pub fn run_import(
                 paths.data_dir.display()
             );
         }
-        drop_all_data(&conn)?;
+        drop_all_data(pool).await?;
     }
 
-    // Phase 6: BEGIN IMMEDIATE transaction
-    conn.execute_batch("BEGIN IMMEDIATE")?;
+    // Phase 6: Acquire a dedicated connection and BEGIN IMMEDIATE.
+    //
+    // Must use a single connection (not the pool) for the entire import transaction.
+    // BEGIN IMMEDIATE acquires a write lock on this connection; all subsequent INSERTs
+    // must execute on the same connection — using the pool would dispatch them to a
+    // different connection that cannot see the open transaction and would deadlock
+    // (SQLITE_BUSY code 5) trying to acquire its own write lock.
+    let mut conn = pool.acquire().await?;
+    sqlx::query("BEGIN IMMEDIATE").execute(&mut *conn).await?;
 
     // Phase 7: Ingest JSONL
-    let counts = match ingest_rows(&conn, lines) {
+    let counts = match ingest_rows(&mut conn, lines).await {
         Ok(counts) => counts,
         Err(e) => {
-            let _ = conn.execute_batch("ROLLBACK");
+            let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
             return Err(e);
         }
     };
 
     // Phase 8: Hash validation (inside transaction, before commit)
     if !skip_hash_validation {
-        if let Err(e) = validate_hashes(&conn) {
-            let _ = conn.execute_batch("ROLLBACK");
+        if let Err(e) = validate_hashes(&mut conn).await {
+            let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
             return Err(e);
         }
     } else {
@@ -127,18 +177,15 @@ pub fn run_import(
     }
 
     // Phase 9: COMMIT
-    conn.execute_batch("COMMIT")?;
+    sqlx::query("COMMIT").execute(&mut *conn).await?;
 
-    // Phase 10: Drop the MutexGuard before embedding (embedding needs store access)
-    drop(conn);
-
-    // Phase 11: Re-embed and build vector index (ADR-004: after DB commit)
+    // Phase 10: Re-embed and build vector index (ADR-004: after DB commit)
     crate::embed_reconstruct::reconstruct_embeddings(&store, &paths.vector_dir)?;
 
-    // Phase 12: Record provenance
-    record_provenance(&store, input, &counts)?;
+    // Phase 11: Record provenance
+    record_provenance(pool, input, &counts).await?;
 
-    // Phase 13: Summary
+    // Phase 12: Summary
     print_summary(&counts, skip_hash_validation);
 
     Ok(())
@@ -157,12 +204,14 @@ fn parse_header(line: &str) -> Result<ExportHeader, Box<dyn std::error::Error>> 
 }
 
 /// Pre-flight checks: DB empty check, PID file warning.
-fn check_preflight(
-    conn: &Connection,
+async fn check_preflight(
+    pool: &SqlitePool,
     force: bool,
     paths: &project::ProjectPaths,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let entry_count: i64 = conn.query_row("SELECT COUNT(*) FROM entries", [], |row| row.get(0))?;
+    let entry_count: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM entries")
+        .fetch_one(pool)
+        .await?;
 
     if entry_count > 0 && !force {
         return Err(format!(
@@ -187,8 +236,8 @@ fn check_preflight(
 ///
 /// Uses DELETE (not DROP TABLE) to preserve schema.
 /// FK-dependent tables deleted first, then parent tables.
-fn drop_all_data(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
-    conn.execute_batch(
+async fn drop_all_data(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>> {
+    sqlx::query(
         "DELETE FROM entry_tags;
          DELETE FROM co_access;
          DELETE FROM feature_entries;
@@ -198,7 +247,9 @@ fn drop_all_data(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
          DELETE FROM vector_map;
          DELETE FROM entries;
          DELETE FROM counters;",
-    )?;
+    )
+    .execute(pool)
+    .await?;
     Ok(())
 }
 
@@ -206,8 +257,11 @@ fn drop_all_data(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
 ///
 /// Reads lines one-by-one, deserializes via `ExportRow`, and routes to
 /// per-table INSERT functions. Tracks counts for progress reporting.
-fn ingest_rows(
-    conn: &Connection,
+///
+/// `conn` must be a single connection that already has `BEGIN IMMEDIATE` active.
+/// All INSERTs execute on this connection to remain within the same transaction.
+async fn ingest_rows(
+    conn: &mut SqliteConnection,
     lines: impl Iterator<Item = io::Result<String>>,
 ) -> Result<ImportCounts, Box<dyn std::error::Error>> {
     let mut counts = ImportCounts::default();
@@ -226,38 +280,38 @@ fn ingest_rows(
 
         match row {
             ExportRow::Counter(r) => {
-                insert_counter(conn, &r)?;
+                insert_counter(conn, &r).await?;
                 counts.counters += 1;
             }
             ExportRow::Entry(r) => {
-                insert_entry(conn, &r)?;
+                insert_entry(conn, &r).await?;
                 counts.entries += 1;
                 if counts.entries % 100 == 0 {
                     eprintln!("  Inserted {} entries...", counts.entries);
                 }
             }
             ExportRow::EntryTag(r) => {
-                insert_entry_tag(conn, &r)?;
+                insert_entry_tag(conn, &r).await?;
                 counts.entry_tags += 1;
             }
             ExportRow::CoAccess(r) => {
-                insert_co_access(conn, &r)?;
+                insert_co_access(conn, &r).await?;
                 counts.co_access += 1;
             }
             ExportRow::FeatureEntry(r) => {
-                insert_feature_entry(conn, &r)?;
+                insert_feature_entry(conn, &r).await?;
                 counts.feature_entries += 1;
             }
             ExportRow::OutcomeIndex(r) => {
-                insert_outcome_index(conn, &r)?;
+                insert_outcome_index(conn, &r).await?;
                 counts.outcome_index += 1;
             }
             ExportRow::AgentRegistry(r) => {
-                insert_agent_registry(conn, &r)?;
+                insert_agent_registry(conn, &r).await?;
                 counts.agent_registry += 1;
             }
             ExportRow::AuditLog(r) => {
-                insert_audit_log(conn, &r)?;
+                insert_audit_log(conn, &r).await?;
                 counts.audit_log += 1;
             }
         }
@@ -275,29 +329,28 @@ fn ingest_rows(
 ///
 /// Content hash: recompute via `compute_content_hash()` and compare.
 /// Chain integrity: verify `previous_hash` references an existing entry's hash.
-fn validate_hashes(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
+async fn validate_hashes(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
     let mut errors: Vec<String> = Vec::new();
 
-    let mut stmt = conn.prepare(
+    let rows = sqlx::query(
         "SELECT id, title, content, content_hash, previous_hash FROM entries ORDER BY id",
-    )?;
+    )
+    .fetch_all(&mut *conn)
+    .await?;
 
     let mut known_hashes: HashSet<String> = HashSet::new();
     let mut entries_to_check: Vec<(i64, String, String, String, String)> = Vec::new();
 
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
-        let id: i64 = row.get(0)?;
-        let title: String = row.get(1)?;
-        let content: String = row.get(2)?;
-        let content_hash: String = row.get(3)?;
-        let previous_hash: String = row.get(4)?;
+    for row in rows {
+        let id: i64 = row.get::<i64, _>(0);
+        let title: String = row.get::<String, _>(1);
+        let content: String = row.get::<String, _>(2);
+        let content_hash: String = row.get::<String, _>(3);
+        let previous_hash: String = row.get::<String, _>(4);
 
         known_hashes.insert(content_hash.clone());
         entries_to_check.push((id, title, content, content_hash, previous_hash));
     }
-    drop(rows);
-    drop(stmt);
 
     for (id, title, content, stored_hash, previous_hash) in &entries_to_check {
         // Content hash validation
@@ -329,18 +382,15 @@ fn validate_hashes(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> 
 // ---------------------------------------------------------------------------
 
 /// Record an audit log entry documenting the import operation.
-fn record_provenance(
-    store: &Store,
+async fn record_provenance(
+    pool: &SqlitePool,
     input_path: &Path,
     counts: &ImportCounts,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let conn = store.lock_conn();
-
-    let next_event_id: i64 = conn.query_row(
-        "SELECT COALESCE(MAX(event_id), 0) + 1 FROM audit_log",
-        [],
-        |row| row.get(0),
-    )?;
+    let next_event_id: i64 =
+        sqlx::query_scalar::<_, i64>("SELECT COALESCE(MAX(event_id), 0) + 1 FROM audit_log")
+            .fetch_one(pool)
+            .await?;
 
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -356,22 +406,22 @@ fn record_provenance(
         counts.counters
     );
 
-    conn.execute(
+    sqlx::query(
         "INSERT INTO audit_log (
             event_id, timestamp, session_id, agent_id,
             operation, target_ids, outcome, detail
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![
-            next_event_id,
-            now,
-            "import",
-            "system",
-            "import",
-            "[]",
-            1i64,
-            detail,
-        ],
-    )?;
+    )
+    .bind(next_event_id)
+    .bind(now)
+    .bind("import")
+    .bind("system")
+    .bind("import")
+    .bind("[]")
+    .bind(1i64)
+    .bind(&detail)
+    .execute(pool)
+    .await?;
 
     Ok(())
 }
@@ -400,14 +450,27 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::TempDir;
-
     // --- Helpers ---
 
-    /// Create a project dir and return (project_dir, db_path).
-    fn setup_project() -> (TempDir, std::path::PathBuf) {
+    /// Current schema version constant — must match CURRENT_SCHEMA_VERSION in
+    /// unimatrix-store/src/migration.rs. Update when the schema advances.
+    const CURRENT_SCHEMA_VERSION: i64 = 12;
+
+    /// Create a project dir structure and return it.
+    ///
+    /// Does NOT open a SqlxStore — run_import will create and migrate the database
+    /// on first use. This avoids holding a pool connection that would conflict with
+    /// run_import's BEGIN IMMEDIATE when both try to write the same SQLite file.
+    fn make_project_dir() -> TempDir {
         let project_dir = TempDir::new().expect("create project temp dir");
-        let paths = project::ensure_data_directory(Some(project_dir.path()), None).unwrap();
-        (project_dir, paths.db_path)
+        project::ensure_data_directory(Some(project_dir.path()), None).unwrap();
+        project_dir
+    }
+
+    async fn open_test_store_at(db_path: &Path) -> SqlxStore {
+        SqlxStore::open(db_path, unimatrix_store::pool_config::PoolConfig::default())
+            .await
+            .expect("open store")
     }
 
     /// Build an ExportHeader JSON line.
@@ -477,18 +540,6 @@ mod tests {
         path
     }
 
-    /// Get the current schema version from a fresh Store.
-    fn get_schema_version(db_path: &Path) -> i64 {
-        let store = Store::open(db_path).unwrap();
-        let conn = store.lock_conn();
-        conn.query_row(
-            "SELECT value FROM counters WHERE name = 'schema_version'",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap()
-    }
-
     // --- Header Validation ---
 
     #[test]
@@ -500,10 +551,10 @@ mod tests {
         assert_eq!(h.schema_version, 11);
     }
 
-    #[test]
-    fn test_validate_header_bad_format_version() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_validate_header_bad_format_version() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
         let output_dir = TempDir::new().unwrap();
         let lines = vec![make_header(sv, 2, 0)];
         let input_path = write_jsonl(&output_dir, &lines);
@@ -515,10 +566,9 @@ mod tests {
         assert!(err.contains("format"), "should mention format: {err}");
     }
 
-    #[test]
-    fn test_validate_header_future_schema_version() {
-        let (project_dir, db_path) = setup_project();
-        let _sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_validate_header_future_schema_version() {
+        let project_dir = make_project_dir();
         let output_dir = TempDir::new().unwrap();
         let lines = vec![make_header(999, 1, 0)];
         let input_path = write_jsonl(&output_dir, &lines);
@@ -541,10 +591,10 @@ mod tests {
         assert!(err.contains("_header"), "should mention _header: {err}");
     }
 
-    #[test]
-    fn test_validate_header_format_version_zero() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_validate_header_format_version_zero() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
         let output_dir = TempDir::new().unwrap();
         let lines = vec![make_header(sv, 0, 0)];
         let input_path = write_jsonl(&output_dir, &lines);
@@ -557,10 +607,10 @@ mod tests {
 
     // --- Hash Validation ---
 
-    #[test]
-    fn test_hash_validation_valid_chain() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_hash_validation_valid_chain() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
 
         let hash_a = compute_content_hash("Entry A", "Content A");
         let output_dir = TempDir::new().unwrap();
@@ -577,10 +627,10 @@ mod tests {
         assert!(result.is_ok(), "valid chain should pass: {result:?}");
     }
 
-    #[test]
-    fn test_hash_validation_broken_chain() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_hash_validation_broken_chain() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
         let lines = vec![
@@ -601,10 +651,10 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_hash_validation_content_mismatch() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_hash_validation_content_mismatch() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
 
         // Build entry with wrong content_hash
         let mut entry_json: serde_json::Value =
@@ -627,10 +677,10 @@ mod tests {
         assert!(err.contains("mismatch"), "should mention mismatch: {err}");
     }
 
-    #[test]
-    fn test_hash_validation_empty_previous_hash() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_hash_validation_empty_previous_hash() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
         let lines = vec![
@@ -648,10 +698,10 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_hash_validation_empty_title_edge_case() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_hash_validation_empty_title_edge_case() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
         let lines = vec![
@@ -666,10 +716,10 @@ mod tests {
         assert!(result.is_ok(), "empty title should pass: {result:?}");
     }
 
-    #[test]
-    fn test_hash_validation_empty_both() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_hash_validation_empty_both() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
         let lines = vec![
@@ -689,10 +739,10 @@ mod tests {
 
     // --- Malformed Input ---
 
-    #[test]
-    fn test_malformed_jsonl_line_with_line_number() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_malformed_jsonl_line_with_line_number() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
         let lines = vec![
@@ -713,7 +763,8 @@ mod tests {
 
     #[test]
     fn test_empty_file_errors() {
-        let (project_dir, _db_path) = setup_project();
+        let project_dir = TempDir::new().expect("create project temp dir");
+        let _ = project::ensure_data_directory(Some(project_dir.path()), None).unwrap();
         let output_dir = TempDir::new().unwrap();
         let path = output_dir.path().join("empty.jsonl");
         File::create(&path).unwrap();
@@ -727,10 +778,10 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_header_only_file() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_header_only_file() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
         let lines = vec![make_header(sv, 1, 0)];
@@ -745,10 +796,13 @@ mod tests {
 
     // --- SQL Injection Prevention ---
 
-    #[test]
-    fn test_sql_injection_in_title() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_sql_injection_in_title() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path = project::ensure_data_directory(Some(project_dir.path()), None)
+            .unwrap()
+            .db_path;
 
         let malicious_title = "'; DROP TABLE entries; --";
         let output_dir = TempDir::new().unwrap();
@@ -771,27 +825,31 @@ mod tests {
             "SQL injection in title should be safe: {result:?}"
         );
 
-        // Verify entry exists with the literal string
-        let store = Store::open(&db_path).unwrap();
-        let conn = store.lock_conn();
-        let title: String = conn
-            .query_row("SELECT title FROM entries WHERE id = 1", [], |row| {
-                row.get(0)
-            })
-            .unwrap();
+        // Reopen a fresh pool to verify import results.
+        let verify_store = open_test_store_at(&db_path).await;
+        let pool = verify_store.write_pool_server();
+        let title: String =
+            sqlx::query_scalar::<_, String>("SELECT title FROM entries WHERE id = 1")
+                .fetch_one(pool)
+                .await
+                .unwrap();
         assert_eq!(title, malicious_title);
 
         // Verify entries table still exists
-        let count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM entries", [], |row| row.get(0))
+        let count: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM entries")
+            .fetch_one(pool)
+            .await
             .unwrap();
         assert_eq!(count, 1);
     }
 
-    #[test]
-    fn test_sql_injection_in_content() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_sql_injection_in_content() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path = project::ensure_data_directory(Some(project_dir.path()), None)
+            .unwrap()
+            .db_path;
 
         let malicious = "Robert'); DROP TABLE entries;--";
         let output_dir = TempDir::new().unwrap();
@@ -809,20 +867,21 @@ mod tests {
             "SQL injection in content should be safe: {result:?}"
         );
 
-        let store = Store::open(&db_path).unwrap();
-        let conn = store.lock_conn();
-        let content: String = conn
-            .query_row("SELECT content FROM entries WHERE id = 1", [], |row| {
-                row.get(0)
-            })
-            .unwrap();
+        // Reopen a fresh pool to verify import results.
+        let verify_store = open_test_store_at(&db_path).await;
+        let pool = verify_store.write_pool_server();
+        let content: String =
+            sqlx::query_scalar::<_, String>("SELECT content FROM entries WHERE id = 1")
+                .fetch_one(pool)
+                .await
+                .unwrap();
         assert_eq!(content, malicious);
     }
 
-    #[test]
-    fn test_duplicate_entry_ids() {
-        let (project_dir, db_path) = setup_project();
-        let sv = get_schema_version(&db_path);
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_duplicate_entry_ids() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
         let lines = vec![

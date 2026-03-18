@@ -4,18 +4,18 @@
 //! every field needed for lossless knowledge restore. Covers 8 tables, excludes
 //! derived data (embeddings, HNSW index) and ephemeral operational data.
 //!
-//! The export runs synchronously with no tokio runtime, following the existing
-//! `hook` subcommand pattern. A single `BEGIN DEFERRED` transaction wraps all
-//! reads for snapshot isolation (ADR-001).
+//! The export creates a tokio runtime and uses sqlx for all queries.
+//! A single `BEGIN DEFERRED` transaction wraps all reads for snapshot isolation (ADR-001).
 
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Number, Value};
-use unimatrix_store::Store;
-use unimatrix_store::rusqlite::{self, Connection};
+use sqlx::{Row, SqlitePool};
+use unimatrix_store::{PoolConfig, SqlxStore};
 
 use crate::project;
 
@@ -30,49 +30,80 @@ pub fn run_export(
     // 1. Resolve project paths
     let paths = project::ensure_data_directory(project_dir, None)?;
 
-    // 2. Open database (triggers migration if needed)
-    let store = Store::open(&paths.db_path)?;
+    // 2. Bridge async to sync: use block_in_place when inside a tokio runtime
+    //    (e.g. called from tests), otherwise create a temporary runtime.
+    //    Never use Builder::new_current_thread().block_on() inside an existing
+    //    runtime — that panics with "Cannot start a runtime from within a runtime".
+    block_export_sync(async {
+        // 3. Open database (triggers migration if needed)
+        let store = Arc::new(SqlxStore::open(&paths.db_path, PoolConfig::default()).await?);
+        let pool = store.write_pool_server();
 
-    // 3. Acquire connection mutex
-    let conn = store.lock_conn();
+        // 4. Begin snapshot transaction (ADR-001)
+        sqlx::query("BEGIN DEFERRED").execute(pool).await?;
 
-    // 4. Begin snapshot transaction (ADR-001)
-    conn.execute_batch("BEGIN DEFERRED")?;
+        // 5. Set up writer and run export
+        let result = if let Some(path) = output {
+            let file = File::create(path)?;
+            let mut writer = BufWriter::new(file);
+            do_export(pool, &mut writer).await
+        } else {
+            let stdout = io::stdout();
+            let lock = stdout.lock();
+            let mut writer = BufWriter::new(lock);
+            do_export(pool, &mut writer).await
+        };
 
-    // 5. Set up writer and run export
-    let result = if let Some(path) = output {
-        let file = File::create(path)?;
-        let mut writer = BufWriter::new(file);
-        do_export(&conn, &mut writer)
-    } else {
-        let stdout = io::stdout();
-        let lock = stdout.lock();
-        let mut writer = BufWriter::new(lock);
-        do_export(&conn, &mut writer)
-    };
+        // 6. Commit transaction regardless of export result
+        //    Read-only DEFERRED: COMMIT and ROLLBACK are equivalent.
+        let _ = sqlx::query("COMMIT").execute(pool).await;
 
-    // 6. Commit transaction regardless of export result
-    //    Read-only DEFERRED: COMMIT and ROLLBACK are equivalent.
-    let _ = conn.execute_batch("COMMIT");
-
-    // 7. Propagate any export error
-    result
+        // 7. Propagate any export error
+        result
+    })
 }
 
-/// Execute all export steps against the connection and writer.
+/// Bridge an async export future to a synchronous context.
+///
+/// When called from within a multi-thread tokio runtime (e.g. `#[tokio::test]`),
+/// uses `block_in_place` so the current thread can block without stalling the runtime.
+/// When called from a plain synchronous context (e.g. the CLI), creates a temporary
+/// `current_thread` runtime.
+///
+/// Never use `Builder::new_current_thread().block_on()` inside an existing runtime —
+/// that panics with "Cannot start a runtime from within a runtime".
+fn block_export_sync<F>(fut: F) -> Result<(), Box<dyn std::error::Error>>
+where
+    F: std::future::Future<Output = Result<(), Box<dyn std::error::Error>>>,
+{
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => tokio::task::block_in_place(|| handle.block_on(fut)),
+        Err(_) => {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?;
+            rt.block_on(fut)
+        }
+    }
+}
+
+/// Execute all export steps against the pool and writer.
 ///
 /// Separated from `run_export` to allow the writer type to vary (file vs stdout)
 /// while keeping transaction logic in one place.
-fn do_export(conn: &Connection, writer: &mut impl Write) -> Result<(), Box<dyn std::error::Error>> {
-    write_header(conn, writer)?;
-    export_counters(conn, writer)?;
-    export_entries(conn, writer)?;
-    export_entry_tags(conn, writer)?;
-    export_co_access(conn, writer)?;
-    export_feature_entries(conn, writer)?;
-    export_outcome_index(conn, writer)?;
-    export_agent_registry(conn, writer)?;
-    export_audit_log(conn, writer)?;
+async fn do_export(
+    pool: &SqlitePool,
+    writer: &mut impl Write,
+) -> Result<(), Box<dyn std::error::Error>> {
+    write_header(pool, writer).await?;
+    export_counters(pool, writer).await?;
+    export_entries(pool, writer).await?;
+    export_entry_tags(pool, writer).await?;
+    export_co_access(pool, writer).await?;
+    export_feature_entries(pool, writer).await?;
+    export_outcome_index(pool, writer).await?;
+    export_agent_registry(pool, writer).await?;
+    export_audit_log(pool, writer).await?;
     writer.flush()?;
     Ok(())
 }
@@ -81,17 +112,18 @@ fn do_export(conn: &Connection, writer: &mut impl Write) -> Result<(), Box<dyn s
 ///
 /// Queries schema_version from counters and COUNT(*) from entries.
 /// Key order: _header, schema_version, exported_at, entry_count, format_version.
-fn write_header(
-    conn: &Connection,
+async fn write_header(
+    pool: &SqlitePool,
     writer: &mut impl Write,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let schema_version: i64 = conn.query_row(
-        "SELECT value FROM counters WHERE name = 'schema_version'",
-        [],
-        |row| row.get(0),
-    )?;
+    let schema_version: i64 =
+        sqlx::query_scalar::<_, i64>("SELECT value FROM counters WHERE name = 'schema_version'")
+            .fetch_one(pool)
+            .await?;
 
-    let entry_count: i64 = conn.query_row("SELECT COUNT(*) FROM entries", [], |row| row.get(0))?;
+    let entry_count: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM entries")
+        .fetch_one(pool)
+        .await?;
 
     let exported_at = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -129,18 +161,18 @@ fn write_row(
 }
 
 /// Extract a nullable INTEGER column as `Value::Number` or `Value::Null`.
-fn nullable_int(row: &rusqlite::Row<'_>, idx: usize) -> Result<Value, rusqlite::Error> {
-    match row.get::<_, Option<i64>>(idx)? {
-        Some(v) => Ok(Value::Number(v.into())),
-        None => Ok(Value::Null),
+fn nullable_int(row: &sqlx::sqlite::SqliteRow, idx: usize) -> Value {
+    match row.get::<Option<i64>, _>(idx) {
+        Some(v) => Value::Number(v.into()),
+        None => Value::Null,
     }
 }
 
 /// Extract a nullable TEXT column as `Value::String` or `Value::Null`.
-fn nullable_text(row: &rusqlite::Row<'_>, idx: usize) -> Result<Value, rusqlite::Error> {
-    match row.get::<_, Option<String>>(idx)? {
-        Some(s) => Ok(Value::String(s)),
-        None => Ok(Value::Null),
+fn nullable_text(row: &sqlx::sqlite::SqliteRow, idx: usize) -> Value {
+    match row.get::<Option<String>, _>(idx) {
+        Some(s) => Value::String(s),
+        None => Value::Null,
     }
 }
 
@@ -152,17 +184,18 @@ fn nullable_text(row: &rusqlite::Row<'_>, idx: usize) -> Result<Value, rusqlite:
 ///
 /// Columns: name (TEXT PK), value (INTEGER NOT NULL).
 /// Order: name ASC.
-fn export_counters(
-    conn: &Connection,
+async fn export_counters(
+    pool: &SqlitePool,
     writer: &mut impl Write,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut stmt = conn.prepare("SELECT name, value FROM counters ORDER BY name")?;
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
+    let rows = sqlx::query("SELECT name, value FROM counters ORDER BY name")
+        .fetch_all(pool)
+        .await?;
+    for row in &rows {
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("counters".into()));
-        map.insert("name".into(), Value::String(row.get::<_, String>(0)?));
-        map.insert("value".into(), Value::Number(row.get::<_, i64>(1)?.into()));
+        map.insert("name".into(), Value::String(row.get::<String, _>(0)));
+        map.insert("value".into(), Value::Number(row.get::<i64, _>(1).into()));
         write_row(map, writer)?;
     }
     Ok(())
@@ -172,11 +205,11 @@ fn export_counters(
 ///
 /// Order: id ASC. Nullable columns emit JSON null for SQL NULL.
 /// Confidence (REAL) uses `Number::from_f64` with NaN fallback to 0 (ADR-002).
-fn export_entries(
-    conn: &Connection,
+async fn export_entries(
+    pool: &SqlitePool,
     writer: &mut impl Write,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut stmt = conn.prepare(
+    let rows = sqlx::query(
         "SELECT id, title, content, topic, category, source, status, confidence,
                 created_at, updated_at, last_accessed_at, access_count,
                 supersedes, superseded_by, correction_count, embedding_dim,
@@ -184,23 +217,25 @@ fn export_entries(
                 version, feature_cycle, trust_source,
                 helpful_count, unhelpful_count, pre_quarantine_status
          FROM entries ORDER BY id",
-    )?;
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
+    )
+    .fetch_all(pool)
+    .await?;
+
+    for row in &rows {
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("entries".into()));
         // INTEGER NOT NULL (PK)
-        map.insert("id".into(), Value::Number(row.get::<_, i64>(0)?.into()));
+        map.insert("id".into(), Value::Number(row.get::<i64, _>(0).into()));
         // TEXT NOT NULL columns
-        map.insert("title".into(), Value::String(row.get::<_, String>(1)?));
-        map.insert("content".into(), Value::String(row.get::<_, String>(2)?));
-        map.insert("topic".into(), Value::String(row.get::<_, String>(3)?));
-        map.insert("category".into(), Value::String(row.get::<_, String>(4)?));
-        map.insert("source".into(), Value::String(row.get::<_, String>(5)?));
+        map.insert("title".into(), Value::String(row.get::<String, _>(1)));
+        map.insert("content".into(), Value::String(row.get::<String, _>(2)));
+        map.insert("topic".into(), Value::String(row.get::<String, _>(3)));
+        map.insert("category".into(), Value::String(row.get::<String, _>(4)));
+        map.insert("source".into(), Value::String(row.get::<String, _>(5)));
         // INTEGER NOT NULL
-        map.insert("status".into(), Value::Number(row.get::<_, i64>(6)?.into()));
+        map.insert("status".into(), Value::Number(row.get::<i64, _>(6).into()));
         // REAL NOT NULL (f64) -- NaN safety per ADR-002
-        let confidence: f64 = row.get(7)?;
+        let confidence: f64 = row.get::<f64, _>(7);
         map.insert(
             "confidence".into(),
             Value::Number(Number::from_f64(confidence).unwrap_or(Number::from(0))),
@@ -208,74 +243,71 @@ fn export_entries(
         // INTEGER NOT NULL timestamps
         map.insert(
             "created_at".into(),
-            Value::Number(row.get::<_, i64>(8)?.into()),
+            Value::Number(row.get::<i64, _>(8).into()),
         );
         map.insert(
             "updated_at".into(),
-            Value::Number(row.get::<_, i64>(9)?.into()),
+            Value::Number(row.get::<i64, _>(9).into()),
         );
         map.insert(
             "last_accessed_at".into(),
-            Value::Number(row.get::<_, i64>(10)?.into()),
+            Value::Number(row.get::<i64, _>(10).into()),
         );
         map.insert(
             "access_count".into(),
-            Value::Number(row.get::<_, i64>(11)?.into()),
+            Value::Number(row.get::<i64, _>(11).into()),
         );
         // INTEGER nullable
-        map.insert("supersedes".into(), nullable_int(row, 12)?);
-        map.insert("superseded_by".into(), nullable_int(row, 13)?);
+        map.insert("supersedes".into(), nullable_int(row, 12));
+        map.insert("superseded_by".into(), nullable_int(row, 13));
         // INTEGER NOT NULL
         map.insert(
             "correction_count".into(),
-            Value::Number(row.get::<_, i64>(14)?.into()),
+            Value::Number(row.get::<i64, _>(14).into()),
         );
         map.insert(
             "embedding_dim".into(),
-            Value::Number(row.get::<_, i64>(15)?.into()),
+            Value::Number(row.get::<i64, _>(15).into()),
         );
         // TEXT NOT NULL
-        map.insert(
-            "created_by".into(),
-            Value::String(row.get::<_, String>(16)?),
-        );
+        map.insert("created_by".into(), Value::String(row.get::<String, _>(16)));
         map.insert(
             "modified_by".into(),
-            Value::String(row.get::<_, String>(17)?),
+            Value::String(row.get::<String, _>(17)),
         );
         map.insert(
             "content_hash".into(),
-            Value::String(row.get::<_, String>(18)?),
+            Value::String(row.get::<String, _>(18)),
         );
         map.insert(
             "previous_hash".into(),
-            Value::String(row.get::<_, String>(19)?),
+            Value::String(row.get::<String, _>(19)),
         );
         // INTEGER NOT NULL
         map.insert(
             "version".into(),
-            Value::Number(row.get::<_, i64>(20)?.into()),
+            Value::Number(row.get::<i64, _>(20).into()),
         );
         // TEXT NOT NULL
         map.insert(
             "feature_cycle".into(),
-            Value::String(row.get::<_, String>(21)?),
+            Value::String(row.get::<String, _>(21)),
         );
         map.insert(
             "trust_source".into(),
-            Value::String(row.get::<_, String>(22)?),
+            Value::String(row.get::<String, _>(22)),
         );
         // INTEGER NOT NULL
         map.insert(
             "helpful_count".into(),
-            Value::Number(row.get::<_, i64>(23)?.into()),
+            Value::Number(row.get::<i64, _>(23).into()),
         );
         map.insert(
             "unhelpful_count".into(),
-            Value::Number(row.get::<_, i64>(24)?.into()),
+            Value::Number(row.get::<i64, _>(24).into()),
         );
         // INTEGER nullable
-        map.insert("pre_quarantine_status".into(), nullable_int(row, 25)?);
+        map.insert("pre_quarantine_status".into(), nullable_int(row, 25));
 
         write_row(map, writer)?;
     }
@@ -285,20 +317,21 @@ fn export_entries(
 /// Export all rows from the `entry_tags` table.
 ///
 /// Columns: entry_id (INTEGER), tag (TEXT). Order: entry_id ASC, tag ASC.
-fn export_entry_tags(
-    conn: &Connection,
+async fn export_entry_tags(
+    pool: &SqlitePool,
     writer: &mut impl Write,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut stmt = conn.prepare("SELECT entry_id, tag FROM entry_tags ORDER BY entry_id, tag")?;
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
+    let rows = sqlx::query("SELECT entry_id, tag FROM entry_tags ORDER BY entry_id, tag")
+        .fetch_all(pool)
+        .await?;
+    for row in &rows {
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("entry_tags".into()));
         map.insert(
             "entry_id".into(),
-            Value::Number(row.get::<_, i64>(0)?.into()),
+            Value::Number(row.get::<i64, _>(0).into()),
         );
-        map.insert("tag".into(), Value::String(row.get::<_, String>(1)?));
+        map.insert("tag".into(), Value::String(row.get::<String, _>(1)));
         write_row(map, writer)?;
     }
     Ok(())
@@ -308,30 +341,31 @@ fn export_entry_tags(
 ///
 /// Columns: entry_id_a, entry_id_b, count, last_updated (all INTEGER NOT NULL).
 /// Order: entry_id_a ASC, entry_id_b ASC.
-fn export_co_access(
-    conn: &Connection,
+async fn export_co_access(
+    pool: &SqlitePool,
     writer: &mut impl Write,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut stmt = conn.prepare(
+    let rows = sqlx::query(
         "SELECT entry_id_a, entry_id_b, count, last_updated
          FROM co_access ORDER BY entry_id_a, entry_id_b",
-    )?;
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
+    )
+    .fetch_all(pool)
+    .await?;
+    for row in &rows {
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("co_access".into()));
         map.insert(
             "entry_id_a".into(),
-            Value::Number(row.get::<_, i64>(0)?.into()),
+            Value::Number(row.get::<i64, _>(0).into()),
         );
         map.insert(
             "entry_id_b".into(),
-            Value::Number(row.get::<_, i64>(1)?.into()),
+            Value::Number(row.get::<i64, _>(1).into()),
         );
-        map.insert("count".into(), Value::Number(row.get::<_, i64>(2)?.into()));
+        map.insert("count".into(), Value::Number(row.get::<i64, _>(2).into()));
         map.insert(
             "last_updated".into(),
-            Value::Number(row.get::<_, i64>(3)?.into()),
+            Value::Number(row.get::<i64, _>(3).into()),
         );
         write_row(map, writer)?;
     }
@@ -341,21 +375,22 @@ fn export_co_access(
 /// Export all rows from the `feature_entries` table.
 ///
 /// Columns: feature_id (TEXT), entry_id (INTEGER). Order: feature_id ASC, entry_id ASC.
-fn export_feature_entries(
-    conn: &Connection,
+async fn export_feature_entries(
+    pool: &SqlitePool,
     writer: &mut impl Write,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut stmt = conn.prepare(
+    let rows = sqlx::query(
         "SELECT feature_id, entry_id FROM feature_entries ORDER BY feature_id, entry_id",
-    )?;
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
+    )
+    .fetch_all(pool)
+    .await?;
+    for row in &rows {
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("feature_entries".into()));
-        map.insert("feature_id".into(), Value::String(row.get::<_, String>(0)?));
+        map.insert("feature_id".into(), Value::String(row.get::<String, _>(0)));
         map.insert(
             "entry_id".into(),
-            Value::Number(row.get::<_, i64>(1)?.into()),
+            Value::Number(row.get::<i64, _>(1).into()),
         );
         write_row(map, writer)?;
     }
@@ -365,24 +400,25 @@ fn export_feature_entries(
 /// Export all rows from the `outcome_index` table.
 ///
 /// Columns: feature_cycle (TEXT), entry_id (INTEGER). Order: feature_cycle ASC, entry_id ASC.
-fn export_outcome_index(
-    conn: &Connection,
+async fn export_outcome_index(
+    pool: &SqlitePool,
     writer: &mut impl Write,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut stmt = conn.prepare(
+    let rows = sqlx::query(
         "SELECT feature_cycle, entry_id FROM outcome_index ORDER BY feature_cycle, entry_id",
-    )?;
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
+    )
+    .fetch_all(pool)
+    .await?;
+    for row in &rows {
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("outcome_index".into()));
         map.insert(
             "feature_cycle".into(),
-            Value::String(row.get::<_, String>(0)?),
+            Value::String(row.get::<String, _>(0)),
         );
         map.insert(
             "entry_id".into(),
-            Value::Number(row.get::<_, i64>(1)?.into()),
+            Value::Number(row.get::<i64, _>(1).into()),
         );
         write_row(map, writer)?;
     }
@@ -397,41 +433,42 @@ fn export_outcome_index(
 /// Order: agent_id ASC.
 ///
 /// JSON-in-TEXT columns are emitted as raw strings, not parsed/re-encoded (ADR-002).
-fn export_agent_registry(
-    conn: &Connection,
+async fn export_agent_registry(
+    pool: &SqlitePool,
     writer: &mut impl Write,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut stmt = conn.prepare(
+    let rows = sqlx::query(
         "SELECT agent_id, trust_level, capabilities, allowed_topics,
                 allowed_categories, enrolled_at, last_seen_at, active
          FROM agent_registry ORDER BY agent_id",
-    )?;
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
+    )
+    .fetch_all(pool)
+    .await?;
+    for row in &rows {
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("agent_registry".into()));
-        map.insert("agent_id".into(), Value::String(row.get::<_, String>(0)?));
+        map.insert("agent_id".into(), Value::String(row.get::<String, _>(0)));
         map.insert(
             "trust_level".into(),
-            Value::Number(row.get::<_, i64>(1)?.into()),
+            Value::Number(row.get::<i64, _>(1).into()),
         );
         // JSON-in-TEXT: emitted as string, not parsed
         map.insert(
             "capabilities".into(),
-            Value::String(row.get::<_, String>(2)?),
+            Value::String(row.get::<String, _>(2)),
         );
         // Nullable JSON-in-TEXT
-        map.insert("allowed_topics".into(), nullable_text(row, 3)?);
-        map.insert("allowed_categories".into(), nullable_text(row, 4)?);
+        map.insert("allowed_topics".into(), nullable_text(row, 3));
+        map.insert("allowed_categories".into(), nullable_text(row, 4));
         map.insert(
             "enrolled_at".into(),
-            Value::Number(row.get::<_, i64>(5)?.into()),
+            Value::Number(row.get::<i64, _>(5).into()),
         );
         map.insert(
             "last_seen_at".into(),
-            Value::Number(row.get::<_, i64>(6)?.into()),
+            Value::Number(row.get::<i64, _>(6).into()),
         );
-        map.insert("active".into(), Value::Number(row.get::<_, i64>(7)?.into()));
+        map.insert("active".into(), Value::Number(row.get::<i64, _>(7).into()));
         write_row(map, writer)?;
     }
     Ok(())
@@ -445,37 +482,35 @@ fn export_agent_registry(
 /// Order: event_id ASC.
 ///
 /// The `target_ids` column is JSON-in-TEXT: emitted as a raw string (ADR-002).
-fn export_audit_log(
-    conn: &Connection,
+async fn export_audit_log(
+    pool: &SqlitePool,
     writer: &mut impl Write,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut stmt = conn.prepare(
+    let rows = sqlx::query(
         "SELECT event_id, timestamp, session_id, agent_id, operation,
                 target_ids, outcome, detail
          FROM audit_log ORDER BY event_id",
-    )?;
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
+    )
+    .fetch_all(pool)
+    .await?;
+    for row in &rows {
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("audit_log".into()));
         map.insert(
             "event_id".into(),
-            Value::Number(row.get::<_, i64>(0)?.into()),
+            Value::Number(row.get::<i64, _>(0).into()),
         );
         map.insert(
             "timestamp".into(),
-            Value::Number(row.get::<_, i64>(1)?.into()),
+            Value::Number(row.get::<i64, _>(1).into()),
         );
-        map.insert("session_id".into(), Value::String(row.get::<_, String>(2)?));
-        map.insert("agent_id".into(), Value::String(row.get::<_, String>(3)?));
-        map.insert("operation".into(), Value::String(row.get::<_, String>(4)?));
+        map.insert("session_id".into(), Value::String(row.get::<String, _>(2)));
+        map.insert("agent_id".into(), Value::String(row.get::<String, _>(3)));
+        map.insert("operation".into(), Value::String(row.get::<String, _>(4)));
         // JSON-in-TEXT: emitted as string, not parsed
-        map.insert("target_ids".into(), Value::String(row.get::<_, String>(5)?));
-        map.insert(
-            "outcome".into(),
-            Value::Number(row.get::<_, i64>(6)?.into()),
-        );
-        map.insert("detail".into(), Value::String(row.get::<_, String>(7)?));
+        map.insert("target_ids".into(), Value::String(row.get::<String, _>(5)));
+        map.insert("outcome".into(), Value::Number(row.get::<i64, _>(6).into()));
+        map.insert("detail".into(), Value::String(row.get::<String, _>(7)));
         write_row(map, writer)?;
     }
     Ok(())
@@ -484,17 +519,17 @@ fn export_audit_log(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
+    use std::sync::Arc;
+    use unimatrix_store::test_helpers::open_test_store;
 
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 
-    /// Create a fresh database in a temp directory and return (store, temp_dir).
-    fn setup_test_db() -> (Store, TempDir) {
-        let tmp = TempDir::new().expect("create temp dir");
-        let db_path = tmp.path().join("unimatrix.db");
-        let store = Store::open(&db_path).expect("open store");
+    /// Create a fresh database in a temp directory and return (store, pool, temp_dir).
+    async fn setup_test_db() -> (Arc<SqlxStore>, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().expect("create temp dir");
+        let store = Arc::new(open_test_store(&tmp).await);
         (store, tmp)
     }
 
@@ -518,13 +553,13 @@ mod tests {
     // Export-module agent tests (header, orchestration)
     // -----------------------------------------------------------------------
 
-    #[test]
-    fn test_write_header_fields_correct() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
+    #[tokio::test]
+    async fn test_write_header_fields_correct() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
         let mut buf = Vec::new();
 
-        write_header(&conn, &mut buf).expect("write_header");
+        write_header(pool, &mut buf).await.expect("write_header");
 
         let line = String::from_utf8(buf).expect("utf8");
         let val: Value = serde_json::from_str(line.trim()).expect("parse json");
@@ -542,10 +577,10 @@ mod tests {
         assert_eq!(obj.len(), 5);
     }
 
-    #[test]
-    fn test_write_header_exported_at_recent() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
+    #[tokio::test]
+    async fn test_write_header_exported_at_recent() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
         let mut buf = Vec::new();
 
         let before = SystemTime::now()
@@ -553,7 +588,7 @@ mod tests {
             .unwrap()
             .as_secs() as i64;
 
-        write_header(&conn, &mut buf).expect("write_header");
+        write_header(pool, &mut buf).await.expect("write_header");
 
         let after = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -567,13 +602,13 @@ mod tests {
         assert!(exported_at <= after);
     }
 
-    #[test]
-    fn test_do_export_empty_db() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
+    #[tokio::test]
+    async fn test_do_export_empty_db() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
         let mut buf = Vec::new();
 
-        do_export(&conn, &mut buf).expect("do_export");
+        do_export(pool, &mut buf).await.expect("do_export");
 
         let output = String::from_utf8(buf).expect("utf8");
         let lines: Vec<&str> = output.lines().collect();
@@ -585,13 +620,13 @@ mod tests {
         assert_eq!(header["entry_count"], Value::Number(0.into()));
     }
 
-    #[test]
-    fn test_do_export_all_lines_valid_json() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
+    #[tokio::test]
+    async fn test_do_export_all_lines_valid_json() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
         let mut buf = Vec::new();
 
-        do_export(&conn, &mut buf).expect("do_export");
+        do_export(pool, &mut buf).await.expect("do_export");
 
         let output = String::from_utf8(buf).expect("utf8");
         for line in output.lines() {
@@ -602,19 +637,19 @@ mod tests {
 
     #[test]
     fn test_run_export_to_file() {
-        let _tmp = TempDir::new().expect("create temp dir");
+        let _tmp = tempfile::TempDir::new().expect("create temp dir");
         // run_export needs ensure_data_directory which uses project root detection.
         // For unit tests, we test do_export directly. File output is tested via
         // integration tests that set up proper project directories.
     }
 
-    #[test]
-    fn test_header_key_order_preserved() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
+    #[tokio::test]
+    async fn test_header_key_order_preserved() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
         let mut buf = Vec::new();
 
-        write_header(&conn, &mut buf).expect("write_header");
+        write_header(pool, &mut buf).await.expect("write_header");
 
         let output = String::from_utf8(buf).expect("utf8");
         let val: Value = serde_json::from_str(output.trim()).expect("parse json");
@@ -636,11 +671,11 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-01: All 26 entry columns present with correct values
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_all_26_columns_present() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entries_all_26_columns_present() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (
                 id, title, content, topic, category, source, status, confidence,
                 created_at, updated_at, last_accessed_at, access_count,
@@ -656,12 +691,13 @@ mod tests {
                 7, 'crt-002', 'human',
                 12, 2, 0
             )",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
 
         let obj = row.as_object().unwrap();
@@ -697,13 +733,13 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-03: Per-table key counts
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_counters_key_count_and_values() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
+    #[tokio::test]
+    async fn test_export_counters_key_count_and_values() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
 
         let mut buf = Vec::new();
-        export_counters(&conn, &mut buf).unwrap();
+        export_counters(pool, &mut buf).await.unwrap();
         let rows = parse_lines(&buf);
         // counters table has schema_version from Store::open migration
         assert!(!rows.is_empty());
@@ -713,42 +749,43 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_export_entry_tags_key_count() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entry_tags_key_count() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (id, title, content, topic, category, source, created_at, updated_at)
              VALUES (1, 't', 'c', 't', 'p', 's', 1, 1)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
-        conn.execute(
-            "INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'rust')",
-            [],
-        )
-        .unwrap();
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'rust')")
+            .execute(pool)
+            .await
+            .unwrap();
 
         let mut buf = Vec::new();
-        export_entry_tags(&conn, &mut buf).unwrap();
+        export_entry_tags(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
         assert_eq!(row.as_object().unwrap().len(), 3);
         assert_eq!(row["_table"], "entry_tags");
     }
 
-    #[test]
-    fn test_export_co_access_key_count() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_co_access_key_count() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated)
              VALUES (1, 2, 5, 1700000000)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_co_access(&conn, &mut buf).unwrap();
+        export_co_access(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
         assert_eq!(row.as_object().unwrap().len(), 5);
         assert_eq!(row["_table"], "co_access");
@@ -758,75 +795,75 @@ mod tests {
         assert_eq!(row["last_updated"], 1_700_000_000i64);
     }
 
-    #[test]
-    fn test_export_feature_entries_key_count() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
-            "INSERT INTO feature_entries (feature_id, entry_id) VALUES ('nxs-001', 42)",
-            [],
-        )
-        .unwrap();
+    #[tokio::test]
+    async fn test_export_feature_entries_key_count() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query("INSERT INTO feature_entries (feature_id, entry_id) VALUES ('nxs-001', 42)")
+            .execute(pool)
+            .await
+            .unwrap();
 
         let mut buf = Vec::new();
-        export_feature_entries(&conn, &mut buf).unwrap();
+        export_feature_entries(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
         assert_eq!(row.as_object().unwrap().len(), 3);
         assert_eq!(row["feature_id"], "nxs-001");
         assert_eq!(row["entry_id"], 42);
     }
 
-    #[test]
-    fn test_export_outcome_index_key_count() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
-            "INSERT INTO outcome_index (feature_cycle, entry_id) VALUES ('crt-001', 7)",
-            [],
-        )
-        .unwrap();
+    #[tokio::test]
+    async fn test_export_outcome_index_key_count() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query("INSERT INTO outcome_index (feature_cycle, entry_id) VALUES ('crt-001', 7)")
+            .execute(pool)
+            .await
+            .unwrap();
 
         let mut buf = Vec::new();
-        export_outcome_index(&conn, &mut buf).unwrap();
+        export_outcome_index(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
         assert_eq!(row.as_object().unwrap().len(), 3);
         assert_eq!(row["feature_cycle"], "crt-001");
         assert_eq!(row["entry_id"], 7);
     }
 
-    #[test]
-    fn test_export_agent_registry_key_count() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_agent_registry_key_count() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
              allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
              VALUES ('bot-1', 2, '[\"Admin\"]', '[\"security\"]', '[\"decision\"]', 1700000000, 1700000001, 1)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_agent_registry(&conn, &mut buf).unwrap();
+        export_agent_registry(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
         assert_eq!(row.as_object().unwrap().len(), 9);
         assert_eq!(row["_table"], "agent_registry");
     }
 
-    #[test]
-    fn test_export_audit_log_key_count() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_audit_log_key_count() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO audit_log (event_id, timestamp, session_id, agent_id,
              operation, target_ids, outcome, detail)
              VALUES (1, 1700000000, 'sess-1', 'bot-1', 'store', '[1,2]', 0, 'ok')",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_audit_log(&conn, &mut buf).unwrap();
+        export_audit_log(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
         assert_eq!(row.as_object().unwrap().len(), 9);
         assert_eq!(row["_table"], "audit_log");
@@ -835,26 +872,29 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-04: f64 confidence round-trip fidelity
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_f64_precision() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
+    #[tokio::test]
+    async fn test_export_entries_f64_precision() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
         let values = [0.0, 1.0, 0.123456789012345, f64::MIN_POSITIVE, 0.1 + 0.2];
 
         for (i, &v) in values.iter().enumerate() {
             let id = (i as i64) + 1;
-            conn.execute(
+            sqlx::query(
                 "INSERT INTO entries (
                     id, title, content, topic, category, source, status, confidence,
                     created_at, updated_at
                 ) VALUES (?1, 'test', 'c', 't', 'p', 's', 0, ?2, 1, 1)",
-                rusqlite::params![id, v],
             )
+            .bind(id)
+            .bind(v)
+            .execute(pool)
+            .await
             .unwrap();
         }
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         let rows = parse_lines(&buf);
         assert_eq!(rows.len(), values.len());
 
@@ -871,27 +911,29 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-05: JSON-in-TEXT columns emitted as raw strings
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_agent_registry_json_in_text_as_string() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_agent_registry_json_in_text_as_string() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
              allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
              VALUES ('bot-1', 2, '[\"Admin\",\"Read\"]', '[\"security\"]', '[\"decision\"]', 1, 1, 1)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
-        conn.execute(
+        sqlx::query(
             "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
              allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
              VALUES ('bot-2', 1, '[]', NULL, NULL, 2, 2, 1)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_agent_registry(&conn, &mut buf).unwrap();
+        export_agent_registry(pool, &mut buf).await.unwrap();
         let rows = parse_lines(&buf);
         assert_eq!(rows.len(), 2);
 
@@ -912,20 +954,21 @@ mod tests {
         assert!(r2["allowed_categories"].is_null());
     }
 
-    #[test]
-    fn test_export_audit_log_json_in_text_target_ids() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_audit_log_json_in_text_target_ids() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO audit_log (event_id, timestamp, session_id, agent_id,
              operation, target_ids, outcome, detail)
              VALUES (1, 100, 's1', 'a1', 'op', '[1,2,3]', 0, 'detail')",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_audit_log(&conn, &mut buf).unwrap();
+        export_audit_log(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
 
         assert!(row["target_ids"].is_string());
@@ -935,21 +978,22 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-06: NULL columns serialized as JSON null
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_null_handling() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entries_null_handling() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (
                 id, title, content, topic, category, source, status, confidence,
                 created_at, updated_at, supersedes, superseded_by, pre_quarantine_status
             ) VALUES (1, 'test', 'c', 't', 'p', 's', 0, 0.5, 1, 1, NULL, NULL, NULL)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
 
         assert!(row.as_object().unwrap().contains_key("supersedes"));
@@ -965,20 +1009,21 @@ mod tests {
         assert_eq!(row.as_object().unwrap().len(), 27);
     }
 
-    #[test]
-    fn test_export_agent_registry_null_handling() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_agent_registry_null_handling() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO agent_registry (agent_id, trust_level, capabilities,
              allowed_topics, allowed_categories, enrolled_at, last_seen_at, active)
              VALUES ('bot-null', 0, '[]', NULL, NULL, 1, 1, 1)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_agent_registry(&conn, &mut buf).unwrap();
+        export_agent_registry(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
 
         assert!(row.as_object().unwrap().contains_key("allowed_topics"));
@@ -990,21 +1035,22 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-06b: Empty strings are NOT null
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_empty_string_not_null() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entries_empty_string_not_null() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (
                 id, title, content, topic, category, source, status, confidence,
                 created_at, updated_at, created_by, content_hash, feature_cycle
             ) VALUES (1, 'test', 'c', 't', 'p', 's', 0, 0.0, 1, 1, '', '', '')",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
 
         assert!(row["created_by"].is_string());
@@ -1018,21 +1064,22 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-07: _table is first key, columns follow DDL declaration order
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_key_ordering() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entries_key_ordering() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (
                 id, title, content, topic, category, source, status, confidence,
                 created_at, updated_at
             ) VALUES (1, 'test', 'content', 'topic', 'cat', 'src', 0, 0.5, 1, 1)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
 
         let raw = std::str::from_utf8(&buf).unwrap();
         let line = raw.lines().next().unwrap();
@@ -1082,13 +1129,13 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_export_counters_table_key_first() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
+    #[tokio::test]
+    async fn test_export_counters_table_key_first() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
 
         let mut buf = Vec::new();
-        export_counters(&conn, &mut buf).unwrap();
+        export_counters(pool, &mut buf).await.unwrap();
         // counters has at least schema_version from migration
         let raw = std::str::from_utf8(&buf).unwrap();
         if let Some(line) = raw.lines().next() {
@@ -1099,21 +1146,22 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-09: Unicode content preserved
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_unicode_cjk_and_emoji() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entries_unicode_cjk_and_emoji() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (
                 id, title, content, topic, category, source, status, confidence,
                 created_at, updated_at
             ) VALUES (1, '\u{77E5}\u{8B58}', 'Status: \u{2705} approved', 't', 'p', 's', 0, 0.0, 1, 1)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
 
         assert_eq!(row["title"].as_str().unwrap(), "\u{77E5}\u{8B58}");
@@ -1123,24 +1171,24 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_export_entry_tags_unicode_accented() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entry_tags_unicode_accented() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (id, title, content, topic, category, source, created_at, updated_at)
              VALUES (1, 't', 'c', 't', 'p', 's', 1, 1)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
-        conn.execute(
-            "INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'resume\u{0301}')",
-            [],
-        )
-        .unwrap();
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'resume\u{0301}')")
+            .execute(pool)
+            .await
+            .unwrap();
 
         let mut buf = Vec::new();
-        export_entry_tags(&conn, &mut buf).unwrap();
+        export_entry_tags(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
         assert_eq!(row["tag"].as_str().unwrap(), "resume\u{0301}");
     }
@@ -1148,21 +1196,22 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-10: Large integer values preserved
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_large_integers() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entries_large_integers() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (
                 id, title, content, topic, category, source, status, confidence,
                 created_at, updated_at, version, access_count
             ) VALUES (1, 't', 'c', 't', 'p', 's', 0, 0.0, 9999999999, 1, 2147483647, 1000000)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
 
         assert_eq!(row["created_at"].as_i64().unwrap(), 9_999_999_999i64);
@@ -1170,18 +1219,19 @@ mod tests {
         assert_eq!(row["access_count"].as_i64().unwrap(), 1_000_000i64);
     }
 
-    #[test]
-    fn test_export_counters_i64_max() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_counters_i64_max() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT OR REPLACE INTO counters (name, value) VALUES ('big', 9223372036854775807)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_counters(&conn, &mut buf).unwrap();
+        export_counters(pool, &mut buf).await.unwrap();
         let rows = parse_lines(&buf);
         let big_row = rows.iter().find(|r| r["name"] == "big").unwrap();
         assert_eq!(big_row["value"].as_i64().unwrap(), i64::MAX);
@@ -1190,21 +1240,22 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-11: Entry with all nullable fields NULL simultaneously
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_all_nullable_null() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entries_all_nullable_null() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (
                 id, title, content, topic, category, source, created_at, updated_at,
                 supersedes, superseded_by, pre_quarantine_status
             ) VALUES (1, 't', 'c', 't', 'p', 's', 1, 1, NULL, NULL, NULL)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
 
         assert!(row["supersedes"].is_null());
@@ -1216,21 +1267,22 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-12: Timestamp of 0 is not treated as NULL
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_zero_timestamp_not_null() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entries_zero_timestamp_not_null() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (
                 id, title, content, topic, category, source, created_at, updated_at,
                 last_accessed_at
             ) VALUES (1, 't', 'c', 't', 'p', 's', 0, 0, 0)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
 
         assert_eq!(row["created_at"].as_i64().unwrap(), 0);
@@ -1241,20 +1293,21 @@ mod tests {
     // -----------------------------------------------------------------------
     // T-RS-13: JSONL line integrity -- no raw newlines in output lines
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_newline_in_content_escaped() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entries_newline_in_content_escaped() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (
                 id, title, content, topic, category, source, created_at, updated_at
             ) VALUES (1, 't', 'line1\nline2\nline3', 't', 'p', 's', 1, 1)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         let raw = std::str::from_utf8(&buf).unwrap();
 
         let lines: Vec<&str> = raw.lines().filter(|l| !l.is_empty()).collect();
@@ -1267,43 +1320,50 @@ mod tests {
     // -----------------------------------------------------------------------
     // Row ordering tests
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_ordered_by_id() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        for id in [5, 2, 8] {
-            conn.execute(
+    #[tokio::test]
+    async fn test_export_entries_ordered_by_id() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        for id in [5i64, 2, 8] {
+            sqlx::query(
                 "INSERT INTO entries (id, title, content, topic, category, source, created_at, updated_at)
                  VALUES (?1, 't', 'c', 't', 'p', 's', 1, 1)",
-                [id],
             )
+            .bind(id)
+            .execute(pool)
+            .await
             .unwrap();
         }
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         let rows = parse_lines(&buf);
         let ids: Vec<i64> = rows.iter().map(|r| r["id"].as_i64().unwrap()).collect();
         assert_eq!(ids, vec![2, 5, 8]);
     }
 
-    #[test]
-    fn test_export_entry_tags_ordered() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entry_tags_ordered() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             "INSERT INTO entries (id, title, content, topic, category, source, created_at, updated_at)
              VALUES (1, 't', 'c', 't', 'p', 's', 1, 1)",
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
-        conn.execute("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'z')", [])
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'z')")
+            .execute(pool)
+            .await
             .unwrap();
-        conn.execute("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'a')", [])
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'a')")
+            .execute(pool)
+            .await
             .unwrap();
 
         let mut buf = Vec::new();
-        export_entry_tags(&conn, &mut buf).unwrap();
+        export_entry_tags(pool, &mut buf).await.unwrap();
         let rows = parse_lines(&buf);
         let tags: Vec<&str> = rows.iter().map(|r| r["tag"].as_str().unwrap()).collect();
         assert_eq!(tags, vec!["a", "z"]);
@@ -1312,57 +1372,58 @@ mod tests {
     // -----------------------------------------------------------------------
     // Empty tables produce no output
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_empty_tables_no_output() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
+    #[tokio::test]
+    async fn test_export_empty_tables_no_output() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         assert!(buf.is_empty());
 
         buf.clear();
-        export_entry_tags(&conn, &mut buf).unwrap();
+        export_entry_tags(pool, &mut buf).await.unwrap();
         assert!(buf.is_empty());
 
         buf.clear();
-        export_co_access(&conn, &mut buf).unwrap();
+        export_co_access(pool, &mut buf).await.unwrap();
         assert!(buf.is_empty());
 
         buf.clear();
-        export_feature_entries(&conn, &mut buf).unwrap();
+        export_feature_entries(pool, &mut buf).await.unwrap();
         assert!(buf.is_empty());
 
         buf.clear();
-        export_outcome_index(&conn, &mut buf).unwrap();
+        export_outcome_index(pool, &mut buf).await.unwrap();
         assert!(buf.is_empty());
 
         buf.clear();
-        export_agent_registry(&conn, &mut buf).unwrap();
+        export_agent_registry(pool, &mut buf).await.unwrap();
         assert!(buf.is_empty());
 
         buf.clear();
-        export_audit_log(&conn, &mut buf).unwrap();
+        export_audit_log(pool, &mut buf).await.unwrap();
         assert!(buf.is_empty());
     }
 
     // -----------------------------------------------------------------------
     // JSON-special characters in content
     // -----------------------------------------------------------------------
-    #[test]
-    fn test_export_entries_json_special_chars_in_content() {
-        let (store, _tmp) = setup_test_db();
-        let conn = store.lock_conn();
-        conn.execute(
+    #[tokio::test]
+    async fn test_export_entries_json_special_chars_in_content() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
             r#"INSERT INTO entries (
                 id, title, content, topic, category, source, created_at, updated_at
             ) VALUES (1, 't', 'He said "hello" and used a \backslash', 't', 'p', 's', 1, 1)"#,
-            [],
         )
+        .execute(pool)
+        .await
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(&conn, &mut buf).unwrap();
+        export_entries(pool, &mut buf).await.unwrap();
         let row = parse_line(&buf);
         assert_eq!(
             row["content"].as_str().unwrap(),

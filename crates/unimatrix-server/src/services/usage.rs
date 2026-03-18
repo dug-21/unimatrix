@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use unimatrix_store::Store;
+use unimatrix_core::Store;
 
 use crate::infra::registry::TrustLevel;
 use crate::infra::usage_dedup::{UsageDedup, VoteAction};
@@ -204,35 +204,36 @@ impl UsageService {
                 .unwrap_or_else(|e| e.into_inner());
             (guard.alpha0, guard.beta0)
         };
-        let confidence_fn: Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send> =
+        let confidence_fn: Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync> =
             Box::new(move |entry, now| {
                 crate::confidence::compute_confidence(entry, now, alpha0, beta0)
             });
 
-        let _ = tokio::task::spawn_blocking(move || {
-            // Single lock acquisition for all writes
-            if let Err(e) = store.record_usage_with_confidence(
-                &multiplied_all_ids,
-                &multiplied_access_ids,
-                &helpful_ids,
-                &unhelpful_ids,
-                &decrement_helpful_ids,
-                &decrement_unhelpful_ids,
-                Some(confidence_fn),
-            ) {
+        let _ = tokio::spawn(async move {
+            // Async usage recording (nxs-011: record_usage_with_confidence is now async)
+            if let Err(e) = store
+                .record_usage_with_confidence(
+                    &multiplied_all_ids,
+                    &multiplied_access_ids,
+                    &helpful_ids,
+                    &unhelpful_ids,
+                    &decrement_helpful_ids,
+                    &decrement_unhelpful_ids,
+                    Some(confidence_fn),
+                )
+                .await
+            {
                 tracing::warn!("usage recording failed: {e}");
             }
 
             if let Some((feature_str, ids)) = feature_recording {
-                if let Err(e) = store.record_feature_entries(&feature_str, &ids) {
-                    tracing::warn!("feature entry recording failed: {e}");
+                if let Err(e) = store.record_feature_entries(&feature_str, &ids).await {
+                    tracing::warn!("failed to record feature entries: {e}");
                 }
             }
 
             if let Some(pairs) = co_access_pairs {
-                if let Err(e) = store.record_co_access_pairs(&pairs) {
-                    tracing::warn!("co-access recording failed: {e}");
-                }
+                store.record_co_access_pairs(&pairs);
             }
         });
     }
@@ -240,7 +241,8 @@ impl UsageService {
     /// Hook injection usage: co-access pairs and feature entries.
     ///
     /// Injection log writes remain in listener.rs (need per-entry confidence).
-    /// Batched into a single spawn_blocking (vnc-010).
+    /// Fire-and-forget via sync channel (record_co_access_pairs/record_feature_entries
+    /// are infallible, nxs-011).
     fn record_hook_injection(&self, entry_ids: &[u64], ctx: UsageContext) {
         // Pre-compute co-access pairs (in-memory)
         let co_access_pairs = if entry_ids.len() >= 2 {
@@ -269,18 +271,22 @@ impl UsageService {
         }
 
         let store = Arc::clone(&self.store);
-        let _ = tokio::task::spawn_blocking(move || {
-            if let Some(pairs) = co_access_pairs {
-                if let Err(e) = store.record_co_access_pairs(&pairs) {
-                    tracing::warn!("co-access recording failed: {e}");
+        // co_access: fire-and-forget via analytics drain (eventual consistency acceptable)
+        if let Some(pairs) = co_access_pairs {
+            let s = Arc::clone(&store);
+            tokio::task::spawn_blocking(move || {
+                s.record_co_access_pairs(&pairs);
+            });
+        }
+        // feature_entries: direct async write (immediate visibility required)
+        if let Some((feature_str, ids)) = feature_recording {
+            let s = Arc::clone(&store);
+            tokio::spawn(async move {
+                if let Err(e) = s.record_feature_entries(&feature_str, &ids).await {
+                    tracing::warn!("failed to record feature entries: {e}");
                 }
-            }
-            if let Some((feature_str, ids)) = feature_recording {
-                if let Err(e) = store.record_feature_entries(&feature_str, &ids) {
-                    tracing::warn!("feature entry recording failed: {e}");
-                }
-            }
-        });
+            });
+        }
     }
 
     /// Briefing usage: access count only (no votes, no injection log).
@@ -304,21 +310,25 @@ impl UsageService {
         };
 
         let store = Arc::clone(&self.store);
-        let _ = tokio::task::spawn_blocking(move || {
-            if let Err(e) = store.record_usage_with_confidence(
-                &access_ids,
-                &access_ids,
-                &[],
-                &[],
-                &[],
-                &[],
-                Some(
-                    Box::new(move |entry: &unimatrix_store::EntryRecord, now: u64| {
-                        crate::confidence::compute_confidence(entry, now, alpha0, beta0)
-                    })
-                        as Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send>,
-                ),
-            ) {
+        let _ = tokio::spawn(async move {
+            // Async usage recording (nxs-011)
+            if let Err(e) = store
+                .record_usage_with_confidence(
+                    &access_ids,
+                    &access_ids,
+                    &[],
+                    &[],
+                    &[],
+                    &[],
+                    Some(
+                        Box::new(move |entry: &unimatrix_store::EntryRecord, now: u64| {
+                            crate::confidence::compute_confidence(entry, now, alpha0, beta0)
+                        })
+                            as Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync>,
+                    ),
+                )
+                .await
+            {
                 tracing::warn!("briefing usage recording failed: {e}");
             }
         });
@@ -328,16 +338,19 @@ impl UsageService {
 #[cfg(test)]
 mod usage_tests {
     use super::*;
-    fn make_usage_service() -> (UsageService, Arc<Store>, tempfile::TempDir) {
+    use sqlx::Row;
+    use unimatrix_store::test_helpers::open_test_store;
+
+    async fn make_usage_service() -> (UsageService, Arc<Store>, tempfile::TempDir) {
         let dir = tempfile::tempdir().expect("tempdir");
-        let store = Arc::new(Store::open(dir.path().join("test.db")).expect("store"));
+        let store = Arc::new(open_test_store(&dir).await);
         let usage_dedup = Arc::new(UsageDedup::new());
         let confidence_state = crate::services::confidence::ConfidenceState::new_handle();
         let service = UsageService::new(Arc::clone(&store), usage_dedup, confidence_state);
         (service, store, dir)
     }
 
-    fn insert_test_entry(store: &Store) -> u64 {
+    async fn insert_test_entry(store: &Store) -> u64 {
         let entry = unimatrix_core::NewEntry {
             title: "test".to_string(),
             content: "test content".to_string(),
@@ -350,12 +363,12 @@ mod usage_tests {
             feature_cycle: String::new(),
             trust_source: "agent".to_string(),
         };
-        store.insert(entry).expect("insert")
+        store.insert(entry).await.expect("insert")
     }
 
     #[tokio::test]
     async fn test_record_access_empty_ids() {
-        let (service, _store, _dir) = make_usage_service();
+        let (service, _store, _dir) = make_usage_service().await;
         // Should return immediately without panic
         service.record_access(
             &[],
@@ -373,8 +386,8 @@ mod usage_tests {
 
     #[tokio::test]
     async fn test_record_access_mcp_increments_access() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         service.record_access(
             &[id],
@@ -392,7 +405,7 @@ mod usage_tests {
         // Wait for spawn_blocking to complete
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        let entry = store.get(id).expect("get");
+        let entry = store.get(id).await.expect("get");
         assert!(
             entry.access_count >= 1,
             "access_count should be >= 1, got {}",
@@ -402,8 +415,8 @@ mod usage_tests {
 
     #[tokio::test]
     async fn test_record_access_mcp_helpful_vote() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         service.record_access(
             &[id],
@@ -420,14 +433,14 @@ mod usage_tests {
 
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        let entry = store.get(id).expect("get");
+        let entry = store.get(id).await.expect("get");
         assert_eq!(entry.helpful_count, 1);
     }
 
     #[tokio::test]
     async fn test_record_access_mcp_unhelpful_vote() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         service.record_access(
             &[id],
@@ -444,14 +457,14 @@ mod usage_tests {
 
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        let entry = store.get(id).expect("get");
+        let entry = store.get(id).await.expect("get");
         assert_eq!(entry.unhelpful_count, 1);
     }
 
     #[tokio::test]
     async fn test_record_access_mcp_vote_correction() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         // Vote unhelpful first
         service.record_access(
@@ -483,15 +496,15 @@ mod usage_tests {
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        let entry = store.get(id).expect("get");
+        let entry = store.get(id).await.expect("get");
         assert_eq!(entry.helpful_count, 1);
         assert_eq!(entry.unhelpful_count, 0);
     }
 
     #[tokio::test]
     async fn test_record_access_mcp_duplicate_vote_noop() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         // Vote helpful twice with same agent
         for _ in 0..2 {
@@ -510,14 +523,14 @@ mod usage_tests {
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
 
-        let entry = store.get(id).expect("get");
+        let entry = store.get(id).await.expect("get");
         assert_eq!(entry.helpful_count, 1, "duplicate vote should be noop");
     }
 
     #[tokio::test]
     async fn test_record_access_mcp_access_dedup() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         // Two calls with same agent
         for _ in 0..2 {
@@ -536,7 +549,7 @@ mod usage_tests {
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
 
-        let entry = store.get(id).expect("get");
+        let entry = store.get(id).await.expect("get");
         assert_eq!(
             entry.access_count, 1,
             "dedup should prevent double increment"
@@ -545,8 +558,8 @@ mod usage_tests {
 
     #[tokio::test]
     async fn test_record_access_briefing_no_votes() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         service.record_access(
             &[id],
@@ -562,14 +575,14 @@ mod usage_tests {
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        let entry = store.get(id).expect("get");
+        let entry = store.get(id).await.expect("get");
         assert!(entry.access_count >= 1);
         assert_eq!(entry.helpful_count, 0, "briefing should not record votes");
     }
 
     #[tokio::test]
     async fn test_record_access_fire_and_forget_returns_quickly() {
-        let (service, _store, _dir) = make_usage_service();
+        let (service, _store, _dir) = make_usage_service().await;
         let start = std::time::Instant::now();
         service.record_access(
             &[1, 2, 3],
@@ -593,8 +606,8 @@ mod usage_tests {
 
     #[tokio::test]
     async fn test_record_access_mcp_feature_recording() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         service.record_access(
             &[id],
@@ -610,25 +623,25 @@ mod usage_tests {
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        let conn = store.lock_conn();
-        let mut stmt = conn
-            .prepare("SELECT entry_id FROM feature_entries WHERE feature_id = ?1")
+        let rows = sqlx::query("SELECT entry_id FROM feature_entries WHERE feature_id = ?1")
+            .bind("vnc-009")
+            .fetch_all(store.write_pool_server())
+            .await
             .unwrap();
-        let found: Vec<u64> = stmt
-            .query_map(unimatrix_store::rusqlite::params!["vnc-009"], |row| {
-                let v: i64 = row.get(0)?;
-                Ok(v as u64)
+        let found: Vec<u64> = rows
+            .into_iter()
+            .map(|row| {
+                let v: i64 = row.get::<i64, _>(0);
+                v as u64
             })
-            .unwrap()
-            .map(|r| r.unwrap())
             .collect();
         assert!(found.contains(&id), "feature entry should be recorded");
     }
 
     #[tokio::test]
     async fn test_record_access_mcp_feature_restricted_ignored() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         service.record_access(
             &[id],
@@ -644,14 +657,13 @@ mod usage_tests {
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        let conn = store.lock_conn();
-        let count: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?1",
-                unimatrix_store::rusqlite::params!["vnc-009"],
-                |row| row.get(0),
-            )
-            .unwrap();
+        let count: i64 = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?1",
+        )
+        .bind("vnc-009")
+        .fetch_one(store.write_pool_server())
+        .await
+        .unwrap_or(0);
         assert_eq!(
             count, 0,
             "restricted agent feature entry should not be recorded"
@@ -662,11 +674,11 @@ mod usage_tests {
     /// Exercises the full UsageService -> Store -> confidence recomputation path.
     #[tokio::test]
     async fn test_mcp_usage_confidence_recomputed() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         // Before: confidence is 0.0
-        assert_eq!(store.get(id).unwrap().confidence, 0.0);
+        assert_eq!(store.get(id).await.unwrap().confidence, 0.0);
 
         service.record_access(
             &[id],
@@ -682,7 +694,7 @@ mod usage_tests {
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        let entry = store.get(id).expect("get");
+        let entry = store.get(id).await.expect("get");
         assert!(
             entry.confidence > 0.0,
             "confidence should be recomputed after usage recording"
@@ -694,8 +706,8 @@ mod usage_tests {
     /// T-INT-02: Verify UsageDedup prevents double access_count via UsageService.
     #[tokio::test]
     async fn test_mcp_usage_dedup_prevents_double_access() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         // First call: access_count becomes 1
         service.record_access(
@@ -711,7 +723,7 @@ mod usage_tests {
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-        assert_eq!(store.get(id).unwrap().access_count, 1);
+        assert_eq!(store.get(id).await.unwrap().access_count, 1);
 
         // Second call: same agent+entry -> deduped
         service.record_access(
@@ -728,7 +740,7 @@ mod usage_tests {
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         assert_eq!(
-            store.get(id).unwrap().access_count,
+            store.get(id).await.unwrap().access_count,
             1,
             "dedup should prevent double increment"
         );
@@ -738,8 +750,8 @@ mod usage_tests {
     /// This is what the context_get handler now passes via params.helpful.or(Some(true)).
     #[tokio::test]
     async fn test_context_get_implicit_helpful_vote_increments_helpful_count() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         service.record_access(
             &[id],
@@ -755,7 +767,7 @@ mod usage_tests {
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-        let entry = store.get(id).expect("get");
+        let entry = store.get(id).await.expect("get");
         assert_eq!(
             entry.helpful_count, 1,
             "implicit helpful vote must increment helpful_count"
@@ -766,8 +778,8 @@ mod usage_tests {
     /// AC-08a: context_get with explicit helpful=false does NOT increment helpful_count.
     #[tokio::test]
     async fn test_context_get_explicit_false_does_not_increment_helpful() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         service.record_access(
             &[id],
@@ -783,7 +795,7 @@ mod usage_tests {
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-        let entry = store.get(id).expect("get");
+        let entry = store.get(id).await.expect("get");
         assert_eq!(
             entry.helpful_count, 0,
             "explicit false must not increment helpful_count"
@@ -798,8 +810,8 @@ mod usage_tests {
     /// New agent, new entry — dedup passes, access_weight multiplier applied.
     #[tokio::test]
     async fn test_context_lookup_access_weight_2_increments_by_2() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         service.record_access(
             &[id],
@@ -815,7 +827,7 @@ mod usage_tests {
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-        let entry = store.get(id).expect("get");
+        let entry = store.get(id).await.expect("get");
         assert_eq!(
             entry.access_count, 2,
             "lookup with access_weight=2 must produce access_count += 2"
@@ -830,8 +842,8 @@ mod usage_tests {
     /// Same agent calling context_lookup twice: second call deduped, access_count stays 2.
     #[tokio::test]
     async fn test_context_lookup_dedup_before_multiply_second_call_zero() {
-        let (service, store, _dir) = make_usage_service();
-        let id = insert_test_entry(&store);
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
 
         // First lookup: access_weight=2, fresh agent -> access_count becomes 2
         service.record_access(
@@ -848,7 +860,7 @@ mod usage_tests {
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         assert_eq!(
-            store.get(id).unwrap().access_count,
+            store.get(id).await.unwrap().access_count,
             2,
             "first lookup: access_count must be 2"
         );
@@ -869,7 +881,7 @@ mod usage_tests {
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         assert_eq!(
-            store.get(id).unwrap().access_count,
+            store.get(id).await.unwrap().access_count,
             2,
             "second lookup same agent: access_count must remain 2 (dedup before multiply)"
         );

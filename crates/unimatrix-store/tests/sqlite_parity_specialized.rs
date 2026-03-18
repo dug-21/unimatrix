@@ -4,11 +4,12 @@
 
 #![cfg(feature = "test-support")]
 
-use unimatrix_store::Store;
-use unimatrix_store::test_helpers::{TestDb, TestEntry, assert_index_consistent, seed_entries};
+use unimatrix_store::test_helpers::{
+    TestEntry, assert_index_consistent, open_test_store, seed_entries,
+};
 use unimatrix_store::{
     DELETE_THRESHOLD_SECS, InjectionLogRecord, SessionLifecycleStatus, SessionRecord, SignalRecord,
-    SignalSource, SignalType, TIMED_OUT_THRESHOLD_SECS,
+    SignalSource, SignalType, SqlxStore, TIMED_OUT_THRESHOLD_SECS,
 };
 
 fn now_secs() -> u64 {
@@ -18,11 +19,19 @@ fn now_secs() -> u64 {
         .as_secs()
 }
 
+/// Flush the analytics queue by closing and re-opening the store.
+async fn flush(store: SqlxStore, dir: &tempfile::TempDir) -> SqlxStore {
+    store.close().await.expect("close");
+    open_test_store(dir).await
+}
+
 // === SIGNAL QUEUE ===
 
-#[test]
-fn test_signal_insert_and_drain() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_signal_insert_and_drain() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
     let record = SignalRecord {
         signal_id: 0,
         session_id: "sess-1".to_string(),
@@ -32,23 +41,27 @@ fn test_signal_insert_and_drain() {
         signal_source: SignalSource::ImplicitOutcome,
     };
 
-    let id = db.store().insert_signal(&record).unwrap();
-    assert_eq!(id, 0);
+    store.insert_signal(&record).await.unwrap();
+    let store = flush(store, &dir).await;
 
-    let len = db.store().signal_queue_len().unwrap();
+    let len = store.signal_queue_len().await.unwrap();
     assert_eq!(len, 1);
 
-    let drained = db.store().drain_signals(SignalType::Helpful).unwrap();
+    let drained = store.drain_signals(SignalType::Helpful).await.unwrap();
     assert_eq!(drained.len(), 1);
     assert_eq!(drained[0].session_id, "sess-1");
 
-    let len = db.store().signal_queue_len().unwrap();
+    let len = store.signal_queue_len().await.unwrap();
     assert_eq!(len, 0);
+
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_signal_drain_filters_by_type() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_signal_drain_filters_by_type() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
     let helpful = SignalRecord {
         signal_id: 0,
         session_id: "s1".to_string(),
@@ -66,14 +79,17 @@ fn test_signal_drain_filters_by_type() {
         signal_source: SignalSource::ImplicitRework,
     };
 
-    db.store().insert_signal(&helpful).unwrap();
-    db.store().insert_signal(&flagged).unwrap();
+    store.insert_signal(&helpful).await.unwrap();
+    store.insert_signal(&flagged).await.unwrap();
+    let store = flush(store, &dir).await;
 
-    let drained = db.store().drain_signals(SignalType::Helpful).unwrap();
+    let drained = store.drain_signals(SignalType::Helpful).await.unwrap();
     assert_eq!(drained.len(), 1);
 
     // Flagged still in queue
-    assert_eq!(db.store().signal_queue_len().unwrap(), 1);
+    assert_eq!(store.signal_queue_len().await.unwrap(), 1);
+
+    store.close().await.unwrap();
 }
 
 // === SESSIONS ===
@@ -93,56 +109,76 @@ fn make_session(id: &str, status: SessionLifecycleStatus, started_at: u64) -> Se
     }
 }
 
-#[test]
-fn test_session_insert_and_get() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_session_insert_and_get() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
     let now = now_secs();
     let record = make_session("sess-1", SessionLifecycleStatus::Active, now);
-    db.store().insert_session(&record).unwrap();
+    store.insert_session(&record).await.unwrap();
+    let store = flush(store, &dir).await;
 
-    let got = db.store().get_session("sess-1").unwrap().unwrap();
+    let got = store.get_session("sess-1").await.unwrap().unwrap();
     assert_eq!(got.session_id, "sess-1");
     assert_eq!(got.status, SessionLifecycleStatus::Active);
+
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_session_get_missing() {
-    let db = TestDb::new();
-    assert!(db.store().get_session("nonexistent").unwrap().is_none());
+#[tokio::test]
+async fn test_session_get_missing() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    assert!(store.get_session("nonexistent").await.unwrap().is_none());
+
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_session_update() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_session_update() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
     let now = now_secs();
     let record = make_session("upd", SessionLifecycleStatus::Active, now);
-    db.store().insert_session(&record).unwrap();
+    store.insert_session(&record).await.unwrap();
+    let store = flush(store, &dir).await;
 
-    db.store()
+    store
         .update_session("upd", |r| {
             r.status = SessionLifecycleStatus::Completed;
             r.ended_at = Some(now + 100);
             r.outcome = Some("success".to_string());
         })
+        .await
         .unwrap();
 
-    let got = db.store().get_session("upd").unwrap().unwrap();
+    let got = store.get_session("upd").await.unwrap().unwrap();
     assert_eq!(got.status, SessionLifecycleStatus::Completed);
     assert_eq!(got.ended_at, Some(now + 100));
+
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_session_update_not_found() {
-    let db = TestDb::new();
-    let result = db.store().update_session("ghost", |_| {});
+#[tokio::test]
+async fn test_session_update_not_found() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    let result = store.update_session("ghost", |_| {}).await;
     assert!(result.is_err());
+
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_scan_sessions_by_feature() {
-    let db = TestDb::new();
-    let now = now_secs();
+#[tokio::test]
+async fn test_scan_sessions_by_feature() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
+    let now = now_secs();
     let mut s1 = make_session("a1", SessionLifecycleStatus::Active, now);
     s1.feature_cycle = Some("fc-a".to_string());
     let mut s2 = make_session("a2", SessionLifecycleStatus::Completed, now);
@@ -150,74 +186,89 @@ fn test_scan_sessions_by_feature() {
     let mut s3 = make_session("b1", SessionLifecycleStatus::Active, now);
     s3.feature_cycle = Some("fc-b".to_string());
 
-    db.store().insert_session(&s1).unwrap();
-    db.store().insert_session(&s2).unwrap();
-    db.store().insert_session(&s3).unwrap();
+    store.insert_session(&s1).await.unwrap();
+    store.insert_session(&s2).await.unwrap();
+    store.insert_session(&s3).await.unwrap();
+    let store = flush(store, &dir).await;
 
     assert_eq!(
-        db.store().scan_sessions_by_feature("fc-a").unwrap().len(),
+        store.scan_sessions_by_feature("fc-a").await.unwrap().len(),
         2
     );
     assert_eq!(
-        db.store().scan_sessions_by_feature("fc-b").unwrap().len(),
+        store.scan_sessions_by_feature("fc-b").await.unwrap().len(),
         1
     );
     assert_eq!(
-        db.store().scan_sessions_by_feature("fc-c").unwrap().len(),
+        store.scan_sessions_by_feature("fc-c").await.unwrap().len(),
         0
     );
+
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_scan_sessions_with_status_filter() {
-    let db = TestDb::new();
-    let now = now_secs();
+#[tokio::test]
+async fn test_scan_sessions_with_status_filter() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
 
+    let now = now_secs();
     let mut s1 = make_session("s1", SessionLifecycleStatus::Completed, now);
     s1.feature_cycle = Some("fc".to_string());
     let mut s2 = make_session("s2", SessionLifecycleStatus::Abandoned, now);
     s2.feature_cycle = Some("fc".to_string());
 
-    db.store().insert_session(&s1).unwrap();
-    db.store().insert_session(&s2).unwrap();
+    store.insert_session(&s1).await.unwrap();
+    store.insert_session(&s2).await.unwrap();
+    let store = flush(store, &dir).await;
 
-    let completed = db
-        .store()
+    let completed = store
         .scan_sessions_by_feature_with_status("fc", Some(SessionLifecycleStatus::Completed))
+        .await
         .unwrap();
     assert_eq!(completed.len(), 1);
-    let all = db
-        .store()
+
+    let all = store
         .scan_sessions_by_feature_with_status("fc", None)
+        .await
         .unwrap();
     assert_eq!(all.len(), 2);
+
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_gc_sessions_timeout() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_gc_sessions_timeout() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
     let now = now_secs();
     let old = now.saturating_sub(25 * 3600 + 60);
     let session = make_session("gc-to", SessionLifecycleStatus::Active, old);
-    db.store().insert_session(&session).unwrap();
+    store.insert_session(&session).await.unwrap();
+    let store = flush(store, &dir).await;
 
-    let stats = db
-        .store()
+    let stats = store
         .gc_sessions(TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS)
+        .await
         .unwrap();
     assert_eq!(stats.timed_out_count, 1);
 
-    let got = db.store().get_session("gc-to").unwrap().unwrap();
+    let got = store.get_session("gc-to").await.unwrap().unwrap();
     assert_eq!(got.status, SessionLifecycleStatus::TimedOut);
+
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_gc_sessions_delete_with_cascade() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_gc_sessions_delete_with_cascade() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
     let now = now_secs();
     let very_old = now.saturating_sub(31 * 24 * 3600 + 60);
     let session = make_session("gc-del", SessionLifecycleStatus::Completed, very_old);
-    db.store().insert_session(&session).unwrap();
+    store.insert_session(&session).await.unwrap();
 
     let logs = vec![
         InjectionLogRecord {
@@ -235,29 +286,35 @@ fn test_gc_sessions_delete_with_cascade() {
             timestamp: very_old,
         },
     ];
-    db.store().insert_injection_log_batch(&logs).unwrap();
+    store.insert_injection_log_batch(&logs);
+    let store = flush(store, &dir).await;
 
-    let stats = db
-        .store()
+    let stats = store
         .gc_sessions(TIMED_OUT_THRESHOLD_SECS, DELETE_THRESHOLD_SECS)
+        .await
         .unwrap();
     assert_eq!(stats.deleted_session_count, 1);
     assert_eq!(stats.deleted_injection_log_count, 2);
 
-    assert!(db.store().get_session("gc-del").unwrap().is_none());
+    assert!(store.get_session("gc-del").await.unwrap().is_none());
     assert!(
-        db.store()
+        store
             .scan_injection_log_by_session("gc-del")
+            .await
             .unwrap()
             .is_empty()
     );
+
+    store.close().await.unwrap();
 }
 
 // === INJECTION LOG ===
 
-#[test]
-fn test_injection_log_batch() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_injection_log_batch() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
     let records = vec![
         InjectionLogRecord {
             log_id: 0,
@@ -281,26 +338,39 @@ fn test_injection_log_batch() {
             timestamp: 1000,
         },
     ];
-    db.store().insert_injection_log_batch(&records).unwrap();
+    store.insert_injection_log_batch(&records);
+    let store = flush(store, &dir).await;
 
-    let got = db.store().scan_injection_log_by_session("sess").unwrap();
+    let got = store.scan_injection_log_by_session("sess").await.unwrap();
     assert_eq!(got.len(), 3);
 
     let mut ids: Vec<u64> = got.iter().map(|r| r.log_id).collect();
     ids.sort();
-    assert_eq!(ids, vec![0, 1, 2]);
+    // IDs are AUTOINCREMENT, so they should be 1, 2, 3 (not 0, 1, 2)
+    assert_eq!(ids.len(), 3);
+    // All IDs must be distinct and non-zero
+    assert!(ids.iter().all(|&id| id > 0));
+    assert!(ids.windows(2).all(|w| w[0] < w[1]));
+
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_injection_log_empty_batch() {
-    let db = TestDb::new();
-    db.store().insert_injection_log_batch(&[]).unwrap();
+#[tokio::test]
+async fn test_injection_log_empty_batch() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    store.insert_injection_log_batch(&[]);
     // No panic, no records
+
+    store.close().await.unwrap();
 }
 
-#[test]
-fn test_injection_log_session_isolation() {
-    let db = TestDb::new();
+#[tokio::test]
+async fn test_injection_log_session_isolation() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
     let batch_a = vec![InjectionLogRecord {
         log_id: 0,
         session_id: "A".to_string(),
@@ -315,69 +385,78 @@ fn test_injection_log_session_isolation() {
         confidence: 0.9,
         timestamp: 1000,
     }];
-    db.store().insert_injection_log_batch(&batch_a).unwrap();
-    db.store().insert_injection_log_batch(&batch_b).unwrap();
+    store.insert_injection_log_batch(&batch_a);
+    store.insert_injection_log_batch(&batch_b);
+    let store = flush(store, &dir).await;
 
     assert_eq!(
-        db.store().scan_injection_log_by_session("A").unwrap().len(),
+        store
+            .scan_injection_log_by_session("A")
+            .await
+            .unwrap()
+            .len(),
         1
     );
     assert_eq!(
-        db.store().scan_injection_log_by_session("B").unwrap().len(),
+        store
+            .scan_injection_log_by_session("B")
+            .await
+            .unwrap()
+            .len(),
         1
     );
+
+    store.close().await.unwrap();
 }
 
 // === INDEX CONSISTENCY (using test helpers) ===
 
-#[test]
-fn test_seed_and_index_consistency() {
-    let db = TestDb::new();
-    let ids = seed_entries(db.store(), 10);
+#[tokio::test]
+async fn test_seed_and_index_consistency() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    let ids = seed_entries(&store, 10).await;
     assert_eq!(ids.len(), 10);
     for id in &ids {
-        assert_index_consistent(db.store(), *id);
+        assert_index_consistent(&store, *id).await;
     }
+
+    store.close().await.unwrap();
 }
 
 // === STORE REOPEN ===
 
-#[test]
-fn test_store_reopen_persistence() {
+#[tokio::test]
+async fn test_store_reopen_persistence() {
     let dir = tempfile::TempDir::new().unwrap();
-    let path = dir.path().join("test.db");
 
     {
-        let store = Store::open(&path).unwrap();
+        let store = open_test_store(&dir).await;
         let entry = TestEntry::new("persist", "test").build();
-        store.insert(entry).unwrap();
+        store.insert(entry).await.unwrap();
+        store.close().await.unwrap();
     }
 
     {
-        let store = Store::open(&path).unwrap();
-        let record = store.get(1).unwrap();
+        let store = open_test_store(&dir).await;
+        let record = store.get(1).await.unwrap();
         assert_eq!(record.topic, "persist");
+        store.close().await.unwrap();
     }
-}
-
-// === COMPACT (no-op) ===
-
-#[test]
-fn test_compact_is_noop() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let path = dir.path().join("test.db");
-    let mut store = Store::open(&path).unwrap();
-    store.compact().unwrap(); // Should not error
 }
 
 // === WAL MODE VERIFICATION (R-07) ===
 
-#[test]
-fn test_wal_mode_creates_wal_file() {
+#[tokio::test]
+async fn test_wal_mode_creates_wal_file() {
     let dir = tempfile::TempDir::new().unwrap();
-    let path = dir.path().join("test.db");
-    let store = Store::open(&path).unwrap();
-    store.insert(TestEntry::new("wal", "test").build()).unwrap();
+    let store = open_test_store(&dir).await;
+    store
+        .insert(TestEntry::new("wal", "test").build())
+        .await
+        .unwrap();
+    store.close().await.unwrap();
     let wal_path = dir.path().join("test.db-wal");
     assert!(wal_path.exists(), "WAL file should exist after write");
 }

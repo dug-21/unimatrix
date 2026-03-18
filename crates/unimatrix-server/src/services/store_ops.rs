@@ -9,12 +9,10 @@ use unimatrix_core::async_wrappers::{AsyncEntryStore, AsyncVectorStore};
 use unimatrix_core::{
     CoreError, EmbedService, EntryRecord, NewEntry, Store, StoreAdapter, VectorAdapter, VectorIndex,
 };
-use unimatrix_store::rusqlite;
-use unimatrix_store::{StoreError, compute_content_hash, status_counter_key};
+use unimatrix_store::StoreError;
 
 use unimatrix_adapt::AdaptationService;
 
-use crate::error::ServerError;
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::timeout::{MCP_HANDLER_TIMEOUT, spawn_blocking_with_timeout};
@@ -180,159 +178,49 @@ impl StoreService {
 
         let data_id = self.vector_index.allocate_data_id();
         let embedding_dim = embedding.len() as u16;
+        let entry_category = entry.category.clone();
+        let entry_feature_cycle = entry.feature_cycle.clone();
 
-        let store = Arc::clone(&self.store);
-        let audit_log = Arc::clone(&self.audit);
+        // 1. Insert entry (handles tags + counters atomically)
+        let entry_id = self
+            .store
+            .insert(entry)
+            .await
+            .map_err(|e| ServiceError::Core(CoreError::Store(e)))?;
 
-        let (entry_id, record) = spawn_blocking_with_timeout(
-            MCP_HANDLER_TIMEOUT,
-            move || -> Result<(u64, EntryRecord), ServerError> {
-                let txn = store
-                    .begin_write()
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                let conn = &*txn.guard;
+        // 2. Insert vector mapping
+        self.store
+            .put_vector_mapping(entry_id, data_id)
+            .await
+            .map_err(|e| ServiceError::Core(CoreError::Store(e)))?;
 
-                // 1. Allocate entry ID via counters module
-                let id = unimatrix_store::counters::next_entry_id(conn)
-                    .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+        // 3. Outcome index if applicable
+        self.store
+            .insert_outcome_index_if_applicable(entry_id, &entry_category, &entry_feature_cycle)
+            .await
+            .map_err(|e| ServiceError::Core(CoreError::Store(e)))?;
 
-                let content_hash = compute_content_hash(&entry.title, &entry.content);
+        // 4. Read back full record (with tags)
+        let record = self
+            .store
+            .get(entry_id)
+            .await
+            .map_err(|e| ServiceError::Core(CoreError::Store(e)))?;
 
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-                let record = EntryRecord {
-                    id,
-                    title: entry.title,
-                    content: entry.content,
-                    topic: entry.topic,
-                    category: entry.category,
-                    tags: entry.tags,
-                    source: entry.source,
-                    status: entry.status,
-                    confidence: 0.0,
-                    created_at: now,
-                    updated_at: now,
-                    last_accessed_at: 0,
-                    access_count: 0,
-                    supersedes: None,
-                    superseded_by: None,
-                    correction_count: 0,
-                    embedding_dim,
-                    created_by: entry.created_by.clone(),
-                    modified_by: entry.created_by,
-                    content_hash,
-                    previous_hash: String::new(),
-                    version: 1,
-                    feature_cycle: entry.feature_cycle,
-                    trust_source: entry.trust_source,
-                    helpful_count: 0,
-                    unhelpful_count: 0,
-                    pre_quarantine_status: None,
-                };
-
-                // 2. INSERT into entries with named params (ADR-004)
-                conn.execute(
-                    "INSERT INTO entries (id, title, content, topic, category, source,
-                    status, confidence, created_at, updated_at, last_accessed_at,
-                    access_count, supersedes, superseded_by, correction_count,
-                    embedding_dim, created_by, modified_by, content_hash,
-                    previous_hash, version, feature_cycle, trust_source,
-                    helpful_count, unhelpful_count)
-                 VALUES (:id, :title, :content, :topic, :category, :source,
-                    :status, :confidence, :created_at, :updated_at, :last_accessed_at,
-                    :access_count, :supersedes, :superseded_by, :correction_count,
-                    :embedding_dim, :created_by, :modified_by, :content_hash,
-                    :previous_hash, :version, :feature_cycle, :trust_source,
-                    :helpful_count, :unhelpful_count)",
-                    rusqlite::named_params! {
-                        ":id": id as i64,
-                        ":title": &record.title,
-                        ":content": &record.content,
-                        ":topic": &record.topic,
-                        ":category": &record.category,
-                        ":source": &record.source,
-                        ":status": record.status as u8 as i64,
-                        ":confidence": record.confidence,
-                        ":created_at": record.created_at as i64,
-                        ":updated_at": record.updated_at as i64,
-                        ":last_accessed_at": record.last_accessed_at as i64,
-                        ":access_count": record.access_count as i64,
-                        ":supersedes": record.supersedes.map(|v| v as i64),
-                        ":superseded_by": record.superseded_by.map(|v| v as i64),
-                        ":correction_count": record.correction_count as i64,
-                        ":embedding_dim": record.embedding_dim as i64,
-                        ":created_by": &record.created_by,
-                        ":modified_by": &record.modified_by,
-                        ":content_hash": &record.content_hash,
-                        ":previous_hash": &record.previous_hash,
-                        ":version": record.version as i64,
-                        ":feature_cycle": &record.feature_cycle,
-                        ":trust_source": &record.trust_source,
-                        ":helpful_count": record.helpful_count as i64,
-                        ":unhelpful_count": record.unhelpful_count as i64,
-                    },
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-                // 3. Insert tags into entry_tags
-                for tag in &record.tags {
-                    conn.execute(
-                        "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
-                        rusqlite::params![id as i64, tag],
-                    )
-                    .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                }
-
-                // 4. Insert vector mapping
-                conn.execute(
-                    "INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)",
-                    rusqlite::params![id as i64, data_id as i64],
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-                // 5. Outcome index (if applicable)
-                if record.category == "outcome" && !record.feature_cycle.is_empty() {
-                    conn.execute(
-                    "INSERT OR IGNORE INTO outcome_index (feature_cycle, entry_id) VALUES (?1, ?2)",
-                    rusqlite::params![&record.feature_cycle, id as i64],
-                ).map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-                }
-
-                // 6. Status counter
-                unimatrix_store::counters::increment_counter(
-                    conn,
-                    status_counter_key(record.status),
-                    1,
-                )
-                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-
-                // 7. Audit event
-                let audit_event_with_target = AuditEvent {
-                    target_ids: vec![id],
-                    ..audit_event
-                };
-                audit_log.write_in_txn(&txn, audit_event_with_target)?;
-
-                // 8. Commit
-                txn.commit()
-                    .map_err(|e| ServerError::Core(CoreError::Store(e.into())))?;
-                Ok((id, record))
-            },
-        )
-        .await
-        .map_err(|e| match e {
-            ServerError::Core(ce) => ServiceError::Core(ce),
-            other => ServiceError::EmbeddingFailed(format!("{other}")),
-        })?
-        .map_err(|e| -> ServiceError {
-            let server_err: ServerError = e;
-            match server_err {
-                ServerError::Core(ce) => ServiceError::Core(ce),
-                other => ServiceError::EmbeddingFailed(format!("{other}")),
-            }
+        // 5. Audit event
+        let audit_event_with_target = AuditEvent {
+            target_ids: vec![entry_id],
+            ..audit_event
+        };
+        self.audit.log_event(audit_event_with_target).map_err(|e| {
+            ServiceError::Core(CoreError::Store(StoreError::Database(e.to_string().into())))
         })?;
+
+        // Wrap record with correct embedding_dim
+        let record = EntryRecord {
+            embedding_dim,
+            ..record
+        };
 
         // Step 5: HNSW insert (after transaction commits)
         if !embedding.is_empty() {

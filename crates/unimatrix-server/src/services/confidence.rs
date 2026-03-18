@@ -126,19 +126,19 @@ impl ConfidenceService {
             (guard.alpha0, guard.beta0)
         };
 
-        let _ = tokio::task::spawn_blocking(move || {
+        let _ = tokio::spawn(async move {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
 
             for id in ids {
-                match store.get(id) {
+                match store.get(id).await {
                     Ok(entry) => {
                         let conf = unimatrix_engine::confidence::compute_confidence(
                             &entry, now, alpha0, beta0,
                         );
-                        if let Err(e) = store.update_confidence(id, conf) {
+                        if let Err(e) = store.update_confidence(id, conf).await {
                             tracing::warn!("confidence recompute failed for {id}: {e}");
                         }
                     }

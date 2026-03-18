@@ -55,12 +55,21 @@ pub fn resolve_identity(
 mod tests {
     use super::*;
     use std::sync::Arc;
-    use unimatrix_store::Store;
 
     fn make_registry() -> AgentRegistry {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("runtime");
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("test.db");
-        let store = Arc::new(Store::open(&path).unwrap());
+        let store = Arc::new(
+            rt.block_on(unimatrix_store::SqlxStore::open(
+                &path,
+                unimatrix_store::pool_config::PoolConfig::default(),
+            ))
+            .unwrap(),
+        );
         std::mem::forget(dir);
         let registry = AgentRegistry::new(store).unwrap();
         registry.bootstrap_defaults().unwrap();

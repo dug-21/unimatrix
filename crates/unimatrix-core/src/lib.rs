@@ -22,7 +22,8 @@ pub use observation::{HookType, ObservationRecord, ObservationStats, ParsedSessi
 
 // Domain types from unimatrix-store
 pub use unimatrix_store::{
-    DatabaseConfig, EntryRecord, NewEntry, QueryFilter, Status, Store, StoreError, TimeRange,
+    DatabaseConfig, EntryRecord, NewEntry, QueryFilter, SqlxStore, SqlxStore as Store, Status,
+    StoreError, TimeRange,
 };
 
 // Metric types from unimatrix-store (nxs-009 ADR-001)

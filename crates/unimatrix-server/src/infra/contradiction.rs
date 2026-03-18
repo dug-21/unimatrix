@@ -9,10 +9,9 @@ use std::collections::HashSet;
 use std::sync::OnceLock;
 
 use regex::Regex;
-use unimatrix_core::{CoreError, EmbedService, VectorStore};
-use unimatrix_store::read::{ENTRY_COLUMNS, entry_from_row, load_tags_for_entries};
-use unimatrix_store::rusqlite;
-use unimatrix_store::{EntryRecord, Status, Store, StoreError};
+use unimatrix_core::Store;
+use unimatrix_core::{EmbedService, VectorStore};
+use unimatrix_store::{EntryRecord, Status};
 
 use crate::error::ServerError;
 
@@ -108,10 +107,11 @@ pub fn check_entry_contradiction(
             continue;
         }
 
-        let neighbor_entry = match store.get(neighbor.entry_id) {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
+        let neighbor_entry =
+            match tokio::runtime::Handle::current().block_on(store.get(neighbor.entry_id)) {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
 
         if neighbor_entry.status != Status::Active {
             continue;
@@ -198,10 +198,11 @@ pub fn scan_contradictions(
             seen_pairs.insert(pair_key);
 
             // Fetch neighbor entry
-            let neighbor_entry = match store.get(neighbor.entry_id) {
-                Ok(e) => e,
-                Err(_) => continue,
-            };
+            let neighbor_entry =
+                match tokio::runtime::Handle::current().block_on(store.get(neighbor.entry_id)) {
+                    Ok(e) => e,
+                    Err(_) => continue,
+                };
 
             // Skip non-active neighbors
             if neighbor_entry.status != Status::Active {
@@ -245,36 +246,14 @@ pub fn scan_contradictions(
     Ok(results)
 }
 
-/// Read all active entries from the store using direct SQL query.
+/// Read all active entries from the store.
+///
+/// Bridges async sqlx queries to sync context via `block_on` (nxs-011).
+/// Called from `spawn_blocking` closures where the tokio handle is available.
 fn read_active_entries(store: &Store) -> Result<Vec<EntryRecord>, ServerError> {
-    let conn = store.lock_conn();
-    let mut stmt = conn
-        .prepare(&format!(
-            "SELECT {} FROM entries WHERE status = ?1",
-            ENTRY_COLUMNS
-        ))
-        .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-    let mut entries: Vec<EntryRecord> = stmt
-        .query_map(
-            rusqlite::params![Status::Active as u8 as i64],
-            entry_from_row,
-        )
-        .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?
-        .collect::<rusqlite::Result<Vec<_>>>()
-        .map_err(|e| ServerError::Core(CoreError::Store(StoreError::Sqlite(e))))?;
-
-    // Load tags for all entries
-    let ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
-    let tag_map =
-        load_tags_for_entries(&conn, &ids).map_err(|e| ServerError::Core(CoreError::Store(e)))?;
-    for entry in &mut entries {
-        if let Some(tags) = tag_map.get(&entry.id) {
-            entry.tags = tags.clone();
-        }
-    }
-
-    Ok(entries)
+    tokio::runtime::Handle::current()
+        .block_on(store.query_by_status(Status::Active))
+        .map_err(|e| ServerError::Core(unimatrix_core::CoreError::Store(e)))
 }
 
 /// Check embedding consistency for all active entries.

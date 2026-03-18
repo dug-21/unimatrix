@@ -372,13 +372,7 @@ impl UnimatrixServer {
 
             let store_clone = Arc::clone(&self.store);
             let _ = tokio::task::spawn_blocking(move || {
-                if let Err(e) = store_clone.insert_query_log(&record) {
-                    tracing::warn!(
-                        query_len = record.query_text.len(),
-                        error = %e,
-                        "query_log write failed (mcp)"
-                    );
-                }
+                store_clone.insert_query_log(&record);
             });
         }
 
@@ -1155,18 +1149,11 @@ impl UnimatrixServer {
 
         if attributed.is_empty() {
             // No new data -- check for cached MetricVector
-            let cached = crate::infra::timeout::spawn_blocking_with_timeout(
-                crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-                {
-                    let store = Arc::clone(&store);
-                    let fc = feature_cycle.clone();
-                    move || store.get_metrics(&fc)
-                },
-            )
-            .await
-            .map_err(rmcp::ErrorData::from)?
-            .map_err(|e| ServerError::Core(CoreError::Store(e)))
-            .map_err(rmcp::ErrorData::from)?;
+            let cached = store
+                .get_metrics(&feature_cycle)
+                .await
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))
+                .map_err(rmcp::ErrorData::from)?;
 
             match cached {
                 Some(mv) => {
@@ -1219,17 +1206,11 @@ impl UnimatrixServer {
         }
 
         // 7a. Load historical MetricVectors for baseline
-        let all_metrics = crate::infra::timeout::spawn_blocking_with_timeout(
-            crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-            {
-                let store = Arc::clone(&store);
-                move || store.list_all_metrics()
-            },
-        )
-        .await
-        .map_err(rmcp::ErrorData::from)?
-        .map_err(|e| ServerError::Core(CoreError::Store(e)))
-        .map_err(rmcp::ErrorData::from)?;
+        let all_metrics = store
+            .list_all_metrics()
+            .await
+            .map_err(|e| ServerError::Core(CoreError::Store(e)))
+            .map_err(rmcp::ErrorData::from)?;
 
         // 7b. Collect historical vectors, excluding current feature
         let mut history: Vec<unimatrix_observe::MetricVector> = Vec::new();
@@ -1255,39 +1236,21 @@ impl UnimatrixServer {
         let metrics = unimatrix_observe::compute_metric_vector(&attributed, &hotspots, now);
 
         // 8. Store MetricVector (nxs-009: typed API, no bincode serialization)
-        crate::infra::timeout::spawn_blocking_with_timeout(
-            crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-            {
-                let store = Arc::clone(&store);
-                let fc = feature_cycle.clone();
-                let mv = metrics.clone();
-                move || store.store_metrics(&fc, &mv)
-            },
-        )
-        .await
-        .map_err(rmcp::ErrorData::from)?
-        .map_err(|e| ServerError::Core(CoreError::Store(e)))
-        .map_err(rmcp::ErrorData::from)?;
+        store.store_metrics(&feature_cycle, &metrics);
 
         // 9. Cleanup expired observations (FR-07: 60-day retention via SQL DELETE)
-        let store_cleanup = Arc::clone(&store);
-        let _ = crate::infra::timeout::spawn_blocking_with_timeout(
-            crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-            move || {
-                let conn = store_cleanup.lock_conn();
-                let now_millis = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_millis() as i64;
-                let sixty_days_millis = 60_i64 * 24 * 60 * 60 * 1000;
-                let cutoff = now_millis - sixty_days_millis;
-                let _ = conn.execute(
-                    "DELETE FROM observations WHERE ts_millis < ?1",
-                    unimatrix_store::rusqlite::params![cutoff],
-                );
-            },
-        )
-        .await;
+        {
+            let now_millis = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis() as i64;
+            let sixty_days_millis = 60_i64 * 24 * 60 * 60 * 1000;
+            let cutoff = now_millis - sixty_days_millis;
+            let _ = sqlx::query("DELETE FROM observations WHERE ts_millis < ?1")
+                .bind(cutoff)
+                .execute(store.write_pool_server())
+                .await;
+        }
 
         // 10a. Compute baseline comparison
         let baseline = unimatrix_observe::compute_baselines(&history)
@@ -1348,17 +1311,10 @@ impl UnimatrixServer {
             let mut summaries = unimatrix_observe::compute_session_summaries(&attributed);
 
             // Enrich with outcome from SessionRecord
-            let session_records = {
-                let store_c = Arc::clone(&store);
-                let fc = feature_cycle.clone();
-                crate::infra::timeout::spawn_blocking_with_timeout(
-                    crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-                    move || store_c.scan_sessions_by_feature(&fc),
-                )
+            let session_records = store
+                .scan_sessions_by_feature(&feature_cycle)
                 .await
-                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
-                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
-            };
+                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
 
             // Build session_id -> outcome map
             let outcome_map: std::collections::HashMap<String, Option<String>> = session_records
@@ -1451,49 +1407,52 @@ impl UnimatrixServer {
                 let total_sessions = session_records.len() as i64;
                 let total_tool_calls = report.metrics.universal.total_tool_calls as i64;
                 let total_duration_secs = report.metrics.universal.total_duration_secs as i64;
-                let store_for_counters = Arc::clone(&store);
-                let topic_for_counters = feature_cycle.clone();
-                match crate::infra::timeout::spawn_blocking_with_timeout(
-                    crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-                    move || {
-                        // Ensure record exists before setting counters
-                        if store_for_counters
-                            .get_topic_delivery(&topic_for_counters)?
-                            .is_none()
+                // Ensure record exists before setting counters
+                match store.get_topic_delivery(&feature_cycle).await {
+                    Ok(None) => {
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+                        store.upsert_topic_delivery(&unimatrix_store::TopicDeliveryRecord {
+                            topic: feature_cycle.clone(),
+                            created_at: now,
+                            completed_at: None,
+                            status: "active".to_string(),
+                            github_issue: None,
+                            total_sessions: 0,
+                            total_tool_calls: 0,
+                            total_duration_secs: 0,
+                            phases_completed: None,
+                        });
+                        match store
+                            .set_topic_delivery_counters(
+                                &feature_cycle,
+                                total_sessions,
+                                total_tool_calls,
+                                total_duration_secs,
+                            )
+                            .await
                         {
-                            let now = std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs();
-                            store_for_counters.upsert_topic_delivery(
-                                &unimatrix_store::TopicDeliveryRecord {
-                                    topic: topic_for_counters.clone(),
-                                    created_at: now,
-                                    completed_at: None,
-                                    status: "active".to_string(),
-                                    github_issue: None,
-                                    total_sessions: 0,
-                                    total_tool_calls: 0,
-                                    total_duration_secs: 0,
-                                    phases_completed: None,
-                                },
-                            )?;
+                            Ok(()) => {}
+                            Err(e) => tracing::warn!("col-020: counter update failed: {e}"),
                         }
-                        store_for_counters.set_topic_delivery_counters(
-                            &topic_for_counters,
-                            total_sessions,
-                            total_tool_calls,
-                            total_duration_secs,
-                        )
-                    },
-                )
-                .await
-                {
-                    Ok(Ok(())) => {}
-                    Ok(Err(e)) => tracing::warn!("col-020: counter update failed: {e}"),
-                    Err(e) => {
-                        tracing::warn!("col-020: counter update task timed out or panicked: {e}")
                     }
+                    Ok(Some(_)) => {
+                        match store
+                            .set_topic_delivery_counters(
+                                &feature_cycle,
+                                total_sessions,
+                                total_tool_calls,
+                                total_duration_secs,
+                            )
+                            .await
+                        {
+                            Ok(()) => {}
+                            Err(e) => tracing::warn!("col-020: counter update failed: {e}"),
+                        }
+                    }
+                    Err(e) => tracing::warn!("col-020: counter update failed: {e}"),
                 }
             }
 
@@ -1693,23 +1652,16 @@ async fn write_lesson_learned(
 
     // 3. Supersede check: find existing active lesson-learned with same topic
     let existing = {
-        let store = Arc::clone(&server.store);
-        let topic_clone = topic.clone();
-        crate::infra::timeout::spawn_blocking_with_timeout(
-            crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-            move || -> Result<Vec<unimatrix_core::EntryRecord>, crate::error::ServerError> {
-                let filter = unimatrix_core::QueryFilter {
-                    topic: Some(topic_clone),
-                    category: Some("lesson-learned".to_string()),
-                    ..Default::default()
-                };
-                store
-                    .query(filter)
-                    .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))
-            },
-        )
-        .await
-        .map_err(|e| crate::error::ServerError::Core(CoreError::JoinError(e.to_string())))??
+        let filter = unimatrix_core::QueryFilter {
+            topic: Some(topic.clone()),
+            category: Some("lesson-learned".to_string()),
+            ..Default::default()
+        };
+        server
+            .store
+            .query(filter)
+            .await
+            .map_err(|e| crate::error::ServerError::Core(CoreError::Store(e)))?
     };
 
     let supersedes_id = existing
@@ -1717,6 +1669,8 @@ async fn write_lesson_learned(
         .filter(|e| e.status == Status::Active)
         .max_by_key(|e| e.created_at)
         .map(|e| e.id);
+    // end of async scope for `existing` query
+    drop(existing);
 
     // 4. Embed content (same pipeline as context_store: get_adapter + embed_entry + adapt + normalize)
     let embedding = match server.embed_service.get_adapter().await {
@@ -1801,41 +1755,31 @@ async fn write_lesson_learned(
 
     // 7. Supersede chain: deprecate old, link new → old and old → new
     if let Some(old_id) = supersedes_id {
-        let store = Arc::clone(&server.store);
-        let _ = tokio::task::spawn_blocking(move || {
-            // Deprecate old entry (handles STATUS_INDEX + counters internally)
-            if let Err(e) = store.update_status(old_id, Status::Deprecated) {
-                tracing::warn!("failed to deprecate prior lesson-learned {}: {}", old_id, e);
-                return;
-            }
+        // Deprecate old entry (handles STATUS_INDEX + counters internally)
+        if let Err(e) = server.store.update_status(old_id, Status::Deprecated).await {
+            tracing::warn!("failed to deprecate prior lesson-learned {}: {}", old_id, e);
+        } else {
             // Link old → new
-            if let Ok(mut old_entry) = store.get(old_id) {
+            if let Ok(mut old_entry) = server.store.get(old_id).await {
                 old_entry.superseded_by = Some(new_id);
-                let _ = store.update(old_entry);
+                let _ = server.store.update(old_entry).await;
             }
             // Link new → old
-            if let Ok(mut new_entry) = store.get(new_id) {
+            if let Ok(mut new_entry) = server.store.get(new_id).await {
                 new_entry.supersedes = Some(old_id);
-                let _ = store.update(new_entry);
+                let _ = server.store.update(new_entry).await;
             }
-        })
-        .await;
+        }
     }
 
     // 8. Seed confidence on new entry (best-effort)
-    {
-        let store = Arc::clone(&server.store);
-        let _ = tokio::task::spawn_blocking(move || {
-            if let Ok(entry) = store.get(new_id) {
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-                let conf = unimatrix_engine::confidence::compute_confidence(&entry, now, 3.0, 3.0);
-                let _ = store.update_confidence(new_id, conf);
-            }
-        })
-        .await;
+    if let Ok(entry) = server.store.get(new_id).await {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let conf = unimatrix_engine::confidence::compute_confidence(&entry, now, 3.0, 3.0);
+        let _ = server.store.update_confidence(new_id, conf).await;
     }
 
     Ok(())
@@ -1846,7 +1790,7 @@ async fn write_lesson_learned(
 /// Loads query_log + injection_log for the given sessions, then delegates to the
 /// knowledge_reuse module for the actual computation.
 async fn compute_knowledge_reuse_for_sessions(
-    store: &Arc<unimatrix_store::Store>,
+    store: &Arc<unimatrix_store::SqlxStore>,
     session_records: &[unimatrix_store::SessionRecord],
 ) -> std::result::Result<
     unimatrix_observe::FeatureKnowledgeReuse,
@@ -1863,17 +1807,8 @@ async fn compute_knowledge_reuse_for_sessions(
     );
 
     // Load query_log
-    let store_ql = Arc::clone(store);
-    let ids_ql: Vec<String> = session_id_list.clone();
-    let query_logs = crate::infra::timeout::spawn_blocking_with_timeout(
-        crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-        move || {
-            let refs: Vec<&str> = ids_ql.iter().map(|s| s.as_str()).collect();
-            store_ql.scan_query_log_by_sessions(&refs)
-        },
-    )
-    .await
-    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })??;
+    let refs_ql: Vec<&str> = session_id_list.iter().map(|s| s.as_str()).collect();
+    let query_logs = store.scan_query_log_by_sessions(&refs_ql).await?;
 
     tracing::debug!(
         "col-020b: knowledge reuse data flow: {} query_log records loaded",
@@ -1881,17 +1816,8 @@ async fn compute_knowledge_reuse_for_sessions(
     );
 
     // Load injection_log
-    let store_il = Arc::clone(store);
-    let ids_il: Vec<String> = session_id_list.clone();
-    let injection_logs = crate::infra::timeout::spawn_blocking_with_timeout(
-        crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-        move || {
-            let refs: Vec<&str> = ids_il.iter().map(|s| s.as_str()).collect();
-            store_il.scan_injection_log_by_sessions(&refs)
-        },
-    )
-    .await
-    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })??;
+    let refs_il: Vec<&str> = session_id_list.iter().map(|s| s.as_str()).collect();
+    let injection_logs = store.scan_injection_log_by_sessions(&refs_il).await?;
 
     tracing::debug!(
         "col-020b: knowledge reuse data flow: {} injection_log records loaded",
@@ -1899,13 +1825,7 @@ async fn compute_knowledge_reuse_for_sessions(
     );
 
     // Load active category counts
-    let store_ac = Arc::clone(store);
-    let active_cats = crate::infra::timeout::spawn_blocking_with_timeout(
-        crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-        move || store_ac.count_active_entries_by_category(),
-    )
-    .await
-    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })??;
+    let active_cats = store.count_active_entries_by_category().await?;
 
     tracing::debug!(
         "col-020b: knowledge reuse data flow: {} active categories",
@@ -1913,14 +1833,16 @@ async fn compute_knowledge_reuse_for_sessions(
     );
 
     // Delegate to C3 knowledge_reuse module for computation
+    // Note: compute_knowledge_reuse takes a sync lookup fn; we use block_on inside
     let store_for_lookup = Arc::clone(store);
+    let handle = tokio::runtime::Handle::current();
     let reuse = crate::mcp::knowledge_reuse::compute_knowledge_reuse(
         &query_logs,
         &injection_logs,
         &active_cats,
         move |entry_id| {
-            store_for_lookup
-                .get(entry_id)
+            handle
+                .block_on(store_for_lookup.get(entry_id))
                 .ok()
                 .map(|entry| entry.category)
         },

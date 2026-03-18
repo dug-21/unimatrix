@@ -5,7 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use unimatrix_store::Store;
+use unimatrix_store::SqlxStore;
 
 use super::{ExtractionRule, ProposedEntry, extract_file_path, is_read_tool, is_write_tool};
 use crate::types::ObservationRecord;
@@ -20,7 +20,11 @@ impl ExtractionRule for FileDependencyRule {
         "file-dependency"
     }
 
-    fn evaluate(&self, observations: &[ObservationRecord], _store: &Store) -> Vec<ProposedEntry> {
+    fn evaluate(
+        &self,
+        observations: &[ObservationRecord],
+        _store: &SqlxStore,
+    ) -> Vec<ProposedEntry> {
         // Group observations by session
         let mut session_records: HashMap<String, Vec<&ObservationRecord>> = HashMap::new();
         for obs in observations {
@@ -129,16 +133,18 @@ mod tests {
         }
     }
 
-    fn make_store() -> Store {
+    async fn make_store() -> SqlxStore {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("test.db");
         std::mem::forget(dir);
-        Store::open(&path).expect("open store")
+        SqlxStore::open(&path, unimatrix_store::pool_config::PoolConfig::default())
+            .await
+            .expect("open store")
     }
 
-    #[test]
-    fn detects_read_edit_chain_in_three_sessions() {
-        let store = make_store();
+    #[tokio::test]
+    async fn detects_read_edit_chain_in_three_sessions() {
+        let store = make_store().await;
         let mut observations = Vec::new();
         for i in 0..3 {
             let base_ts = 1700000000000 + i * 1000000;
@@ -154,9 +160,9 @@ mod tests {
         assert_eq!(proposals[0].category, "pattern");
     }
 
-    #[test]
-    fn no_chain_from_two_sessions() {
-        let store = make_store();
+    #[tokio::test]
+    async fn no_chain_from_two_sessions() {
+        let store = make_store().await;
         let mut observations = Vec::new();
         for i in 0..2 {
             let base_ts = 1700000000000 + i * 1000000;
@@ -169,9 +175,9 @@ mod tests {
         assert!(proposals.is_empty());
     }
 
-    #[test]
-    fn no_chain_beyond_time_window() {
-        let store = make_store();
+    #[tokio::test]
+    async fn no_chain_beyond_time_window() {
+        let store = make_store().await;
         let mut observations = Vec::new();
         for i in 0..3 {
             let base_ts = 1700000000000 + i * 1000000;
@@ -185,9 +191,9 @@ mod tests {
         assert!(proposals.is_empty());
     }
 
-    #[test]
-    fn no_chain_same_file() {
-        let store = make_store();
+    #[tokio::test]
+    async fn no_chain_same_file() {
+        let store = make_store().await;
         let mut observations = Vec::new();
         for i in 0..3 {
             let base_ts = 1700000000000 + i * 1000000;
@@ -201,9 +207,9 @@ mod tests {
         assert!(proposals.is_empty());
     }
 
-    #[test]
-    fn confidence_scales_with_sessions() {
-        let store = make_store();
+    #[tokio::test]
+    async fn confidence_scales_with_sessions() {
+        let store = make_store().await;
         let mut observations = Vec::new();
         for i in 0..5 {
             let base_ts = 1700000000000 + i * 1000000;
@@ -218,9 +224,9 @@ mod tests {
         assert!((proposals[0].extraction_confidence - 0.8).abs() < f64::EPSILON);
     }
 
-    #[test]
-    fn empty_observations() {
-        let store = make_store();
+    #[tokio::test]
+    async fn empty_observations() {
+        let store = make_store().await;
         let rule = FileDependencyRule;
         assert!(rule.evaluate(&[], &store).is_empty());
     }
