@@ -2063,19 +2063,15 @@ pub(crate) async fn update_session_feature_cycle_pub(
 
 /// Persist keywords JSON string to the session record (col-022, ADR-003).
 ///
-/// Uses the existing `store.update_session` read-modify-write pattern.
-/// Validation happens upstream in `validate_cycle_params`; this function
-/// stores the string as-is.
+/// Uses a direct targeted UPDATE rather than read-modify-write to avoid
+/// SQLITE_BUSY_SNAPSHOT races with the concurrent feature_cycle persist task.
+/// Validation happens upstream; this function stores the string as-is.
 async fn update_session_keywords(
     store: &Store,
     session_id: &str,
     keywords_json: &str,
 ) -> Result<(), unimatrix_store::StoreError> {
-    store
-        .update_session(session_id, |record| {
-            record.keywords = Some(keywords_json.to_string());
-        })
-        .await
+    store.update_session_keywords(session_id, keywords_json).await
 }
 
 /// Handle a `cycle_start` event: force-set attribution + keywords persistence (col-022, ADR-002).
@@ -4741,9 +4737,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_session_keywords_unknown_session() {
+        // update_session_keywords is a no-op on unknown sessions (0 rows affected).
+        // Sessions may be GC'd or events may arrive out-of-order; fire-and-forget
+        // callers swallow this result regardless.
         let store = make_store().await;
         let result = update_session_keywords(&store, "unknown", "[]").await;
-        assert!(result.is_err());
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
