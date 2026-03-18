@@ -282,7 +282,7 @@ mod tests {
         let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
 
         // Build all the components that hold Arc<Store>, mirroring main.rs
-        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store)).unwrap());
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![]).unwrap());
         let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
         let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
         let embed_handle = EmbedServiceHandle::new();
@@ -301,6 +301,8 @@ mod tests {
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
             Arc::clone(&usage_dedup),
+            // dsn-001: default; startup wiring will supply config value.
+            std::collections::HashSet::from(["lesson-learned".to_string()]),
         );
 
         // Build LifecycleHandles with ServiceLayer included (#92 fix).
@@ -367,7 +369,7 @@ mod tests {
         let vector_config = VectorConfig::default();
         let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
 
-        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store)).unwrap());
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![]).unwrap());
         let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
         let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
         let embed_handle = EmbedServiceHandle::new();
@@ -386,6 +388,8 @@ mod tests {
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
             Arc::clone(&usage_dedup),
+            // dsn-001: default; startup wiring will supply config value.
+            std::collections::HashSet::from(["lesson-learned".to_string()]),
         );
 
         // Drop locals except ServiceLayer
@@ -431,7 +435,7 @@ mod tests {
 
         use crate::infra::audit::AuditLog;
         use crate::infra::registry::AgentRegistry;
-        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store)).unwrap());
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![]).unwrap());
         let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
         let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
 
@@ -509,7 +513,7 @@ mod tests {
 
         use crate::infra::audit::AuditLog;
         use crate::infra::registry::AgentRegistry;
-        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store)).unwrap());
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![]).unwrap());
         let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
         let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
 

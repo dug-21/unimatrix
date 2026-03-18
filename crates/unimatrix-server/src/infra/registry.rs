@@ -20,22 +20,35 @@ pub struct EnrollResult {
     pub agent: AgentRecord,
 }
 
-/// When true, unknown agents auto-enroll with [Read, Write, Search].
-/// When false (production), unknown agents auto-enroll with [Read, Search] only.
-const PERMISSIVE_AUTO_ENROLL: bool = true;
-
 /// Agent IDs that cannot be modified via enrollment (ADR-002).
 const PROTECTED_AGENTS: &[&str] = &["system", "human"];
 
 /// Manages agent identity, trust levels, and capabilities.
 pub struct AgentRegistry {
     store: Arc<SqlxStore>,
+    /// Whether unknown agents auto-enroll with Write capability (dsn-001, AC-06).
+    permissive: bool,
+    /// Override capabilities for newly enrolled agents (dsn-001, R-14).
+    /// None = use permissive/strict defaults; Some(v) = always use these caps.
+    session_caps: Vec<Capability>,
 }
 
 impl AgentRegistry {
     /// Create a new registry backed by the given store.
-    pub fn new(store: Arc<SqlxStore>) -> Result<Self, ServerError> {
-        Ok(AgentRegistry { store })
+    ///
+    /// `permissive`: when true, unknown agents auto-enroll with [Read, Write, Search].
+    /// When false, unknown agents auto-enroll with [Read, Search] only.
+    /// `session_caps`: when non-empty, overrides default capabilities for auto-enrollment.
+    pub fn new(
+        store: Arc<SqlxStore>,
+        permissive: bool,
+        session_caps: Vec<Capability>,
+    ) -> Result<Self, ServerError> {
+        Ok(AgentRegistry {
+            store,
+            permissive,
+            session_caps,
+        })
     }
 
     /// Bootstrap default agents if they don't already exist.
@@ -52,9 +65,14 @@ impl AgentRegistry {
     ///
     /// Uses a read-first optimization to avoid write transactions for known agents.
     pub fn resolve_or_enroll(&self, agent_id: &str) -> Result<AgentRecord, ServerError> {
+        let session_caps = if self.session_caps.is_empty() {
+            None
+        } else {
+            Some(self.session_caps.as_slice())
+        };
         block_sync(
             self.store
-                .agent_resolve_or_enroll(agent_id, PERMISSIVE_AUTO_ENROLL, None),
+                .agent_resolve_or_enroll(agent_id, self.permissive, session_caps),
         )
         .map_err(|e| ServerError::Registry(e.to_string()))
     }
@@ -160,7 +178,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_bootstrap_creates_system_and_human() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         let system = registry.resolve_or_enroll("system").unwrap();
@@ -182,7 +200,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_bootstrap_idempotent() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         let first = registry.resolve_or_enroll("system").unwrap();
@@ -195,7 +213,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_enroll_unknown_agent() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         let agent = registry.resolve_or_enroll("unknown-agent-123").unwrap();
@@ -209,7 +227,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_enrolled_agent_has_write_when_permissive() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
 
         let agent = registry.resolve_or_enroll("new-agent").unwrap();
         assert!(agent.capabilities.contains(&Capability::Write));
@@ -218,7 +236,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_enrolled_agent_lacks_admin() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
 
         let agent = registry.resolve_or_enroll("new-agent").unwrap();
         assert!(!agent.capabilities.contains(&Capability::Admin));
@@ -227,7 +245,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_resolve_existing_agent() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         let human = registry.resolve_or_enroll("human").unwrap();
@@ -246,7 +264,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_has_capability_true() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         assert!(registry.has_capability("human", Capability::Read).unwrap());
@@ -256,7 +274,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_has_capability_false() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
 
         registry.resolve_or_enroll("agent-x").unwrap();
         assert!(
@@ -269,7 +287,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_require_capability_ok() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         assert!(
@@ -282,7 +300,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_require_capability_denied() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
 
         registry.resolve_or_enroll("agent-x").unwrap();
         let result = registry.require_capability("agent-x", Capability::Admin);
@@ -292,7 +310,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_update_last_seen() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         let before = registry.resolve_or_enroll("human").unwrap();
@@ -307,7 +325,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_enroll_rejects_system() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         let result = registry.enroll_agent(
@@ -322,7 +340,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_enroll_self_without_admin_rejected() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         registry
@@ -346,7 +364,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_enroll_self_with_admin_allowed() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         registry
@@ -374,7 +392,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_status_read_cap_non_admin_agent_passes() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
 
         let _agent = registry.resolve_or_enroll("restricted-reader").unwrap();
@@ -389,7 +407,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_status_anonymous_fresh_install_passes_read_gate() {
         let store = make_store().await;
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
 
         let agent = registry.resolve_or_enroll("brand-new-fresh-agent").unwrap();
         assert!(

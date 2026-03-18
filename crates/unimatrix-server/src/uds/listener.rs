@@ -2420,6 +2420,8 @@ mod tests {
             Arc::clone(adapt),
             audit,
             usage_dedup,
+            // dsn-001: default; test helper preserves pre-dsn-001 behavior.
+            std::collections::HashSet::from(["lesson-learned".to_string()]),
         )
     }
 

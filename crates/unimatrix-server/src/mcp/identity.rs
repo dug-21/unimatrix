@@ -71,7 +71,7 @@ mod tests {
             .unwrap(),
         );
         std::mem::forget(dir);
-        let registry = AgentRegistry::new(store).unwrap();
+        let registry = AgentRegistry::new(store, true, vec![]).unwrap();
         registry.bootstrap_defaults().unwrap();
         registry
     }
