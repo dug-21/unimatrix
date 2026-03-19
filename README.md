@@ -248,6 +248,12 @@ instructions = "..."
 # "permissive" grants [Read, Write, Search]; "strict" grants [Read, Search].
 default_trust = "permissive"
 session_capabilities = ["Read", "Write", "Search"]
+
+[inference]
+# Number of threads dedicated to ML inference (ONNX embedding, future NLI and GNN).
+# Default: (num_cpus / 2).max(4).min(8) — at least 4 threads, at most 8.
+# Valid range: [1, 64]. Out-of-range value aborts startup with a structured error.
+rayon_pool_size = 4
 ```
 
 Config files are validated for security at load time: world-writable files abort startup; group-writable files log a warning. `[server] instructions` is scanned for injection patterns before use.
