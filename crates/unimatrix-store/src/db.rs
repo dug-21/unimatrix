@@ -638,16 +638,12 @@ pub(crate) async fn create_tables_if_needed(
     .execute(&mut *conn)
     .await?;
 
-    sqlx::query(
-        "CREATE INDEX IF NOT EXISTS idx_graph_edges_source_id ON graph_edges(source_id)",
-    )
-    .execute(&mut *conn)
-    .await?;
-    sqlx::query(
-        "CREATE INDEX IF NOT EXISTS idx_graph_edges_target_id ON graph_edges(target_id)",
-    )
-    .execute(&mut *conn)
-    .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_graph_edges_source_id ON graph_edges(source_id)")
+        .execute(&mut *conn)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_graph_edges_target_id ON graph_edges(target_id)")
+        .execute(&mut *conn)
+        .await?;
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_graph_edges_relation_type ON graph_edges(relation_type)",
     )
@@ -839,11 +835,12 @@ mod tests {
         let (store, _dir) = open_test_store().await;
 
         // pragma_table_info returns rows: (cid, name, type, notnull, dflt_value, pk)
-        let rows: Vec<(i64, String, String, i64)> =
-            sqlx::query_as("SELECT cid, name, type, \"notnull\" FROM pragma_table_info('graph_edges')")
-                .fetch_all(&store.write_pool)
-                .await
-                .expect("pragma_table_info");
+        let rows: Vec<(i64, String, String, i64)> = sqlx::query_as(
+            "SELECT cid, name, type, \"notnull\" FROM pragma_table_info('graph_edges')",
+        )
+        .fetch_all(&store.write_pool)
+        .await
+        .expect("pragma_table_info");
 
         assert!(!rows.is_empty(), "graph_edges must have columns");
 
@@ -878,10 +875,7 @@ mod tests {
 
         // NOT NULL columns
         for col in &["source_id", "target_id", "relation_type"] {
-            assert_eq!(
-                col_map[col].1, 1,
-                "{col} must be NOT NULL (notnull=1)"
-            );
+            assert_eq!(col_map[col].1, 1, "{col} must be NOT NULL (notnull=1)");
         }
 
         // metadata must NOT be NOT NULL (nullable)
@@ -966,13 +960,17 @@ mod tests {
         .await
         .expect("CoAccess insert");
 
-        let count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges WHERE source_id=1 AND target_id=2")
-                .fetch_one(&store.write_pool)
-                .await
-                .expect("count");
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM graph_edges WHERE source_id=1 AND target_id=2",
+        )
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("count");
 
-        assert_eq!(count, 2, "different relation types on same pair must both persist");
+        assert_eq!(
+            count, 2,
+            "different relation types on same pair must both persist"
+        );
         store.close().await.unwrap();
     }
 
@@ -1011,11 +1009,12 @@ mod tests {
         .await
         .expect("insert");
 
-        let metadata: Option<String> =
-            sqlx::query_scalar("SELECT metadata FROM graph_edges WHERE source_id=10 AND target_id=20")
-                .fetch_one(&store.write_pool)
-                .await
-                .expect("fetch metadata");
+        let metadata: Option<String> = sqlx::query_scalar(
+            "SELECT metadata FROM graph_edges WHERE source_id=10 AND target_id=20",
+        )
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("fetch metadata");
 
         assert!(metadata.is_none(), "metadata must default to NULL");
         store.close().await.unwrap();
@@ -1035,11 +1034,12 @@ mod tests {
         .await
         .expect("insert without bootstrap_only");
 
-        let bootstrap_only: i64 =
-            sqlx::query_scalar("SELECT bootstrap_only FROM graph_edges WHERE source_id=30 AND target_id=40")
-                .fetch_one(&store.write_pool)
-                .await
-                .expect("fetch bootstrap_only");
+        let bootstrap_only: i64 = sqlx::query_scalar(
+            "SELECT bootstrap_only FROM graph_edges WHERE source_id=30 AND target_id=40",
+        )
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("fetch bootstrap_only");
 
         assert_eq!(bootstrap_only, 0, "bootstrap_only must default to 0");
         store.close().await.unwrap();
@@ -1049,11 +1049,10 @@ mod tests {
     async fn test_schema_version_initialized_to_13_on_fresh_db() {
         let (store, _dir) = open_test_store().await;
 
-        let v: i64 =
-            sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
-                .fetch_one(&store.write_pool)
-                .await
-                .expect("query schema_version");
+        let v: i64 = sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
+            .fetch_one(&store.write_pool)
+            .await
+            .expect("query schema_version");
 
         assert_eq!(v, 13, "schema_version must initialize to 13 on fresh db");
         store.close().await.unwrap();
