@@ -620,8 +620,42 @@ pub(crate) async fn create_tables_if_needed(
         .execute(&mut *conn)
         .await?;
 
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS graph_edges (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_id      INTEGER NOT NULL,
+            target_id      INTEGER NOT NULL,
+            relation_type  TEXT    NOT NULL,
+            weight         REAL    NOT NULL DEFAULT 1.0,
+            created_at     INTEGER NOT NULL,
+            created_by     TEXT    NOT NULL DEFAULT '',
+            source         TEXT    NOT NULL DEFAULT '',
+            bootstrap_only INTEGER NOT NULL DEFAULT 0,
+            metadata       TEXT    DEFAULT NULL,
+            UNIQUE(source_id, target_id, relation_type)
+        )",
+    )
+    .execute(&mut *conn)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_graph_edges_source_id ON graph_edges(source_id)",
+    )
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_graph_edges_target_id ON graph_edges(target_id)",
+    )
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_graph_edges_relation_type ON graph_edges(relation_type)",
+    )
+    .execute(&mut *conn)
+    .await?;
+
     // Initialize counters that other modules expect.
-    sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 12)")
+    sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 13)")
         .execute(&mut *conn)
         .await?;
     sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('next_entry_id', 1)")
@@ -773,6 +807,255 @@ mod tests {
             .expect("query next_entry_id");
 
         assert_eq!(v, 1, "next_entry_id should initialize to 1");
+        store.close().await.unwrap();
+    }
+
+    // -----------------------------------------------------------------------
+    // graph_edges DDL tests (store-schema, crt-021)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_graph_edges_table_created_on_fresh_db() {
+        let (store, _dir) = open_test_store().await;
+
+        let sql: Option<String> = sqlx::query_scalar(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='graph_edges'",
+        )
+        .fetch_optional(&store.write_pool)
+        .await
+        .expect("query sqlite_master");
+
+        assert!(sql.is_some(), "graph_edges table must exist on fresh db");
+        let ddl = sql.unwrap();
+        assert!(
+            ddl.contains("CREATE TABLE"),
+            "sqlite_master.sql must contain CREATE TABLE"
+        );
+        store.close().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_graph_edges_columns_and_types() {
+        let (store, _dir) = open_test_store().await;
+
+        // pragma_table_info returns rows: (cid, name, type, notnull, dflt_value, pk)
+        let rows: Vec<(i64, String, String, i64)> =
+            sqlx::query_as("SELECT cid, name, type, \"notnull\" FROM pragma_table_info('graph_edges')")
+                .fetch_all(&store.write_pool)
+                .await
+                .expect("pragma_table_info");
+
+        assert!(!rows.is_empty(), "graph_edges must have columns");
+
+        let col_names: Vec<&str> = rows.iter().map(|(_, n, _, _)| n.as_str()).collect();
+        let expected_cols = [
+            "id",
+            "source_id",
+            "target_id",
+            "relation_type",
+            "weight",
+            "created_at",
+            "created_by",
+            "source",
+            "bootstrap_only",
+            "metadata",
+        ];
+        for col in &expected_cols {
+            assert!(col_names.contains(col), "missing column: {col}");
+        }
+
+        let col_map: std::collections::HashMap<&str, (&str, i64)> = rows
+            .iter()
+            .map(|(_, n, t, nn)| (n.as_str(), (t.as_str(), *nn)))
+            .collect();
+
+        assert_eq!(col_map["weight"].0, "REAL", "weight must be REAL");
+        assert_eq!(
+            col_map["bootstrap_only"].0, "INTEGER",
+            "bootstrap_only must be INTEGER"
+        );
+        assert_eq!(col_map["metadata"].0, "TEXT", "metadata must be TEXT");
+
+        // NOT NULL columns
+        for col in &["source_id", "target_id", "relation_type"] {
+            assert_eq!(
+                col_map[col].1, 1,
+                "{col} must be NOT NULL (notnull=1)"
+            );
+        }
+
+        // metadata must NOT be NOT NULL (nullable)
+        assert_eq!(
+            col_map["metadata"].1, 0,
+            "metadata must be nullable (notnull=0)"
+        );
+
+        store.close().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_graph_edges_unique_constraint_prevents_duplicate() {
+        let (store, _dir) = open_test_store().await;
+
+        let now = 1_700_000_000_i64;
+        sqlx::query(
+            "INSERT INTO graph_edges (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) VALUES (1, 2, 'Supersedes', 1.0, ?, '', '', 0)",
+        )
+        .bind(now)
+        .execute(&store.write_pool)
+        .await
+        .expect("first insert");
+
+        let result = sqlx::query(
+            "INSERT INTO graph_edges (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) VALUES (1, 2, 'Supersedes', 1.0, ?, '', '', 0)",
+        )
+        .bind(now)
+        .execute(&store.write_pool)
+        .await;
+
+        assert!(
+            result.is_err(),
+            "duplicate (source_id, target_id, relation_type) must fail"
+        );
+        store.close().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_graph_edges_insert_or_ignore_idempotent() {
+        let (store, _dir) = open_test_store().await;
+
+        let now = 1_700_000_000_i64;
+        for _ in 0..2 {
+            sqlx::query(
+                "INSERT OR IGNORE INTO graph_edges (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) VALUES (1, 2, 'Supersedes', 1.0, ?, '', '', 0)",
+            )
+            .bind(now)
+            .execute(&store.write_pool)
+            .await
+            .expect("insert or ignore");
+        }
+
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges WHERE source_id=1 AND target_id=2 AND relation_type='Supersedes'")
+                .fetch_one(&store.write_pool)
+                .await
+                .expect("count");
+
+        assert_eq!(count, 1, "INSERT OR IGNORE must leave exactly one row");
+        store.close().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_graph_edges_unique_allows_different_relation_types() {
+        let (store, _dir) = open_test_store().await;
+
+        let now = 1_700_000_000_i64;
+        sqlx::query(
+            "INSERT INTO graph_edges (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) VALUES (1, 2, 'Supersedes', 1.0, ?, '', '', 0)",
+        )
+        .bind(now)
+        .execute(&store.write_pool)
+        .await
+        .expect("Supersedes insert");
+
+        sqlx::query(
+            "INSERT INTO graph_edges (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) VALUES (1, 2, 'CoAccess', 0.8, ?, '', '', 0)",
+        )
+        .bind(now)
+        .execute(&store.write_pool)
+        .await
+        .expect("CoAccess insert");
+
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges WHERE source_id=1 AND target_id=2")
+                .fetch_one(&store.write_pool)
+                .await
+                .expect("count");
+
+        assert_eq!(count, 2, "different relation types on same pair must both persist");
+        store.close().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_graph_edges_indexes_exist() {
+        let (store, _dir) = open_test_store().await;
+
+        let names: Vec<String> = sqlx::query_scalar(
+            "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='graph_edges'",
+        )
+        .fetch_all(&store.write_pool)
+        .await
+        .expect("query indexes");
+
+        let expected = [
+            "idx_graph_edges_source_id",
+            "idx_graph_edges_target_id",
+            "idx_graph_edges_relation_type",
+        ];
+        for idx in &expected {
+            assert!(names.iter().any(|n| n == idx), "missing index: {idx}");
+        }
+        store.close().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_graph_edges_metadata_default_null() {
+        let (store, _dir) = open_test_store().await;
+
+        let now = 1_700_000_000_i64;
+        sqlx::query(
+            "INSERT INTO graph_edges (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) VALUES (10, 20, 'Supports', 1.0, ?, '', '', 0)",
+        )
+        .bind(now)
+        .execute(&store.write_pool)
+        .await
+        .expect("insert");
+
+        let metadata: Option<String> =
+            sqlx::query_scalar("SELECT metadata FROM graph_edges WHERE source_id=10 AND target_id=20")
+                .fetch_one(&store.write_pool)
+                .await
+                .expect("fetch metadata");
+
+        assert!(metadata.is_none(), "metadata must default to NULL");
+        store.close().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_graph_edges_bootstrap_only_defaults_zero() {
+        let (store, _dir) = open_test_store().await;
+
+        let now = 1_700_000_000_i64;
+        // Insert without specifying bootstrap_only — rely on column DEFAULT 0
+        sqlx::query(
+            "INSERT INTO graph_edges (source_id, target_id, relation_type, weight, created_at, created_by, source) VALUES (30, 40, 'CoAccess', 0.5, ?, '', '')",
+        )
+        .bind(now)
+        .execute(&store.write_pool)
+        .await
+        .expect("insert without bootstrap_only");
+
+        let bootstrap_only: i64 =
+            sqlx::query_scalar("SELECT bootstrap_only FROM graph_edges WHERE source_id=30 AND target_id=40")
+                .fetch_one(&store.write_pool)
+                .await
+                .expect("fetch bootstrap_only");
+
+        assert_eq!(bootstrap_only, 0, "bootstrap_only must default to 0");
+        store.close().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_schema_version_initialized_to_13_on_fresh_db() {
+        let (store, _dir) = open_test_store().await;
+
+        let v: i64 =
+            sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
+                .fetch_one(&store.write_pool)
+                .await
+                .expect("query schema_version");
+
+        assert_eq!(v, 13, "schema_version must initialize to 13 on fresh db");
         store.close().await.unwrap();
     }
 }
