@@ -527,7 +527,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Extract state handles before services is moved.
     let confidence_state_handle = services.confidence_state_handle();
     let effectiveness_state_handle = services.effectiveness_state_handle();
-    let supersession_state_handle = services.supersession_state_handle();
+    let typed_graph_handle = services.typed_graph_handle();
     let contradiction_cache_handle = services.contradiction_cache_handle();
 
     // Parse auto-quarantine threshold at startup (Constraint 14).
@@ -547,7 +547,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         None,
         confidence_state_handle,
         effectiveness_state_handle,
-        supersession_state_handle,
+        typed_graph_handle,
         contradiction_cache_handle,
         Arc::clone(&audit),
         auto_quarantine_cycles,
@@ -831,8 +831,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let confidence_state_handle = services.confidence_state_handle();
     // crt-018b: extract EffectivenessStateHandle before services is moved.
     let effectiveness_state_handle = services.effectiveness_state_handle();
-    // GH #264: extract SupersessionStateHandle before services is moved.
-    let supersession_state_handle = services.supersession_state_handle();
+    // crt-021: extract TypedGraphStateHandle before services is moved.
+    let typed_graph_handle = services.typed_graph_handle();
     // GH #278: extract ContradictionScanCacheHandle before services is moved.
     let contradiction_cache_handle = services.contradiction_cache_handle();
 
@@ -853,7 +853,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         None, // TrainingService: wired in future integration step
         confidence_state_handle,
         effectiveness_state_handle, // crt-018b: shared with search/briefing paths
-        supersession_state_handle,  // GH #264: shared with SearchService
+        typed_graph_handle,         // crt-021: shared with SearchService
         contradiction_cache_handle, // GH #278: shared with StatusService
         Arc::clone(&audit),         // crt-018b: for tick_skipped audit events
         auto_quarantine_cycles,     // crt-018b: auto-quarantine threshold

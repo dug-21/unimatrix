@@ -40,7 +40,7 @@ use crate::services::contradiction_cache::{
 };
 use crate::services::effectiveness::EffectivenessStateHandle;
 use crate::services::status::{MaintenanceDataSnapshot, StatusService};
-use crate::services::supersession::{SupersessionState, SupersessionStateHandle};
+use crate::services::typed_graph::{TypedGraphState, TypedGraphStateHandle};
 use unimatrix_engine::effectiveness::EffectivenessCategory;
 
 /// Hardcoded system agent identity for background-generated audit events.
@@ -221,7 +221,7 @@ pub fn spawn_background_tick(
     training_service: Option<Arc<TrainingService>>,
     confidence_state: ConfidenceStateHandle,
     effectiveness_state: EffectivenessStateHandle, // crt-018b: shared with search/briefing paths
-    supersession_state: SupersessionStateHandle,   // GH #264: shared with SearchService
+    typed_graph_state: TypedGraphStateHandle,      // crt-021: shared with SearchService
     contradiction_cache: ContradictionScanCacheHandle, // GH #278: shared with StatusService
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
@@ -243,7 +243,7 @@ pub fn spawn_background_tick(
                 training_service.clone(),
                 confidence_state.clone(),
                 effectiveness_state.clone(),
-                supersession_state.clone(),
+                typed_graph_state.clone(),
                 Arc::clone(&contradiction_cache),
                 Arc::clone(&audit_log),
                 auto_quarantine_cycles,
@@ -282,7 +282,7 @@ async fn background_tick_loop(
     _training_service: Option<Arc<TrainingService>>,
     confidence_state: ConfidenceStateHandle,
     effectiveness_state: EffectivenessStateHandle, // crt-018b: threaded to run_single_tick
-    supersession_state: SupersessionStateHandle,   // GH #264: threaded to run_single_tick
+    typed_graph_state: TypedGraphStateHandle,      // crt-021: threaded to run_single_tick
     contradiction_cache: ContradictionScanCacheHandle, // GH #278: threaded to run_single_tick
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
@@ -335,7 +335,7 @@ async fn background_tick_loop(
             shadow_evaluator.as_mut(),
             &confidence_state,
             &effectiveness_state,
-            &supersession_state,
+            &typed_graph_state,
             &contradiction_cache,
             current_tick,
             &audit_log,
@@ -378,7 +378,7 @@ async fn run_single_tick(
     shadow_evaluator: Option<&mut ShadowEvaluator>,
     confidence_state: &ConfidenceStateHandle,
     effectiveness_state: &EffectivenessStateHandle,
-    supersession_state: &SupersessionStateHandle, // GH #264: rebuild each tick
+    typed_graph_state: &TypedGraphStateHandle, // crt-021: rebuild each tick
     contradiction_cache: &ContradictionScanCacheHandle, // GH #278: write on interval
     current_tick: u32,
     audit_log: &Arc<AuditLog>,
@@ -429,38 +429,48 @@ async fn run_single_tick(
         }
     }
 
-    // GH #264 fix: Rebuild supersession graph cache after maintenance tick completes.
+    // crt-021: Rebuild typed graph state after maintenance tick completes.
     // Uses tokio::spawn (nxs-011: Store is now async sqlx, not sync Mutex<Connection>).
     // Wrapped in TICK_TIMEOUT (GH #266) so a slow rebuild does not block the tick loop.
     // On timeout the existing cached state is retained (guard is not updated).
+    // Caller contract (pseudocode §TypedGraphState::rebuild):
+    //   Ok(new_state)     → swap handle under write lock
+    //   Err(cycle marker) → set use_fallback=true; retain old graph
+    //   Err(other)        → log; retain old state entirely
     {
         let store_clone = Arc::clone(store);
         match tokio::time::timeout(
             TICK_TIMEOUT,
-            tokio::spawn(async move { SupersessionState::rebuild(&store_clone).await }),
+            tokio::spawn(async move { TypedGraphState::rebuild(&store_clone).await }),
         )
         .await
         {
             Ok(Ok(Ok(new_state))) => {
-                let mut guard = supersession_state
-                    .write()
-                    .unwrap_or_else(|e| e.into_inner());
+                let mut guard = typed_graph_state.write().unwrap_or_else(|e| e.into_inner());
                 *guard = new_state;
                 tracing::debug!(
-                    "supersession state rebuilt ({} entries)",
+                    "typed graph state rebuilt ({} entries)",
                     guard.all_entries.len()
                 );
             }
+            Ok(Ok(Err(ref e))) if e.to_string().contains("supersession cycle detected") => {
+                // Cycle detected: set use_fallback=true, retain old graph
+                let mut guard = typed_graph_state.write().unwrap_or_else(|e| e.into_inner());
+                guard.use_fallback = true;
+                tracing::error!(
+                    "TypedGraphState rebuild: cycle detected; search using FALLBACK_PENALTY"
+                );
+            }
             Ok(Ok(Err(e))) => {
-                tracing::error!("supersession state rebuild failed: {e}");
+                tracing::error!("typed graph state rebuild failed: {e}");
             }
             Ok(Err(e)) => {
-                tracing::error!("supersession state rebuild task panicked: {e}");
+                tracing::error!("typed graph state rebuild task panicked: {e}");
             }
             Err(_) => {
                 tracing::warn!(
                     timeout_secs = TICK_TIMEOUT.as_secs(),
-                    "supersession state rebuild timed out; retaining existing cache"
+                    "typed graph state rebuild timed out; retaining existing cache"
                 );
             }
         }

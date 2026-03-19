@@ -156,7 +156,10 @@ pub struct GraphEdgeRow {
 /// invisible to all penalty logic (SR-01 mitigation: single filter-boundary method).
 ///
 /// `pub(crate)` fields allow unit tests to inspect graph structure directly.
-#[derive(Debug)]
+///
+/// `Clone` is derived to allow the search hot path to clone the pre-built graph out from
+/// under a short read lock, releasing the lock before any graph traversal (FR-22).
+#[derive(Debug, Clone)]
 pub struct TypedRelationGraph {
     /// Directed petgraph StableGraph with typed edge weights.
     pub(crate) inner: StableGraph<u64, RelationEdge>,
@@ -165,6 +168,17 @@ pub struct TypedRelationGraph {
 }
 
 impl TypedRelationGraph {
+    /// Create an empty `TypedRelationGraph` for cold-start state.
+    ///
+    /// Used by `TypedGraphState::new()` to create a valid zero-node, zero-edge
+    /// graph without any I/O.
+    pub fn empty() -> Self {
+        TypedRelationGraph {
+            inner: StableGraph::new(),
+            node_index: HashMap::new(),
+        }
+    }
+
     /// Iterator over edges of the specified type from a given node in a given direction.
     ///
     /// This is the SOLE filter boundary (SR-01 mitigation). All traversal in
