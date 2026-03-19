@@ -10,18 +10,19 @@ This document defines how the infra-001 integration test harness is used during 
 
 The harness exercises the compiled `unimatrix-server` binary through the MCP JSON-RPC protocol over stdio — the exact interface agents use. It validates system-level behavior that unit tests cannot: protocol compliance, multi-step lifecycle flows, security defenses, confidence math, contradiction detection, scale behavior, and edge cases.
 
-**157 tests across 8 suites:**
+**205 tests across 9 suites:**
 
 | Suite | Tests | Focus |
 |-------|-------|-------|
 | `protocol` | 13 | MCP handshake, JSON-RPC compliance, tool discovery, graceful shutdown |
-| `tools` | 53 | All 9 tools — every parameter, valid/invalid inputs, all response formats |
-| `lifecycle` | 16 | Multi-step flows: store→search, correction chains, confidence evolution, restart persistence |
+| `tools` | 73 | All 12 tools — every parameter, valid/invalid inputs, all response formats |
+| `lifecycle` | 25 | Multi-step flows: store→search, correction chains, confidence evolution, restart persistence |
 | `volume` | 11 | Scale to hundreds of entries, large payloads, contradiction scan at scale |
-| `security` | 15 | Content scanning, capability enforcement, input validation boundaries |
-| `confidence` | 13 | 6-factor composite formula, Wilson score, re-ranking, base scores per status |
+| `security` | 17 | Content scanning, capability enforcement, input validation boundaries |
+| `confidence` | 14 | 6-factor composite formula, Wilson score, re-ranking, base scores per status |
 | `contradiction` | 12 | Negation detection, incompatible directives, false positive resistance |
 | `edge_cases` | 24 | Unicode, boundary values, empty DB operations, concurrent ops |
+| `adaptation` | 10 | Category allowlist, boosted categories, format negotiation |
 
 ---
 
@@ -148,7 +149,7 @@ Before merging any PR that touches server code, run the full suite:
 docker compose -f product/test/infra-001/docker-compose.yml up --build --abort-on-container-exit
 ```
 
-All 157 tests must pass.
+All 205 tests must pass.
 
 ### Pre-Release Gate
 
@@ -365,7 +366,7 @@ def test_unicode_emoji_content(server): ...
 
 ### Full Suite
 
-All 157 tests. **Run time:** ~20 minutes (varies with hardware, especially embedding model initialization and volume tests).
+All 205 tests. **Run time:** ~20 minutes (varies with hardware, especially embedding model initialization and volume tests).
 
 ### Selective Suites
 

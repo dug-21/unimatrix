@@ -134,9 +134,14 @@ def test_store_quarantine_restore_search_finds(server):
     assert_search_contains(search_resp, entry_id)
 
 
-@pytest.mark.xfail(reason="Pre-existing: GH#238 — permissive auto-enroll (bugfix-228) grants Write to unknown agents")
 def test_multi_agent_interaction(server):
     """L-09: Different trust levels interact correctly."""
+    # Enroll restricted-agent with read/search only — unknown agents now
+    # auto-enroll with Write (PERMISSIVE_AUTO_ENROLL), so restrict explicitly.
+    server.context_enroll(
+        "restricted-agent", "restricted", ["read", "search"], agent_id="human"
+    )
+
     # Privileged agent stores
     store_resp = server.context_store(
         "multi-agent content lifecycle test",
@@ -153,7 +158,7 @@ def test_multi_agent_interaction(server):
     )
     assert_tool_success(search_resp)
 
-    # Restricted agent cannot store
+    # Restricted agent cannot store (no Write capability)
     store_resp_restricted = server.context_store(
         "restricted store attempt",
         "testing",

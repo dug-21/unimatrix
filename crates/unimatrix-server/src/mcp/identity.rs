@@ -56,18 +56,15 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    fn make_registry() -> AgentRegistry {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("runtime");
+    async fn make_registry() -> AgentRegistry {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("test.db");
         let store = Arc::new(
-            rt.block_on(unimatrix_store::SqlxStore::open(
+            unimatrix_store::SqlxStore::open(
                 &path,
                 unimatrix_store::pool_config::PoolConfig::default(),
-            ))
+            )
+            .await
             .unwrap(),
         );
         std::mem::forget(dir);
@@ -112,9 +109,9 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_resolve_known_agent() {
-        let registry = make_registry();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_resolve_known_agent() {
+        let registry = make_registry().await;
         let identity = resolve_identity(&registry, "human").unwrap();
         assert_eq!(identity.agent_id, "human");
         assert_eq!(identity.trust_level, TrustLevel::Privileged);
@@ -129,9 +126,9 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_resolve_unknown_agent() {
-        let registry = make_registry();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_resolve_unknown_agent() {
+        let registry = make_registry().await;
         let identity = resolve_identity(&registry, "new-agent").unwrap();
         assert_eq!(identity.trust_level, TrustLevel::Restricted);
         // PERMISSIVE_AUTO_ENROLL=true grants Write to unknown agents
@@ -141,9 +138,9 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_resolve_anonymous() {
-        let registry = make_registry();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_resolve_anonymous() {
+        let registry = make_registry().await;
         let identity = resolve_identity(&registry, "anonymous").unwrap();
         assert_eq!(identity.trust_level, TrustLevel::Restricted);
     }

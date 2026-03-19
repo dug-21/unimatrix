@@ -85,11 +85,15 @@ def test_store_empty_topic(server):
     assert_tool_success(resp)
 
 
-@pytest.mark.xfail(reason="Pre-existing: GH#233 — PERMISSIVE_AUTO_ENROLL grants Write to unknown agents")
 def test_store_restricted_agent_rejected(server):
-    """T-08: Restricted agent cannot store (no Write capability)."""
+    """T-08: Enrolled agent without Write capability cannot store."""
+    # Enroll a read-only agent explicitly — unknown agents now auto-enroll with
+    # Write (PERMISSIVE_AUTO_ENROLL), so we must explicitly restrict.
+    server.context_enroll(
+        "test-read-only-agent", "restricted", ["read", "search"], agent_id="human"
+    )
     resp = server.context_store(
-        "restricted content", "testing", "convention", agent_id="unknown-agent-xyz"
+        "restricted content", "testing", "convention", agent_id="test-read-only-agent"
     )
     assert_tool_error(resp)
 
@@ -375,15 +379,17 @@ def test_correct_nonexistent(server):
     assert_tool_error(resp)
 
 
-@pytest.mark.xfail(reason="Pre-existing: GH#233 — PERMISSIVE_AUTO_ENROLL grants Write to unknown agents")
 def test_correct_requires_write(server):
     """T-49: Correct requires Write capability."""
+    server.context_enroll(
+        "test-read-only-agent", "restricted", ["read", "search"], agent_id="human"
+    )
     store_resp = server.context_store(
         "correct write test", "testing", "convention", agent_id="human", format="json"
     )
     entry_id = extract_entry_id(store_resp)
     resp = server.context_correct(
-        entry_id, "updated", agent_id="unknown-restricted-agent"
+        entry_id, "updated", agent_id="test-read-only-agent"
     )
     assert_tool_error(resp)
 
@@ -451,15 +457,17 @@ def test_deprecate_nonexistent(server):
     assert_tool_error(resp)
 
 
-@pytest.mark.xfail(reason="Pre-existing: GH#233 — PERMISSIVE_AUTO_ENROLL grants Write to unknown agents")
 def test_deprecate_requires_write(server):
     """T-55: Deprecate requires Write capability."""
+    server.context_enroll(
+        "test-read-only-agent", "restricted", ["read", "search"], agent_id="human"
+    )
     store_resp = server.context_store(
         "deprecate write test", "testing", "convention", agent_id="human", format="json"
     )
     entry_id = extract_entry_id(store_resp)
     resp = server.context_deprecate(
-        entry_id, agent_id="unknown-restricted-agent"
+        entry_id, agent_id="test-read-only-agent"
     )
     assert_tool_error(resp)
 
@@ -1026,16 +1034,16 @@ def test_retrospective_format_invalid(server):
 # === context_status observation extension (col-002) =======================
 
 
-@pytest.mark.xfail(reason="Pre-existing: GH#187 — file_count field missing from observation section")
 def test_status_includes_observation_fields(server):
     """T-S01: Status report includes observation health fields."""
     resp = server.context_status(agent_id="human", format="json")
     report = parse_status_report(resp)
     assert "observation" in report, "Missing observation section"
     obs = report["observation"]
-    assert "file_count" in obs, "Missing file_count in observation"
-    assert "total_size_bytes" in obs, "Missing total_size_bytes in observation"
-    assert "oldest_file_days" in obs, "Missing oldest_file_days in observation"
+    # Fields match ObservationJson in mcp/response/status.rs
+    assert "record_count" in obs, "Missing record_count in observation"
+    assert "session_count" in obs, "Missing session_count in observation"
+    assert "oldest_record_days" in obs, "Missing oldest_record_days in observation"
     assert "retrospected_feature_count" in obs, "Missing retrospected_feature_count"
     assert "approaching_cleanup" in obs, "Missing approaching_cleanup"
 

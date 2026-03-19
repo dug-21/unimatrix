@@ -117,9 +117,15 @@ pub(crate) struct RateLimitConfig {
 
 impl Default for RateLimitConfig {
     fn default() -> Self {
+        // UNIMATRIX_WRITE_RATE_LIMIT overrides write_limit for integration
+        // testing (e.g. volume suite needs >60 stores per session).
+        let write_limit = std::env::var("UNIMATRIX_WRITE_RATE_LIMIT")
+            .ok()
+            .and_then(|v| v.parse::<u32>().ok())
+            .unwrap_or(60);
         RateLimitConfig {
             search_limit: 300,
-            write_limit: 60,
+            write_limit,
             window_secs: 3600,
         }
     }

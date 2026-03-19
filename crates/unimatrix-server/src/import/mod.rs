@@ -178,6 +178,10 @@ async fn run_import_async(
 
     // Phase 9: COMMIT
     sqlx::query("COMMIT").execute(&mut *conn).await?;
+    // Release write connection back to pool before Phase 10+. embed_reconstruct
+    // and record_provenance both acquire from the same single-connection write
+    // pool; leaving conn alive would cause a pool timeout (GH#303).
+    drop(conn);
 
     // Phase 10: Re-embed and build vector index (ADR-004: after DB commit)
     crate::embed_reconstruct::reconstruct_embeddings(&store, &paths.vector_dir)?;

@@ -119,10 +119,17 @@ def shared_server(tmp_path_factory):
 
     State accumulates across tests in the module. Uses a higher default
     timeout (60s) since operations slow down with accumulated data.
+    UNIMATRIX_WRITE_RATE_LIMIT is raised to allow volume tests to store
+    more than the production cap of 60 entries (GH#111).
     """
     binary = get_binary_path()
     tmp_dir = tmp_path_factory.mktemp("shared-server")
-    client = UnimatrixClient(binary, project_dir=str(tmp_dir), timeout=60.0)
+    client = UnimatrixClient(
+        binary,
+        project_dir=str(tmp_dir),
+        timeout=60.0,
+        extra_env={"UNIMATRIX_WRITE_RATE_LIMIT": "10000"},
+    )
 
     try:
         client.initialize()
