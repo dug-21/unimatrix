@@ -28,7 +28,7 @@ pub(crate) mod search;
 pub(crate) mod status;
 pub(crate) mod store_correct;
 pub(crate) mod store_ops;
-pub(crate) mod supersession;
+pub(crate) mod typed_graph;
 pub(crate) mod usage;
 
 pub(crate) use briefing::BriefingService;
@@ -42,7 +42,7 @@ pub(crate) use gateway::{RateLimitConfig, SecurityGateway};
 pub(crate) use search::{RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
 pub(crate) use store_ops::StoreService;
-pub use supersession::{SupersessionState, SupersessionStateHandle};
+pub use typed_graph::{TypedGraphState, TypedGraphStateHandle};
 pub(crate) use usage::UsageService;
 
 // ---------------------------------------------------------------------------
@@ -235,11 +235,10 @@ pub struct ServiceLayer {
     /// BriefingService, and the background tick. Held here for external access
     /// via `effectiveness_state_handle()` (mirrors `confidence_state_handle()`).
     effectiveness_state: EffectivenessStateHandle,
-    /// GH #264 fix: supersession entry snapshot cache shared with SearchService
-    /// and the background tick. Eliminates 4x Store::query_by_status() calls
-    /// from the search hot path. Held here for external access via
-    /// `supersession_state_handle()` (mirrors `effectiveness_state_handle()`).
-    supersession_state: SupersessionStateHandle,
+    /// crt-021: typed graph state cache shared with SearchService and the background
+    /// tick. Pre-built TypedRelationGraph + entry snapshot. Held here for external
+    /// access via `typed_graph_handle()` (mirrors `effectiveness_state_handle()`).
+    typed_graph_state: TypedGraphStateHandle,
     /// GH #278 fix: contradiction scan result cache shared with StatusService
     /// and the background tick. Eliminates O(N) ONNX inference from every
     /// `context_status` call. Held here for external access via
@@ -267,14 +266,14 @@ impl ServiceLayer {
         Arc::clone(&self.effectiveness_state)
     }
 
-    /// Return a clone of the `SupersessionStateHandle` owned by this layer.
+    /// Return a clone of the `TypedGraphStateHandle` owned by this layer.
     ///
     /// Used by the binary crate (`main.rs`) to pass the shared handle to
     /// `spawn_background_tick` so the background tick rebuilds the same
-    /// `Arc<RwLock<SupersessionState>>` that `SearchService` reads from.
-    /// Mirrors `effectiveness_state_handle()` (GH #264 fix).
-    pub fn supersession_state_handle(&self) -> SupersessionStateHandle {
-        Arc::clone(&self.supersession_state)
+    /// `Arc<RwLock<TypedGraphState>>` that `SearchService` reads from.
+    /// Mirrors `effectiveness_state_handle()` (crt-021).
+    pub fn typed_graph_handle(&self) -> TypedGraphStateHandle {
+        Arc::clone(&self.typed_graph_state)
     }
 
     /// Return a clone of the `ContradictionScanCacheHandle` owned by this layer.
@@ -339,9 +338,9 @@ impl ServiceLayer {
         // share the same Arc<RwLock<EffectivenessState>> (mirrors confidence pattern).
         let effectiveness_state = EffectivenessState::new_handle();
 
-        // GH #264 fix: create supersession state handle once; clone into SearchService
-        // and the background tick so the tick rebuilds the snapshot SearchService reads.
-        let supersession_state = SupersessionState::new_handle();
+        // crt-021: create typed graph state handle once; clone into SearchService
+        // and the background tick so the tick rebuilds the pre-built graph SearchService reads.
+        let typed_graph_state = TypedGraphState::new_handle();
 
         // GH #278 fix: create contradiction cache handle once; clone into StatusService
         // (read path) and the background tick (write path) so they share the same
@@ -357,7 +356,7 @@ impl ServiceLayer {
             Arc::clone(&gateway),
             Arc::clone(&confidence_state_handle),
             Arc::clone(&effectiveness_state),
-            Arc::clone(&supersession_state),
+            Arc::clone(&typed_graph_state),
             boosted_categories,
         );
 
@@ -404,7 +403,7 @@ impl ServiceLayer {
             status,
             usage,
             effectiveness_state, // crt-018b: held for external access via effectiveness_state_handle()
-            supersession_state, // GH #264: held for external access via supersession_state_handle()
+            typed_graph_state,   // crt-021: held for external access via typed_graph_handle()
             contradiction_cache, // GH #278: held for external access via contradiction_cache_handle()
         }
     }

@@ -14,9 +14,7 @@ use unimatrix_engine::effectiveness::{
     EffectivenessCategory, SETTLED_BOOST, UTILITY_BOOST, UTILITY_PENALTY,
 };
 
-use unimatrix_engine::graph::{
-    FALLBACK_PENALTY, GraphError, build_supersession_graph, find_terminal_active, graph_penalty,
-};
+use unimatrix_engine::graph::{FALLBACK_PENALTY, find_terminal_active, graph_penalty};
 
 use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
 use crate::confidence::{cosine_similarity, rerank_score};
@@ -26,7 +24,7 @@ use crate::infra::timeout::{MCP_HANDLER_TIMEOUT, spawn_blocking_with_timeout};
 use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::effectiveness::{EffectivenessSnapshot, EffectivenessStateHandle};
 use crate::services::gateway::SecurityGateway;
-use crate::services::supersession::SupersessionStateHandle;
+use crate::services::typed_graph::TypedGraphStateHandle;
 use crate::services::{AuditContext, CallerId, ServiceError};
 
 /// HNSW search expansion factor.
@@ -103,10 +101,9 @@ pub(crate) struct SearchService {
     /// crt-018b (ADR-001): generation-cached snapshot shared across rmcp clones.
     /// Arc<Mutex<_>> ensures all clones of SearchService share one cache object (R-06).
     cached_snapshot: Arc<Mutex<EffectivenessSnapshot>>,
-    /// GH #264 fix: cached all-entry snapshot for supersession graph construction.
-    /// Eliminates 4x Store::query_by_status() calls from the search hot path.
-    /// Rebuilt by the background tick (15-min); search reads under short read lock.
-    supersession_state: SupersessionStateHandle,
+    /// crt-021: pre-built typed graph state handle. Background tick rebuilds; search reads
+    /// the pre-built TypedRelationGraph under a short read lock — no per-query rebuild (FR-22).
+    typed_graph_handle: TypedGraphStateHandle,
     /// dsn-001: config-driven provenance boost targets.
     /// Constructed from config.knowledge.boosted_categories at SearchService construction.
     /// Replaces the four hardcoded entry.category == "lesson-learned" comparisons.
@@ -140,7 +137,7 @@ impl SearchService {
         gateway: Arc<SecurityGateway>,
         confidence_state: ConfidenceStateHandle,
         effectiveness_state: EffectivenessStateHandle,
-        supersession_state: SupersessionStateHandle,
+        typed_graph_handle: TypedGraphStateHandle,
         boosted_categories: HashSet<String>,
     ) -> Self {
         SearchService {
@@ -153,7 +150,7 @@ impl SearchService {
             confidence_state,
             effectiveness_state,
             cached_snapshot: EffectivenessSnapshot::new_shared(),
-            supersession_state,
+            typed_graph_handle,
             boosted_categories,
         }
     }
@@ -279,30 +276,21 @@ impl SearchService {
             }
         }
 
-        // GH #264 fix: read cached entry snapshot under a short read lock — no store I/O.
-        // The background tick (15-min) rebuilds SupersessionState; the search path only reads.
-        // LOCK ORDERING (R-01): acquire read lock, clone fields, DROP guard before any other lock.
-        let (all_entries, cached_use_fallback) = {
+        // crt-021 (FR-22): read the pre-built TypedRelationGraph under a short read lock.
+        // The background tick rebuilds TypedGraphState; the search path only reads.
+        // LOCK ORDERING (R-01): acquire read lock, clone fields, DROP guard before any traversal.
+        // INVARIANT: build_typed_relation_graph is NEVER called here — only on the pre-built graph.
+        let (typed_graph, all_entries, use_fallback) = {
             let guard = self
-                .supersession_state
+                .typed_graph_handle
                 .read()
                 .unwrap_or_else(|e| e.into_inner());
-            (guard.all_entries.clone(), guard.use_fallback)
+            (
+                guard.typed_graph.clone(),
+                guard.all_entries.clone(),
+                guard.use_fallback,
+            )
             // read guard drops here
-        };
-
-        // Build supersession graph from the cached snapshot (pure CPU, no I/O, ~1-2ms).
-        // On cold-start, all_entries is empty — graph is empty DAG, use_fallback remains true.
-        let graph_result = build_supersession_graph(&all_entries);
-        let (graph_opt, use_fallback) = match graph_result {
-            Ok(graph) => (Some(graph), cached_use_fallback),
-            Err(GraphError::CycleDetected) => {
-                tracing::error!(
-                    "supersession cycle detected in knowledge graph — \
-                     search falling back to flat FALLBACK_PENALTY"
-                );
-                (None, true)
-            }
         };
 
         // Step 6a: Status filter / penalty marking (crt-010)
@@ -335,8 +323,7 @@ impl SearchService {
                             let penalty = if use_fallback {
                                 FALLBACK_PENALTY
                             } else {
-                                // graph_opt is Some when use_fallback is false
-                                graph_penalty(entry.id, graph_opt.as_ref().unwrap(), &all_entries)
+                                graph_penalty(entry.id, &typed_graph, &all_entries)
                             };
                             penalty_map.insert(entry.id, penalty);
                         }
@@ -376,7 +363,7 @@ impl SearchService {
                         entry.superseded_by
                     } else {
                         // Multi-hop: follow chain to terminal active node (crt-014 ADR-003)
-                        find_terminal_active(entry.id, graph_opt.as_ref().unwrap(), &all_entries)
+                        find_terminal_active(entry.id, &typed_graph, &all_entries)
                     };
 
                     let terminal_id = match terminal_id {
@@ -1154,7 +1141,7 @@ mod tests {
     #[test]
     fn penalty_map_uses_graph_penalty_not_constant() {
         use unimatrix_engine::graph::{
-            CLEAN_REPLACEMENT_PENALTY, build_supersession_graph, graph_penalty,
+            CLEAN_REPLACEMENT_PENALTY, build_typed_relation_graph, graph_penalty,
         };
         // Entry 1: superseded by entry 2 (depth-1 clean replacement)
         let entries = vec![
@@ -1175,7 +1162,7 @@ mod tests {
                 e
             },
         ];
-        let graph = build_supersession_graph(&entries_for_graph).expect("valid DAG");
+        let graph = build_typed_relation_graph(&entries_for_graph, &[]).expect("valid DAG");
         // Entry 1 is at depth-1 from its active terminal (entry 2)
         let penalty = graph_penalty(1, &graph, &entries_for_graph);
         assert!(
@@ -1197,7 +1184,7 @@ mod tests {
 
     #[test]
     fn cycle_fallback_uses_fallback_penalty() {
-        use unimatrix_engine::graph::{FALLBACK_PENALTY, GraphError, build_supersession_graph};
+        use unimatrix_engine::graph::{FALLBACK_PENALTY, GraphError, build_typed_relation_graph};
 
         // Two entries creating a cycle: entry 1 supersedes entry 2, entry 2 supersedes entry 1.
         let entries = vec![
@@ -1212,7 +1199,7 @@ mod tests {
                 e
             },
         ];
-        let result = build_supersession_graph(&entries);
+        let result = build_typed_relation_graph(&entries, &[]);
         assert!(
             matches!(result, Err(GraphError::CycleDetected)),
             "cycle must be detected"
@@ -1243,22 +1230,23 @@ mod tests {
         );
     }
 
-    // -- GH #264: Supersession state handle is readable and reflects pre-populated entries --
+    // -- crt-021 (FR-22): typed graph state handle is readable and reflects pre-built graph --
     //
     // Verifies that:
-    // 1. A SupersessionStateHandle pre-populated with entries is readable under a read lock.
-    // 2. The search path can clone `all_entries` + `use_fallback` without store I/O.
+    // 1. A TypedGraphStateHandle provides a readable cold-start state under a read lock.
+    // 2. The search path can clone `typed_graph`, `all_entries`, and `use_fallback` without
+    //    store I/O or per-query graph rebuild.
     // 3. Writing new state and re-reading reflects the update (rebuild semantics).
     //
-    // This test catches regressions where the store is re-queried inside the search path
-    // instead of reading from the cached handle (the bug in crt-014 that GH #264 fixed).
+    // This test catches regressions where the graph is rebuilt per query instead of
+    // reading the pre-built graph from the handle (FR-22, crt-014 lesson learned).
 
     #[test]
-    fn test_search_uses_cached_supersession_state_cold_start_fallback() {
-        use crate::services::supersession::SupersessionState;
+    fn test_search_uses_cached_typed_graph_state_cold_start_fallback() {
+        use crate::services::typed_graph::TypedGraphState;
 
-        // Cold-start handle: empty entries, use_fallback=true
-        let handle = SupersessionState::new_handle();
+        // Cold-start handle: empty entries, empty graph, use_fallback=true
+        let handle = TypedGraphState::new_handle();
         let (entries, use_fallback) = {
             let guard = handle.read().unwrap_or_else(|e| e.into_inner());
             (guard.all_entries.clone(), guard.use_fallback)
@@ -1269,25 +1257,33 @@ mod tests {
     }
 
     #[test]
-    fn test_search_uses_cached_supersession_state_after_rebuild() {
-        use crate::services::supersession::SupersessionState;
+    fn test_search_uses_cached_typed_graph_state_after_rebuild() {
+        use crate::services::typed_graph::TypedGraphState;
+        use unimatrix_engine::graph::build_typed_relation_graph;
 
-        let handle = SupersessionState::new_handle();
+        let handle = TypedGraphState::new_handle();
 
-        // Simulate background tick: write a new state with entries and use_fallback=false
+        // Simulate background tick: build a graph and write a new state with use_fallback=false
         let entry = make_test_entry(42, Status::Active, None, 0.9, "decision");
+        let entries = vec![entry.clone()];
+        let graph = build_typed_relation_graph(&entries, &[]).expect("valid graph");
         {
             let mut guard = handle.write().unwrap_or_else(|e| e.into_inner());
-            *guard = SupersessionState {
-                all_entries: vec![entry.clone()],
+            *guard = TypedGraphState {
+                typed_graph: graph,
+                all_entries: entries,
                 use_fallback: false,
             };
         }
 
-        // Simulate search path: read cached state under a short lock, then drop guard
-        let (snapshot_entries, snapshot_fallback) = {
+        // Simulate search hot path: read pre-built state under short lock, clone, release
+        let (typed_graph, snapshot_entries, snapshot_fallback) = {
             let guard = handle.read().unwrap_or_else(|e| e.into_inner());
-            (guard.all_entries.clone(), guard.use_fallback)
+            (
+                guard.typed_graph.clone(),
+                guard.all_entries.clone(),
+                guard.use_fallback,
+            )
             // guard drops here
         };
 
@@ -1301,11 +1297,14 @@ mod tests {
             "search must see use_fallback=false after rebuild"
         );
 
-        // build_supersession_graph on the snapshot is pure CPU — no store I/O
-        let graph_result = build_supersession_graph(&snapshot_entries);
-        assert!(
-            graph_result.is_ok(),
-            "graph build on cached snapshot must succeed for a single active entry"
+        // find_terminal_active on the pre-built graph is pure CPU — no store I/O, no rebuild.
+        // Entry 42 is Active with no superseded_by — it is its own terminal (start node check).
+        let terminal =
+            unimatrix_engine::graph::find_terminal_active(42, &typed_graph, &snapshot_entries);
+        assert_eq!(
+            terminal,
+            Some(42),
+            "active entry must be its own terminal in the pre-built graph"
         );
     }
 }

@@ -1002,11 +1002,11 @@ async fn test_sql_analytics_query() {
 }
 
 #[tokio::test]
-async fn test_schema_version_is_12() {
+async fn test_schema_version_is_13() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
-    assert_eq!(version, 12, "schema version must be 12 after col-022");
+    assert_eq!(version, 13, "schema version must be 13 after crt-021");
     store.close().await.unwrap();
 }
 

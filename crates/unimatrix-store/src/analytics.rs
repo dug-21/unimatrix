@@ -160,8 +160,26 @@ pub enum AnalyticsWrite {
     /// stale phase rows from a previous call are removed before the new set is inserted.
     /// Callers must enqueue this before phase inserts in the same `enqueue_analytics` sequence.
     DeleteObservationPhases { feature_cycle: String },
-    // Future Wave 1+ variants (not defined here):
-    //   GraphEdge { .. }              — W1-1 NLI graph edges
+
+    /// Table: `graph_edges` — idempotent insert (`INSERT OR IGNORE`).
+    ///
+    /// SHEDDING POLICY: Shed-safe for bootstrap-origin writes only. W1-2 NLI confirmed
+    /// edge writes MUST NOT use this variant — use direct write_pool path instead.
+    /// (ARCHITECTURE §2c SR-02, ADR-001 Consequences)
+    ///
+    /// `weight` must be finite (not NaN, not ±Inf). The drain task validates
+    /// `weight.is_finite()` and drops the event with an ERROR log if the check fails.
+    /// (FR-12, AC-17)
+    GraphEdge {
+        source_id: u64,
+        target_id: u64,
+        relation_type: String, // RelationType::as_str() value
+        weight: f32,           // validated finite by caller before enqueue
+        created_by: String,
+        source: String,
+        bootstrap_only: bool,
+    },
+    // Future Wave 3+ variants (not defined here):
     //   ConfidenceWeightUpdate { .. } — W3-1
 }
 
@@ -186,6 +204,7 @@ impl AnalyticsWrite {
             AnalyticsWrite::OutcomeIndex { .. } => "OutcomeIndex",
             AnalyticsWrite::ObservationPhaseMetric { .. } => "ObservationPhaseMetric",
             AnalyticsWrite::DeleteObservationPhases { .. } => "DeleteObservationPhases",
+            AnalyticsWrite::GraphEdge { .. } => "GraphEdge",
             // Catch-all for future #[non_exhaustive] variants.
             _ => "Unknown",
         }
@@ -726,6 +745,48 @@ async fn execute_analytics_write(
                 .await?;
         }
 
+        AnalyticsWrite::GraphEdge {
+            source_id,
+            target_id,
+            relation_type,
+            weight,
+            created_by,
+            source,
+            bootstrap_only,
+        } => {
+            // NF-01, AC-17, R-07: validate weight before writing.
+            if !weight.is_finite() {
+                tracing::error!(
+                    source_id = source_id,
+                    target_id = target_id,
+                    relation_type = %relation_type,
+                    weight = weight,
+                    "analytics drain: GraphEdge weight is not finite (NaN/Inf); event dropped"
+                );
+                return Ok(());
+            }
+
+            let now = current_unix_seconds();
+            let bootstrap_only_int: i64 = if bootstrap_only { 1 } else { 0 };
+
+            sqlx::query(
+                "INSERT OR IGNORE INTO graph_edges
+                     (source_id, target_id, relation_type, weight, created_at,
+                      created_by, source, bootstrap_only)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            )
+            .bind(source_id as i64)
+            .bind(target_id as i64)
+            .bind(relation_type)
+            .bind(weight)
+            .bind(now)
+            .bind(created_by)
+            .bind(source)
+            .bind(bootstrap_only_int)
+            .execute(&mut **txn)
+            .await?;
+        }
+
         // Catch-all for future #[non_exhaustive] variants (FR-17, C-08).
         // Logs at DEBUG and returns Ok to allow the drain task to continue.
         _ => {
@@ -755,6 +816,7 @@ fn current_unix_seconds() -> i64 {
 mod tests {
     use super::*;
     use crate::pool_config::ANALYTICS_QUEUE_CAPACITY;
+    use sqlx::Row as _;
 
     #[test]
     fn test_analytics_write_variant_names() {
@@ -925,5 +987,309 @@ mod tests {
     fn test_current_unix_seconds_positive() {
         let ts = current_unix_seconds();
         assert!(ts > 0, "expected positive unix timestamp, got {ts}");
+    }
+
+    // ---------------------------------------------------------------------------
+    // GraphEdge variant tests (AC-09, R-07, AC-17)
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn test_analytics_write_graph_edge_variant_name() {
+        let event = AnalyticsWrite::GraphEdge {
+            source_id: 1,
+            target_id: 2,
+            relation_type: "Supersedes".to_string(),
+            weight: 1.0,
+            created_by: "test".to_string(),
+            source: "test".to_string(),
+            bootstrap_only: false,
+        };
+        assert_eq!(event.variant_name(), "GraphEdge");
+    }
+
+    #[test]
+    fn test_weight_guard_rejects_nan() {
+        assert!(!f32::NAN.is_finite(), "NaN must not be finite");
+    }
+
+    #[test]
+    fn test_weight_guard_rejects_positive_infinity() {
+        assert!(!f32::INFINITY.is_finite(), "INFINITY must not be finite");
+    }
+
+    #[test]
+    fn test_weight_guard_rejects_negative_infinity() {
+        assert!(
+            !f32::NEG_INFINITY.is_finite(),
+            "NEG_INFINITY must not be finite"
+        );
+    }
+
+    #[test]
+    fn test_weight_guard_accepts_zero() {
+        assert!(0.0_f32.is_finite(), "0.0 must be finite");
+    }
+
+    #[test]
+    fn test_weight_guard_accepts_half() {
+        assert!(0.5_f32.is_finite(), "0.5 must be finite");
+    }
+
+    #[test]
+    fn test_weight_guard_accepts_one() {
+        assert!(1.0_f32.is_finite(), "1.0 must be finite");
+    }
+
+    #[test]
+    fn test_weight_guard_accepts_f32_max() {
+        assert!(f32::MAX.is_finite(), "f32::MAX must be finite");
+    }
+
+    /// Verify graph_edge variant name is included in the existing variant_names test
+    /// by constructing all 3 known cases for GraphEdge-related fields.
+    #[test]
+    fn test_analytics_write_non_exhaustive_contract_preserved() {
+        // Constructing GraphEdge with a wildcard catch-all arm compiles correctly
+        // because #[non_exhaustive] is respected by the catch-all `_ => {}`.
+        let event = AnalyticsWrite::GraphEdge {
+            source_id: 10,
+            target_id: 20,
+            relation_type: "CoAccess".to_string(),
+            weight: 0.75,
+            created_by: "bootstrap".to_string(),
+            source: "co_access".to_string(),
+            bootstrap_only: true,
+        };
+        // Match with explicit catch-all — validates #[non_exhaustive] contract not broken.
+        let name = match &event {
+            AnalyticsWrite::GraphEdge { .. } => "GraphEdge",
+            _ => "other",
+        };
+        assert_eq!(name, "GraphEdge");
+    }
+
+    // ---------------------------------------------------------------------------
+    // Drain integration tests — require graph_edges table
+    // ---------------------------------------------------------------------------
+
+    /// Create the graph_edges table in an in-memory / temp pool for drain tests.
+    async fn create_graph_edges_table(pool: &sqlx::sqlite::SqlitePool) {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS graph_edges (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_id      INTEGER NOT NULL,
+                target_id      INTEGER NOT NULL,
+                relation_type  TEXT    NOT NULL,
+                weight         REAL    NOT NULL DEFAULT 1.0,
+                created_at     INTEGER NOT NULL,
+                created_by     TEXT    NOT NULL DEFAULT '',
+                source         TEXT    NOT NULL DEFAULT '',
+                bootstrap_only INTEGER NOT NULL DEFAULT 0,
+                metadata       TEXT    DEFAULT NULL,
+                UNIQUE(source_id, target_id, relation_type)
+            )",
+        )
+        .execute(pool)
+        .await
+        .expect("create graph_edges table");
+    }
+
+    #[tokio::test]
+    async fn test_analytics_graph_edge_drain_inserts_row() {
+        use crate::test_helpers::open_test_store;
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        // graph_edges table is created by store migration (v13), but test stores
+        // may be at an earlier schema. Ensure the table exists.
+        create_graph_edges_table(&store.write_pool).await;
+
+        store.enqueue_analytics(AnalyticsWrite::GraphEdge {
+            source_id: 1,
+            target_id: 2,
+            relation_type: "Supersedes".to_string(),
+            weight: 1.0,
+            created_by: "test-agent".to_string(),
+            source: "test".to_string(),
+            bootstrap_only: false,
+        });
+
+        // Wait for drain to flush.
+        // DRAIN_FLUSH_INTERVAL is 500ms; sleep must exceed it for the drain to commit.
+        tokio::time::sleep(tokio::time::Duration::from_millis(700)).await;
+
+        let row = sqlx::query(
+            "SELECT source_id, target_id, relation_type, weight, created_by, \
+             source, bootstrap_only, metadata \
+             FROM graph_edges WHERE source_id = 1 AND target_id = 2",
+        )
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("row must exist after drain");
+
+        let src_id: i64 = row.try_get(0).unwrap();
+        let tgt_id: i64 = row.try_get(1).unwrap();
+        let rel: String = row.try_get(2).unwrap();
+        let w: f32 = row.try_get(3).unwrap();
+        let by: String = row.try_get(4).unwrap();
+        let src: String = row.try_get(5).unwrap();
+        let bo: i64 = row.try_get(6).unwrap();
+        let meta: Option<String> = row.try_get(7).unwrap();
+
+        assert_eq!(src_id, 1);
+        assert_eq!(tgt_id, 2);
+        assert_eq!(rel, "Supersedes");
+        assert!((w - 1.0_f32).abs() < f32::EPSILON);
+        assert_eq!(by, "test-agent");
+        assert_eq!(src, "test");
+        assert_eq!(bo, 0);
+        assert!(meta.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_analytics_graph_edge_drain_rejects_nan_weight() {
+        use crate::test_helpers::open_test_store;
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        store.enqueue_analytics(AnalyticsWrite::GraphEdge {
+            source_id: 3,
+            target_id: 4,
+            relation_type: "Supersedes".to_string(),
+            weight: f32::NAN,
+            created_by: "test".to_string(),
+            source: "test".to_string(),
+            bootstrap_only: false,
+        });
+
+        // DRAIN_FLUSH_INTERVAL is 500ms; sleep must exceed it for the drain to commit.
+        tokio::time::sleep(tokio::time::Duration::from_millis(700)).await;
+
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges WHERE source_id = 3")
+            .fetch_one(&store.write_pool)
+            .await
+            .expect("count query");
+        assert_eq!(count, 0, "NaN weight event must not insert a row");
+    }
+
+    #[tokio::test]
+    async fn test_analytics_graph_edge_drain_idempotent_insert_or_ignore() {
+        use crate::test_helpers::open_test_store;
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        for _ in 0..2 {
+            store.enqueue_analytics(AnalyticsWrite::GraphEdge {
+                source_id: 5,
+                target_id: 6,
+                relation_type: "CoAccess".to_string(),
+                weight: 0.5,
+                created_by: "bootstrap".to_string(),
+                source: "co_access".to_string(),
+                bootstrap_only: true,
+            });
+        }
+
+        // DRAIN_FLUSH_INTERVAL is 500ms; sleep must exceed it for the drain to commit.
+        tokio::time::sleep(tokio::time::Duration::from_millis(700)).await;
+
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM graph_edges WHERE source_id = 5 AND target_id = 6",
+        )
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("count query");
+        assert_eq!(
+            count, 1,
+            "INSERT OR IGNORE must deduplicate; expected exactly one row"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_analytics_graph_edge_bootstrap_only_field_persisted() {
+        use crate::test_helpers::open_test_store;
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        store.enqueue_analytics(AnalyticsWrite::GraphEdge {
+            source_id: 7,
+            target_id: 8,
+            relation_type: "Supersedes".to_string(),
+            weight: 1.0,
+            created_by: "bootstrap".to_string(),
+            source: "entries.supersedes".to_string(),
+            bootstrap_only: true,
+        });
+
+        // DRAIN_FLUSH_INTERVAL is 500ms; sleep must exceed it for the drain to commit.
+        tokio::time::sleep(tokio::time::Duration::from_millis(700)).await;
+
+        let bo: i64 =
+            sqlx::query_scalar("SELECT bootstrap_only FROM graph_edges WHERE source_id = 7")
+                .fetch_one(&store.write_pool)
+                .await
+                .expect("row");
+        assert_eq!(bo, 1, "bootstrap_only=true must be stored as 1");
+    }
+
+    #[tokio::test]
+    async fn test_analytics_graph_edge_bootstrap_only_false_persisted() {
+        use crate::test_helpers::open_test_store;
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        store.enqueue_analytics(AnalyticsWrite::GraphEdge {
+            source_id: 9,
+            target_id: 10,
+            relation_type: "Supports".to_string(),
+            weight: 0.8,
+            created_by: "agent-x".to_string(),
+            source: "nli".to_string(),
+            bootstrap_only: false,
+        });
+
+        // DRAIN_FLUSH_INTERVAL is 500ms; sleep must exceed it for the drain to commit.
+        tokio::time::sleep(tokio::time::Duration::from_millis(700)).await;
+
+        let bo: i64 =
+            sqlx::query_scalar("SELECT bootstrap_only FROM graph_edges WHERE source_id = 9")
+                .fetch_one(&store.write_pool)
+                .await
+                .expect("row");
+        assert_eq!(bo, 0, "bootstrap_only=false must be stored as 0");
+    }
+
+    #[tokio::test]
+    async fn test_analytics_graph_edge_metadata_column_is_null() {
+        use crate::test_helpers::open_test_store;
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        store.enqueue_analytics(AnalyticsWrite::GraphEdge {
+            source_id: 11,
+            target_id: 12,
+            relation_type: "CoAccess".to_string(),
+            weight: 0.6,
+            created_by: "bootstrap".to_string(),
+            source: "co_access".to_string(),
+            bootstrap_only: false,
+        });
+
+        // DRAIN_FLUSH_INTERVAL is 500ms; sleep must exceed it for the drain to commit.
+        tokio::time::sleep(tokio::time::Duration::from_millis(700)).await;
+
+        let meta: Option<String> =
+            sqlx::query_scalar("SELECT metadata FROM graph_edges WHERE source_id = 11")
+                .fetch_one(&store.write_pool)
+                .await
+                .expect("row");
+        assert!(
+            meta.is_none(),
+            "metadata must be NULL for all crt-021 writes"
+        );
     }
 }

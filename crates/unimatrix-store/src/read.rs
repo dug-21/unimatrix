@@ -1150,6 +1150,56 @@ impl SqlxStore {
         })
     }
 
+    /// Query all rows from the `graph_edges` table (crt-021).
+    ///
+    /// Used by the background tick to load the full edge set and pass it to
+    /// `build_typed_relation_graph`. No ORDER BY — the caller is order-independent.
+    /// The `metadata` column is intentionally excluded; it is NULL for all crt-021 rows.
+    pub async fn query_graph_edges(&self) -> Result<Vec<GraphEdgeRow>> {
+        let rows = sqlx::query(
+            "SELECT source_id, target_id, relation_type, weight, created_at, \
+                    created_by, source, bootstrap_only \
+             FROM graph_edges",
+        )
+        .fetch_all(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        rows.into_iter()
+            .map(|row| {
+                Ok(GraphEdgeRow {
+                    source_id: row
+                        .try_get::<i64, _>("source_id")
+                        .map_err(|e| StoreError::Database(e.into()))?
+                        as u64,
+                    target_id: row
+                        .try_get::<i64, _>("target_id")
+                        .map_err(|e| StoreError::Database(e.into()))?
+                        as u64,
+                    relation_type: row
+                        .try_get("relation_type")
+                        .map_err(|e| StoreError::Database(e.into()))?,
+                    weight: row
+                        .try_get::<f32, _>("weight")
+                        .map_err(|e| StoreError::Database(e.into()))?,
+                    created_at: row
+                        .try_get::<i64, _>("created_at")
+                        .map_err(|e| StoreError::Database(e.into()))?,
+                    created_by: row
+                        .try_get("created_by")
+                        .map_err(|e| StoreError::Database(e.into()))?,
+                    source: row
+                        .try_get("source")
+                        .map_err(|e| StoreError::Database(e.into()))?,
+                    bootstrap_only: row
+                        .try_get::<i64, _>("bootstrap_only")
+                        .map_err(|e| StoreError::Database(e.into()))?
+                        != 0,
+                })
+            })
+            .collect::<Result<Vec<_>>>()
+    }
+
     /// Load entry metadata for effectiveness classification (crt-018).
     pub async fn load_entry_classification_meta(&self) -> Result<Vec<EntryClassificationMeta>> {
         let rows = sqlx::query(
@@ -1186,6 +1236,27 @@ impl SqlxStore {
             })
             .collect()
     }
+}
+
+// ---------------------------------------------------------------------------
+// Graph edge types (crt-021)
+// ---------------------------------------------------------------------------
+
+/// One row from the `graph_edges` table.
+///
+/// Used by the background tick to load all edges and pass them to
+/// `build_typed_relation_graph`. The `metadata` column is not included —
+/// it is NULL for all crt-021 writes and reserved for W3-1 GNN use.
+#[derive(Debug, Clone)]
+pub struct GraphEdgeRow {
+    pub source_id: u64,
+    pub target_id: u64,
+    pub relation_type: String,
+    pub weight: f32,
+    pub created_at: i64,
+    pub created_by: String,
+    pub source: String,
+    pub bootstrap_only: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -1232,4 +1303,118 @@ pub struct EntryClassificationMeta {
     pub trust_source: String,
     pub helpful_count: u32,
     pub unhelpful_count: u32,
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_helpers::open_test_store;
+
+    /// Create the graph_edges table for tests that run against a pre-v13 schema.
+    async fn create_graph_edges_table(pool: &sqlx::sqlite::SqlitePool) {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS graph_edges (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_id      INTEGER NOT NULL,
+                target_id      INTEGER NOT NULL,
+                relation_type  TEXT    NOT NULL,
+                weight         REAL    NOT NULL DEFAULT 1.0,
+                created_at     INTEGER NOT NULL,
+                created_by     TEXT    NOT NULL DEFAULT '',
+                source         TEXT    NOT NULL DEFAULT '',
+                bootstrap_only INTEGER NOT NULL DEFAULT 0,
+                metadata       TEXT    DEFAULT NULL,
+                UNIQUE(source_id, target_id, relation_type)
+            )",
+        )
+        .execute(pool)
+        .await
+        .expect("create graph_edges table");
+    }
+
+    #[tokio::test]
+    async fn test_query_graph_edges_returns_rows() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        // Insert two rows directly.
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (10, 20, 'Supersedes', 1.0, 1000, 'bootstrap', 'entries.supersedes', 0),
+                    (30, 40, 'CoAccess',   0.6, 2000, 'bootstrap', 'co_access',          1)",
+        )
+        .execute(&store.write_pool)
+        .await
+        .expect("insert rows");
+
+        let rows = store.query_graph_edges().await.expect("query_graph_edges");
+        assert_eq!(rows.len(), 2, "expected 2 GraphEdgeRow entries");
+
+        let sup = rows
+            .iter()
+            .find(|r| r.relation_type == "Supersedes")
+            .expect("Supersedes row");
+        assert_eq!(sup.source_id, 10);
+        assert_eq!(sup.target_id, 20);
+        assert!((sup.weight - 1.0_f32).abs() < f32::EPSILON);
+        assert_eq!(sup.created_at, 1000);
+        assert_eq!(sup.created_by, "bootstrap");
+        assert_eq!(sup.source, "entries.supersedes");
+        assert!(!sup.bootstrap_only);
+
+        let ca = rows
+            .iter()
+            .find(|r| r.relation_type == "CoAccess")
+            .expect("CoAccess row");
+        assert_eq!(ca.source_id, 30);
+        assert_eq!(ca.target_id, 40);
+        assert!(ca.bootstrap_only);
+    }
+
+    #[tokio::test]
+    async fn test_query_graph_edges_returns_empty_on_empty_table() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        let rows = store.query_graph_edges().await.expect("query_graph_edges");
+        assert!(rows.is_empty(), "expected empty vec for empty table");
+    }
+
+    #[tokio::test]
+    async fn test_query_graph_edges_bootstrap_only_bool_mapping() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (1, 2, 'Supersedes', 1.0, 0, 'a', 'b', 0),
+                    (3, 4, 'CoAccess',   0.5, 0, 'a', 'b', 1)",
+        )
+        .execute(&store.write_pool)
+        .await
+        .expect("insert");
+
+        let rows = store.query_graph_edges().await.expect("query");
+        let row_false = rows
+            .iter()
+            .find(|r| r.source_id == 1)
+            .expect("row source_id=1");
+        let row_true = rows
+            .iter()
+            .find(|r| r.source_id == 3)
+            .expect("row source_id=3");
+        assert!(!row_false.bootstrap_only, "0 must map to false");
+        assert!(row_true.bootstrap_only, "1 must map to true");
+    }
 }

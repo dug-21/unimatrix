@@ -15,8 +15,13 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version.
-pub(crate) const CURRENT_SCHEMA_VERSION: u64 = 12;
+/// Current schema version. Incremented from 12 to 13 by crt-021 (W1-1).
+pub const CURRENT_SCHEMA_VERSION: u64 = 13;
+
+/// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
+/// Pairs below this threshold are too infrequent to represent meaningful relationships.
+/// i64 to match sqlx binding conventions for SQLite integer parameters (FR-09, ARCHITECTURE §2b).
+const CO_ACCESS_BOOTSTRAP_MIN_COUNT: i64 = 3;
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -323,7 +328,130 @@ async fn run_main_migrations(
         // Fresh DBs: create_tables_if_needed() creates sessions with keywords already; no-op here.
     }
 
-    // Update schema_version counter to CURRENT_SCHEMA_VERSION (12)
+    // v12 → v13: GRAPH_EDGES table + bootstrap inserts (crt-021)
+    if current_version < 13 {
+        // Step 1: Create graph_edges table (idempotent — CREATE TABLE IF NOT EXISTS).
+        // DDL mirrors create_tables_if_needed in db.rs; both must be kept in sync.
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS graph_edges (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_id      INTEGER NOT NULL,
+                target_id      INTEGER NOT NULL,
+                relation_type  TEXT    NOT NULL,
+                weight         REAL    NOT NULL DEFAULT 1.0,
+                created_at     INTEGER NOT NULL,
+                created_by     TEXT    NOT NULL DEFAULT '',
+                source         TEXT    NOT NULL DEFAULT '',
+                bootstrap_only INTEGER NOT NULL DEFAULT 0,
+                metadata       TEXT    DEFAULT NULL,
+                UNIQUE(source_id, target_id, relation_type)
+            )",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_graph_edges_source_id ON graph_edges(source_id)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_graph_edges_target_id ON graph_edges(target_id)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_graph_edges_relation_type ON graph_edges(relation_type)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // Step 2: Bootstrap Supersedes edges from entries.supersedes.
+        //
+        // Edge direction: source_id = entry.supersedes (old/replaced),
+        //                 target_id = entry.id (new/correcting).
+        // This matches ARCHITECTURE §1 and ALIGNMENT-REPORT VARIANCE 1.
+        // bootstrap_only = 0: entries.supersedes is authoritative, not heuristic.
+        // INSERT OR IGNORE: idempotent via UNIQUE(source_id, target_id, relation_type).
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges
+                (source_id, target_id, relation_type, weight, created_at,
+                 created_by, source, bootstrap_only)
+             SELECT
+                 supersedes          AS source_id,
+                 id                  AS target_id,
+                 'Supersedes'        AS relation_type,
+                 1.0                 AS weight,
+                 strftime('%s','now') AS created_at,
+                 'bootstrap'         AS created_by,
+                 'entries.supersedes' AS source,
+                 0                   AS bootstrap_only
+             FROM entries
+             WHERE supersedes IS NOT NULL",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // Step 3: Bootstrap CoAccess edges from co_access (count >= CO_ACCESS_BOOTSTRAP_MIN_COUNT).
+        //
+        // Weight formula: COALESCE(CAST(count AS REAL) / NULLIF(MAX(count) OVER (), 0), 1.0)
+        //   - MAX(count) OVER () computes max over the filtered rows (WHERE count >= 3).
+        //   - NULLIF(..., 0) guards against theoretical all-zero counts (division by zero → NULL).
+        //   - COALESCE(..., 1.0) handles zero-row result from empty co_access table (R-06).
+        //   - On a clean install with no rows matching count >= 3, the INSERT selects zero rows
+        //     and succeeds with no data written (window function on zero rows → zero rows, not error).
+        //   - bootstrap_only = 0: co_access counts at threshold >= 3 are authoritative signals.
+        //   - INSERT OR IGNORE: idempotent on re-run.
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges
+                (source_id, target_id, relation_type, weight, created_at,
+                 created_by, source, bootstrap_only)
+             SELECT
+                 entry_id_a          AS source_id,
+                 entry_id_b          AS target_id,
+                 'CoAccess'          AS relation_type,
+                 COALESCE(
+                     CAST(count AS REAL) / NULLIF(MAX(count) OVER (), 0),
+                     1.0
+                 )                   AS weight,
+                 strftime('%s','now') AS created_at,
+                 'bootstrap'         AS created_by,
+                 'co_access'         AS source,
+                 0                   AS bootstrap_only
+             FROM co_access
+             WHERE count >= ?1",
+        )
+        .bind(CO_ACCESS_BOOTSTRAP_MIN_COUNT)
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // Step 4: No Contradicts bootstrap.
+        // shadow_evaluations has no entry ID pairs (entry #2404, AC-08).
+        // All Contradicts edges are created at runtime by W1-2 NLI.
+        // This comment documents the decision; no SQL is emitted.
+    }
+
+    // Update schema_version counter to CURRENT_SCHEMA_VERSION (13).
     sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', ?1)")
         .bind(CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut **txn)

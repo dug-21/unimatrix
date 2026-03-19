@@ -329,8 +329,8 @@ async fn test_migration_v11_to_v12_adds_keywords_column() {
         "keywords column should exist after migration"
     );
 
-    // Assert: schema_version bumped to 12
-    assert_eq!(read_schema_version(&store).await, 12);
+    // Assert: schema_version bumped to 13 (migration continues through v12→v13)
+    assert_eq!(read_schema_version(&store).await, 13);
 
     store.close().await.unwrap();
 }
@@ -391,17 +391,17 @@ async fn test_migration_v12_idempotency() {
         let store = SqlxStore::open(&db_path, PoolConfig::default())
             .await
             .expect("open store");
-        assert_eq!(read_schema_version(&store).await, 12);
+        assert_eq!(read_schema_version(&store).await, 13);
         store.close().await.unwrap();
     }
 
-    // Act: re-open on same path -- migration should skip (already at v12)
+    // Act: re-open on same path -- migration should skip (already at v13)
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
         .expect("re-open store");
 
-    // Assert: no error, schema still 12
-    assert_eq!(read_schema_version(&store).await, 12);
+    // Assert: no error, schema still 13
+    assert_eq!(read_schema_version(&store).await, 13);
     assert!(has_column(&store, "sessions", "keywords").await);
 
     store.close().await.unwrap();
@@ -421,7 +421,7 @@ async fn test_migration_v12_empty_database() {
         .expect("open store");
 
     // Assert: migration succeeds with no rows
-    assert_eq!(read_schema_version(&store).await, 12);
+    assert_eq!(read_schema_version(&store).await, 13);
     assert!(has_column(&store, "sessions", "keywords").await);
 
     store.close().await.unwrap();
