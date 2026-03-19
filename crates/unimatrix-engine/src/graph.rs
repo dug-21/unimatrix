@@ -580,21 +580,6 @@ fn entry_by_id(id: u64, entries: &[EntryRecord]) -> Option<&EntryRecord> {
 //
 // These aliases and wrapper functions preserve backward compatibility with
 // `unimatrix-server` code that has not yet been updated by the server-state
-// and background-tick agents. They will be removed once all crt-021 components
-// are implemented and the server is updated to use the new types directly.
-
-/// Backward-compatible alias for `TypedRelationGraph`.
-/// Removed when `services/supersession.rs` → `services/typed_graph.rs` rename is complete.
-#[deprecated(note = "use TypedRelationGraph directly")]
-pub type SupersessionGraph = TypedRelationGraph;
-
-/// Backward-compatible single-argument wrapper for `build_typed_relation_graph`.
-/// Removed when `services/search.rs` is updated to call `build_typed_relation_graph`.
-#[deprecated(note = "use build_typed_relation_graph(entries, &[]) instead")]
-pub fn build_supersession_graph(entries: &[EntryRecord]) -> Result<TypedRelationGraph, GraphError> {
-    build_typed_relation_graph(entries, &[])
-}
-
 // -- Tests --
 
 #[cfg(test)]
