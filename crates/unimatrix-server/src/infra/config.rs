@@ -73,6 +73,8 @@ pub struct UnimatrixConfig {
     pub agents: AgentsConfig,
     #[serde(default)]
     pub confidence: ConfidenceConfig,
+    #[serde(default)]
+    pub inference: InferenceConfig,
     // CycleConfig is intentionally absent (ADR-004: stub removed, rename is hardcoded).
 }
 
@@ -181,6 +183,63 @@ pub struct ConfidenceWeights {
     pub trust: f64,
 }
 
+/// `[inference]` section — ML inference thread pool configuration.
+///
+/// Follows the same `#[serde(default)]` pattern as all other sections.
+/// An absent `[inference]` section uses compiled defaults (ADR-003).
+///
+/// # Pool sizing (ADR-003)
+///
+/// Default formula: `(num_cpus::get() / 2).max(4).min(8)`.
+/// Floor raised from 2 to 4 to ensure at least 3 threads are available for MCP
+/// embedding calls when both the contradiction scan and quality-gate loop are active.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(default)]
+pub struct InferenceConfig {
+    /// Number of rayon threads for the `ml_inference_pool`.
+    ///
+    /// Default: `(num_cpus::get() / 2).max(4).min(8)` (ADR-003 pool floor = 4).
+    /// Valid range: `[1, 64]`. Out-of-range aborts startup with a structured error.
+    ///
+    /// Operators on resource-constrained deployments may set this as low as 1.
+    /// W1-4 (NLI) and W2-4 (GGUF) will add fields to this section without renaming it (C-08).
+    pub rayon_pool_size: usize,
+}
+
+impl Default for InferenceConfig {
+    fn default() -> Self {
+        // ADR-003: floor = 4 (supersedes SCOPE.md floor = 2).
+        // Reasoning:
+        //   1 thread max: contradiction scan
+        //   1 thread max: quality-gate embedding loop (runs concurrently with scan)
+        //   2 threads min: concurrent MCP inference calls
+        //   Total minimum: 4
+        //
+        // On single-core: num_cpus = 1; 1/2 = 0 (integer); max(0, 4) = 4.
+        // On dual-core:   num_cpus = 2; 2/2 = 1; max(1, 4) = 4.
+        // On octa-core:   num_cpus = 8; 8/2 = 4; max(4, 4) = 4; min(4, 8) = 4.
+        // On 20-core:    num_cpus = 20; 20/2 = 10; max(10, 4) = 10; min(10, 8) = 8.
+        InferenceConfig {
+            rayon_pool_size: (num_cpus::get() / 2).max(4).min(8),
+        }
+    }
+}
+
+impl InferenceConfig {
+    /// Validate that `rayon_pool_size` is within the allowed range `[1, 64]`.
+    ///
+    /// Out-of-range values abort startup with `ConfigError::InferencePoolSizeOutOfRange`.
+    pub fn validate(&self, path: &Path) -> Result<(), ConfigError> {
+        if self.rayon_pool_size < 1 || self.rayon_pool_size > 64 {
+            return Err(ConfigError::InferencePoolSizeOutOfRange {
+                path: path.to_path_buf(),
+                value: self.rayon_pool_size,
+            });
+        }
+        Ok(())
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Preset enum
 // ---------------------------------------------------------------------------
@@ -279,6 +338,11 @@ pub enum ConfigError {
     CustomWeightSumInvariant {
         path: PathBuf,
         sum: f64,
+    },
+    /// `[inference] rayon_pool_size` outside `[1, 64]`.
+    InferencePoolSizeOutOfRange {
+        path: PathBuf,
+        value: usize,
     },
 }
 
@@ -419,6 +483,13 @@ impl fmt::Display for ConfigError {
                 sum,
                 SUM_INVARIANT,
                 SUM_TOLERANCE
+            ),
+            ConfigError::InferencePoolSizeOutOfRange { path, value } => write!(
+                f,
+                "config error in {}: [inference] rayon_pool_size is {} \
+                 which is out of range; valid range is [1, 64]",
+                path.display(),
+                value
             ),
         }
     }
@@ -643,6 +714,9 @@ pub fn validate_config(config: &UnimatrixConfig, path: &Path) -> Result<(), Conf
             // No validation of weight values for named presets — they are not used.
         }
     }
+
+    // --- Validate [inference] rayon_pool_size ---
+    config.inference.validate(path)?;
 
     Ok(())
 }
@@ -887,6 +961,15 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             // here is a simple Option::or — cross-level inheritance prohibition is enforced
             // during per-file validation before merge is called.
             weights: project.confidence.weights.or(global.confidence.weights),
+        },
+        inference: InferenceConfig {
+            rayon_pool_size: if project.inference.rayon_pool_size
+                != default.inference.rayon_pool_size
+            {
+                project.inference.rayon_pool_size
+            } else {
+                global.inference.rayon_pool_size
+            },
         },
     }
 }
