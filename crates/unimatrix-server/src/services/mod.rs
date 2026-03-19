@@ -15,6 +15,7 @@ use unimatrix_adapt::AdaptationService;
 use crate::error::ServerError;
 use crate::infra::audit::AuditLog;
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::rayon_pool::RayonPool;
 use crate::infra::registry::TrustLevel;
 use crate::infra::usage_dedup::UsageDedup;
 
@@ -244,6 +245,10 @@ pub struct ServiceLayer {
     /// `context_status` call. Held here for external access via
     /// `contradiction_cache_handle()` (mirrors `supersession_state_handle()`).
     contradiction_cache: ContradictionScanCacheHandle,
+    /// crt-022 (ADR-004): shared rayon thread pool for ML inference (ONNX embedding,
+    /// future NLI and GNN). All consumers receive this via `Arc::clone` from `ServiceLayer`.
+    pub(crate) ml_inference_pool: Arc<RayonPool>,
+    // TODO(W2-4): add gguf_rayon_pool: Arc<RayonPool> here
 }
 
 impl ServiceLayer {
@@ -296,6 +301,7 @@ impl ServiceLayer {
         audit: Arc<AuditLog>,
         usage_dedup: Arc<UsageDedup>,
         boosted_categories: std::collections::HashSet<String>,
+        ml_inference_pool: Arc<RayonPool>,
     ) -> Self {
         Self::with_rate_config(
             store,
@@ -308,6 +314,7 @@ impl ServiceLayer {
             usage_dedup,
             RateLimitConfig::default(),
             boosted_categories,
+            ml_inference_pool,
         )
     }
 
@@ -322,6 +329,7 @@ impl ServiceLayer {
         usage_dedup: Arc<UsageDedup>,
         rate_config: RateLimitConfig,
         boosted_categories: std::collections::HashSet<String>,
+        ml_inference_pool: Arc<RayonPool>,
     ) -> Self {
         let gateway = Arc::new(SecurityGateway::with_rate_config(
             Arc::clone(&audit),
@@ -405,6 +413,7 @@ impl ServiceLayer {
             effectiveness_state, // crt-018b: held for external access via effectiveness_state_handle()
             typed_graph_state,   // crt-021: held for external access via typed_graph_handle()
             contradiction_cache, // GH #278: held for external access via contradiction_cache_handle()
+            ml_inference_pool,   // crt-022 (ADR-004): shared ML inference pool
         }
     }
 }

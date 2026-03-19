@@ -100,6 +100,8 @@ pub enum ServerError {
     SelfLockout,
     /// Observation analysis failed.
     ObservationError(String),
+    /// Rayon ML inference pool failed to initialize at startup.
+    InferencePoolInit(String),
 }
 
 impl fmt::Display for ServerError {
@@ -151,6 +153,9 @@ impl fmt::Display for ServerError {
             }
             ServerError::ObservationError(msg) => {
                 write!(f, "observation analysis error: {msg}")
+            }
+            ServerError::InferencePoolInit(msg) => {
+                write!(f, "inference pool initialization failed: {msg}")
             }
         }
     }
@@ -277,6 +282,11 @@ impl From<ServerError> for ErrorData {
             ServerError::ObservationError(msg) => ErrorData::new(
                 ERROR_NO_OBSERVATION_DATA,
                 format!("Observation analysis error: {msg}"),
+                None,
+            ),
+            ServerError::InferencePoolInit(msg) => ErrorData::new(
+                ERROR_INTERNAL,
+                format!("Inference pool initialization failed: {msg}"),
                 None,
             ),
         }

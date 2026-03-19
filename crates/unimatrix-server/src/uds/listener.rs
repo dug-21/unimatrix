@@ -2411,6 +2411,10 @@ mod tests {
         );
         let audit = Arc::new(crate::infra::audit::AuditLog::new(Arc::clone(store)));
         let usage_dedup = Arc::new(crate::infra::usage_dedup::UsageDedup::new());
+        let test_pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "test-pool")
+                .expect("test RayonPool construction must succeed"),
+        );
         crate::services::ServiceLayer::new(
             Arc::clone(store),
             vector_index,
@@ -2422,6 +2426,7 @@ mod tests {
             usage_dedup,
             // dsn-001: default; test helper preserves pre-dsn-001 behavior.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
+            test_pool,
         )
     }
 
