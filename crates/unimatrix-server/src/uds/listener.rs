@@ -35,10 +35,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::rayon_pool::RayonPool;
 use crate::infra::registry::Capability;
 use crate::infra::session::{
     ReworkEvent, SessionOutcome, SessionRegistry, SetFeatureResult, SignalOutput,
 };
+use crate::infra::timeout::MCP_HANDLER_TIMEOUT;
 use crate::infra::validation::{CYCLE_START_EVENT, CYCLE_STOP_EVENT};
 use crate::server::PendingEntriesAnalysis;
 use crate::uds::uds_has_capability;
@@ -483,7 +485,7 @@ async fn dispatch_request(
             }
 
             // Pre-warm embedding model (FR-04)
-            warm_embedding_model(embed_service).await;
+            warm_embedding_model(embed_service, &services.ml_inference_pool).await;
 
             HookResponse::Ack
         }
@@ -1377,10 +1379,22 @@ fn truncate_utf8(s: &str, max_bytes: usize) -> &str {
 /// Blocks until the model is loaded (or failed), then runs a no-op embedding
 /// to force ONNX runtime initialization. Returns without error on any failure
 /// (warming is best-effort).
-async fn warm_embedding_model(embed_service: &Arc<EmbedServiceHandle>) {
+///
+/// crt-022 (Site 6, Pattern A): warmup runs on the MCP handler path and uses
+/// `spawn_with_timeout(MCP_HANDLER_TIMEOUT, ...)` to prevent an indefinitely
+/// hung ONNX session from blocking the UDS session-start response.
+async fn warm_embedding_model(
+    embed_service: &Arc<EmbedServiceHandle>,
+    ml_inference_pool: &Arc<RayonPool>,
+) {
     match embed_service.get_adapter().await {
         Ok(adapter) => {
-            match tokio::task::spawn_blocking(move || adapter.embed_entry("", "warmup")).await {
+            match ml_inference_pool
+                .spawn_with_timeout(MCP_HANDLER_TIMEOUT, move || {
+                    adapter.embed_entry("", "warmup")
+                })
+                .await
+            {
                 Ok(Ok(_)) => {
                     tracing::info!("ONNX embedding model pre-warmed");
                 }
@@ -1388,7 +1402,8 @@ async fn warm_embedding_model(embed_service: &Arc<EmbedServiceHandle>) {
                     tracing::warn!("warmup embedding failed: {e}");
                 }
                 Err(e) => {
-                    tracing::warn!("warmup spawn_blocking failed: {e}");
+                    // RayonError::Cancelled or TimedOut — warmup failure is non-fatal.
+                    tracing::warn!("warmup rayon task did not complete: {e}");
                 }
             }
         }
