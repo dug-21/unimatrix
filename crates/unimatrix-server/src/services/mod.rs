@@ -366,6 +366,7 @@ impl ServiceLayer {
             Arc::clone(&effectiveness_state),
             Arc::clone(&typed_graph_state),
             boosted_categories,
+            Arc::clone(&ml_inference_pool),
         );
 
         let store_ops = StoreService::new(
@@ -377,6 +378,7 @@ impl ServiceLayer {
             Arc::clone(&adapt_service),
             Arc::clone(&gateway),
             Arc::clone(&audit),
+            Arc::clone(&ml_inference_pool),
         );
 
         let semantic_k = briefing::parse_semantic_k();
@@ -395,6 +397,7 @@ impl ServiceLayer {
             Arc::clone(&adapt_service),
             Arc::clone(&confidence_state_handle),
             Arc::clone(&contradiction_cache),
+            Arc::clone(&ml_inference_pool),
         );
 
         let usage = UsageService::new(

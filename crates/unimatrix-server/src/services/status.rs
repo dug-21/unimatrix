@@ -17,8 +17,9 @@ use unimatrix_adapt::AdaptationService;
 use crate::infra::coherence;
 use crate::infra::contradiction;
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::rayon_pool::RayonPool;
 use crate::infra::session::SessionRegistry;
-use crate::infra::timeout::{MCP_HANDLER_TIMEOUT, spawn_blocking_with_timeout};
+use crate::infra::timeout::MCP_HANDLER_TIMEOUT;
 use crate::mcp::response::status::{CoAccessClusterEntry, StatusReport};
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
@@ -173,6 +174,8 @@ pub(crate) struct StatusService {
     /// `compute_report()` reads the cached result instead of running O(N) ONNX
     /// inference on every call. `None` on cold-start; set after first scan tick.
     contradiction_cache: ContradictionScanCacheHandle,
+    /// crt-022 (ADR-004): shared rayon thread pool for ML inference (ONNX embedding).
+    rayon_pool: Arc<RayonPool>,
 }
 
 /// Result of maintenance operations.
@@ -208,6 +211,7 @@ impl StatusService {
         adapt_service: Arc<AdaptationService>,
         confidence_state: ConfidenceStateHandle,
         contradiction_cache: ContradictionScanCacheHandle,
+        rayon_pool: Arc<RayonPool>,
     ) -> Self {
         StatusService {
             store,
@@ -216,6 +220,7 @@ impl StatusService {
             adapt_service,
             confidence_state,
             contradiction_cache,
+            rayon_pool,
         }
     }
 
@@ -539,16 +544,18 @@ impl StatusService {
                 let adapter_for_embed = Arc::clone(&adapter);
                 let config_for_embed = contradiction::ContradictionConfig::default();
 
-                match spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
-                    let vs = VectorAdapter::new(vi_for_embed);
-                    contradiction::check_embedding_consistency(
-                        &store_for_embed,
-                        &vs,
-                        &*adapter_for_embed,
-                        &config_for_embed,
-                    )
-                })
-                .await
+                match self
+                    .rayon_pool
+                    .spawn_with_timeout(MCP_HANDLER_TIMEOUT, move || {
+                        let vs = VectorAdapter::new(vi_for_embed);
+                        contradiction::check_embedding_consistency(
+                            &store_for_embed,
+                            &vs,
+                            &*adapter_for_embed,
+                            &config_for_embed,
+                        )
+                    })
+                    .await
                 {
                     Ok(Ok(inconsistencies)) => {
                         report.embedding_inconsistencies = inconsistencies;
@@ -1605,6 +1612,10 @@ mod maintenance_snapshot_tests {
         ));
         let confidence_state = Arc::new(std::sync::RwLock::new(ConfidenceState::default()));
         let contradiction_cache = new_contradiction_cache_handle();
+        let test_rayon_pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "test_pool")
+                .expect("test rayon pool construction"),
+        );
         StatusService::new(
             Arc::clone(store),
             vector_index,
@@ -1612,6 +1623,7 @@ mod maintenance_snapshot_tests {
             adapt_service,
             confidence_state,
             contradiction_cache,
+            test_rayon_pool,
         )
     }
 

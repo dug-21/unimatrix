@@ -31,6 +31,7 @@ use unimatrix_adapt::AdaptationService;
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::contradiction::{self, ContradictionConfig};
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::rayon_pool::RayonPool;
 use crate::infra::session::SessionRegistry;
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
@@ -226,6 +227,7 @@ pub fn spawn_background_tick(
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
     confidence_params: Arc<ConfidenceParams>, // dsn-001: operator-configured weights
+    ml_inference_pool: Arc<RayonPool>,        // crt-022 (ADR-004): ML inference pool
 ) -> tokio::task::JoinHandle<()> {
     // Outer supervisor — this handle is stored as tick_handle and aborted on shutdown.
     tokio::spawn(async move {
@@ -248,6 +250,7 @@ pub fn spawn_background_tick(
                 Arc::clone(&audit_log),
                 auto_quarantine_cycles,
                 Arc::clone(&confidence_params),
+                Arc::clone(&ml_inference_pool),
             ));
 
             match inner_handle.await {
@@ -287,6 +290,7 @@ async fn background_tick_loop(
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
     _confidence_params: Arc<ConfidenceParams>, // dsn-001: operator-configured weights (for future use in run_single_tick)
+    ml_inference_pool: Arc<RayonPool>,         // crt-022 (ADR-004): ML inference pool
 ) {
     let tick_interval_secs = read_tick_interval();
     let mut interval = tokio::time::interval(Duration::from_secs(tick_interval_secs));
@@ -341,6 +345,7 @@ async fn background_tick_loop(
             &audit_log,
             auto_quarantine_cycles,
             tick_interval_secs,
+            &ml_inference_pool,
         )
         .await;
 
@@ -384,6 +389,7 @@ async fn run_single_tick(
     audit_log: &Arc<AuditLog>,
     auto_quarantine_cycles: u32,
     tick_interval_secs: u64, // nan-006: configurable via UNIMATRIX_TICK_INTERVAL_SECS
+    ml_inference_pool: &Arc<RayonPool>, // crt-022 (ADR-004): ML inference pool
 ) -> Result<(), String> {
     let tick_start = now_secs();
     tracing::info!("background tick starting");
@@ -396,6 +402,7 @@ async fn run_single_tick(
         Arc::clone(adapt_service),
         Arc::clone(confidence_state),
         Arc::clone(contradiction_cache),
+        Arc::clone(ml_inference_pool),
     );
     match tokio::time::timeout(
         TICK_TIMEOUT,
@@ -538,9 +545,9 @@ async fn run_single_tick(
 
             tracing::debug!(tick = current_tick, "contradiction scan starting");
 
-            match tokio::time::timeout(
-                TICK_TIMEOUT,
-                tokio::task::spawn_blocking(move || {
+            // crt-022 (Site 4, Pattern B): background task — no timeout, error! on Cancelled.
+            match ml_inference_pool
+                .spawn(move || {
                     let vs = VectorAdapter::new(vi_for_scan);
                     contradiction::scan_contradictions(
                         &store_for_scan,
@@ -548,11 +555,10 @@ async fn run_single_tick(
                         &*adapter_for_scan,
                         &config_for_scan,
                     )
-                }),
-            )
-            .await
+                })
+                .await
             {
-                Ok(Ok(Ok(pairs))) => {
+                Ok(Ok(pairs)) => {
                     let pair_count = pairs.len();
                     let mut guard = contradiction_cache
                         .write()
@@ -564,17 +570,14 @@ async fn run_single_tick(
                         "contradiction scan complete; cache updated"
                     );
                 }
-                Ok(Ok(Err(e))) => {
+                Ok(Err(e)) => {
                     tracing::warn!(tick = current_tick, error = %e, "contradiction scan failed; cache retained");
                 }
-                Ok(Err(e)) => {
-                    tracing::warn!(tick = current_tick, error = %e, "contradiction scan task panicked; cache retained");
-                }
-                Err(_) => {
-                    tracing::warn!(
+                Err(e) => {
+                    tracing::error!(
+                        error = %e,
                         tick = current_tick,
-                        timeout_secs = TICK_TIMEOUT.as_secs(),
-                        "contradiction scan timed out; cache retained"
+                        "contradiction scan rayon task cancelled; cache retained"
                     );
                 }
             }
@@ -591,6 +594,7 @@ async fn run_single_tick(
             extraction_ctx,
             neural_enhancer,
             shadow_evaluator,
+            ml_inference_pool,
         ),
     )
     .await
@@ -1069,6 +1073,7 @@ async fn extraction_tick(
     ctx: &mut ExtractionContext,
     neural_enhancer: Option<&NeuralEnhancer>,
     shadow_evaluator: Option<&mut ShadowEvaluator>,
+    ml_inference_pool: &Arc<RayonPool>, // crt-022 (ADR-004): ML inference pool for quality-gate
 ) -> Result<ExtractionStats, ServiceError> {
     let store_clone = Arc::clone(store);
     let watermark = ctx.last_watermark;
@@ -1159,50 +1164,62 @@ async fn extraction_tick(
             let store_for_gate = Arc::clone(store);
             let vi_for_gate = Arc::clone(vector_index);
 
-            let final_accepted = tokio::task::spawn_blocking(move || {
-                let vs = VectorAdapter::new(vi_for_gate);
-                let config = ContradictionConfig::default();
-                let mut passed = Vec::new();
+            // crt-022 (Site 5, Pattern B): background task — no timeout, error! on Cancelled.
+            let gate_result = ml_inference_pool
+                .spawn(move || {
+                    let vs = VectorAdapter::new(vi_for_gate);
+                    let config = ContradictionConfig::default();
+                    let mut passed = Vec::new();
 
-                for entry in accepted {
-                    // Check 5: Near-duplicate via embedding similarity
-                    let embedding = match adapter.embed_entry(&entry.title, &entry.content) {
-                        Ok(v) => v,
-                        Err(_) => {
-                            passed.push(entry);
+                    for entry in accepted {
+                        // Check 5: Near-duplicate via embedding similarity
+                        let embedding = match adapter.embed_entry(&entry.title, &entry.content) {
+                            Ok(v) => v,
+                            Err(_) => {
+                                passed.push(entry);
+                                continue;
+                            }
+                        };
+                        let neighbors = match vs.search(&embedding, 1, 32) {
+                            Ok(n) => n,
+                            Err(_) => {
+                                passed.push(entry);
+                                continue;
+                            }
+                        };
+                        if neighbors.first().is_some_and(|top| top.similarity >= 0.92) {
+                            // Near-duplicate, skip
                             continue;
                         }
-                    };
-                    let neighbors = match vs.search(&embedding, 1, 32) {
-                        Ok(n) => n,
-                        Err(_) => {
-                            passed.push(entry);
-                            continue;
+
+                        // Check 6: Contradiction check
+                        if let Ok(Some(_)) = contradiction::check_entry_contradiction(
+                            &entry.content,
+                            &entry.title,
+                            &store_for_gate,
+                            &vs,
+                            &*adapter,
+                            &config,
+                        ) {
+                            continue; // contradiction detected, skip
                         }
-                    };
-                    if neighbors.first().is_some_and(|top| top.similarity >= 0.92) {
-                        // Near-duplicate, skip
-                        continue;
-                    }
 
-                    // Check 6: Contradiction check
-                    if let Ok(Some(_)) = contradiction::check_entry_contradiction(
-                        &entry.content,
-                        &entry.title,
-                        &store_for_gate,
-                        &vs,
-                        &*adapter,
-                        &config,
-                    ) {
-                        continue; // contradiction detected, skip
+                        passed.push(entry);
                     }
+                    passed
+                })
+                .await;
 
-                    passed.push(entry);
+            let final_accepted = match gate_result {
+                Ok(passed) => passed,
+                Err(e) => {
+                    tracing::error!(
+                        error = %e,
+                        "quality-gate embedding rayon task cancelled; skipping store step"
+                    );
+                    return Ok(ctx.stats.clone());
                 }
-                passed
-            })
-            .await
-            .map_err(|e| ServiceError::Core(CoreError::JoinError(e.to_string())))?;
+            };
 
             // 5. Store accepted entries
             let store_for_insert = Arc::clone(store);

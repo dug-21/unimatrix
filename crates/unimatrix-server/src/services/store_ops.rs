@@ -13,7 +13,8 @@ use unimatrix_core::{
 
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
-use crate::infra::timeout::{MCP_HANDLER_TIMEOUT, spawn_blocking_with_timeout};
+use crate::infra::rayon_pool::RayonPool;
+use crate::infra::timeout::MCP_HANDLER_TIMEOUT;
 use crate::services::gateway::SecurityGateway;
 use crate::services::{AuditContext, CallerId, ServiceError};
 
@@ -50,6 +51,8 @@ pub(crate) struct StoreService {
     pub(crate) adapt_service: Arc<AdaptationService>,
     pub(crate) gateway: Arc<SecurityGateway>,
     pub(crate) audit: Arc<AuditLog>,
+    /// crt-022 (ADR-004): shared rayon thread pool for ML inference (ONNX embedding).
+    pub(crate) rayon_pool: Arc<RayonPool>,
 }
 
 impl StoreService {
@@ -63,6 +66,7 @@ impl StoreService {
         adapt_service: Arc<AdaptationService>,
         gateway: Arc<SecurityGateway>,
         audit: Arc<AuditLog>,
+        rayon_pool: Arc<RayonPool>,
     ) -> Self {
         StoreService {
             store,
@@ -73,6 +77,7 @@ impl StoreService {
             adapt_service,
             gateway,
             audit,
+            rayon_pool,
         }
     }
 
@@ -110,13 +115,15 @@ impl StoreService {
                     .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?;
                 let title = entry.title.clone();
                 let content = entry.content.clone();
-                let raw = spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, {
-                    let adapter = Arc::clone(&adapter);
-                    move || adapter.embed_entry(&title, &content)
-                })
-                .await
-                .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?
-                .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?;
+                let raw = self
+                    .rayon_pool
+                    .spawn_with_timeout(MCP_HANDLER_TIMEOUT, {
+                        let adapter = Arc::clone(&adapter);
+                        move || adapter.embed_entry(&title, &content)
+                    })
+                    .await
+                    .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?
+                    .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?;
 
                 let adapted = self.adapt_service.adapt_embedding(
                     &raw,

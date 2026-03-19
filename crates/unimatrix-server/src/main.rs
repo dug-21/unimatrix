@@ -575,6 +575,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&audit),
         auto_quarantine_cycles,
         Arc::clone(&confidence_params),
+        Arc::clone(&ml_inference_pool),
     );
 
     // Create daemon CancellationToken (ADR-002).
@@ -901,6 +902,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&audit),         // crt-018b: for tick_skipped audit events
         auto_quarantine_cycles,     // crt-018b: auto-quarantine threshold
         Arc::clone(&confidence_params),
+        Arc::clone(&ml_inference_pool), // crt-022 (ADR-004): ML inference pool
     );
 
     // Prepare lifecycle handles for shutdown.

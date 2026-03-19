@@ -9,7 +9,7 @@ use unimatrix_core::{CoreError, EmbedService, NewEntry};
 use unimatrix_store::StoreError;
 
 use crate::infra::audit::{AuditEvent, Outcome};
-use crate::infra::timeout::{MCP_HANDLER_TIMEOUT, spawn_blocking_with_timeout};
+use crate::infra::timeout::MCP_HANDLER_TIMEOUT;
 use crate::services::{AuditContext, CallerId, ServiceError};
 
 use super::store_ops::{CorrectResult, StoreService};
@@ -47,13 +47,15 @@ impl StoreService {
         let content = corrected.content.clone();
         let category = corrected.category.clone();
         let topic = corrected.topic.clone();
-        let raw = spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, {
-            let adapter = Arc::clone(&adapter);
-            move || adapter.embed_entry(&title, &content)
-        })
-        .await
-        .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?
-        .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?;
+        let raw = self
+            .rayon_pool
+            .spawn_with_timeout(MCP_HANDLER_TIMEOUT, {
+                let adapter = Arc::clone(&adapter);
+                move || adapter.embed_entry(&title, &content)
+            })
+            .await
+            .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?
+            .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?;
 
         let adapted = self
             .adapt_service
