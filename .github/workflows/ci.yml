@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  enforce-inference-sites:
+    name: Enforce inference site conventions (AC-07 / crt-022)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enforce no spawn_blocking at ONNX inference sites (AC-07 / crt-022)
+        run: bash scripts/check-inference-sites.sh
