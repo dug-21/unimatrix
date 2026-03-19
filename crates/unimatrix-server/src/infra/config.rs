@@ -2236,4 +2236,203 @@ mod tests {
         assert!(msg.contains("/tmp/config.toml"));
         assert!(msg.contains("0.92") || msg.contains("0.95"));
     }
+
+    #[test]
+    fn test_display_inference_pool_size_out_of_range() {
+        let err = ConfigError::InferencePoolSizeOutOfRange {
+            path: PathBuf::from("/tmp/config.toml"),
+            value: 0,
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("/tmp/config.toml"));
+        assert!(
+            msg.contains("rayon_pool_size") || msg.contains("inference"),
+            "error must mention rayon_pool_size or inference, got: {msg}"
+        );
+        assert!(
+            msg.contains("0") || msg.contains("range"),
+            "error must mention the value or range, got: {msg}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // [inference] InferenceConfig validation tests (AC-09, AC-11 #5–8)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_inference_config_valid_lower_bound() {
+        // AC-11 #5: rayon_pool_size = 1 → validate() returns Ok(())
+        let config = InferenceConfig { rayon_pool_size: 1 };
+        assert!(
+            config.validate(Path::new("/fake")).is_ok(),
+            "rayon_pool_size = 1 is the valid lower bound and must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_valid_upper_bound() {
+        // AC-11 #6: rayon_pool_size = 64 → validate() returns Ok(())
+        let config = InferenceConfig { rayon_pool_size: 64 };
+        assert!(
+            config.validate(Path::new("/fake")).is_ok(),
+            "rayon_pool_size = 64 is the valid upper bound and must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_rejects_zero() {
+        // AC-11 #7: rayon_pool_size = 0 → Err(InferencePoolSizeOutOfRange { value: 0 })
+        let config = InferenceConfig { rayon_pool_size: 0 };
+        let err = config.validate(Path::new("/fake")).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::InferencePoolSizeOutOfRange { value: 0, .. }),
+            "rayon_pool_size = 0 must return InferencePoolSizeOutOfRange with value 0, got: {err}"
+        );
+        let msg = err.to_string();
+        assert!(
+            msg.contains("rayon_pool_size"),
+            "error must name rayon_pool_size, got: {msg}"
+        );
+        assert!(
+            msg.contains("[inference]"),
+            "error must mention [inference] section, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_rejects_sixty_five() {
+        // AC-11 #8: rayon_pool_size = 65 → Err(InferencePoolSizeOutOfRange { value: 65 })
+        let config = InferenceConfig { rayon_pool_size: 65 };
+        let err = config.validate(Path::new("/fake")).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::InferencePoolSizeOutOfRange { value: 65, .. }),
+            "rayon_pool_size = 65 must return InferencePoolSizeOutOfRange with value 65, got: {err}"
+        );
+        let msg = err.to_string();
+        assert!(
+            msg.contains("64") || msg.contains("65"),
+            "error must mention the upper bound or offending value, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_valid_eight() {
+        // R-07 scenario 3: mid-range value matching the formula ceiling max(4).min(8)
+        let config = InferenceConfig { rayon_pool_size: 8 };
+        assert!(
+            config.validate(Path::new("/fake")).is_ok(),
+            "rayon_pool_size = 8 (formula ceiling) must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_valid_four() {
+        // R-07: ADR-003 floor value must be valid
+        let config = InferenceConfig { rayon_pool_size: 4 };
+        assert!(
+            config.validate(Path::new("/fake")).is_ok(),
+            "rayon_pool_size = 4 (ADR-003 floor) must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_default_formula_in_range() {
+        // R-07 scenario 5, AC-09: Default::default() always produces a value in [4, 8]
+        // Formula: (num_cpus::get() / 2).max(4).min(8)
+        let config = InferenceConfig::default();
+        assert!(
+            config.rayon_pool_size >= 4,
+            "default rayon_pool_size must be >= 4 (ADR-003 floor), got {}",
+            config.rayon_pool_size
+        );
+        assert!(
+            config.rayon_pool_size <= 8,
+            "default rayon_pool_size must be <= 8 (formula ceiling), got {}",
+            config.rayon_pool_size
+        );
+        assert!(
+            config.validate(Path::new("/fake")).is_ok(),
+            "default InferenceConfig must always pass validation, got pool_size = {}",
+            config.rayon_pool_size
+        );
+    }
+
+    #[test]
+    fn test_inference_config_absent_section_uses_default() {
+        // AC-09: absent [inference] section → serde default → rayon_pool_size in [4, 8]
+        let toml_str = "";
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert!(
+            config.inference.rayon_pool_size >= 4,
+            "absent [inference] must use default >= 4, got {}",
+            config.inference.rayon_pool_size
+        );
+        assert!(
+            config.inference.rayon_pool_size <= 8,
+            "absent [inference] must use default <= 8, got {}",
+            config.inference.rayon_pool_size
+        );
+        assert!(
+            config.inference.validate(Path::new("/fake")).is_ok(),
+            "absent [inference] default must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_parses_from_toml() {
+        // Deserialize explicit rayon_pool_size = 6 from TOML
+        let toml_str = "[inference]\nrayon_pool_size = 6\n";
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(
+            config.inference.rayon_pool_size, 6,
+            "explicit rayon_pool_size = 6 must deserialize correctly"
+        );
+        assert!(
+            config.inference.validate(Path::new("/fake")).is_ok(),
+            "rayon_pool_size = 6 must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_deserialize_missing_field() {
+        // Deserialization with no rayon_pool_size field must use Default (no panic)
+        let toml_str = "[inference]\n";
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        let default = InferenceConfig::default();
+        assert_eq!(
+            config.inference.rayon_pool_size, default.rayon_pool_size,
+            "missing rayon_pool_size must fall back to Default value"
+        );
+    }
+
+    #[test]
+    fn test_unimatrix_config_has_inference_field() {
+        // Structural test: inference: InferenceConfig field is wired into UnimatrixConfig
+        let config = UnimatrixConfig::default();
+        assert!(
+            config.inference.rayon_pool_size >= 4 && config.inference.rayon_pool_size <= 8,
+            "UnimatrixConfig::default().inference.rayon_pool_size must be in [4, 8], got {}",
+            config.inference.rayon_pool_size
+        );
+    }
+
+    #[test]
+    fn test_inference_config_error_message_names_field() {
+        // AC-09: actionable error — operator can identify offending field from message alone
+        let config = InferenceConfig { rayon_pool_size: 0 };
+        let err = config.validate(Path::new("/fake/config.toml")).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("rayon_pool_size"),
+            "error message must name rayon_pool_size for operator actionability, got: {msg}"
+        );
+        assert!(
+            msg.contains("[inference]"),
+            "error message must name [inference] section, got: {msg}"
+        );
+        assert!(
+            msg.contains("0") || msg.contains("range"),
+            "error message must contain the offending value or valid range, got: {msg}"
+        );
+    }
 }
