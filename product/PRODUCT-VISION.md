@@ -454,70 +454,129 @@ bridge before higher-stakes models depend on it.
 ---
 
 ### W1-3: Evaluation Harness
-**Business outcome**: Every ML model and retrieval configuration is validated against real query scenarios before reaching agents — capability improvements are measured, not assumed, and regressions are caught before they affect production.
+**Business outcome**: Every intelligence change — retrieval model, confidence
+weights, NLI re-ranking, GNN training — is measured against real query scenarios
+before reaching agents. Capability improvements are demonstrated, not assumed.
+Regressions are caught before they affect production. The human can see exactly
+what changed and why.
 
-**What**: An offline `unimatrix eval` CLI mode that replays query scenarios against a
-frozen DB snapshot through multiple configuration profiles and captures side-by-side
-response detail for comparison. This is the measurement infrastructure that makes
-every downstream intelligence investment defensible.
+**Scope expanded from original estimate**: Research spike ASS-025 identified that
+the original 4-capability scope (snapshot + scenario extraction + eval run +
+report) was sufficient to gate W1-4 and W2-4 but left the live simulation layer
+unbuilt. W1-5 and W3-1 both depend on the ability to inject synthetic behavioral
+signal and validate the observation pipeline. All six deliverables ship together.
+See `product/research/ass-025/RECOMMENDATIONS.md` for full research findings,
+architectural decisions, and implementation guidance.
+
+**Six deliverables:**
+
+**1. `unimatrix snapshot`** — Full DB copy via `VACUUM INTO`, all tables
+included (unlike `unimatrix export` which is knowledge-only). The `--anonymize`
+flag replaces `agent_id` and `session_id` with seeded consistent pseudonyms,
+preserving co-access patterns while enabling snapshot fixtures to be committed
+to the repository. Refuses if the output path resolves to the live daemon DB.
 
 ```
-unimatrix eval \
-  --db snapshot.db \
-  --scenarios scenarios.jsonl \
-  --configs cosine.toml,nli.toml,gguf.toml \
-  --out results/
+unimatrix snapshot --out eval/snapshot-2026-03-19.db [--anonymize]
 ```
 
-Runs each scenario through each config profile against the same frozen knowledge
-base, captures full response detail, writes comparison output. No MCP server.
-No live session. Pure offline replay.
+**2. `unimatrix eval scenarios`** — Mines `query_log` from a snapshot DB into
+eval scenario JSONL. The `result_entry_ids` at time-of-query becomes soft ground
+truth. Supports `--retrieval-mode mcp|uds|all` to filter by path. Also accepts
+hand-authored scenarios with hard-labeled `expected` entry IDs.
 
-**Scenario format** — drawn from `query_log` in `analytics.db` (real production
-queries and context) or hand-authored:
-```json
-{ "query": "...", "context": { "agent_id": "...", "feature_cycle": "..." }, "expected": [entry_id] }
 ```
-Ground-truth `expected` is optional — delta comparison between profiles is the
-primary value even without it.
+unimatrix eval scenarios --db snapshot.db --out scenarios.jsonl [--limit 500]
+```
 
-**Output** — per-scenario, per-config:
+**3. `unimatrix eval run`** — Rust in-process A/B comparison engine. Opens
+snapshot DB read-only, constructs one `ServiceLayer` per profile config (no
+running server, no IPC), replays each scenario through each profile. A profile
+is a TOML file with config overrides — baseline is empty (current defaults),
+candidate specifies only the change under test (e.g., `nli_model`, confidence
+`weights`). Computes P@K, MRR, Kendall tau, rank deltas, and latency per scenario.
+
+```
+unimatrix eval run \
+  --db snapshot.db --scenarios scenarios.jsonl \
+  --configs baseline.toml,candidate.toml --out results/
+```
+
+**4. `unimatrix eval report`** — Generates a Markdown comparison report from
+eval results. Contains: aggregate summary table (P@K, MRR, avg latency, rank
+change rate), notable ranking changes with side-by-side entry lists, latency
+distribution, entry-level gain/loss analysis, and an explicit zero-regression
+checklist. This is what the human reads to decide whether a change ships.
+
+```
+unimatrix eval report --results results/ --out report.md
+```
+
+**5. `UnimatrixUdsClient` (Python)** — New Python client in
+`product/test/infra-001/harness/uds_client.py` that connects to a running
+daemon's MCP UDS socket rather than spawning a subprocess. Identical tool API
+surface to `UnimatrixClient`. Enables `eval live` mode (replay against live
+production daemon) and validates MCP-over-UDS path parity with MCP-over-stdio.
+
+**6. `UnimatrixHookClient` (Python)** — New Python client in
+`product/test/infra-001/harness/hook_client.py` that sends synthetic lifecycle
+and observation events (`session_start`, `session_stop`, `pre_tool_use`,
+`post_tool_use`) to the daemon's hook IPC socket. Enables testing the observation
+pipeline, co-access accumulation, and W3-1 GNN training signal quality without
+requiring Claude Code to be running.
+
+**Scenario format** (soft ground truth from `query_log`, or hand-authored):
 ```json
 {
-  "scenario": "...",
-  "profiles": {
-    "cosine": { "entries": [...], "scores": [...], "latency_ms": 12 },
-    "nli":    { "entries": [...], "scores": [...], "latency_ms": 340, "rerank_delta": [...] },
-    "gguf":   { "entries": [...], "reasoning": "...", "latency_ms": 4200 }
-  }
+  "id": "qlog-4921",
+  "query": "integration test fixture initialization",
+  "context": {"agent_id": "anon-3a2f", "feature_cycle": "crt-022", "retrieval_mode": "flexible"},
+  "baseline": {"entry_ids": [45, 12, 3], "scores": [0.91, 0.87, 0.83]},
+  "source": "mcp",
+  "expected": null
 }
 ```
 
-**DB snapshot tooling**: `unimatrix snapshot --out snapshot.db` copies `knowledge.db`
-+ `analytics.db` from the active daemon. Optional `--anonymize` flag replaces
-`agent_id` and `session_id` values with consistent pseudonyms to preserve behavioral
-patterns while protecting identifiers.
-
 **Gate condition for W1-4 and W2-4**: The NLI model (W1-4) and GGUF module (W2-4)
-must demonstrate measurable improvement in precision@K or MRR on a representative
-scenario set — or a documented equivalence with no regression — before production
-deployment. The harness provides the measurement.
+must demonstrate measurable improvement in P@K or MRR on a representative
+scenario set — or documented equivalence with no regression — before production
+deployment. The harness provides the measurement. No model ships without eval results.
+
+**Gate condition for W3-1**: The hook simulation client enables synthetic behavioral
+pattern injection to validate GNN training label quality before deploying on real
+production data.
 
 **Why now**: Without this harness there is no way to know whether NLI actually
-improves on the cosine heuristic for a given deployment's knowledge base, or whether
-GGUF reasoning improves proactive delivery. The harness ships before W1-4 and W2-4,
-not after.
+improves on the cosine heuristic for a given knowledge base, or whether GGUF
+reasoning improves proactive delivery. The live simulation layer is the only way
+to validate the observation pipeline and training signal quality for W3-1.
+The harness ships before W1-4 and W2-4, not after.
 
-**Effort**: 1 week (CLI tooling, snapshot utility, scenario replay engine, comparison
-output — no new ML infrastructure).
+**Effort**: ~1.5–2 weeks (offline eval: snapshot, scenario extraction, eval run,
+report — ~1 week; live simulation: UDS client, hook client, integration tests —
+~3–4 days. Mixed Rust + Python. The offline path is the critical gate blocker;
+the live simulation layer can proceed in parallel).
 
 **Security requirements:**
 - [High] Eval mode must operate on a DB snapshot copy, never the live production
-  database — the CLI must refuse to accept the active daemon's DB file path.
-- [Medium] Scenario input files are untrusted; validate structure and enforce a maximum
-  scenario count (≤ 10,000) to prevent resource exhaustion.
-- [Low] Snapshot `--anonymize` must replace identifiers consistently (same agent_id →
-  same pseudonym) to preserve co-access patterns while protecting identity.
+  database — `eval run` must refuse to accept the active daemon's DB file path.
+  Open snapshot DB with `?mode=ro` (read-only SQLite URI) to enforce at the
+  storage layer, not just by convention.
+- [High] `unimatrix snapshot` must apply `--anonymize` before any snapshot is
+  committed to a repository. The non-anonymized snapshot contains real `agent_id`
+  and `session_id` values from production sessions.
+- [Medium] Scenario input files are untrusted; validate structure and enforce a
+  maximum scenario count (≤ 10,000) and maximum query length (≤ 2,000 chars) to
+  prevent resource exhaustion.
+- [Medium] Profile TOML files are operator-supplied config; apply the same
+  validation as W0-3 config loading (weight sum ≤ 1.0, category values clean,
+  path values validated before model load).
+- [Low] Snapshot `--anonymize` must replace identifiers consistently (same
+  agent_id → same pseudonym, seeded by a per-snapshot random salt) to preserve
+  co-access patterns while protecting identity.
+- [Low] `UnimatrixUdsClient` and `UnimatrixHookClient` must validate the socket
+  path exists and is owned by the current user before connecting — connecting to
+  an arbitrary UDS path is a SSRF-equivalent risk in test infrastructure.
 
 ---
 
