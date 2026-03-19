@@ -73,6 +73,8 @@ pub struct UnimatrixConfig {
     pub agents: AgentsConfig,
     #[serde(default)]
     pub confidence: ConfidenceConfig,
+    #[serde(default)]
+    pub inference: InferenceConfig,
     // CycleConfig is intentionally absent (ADR-004: stub removed, rename is hardcoded).
 }
 
@@ -181,6 +183,63 @@ pub struct ConfidenceWeights {
     pub trust: f64,
 }
 
+/// `[inference]` section — ML inference thread pool configuration.
+///
+/// Follows the same `#[serde(default)]` pattern as all other sections.
+/// An absent `[inference]` section uses compiled defaults (ADR-003).
+///
+/// # Pool sizing (ADR-003)
+///
+/// Default formula: `(num_cpus::get() / 2).max(4).min(8)`.
+/// Floor raised from 2 to 4 to ensure at least 3 threads are available for MCP
+/// embedding calls when both the contradiction scan and quality-gate loop are active.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(default)]
+pub struct InferenceConfig {
+    /// Number of rayon threads for the `ml_inference_pool`.
+    ///
+    /// Default: `(num_cpus::get() / 2).max(4).min(8)` (ADR-003 pool floor = 4).
+    /// Valid range: `[1, 64]`. Out-of-range aborts startup with a structured error.
+    ///
+    /// Operators on resource-constrained deployments may set this as low as 1.
+    /// W1-4 (NLI) and W2-4 (GGUF) will add fields to this section without renaming it (C-08).
+    pub rayon_pool_size: usize,
+}
+
+impl Default for InferenceConfig {
+    fn default() -> Self {
+        // ADR-003: floor = 4 (supersedes SCOPE.md floor = 2).
+        // Reasoning:
+        //   1 thread max: contradiction scan
+        //   1 thread max: quality-gate embedding loop (runs concurrently with scan)
+        //   2 threads min: concurrent MCP inference calls
+        //   Total minimum: 4
+        //
+        // On single-core: num_cpus = 1; 1/2 = 0 (integer); max(0, 4) = 4.
+        // On dual-core:   num_cpus = 2; 2/2 = 1; max(1, 4) = 4.
+        // On octa-core:   num_cpus = 8; 8/2 = 4; max(4, 4) = 4; min(4, 8) = 4.
+        // On 20-core:    num_cpus = 20; 20/2 = 10; max(10, 4) = 10; min(10, 8) = 8.
+        InferenceConfig {
+            rayon_pool_size: (num_cpus::get() / 2).max(4).min(8),
+        }
+    }
+}
+
+impl InferenceConfig {
+    /// Validate that `rayon_pool_size` is within the allowed range `[1, 64]`.
+    ///
+    /// Out-of-range values abort startup with `ConfigError::InferencePoolSizeOutOfRange`.
+    pub fn validate(&self, path: &Path) -> Result<(), ConfigError> {
+        if self.rayon_pool_size < 1 || self.rayon_pool_size > 64 {
+            return Err(ConfigError::InferencePoolSizeOutOfRange {
+                path: path.to_path_buf(),
+                value: self.rayon_pool_size,
+            });
+        }
+        Ok(())
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Preset enum
 // ---------------------------------------------------------------------------
@@ -279,6 +338,11 @@ pub enum ConfigError {
     CustomWeightSumInvariant {
         path: PathBuf,
         sum: f64,
+    },
+    /// `[inference] rayon_pool_size` outside `[1, 64]`.
+    InferencePoolSizeOutOfRange {
+        path: PathBuf,
+        value: usize,
     },
 }
 
@@ -419,6 +483,13 @@ impl fmt::Display for ConfigError {
                 sum,
                 SUM_INVARIANT,
                 SUM_TOLERANCE
+            ),
+            ConfigError::InferencePoolSizeOutOfRange { path, value } => write!(
+                f,
+                "config error in {}: [inference] rayon_pool_size is {} \
+                 which is out of range; valid range is [1, 64]",
+                path.display(),
+                value
             ),
         }
     }
@@ -643,6 +714,9 @@ pub fn validate_config(config: &UnimatrixConfig, path: &Path) -> Result<(), Conf
             // No validation of weight values for named presets — they are not used.
         }
     }
+
+    // --- Validate [inference] rayon_pool_size ---
+    config.inference.validate(path)?;
 
     Ok(())
 }
@@ -887,6 +961,15 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             // here is a simple Option::or — cross-level inheritance prohibition is enforced
             // during per-file validation before merge is called.
             weights: project.confidence.weights.or(global.confidence.weights),
+        },
+        inference: InferenceConfig {
+            rayon_pool_size: if project.inference.rayon_pool_size
+                != default.inference.rayon_pool_size
+            {
+                project.inference.rayon_pool_size
+            } else {
+                global.inference.rayon_pool_size
+            },
         },
     }
 }
@@ -2152,5 +2235,204 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("/tmp/config.toml"));
         assert!(msg.contains("0.92") || msg.contains("0.95"));
+    }
+
+    #[test]
+    fn test_display_inference_pool_size_out_of_range() {
+        let err = ConfigError::InferencePoolSizeOutOfRange {
+            path: PathBuf::from("/tmp/config.toml"),
+            value: 0,
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("/tmp/config.toml"));
+        assert!(
+            msg.contains("rayon_pool_size") || msg.contains("inference"),
+            "error must mention rayon_pool_size or inference, got: {msg}"
+        );
+        assert!(
+            msg.contains("0") || msg.contains("range"),
+            "error must mention the value or range, got: {msg}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // [inference] InferenceConfig validation tests (AC-09, AC-11 #5–8)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_inference_config_valid_lower_bound() {
+        // AC-11 #5: rayon_pool_size = 1 → validate() returns Ok(())
+        let config = InferenceConfig { rayon_pool_size: 1 };
+        assert!(
+            config.validate(Path::new("/fake")).is_ok(),
+            "rayon_pool_size = 1 is the valid lower bound and must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_valid_upper_bound() {
+        // AC-11 #6: rayon_pool_size = 64 → validate() returns Ok(())
+        let config = InferenceConfig { rayon_pool_size: 64 };
+        assert!(
+            config.validate(Path::new("/fake")).is_ok(),
+            "rayon_pool_size = 64 is the valid upper bound and must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_rejects_zero() {
+        // AC-11 #7: rayon_pool_size = 0 → Err(InferencePoolSizeOutOfRange { value: 0 })
+        let config = InferenceConfig { rayon_pool_size: 0 };
+        let err = config.validate(Path::new("/fake")).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::InferencePoolSizeOutOfRange { value: 0, .. }),
+            "rayon_pool_size = 0 must return InferencePoolSizeOutOfRange with value 0, got: {err}"
+        );
+        let msg = err.to_string();
+        assert!(
+            msg.contains("rayon_pool_size"),
+            "error must name rayon_pool_size, got: {msg}"
+        );
+        assert!(
+            msg.contains("[inference]"),
+            "error must mention [inference] section, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_rejects_sixty_five() {
+        // AC-11 #8: rayon_pool_size = 65 → Err(InferencePoolSizeOutOfRange { value: 65 })
+        let config = InferenceConfig { rayon_pool_size: 65 };
+        let err = config.validate(Path::new("/fake")).unwrap_err();
+        assert!(
+            matches!(err, ConfigError::InferencePoolSizeOutOfRange { value: 65, .. }),
+            "rayon_pool_size = 65 must return InferencePoolSizeOutOfRange with value 65, got: {err}"
+        );
+        let msg = err.to_string();
+        assert!(
+            msg.contains("64") || msg.contains("65"),
+            "error must mention the upper bound or offending value, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_valid_eight() {
+        // R-07 scenario 3: mid-range value matching the formula ceiling max(4).min(8)
+        let config = InferenceConfig { rayon_pool_size: 8 };
+        assert!(
+            config.validate(Path::new("/fake")).is_ok(),
+            "rayon_pool_size = 8 (formula ceiling) must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_valid_four() {
+        // R-07: ADR-003 floor value must be valid
+        let config = InferenceConfig { rayon_pool_size: 4 };
+        assert!(
+            config.validate(Path::new("/fake")).is_ok(),
+            "rayon_pool_size = 4 (ADR-003 floor) must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_default_formula_in_range() {
+        // R-07 scenario 5, AC-09: Default::default() always produces a value in [4, 8]
+        // Formula: (num_cpus::get() / 2).max(4).min(8)
+        let config = InferenceConfig::default();
+        assert!(
+            config.rayon_pool_size >= 4,
+            "default rayon_pool_size must be >= 4 (ADR-003 floor), got {}",
+            config.rayon_pool_size
+        );
+        assert!(
+            config.rayon_pool_size <= 8,
+            "default rayon_pool_size must be <= 8 (formula ceiling), got {}",
+            config.rayon_pool_size
+        );
+        assert!(
+            config.validate(Path::new("/fake")).is_ok(),
+            "default InferenceConfig must always pass validation, got pool_size = {}",
+            config.rayon_pool_size
+        );
+    }
+
+    #[test]
+    fn test_inference_config_absent_section_uses_default() {
+        // AC-09: absent [inference] section → serde default → rayon_pool_size in [4, 8]
+        let toml_str = "";
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert!(
+            config.inference.rayon_pool_size >= 4,
+            "absent [inference] must use default >= 4, got {}",
+            config.inference.rayon_pool_size
+        );
+        assert!(
+            config.inference.rayon_pool_size <= 8,
+            "absent [inference] must use default <= 8, got {}",
+            config.inference.rayon_pool_size
+        );
+        assert!(
+            config.inference.validate(Path::new("/fake")).is_ok(),
+            "absent [inference] default must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_parses_from_toml() {
+        // Deserialize explicit rayon_pool_size = 6 from TOML
+        let toml_str = "[inference]\nrayon_pool_size = 6\n";
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(
+            config.inference.rayon_pool_size, 6,
+            "explicit rayon_pool_size = 6 must deserialize correctly"
+        );
+        assert!(
+            config.inference.validate(Path::new("/fake")).is_ok(),
+            "rayon_pool_size = 6 must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_deserialize_missing_field() {
+        // Deserialization with no rayon_pool_size field must use Default (no panic)
+        let toml_str = "[inference]\n";
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        let default = InferenceConfig::default();
+        assert_eq!(
+            config.inference.rayon_pool_size, default.rayon_pool_size,
+            "missing rayon_pool_size must fall back to Default value"
+        );
+    }
+
+    #[test]
+    fn test_unimatrix_config_has_inference_field() {
+        // Structural test: inference: InferenceConfig field is wired into UnimatrixConfig
+        let config = UnimatrixConfig::default();
+        assert!(
+            config.inference.rayon_pool_size >= 4 && config.inference.rayon_pool_size <= 8,
+            "UnimatrixConfig::default().inference.rayon_pool_size must be in [4, 8], got {}",
+            config.inference.rayon_pool_size
+        );
+    }
+
+    #[test]
+    fn test_inference_config_error_message_names_field() {
+        // AC-09: actionable error — operator can identify offending field from message alone
+        let config = InferenceConfig { rayon_pool_size: 0 };
+        let err = config.validate(Path::new("/fake/config.toml")).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("rayon_pool_size"),
+            "error message must name rayon_pool_size for operator actionability, got: {msg}"
+        );
+        assert!(
+            msg.contains("[inference]"),
+            "error message must name [inference] section, got: {msg}"
+        );
+        assert!(
+            msg.contains("0") || msg.contains("range"),
+            "error message must contain the offending value or valid range, got: {msg}"
+        );
     }
 }

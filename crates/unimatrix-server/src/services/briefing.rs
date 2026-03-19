@@ -630,6 +630,10 @@ mod tests {
         let typed_graph_state = crate::services::typed_graph::TypedGraphState::new_handle();
         // dsn-001: boosted_categories defaults to ["lesson-learned"] in test helper until
         // startup-wiring threads config.knowledge.boosted_categories through.
+        let test_rayon_pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "test_pool")
+                .expect("test rayon pool construction"),
+        );
         let search = SearchService::new(
             Arc::clone(store),
             vector_store,
@@ -641,6 +645,7 @@ mod tests {
             Arc::clone(&effectiveness_state), // crt-018b: shared handle
             typed_graph_state,                // crt-021: cold-start empty state for tests
             std::collections::HashSet::from(["lesson-learned".to_string()]),
+            test_rayon_pool,
         );
 
         let service = BriefingService::new(

@@ -20,6 +20,7 @@ use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
 use crate::confidence::{cosine_similarity, rerank_score};
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::rayon_pool::RayonPool;
 use crate::infra::timeout::{MCP_HANDLER_TIMEOUT, spawn_blocking_with_timeout};
 use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::effectiveness::{EffectivenessSnapshot, EffectivenessStateHandle};
@@ -108,6 +109,8 @@ pub(crate) struct SearchService {
     /// Constructed from config.knowledge.boosted_categories at SearchService construction.
     /// Replaces the four hardcoded entry.category == "lesson-learned" comparisons.
     boosted_categories: HashSet<String>,
+    /// crt-022 (ADR-004): shared rayon thread pool for ML inference (ONNX embedding).
+    rayon_pool: Arc<RayonPool>,
 }
 
 /// Map an effectiveness category to its additive utility delta for search re-ranking.
@@ -139,6 +142,7 @@ impl SearchService {
         effectiveness_state: EffectivenessStateHandle,
         typed_graph_handle: TypedGraphStateHandle,
         boosted_categories: HashSet<String>,
+        rayon_pool: Arc<RayonPool>,
     ) -> Self {
         SearchService {
             store,
@@ -152,6 +156,7 @@ impl SearchService {
             cached_snapshot: EffectivenessSnapshot::new_shared(),
             typed_graph_handle,
             boosted_categories,
+            rayon_pool,
         }
     }
 
@@ -223,15 +228,17 @@ impl SearchService {
             .await
             .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?;
 
-        // Step 3: Embed query via spawn_blocking_with_timeout (#277)
+        // Step 3: Embed query via rayon ml_inference_pool (crt-022, ADR-002)
         let query = params.query.clone();
-        let raw_embedding: Vec<f32> = spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, {
-            let adapter = Arc::clone(&adapter);
-            move || adapter.embed_entry("", &query)
-        })
-        .await
-        .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?
-        .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?;
+        let raw_embedding: Vec<f32> = self
+            .rayon_pool
+            .spawn_with_timeout(MCP_HANDLER_TIMEOUT, {
+                let adapter = Arc::clone(&adapter);
+                move || adapter.embed_entry("", &query)
+            })
+            .await
+            .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?
+            .map_err(|e| ServiceError::EmbeddingFailed(e.to_string()))?;
 
         // Step 4: Adapt embedding (MicroLoRA) + normalize
         let adapted = self

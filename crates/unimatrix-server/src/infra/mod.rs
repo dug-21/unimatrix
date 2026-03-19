@@ -13,6 +13,7 @@ pub mod daemon;
 pub mod embed_handle;
 pub mod outcome_tags;
 pub mod pidfile;
+pub mod rayon_pool;
 pub mod registry;
 pub mod scanning;
 pub mod session;
@@ -20,3 +21,5 @@ pub mod shutdown;
 pub mod timeout;
 pub mod usage_dedup;
 pub mod validation;
+
+pub use rayon_pool::{RayonError, RayonPool};

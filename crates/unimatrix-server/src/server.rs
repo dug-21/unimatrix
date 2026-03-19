@@ -263,6 +263,11 @@ impl UnimatrixServer {
 
         let usage_dedup = Arc::new(UsageDedup::new());
 
+        let test_pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "test-pool")
+                .expect("test RayonPool construction must succeed"),
+        );
+
         let services = ServiceLayer::new(
             Arc::clone(&store),
             Arc::clone(&vector_index),
@@ -274,6 +279,7 @@ impl UnimatrixServer {
             Arc::clone(&usage_dedup),
             // dsn-001: default; startup wiring will supply config value in follow-up.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
+            test_pool,
         );
 
         // crt-018b: extract handle after ServiceLayer is fully constructed so

@@ -292,6 +292,10 @@ mod tests {
         let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
         // Build ServiceLayer (vnc-006) — this holds 5+ Arc<Store> clones
+        let test_pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "test-pool")
+                .expect("test RayonPool construction must succeed"),
+        );
         let services = ServiceLayer::new(
             Arc::clone(&store),
             Arc::clone(&vector_index),
@@ -303,6 +307,7 @@ mod tests {
             Arc::clone(&usage_dedup),
             // dsn-001: default; startup wiring will supply config value.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
+            test_pool,
         );
 
         // Build LifecycleHandles with ServiceLayer included (#92 fix).
@@ -379,6 +384,10 @@ mod tests {
         let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
         // Build ServiceLayer — holds internal Arc<Store> clones
+        let test_pool2 = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "test-pool")
+                .expect("test RayonPool construction must succeed"),
+        );
         let services = ServiceLayer::new(
             Arc::clone(&store),
             Arc::clone(&vector_index),
@@ -390,6 +399,7 @@ mod tests {
             Arc::clone(&usage_dedup),
             // dsn-001: default; startup wiring will supply config value.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
+            test_pool2,
         );
 
         // Drop locals except ServiceLayer

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use unimatrix_vector::SearchResult;
 
 use crate::error::CoreError;
-use crate::traits::{EmbedService, VectorStore};
+use crate::traits::VectorStore;
 
 /// Async wrapper for any `VectorStore` implementation.
 pub struct AsyncVectorStore<T: VectorStore + 'static> {
@@ -80,42 +80,5 @@ impl<T: VectorStore + 'static> AsyncVectorStore<T> {
         tokio::task::spawn_blocking(move || inner.get_embedding(entry_id))
             .await
             .unwrap_or(None)
-    }
-}
-
-/// Async wrapper for any `EmbedService` implementation.
-pub struct AsyncEmbedService<T: EmbedService + 'static> {
-    inner: Arc<T>,
-}
-
-impl<T: EmbedService + 'static> AsyncEmbedService<T> {
-    pub fn new(inner: Arc<T>) -> Self {
-        AsyncEmbedService { inner }
-    }
-
-    pub async fn embed_entry(&self, title: &str, content: &str) -> Result<Vec<f32>, CoreError> {
-        let inner = Arc::clone(&self.inner);
-        let title = title.to_string();
-        let content = content.to_string();
-        tokio::task::spawn_blocking(move || inner.embed_entry(&title, &content))
-            .await
-            .map_err(|e| CoreError::JoinError(e.to_string()))?
-    }
-
-    pub async fn embed_entries(
-        &self,
-        entries: Vec<(String, String)>,
-    ) -> Result<Vec<Vec<f32>>, CoreError> {
-        let inner = Arc::clone(&self.inner);
-        tokio::task::spawn_blocking(move || inner.embed_entries(&entries))
-            .await
-            .map_err(|e| CoreError::JoinError(e.to_string()))?
-    }
-
-    pub async fn dimension(&self) -> usize {
-        let inner = Arc::clone(&self.inner);
-        tokio::task::spawn_blocking(move || inner.dimension())
-            .await
-            .unwrap_or(0)
     }
 }

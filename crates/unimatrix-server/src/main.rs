@@ -17,6 +17,8 @@ use unimatrix_server::infra::categories::CategoryAllowlist;
 use unimatrix_server::infra::config::{UnimatrixConfig, load_config, resolve_confidence_params};
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
 use unimatrix_server::infra::pidfile;
+use unimatrix_server::infra::rayon_pool::RayonPool;
+// TODO(W3-1): add unimatrix-onnx crate extraction here
 use unimatrix_server::infra::registry::{AgentRegistry, Capability};
 use unimatrix_server::infra::shutdown::{self, LifecycleHandles};
 use unimatrix_server::infra::usage_dedup::UsageDedup;
@@ -475,6 +477,26 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Create pending entries analysis accumulator (col-009).
     let pending_entries_analysis = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
 
+    // ── crt-022: Initialize rayon ML inference pool (ADR-004) ────────────────────────
+    // Validate rayon_pool_size is in [1, 64] before constructing the pool.
+    // InferenceConfig::validate() returns ConfigError on out-of-range — map to startup error.
+    config
+        .inference
+        .validate(&paths.data_dir.join("config.toml"))
+        .map_err(|e| ServerError::InferencePoolInit(e.to_string()))?;
+
+    let ml_inference_pool = Arc::new(
+        RayonPool::new(config.inference.rayon_pool_size, "ml_inference_pool")
+            .map_err(|e| ServerError::InferencePoolInit(e.to_string()))?,
+    );
+    tracing::info!(
+        pool_size = config.inference.rayon_pool_size,
+        "ml_inference_pool initialized"
+    );
+    // TODO(W1-4): ml_inference_pool will also be accessed via AppState for NLI
+    // TODO(W2-4): add gguf_rayon_pool: Arc<RayonPool> here
+    // ── end crt-022 ───────────────────────────────────────────────────────────────────
+
     // Build shared ServiceLayer for UDS and MCP transports (vnc-006, vnc-009).
     let usage_dedup = Arc::new(UsageDedup::new());
     let services = unimatrix_server::services::ServiceLayer::new(
@@ -487,6 +509,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&audit),
         Arc::clone(&usage_dedup),
         boosted_categories,
+        Arc::clone(&ml_inference_pool),
     );
 
     // Start UDS listener for hook IPC.
@@ -552,6 +575,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&audit),
         auto_quarantine_cycles,
         Arc::clone(&confidence_params),
+        Arc::clone(&ml_inference_pool),
     );
 
     // Create daemon CancellationToken (ADR-002).
@@ -778,6 +802,25 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Create pending entries analysis accumulator shared between UDS listener and MCP server (col-009).
     let pending_entries_analysis = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
 
+    // ── crt-022: Initialize rayon ML inference pool (ADR-004) ────────────────────────
+    // Validate rayon_pool_size is in [1, 64] before constructing the pool.
+    config
+        .inference
+        .validate(&paths.data_dir.join("config.toml"))
+        .map_err(|e| ServerError::InferencePoolInit(e.to_string()))?;
+
+    let ml_inference_pool = Arc::new(
+        RayonPool::new(config.inference.rayon_pool_size, "ml_inference_pool")
+            .map_err(|e| ServerError::InferencePoolInit(e.to_string()))?,
+    );
+    tracing::info!(
+        pool_size = config.inference.rayon_pool_size,
+        "ml_inference_pool initialized"
+    );
+    // TODO(W1-4): ml_inference_pool will also be accessed via AppState for NLI
+    // TODO(W2-4): add gguf_rayon_pool: Arc<RayonPool> here
+    // ── end crt-022 ───────────────────────────────────────────────────────────────────
+
     // Build shared ServiceLayer for UDS and MCP transports (vnc-006, vnc-009).
     let usage_dedup = Arc::new(UsageDedup::new());
     let services = unimatrix_server::services::ServiceLayer::new(
@@ -790,6 +833,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&audit),
         Arc::clone(&usage_dedup),
         boosted_categories,
+        Arc::clone(&ml_inference_pool),
     );
 
     // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009).
@@ -858,6 +902,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&audit),         // crt-018b: for tick_skipped audit events
         auto_quarantine_cycles,     // crt-018b: auto-quarantine threshold
         Arc::clone(&confidence_params),
+        Arc::clone(&ml_inference_pool), // crt-022 (ADR-004): ML inference pool
     );
 
     // Prepare lifecycle handles for shutdown.

@@ -191,9 +191,9 @@ a committed `sqlx-data.json` schema cache. CI regenerates the cache via
 sqlx connections for W0-1. Migration to sqlx's built-in migration runner is a
 follow-on concern, not in scope here.
 
-**Rayon thread pool is orthogonal**: CPU-bound ML inference (NLI in W1-2, GNN in
+**Rayon thread pool is orthogonal**: CPU-bound ML inference (NLI in W1-4, GNN in
 W3-1) runs on a dedicated rayon pool bridged to tokio via oneshot channel. Independent
-of database architecture — comes in with NLI (W1-2), not here.
+of database architecture — comes in with the rayon infrastructure (W1-2), not here.
 
 **Why not a database split**: A split solves SQLite write contention by splitting the
 file. `sqlx` + dual pool solves the same contention without splitting data, without
@@ -247,7 +247,7 @@ sync → async test conversion — the test surface is the long tail).
 
 ---
 
-### W0-3: Config Externalization
+### W0-3: Config Externalization — **COMPLETE** (`dsn-001`)
 **What**: Move hardcoded constants to `~/.unimatrix/config.toml` (or per-project):
 
 ```toml
@@ -327,9 +327,9 @@ weights. Same binary.
 ---
 
 ## Wave 1 — Intelligence Foundation
-*Estimated: 2 weeks, after Wave 0*
+*Estimated: 4-5 weeks, after Wave 0*
 
-### W1-1: Typed Relationship Graph
+### W1-1: Typed Relationship Graph — **COMPLETE** (`crt-021`, PR #316)
 **What**: Upgrade `StableGraph<u64, ()>` to `StableGraph<u64, RelationEdge>`.
 Persist edges to `GRAPH_EDGES` in `analytics.db`. Bootstrap from existing data.
 
@@ -355,7 +355,7 @@ consistency windows.
 **Bootstrap edge status**: Edges bootstrapped from `shadow_evaluations`
 (cosine-similarity heuristics known to produce false positives) must carry
 `source: "bootstrap"` and a `bootstrap_only: true` flag. Bootstrap edges are
-**excluded from confidence scoring** until W1-2 NLI either confirms (promotes to
+**excluded from confidence scoring** until W1-4 NLI either confirms (promotes to
 `source: "nli"`) or refutes (marks for deletion) them. Injecting unconfirmed
 contradiction edges into scoring from day one would penalize valid entries.
 
@@ -370,7 +370,7 @@ complete *before* the tick triggers an in-memory rebuild. Sequence within the ti
 never run concurrently. The in-memory rebuild always sees a post-compaction consistent
 state from both databases.
 
-**Why now**: Foundation for NLI (W1-2) and GNN (Wave 3). Also unlocks free
+**Why now**: Foundation for NLI (W1-4) and GNN (Wave 3). Also unlocks free
 DOT/GraphViz export (petgraph supports it). Formalizes what the system already
 knows but never persists. Edges survive restarts.
 
@@ -397,40 +397,173 @@ integrity chain, not a separate truth.
 
 ---
 
-### W1-2: Embedded NLI Model + Rayon Thread Pool
-**What**: One small ONNX model (~180MB, DeBERTa-v3-small fine-tuned on NLI)
-for real contradiction and support detection. **This wave also establishes the
-rayon thread pool pattern for all CPU-bound ML inference.**
+### W1-2: Rayon Thread Pool + Embedding Migration
+**Business outcome**: ML inference no longer competes with MCP request handling for thread resources — all future AI-driven capabilities run without degrading the agent experience, and the codebase has a single consistent pattern for CPU-bound inference that every Wave 1–3 feature builds on.
 
-- Runs **post-store**, async — not on search hot path
-- Input: (entry A content, entry B content) for top-K nearest neighbors of new entry
-- Output: {entailment, neutral, contradiction} scores
-- On contradiction > threshold: create `Contradicts` edge via analytics write queue
-- On entailment > threshold: create `Supports` edge
-- Replaces cosine-similarity heuristic in `shadow_evaluations`
-
-**Thread pool architecture (do at W1-2, not later)**:
+**What**: Establish a dedicated `rayon::ThreadPool` in `unimatrix-server` for all
+CPU-bound ML inference, bridged to tokio via `oneshot` channel. Migrate the existing
+ONNX embedding model off `spawn_blocking` as the first consumer and validation of
+the pattern.
 
 CPU-bound ML inference must not run in `spawn_blocking`. The documented pool
 saturation incidents (#735, #1628, #1688) all stem from CPU-bound or long-duration
-work consuming the tokio blocking pool. NLI inference (50-200ms), and all future
-ML inference (GNN in W3-1, GGUF in W3-3), runs on a **dedicated `rayon::ThreadPool`**:
+work consuming the tokio blocking pool. All ML inference (W1-4 NLI, W2-4 GGUF,
+W3-1 GNN) runs on a **dedicated `rayon::ThreadPool`**:
 
 ```rust
 // Bridge rayon → tokio async:
 let (tx, rx) = tokio::sync::oneshot::channel();
 rayon_pool.spawn(move || {
-    let result = run_nli_inference(input);
+    let result = run_inference(input);
     tx.send(result).ok();
 });
 let result = rx.await?;  // async task suspends; zero tokio threads consumed
 ```
 
-**At W1-2, also migrate the existing ONNX embedding model to rayon.** Embedding
-inference is 10-50ms of CPU work — above the `spawn_blocking` threshold. Migrating
-embedding at W1-2 (lower stakes, already proven) validates the rayon pattern before
-NLI depends on it. `spawn_blocking` then handles only short I/O-bound operations
-(DB writes, file reads). All ML inference is on rayon.
+Panics in the closure cause `tx` to drop, which returns `Err` to `rx.await` — no
+panic propagation across thread boundaries.
+
+**Migrate the existing ONNX embedding model to rayon at W1-2.** Embedding inference
+is 10-50ms of CPU work. Migrating embedding first (lower stakes, already proven)
+validates the rayon pattern before W1-4 (NLI) and W2-4 (GGUF) depend on it.
+`spawn_blocking` then handles only short I/O-bound operations (DB writes, model
+loading, file reads). All ML inference is on rayon.
+
+**Crate placement**: The `AsyncEmbedService` wrapper moves from
+`unimatrix-core/src/async_wrappers.rs` to `unimatrix-server` — rayon is a
+deployment scheduling concern, not a domain abstraction. `unimatrix-core` stays lean.
+The rayon pool is a singleton `Arc<rayon::ThreadPool>` owned by the server and
+distributed to all inference consumers at startup.
+
+**GGUF thread budget**: W2-4 (GGUF) uses a separate bounded rayon pool sized for
+longer-duration inference (seconds, not milliseconds) so GGUF synthesis runs do not
+starve ONNX inference (W1-4 NLI, W3-1 GNN).
+
+**Why now**: W1-4 (NLI), W2-4 (GGUF), and W3-1 (GNN) all require this infrastructure.
+Establishing the pattern once, at the lowest-stakes migration point, validates the
+bridge before higher-stakes models depend on it.
+
+**Effort**: 1-2 days.
+
+**Security requirements:**
+- [High] A panic in any rayon closure must not propagate to the MCP handler thread —
+  the oneshot channel drop is the only signal of failure to the awaiting async task.
+- [Medium] `spawn_blocking` must not be used for ONNX inference after this feature
+  ships — only I/O-bound operations (model loading, DB writes, file reads) are permitted.
+
+---
+
+### W1-3: Evaluation Harness
+**Business outcome**: Every ML model and retrieval configuration is validated against real query scenarios before reaching agents — capability improvements are measured, not assumed, and regressions are caught before they affect production.
+
+**What**: An offline `unimatrix eval` CLI mode that replays query scenarios against a
+frozen DB snapshot through multiple configuration profiles and captures side-by-side
+response detail for comparison. This is the measurement infrastructure that makes
+every downstream intelligence investment defensible.
+
+```
+unimatrix eval \
+  --db snapshot.db \
+  --scenarios scenarios.jsonl \
+  --configs cosine.toml,nli.toml,gguf.toml \
+  --out results/
+```
+
+Runs each scenario through each config profile against the same frozen knowledge
+base, captures full response detail, writes comparison output. No MCP server.
+No live session. Pure offline replay.
+
+**Scenario format** — drawn from `query_log` in `analytics.db` (real production
+queries and context) or hand-authored:
+```json
+{ "query": "...", "context": { "agent_id": "...", "feature_cycle": "..." }, "expected": [entry_id] }
+```
+Ground-truth `expected` is optional — delta comparison between profiles is the
+primary value even without it.
+
+**Output** — per-scenario, per-config:
+```json
+{
+  "scenario": "...",
+  "profiles": {
+    "cosine": { "entries": [...], "scores": [...], "latency_ms": 12 },
+    "nli":    { "entries": [...], "scores": [...], "latency_ms": 340, "rerank_delta": [...] },
+    "gguf":   { "entries": [...], "reasoning": "...", "latency_ms": 4200 }
+  }
+}
+```
+
+**DB snapshot tooling**: `unimatrix snapshot --out snapshot.db` copies `knowledge.db`
++ `analytics.db` from the active daemon. Optional `--anonymize` flag replaces
+`agent_id` and `session_id` values with consistent pseudonyms to preserve behavioral
+patterns while protecting identifiers.
+
+**Gate condition for W1-4 and W2-4**: The NLI model (W1-4) and GGUF module (W2-4)
+must demonstrate measurable improvement in precision@K or MRR on a representative
+scenario set — or a documented equivalence with no regression — before production
+deployment. The harness provides the measurement.
+
+**Why now**: Without this harness there is no way to know whether NLI actually
+improves on the cosine heuristic for a given deployment's knowledge base, or whether
+GGUF reasoning improves proactive delivery. The harness ships before W1-4 and W2-4,
+not after.
+
+**Effort**: 1 week (CLI tooling, snapshot utility, scenario replay engine, comparison
+output — no new ML infrastructure).
+
+**Security requirements:**
+- [High] Eval mode must operate on a DB snapshot copy, never the live production
+  database — the CLI must refuse to accept the active daemon's DB file path.
+- [Medium] Scenario input files are untrusted; validate structure and enforce a maximum
+  scenario count (≤ 10,000) to prevent resource exhaustion.
+- [Low] Snapshot `--anonymize` must replace identifiers consistently (same agent_id →
+  same pseudonym) to preserve co-access patterns while protecting identity.
+
+---
+
+### W1-4: NLI + Cross-Encoder Re-ranking
+**Business outcome**: Agents retrieve the most semantically relevant knowledge, not just the most topically similar — search quality improves measurably for natural-language-dense knowledge bases. Contradictions are detected with semantic grounding rather than lexical heuristics, raising the quality floor for every graph edge W3-1 trains on.
+
+**What**: One small ONNX cross-encoder model (~85MB, NLI fine-tuned) running in two
+complementary modes: (1) **post-store**, to detect contradiction and entailment
+relationships between new entries and their HNSW neighbors; (2) **search re-ranking**,
+to re-score the top HNSW candidates against the actual query before returning results.
+
+**The speed tier distinction**: NLI at 50–200ms per inference pair can process
+every post-store interaction and re-rank every query result continuously. W2-4 (GGUF)
+at 2–10s per inference cannot operate at this throughput. These capabilities are
+complementary — NLI provides continuous high-frequency signal; GGUF provides judgment
+on selected interactions. Neither supersedes the other.
+
+**Two retrieval paths**:
+
+```
+// Current: bi-encoder retrieval (fast, approximate topical similarity)
+query → embed → HNSW top-K → return
+
+// With W1-4: bi-encoder retrieval + cross-encoder re-ranking
+query → embed → HNSW top-20 → NLI re-rank → return top-K
+```
+
+Bi-encoders find topically similar entries. Cross-encoders measure whether entries
+actually answer the query. The combination is the standard retrieval pattern for
+high-quality RAG systems. At 50–200ms per pair on rayon, re-ranking 20 candidates
+adds a bounded, configurable latency overhead.
+
+**Post-store contradiction/support detection**:
+
+- Runs post-store, fire-and-forget — not on the MCP hot path
+- Input: (new entry, neighbor) pairs for top-K nearest HNSW neighbors
+- Output: {entailment, neutral, contradiction} softmax probabilities
+- Contradiction > threshold: write `Contradicts` edge to `GRAPH_EDGES` via direct
+  `write_pool`, `source='nli'`, `bootstrap_only=0`
+- Entailment > threshold: write `Supports` edge via direct `write_pool`
+- NLI confidence score stored in `metadata` column for W3-1 GNN edge features
+
+**Bootstrap edge promotion**: Processes any `bootstrap_only=1` Contradicts edges from
+W1-1. Confirmed → DELETE+INSERT with `source='nli'`, `bootstrap_only=0`. Refuted →
+DELETE only. W1-1 shipped zero such rows; the path is implemented as a future-proof
+first-tick background task.
 
 **Circuit breaker on NLI → auto-quarantine path**: NLI creates `Contradicts` edges
 → topology penalty activates (ADR #1604 successor) → entries may fall below
@@ -439,27 +572,36 @@ cap the number of `Contradicts` edges created per tick. NLI-derived auto-quarant
 should require a higher confidence threshold than the existing manual-correction path.
 
 **Graceful degradation**: If the NLI model file is absent, hash-invalid, or fails
-to load, the server must start successfully and fall back to the cosine-similarity
-heuristic (current behavior) with a logged warning. NLI absence must not prevent
-startup. Follow the same pattern as the embedding model (ADR-005 graceful degradation).
+to load, the server starts successfully and falls back to the cosine-similarity
+heuristic with a logged warning. Re-ranking is skipped; HNSW results return directly.
+NLI absence must not prevent startup.
 
-**Domain qualifier**: NLI (trained on SNLI/MultiNLI) performs well on natural-language-
-dense knowledge bases. For structured or domain-specific corpora (sensor calibration
-records, terse SRE runbooks, numeric regulatory text), the cosine heuristic may
-perform comparably or better. Do not present NLI as universally superior — qualify
-it by domain knowledge density.
+**Model**: `cross-encoder/nli-MiniLM2-L6-H768` (~85MB, confirmed ONNX-available,
+Apache 2.0) as the baseline. `cross-encoder/nli-deberta-v3-small` (~180MB) as the
+higher-quality alternative if its ONNX export is available at implementation time.
+Final model selection validated through W1-3 evaluation harness — no model ships
+to production without eval results.
 
-**Why now**: Contradiction detection is one of the most cited differentiators.
-The current heuristic produces false positives (similar topic, compatible content)
-and false negatives (same topic, genuinely conflicting). NLI fixes both for
-natural-language-dense domains. NLI scores become edge quality features for W3-1.
+**Domain qualifier**: NLI (trained on SNLI/MultiNLI) performs well on
+natural-language-dense knowledge bases. For terse, numeric, or code-heavy corpora,
+the cosine heuristic may perform comparably. The W1-3 eval harness quantifies this
+for any specific knowledge base before committing.
 
-**Effort**: 3-4 days (model integration + rayon pool establishment + embedding migration).
+**Why now**: W1-1 bootstrap Contradicts edges await NLI confirmation. W3-1 GNN needs
+NLI confidence scores as edge quality features. Cross-encoder re-ranking is the
+highest-leverage search quality improvement available without a full local LLM.
+
+**Effort**: 3-4 days (model integration + NliServiceHandle + post-store pipeline +
+re-ranking path).
+
+**Gate condition**: W1-3 eval harness results show measurable improvement on a
+representative query set.
 
 **Security requirements:**
 - [Critical] ONNX model integrity must be verified at load time via SHA-256 hash
   pinned in config — a replaced model file is an undetectable model-poisoning attack
-  vector. Refuse startup if hash does not match.
+  vector. Hash mismatch transitions `NliServiceHandle` to `Failed` state; server
+  continues on cosine fallback.
 - [High] NLI input pairs are derived from stored knowledge entries — content stored
   by external callers. Run each input through length truncation (max 512 tokens /
   ~2000 chars per side) before inference to prevent adversarial inputs that cause
@@ -467,12 +609,15 @@ natural-language-dense domains. NLI scores become edge quality features for W3-1
 - [High] NLI inference runs on rayon; if it panics (OOM, malformed tensor), the panic
   must not propagate to the MCP handler thread. The oneshot channel drop signals
   failure cleanly to the awaiting async task.
-- [Medium] The `Contradicts`/`Supports` edge creation thresholds must be config-driven
-  (W0-3) — these thresholds directly affect which knowledge entries are penalized.
+- [Medium] The `Contradicts`/`Supports` edge creation thresholds, `nli_top_k`,
+  `max_contradicts_per_tick`, and re-ranking `top_k` must be config-driven — these
+  directly affect which knowledge entries are penalized or surfaced.
 
 ---
 
-### W1-3: Observation Pipeline Generalization
+### W1-5: Observation Pipeline Generalization
+**Business outcome**: Any domain — SRE operations, environmental monitoring, scientific research, legal review — can connect its native event stream to the learning layer without code changes, making Unimatrix's intelligence engine genuinely domain-agnostic and not just configurable.
+
 **What**: Make `HookType` pluggable rather than Claude Code-specific.
 
 ```rust
@@ -500,11 +645,11 @@ The `UniversalMetrics` schema similarly becomes configurable — dev-specific me
 (`bash_for_search`, `coordinator_respawn`) become the default domain pack's metrics,
 not hardcoded struct fields.
 
-**Detection rule rewrite is in scope for W1-3.** The 21 retrospective detection
+**Detection rule rewrite is in scope for W1-5.** The 21 retrospective detection
 rules (col-002) reference `HookType` variants and `UniversalMetrics` field names
 structurally. Generalizing the event schema without simultaneously rewriting the
 detection rules breaks the retrospective pipeline for any non-Claude-Code domain.
-The detection rule rewrite is not optional — it is part of W1-3's deliverable.
+The detection rule rewrite is not optional — it is part of W1-5's deliverable.
 W3-1's implicit training labels depend on a functioning retrospective pipeline;
 broken detection rules break the GNN training signal.
 
@@ -528,10 +673,12 @@ domain pack config loading — detection rule rewrite adds to original estimate)
 ---
 
 ## Wave 2 — Deployment
-*Estimated: 2 weeks, after Wave 0*
+*Estimated: 3 weeks, after Wave 0*
 *(Can run in parallel with Wave 1)*
 
 ### W2-1: Container Packaging
+**Business outcome**: Knowledge survives infrastructure changes — production-grade deployment with clean backup, recovery, and standard container lifecycle means operators never lose their knowledge base to a migration or hardware failure.
+
 **What**: Dockerfile + docker-compose for single-binary container with named volumes.
 
 ```
@@ -576,6 +723,8 @@ Point-in-time recovery becomes standard container ops.
 ---
 
 ### W2-2: HTTP Transport + Basic Auth
+**Business outcome**: External systems and pipelines can call Unimatrix without being Claude Code plugins — the knowledge engine becomes an addressable platform service that any system with an HTTP client can integrate.
+
 **What**: Add HTTP/HTTPS transport alongside existing UDS/stdio.
 The MCP tools are unchanged — only the transport layer differs.
 
@@ -622,6 +771,8 @@ Claude Code plugins.
 ---
 
 ### W2-3: Multi-Project Routing + OAuth Middleware
+**Business outcome**: Teams accumulate organizational knowledge that spans projects — lessons discovered in one project surface in another, with OAuth-enforced access control and full attribution that scales from personal use to enterprise deployment.
+
 **What**: Two-tier knowledge hierarchy and OAuth 2.0 client credentials flow.
 
 **Two-tier store routing** (personal collection and project isolation):
@@ -682,10 +833,108 @@ minimum clearly distinguished in the API, not conflated in a single tool call.
 
 ---
 
+### W2-4: Embedded GGUF Module
+**Business outcome**: The system reasons about what agents need — synthesizing knowledge, explaining contradictions, generating proactive recommendations — without any cloud or external LLM dependency. Every deployment, including air-gapped and resource-constrained environments, gains genuine local intelligence.
+
+**What**: An optional `unimatrix-infer` capability — a local GGUF model loaded via
+llama.cpp when configured. Enabled by a single config entry; absent means zero impact
+on existing behavior.
+
+```toml
+[inference]
+model_path = "/absolute/path/to/models/phi-3.5-mini.Q4_K_M.gguf"
+# absent = graceful degradation; all existing behavior unchanged
+```
+
+**All GGUF inference runs on a dedicated rayon `ThreadPool`** (separate from the
+ONNX pool established in W1-2). GGUF inference is longer-duration (seconds, not
+milliseconds) and must not starve NLI inference (W1-4) or GNN training (W3-1)
+during overnight synthesis runs.
+
+**llama.cpp integration complexity**: llama.cpp via Rust FFI introduces a third ML
+stack alongside the two existing ONNX pipelines. Platform-specific compilation
+(ARM, x86, macOS, Linux), signal handler conflicts, and memory management differences
+from short-lived processes are known risks in long-running server processes. The
+"1 week" estimate should be validated against a proof-of-concept integration before
+committing to the timeline. Build the GGUF integration behind a Cargo feature flag
+(`features = ["infer"]`) so it doesn't affect builds for deployments that don't need it.
+
+**Synthesis atomicity**: Overnight GGUF synthesis runs may be interrupted by daemon
+restart. The synthesis path must be atomic at the commitment point — a "synthesis in
+progress" state that survives restart without leaving orphaned partial entries. Do not
+commit a synthesized entry until the full LLM output is available and hash-chained.
+
+**When present, qualitatively upgrades:**
+
+- **context_cycle_review** — 21 detection rules produce pattern-matched findings today.
+  With LLM: genuinely reasoned recommendations. *"Three sessions this week showed the same
+  re-search pattern on integration test setup. The convention entry is technically correct
+  but missing the fixture initialization step every agent has had to rediscover."*
+  That is not a rule. That is reasoning.
+
+- **context_status recommendations** — heuristic thresholds → specific, actionable,
+  contextual explanations of why health is degraded and what to do.
+
+- **W3-2 Knowledge Synthesis** — with LLM: genuine distillation of multiple entries
+  into a coherent, attributable, higher-quality single entry.
+
+- **Contradiction explanation** — NLI (W1-4) gives a score; GGUF gives the *why*.
+
+- **Background intelligence without an external LLM** — With daemon mode (W0-0),
+  retrospectives, synthesis, and contradiction analysis run overnight, ready when the
+  next session begins — without Claude.
+
+**Why optional rather than required**: Unimatrix without the module is fully functional.
+All capabilities degrade gracefully to current behavior. The module is an enhancement
+tier, not a dependency. W3-2 synthesis, however, requires W2-4.
+
+**Recommended models by deployment:**
+
+| Deployment | Model | Size (Q4) | Notes |
+|-----------|-------|-----------|-------|
+| Raspberry Pi 5 (16GB) | Llama-3.2-1B | ~800MB | Sufficient for synthesis + recommendations |
+| Developer laptop | Phi-3.5-mini | ~2.2GB | Better reasoning quality |
+| Any deployment | Any GGUF-format model | — | User-supplied; Unimatrix provides the integration |
+
+**Reference deployment**: Raspberry Pi 5 (16GB) running neural-data-platform with no
+external LLM. Unimatrix + GGUF module transforms the Pi from reactive alerting
+(sensor exceeds threshold → alert) to a reasoning system (anomaly detected →
+knowledge search → LLM synthesis: *"This PM2.5 signature matches three prior events
+correlated with westerly winds during wildfire season — check sensor 4 for drift"*).
+Fully air-gapped. Zero cloud dependency. The Pi reasons about its own sensor data.
+
+**Gate condition**: User opt-in via config. Validation through W1-3 eval harness
+against a representative scenario set before production deployment. Validate the
+llama.cpp integration in the target deployment environment (ARM vs x86, available RAM)
+before enabling.
+
+**Effort**: 1-2 weeks (proof-of-concept integration required before committing).
+
+**Security requirements:**
+- [Critical] GGUF model file must be hash-verified at load — same SHA-256 pinning
+  pattern as W1-4 (NLI). A replaced model file is an undetectable prompt-injection
+  and reasoning-manipulation vector.
+- [High] LLM input is composed from stored knowledge entries. Apply length limits
+  (max ~4000 tokens total context) and run inputs through the content scanner before
+  passing to the model.
+- [High] LLM output stored as synthesized entries or returned as recommendations must
+  pass full content scanner before storage or return.
+- [Medium] `model_path` must be an absolute path validated against an allowed directory
+  prefix — prevent misuse of the GGUF loader's file read capability.
+- [Low] Run GGUF inference exclusively on the dedicated rayon pool with a bounded
+  thread budget to prevent monopolizing CPU during long synthesis operations.
+
+---
+
 ## Wave 3 — Adaptive Intelligence
-*Estimated: 3-4 weeks, after Wave 1 + sufficient usage data*
+*Estimated: 2-3 weeks, after Wave 1 complete + sufficient usage data*
+
+W3-1 and W3-2 require Wave 1 complete AND sufficient usage data from the W0-0 daemon
+running continuously (typically 2-4 weeks of active deployment).
 
 ### W3-1: GNN Confidence Learning
+**Business outcome**: Confidence weights adapt automatically to each deployment's actual usage patterns — a legal knowledge base, an SRE runbook, and an air-quality sensor network each develop scoring models calibrated to their domain without any manual tuning.
+
 **What**: Replace hardcoded weight constants with a learned weight vector
 per knowledge base. A small Graph Attention Network (2-layer, ~400KB ONNX)
 trains on helpfulness signals and behavioral patterns from the observation pipeline.
@@ -721,7 +970,7 @@ convergence. The GNN then refines from there.
 1. *Explicit*: `helpful_count`/`unhelpful_count` per entry
 2. *Implicit*: observation pipeline behavioral patterns —
    retrieval → successful completion = positive; retrieval → re-search = negative;
-   retrieval → error pattern = negative. Requires W1-3 detection rules to be fully
+   retrieval → error pattern = negative. Requires W1-5 detection rules to be fully
    functional for the generalized event schema.
 
 **Gate condition**: Deploy when a knowledge base has 50+ helpfulness votes OR
@@ -746,14 +995,16 @@ validation against actual implementation complexity).
 ---
 
 ### W3-2: Knowledge Synthesis
+**Business outcome**: As the knowledge base matures, redundant and overlapping entries distill automatically into authoritative synthesized records — the knowledge base stays trustworthy and navigable at scale without manual curation.
+
 **What**: Maintenance-tick process that distills knowledge clusters into
 single synthesized entries.
 
-**W3-3 (GGUF module) is a hard prerequisite for W3-2.** Without an LLM, synthesis
+**W2-4 (GGUF module) is a hard prerequisite for W3-2.** Without an LLM, synthesis
 is concatenation with a label — a multi-entry blob stored as `trust_source="neural"`
 that appears authoritative but contains no actual distillation. Promoting concatenated
 content to neural trust level degrades the knowledge base by creating entries that
-look synthesized but aren't. W3-2 must not ship until W3-3 is deployed and the
+look synthesized but aren't. W3-2 must not ship until W2-4 is deployed and the
 synthesis path produces genuine LLM-distilled output.
 
 Trigger: 3+ Active entries, same topic+category, mutual Supports/CoAccess edges,
@@ -767,10 +1018,10 @@ average of sources, `supersedes` = lowest-confidence source. Source entries depr
 (not deleted), correction-chained to synthesis.
 
 **Gate condition**: Deploy when knowledge base exceeds ~200 clustered entries
-on any topic AND W3-3 is deployed. Premature synthesis at low entry counts produces
+on any topic AND W2-4 is deployed. Premature synthesis at low entry counts produces
 noise; synthesis without LLM produces deceptive concatenations.
 
-**Effort**: 1 week (after W3-3).
+**Effort**: 1 week (after W2-4).
 
 **Security requirements:**
 - [High] Synthesized entries must validate that all source entries are Active and not
@@ -784,127 +1035,37 @@ noise; synthesis without LLM produces deceptive concatenations.
 
 ---
 
-### W3-3: Optional Inference Module (GGUF)
-**What**: An optional `unimatrix-infer` capability — a local GGUF model loaded via
-llama.cpp when configured. Enabled by a single config entry; absent means zero impact
-on existing behavior.
-
-```toml
-[inference]
-model_path = "/absolute/path/to/models/phi-3.5-mini.Q4_K_M.gguf"
-# absent = graceful degradation; all existing behavior unchanged
-```
-
-**All GGUF inference runs on the rayon `ThreadPool`** (established in W1-2).
-"Dedicated thread budget" means a bounded rayon pool sized separately from the
-NLI inference pool — GGUF inference is longer-duration (seconds, not milliseconds)
-and must not starve NLI inference during overnight synthesis runs.
-
-**llama.cpp integration complexity**: llama.cpp via Rust FFI introduces a third ML
-stack alongside the two existing ONNX pipelines. Platform-specific compilation
-(ARM, x86, macOS, Linux), signal handler conflicts, and memory management differences
-from short-lived processes are known risks in long-running server processes. The
-"1 week" estimate should be validated against a proof-of-concept integration before
-committing to the timeline. Build the GGUF integration behind a Cargo feature flag
-(`features = ["infer"]`) so it doesn't affect builds for deployments that don't need it.
-
-**Synthesis atomicity**: Overnight GGUF synthesis runs may be interrupted by daemon
-restart. The synthesis path must be atomic at the commitment point — a "synthesis in
-progress" state that survives restart without leaving orphaned partial entries. Do not
-commit a synthesized entry until the full LLM output is available and hash-chained.
-
-**When present, qualitatively upgrades:**
-
-- **context_cycle_review** — 21 detection rules produce pattern-matched findings today.
-  With LLM: genuinely reasoned recommendations. *"Three sessions this week showed the same
-  re-search pattern on integration test setup. The convention entry is technically correct
-  but missing the fixture initialization step every agent has had to rediscover."*
-  That is not a rule. That is reasoning.
-
-- **context_status recommendations** — heuristic thresholds → specific, actionable,
-  contextual explanations of why health is degraded and what to do.
-
-- **W3-2 Knowledge Synthesis** — with LLM: genuine distillation of multiple entries
-  into a coherent, attributable, higher-quality single entry.
-
-- **Contradiction explanation** — NLI gives a score; LLM gives the *why*.
-
-- **Background intelligence without an external LLM** — With daemon mode (W0-0),
-  retrospectives, synthesis, and contradiction analysis run overnight, ready when the
-  next session begins — without Claude.
-
-**Why optional rather than required**: Unimatrix without the module is fully functional.
-All capabilities degrade gracefully to current behavior. The module is an enhancement
-tier, not a dependency. W3-2 synthesis, however, requires W3-3.
-
-**Recommended models by deployment:**
-
-| Deployment | Model | Size (Q4) | Notes |
-|-----------|-------|-----------|-------|
-| Raspberry Pi 5 (16GB) | Llama-3.2-1B | ~800MB | Sufficient for synthesis + recommendations |
-| Developer laptop | Phi-3.5-mini | ~2.2GB | Better reasoning quality |
-| Any deployment | Any GGUF-format model | — | User-supplied; Unimatrix provides the integration |
-
-**Reference deployment**: Raspberry Pi 5 (16GB) running neural-data-platform with no
-external LLM. Unimatrix + GGUF module transforms the Pi from reactive alerting
-(sensor exceeds threshold → alert) to a reasoning system (anomaly detected →
-knowledge search → LLM synthesis: *"This PM2.5 signature matches three prior events
-correlated with westerly winds during wildfire season — check sensor 4 for drift"*).
-Fully air-gapped. Zero cloud dependency. The Pi reasons about its own sensor data.
-
-**Gate condition**: User opt-in via config. No minimum data threshold. Validation
-of the llama.cpp integration in the target deployment environment (ARM vs x86,
-available RAM) before enabling in production.
-
-**Effort**: 1-2 weeks (proof-of-concept integration required before committing).
-
-**Security requirements:**
-- [Critical] GGUF model file must be hash-verified at load — same SHA-256 pinning
-  pattern as W1-2 (NLI). A replaced model file is an undetectable prompt-injection
-  and reasoning-manipulation vector.
-- [High] LLM input is composed from stored knowledge entries. Apply length limits
-  (max ~4000 tokens total context) and run inputs through the content scanner before
-  passing to the model.
-- [High] LLM output stored as synthesized entries or returned as recommendations must
-  pass full content scanner before storage or return.
-- [Medium] `model_path` must be an absolute path validated against an allowed directory
-  prefix — prevent misuse of the GGUF loader's file read capability.
-- [Low] Run GGUF inference exclusively on the dedicated rayon pool with a bounded
-  thread budget to prevent monopolizing CPU during long synthesis operations.
-
----
-
 ## Dependency Graph
 
 ```
 W0-0: Daemon mode (UDS, persistent) ─────────────────────────────────────────┐
                                                                                ▼
-Wave 0 (prerequisites — W0-1/2/3 in parallel, after W0-0)
-  W0-1: sqlx migration / dual pool (nxs-011) ──────────────────────────────┐
-  W0-2: Client token security ─────────────────────────────────────────────┤
-  W0-3: Config externalization (incl. confidence weights, cycle labels) ───┤
+Wave 0 — COMPLETE
+  W0-1: sqlx migration / dual pool ────────────────────────────────────────┐
+  W0-2: Client token security (deferred) ──────────────────────────────────┤
+  W0-3: Config externalization ────────────────────────────────────────────┤
                                                                              │
         ┌────────────────────────────────────────────────────────────────────┤
         ▼                                                                     ▼
-Wave 1 (intelligence foundation)                       Wave 2 (deployment)
-  W1-1: Typed graph ────────────────┐                  W2-1: Container
-  W1-2: NLI model + rayon pool ─────┤                  W2-2: HTTP transport ──┐
-  W1-3: Obs generalization ─────────┤                  W2-3: Multi-project    │
-        (incl. detection rule        │                        + OAuth ◄────────┘
-         rewrite)                    │
-                                     │
-        ┌────────────────────────────┘
-        ▼
-Wave 3 (adaptive intelligence — after daemon + usage data accumulates)
-  W3-3: GGUF module    (independent; prerequisite for W3-2)
-  W3-1: GNN learning   (needs W1-1, W1-3 signals + usage data from W0-0 daemon)
-  W3-2: Synthesis      (needs W3-1 weights + W3-3 LLM + entry density)
+Wave 1 (intelligence foundation)                       Wave 2 (deployment, parallel)
+  W1-1: Typed graph (COMPLETE) ─────────────────────┐  W2-1: Container
+  W1-2: Rayon pool ──────────────────────┐          │  W2-2: HTTP transport ──┐
+  W1-3: Eval harness ────────────────────┤          │  W2-3: Multi-project    │
+  W1-4: NLI + re-ranking ←──(W1-2+W1-3)─┤          │        + OAuth ◄────────┘
+  W1-5: Obs generalization ──────────────┤          │  W2-4: GGUF ←──(W1-2+W1-3)
+                                          │          │
+        ┌─────────────────────────────────┘          │
+        ▼                                            │
+Wave 3 (adaptive intelligence — Wave 1 complete + usage data from W0-0 daemon)
+  W3-1: GNN learning   (needs W1-4 NLI edges + W1-5 signals + usage data)
+  W3-2: Synthesis      (needs W3-1 weights + W2-4 GGUF + entry density) ◄───┘
 ```
 
 Waves 1 and 2 are fully independent — run in parallel after Wave 0.
-W3-3 is independent and should be deployed before W3-1/W3-2.
-Wave 3 cannot start until Wave 1 is complete AND sufficient usage data exists
-(requires W0-0 daemon running continuously to accumulate signal).
+W2-4 (GGUF) requires W1-2 (rayon pool) and W1-3 (eval harness validation).
+W1-4 (NLI) requires W1-2 (rayon pool) and W1-3 (eval harness validation).
+Wave 3 requires Wave 1 complete AND sufficient usage data.
+W3-2 requires both W3-1 (learned weights) and W2-4 (GGUF inference for synthesis).
 
 ---
 
@@ -912,15 +1073,23 @@ Wave 3 cannot start until Wave 1 is complete AND sufficient usage data exists
 
 | Wave | Items | Estimated Effort | Gate Condition |
 |------|-------|-----------------|----------------|
-| W0-0 | Daemon mode | ~3 days | — (do first) |
-| W0 | 3 items | ~3.5 weeks | W0-0 complete (nxs-011 is the long tail at 1.5–2 weeks) |
-| W1 | 3 items | ~2.5 weeks | W0 complete (detection rule rewrite adds to W1-3) |
-| W2 | 3 items | ~2 weeks | W0 complete (parallel with W1; rmcp HTTP verification needed) |
-| W3-3 | GGUF module | ~1-2 weeks | User opt-in; proof-of-concept validation first |
+| W0 | All items | **COMPLETE** | — |
+| W1-1 | Typed graph | **COMPLETE** | — |
+| W1-2 | Rayon pool | ~2 days | W0 complete |
+| W1-3 | Eval harness | ~1 week | W0 complete (parallel with W1-2) |
+| W1-4 | NLI + re-ranking | ~3-4 days | W1-2 + W1-3 eval results |
+| W1-5 | Obs generalization | ~5-7 days | W0 complete (detection rule rewrite is the long tail) |
+| W2-1 | Container | ~2 days | W0 complete |
+| W2-2 | HTTP transport | ~3-4 days | W0 complete (rmcp HTTP verification required first) |
+| W2-3 | Multi-project + OAuth | ~4-5 days | W2-2 complete |
+| W2-4 | GGUF module | ~1-2 weeks | W1-2 + W1-3 eval results; proof-of-concept first |
 | W3-1 | GNN learning | ~1-2 weeks | W1 complete + usage data; training loop design first |
-| W3-2 | Synthesis | ~1 week | W3-1 + W3-3 both deployed |
+| W3-2 | Synthesis | ~1 week | W3-1 + W2-4 both deployed |
 
-**Total to domain-agnostic, securely deployed, scalable platform**: ~8-9 weeks of focused work.
+**Critical path to proactive intelligence**: W1-2 (rayon) → W1-3 (eval harness) →
+W1-4 (NLI, validated) + W2-4 (GGUF, validated) in parallel → W3-1 (GNN) → W3-2 (synthesis).
+
+**Total to domain-agnostic, securely deployed, intelligent platform**: ~9-11 weeks of focused work.
 Wave 3 trails by however long it takes for daemon usage data to accumulate (weeks to months).
 
 ---
@@ -947,7 +1116,7 @@ around it, not in spite of it.
 
 After W0-0 (daemon):
 - Background tick, write queue, ML inference, and GNN training run continuously
-- "Overnight intelligence" (W3-2/W3-3) becomes possible — not container-only
+- "Overnight intelligence" (W3-2/W2-4) becomes possible — not container-only
 
 After Wave 0 + W1 + W2:
 - Any domain can deploy with a config file (SRE, environmental, research, legal)
@@ -965,7 +1134,7 @@ After Wave 3:
 - Knowledge clusters self-compress as they mature
 - A new domain gets config-defined starting weights from day one and GNN-learned
   weights within weeks of active daemon use
-- With W3-3 (GGUF module): retrospective and status recommendations become genuinely
+- With W2-4 (GGUF module): retrospective and status recommendations become genuinely
   intelligent; synthesis produces coherent distillations; contradiction explanation
   surfaces the *why*; the system reasons about its own knowledge without an external LLM
 - Reference: a Raspberry Pi 5 running neural-data-platform, fully air-gapped,
@@ -1137,8 +1306,8 @@ topics that *should* have entries but don't.
   existing output when signal strength exceeds threshold (e.g., 3+ sessions)
 - Candidates are never auto-stored — they require an explicit `context_store` call from
   a human or privileged agent; the integrity chain requires attributed intent
-- With W3-3 (GGUF): the review tool passes candidate + session evidence to the local LLM
+- With W2-4 (GGUF): the review tool passes candidate + session evidence to the local LLM
   and returns a draft entry; without GGUF, it surfaces the topic and evidence only
 
-**Effort**: Detection layer ~2 days (extends W1-3 retrospective pipeline + analytics schema).
-Drafting layer ~2-3 days added to W3-3. Fully additive — no wave restructuring required.
+**Effort**: Detection layer ~2 days (extends W1-5 retrospective pipeline + analytics schema).
+Drafting layer ~2-3 days added to W2-4. Fully additive — no wave restructuring required.
