@@ -50,6 +50,7 @@ Features use `{phase}-{NNN}` naming. Track via **GitHub Issues**; commits refere
 - NEVER proactively create documentation unless explicitly requested.
 - NEVER store keys/secrets in code. Always in .env
 - **Test infrastructure is cumulative** — extend existing fixtures and helpers, never create isolated scaffolding.
+- **Search tools, not Bash**: Use `Grep` for content search and `Glob` for file discovery — never `grep`, `rg`, `find`, or `ls` via Bash. Reserve Bash for commands with no dedicated tool (cargo, git, etc.).
 
 ---
 

@@ -251,6 +251,8 @@ Each agent receives ONLY its component's pseudocode and test plan — not every 
 
 ### Gate 3b: Code Review
 
+**Pre-gate (Delivery Leader):** Before spawning the validator, run `git status --short` and commit any modified production files that are not yet committed. Gates check committed HEAD — working tree changes are invisible to them.
+
 Spawn `uni-validator` in Gate 3b mode:
 
 ```
