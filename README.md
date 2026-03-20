@@ -32,9 +32,9 @@ Captures decisions, patterns, conventions, procedures, lessons, and outcomes fro
 
 All-MiniLM-L6-v2 ONNX model runs locally — no API calls, no cloud dependency. A MicroLoRA layer adapts frozen embeddings to project-specific usage patterns. Search relevance improves over time as the system learns which entries are accessed together. 384-dimension vectors with HNSW index for fast approximate nearest-neighbor search.
 
-### Semantic Search with Confidence-Aware Ranking
+### Semantic Search with NLI Re-ranking
 
-Natural language queries return entries ranked by a combination of semantic similarity, confidence score, and co-access affinity. Filters by topic, category, tags, and status narrow results without losing semantic ranking. Near-duplicate detection (cosine similarity >= 0.92) prevents redundant entries at write time. Provenance boosting: `lesson-learned` entries get a small ranking boost in search results.
+Natural language queries return entries ranked by NLI (Natural Language Inference) entailment score when an NLI cross-encoder model is present, or by a combination of semantic similarity, confidence score, and co-access affinity when it is not. The NLI re-ranker expands the HNSW candidate pool to `nli_top_k` (default 20), scores each `(query, candidate)` pair on the rayon pool, and sorts by entailment score descending before truncation — measuring whether an entry answers the query rather than merely sharing vocabulary with it. When the NLI model is absent or disabled (`nli_enabled = false`), search falls back to the existing confidence-aware ranking pipeline transparently. Filters by topic, category, tags, and status narrow results without losing semantic ranking. Near-duplicate detection (cosine similarity >= 0.92) prevents redundant entries at write time. Provenance boosting: `lesson-learned` entries get a small ranking boost in search results.
 
 ### Hook-Driven Invisible Delivery (Cortical Implant)
 
@@ -44,9 +44,9 @@ Automatic context injection on every prompt via the `UserPromptSubmit` hook. Fiv
 
 Analyzes session telemetry for a completed feature cycle. 21 detection rules across 4 categories: agent behavior, friction points, session health, and scope indicators. Historical baselines with outlier detection surface anomalies. Evidence synthesis produces actionable findings with supporting data. Lessons and patterns extracted from retrospectives are stored back in the knowledge base with de-duplication via correction chains.
 
-### Contradiction Detection
+### Contradiction Detection and NLI Edge Classification
 
-Pairwise heuristic detection across the knowledge base identifies entries that may conflict. Contradictions surface in `context_status` health reports. Detected contradictions reduce the coherence health metric (lambda), prompting review.
+After each `context_store`, a fire-and-forget background task runs the NLI cross-encoder on the new entry against its top HNSW neighbors and writes `Contradicts` or `Supports` edges to the knowledge graph (`GRAPH_EDGES`) with `source='nli'`. This replaces the lexical `conflict_heuristic` for new edge creation. A circuit breaker (`max_contradicts_per_tick`, default 10) caps edges written per store call to prevent a single noisy entry from flooding the graph. When NLI is absent, the existing cosine heuristic remains as fallback. Contradictions surface in `context_status` health reports and reduce the coherence health metric (lambda), prompting review.
 
 ### Correction Chains with Audit Trails
 
@@ -197,6 +197,10 @@ context_briefing(role: "developer", task: "implement new MCP tool", feature: "vn
 
 8. **Daemon log file is not rotated.** The daemon writes stdout/stderr to `~/.unimatrix/{hash}/unimatrix.log` in append mode. On long-running projects, monitor this file's size and truncate or archive it manually as needed.
 
+9. **NLI model must be downloaded separately.** The NLI cross-encoder model is not bundled and is not downloaded automatically. Run `unimatrix model-download --nli` once after installation. The command prints the SHA-256 hash of the downloaded file — copy that hash into `nli_model_sha256` in your `[inference]` config. The server degrades gracefully to cosine-only search if the model is absent; no error is returned to callers.
+
+10. **Pin `nli_model_sha256` in production.** A replaced or tampered NLI model file is an undetectable model-poisoning attack. Setting `nli_model_sha256` in `[inference]` config causes the server to verify the model file at startup; a mismatch aborts NLI loading (falls back to cosine) and logs a security warning. Production deployments should always set this field.
+
 ---
 
 ## Configuration
@@ -250,10 +254,34 @@ default_trust = "permissive"
 session_capabilities = ["Read", "Write", "Search"]
 
 [inference]
-# Number of threads dedicated to ML inference (ONNX embedding, future NLI and GNN).
+# Number of threads dedicated to ML inference (ONNX embedding, NLI cross-encoder, GNN).
 # Default: (num_cpus / 2).max(4).min(8) — at least 4 threads, at most 8.
 # Valid range: [1, 64]. Out-of-range value aborts startup with a structured error.
 rayon_pool_size = 4
+
+# NLI cross-encoder re-ranking and contradiction detection.
+# nli_enabled: set to false to disable NLI and use cosine-only search (default: true).
+nli_enabled = true
+# nli_model_name: "minilm2" (cross-encoder/nli-MiniLM2-L6-H768, ~85MB, default)
+#                 "deberta" (cross-encoder/nli-deberta-v3-small, ~180MB)
+nli_model_name = "minilm2"
+# nli_model_sha256: SHA-256 hash of the downloaded model file. Should be set in
+# production — mismatch causes NliServiceHandle to fail and fall back to cosine.
+# Obtain the hash by running: unimatrix model-download --nli
+nli_model_sha256 = "<hash from model-download --nli>"
+# nli_top_k: HNSW candidate pool size for search re-ranking (default: 20, range [1,100]).
+nli_top_k = 20
+# nli_post_store_k: neighbor count for post-store contradiction detection (default: 10).
+nli_post_store_k = 10
+# nli_entailment_threshold: minimum entailment score to write a Supports edge (default: 0.6).
+nli_entailment_threshold = 0.6
+# nli_contradiction_threshold: minimum contradiction score to write a Contradicts edge (default: 0.6).
+nli_contradiction_threshold = 0.6
+# max_contradicts_per_tick: max edges written per context_store call (default: 10, range [1,100]).
+max_contradicts_per_tick = 10
+# nli_auto_quarantine_threshold: NLI-origin Contradicts edges trigger auto-quarantine only
+# when all edge scores exceed this value. Must be > nli_contradiction_threshold (default: 0.85).
+nli_auto_quarantine_threshold = 0.85
 ```
 
 Config files are validated for security at load time: world-writable files abort startup; group-writable files log a warning. `[server] instructions` is scanned for injection patterns before use.
@@ -347,7 +375,7 @@ Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdou
 | `export` | Export the knowledge base to JSONL format. No running server required. | `--output <PATH>` (defaults to stdout) |
 | `import` | Import a knowledge base from a JSONL export file. Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data) |
 | `version` | Print version and exit. With `--project-dir`, also initializes the database. | `--project-dir <PATH>` |
-| `model-download` | Download the ONNX embedding model to cache. Used by npm postinstall. | None |
+| `model-download` | Download ONNX model(s) to cache. Without flags, downloads the embedding model (used by npm postinstall). With `--nli`, downloads the configured NLI cross-encoder model and prints its SHA-256 hash for config pinning. | `--nli` (NLI model), `--nli-model minilm2\|deberta` (model variant, default `minilm2`) |
 | `snapshot` | Create a self-contained SQLite copy of the active database using `VACUUM INTO`. Includes all tables (entries, query_log, graph_edges, co_access, sessions, and all analytics tables). Refuses with a non-zero exit code if `--out` resolves to the same path as the live database. | `--out <PATH>` (required), `--project-dir <PATH>` |
 | `eval scenarios` | Mine the `query_log` table from a snapshot and write eval scenarios in JSONL format. Each scenario includes query text, retrieval context, baseline result set (soft ground truth), and source path (`mcp` or `uds`). | `--db <PATH>` (required), `--out <PATH>` (required), `--retrieval-mode mcp\|uds\|all` (default `all`), `--limit <N>` |
 | `eval run` | Replay eval scenarios through one or more configuration profile TOML files in-process, producing one JSON result file per scenario. Computes P@K, MRR, Kendall tau, rank change list, and latency delta per scenario per profile. Opens snapshot read-only; produces no writes to the snapshot. | `--db <PATH>` (required), `--scenarios <PATH>` (required), `--configs <TOML,...>` (required), `--out <DIR>` (required), `--k <N>` (default 5) |
@@ -445,6 +473,10 @@ Append-only audit log records every operation with agent identity (who performed
 ### Hash-Chained Corrections
 
 SHA-256 content hashes with `previous_hash` links create tamper-evident correction chains. Any break in the chain is detectable.
+
+### NLI Model Integrity
+
+SHA-256 hash pinning for the NLI cross-encoder model file. When `nli_model_sha256` is set in `[inference]` config, the model file is verified before the ONNX session is constructed. A mismatch transitions `NliServiceHandle` to Failed, logs a security warning, and falls back to cosine-only search — the server continues operating. A tampered model file without hash pinning is an undetectable model-poisoning attack. Production deployments must set `nli_model_sha256`; obtain the hash by running `unimatrix model-download --nli`.
 
 ---
 
