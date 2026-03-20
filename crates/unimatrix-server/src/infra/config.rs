@@ -209,7 +209,7 @@ pub struct InferenceConfig {
     // -----------------------------------------------------------------------
     // NLI cross-encoder fields (crt-023)
     // -----------------------------------------------------------------------
-    /// Enable the NLI cross-encoder (default `true`).
+    /// Enable the NLI cross-encoder (default `false`, opt-in).
     ///
     /// When `false`, `NliServiceHandle` is constructed but never loads a model;
     /// `get_provider()` immediately returns `Err(NliNotReady)`. All search uses
@@ -303,7 +303,7 @@ impl Default for InferenceConfig {
         // On 20-core:    num_cpus = 20; 20/2 = 10; max(10, 4) = 10; min(10, 8) = 8.
         InferenceConfig {
             rayon_pool_size: (num_cpus::get() / 2).max(4).min(8),
-            nli_enabled: true,
+            nli_enabled: false,
             nli_model_name: None,
             nli_model_path: None,
             nli_model_sha256: None,
@@ -322,7 +322,7 @@ impl Default for InferenceConfig {
 // ---------------------------------------------------------------------------
 
 fn default_nli_enabled() -> bool {
-    true
+    false
 }
 
 fn default_nli_top_k() -> usize {
@@ -2823,7 +2823,7 @@ mod tests {
         // An empty deserialization must produce all 10 NLI fields at documented defaults.
         let config = InferenceConfig::default();
 
-        assert_eq!(config.nli_enabled, true);
+        assert_eq!(config.nli_enabled, false);
         assert_eq!(config.nli_model_name, None);
         assert_eq!(config.nli_model_path, None);
         assert_eq!(config.nli_model_sha256, None);
@@ -2852,7 +2852,7 @@ mod tests {
         // Deserializing from an empty TOML string must produce all NLI defaults.
         let config: InferenceConfig = toml::from_str("").unwrap();
 
-        assert_eq!(config.nli_enabled, true);
+        assert_eq!(config.nli_enabled, false);
         assert_eq!(config.nli_model_name, None);
         assert_eq!(config.nli_model_path, None);
         assert_eq!(config.nli_model_sha256, None);
@@ -3224,6 +3224,7 @@ mod tests {
         // When nli_enabled = true and rayon_pool_size = 4, applying the floor gives >= 6.
         let mut config = InferenceConfig {
             rayon_pool_size: 4,
+            nli_enabled: true,
             ..InferenceConfig::default()
         };
         assert!(config.nli_enabled);

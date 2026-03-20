@@ -113,12 +113,11 @@ impl NliModel {
 
     /// Repo path for the ONNX file download via `hf-hub`.
     ///
-    /// For these cross-encoder models the ONNX file is at the repo root (no `onnx/` prefix).
+    /// Both cross-encoder variants export ONNX under `onnx/model.onnx` (confirmed on HF hub).
     pub fn onnx_repo_path(&self) -> &'static str {
         match self {
-            Self::NliMiniLM2L6H768 => "model.onnx",
-            // DeBERTa ONNX path must be confirmed at download time (OQ-05, ADR-003).
-            Self::NliDebertaV3Small => "model.onnx",
+            Self::NliMiniLM2L6H768 => "onnx/model.onnx",
+            Self::NliDebertaV3Small => "onnx/model.onnx",
         }
     }
 
