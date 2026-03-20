@@ -1,9 +1,10 @@
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
 
 use sqlx::ConnectOptions as _;
-use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 
 use crate::analytics::{AnalyticsWrite, spawn_drain_task};
 use crate::error::{PoolKind, Result, StoreError};
@@ -146,7 +147,19 @@ impl SqlxStore {
     pub async fn open_readonly(path: impl AsRef<Path>) -> Result<SqlxStore> {
         let db_path = path.as_ref();
 
-        let opts = build_connect_options(db_path).read_only(true).create_if_missing(false);
+        // Build read-only options WITHOUT journal_mode=WAL. Switching journal
+        // mode requires a write transaction; VACUUM INTO produces a
+        // delete-journal snapshot, so setting WAL here would fail with
+        // SQLITE_READONLY (error code 8). All other pragmas are safe read-only.
+        let opts = SqliteConnectOptions::new()
+            .filename(db_path)
+            .busy_timeout(Duration::from_secs(10))
+            .pragma("synchronous", "NORMAL")
+            .pragma("foreign_keys", "ON")
+            .pragma("busy_timeout", "10000")
+            .pragma("cache_size", "-16384")
+            .read_only(true)
+            .create_if_missing(false);
 
         let read_pool = SqlitePoolOptions::new()
             .max_connections(8)
