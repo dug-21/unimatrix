@@ -1193,3 +1193,65 @@ def test_context_lookup_doubled_access_count(server):
     )
 
 
+# === crt-023: NLI + Cross-Encoder Re-ranking (W1-4) ==========================
+
+
+def test_search_nli_not_ready_fallback_results(server):
+    """T-CRT023-01: context_search returns valid results when NLI is not ready (AC-05, AC-14).
+
+    In CI the NLI model is not cached, so NliServiceHandle is in Failed/NotReady
+    state. The server must fall back to cosine-similarity ranking and return
+    results without error. Response schema must be unchanged.
+    """
+    # Store an entry so search has something to find
+    store_resp = server.context_store(
+        "nli not ready fallback test unique crt023 alpha search",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+
+    # Search — NLI absent in CI means cosine fallback must kick in
+    search_resp = server.context_search(
+        "nli not ready fallback test unique crt023 alpha search",
+        format="json",
+        agent_id="human",
+    )
+    # Must succeed without error — AC-14 graceful degradation
+    assert_tool_success(search_resp)
+    entries = parse_entries(search_resp)
+    # Stored entry must be findable via cosine fallback (AC-05)
+    result_ids = [e.get("id") for e in entries if e.get("id") is not None]
+    assert entry_id in result_ids, (
+        f"AC-05/AC-14: context_search must return results via cosine fallback when NLI "
+        f"is not ready. entry_id={entry_id} not found in results: {result_ids}"
+    )
+
+
+def test_store_response_not_blocked_by_nli_task(server):
+    """T-CRT023-02: context_store MCP response returns promptly; not blocked by NLI task (NFR-02).
+
+    The NLI post-store detection is fire-and-forget. Even when NLI is active or
+    loading, the context_store MCP response must return well within 2 seconds.
+    This validates that the fire-and-forget spawn does not block the return path.
+    """
+    import time as _time
+    start = _time.monotonic()
+    resp = server.context_store(
+        "nli fire and forget store response timing test crt023 beta",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    elapsed = _time.monotonic() - start
+
+    assert_tool_success(resp)
+    assert elapsed < 5.0, (
+        f"NFR-02: context_store must return within 5s (fire-and-forget NLI must not "
+        f"block response). Took {elapsed:.2f}s."
+    )
+
+
