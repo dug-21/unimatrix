@@ -30,6 +30,7 @@ pub mod infra;
 pub mod mcp;
 pub mod server;
 pub mod services;
+pub mod snapshot;
 pub mod uds;
 
 #[cfg(any(test, feature = "test-support"))]

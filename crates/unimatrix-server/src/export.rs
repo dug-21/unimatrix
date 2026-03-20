@@ -63,7 +63,7 @@ pub fn run_export(
     })
 }
 
-/// Bridge an async export future to a synchronous context.
+/// Bridge an async future to a synchronous context.
 ///
 /// When called from within a multi-thread tokio runtime (e.g. `#[tokio::test]`),
 /// uses `block_in_place` so the current thread can block without stalling the runtime.
@@ -72,7 +72,10 @@ pub fn run_export(
 ///
 /// Never use `Builder::new_current_thread().block_on()` inside an existing runtime —
 /// that panics with "Cannot start a runtime from within a runtime".
-fn block_export_sync<F>(fut: F) -> Result<(), Box<dyn std::error::Error>>
+///
+/// `pub(crate)` so that sibling modules (`snapshot`, `eval/*`) can reuse the same
+/// async-to-sync bridge without duplicating the runtime-detection logic.
+pub(crate) fn block_export_sync<F>(fut: F) -> Result<(), Box<dyn std::error::Error>>
 where
     F: std::future::Future<Output = Result<(), Box<dyn std::error::Error>>>,
 {
