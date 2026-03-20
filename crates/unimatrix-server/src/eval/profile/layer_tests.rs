@@ -270,6 +270,75 @@ mod layer_tests {
         );
     }
 
+    // -----------------------------------------------------------------------
+    // crt-023 Sub-task B: NLI handle wiring in EvalServiceLayer (ADR-006)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_from_profile_nli_disabled_no_nli_handle() {
+        let (_dir, snap) = make_snapshot_db().await;
+
+        let mut profile = baseline_profile();
+        profile.config_overrides.inference.nli_enabled = false;
+
+        let result = EvalServiceLayer::from_profile(&snap, &profile, None).await;
+        match result {
+            Ok(layer) => {
+                assert!(
+                    !layer.has_nli_handle(),
+                    "nli_enabled=false profile must have nli_handle=None"
+                );
+            }
+            Err(EvalError::Io(_)) | Err(EvalError::LiveDbPath { .. }) => {}
+            Err(e) => panic!("unexpected error for nli_disabled profile: {e}"),
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_from_profile_nli_enabled_has_nli_handle() {
+        let (_dir, snap) = make_snapshot_db().await;
+
+        let mut profile = baseline_profile();
+        profile.config_overrides.inference.nli_enabled = true;
+        // No explicit model path — let the handle start loading (will not find model in CI).
+        // We only assert that the handle was wired, not that it becomes Ready.
+
+        let result = EvalServiceLayer::from_profile(&snap, &profile, None).await;
+        match result {
+            Ok(layer) => {
+                assert!(
+                    layer.has_nli_handle(),
+                    "nli_enabled=true profile must have nli_handle=Some"
+                );
+            }
+            Err(EvalError::Io(_)) | Err(EvalError::LiveDbPath { .. }) => {}
+            Err(e) => panic!("unexpected error for nli_enabled profile: {e}"),
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_from_profile_invalid_nli_model_name_returns_config_invariant() {
+        let (_dir, snap) = make_snapshot_db().await;
+
+        let mut profile = baseline_profile();
+        profile.config_overrides.inference.nli_enabled = true;
+        profile.config_overrides.inference.nli_model_name = Some("not-a-real-model".to_string());
+
+        let result = EvalServiceLayer::from_profile(&snap, &profile, None).await;
+        match result {
+            Err(EvalError::ConfigInvariant(msg)) => {
+                assert!(
+                    msg.contains("nli_model_name"),
+                    "error must mention nli_model_name; got: {msg}"
+                );
+            }
+            // Guard may fire first in CI environments.
+            Err(EvalError::LiveDbPath { .. }) | Err(EvalError::Io(_)) => {}
+            Ok(_) => panic!("invalid nli_model_name must fail"),
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+
     #[tokio::test(flavor = "multi_thread")]
     async fn test_from_profile_valid_weights_passes_validation() {
         let (_dir, snap) = make_snapshot_db().await;

@@ -112,8 +112,11 @@ async fn run_eval_async(
     k: usize,
     out: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Construct one EvalServiceLayer per profile, then wait for embed model
+    // 1. Construct one EvalServiceLayer per profile, wait for embed + NLI model readiness.
+    // crt-023: profiles skipped due to NLI failure are tracked separately.
     let mut layers: Vec<EvalServiceLayer> = Vec::with_capacity(profiles.len());
+    let mut skipped_profiles: Vec<(String, String)> = Vec::new(); // (name, reason)
+
     for profile in &profiles {
         eprintln!(
             "eval run: constructing EvalServiceLayer for profile '{}'",
@@ -128,7 +131,46 @@ async fn run_eval_async(
         let embed = layer.embed_handle();
         layer::wait_for_embed_model(&embed, &profile.name).await?;
 
-        layers.push(layer);
+        // crt-023: Wait for NLI model if profile is NLI-enabled (ADR-006).
+        // Baseline profiles have nli_handle = None; skip this block.
+        if let Some(ref nli_handle) = layer.nli_handle {
+            match layer::wait_for_nli_ready(nli_handle, &profile.name).await {
+                Ok(()) => {
+                    // NLI ready — proceed with this profile normally.
+                    layers.push(layer);
+                }
+                Err(skip_reason) => {
+                    // ADR-006: SKIP this profile; continue with remaining profiles.
+                    eprintln!(
+                        "eval run: SKIPPED profile '{}' — {}",
+                        skip_reason.profile_name(),
+                        skip_reason.reason()
+                    );
+                    skipped_profiles.push((profile.name.clone(), skip_reason.reason().to_string()));
+                    // Do NOT push layer — this profile is excluded from replay.
+                }
+            }
+        } else {
+            // Baseline profile (NLI disabled): no NLI wait needed.
+            layers.push(layer);
+        }
+    }
+
+    // Report skipped profiles to the output directory if any were skipped.
+    if !skipped_profiles.is_empty() {
+        let skipped_path = out.join("skipped.json");
+        let json = serde_json::to_string_pretty(&skipped_profiles)?;
+        std::fs::write(&skipped_path, json)?;
+        eprintln!(
+            "eval run: {} profile(s) skipped; see {}",
+            skipped_profiles.len(),
+            skipped_path.display()
+        );
+    }
+
+    // Guard: must have at least one layer to replay against.
+    if layers.is_empty() {
+        return Err("eval run: all profiles were skipped; nothing to evaluate".into());
     }
 
     // 2. Load scenarios from JSONL
@@ -137,11 +179,13 @@ async fn run_eval_async(
     // 3. Print summary
     eprintln!(
         "eval run: {} profiles × {} scenarios",
-        profiles.len(),
+        layers.len(),
         scenario_records.len()
     );
 
-    // 4. Replay each scenario through each profile
+    // 4. Replay each scenario through each profile.
+    // NOTE: profiles and layers may now differ in length if NLI profiles were SKIPPED.
+    // run_replay_loop works on the layers slice; use layer.profile_name() for labelling.
     replay::run_replay_loop(&profiles, &layers, &scenario_records, k, out).await?;
 
     eprintln!("eval run: complete. results in {}", out.display());
