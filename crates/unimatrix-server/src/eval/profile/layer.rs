@@ -1,0 +1,262 @@
+//! `EvalServiceLayer` — read-only, analytics-suppressed ServiceLayer for eval replay (nan-007).
+
+use std::collections::HashSet;
+use std::fmt;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use sqlx::SqlitePool;
+use sqlx::sqlite::SqliteConnectOptions;
+use unimatrix_adapt::{AdaptConfig, AdaptationService};
+use unimatrix_core::async_wrappers::AsyncVectorStore;
+use unimatrix_core::{Store, VectorAdapter, VectorConfig, VectorIndex};
+use unimatrix_embed::EmbedConfig;
+
+use crate::infra::audit::AuditLog;
+use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::rayon_pool::RayonPool;
+use crate::infra::usage_dedup::UsageDedup;
+use crate::project;
+use crate::services::{RateLimitConfig, ServiceLayer};
+
+use super::error::EvalError;
+use super::types::{AnalyticsMode, EvalProfile};
+use super::validation::validate_confidence_weights;
+
+// ---------------------------------------------------------------------------
+// EvalServiceLayer
+// ---------------------------------------------------------------------------
+
+/// A read-only, analytics-suppressed service layer for eval replay.
+///
+/// Wraps a `ServiceLayer` built against a snapshot database opened with
+/// `SqlxStore::open_readonly()` (no migration, no drain task). The analytics
+/// write queue is never wired — the drain task is suppressed via
+/// `AnalyticsMode::Suppressed` (ADR-002, SR-07). No `enqueue_analytics` calls
+/// are made in the eval path.
+///
+/// Construct via `EvalServiceLayer::from_profile()`. If construction returns
+/// `Ok`, all invariants are satisfied.
+pub struct EvalServiceLayer {
+    /// The underlying service layer for search replay (Wave 2: runner.rs).
+    ///
+    /// `pub(crate)` rather than public so `runner.rs` can call `.search` directly.
+    #[allow(dead_code)]
+    pub(crate) inner: ServiceLayer,
+    /// Raw read-only pool for direct sqlx queries in runner.rs (Wave 2).
+    ///
+    /// Held here so runner.rs can scan query_log or entries without going
+    /// through the ServiceLayer abstraction. Never used for writes.
+    #[allow(dead_code)]
+    pub(crate) pool: SqlitePool,
+    /// Embedding handle for model-readiness polling in runner.rs.
+    ///
+    /// `runner.rs` calls `embed_handle().get_adapter()` in a 30 × 100 ms poll
+    /// loop before scenario replay begins (eval-runner.md lines 148–158).
+    pub(crate) embed_handle: Arc<EmbedServiceHandle>,
+    /// The canonicalized snapshot database path.
+    pub(crate) db_path: PathBuf,
+    /// The profile name, used for labelling results.
+    pub(crate) profile_name: String,
+    /// Always `Suppressed` in nan-007. Stored for type-level documentation.
+    pub(crate) analytics_mode: AnalyticsMode,
+}
+
+impl fmt::Debug for EvalServiceLayer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EvalServiceLayer")
+            .field("db_path", &self.db_path)
+            .field("profile_name", &self.profile_name)
+            .field("analytics_mode", &self.analytics_mode)
+            .finish_non_exhaustive()
+    }
+}
+
+impl EvalServiceLayer {
+    /// Construct an `EvalServiceLayer` from a snapshot database and a profile.
+    ///
+    /// Performs all validation before opening any database connection:
+    /// 1. Live-DB path guard — rejects if `db_path` resolves to the active DB (C-13, FR-44)
+    /// 2. Inference model path validation — rejects missing/unreadable model files (C-14)
+    /// 3. `ConfidenceWeights` sum invariant — rejects if weights do not sum to 0.92 (C-15)
+    /// 4. Opens a raw read-only `SqlitePool` for direct queries in runner.rs (C-02)
+    /// 5. Opens a `SqlxStore` via `open_readonly()` — no migration, no drain task (FR-24, C-02)
+    /// 6. Constructs `VectorIndex`, `EmbedServiceHandle`, `RayonPool`, and `ServiceLayer`
+    ///    with `AnalyticsMode::Suppressed` (ADR-002)
+    ///
+    /// Returns `EvalError` for all failure modes. Never panics (FR-23, SR-09).
+    pub async fn from_profile(
+        db_path: &Path,
+        profile: &EvalProfile,
+        project_dir: Option<&Path>,
+    ) -> Result<Self, EvalError> {
+        // ----------------------------------------------------------------
+        // Step 1: Live-DB path guard (C-13, FR-44, ADR-001)
+        // ----------------------------------------------------------------
+        let paths = project::ensure_data_directory(project_dir, None).map_err(EvalError::Io)?;
+
+        let active_db =
+            std::fs::canonicalize(&paths.db_path).unwrap_or_else(|_| paths.db_path.clone());
+
+        let db_resolved = std::fs::canonicalize(db_path).map_err(EvalError::Io)?;
+
+        if db_resolved == active_db {
+            return Err(EvalError::LiveDbPath {
+                supplied: db_path.to_path_buf(),
+                active: active_db,
+            });
+        }
+
+        // ----------------------------------------------------------------
+        // Step 2: Validate [inference] model paths (C-14, FR-23, SR-09)
+        // ----------------------------------------------------------------
+        // InferenceConfig is stub-only for nan-007 (no nli_model field yet).
+        // When W1-4 adds nli_model, validation goes here.
+
+        // ----------------------------------------------------------------
+        // Step 3: Validate ConfidenceWeights sum invariant (C-06, C-15, SR-08)
+        // ----------------------------------------------------------------
+        validate_confidence_weights(&profile.config_overrides)?;
+
+        // ----------------------------------------------------------------
+        // Step 4: Open raw read-only SqlitePool (C-02, ADR-002, FR-24)
+        //
+        // This pool is kept in EvalServiceLayer.pool for direct sqlx queries
+        // in runner.rs. It must not be used for writes.
+        // ----------------------------------------------------------------
+        let opts = SqliteConnectOptions::new()
+            .filename(db_path)
+            .read_only(true);
+
+        let pool = SqlitePool::connect_with(opts)
+            .await
+            .map_err(|e| EvalError::Store(Box::new(e)))?;
+
+        // ----------------------------------------------------------------
+        // Step 5: Build VectorIndex from snapshot (C-02, FR-24)
+        //
+        // VectorIndex::new() requires Arc<SqlxStore> — a concrete type, not a
+        // trait object. We cannot pass the raw SqlitePool directly.
+        //
+        // SqlxStore::open_readonly() opens a read-only pool with no migration
+        // step and no drain task. The analytics channel receiver is immediately
+        // dropped so all enqueue_analytics calls are silent no-ops.
+        // ----------------------------------------------------------------
+        let store = unimatrix_store::SqlxStore::open_readonly(db_path)
+            .await
+            .map_err(|e| EvalError::Store(Box::new(e)))?;
+        let store_arc: Arc<Store> = Arc::new(store);
+
+        let vector_config = VectorConfig::default();
+        let vector_index = Arc::new(
+            VectorIndex::new(Arc::clone(&store_arc), vector_config)
+                .map_err(|e| EvalError::Store(Box::new(e)))?,
+        );
+
+        // ----------------------------------------------------------------
+        // Step 6: Build embedding handle (model loading deferred to background)
+        //
+        // runner.rs polls embed_handle().get_adapter() up to 30 × 100 ms
+        // before scenario replay (eval-runner.md lines 148–158).
+        // ----------------------------------------------------------------
+        let embed_handle = EmbedServiceHandle::new();
+        let embed_config = EmbedConfig::default();
+        embed_handle.start_loading(embed_config);
+
+        // ----------------------------------------------------------------
+        // Step 7: Build inference pool
+        // ----------------------------------------------------------------
+        let rayon_pool_size = profile.config_overrides.inference.rayon_pool_size;
+        let rayon_pool = Arc::new(
+            RayonPool::new(rayon_pool_size, &format!("eval-{}", profile.name))
+                .map_err(|e| EvalError::Store(Box::new(e)))?,
+        );
+
+        // ----------------------------------------------------------------
+        // Step 8: Build adaptation service
+        // ----------------------------------------------------------------
+        let adapt_svc = Arc::new(AdaptationService::new(AdaptConfig::default()));
+
+        // ----------------------------------------------------------------
+        // Step 9: Build AuditLog
+        //
+        // Writes will fail (read-only pool) — acceptable; audit writes are
+        // not called in the eval search path.
+        // ----------------------------------------------------------------
+        let audit = Arc::new(AuditLog::new(Arc::clone(&store_arc)));
+
+        // ----------------------------------------------------------------
+        // Step 10: Build UsageDedup
+        // ----------------------------------------------------------------
+        let usage_dedup = Arc::new(UsageDedup::new());
+
+        // ----------------------------------------------------------------
+        // Step 11: Build VectorAdapter and AsyncVectorStore
+        // ----------------------------------------------------------------
+        let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
+        let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
+
+        // ----------------------------------------------------------------
+        // Step 12: Boosted categories
+        // ----------------------------------------------------------------
+        let boosted_categories: HashSet<String> = HashSet::from(["lesson-learned".to_string()]);
+
+        // ----------------------------------------------------------------
+        // Step 13: Build ServiceLayer via with_rate_config (TestHarness pattern)
+        //
+        // AnalyticsMode::Suppressed: rate limits set to u32::MAX so eval
+        // replay is never blocked. No analytics_tx channel registered — the
+        // drain task is never spawned (ADR-002).
+        // ----------------------------------------------------------------
+        let rate_config = RateLimitConfig {
+            search_limit: u32::MAX,
+            write_limit: u32::MAX,
+            window_secs: 3600,
+        };
+
+        let inner = ServiceLayer::with_rate_config(
+            Arc::clone(&store_arc),
+            Arc::clone(&vector_index),
+            Arc::clone(&async_vector_store),
+            Arc::clone(&store_arc),
+            Arc::clone(&embed_handle),
+            Arc::clone(&adapt_svc),
+            Arc::clone(&audit),
+            Arc::clone(&usage_dedup),
+            rate_config,
+            boosted_categories,
+            Arc::clone(&rayon_pool),
+        );
+
+        Ok(EvalServiceLayer {
+            inner,
+            pool,
+            embed_handle,
+            db_path: db_resolved,
+            profile_name: profile.name.clone(),
+            analytics_mode: AnalyticsMode::Suppressed,
+        })
+    }
+
+    /// Return the embed handle for model-readiness polling.
+    ///
+    /// Used by `runner.rs` in the 30 × 100 ms poll loop before scenario replay.
+    pub(crate) fn embed_handle(&self) -> Arc<EmbedServiceHandle> {
+        Arc::clone(&self.embed_handle)
+    }
+
+    /// Return the profile name for this layer.
+    pub fn profile_name(&self) -> &str {
+        &self.profile_name
+    }
+
+    /// Return the snapshot database path used by this layer.
+    pub fn db_path(&self) -> &Path {
+        &self.db_path
+    }
+
+    /// Return the analytics mode (always `Suppressed` for eval layers).
+    pub fn analytics_mode(&self) -> AnalyticsMode {
+        self.analytics_mode
+    }
+}
