@@ -16,7 +16,8 @@ path = "src/lib.rs"
 [dependencies]
 unimatrix-core = { path = "../unimatrix-core", features = ["async"] }
 unimatrix-store = { path = "../unimatrix-store" }
-unimatrix-engine = { path = "../unimatrix-engine" }
+# production-safe; required by eval runner for kendall_tau and ranking metrics (ADR-003, nan-007)
+unimatrix-engine = { path = "../unimatrix-engine", features = ["test-support"] }
 unimatrix-vector = { path = "../unimatrix-vector" }
 unimatrix-embed = { path = "../unimatrix-embed" }
 unimatrix-adapt = { path = "../unimatrix-adapt" }
