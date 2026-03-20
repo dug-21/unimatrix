@@ -6,10 +6,12 @@
 //!
 //! - `profile` — `EvalProfile`, `EvalServiceLayer`, `AnalyticsMode`, `EvalError`
 //! - `scenarios` — query_log scan → JSONL (D2)
-//! - `runner` — per-profile in-process replay + metric computation (Wave 3)
+//! - `runner` — per-profile in-process replay + metric computation (D3)
 //! - `report` — Markdown aggregation + zero-regression check (nan-007 D4)
 //!
-//! CLI wiring (`Command::Eval`, `run_eval_command`) is added in Wave 3 (main.rs).
+//! `run_eval_command` dispatches `EvalCommand` variants pre-tokio (C-09, ADR-005).
+
+use std::path::{Path, PathBuf};
 
 pub mod profile;
 pub mod report;
@@ -26,10 +28,9 @@ pub use scenarios::{ScenarioBaseline, ScenarioContext, ScenarioRecord, ScenarioS
 
 /// Nested subcommand enum for `unimatrix eval`.
 ///
-/// Wired into clap in Wave 3 (`main.rs`). Defined here so downstream modules
-/// can reference the enum shape without touching `main.rs` prematurely.
-///
-/// ADR-005: nested `Command::Eval { command: EvalCommand }` via clap 4.x.
+/// ADR-005: nested `Command::Eval { command: EvalCommand }` via clap 4.x inner enum.
+/// All variants are dispatched pre-tokio via `run_eval_command`. Async work uses
+/// `block_export_sync` internally (C-09).
 #[derive(Debug, clap::Subcommand)]
 pub enum EvalCommand {
     /// Extract scenario records from a snapshot database.
@@ -39,7 +40,7 @@ pub enum EvalCommand {
     Scenarios {
         /// Snapshot database path.
         #[arg(long)]
-        db: std::path::PathBuf,
+        db: PathBuf,
         /// Filter by source: mcp, uds, or all (default: all).
         #[arg(long, default_value = "all")]
         source: ScenarioSource,
@@ -48,46 +49,107 @@ pub enum EvalCommand {
         limit: Option<usize>,
         /// Output JSONL file path.
         #[arg(short, long)]
-        out: std::path::PathBuf,
+        out: PathBuf,
     },
 
     /// Run in-process A/B evaluation across one or more profile configs.
     ///
     /// Constructs one `EvalServiceLayer` per profile, replays each scenario,
     /// computes metrics (P@K, MRR, Kendall tau, latency delta), and writes
-    /// per-scenario JSON result files. Implemented in Wave 3.
+    /// per-scenario JSON result files.
+    ///
+    /// Memory note: each profile loads a separate vector index. Use <= 2 profiles
+    /// on machines with 8 GB RAM and large snapshots.
     Run {
-        /// Snapshot database path.
+        /// Snapshot database path. Must not be the active daemon DB.
         #[arg(long)]
-        db: std::path::PathBuf,
-        /// JSONL scenarios file.
+        db: PathBuf,
+        /// JSONL scenarios file (output of `eval scenarios`).
         #[arg(long)]
-        scenarios: std::path::PathBuf,
-        /// Comma-separated list of profile TOML paths.
+        scenarios: PathBuf,
+        /// Comma-separated list of profile TOML paths (at least one required).
+        /// First profile is treated as the baseline.
         #[arg(long)]
         configs: String,
-        /// Results output directory.
+        /// Results output directory for per-scenario JSON files.
         #[arg(short, long)]
-        out: std::path::PathBuf,
-        /// Top-K for P@K metric.
+        out: PathBuf,
+        /// Top-K for P@K metric (default: 5, must be >= 1).
         #[arg(long, default_value = "5")]
         k: usize,
     },
 
     /// Aggregate per-scenario JSON results into a Markdown report.
     ///
-    /// Produces five Markdown sections with summary table, ranking changes,
+    /// Produces five Markdown sections: summary, notable ranking changes,
     /// latency distribution, entry-level analysis, and zero-regression check.
-    /// Exits 0 regardless of regression count (C-07). Implemented in Wave 3.
+    ///
+    /// Always exits 0 — no automated pass/fail gate logic is applied (C-07).
     Report {
         /// Directory containing per-scenario JSON result files.
         #[arg(long)]
-        results: std::path::PathBuf,
-        /// Optional JSONL scenarios file for additional context.
+        results: PathBuf,
+        /// Optional JSONL scenarios file for annotating queries in the report.
         #[arg(long)]
-        scenarios: Option<std::path::PathBuf>,
+        scenarios: Option<PathBuf>,
         /// Output Markdown report path.
         #[arg(short, long)]
-        out: std::path::PathBuf,
+        out: PathBuf,
     },
+}
+
+/// Dispatch an `EvalCommand` variant.
+///
+/// Called from `main()` in the pre-tokio sync block (C-10, ADR-005).
+/// `Scenarios` and `Run` use `block_export_sync` internally for async sqlx.
+/// `Report` is fully synchronous with no async bridge needed.
+///
+/// # Errors
+///
+/// Propagates errors from the dispatched function. For `Run`, an empty
+/// `--configs` string is rejected immediately before any file I/O.
+pub fn run_eval_command(
+    cmd: EvalCommand,
+    _project_dir: Option<&Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match cmd {
+        EvalCommand::Scenarios {
+            db,
+            source,
+            limit,
+            out,
+        } => {
+            // block_export_sync bridge is inside run_scenarios (async sqlx).
+            scenarios::run_scenarios(&db, source, limit, &out)
+        }
+
+        EvalCommand::Run {
+            db,
+            scenarios,
+            configs,
+            out,
+            k,
+        } => {
+            // Parse comma-separated config paths.
+            let config_paths: Vec<PathBuf> = configs
+                .split(',')
+                .map(|s| PathBuf::from(s.trim()))
+                .filter(|p| !p.as_os_str().is_empty())
+                .collect();
+            if config_paths.is_empty() {
+                return Err("--configs must name at least one profile TOML file".into());
+            }
+            // block_export_sync bridge is inside run_eval (async sqlx + EvalServiceLayer).
+            runner::run_eval(&db, &scenarios, &config_paths, k, &out)
+        }
+
+        EvalCommand::Report {
+            results,
+            scenarios,
+            out,
+        } => {
+            // Fully synchronous — no block_export_sync needed (C-07, FR-29).
+            report::run_report(&results, scenarios.as_deref(), &out)
+        }
+    }
 }
