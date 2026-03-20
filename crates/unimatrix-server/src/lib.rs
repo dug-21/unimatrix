@@ -22,6 +22,7 @@ pub mod background;
 pub mod bridge;
 pub mod embed_reconstruct;
 pub mod error;
+pub mod eval;
 pub mod export;
 pub mod format;
 pub mod import;
