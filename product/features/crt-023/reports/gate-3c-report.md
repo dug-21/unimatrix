@@ -2,13 +2,14 @@
 
 > Gate: 3c (Final Risk-Based Validation)
 > Date: 2026-03-20
-> Result: REWORKABLE FAIL
+> Result: PASS
+> Rework iteration: 1 (R-09 circuit breaker tests added; re-validated 2026-03-20)
 
 ## Summary
 
 | Check | Status | Notes |
 |-------|--------|-------|
-| Risk mitigation proof | FAIL | R-09 non-negotiable test functions do not exist in codebase despite being claimed PASS |
+| Risk mitigation proof | PASS | R-09 tests now present and passing: `test_circuit_breaker_stops_at_cap`, `test_circuit_breaker_counts_all_edge_types` (2 passed, 0 failed) |
 | Test coverage completeness | WARN | R-01, R-08, R-16, R-19 partial (CI model absent — documented and acceptable) |
 | Specification compliance | PASS | 23/25 ACs pass; AC-09 PARTIAL (eval gate, ADR-006 path — pending human sign-off); AC-16 PENDING (CLI download, CI network constraint) |
 | Architecture compliance | PASS | All 8 components implemented per spec; ADRs 001-007 followed |
@@ -20,40 +21,30 @@
 
 ### Check 1: Risk Mitigation Proof
 
-**Status**: FAIL
+**Status**: PASS (rework iteration 1)
 
-**Evidence**: The RISK-COVERAGE-REPORT.md claims the two non-negotiable R-09 tests pass:
+**Evidence (original failure)**: The initial Gate 3c run found that `test_circuit_breaker_stops_at_cap` and `test_circuit_breaker_counts_all_edge_types` were claimed PASS in RISK-COVERAGE-REPORT.md but were absent from the codebase. R-09 is a non-negotiable Critical risk: "Cap enforcement across both Supports and Contradicts edge types."
 
-> `test_circuit_breaker_counts_all_edge_types`, `test_circuit_breaker_stops_at_cap` (unit, services/nli_detection) | PASS | Full
+**Evidence (rework confirmation)**: Both tests are now present in `crates/unimatrix-server/src/services/nli_detection.rs`:
+- `test_circuit_breaker_stops_at_cap` at line 1276 — asserts max_edges=2 cap limits combined Supports+Contradicts to exactly 2 edges from 5 candidates
+- `test_circuit_breaker_counts_all_edge_types` at line 1321 — asserts cap=3 with 4 alternating-type neighbors writes exactly 3 edges
 
-An exhaustive filesystem search across `/workspaces/unimatrix/crates/` and `/workspaces/unimatrix/product/` finds zero occurrences of these function names. The actual test functions in `nli_detection.rs` are:
-
+Cargo test run confirms both pass:
 ```
-fn test_format_nli_metadata_contains_required_keys
-fn test_format_nli_metadata_is_valid_json
-async fn test_empty_embedding_skips_nli
-async fn test_nli_not_ready_exits_immediately
-async fn test_bootstrap_promotion_zero_rows_sets_marker
-async fn test_maybe_bootstrap_promotion_skips_if_marker_present
-async fn test_maybe_bootstrap_promotion_defers_when_nli_not_ready
-async fn test_bootstrap_promotion_confirms_above_threshold
-async fn test_bootstrap_promotion_refutes_below_threshold
-async fn test_bootstrap_promotion_idempotent_second_run_no_duplicates
-async fn test_bootstrap_promotion_nli_inference_runs_on_rayon_thread
+test services::nli_detection::tests::test_circuit_breaker_stops_at_cap ... ok
+test services::nli_detection::tests::test_circuit_breaker_counts_all_edge_types ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored
 ```
 
-The test plan pseudocode in `product/features/crt-023/test-plan/post-store-detection.md` defined these functions as `test_circuit_breaker_counts_supports_and_contradicts_combined` and `test_circuit_breaker_stops_at_cap_mixed_types`. Neither the pseudocode names nor the report-claimed names were implemented.
+RISK-COVERAGE-REPORT.md references both function names at lines 15, 125, 166, and 176 — the report and implementation are now consistent.
 
-**R-09 is rated Critical and is a non-negotiable test** per the Risk Strategy:
-
-> Non-negotiable tests (feature must not ship without them):
-> 4. R-09: Cap enforcement across both Supports and Contradicts edge types
-
-The implementation code in `nli_detection.rs` at lines 164-233 is correctly structured — the cap logic at line 165 explicitly comments "Cap counts BOTH Supports AND Contradicts edges combined (not just Contradicts)." The implementation is likely correct, but the R-09 tests that would prove this are absent.
-
-**Issue**: The RISK-COVERAGE-REPORT falsely claims these tests pass. This is a reporting error combined with an implementation gap (tests were not written).
-
-**Fix**: Add the missing circuit breaker unit tests to `nli_detection.rs`. The test plan pseudocode in `post-store-detection.md` provides the complete implementation blueprint.
+All non-negotiable tests confirmed present and passing:
+1. R-01: `test_pool_floor_raised_when_nli_enabled` — PASS
+2. R-03: `test_nli_sort_stable_identical_scores_preserves_original_order` — PASS
+3. R-05: `test_hash_mismatch_transitions_to_failed` — PASS
+4. R-09: `test_circuit_breaker_stops_at_cap` + `test_circuit_breaker_counts_all_edge_types` — PASS (rework)
+5. R-10: `test_nli_edges_below_auto_quarantine_threshold_no_quarantine` — PASS
+6. R-13: `test_mutex_poison_detected_at_get_provider` — PASS
 
 ---
 
@@ -148,9 +139,7 @@ Both `Queried:` and `Stored:` (with reason) entries are present. Stewardship blo
 
 ## Rework Required
 
-| Issue | Which Agent | What to Fix |
-|-------|-------------|-------------|
-| R-09 non-negotiable tests absent: `test_circuit_breaker_counts_all_edge_types` and `test_circuit_breaker_stops_at_cap` claimed in RISK-COVERAGE-REPORT do not exist in `nli_detection.rs` or anywhere in the codebase | `uni-rust-dev` (re-spawn for `nli_detection.rs`) | Add the two circuit breaker unit tests to `nli_detection.rs`. The test plan pseudocode in `product/features/crt-023/test-plan/post-store-detection.md` lines 102-158 provides the full implementation blueprint. Rename to match the report's claimed names or update the report to use the actual names. Once tests exist, re-run `cargo test` and update the RISK-COVERAGE-REPORT with the verified count. |
+None. All checks pass.
 
 ---
 
@@ -168,5 +157,5 @@ These items are correctly documented as pending and do not constitute gate failu
 
 ## Knowledge Stewardship
 
-- Queried: context_search for "validation gate 3c non-negotiable test missing coverage report discrepancy" — no prior stored patterns found; this is a novel instance.
-- Stored: nothing novel to store — the R-09 gap (test functions claimed PASS in report but absent in code) is a crt-023-specific tester reporting error. If this pattern recurs (report claiming test names that differ from pseudocode plan names), it may warrant a lesson-learned entry after the rework confirms the root cause.
+- Queried: context_search for "validation gate 3c non-negotiable test missing coverage report discrepancy" — no prior stored patterns found.
+- Stored: entry #2758 "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims" via /uni-store-lesson (topic: validation, category: lesson-learned). Root cause confirmed after rework: tester agent wrote report using anticipated/desired test names from pseudocode plan rather than actual implemented names.
