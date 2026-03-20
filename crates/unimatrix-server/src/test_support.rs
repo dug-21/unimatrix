@@ -129,6 +129,12 @@ impl TestHarness {
             // dsn-001: default; test harness preserves pre-dsn-001 behavior.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
             test_pool,
+            // crt-023: disabled NLI for test harness (no model in test env)
+            crate::infra::nli_handle::NliServiceHandle::new(),
+            20,    // nli_top_k default
+            false, // nli_enabled: disabled for tests
+            // crt-023: default InferenceConfig for tests (NLI disabled via nli_enabled=false above)
+            Arc::new(crate::infra::config::InferenceConfig::default()),
         );
 
         Some(TestHarness { layer, store })

@@ -14,16 +14,20 @@ use unimatrix_adapt::AdaptationService;
 
 use crate::error::ServerError;
 use crate::infra::audit::AuditLog;
+use crate::infra::config::InferenceConfig;
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::nli_handle::NliServiceHandle;
 use crate::infra::rayon_pool::RayonPool;
 use crate::infra::registry::TrustLevel;
 use crate::infra::usage_dedup::UsageDedup;
+use crate::services::store_ops::NliStoreConfig;
 
 pub(crate) mod briefing;
 pub(crate) mod confidence;
 pub(crate) mod contradiction_cache;
 pub(crate) mod effectiveness;
 pub(crate) mod gateway;
+pub(crate) mod nli_detection;
 pub(crate) mod observation;
 pub(crate) mod search;
 pub(crate) mod status;
@@ -302,6 +306,10 @@ impl ServiceLayer {
         usage_dedup: Arc<UsageDedup>,
         boosted_categories: std::collections::HashSet<String>,
         ml_inference_pool: Arc<RayonPool>,
+        nli_handle: Arc<NliServiceHandle>,
+        nli_top_k: usize,
+        nli_enabled: bool,
+        inference_config: Arc<InferenceConfig>,
     ) -> Self {
         Self::with_rate_config(
             store,
@@ -315,6 +323,10 @@ impl ServiceLayer {
             RateLimitConfig::default(),
             boosted_categories,
             ml_inference_pool,
+            nli_handle,
+            nli_top_k,
+            nli_enabled,
+            inference_config,
         )
     }
 
@@ -330,6 +342,10 @@ impl ServiceLayer {
         rate_config: RateLimitConfig,
         boosted_categories: std::collections::HashSet<String>,
         ml_inference_pool: Arc<RayonPool>,
+        nli_handle: Arc<NliServiceHandle>,
+        nli_top_k: usize,
+        nli_enabled: bool,
+        inference_config: Arc<InferenceConfig>,
     ) -> Self {
         let gateway = Arc::new(SecurityGateway::with_rate_config(
             Arc::clone(&audit),
@@ -367,7 +383,18 @@ impl ServiceLayer {
             Arc::clone(&typed_graph_state),
             boosted_categories,
             Arc::clone(&ml_inference_pool),
+            Arc::clone(&nli_handle),
+            nli_top_k,
+            nli_enabled,
         );
+
+        let nli_store_cfg = NliStoreConfig {
+            enabled: inference_config.nli_enabled,
+            nli_post_store_k: inference_config.nli_post_store_k,
+            nli_entailment_threshold: inference_config.nli_entailment_threshold,
+            nli_contradiction_threshold: inference_config.nli_contradiction_threshold,
+            max_contradicts_per_tick: inference_config.max_contradicts_per_tick,
+        };
 
         let store_ops = StoreService::new(
             Arc::clone(&store),
@@ -379,6 +406,8 @@ impl ServiceLayer {
             Arc::clone(&gateway),
             Arc::clone(&audit),
             Arc::clone(&ml_inference_pool),
+            Arc::clone(&nli_handle),
+            nli_store_cfg,
         );
 
         let semantic_k = briefing::parse_semantic_k();

@@ -10,10 +10,11 @@ use sqlx::sqlite::SqliteConnectOptions;
 use unimatrix_adapt::{AdaptConfig, AdaptationService};
 use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{Store, VectorAdapter, VectorConfig, VectorIndex};
-use unimatrix_embed::EmbedConfig;
+use unimatrix_embed::{EmbedConfig, NliModel};
 
 use crate::infra::audit::AuditLog;
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::nli_handle::{NliConfig, NliServiceHandle};
 use crate::infra::rayon_pool::RayonPool;
 use crate::infra::usage_dedup::UsageDedup;
 use crate::project;
@@ -60,6 +61,12 @@ pub struct EvalServiceLayer {
     pub(crate) profile_name: String,
     /// Always `Suppressed` in nan-007. Stored for type-level documentation.
     pub(crate) analytics_mode: AnalyticsMode,
+    /// crt-023: NLI handle for NLI-enabled eval profiles (ADR-006).
+    ///
+    /// `None` when `nli_enabled = false` (baseline profiles).
+    /// `Some(...)` when `nli_enabled = true`; may be Loading or Failed.
+    /// Used by runner.rs to poll for NLI readiness before scenario replay.
+    pub(crate) nli_handle: Option<Arc<NliServiceHandle>>,
 }
 
 impl fmt::Debug for EvalServiceLayer {
@@ -68,6 +75,7 @@ impl fmt::Debug for EvalServiceLayer {
             .field("db_path", &self.db_path)
             .field("profile_name", &self.profile_name)
             .field("analytics_mode", &self.analytics_mode)
+            .field("nli_handle", &self.nli_handle.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -110,8 +118,30 @@ impl EvalServiceLayer {
         // ----------------------------------------------------------------
         // Step 2: Validate [inference] model paths (C-14, FR-23, SR-09)
         // ----------------------------------------------------------------
-        // InferenceConfig is stub-only for nan-007 (no nli_model field yet).
-        // When W1-4 adds nli_model, validation goes here.
+        // crt-023 (W1-4 stub fill): validate NLI model fields when nli_enabled.
+        let nli_cfg = &profile.config_overrides.inference;
+        if nli_cfg.nli_enabled {
+            // Validate that nli_model_name is a recognized variant if set.
+            if let Some(ref name) = nli_cfg.nli_model_name {
+                if NliModel::from_config_name(name).is_none() {
+                    return Err(EvalError::ConfigInvariant(format!(
+                        "nli_model_name '{}' is not a recognized model variant; valid: minilm2, deberta",
+                        name
+                    )));
+                }
+            }
+            // Warn if nli_model_path is set but the file does not exist.
+            // ADR-006: SKIP behavior on load failure, not immediate error here.
+            if let Some(ref path) = nli_cfg.nli_model_path {
+                if !path.exists() {
+                    tracing::warn!(
+                        profile = %profile.name,
+                        path = %path.display(),
+                        "eval: nli_model_path not found; profile may be SKIPPED if model unavailable"
+                    );
+                }
+            }
+        }
 
         // ----------------------------------------------------------------
         // Step 3: Validate ConfidenceWeights sum invariant (C-06, C-15, SR-08)
@@ -186,6 +216,29 @@ impl EvalServiceLayer {
         embed_handle.start_loading(embed_config);
 
         // ----------------------------------------------------------------
+        // Step 6b: Build NLI handle for NLI-enabled profiles (crt-023, FR-26, ADR-006).
+        // Baseline profiles (nli_enabled = false) set nli_handle = None.
+        // The NliServiceHandle may be in Loading state; runner.rs polls for readiness.
+        // ----------------------------------------------------------------
+        let nli_handle: Option<Arc<NliServiceHandle>> =
+            if profile.config_overrides.inference.nli_enabled {
+                let handle = NliServiceHandle::new();
+                let cache_dir = EmbedConfig::default().resolve_cache_dir();
+                let inf = &profile.config_overrides.inference;
+                let nli_config = NliConfig {
+                    nli_enabled: true,
+                    nli_model_name: inf.nli_model_name.clone(),
+                    nli_model_path: inf.nli_model_path.clone(),
+                    nli_model_sha256: inf.nli_model_sha256.clone(),
+                    cache_dir,
+                };
+                handle.start_loading(nli_config);
+                Some(handle)
+            } else {
+                None // baseline profile — no NLI handle needed
+            };
+
+        // ----------------------------------------------------------------
         // Step 7: Build inference pool
         // ----------------------------------------------------------------
         let rayon_pool_size = profile.config_overrides.inference.rayon_pool_size;
@@ -236,6 +289,16 @@ impl EvalServiceLayer {
             window_secs: 3600,
         };
 
+        // crt-023: Baseline profiles use an unstarted NliServiceHandle (get_provider()
+        // returns NliNotReady immediately) so SearchService always has a handle to call.
+        // NLI-enabled profiles use the handle started in Step 6b.
+        let nli_handle_arc: Arc<NliServiceHandle> = match nli_handle.clone() {
+            Some(h) => h,
+            None => NliServiceHandle::new(), // unstarted → NliNotReady → cosine fallback
+        };
+        let nli_top_k = profile.config_overrides.inference.nli_top_k;
+        let nli_enabled = profile.config_overrides.inference.nli_enabled;
+
         let inner = ServiceLayer::with_rate_config(
             Arc::clone(&store_arc),
             Arc::clone(&vector_index),
@@ -248,6 +311,10 @@ impl EvalServiceLayer {
             rate_config,
             boosted_categories,
             Arc::clone(&rayon_pool),
+            nli_handle_arc,
+            nli_top_k,
+            nli_enabled,
+            Arc::new(profile.config_overrides.inference.clone()),
         );
 
         Ok(EvalServiceLayer {
@@ -257,6 +324,7 @@ impl EvalServiceLayer {
             db_path: db_resolved,
             profile_name: profile.name.clone(),
             analytics_mode: AnalyticsMode::Suppressed,
+            nli_handle,
         })
     }
 
@@ -280,5 +348,20 @@ impl EvalServiceLayer {
     /// Return the analytics mode (always `Suppressed` for eval layers).
     pub fn analytics_mode(&self) -> AnalyticsMode {
         self.analytics_mode
+    }
+
+    /// Return the NLI handle if present (NLI-enabled profiles only).
+    ///
+    /// `None` for baseline profiles. Used by `runner.rs` to poll readiness.
+    pub(crate) fn nli_handle(&self) -> Option<Arc<NliServiceHandle>> {
+        self.nli_handle.clone()
+    }
+
+    /// Return `true` if this layer has an NLI handle (NLI-enabled profile).
+    ///
+    /// Used in tests to verify NLI wiring.
+    #[allow(dead_code)]
+    pub(crate) fn has_nli_handle(&self) -> bool {
+        self.nli_handle.is_some()
     }
 }

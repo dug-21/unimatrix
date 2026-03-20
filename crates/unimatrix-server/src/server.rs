@@ -280,6 +280,11 @@ impl UnimatrixServer {
             // dsn-001: default; startup wiring will supply config value in follow-up.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
             test_pool,
+            // crt-023: disabled NLI for test server (no model in test env)
+            crate::infra::nli_handle::NliServiceHandle::new(),
+            20,    // nli_top_k default
+            false, // nli_enabled: disabled for tests
+            Arc::new(crate::infra::config::InferenceConfig::default()),
         );
 
         // crt-018b: extract handle after ServiceLayer is fully constructed so

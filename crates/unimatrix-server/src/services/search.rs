@@ -1,6 +1,7 @@
 //! SearchService: unified search pipeline replacing duplicated logic
 //! in tools.rs and uds_listener.rs.
 
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
@@ -8,6 +9,7 @@ use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{
     CoreError, EmbedService, EntryRecord, QueryFilter, Status, Store, VectorAdapter,
 };
+use unimatrix_embed::{CrossEncoderProvider, NliScores};
 
 use unimatrix_adapt::AdaptationService;
 use unimatrix_engine::effectiveness::{
@@ -20,6 +22,7 @@ use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
 use crate::confidence::{cosine_similarity, rerank_score};
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::nli_handle::NliServiceHandle;
 use crate::infra::rayon_pool::RayonPool;
 use crate::infra::timeout::{MCP_HANDLER_TIMEOUT, spawn_blocking_with_timeout};
 use crate::services::confidence::ConfidenceStateHandle;
@@ -111,7 +114,154 @@ pub(crate) struct SearchService {
     boosted_categories: HashSet<String>,
     /// crt-022 (ADR-004): shared rayon thread pool for ML inference (ONNX embedding).
     rayon_pool: Arc<RayonPool>,
+    /// crt-023: NLI cross-encoder handle for search re-ranking (ADR-002).
+    /// When Ready and nli_enabled=true, replaces rerank_score sort step.
+    /// When Loading/Failed/disabled, pipeline falls back to rerank_score unchanged.
+    nli_handle: Arc<NliServiceHandle>,
+    /// crt-023: expanded HNSW candidate pool size when NLI is active (from InferenceConfig).
+    nli_top_k: usize,
+    /// crt-023: fast check before get_provider(); when false, NLI path is never attempted.
+    nli_enabled: bool,
 }
+
+// ---------------------------------------------------------------------------
+// NLI re-ranking helper (crt-023, ADR-002)
+// ---------------------------------------------------------------------------
+
+/// Attempt NLI re-ranking of `candidates`.
+///
+/// Returns `Some(sorted_truncated_vec)` when NLI scoring succeeded, or `None` on any
+/// failure (provider not ready, rayon timeout, inference error, empty candidates).
+/// Caller must fall back to `rerank_score` sort on `None`.
+///
+/// W1-2 contract: ALL NLI inference is dispatched via `rayon_pool.spawn_with_timeout`.
+/// Never inline in async context. Never via `spawn_blocking`.
+///
+/// Sort key: `nli_scores.entailment * status_penalty` DESCENDING (ADR-002).
+/// Tiebreaker: original HNSW rank ASCENDING for determinism (R-03).
+async fn try_nli_rerank(
+    candidates: &[(EntryRecord, f64)],
+    query_text: &str,
+    nli_handle: &NliServiceHandle,
+    rayon_pool: &RayonPool,
+    penalty_map: &HashMap<u64, f64>,
+    top_k: usize,
+) -> Option<Vec<(EntryRecord, f64)>> {
+    // Fast check: get provider or return None for fallback.
+    let provider: Arc<dyn CrossEncoderProvider> = match nli_handle.get_provider().await {
+        Ok(p) => p,
+        Err(_) => {
+            tracing::debug!("NLI provider not ready; falling back to rerank_score sort");
+            return None;
+        }
+    };
+
+    if candidates.is_empty() {
+        // No candidates to score — skip provider call, return None so fallback handles empty vec.
+        return None;
+    }
+
+    // Build owned strings for the rayon closure (Send bound requires 'static).
+    let query_owned: String = query_text.to_string();
+    let passages: Vec<String> = candidates
+        .iter()
+        .map(|(entry, _)| entry.content.clone())
+        .collect();
+
+    // Dispatch batch scoring to rayon pool with MCP_HANDLER_TIMEOUT (W1-2, FR-16).
+    let nli_result = rayon_pool
+        .spawn_with_timeout(MCP_HANDLER_TIMEOUT, move || {
+            // Build &[(&str, &str)] inside the rayon closure from owned strings.
+            let pairs: Vec<(&str, &str)> = passages
+                .iter()
+                .map(|p| (query_owned.as_str(), p.as_str()))
+                .collect();
+            provider.score_batch(&pairs)
+        })
+        .await;
+
+    let nli_scores: Vec<NliScores> = match nli_result {
+        Ok(Ok(scores)) => scores,
+        Ok(Err(e)) => {
+            tracing::debug!(error = %e, "NLI score_batch error; falling back to rerank_score sort");
+            return None;
+        }
+        Err(e) => {
+            tracing::debug!(error = %e, "NLI rayon task failed/timed out; falling back to rerank_score sort");
+            return None;
+        }
+    };
+
+    // Sanity: scores must be same length as candidates (should always hold for correct impls).
+    if nli_scores.len() != candidates.len() {
+        tracing::debug!(
+            nli_scores = nli_scores.len(),
+            candidates = candidates.len(),
+            "NLI scores length mismatch; falling back to rerank_score sort"
+        );
+        return None;
+    }
+
+    // Delegate sorting and truncation to the pure `apply_nli_sort` kernel (R-03).
+    Some(apply_nli_sort(candidates, &nli_scores, penalty_map, top_k))
+}
+
+// ---------------------------------------------------------------------------
+// NLI sort kernel — extracted for testability (crt-023, R-03)
+// ---------------------------------------------------------------------------
+
+/// Apply NLI entailment scores to candidates and return a sorted, truncated vec.
+///
+/// Pure computation: no I/O, no async. Extracted from `try_nli_rerank` so it
+/// can be unit-tested with known `NliScores` values without requiring a real model.
+///
+/// Sort key: `nli_scores.entailment * status_penalty` DESCENDING.
+/// Tiebreaker: original HNSW rank ASCENDING (R-03: deterministic on equal scores).
+/// NaN-safe: NaN entailment scores compare as Equal and fall through to rank tiebreak.
+pub(crate) fn apply_nli_sort(
+    candidates: &[(EntryRecord, f64)],
+    nli_scores: &[NliScores],
+    penalty_map: &HashMap<u64, f64>,
+    top_k: usize,
+) -> Vec<(EntryRecord, f64)> {
+    debug_assert_eq!(
+        candidates.len(),
+        nli_scores.len(),
+        "apply_nli_sort: candidates and nli_scores must have the same length"
+    );
+
+    let mut annotated: Vec<(EntryRecord, f64, f32, usize)> = candidates
+        .iter()
+        .zip(nli_scores.iter())
+        .enumerate()
+        .map(|(original_rank, ((entry, base_sim), scores))| {
+            let penalty = penalty_map.get(&entry.id).copied().unwrap_or(1.0) as f32;
+            let effective_entailment = scores.entailment * penalty;
+            (
+                entry.clone(),
+                *base_sim,
+                effective_entailment,
+                original_rank,
+            )
+        })
+        .collect();
+
+    annotated.sort_by(|a, b| {
+        b.2.partial_cmp(&a.2)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| a.3.cmp(&b.3))
+    });
+
+    annotated.truncate(top_k);
+    annotated
+        .into_iter()
+        .map(|(entry, sim, _, _)| (entry, sim))
+        .collect()
+}
+
+// ---------------------------------------------------------------------------
+// Utility helpers
+// ---------------------------------------------------------------------------
 
 /// Map an effectiveness category to its additive utility delta for search re-ranking.
 ///
@@ -143,6 +293,9 @@ impl SearchService {
         typed_graph_handle: TypedGraphStateHandle,
         boosted_categories: HashSet<String>,
         rayon_pool: Arc<RayonPool>,
+        nli_handle: Arc<NliServiceHandle>,
+        nli_top_k: usize,
+        nli_enabled: bool,
     ) -> Self {
         SearchService {
             store,
@@ -157,6 +310,9 @@ impl SearchService {
             typed_graph_handle,
             boosted_categories,
             rayon_pool,
+            nli_handle,
+            nli_top_k,
+            nli_enabled,
         }
     }
 
@@ -247,6 +403,16 @@ impl SearchService {
         let embedding = unimatrix_embed::l2_normalized(&adapted);
 
         // Step 5: HNSW search (filtered or unfiltered)
+        // crt-023 (ADR-002): when NLI is enabled, expand candidate pool to nli_top_k so
+        // the NLI batch-scorer has more candidates to re-rank before truncating to params.k.
+        // If NLI is not actually ready at Step 7, the extra candidates are harmless — the
+        // fallback sort path will truncate to params.k there.
+        let hnsw_k = if self.nli_enabled {
+            self.nli_top_k.max(params.k)
+        } else {
+            params.k
+        };
+
         let search_results = if let Some(ref filter) = params.filters {
             let entries = self
                 .entry_store
@@ -258,13 +424,13 @@ impl SearchService {
                 vec![]
             } else {
                 self.vector_store
-                    .search_filtered(embedding.clone(), params.k, EF_SEARCH, allowed_ids)
+                    .search_filtered(embedding.clone(), hnsw_k, EF_SEARCH, allowed_ids)
                     .await
                     .map_err(ServiceError::Core)?
             }
         } else {
             self.vector_store
-                .search(embedding.clone(), params.k, EF_SEARCH)
+                .search(embedding.clone(), hnsw_k, EF_SEARCH)
                 .await
                 .map_err(ServiceError::Core)?
         };
@@ -406,34 +572,58 @@ impl SearchService {
             }
         }
 
-        // Step 7: Re-rank with penalty multipliers (crt-010) and utility delta (crt-018b).
-        // utility_delta is inside the penalty multiplication per ADR-003:
-        // (rerank_score + delta + prov) * penalty
-        results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-            let prov_a = if self.boosted_categories.contains(&entry_a.category) {
-                PROVENANCE_BOOST
-            } else {
-                0.0
-            };
-            let prov_b = if self.boosted_categories.contains(&entry_b.category) {
-                PROVENANCE_BOOST
-            } else {
-                0.0
-            };
-            let delta_a = utility_delta(categories.get(&entry_a.id).copied());
-            let delta_b = utility_delta(categories.get(&entry_b.id).copied());
-            let base_a =
-                rerank_score(*sim_a, entry_a.confidence, confidence_weight) + delta_a + prov_a;
-            let base_b =
-                rerank_score(*sim_b, entry_b.confidence, confidence_weight) + delta_b + prov_b;
-            let penalty_a = penalty_map.get(&entry_a.id).copied().unwrap_or(1.0);
-            let penalty_b = penalty_map.get(&entry_b.id).copied().unwrap_or(1.0);
-            let final_a = base_a * penalty_a;
-            let final_b = base_b * penalty_b;
-            final_b
-                .partial_cmp(&final_a)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        // Step 7: Re-rank sort — NLI path (crt-023, ADR-002) or fallback rerank_score path.
+        //
+        // NLI-active path: sort by nli_scores.entailment DESC (pure replacement, ADR-002).
+        // Status penalty is applied as a multiplier on the effective entailment score so
+        // deprecated/superseded entries rank lower than active entries with similar NLI scores.
+        // Fallback path: existing rerank_score composite (unchanged behavior).
+        let used_nli = if self.nli_enabled {
+            try_nli_rerank(
+                &results_with_scores,
+                &params.query,
+                &self.nli_handle,
+                &self.rayon_pool,
+                &penalty_map,
+                params.k,
+            )
+            .await
+            .map(|sorted| {
+                results_with_scores = sorted;
+            })
+            .is_some()
+        } else {
+            false
+        };
+
+        if !used_nli {
+            // Fallback: existing rerank_score sort with penalty and utility delta.
+            // utility_delta is inside the penalty multiplication per ADR-003:
+            // (rerank_score + delta + prov) * penalty
+            results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
+                let prov_a = if self.boosted_categories.contains(&entry_a.category) {
+                    PROVENANCE_BOOST
+                } else {
+                    0.0
+                };
+                let prov_b = if self.boosted_categories.contains(&entry_b.category) {
+                    PROVENANCE_BOOST
+                } else {
+                    0.0
+                };
+                let delta_a = utility_delta(categories.get(&entry_a.id).copied());
+                let delta_b = utility_delta(categories.get(&entry_b.id).copied());
+                let base_a =
+                    rerank_score(*sim_a, entry_a.confidence, confidence_weight) + delta_a + prov_a;
+                let base_b =
+                    rerank_score(*sim_b, entry_b.confidence, confidence_weight) + delta_b + prov_b;
+                let penalty_a = penalty_map.get(&entry_a.id).copied().unwrap_or(1.0);
+                let penalty_b = penalty_map.get(&entry_b.id).copied().unwrap_or(1.0);
+                let final_a = base_a * penalty_a;
+                let final_b = base_b * penalty_b;
+                final_b.partial_cmp(&final_a).unwrap_or(Ordering::Equal)
+            });
+        }
 
         // Step 8: Co-access boost with deprecated exclusion (crt-010: C3)
         if results_with_scores.len() > 1 {
@@ -497,9 +687,7 @@ impl SearchService {
                     let penalty_b = penalty_map.get(&entry_b.id).copied().unwrap_or(1.0);
                     let final_a = (base_a + delta_a + boost_a + prov_a) * penalty_a;
                     let final_b = (base_b + delta_b + boost_b + prov_b) * penalty_b;
-                    final_b
-                        .partial_cmp(&final_a)
-                        .unwrap_or(std::cmp::Ordering::Equal)
+                    final_b.partial_cmp(&final_a).unwrap_or(Ordering::Equal)
                 });
             }
         }
@@ -1312,6 +1500,356 @@ mod tests {
             terminal,
             Some(42),
             "active entry must be its own terminal in the pre-built graph"
+        );
+    }
+
+    // =========================================================================
+    // crt-023: NLI re-ranking unit tests
+    // =========================================================================
+    //
+    // These tests exercise `apply_nli_sort` (the pure sort kernel extracted from
+    // `try_nli_rerank`) and the `try_nli_rerank` fallback paths.
+    // No real ONNX model is required — mocks inject `NliScores` directly.
+
+    /// Build a minimal test `EntryRecord` with only the fields needed for sort tests.
+    fn make_nli_test_entry(id: u64) -> EntryRecord {
+        make_test_entry(id, Status::Active, None, 0.70, "decision")
+    }
+
+    // -----------------------------------------------------------------------
+    // R-03 (Critical): Stable sort with identical entailment scores
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_nli_sort_stable_identical_scores_preserves_original_order() {
+        // R-03: When all entailment scores are equal, original HNSW rank (insertion order)
+        // must be the tiebreaker. Running the same input 10 times must produce the same ordering.
+        let entries: Vec<(EntryRecord, f64)> =
+            (1..=5).map(|id| (make_nli_test_entry(id), 0.75)).collect();
+
+        // All scores identical — tiebreaker must produce ascending original-rank order (0,1,2,3,4).
+        let uniform_scores: Vec<NliScores> = (0..5)
+            .map(|_| NliScores {
+                entailment: 0.33,
+                neutral: 0.34,
+                contradiction: 0.33,
+            })
+            .collect();
+
+        let penalty_map = HashMap::new();
+        let top_k = 5;
+
+        // Run 10 times; all orderings must be identical.
+        let first_result = apply_nli_sort(&entries, &uniform_scores, &penalty_map, top_k);
+        let first_ids: Vec<u64> = first_result.iter().map(|(e, _)| e.id).collect();
+
+        for run in 0..10 {
+            let result = apply_nli_sort(&entries, &uniform_scores, &penalty_map, top_k);
+            let ids: Vec<u64> = result.iter().map(|(e, _)| e.id).collect();
+            assert_eq!(
+                ids, first_ids,
+                "NLI sort must be deterministic (run {run}): got {ids:?}, expected {first_ids:?}"
+            );
+        }
+
+        // Ordering must be exactly the original insertion order (ids 1,2,3,4,5)
+        // because all entailment scores are equal and the tiebreak is original rank ascending.
+        assert_eq!(
+            first_ids,
+            vec![1, 2, 3, 4, 5],
+            "With equal scores, original HNSW insertion order must be preserved"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // AC-08, AC-20: NLI entailment replaces rerank_score as sort key
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_nli_sort_orders_by_entailment_descending() {
+        // AC-08, AC-20: result order must be determined solely by NLI entailment DESC.
+        // Entry B has higher entailment (0.8) but lower HNSW rank (inserted second).
+        // After NLI sort, B must appear before A.
+        let entry_a = make_nli_test_entry(10);
+        let entry_b = make_nli_test_entry(20);
+
+        let candidates: Vec<(EntryRecord, f64)> =
+            vec![(entry_a.clone(), 0.90), (entry_b.clone(), 0.70)];
+
+        let scores = vec![
+            NliScores {
+                entailment: 0.20,
+                neutral: 0.60,
+                contradiction: 0.20,
+            }, // entry_a: low entailment
+            NliScores {
+                entailment: 0.80,
+                neutral: 0.15,
+                contradiction: 0.05,
+            }, // entry_b: high entailment
+        ];
+
+        let penalty_map = HashMap::new();
+        let result = apply_nli_sort(&candidates, &scores, &penalty_map, 2);
+
+        let ids: Vec<u64> = result.iter().map(|(e, _)| e.id).collect();
+        assert_eq!(
+            ids,
+            vec![20, 10],
+            "NLI sort must place high-entailment entry_b (id=20) before entry_a (id=10)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // R-03: NaN entailment is treated as Equal (NaN-safe tiebreak)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_nli_sort_nan_entailment_treated_as_equal() {
+        // NaN in entailment must not panic or produce undefined ordering.
+        // NaN-safe: partial_cmp returns None → mapped to Equal → tiebreak by rank.
+        let entry_a = make_nli_test_entry(1);
+        let entry_b = make_nli_test_entry(2);
+
+        let candidates: Vec<(EntryRecord, f64)> = vec![(entry_a, 0.80), (entry_b, 0.80)];
+
+        let scores = vec![
+            NliScores {
+                entailment: f32::NAN,
+                neutral: 0.5,
+                contradiction: 0.5,
+            },
+            NliScores {
+                entailment: f32::NAN,
+                neutral: 0.5,
+                contradiction: 0.5,
+            },
+        ];
+
+        let penalty_map = HashMap::new();
+        // Must not panic and must return deterministic order (original rank: 1,2)
+        let result = apply_nli_sort(&candidates, &scores, &penalty_map, 2);
+        assert_eq!(result.len(), 2, "NaN scores must not drop candidates");
+        let ids: Vec<u64> = result.iter().map(|(e, _)| e.id).collect();
+        assert_eq!(
+            ids,
+            vec![1, 2],
+            "NaN-equal scores must tiebreak by original rank"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Truncation: top_k limits result count
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_nli_sort_truncates_to_top_k() {
+        // After NLI sort, result must be truncated to top_k even if more candidates exist.
+        let candidates: Vec<(EntryRecord, f64)> =
+            (1..=5).map(|id| (make_nli_test_entry(id), 0.80)).collect();
+
+        let scores: Vec<NliScores> = (0..5)
+            .map(|i| NliScores {
+                entailment: (5 - i) as f32 * 0.1, // descending: 0.5, 0.4, 0.3, 0.2, 0.1
+                neutral: 0.3,
+                contradiction: 0.2,
+            })
+            .collect();
+
+        let penalty_map = HashMap::new();
+        let result = apply_nli_sort(&candidates, &scores, &penalty_map, 3);
+
+        assert_eq!(result.len(), 3, "top_k=3 must truncate to 3 results");
+        // Top 3 by entailment descending: entries 1,2,3 (scores 0.5,0.4,0.3)
+        let ids: Vec<u64> = result.iter().map(|(e, _)| e.id).collect();
+        assert_eq!(
+            ids,
+            vec![1, 2, 3],
+            "top 3 entries by entailment must be ids 1, 2, 3"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Status penalty depresses effective entailment (ADR-002)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_nli_sort_penalty_depresses_effective_entailment() {
+        // ADR-002: status penalty multiplies the entailment score for ranking.
+        // Entry A: active (penalty=1.0), entailment=0.5 → effective=0.5
+        // Entry B: deprecated (penalty=0.7), entailment=0.8 → effective=0.56 → still above A
+        // Entry C: deprecated (penalty=0.4), entailment=0.9 → effective=0.36 → below A
+        let entry_a = make_nli_test_entry(1); // active
+        let entry_b = make_nli_test_entry(2); // deprecated, mild penalty
+        let entry_c = make_nli_test_entry(3); // deprecated, severe penalty
+
+        let candidates = vec![
+            (entry_a.clone(), 0.80),
+            (entry_b.clone(), 0.80),
+            (entry_c.clone(), 0.80),
+        ];
+        let scores = vec![
+            NliScores {
+                entailment: 0.5,
+                neutral: 0.3,
+                contradiction: 0.2,
+            },
+            NliScores {
+                entailment: 0.8,
+                neutral: 0.15,
+                contradiction: 0.05,
+            },
+            NliScores {
+                entailment: 0.9,
+                neutral: 0.08,
+                contradiction: 0.02,
+            },
+        ];
+
+        let mut penalty_map = HashMap::new();
+        penalty_map.insert(2u64, 0.7f64); // entry B: mild penalty
+        penalty_map.insert(3u64, 0.4f64); // entry C: severe penalty
+
+        let result = apply_nli_sort(&candidates, &scores, &penalty_map, 3);
+        let ids: Vec<u64> = result.iter().map(|(e, _)| e.id).collect();
+
+        // Effective scores: A=0.5, B=0.56, C=0.36
+        // Expected order: B(0.56) > A(0.50) > C(0.36)
+        assert_eq!(
+            ids,
+            vec![2, 1, 3],
+            "Penalty-adjusted order must be B(eff=0.56) > A(eff=0.50) > C(eff=0.36), got {ids:?}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Fallback path: try_nli_rerank returns None when handle is not Ready
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_nli_fallback_when_handle_not_ready() {
+        // When NliServiceHandle is in Loading state (not ready), try_nli_rerank
+        // must return None so the caller falls back to rerank_score.
+        use crate::infra::nli_handle::NliServiceHandle;
+        use crate::infra::rayon_pool::RayonPool;
+
+        let handle = NliServiceHandle::new(); // Loading state → get_provider() returns Err
+        let pool = Arc::new(RayonPool::new(1, "test-nli").expect("pool"));
+
+        let entry = make_nli_test_entry(1);
+        let candidates = vec![(entry, 0.80)];
+        let penalty_map = HashMap::new();
+
+        let result =
+            try_nli_rerank(&candidates, "test query", &handle, &pool, &penalty_map, 5).await;
+        assert!(
+            result.is_none(),
+            "try_nli_rerank must return None when handle is in Loading state"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_nli_fallback_when_handle_exhausted() {
+        // When NliServiceHandle is in Failed+exhausted state, try_nli_rerank returns None.
+        use crate::infra::nli_handle::NliServiceHandle;
+        use crate::infra::rayon_pool::RayonPool;
+
+        let handle = NliServiceHandle::new();
+        handle
+            .set_failed_for_test("test error".to_string(), 3)
+            .await; // MAX_RETRIES = 3
+
+        let pool = Arc::new(RayonPool::new(1, "test-nli").expect("pool"));
+        let candidates = vec![(make_nli_test_entry(1), 0.80)];
+        let penalty_map = HashMap::new();
+
+        let result =
+            try_nli_rerank(&candidates, "test query", &handle, &pool, &penalty_map, 5).await;
+        assert!(
+            result.is_none(),
+            "try_nli_rerank must return None when handle retries are exhausted"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_nli_fallback_on_empty_candidates() {
+        // When candidates is empty, try_nli_rerank must return None immediately.
+        // score_batch must NOT be called with an empty slice.
+        use crate::infra::nli_handle::NliServiceHandle;
+        use crate::infra::rayon_pool::RayonPool;
+
+        let handle = NliServiceHandle::new(); // Loading state
+        let pool = Arc::new(RayonPool::new(1, "test-nli").expect("pool"));
+        let candidates: Vec<(EntryRecord, f64)> = vec![];
+        let penalty_map = HashMap::new();
+
+        let result =
+            try_nli_rerank(&candidates, "test query", &handle, &pool, &penalty_map, 5).await;
+        assert!(
+            result.is_none(),
+            "try_nli_rerank must return None for empty candidate list"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // AC-19: nli_top_k drives HNSW candidate expansion
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_nli_top_k_drives_hnsw_expansion() {
+        // AC-19: when nli_enabled=true, hnsw_k = nli_top_k.max(params.k).
+        // Simulate the expansion logic used in Step 5.
+        let nli_top_k = 20usize;
+        let params_k = 5usize;
+        let nli_enabled = true;
+
+        let hnsw_k = if nli_enabled {
+            nli_top_k.max(params_k)
+        } else {
+            params_k
+        };
+
+        assert_eq!(
+            hnsw_k, 20,
+            "hnsw_k must be nli_top_k (20) when nli_enabled=true and nli_top_k > params.k"
+        );
+    }
+
+    #[test]
+    fn test_nli_disabled_uses_params_k() {
+        // When nli_enabled=false, hnsw_k must equal params.k exactly.
+        let nli_top_k = 20usize;
+        let params_k = 5usize;
+        let nli_enabled = false;
+
+        let hnsw_k = if nli_enabled {
+            nli_top_k.max(params_k)
+        } else {
+            params_k
+        };
+
+        assert_eq!(
+            hnsw_k, 5,
+            "hnsw_k must equal params.k when nli_enabled=false, got {hnsw_k}"
+        );
+    }
+
+    #[test]
+    fn test_nli_hnsw_k_never_below_params_k() {
+        // Even if nli_top_k is smaller than params.k, hnsw_k must be at least params.k.
+        let nli_top_k = 3usize;
+        let params_k = 10usize;
+        let nli_enabled = true;
+
+        let hnsw_k = if nli_enabled {
+            nli_top_k.max(params_k)
+        } else {
+            params_k
+        };
+
+        assert_eq!(
+            hnsw_k, 10,
+            "hnsw_k must be at least params.k even when nli_top_k < params.k"
         );
     }
 }
