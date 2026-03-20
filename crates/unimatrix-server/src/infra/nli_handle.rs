@@ -33,7 +33,7 @@ const MAX_RETRIES: u32 = 3;
 pub struct NliConfig {
     /// Whether the NLI cross-encoder is enabled.
     pub nli_enabled: bool,
-    /// Config-string model name: `"minilm2"` or `"deberta"`. `None` → MiniLM2 default.
+    /// Config-string model name: `"minilm2"`, `"minilm2-q8"`, `"deberta"`, or `"deberta-q8"`. `None` → MiniLM2-Q8 default.
     pub nli_model_name: Option<String>,
     /// Operator-provided explicit path to the ONNX model directory.
     /// When `Some`, `ensure_nli_model` is skipped.
@@ -482,14 +482,14 @@ impl std::fmt::Display for NliNotReadyError {
 
 /// Resolve the [`NliModel`] from the config's `nli_model_name` field.
 ///
-/// `None` → defaults to `NliMiniLM2L6H768`.
+/// `None` → defaults to `NliMiniLM2L6H768Q8` (recommended production default).
 /// Unrecognized string → `Err` with a human-readable message.
 fn resolve_nli_model(config: &NliConfig) -> Result<NliModel, String> {
     match &config.nli_model_name {
-        None => Ok(NliModel::NliMiniLM2L6H768),
+        None => Ok(NliModel::NliMiniLM2L6H768Q8),
         Some(name) => NliModel::from_config_name(name).ok_or_else(|| {
             format!(
-                "unknown nli_model_name: '{}'; valid values: minilm2, deberta",
+                "unknown nli_model_name: '{}'; valid values: minilm2, minilm2-q8, deberta, deberta-q8",
                 name
             )
         }),
@@ -890,13 +890,13 @@ mod tests {
     // -----------------------------------------------------------------------
 
     #[test]
-    fn test_resolve_nli_model_none_returns_minilm2() {
+    fn test_resolve_nli_model_none_returns_minilm2_q8() {
         let config = NliConfig {
             nli_model_name: None,
             ..NliConfig::default()
         };
         let model = resolve_nli_model(&config).unwrap();
-        assert_eq!(model, NliModel::NliMiniLM2L6H768);
+        assert_eq!(model, NliModel::NliMiniLM2L6H768Q8);
     }
 
     #[test]

@@ -125,7 +125,7 @@ impl EvalServiceLayer {
             if let Some(ref name) = nli_cfg.nli_model_name {
                 if NliModel::from_config_name(name).is_none() {
                     return Err(EvalError::ConfigInvariant(format!(
-                        "nli_model_name '{}' is not a recognized model variant; valid: minilm2, deberta",
+                        "nli_model_name '{}' is not a recognized model variant; valid: minilm2, minilm2-q8, deberta, deberta-q8",
                         name
                     )));
                 }

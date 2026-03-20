@@ -217,10 +217,11 @@ pub struct InferenceConfig {
     #[serde(default = "default_nli_enabled")]
     pub nli_enabled: bool,
 
-    /// Model variant identifier. Accepted values (case-insensitive): `"minilm2"`, `"deberta"`.
+    /// Model variant identifier. Accepted values (case-insensitive): `"minilm2"`, `"minilm2-q8"`,
+    /// `"deberta"`, `"deberta-q8"`.
     ///
-    /// `None` resolves to `NliMiniLM2L6H768` at startup. An unrecognized string
-    /// fails `validate()` with a structured error (R-15, AC-17).
+    /// `None` resolves to `NliMiniLM2L6H768Q8` (recommended default) at startup. An unrecognized
+    /// string fails `validate()` with a structured error (R-15, AC-17).
     #[serde(default)]
     pub nli_model_name: Option<String>,
 
@@ -351,10 +352,14 @@ fn default_nli_auto_quarantine_threshold() -> f32 {
 
 /// Returns `true` if `name` is a recognized NLI model variant (case-insensitive).
 ///
-/// Accepted values: `"minilm2"`, `"deberta"`. Used in `InferenceConfig::validate()`
-/// before the `NliModel` type is available in `unimatrix-embed`.
+/// Accepted values: `"minilm2"`, `"minilm2-q8"`, `"deberta"`, `"deberta-q8"`.
+/// Used in `InferenceConfig::validate()` before the `NliModel` type is available
+/// in `unimatrix-embed`.
 fn is_recognized_nli_model_name(name: &str) -> bool {
-    matches!(name.to_lowercase().as_str(), "minilm2" | "deberta")
+    matches!(
+        name.to_lowercase().as_str(),
+        "minilm2" | "minilm2-q8" | "deberta" | "deberta-q8"
+    )
 }
 
 impl InferenceConfig {
@@ -443,7 +448,7 @@ impl InferenceConfig {
                     path: path.to_path_buf(),
                     field: "nli_model_name",
                     value: name.clone(),
-                    reason: "unrecognized model name; valid values: minilm2, deberta",
+                    reason: "unrecognized model name; valid values: minilm2, minilm2-q8, deberta, deberta-q8",
                 });
             }
         }
@@ -3120,6 +3125,20 @@ mod tests {
     }
 
     #[test]
+    fn test_validate_recognized_model_name_q8_passes() {
+        for name in ["minilm2-q8", "deberta-q8"] {
+            let c = InferenceConfig {
+                nli_model_name: Some(name.to_string()),
+                ..InferenceConfig::default()
+            };
+            assert!(
+                c.validate(Path::new("/fake")).is_ok(),
+                "model name '{name}' must pass validation"
+            );
+        }
+    }
+
+    #[test]
     fn test_validate_recognized_model_name_uppercase_passes() {
         // Case-insensitive check: "MINILM2" and "DEBERTA" should also pass.
         for name in ["MINILM2", "Deberta", "MiniLM2"] {
@@ -3136,7 +3155,7 @@ mod tests {
 
     #[test]
     fn test_validate_nli_model_name_none_passes() {
-        // None = auto-resolve to minilm2 at startup — must pass.
+        // None = auto-resolve to minilm2-q8 at startup — must pass.
         let c = InferenceConfig {
             nli_model_name: None,
             ..InferenceConfig::default()

@@ -120,9 +120,9 @@ enum Command {
         #[arg(long)]
         nli: bool,
 
-        /// NLI model variant to download. Valid values: "minilm2", "deberta".
+        /// NLI model variant to download. Valid values: "minilm2", "minilm2-q8", "deberta", "deberta-q8".
         ///
-        /// Only valid with --nli. Defaults to "minilm2" when --nli is given without --nli-model.
+        /// Only valid with --nli. Defaults to "minilm2-q8" when --nli is given without --nli-model.
         #[arg(long, requires = "nli")]
         nli_model: Option<String>,
     },
@@ -1200,7 +1200,7 @@ fn handle_model_download(
 
     // Step 3: Resolve the NLI model variant.
     let nli_model: NliModel = {
-        let name = nli_model_name.as_deref().unwrap_or("minilm2");
+        let name = nli_model_name.as_deref().unwrap_or("minilm2-q8");
         NliModel::from_config_name(name).ok_or_else(|| {
             eprintln!(
                 "Error: unrecognized --nli-model value '{}'; valid: minilm2, minilm2-q8, deberta, deberta-q8",
