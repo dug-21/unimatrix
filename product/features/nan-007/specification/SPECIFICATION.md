@@ -46,8 +46,10 @@ the active daemon's database. The error message shall name both paths.
 
 **FR-05**: The `snapshot` subcommand shall be dispatched before the tokio runtime
 (consistent with the C-10 pre-async dispatch ordering rule already established for
-`export`). Implementation shall use either rusqlite synchronously or a minimal
-`block_on` wrapper, not a full tokio runtime.
+`export`). Implementation shall use the `block_export_sync` helper from `export.rs`
+to bridge the pre-tokio dispatch to async sqlx — the same pattern used by `eval
+scenarios` and `eval run`. A full tokio runtime is not permitted. rusqlite is not
+permitted (it was fully removed from all crates in nxs-011, PR #299).
 
 **FR-06**: The snapshot file produced shall be a valid SQLite3 file openable by any
 SQLite reader without migration, schema modification, or write access.
@@ -658,9 +660,11 @@ belongs in this subcommand. CI gate automation is explicitly out of scope (SR-06
 raise a descriptive error if the limit is exceeded.
 
 **C-09 (Pre-async dispatch ordering)**: `snapshot` is a sync subcommand dispatched
-before the tokio runtime, consistent with C-10 ordering rule already established for
-`export`. If `VACUUM INTO` requires sqlx async, a minimal `block_on` wrapper is
-acceptable; a full tokio runtime is not.
+before the tokio runtime, consistent with the C-10 ordering rule already established
+for `export`. `VACUUM INTO` is issued via sqlx using the `block_export_sync` helper
+from `export.rs` (a current-thread tokio runtime scoped to the call). A full
+outer tokio runtime is not permitted. rusqlite is not permitted (removed in nxs-011,
+PR #299). See ADR-001.
 
 **C-10 (Cumulative test infrastructure)**: Eval test suites extend existing fixtures
 and helpers. `TestHarness` is extended, not replaced. `kendall_tau()` and ranking
@@ -685,9 +689,10 @@ the hook socket path before implementation of `UnimatrixHookClient`.
 
 ### New Rust dependencies
 
-None. All required Rust infrastructure already exists in the workspace (rusqlite for
-sync snapshot, sqlx for read-only pool, rayon pool from crt-022, ranking metrics from
-unimatrix-engine).
+None. All required Rust infrastructure already exists in the workspace (sqlx for
+snapshot and read-only eval pool, rayon pool from crt-022, ranking metrics from
+unimatrix-engine). rusqlite is not a dependency — it was fully removed from all crates
+in nxs-011 (PR #299) and must not be reintroduced.
 
 ### Existing Rust components consumed
 
@@ -750,9 +755,10 @@ hook socket path follow a derivable convention from the MCP socket path? This mu
 resolved before D6 implementation. The spec assumes the path is
 `{project_dir}/.unimatrix/{hash}/unimatrix-hook.sock` but this is unverified.
 
-**OQ-2 (VACUUM INTO sync vs. async)**: Recommend rusqlite (synchronous, pre-tokio,
-consistent with `export.rs` pattern). Architect to confirm or choose sqlx async with
-`block_on`. This decision affects crate dependencies for `snapshot.rs`.
+**OQ-2 (VACUUM INTO sync vs. async)**: Resolved. Decision: sqlx with `block_export_sync`
+wrapper (Option B). rusqlite was fully removed from all crates in nxs-011 (PR #299)
+and cannot be reintroduced. `VACUUM INTO` is valid SQL executed directly by sqlx.
+See ADR-001 and ARCHITECTURE.md for full rationale.
 
 **OQ-3 (kendall_tau accessibility — Assumptions table, SR-05)**: `kendall_tau()` in
 `unimatrix-engine::test_scenarios` may be gated behind `#[cfg(test)]` or a
