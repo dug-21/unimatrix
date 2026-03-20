@@ -2272,7 +2272,9 @@ mod tests {
     #[test]
     fn test_inference_config_valid_upper_bound() {
         // AC-11 #6: rayon_pool_size = 64 → validate() returns Ok(())
-        let config = InferenceConfig { rayon_pool_size: 64 };
+        let config = InferenceConfig {
+            rayon_pool_size: 64,
+        };
         assert!(
             config.validate(Path::new("/fake")).is_ok(),
             "rayon_pool_size = 64 is the valid upper bound and must pass validation"
@@ -2285,7 +2287,10 @@ mod tests {
         let config = InferenceConfig { rayon_pool_size: 0 };
         let err = config.validate(Path::new("/fake")).unwrap_err();
         assert!(
-            matches!(err, ConfigError::InferencePoolSizeOutOfRange { value: 0, .. }),
+            matches!(
+                err,
+                ConfigError::InferencePoolSizeOutOfRange { value: 0, .. }
+            ),
             "rayon_pool_size = 0 must return InferencePoolSizeOutOfRange with value 0, got: {err}"
         );
         let msg = err.to_string();
@@ -2302,10 +2307,15 @@ mod tests {
     #[test]
     fn test_inference_config_rejects_sixty_five() {
         // AC-11 #8: rayon_pool_size = 65 → Err(InferencePoolSizeOutOfRange { value: 65 })
-        let config = InferenceConfig { rayon_pool_size: 65 };
+        let config = InferenceConfig {
+            rayon_pool_size: 65,
+        };
         let err = config.validate(Path::new("/fake")).unwrap_err();
         assert!(
-            matches!(err, ConfigError::InferencePoolSizeOutOfRange { value: 65, .. }),
+            matches!(
+                err,
+                ConfigError::InferencePoolSizeOutOfRange { value: 65, .. }
+            ),
             "rayon_pool_size = 65 must return InferencePoolSizeOutOfRange with value 65, got: {err}"
         );
         let msg = err.to_string();
