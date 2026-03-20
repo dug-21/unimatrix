@@ -134,6 +134,25 @@ impl NliProvider {
     pub fn load(model: NliModel, model_path: &Path) -> Result<Arc<Self>> {
         Ok(Arc::new(Self::new(model, model_path)?))
     }
+
+    /// Non-blocking session health check for `NliServiceHandle` poison detection (R-13, ADR-001).
+    ///
+    /// Distinguishes `PoisonError` (truly broken) from `WouldBlock` (healthy but busy):
+    ///
+    /// - `Ok(_)`                     → `true`  (healthy, not held)
+    /// - `Err(TryLockError::WouldBlock)`  → `true`  (held by another thread, not poisoned)
+    /// - `Err(TryLockError::Poisoned(_))` → `false` (rayon worker panicked while holding lock)
+    ///
+    /// A conservative `true` for `WouldBlock` avoids spurious `NliNotReady` errors while
+    /// inference is in progress. A `PoisonError` always yields `false`.
+    pub fn is_session_healthy(&self) -> bool {
+        use std::sync::TryLockError;
+        match self.session.try_lock() {
+            Ok(_) => true,
+            Err(TryLockError::WouldBlock) => true,
+            Err(TryLockError::Poisoned(_)) => false,
+        }
+    }
 }
 
 /// Enforce per-side input truncation before pair tokenization (NFR-08, FR-06).
