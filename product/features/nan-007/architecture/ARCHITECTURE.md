@@ -38,19 +38,21 @@ database (all tables, including analytics tables excluded from `export`) via SQL
 components consume the snapshot rather than the live database.
 
 **Key behaviours**:
-- Sync path — dispatched before the tokio runtime (C-10 ordering). Uses `rusqlite`
-  directly to issue `VACUUM INTO` without initiating a tokio runtime (ADR-001).
+- Pre-tokio dispatch (C-10 ordering). Uses `block_export_sync` from `export.rs` to
+  bridge to async sqlx, then issues `sqlx::query("VACUUM INTO ?").bind(path).execute(&pool).await`
+  against a minimal read-only pool opened directly via `SqliteConnectOptions` (no
+  migration triggered). ADR-001.
 - Validates that the output path does not resolve to the same inode as the active
   database before executing (security requirement, AC-02).
 - The `--anonymize` flag is removed from scope — it was explicitly removed in the
   SCOPE.md Resolved Decisions section.
 
-**Why rusqlite, not sqlx**: `VACUUM INTO` is a DDL statement, not a DML transaction.
-rusqlite's synchronous `Connection::execute()` is the idiomatic approach, consistent
-with the pre-tokio dispatch requirement (ADR-001 below). sqlx's async `VACUUM INTO`
-would require a `block_on` wrapper (as `export.rs` does) which adds a tokio dependency
-for a single DDL statement. rusqlite keeps the snapshot subcommand fully synchronous
-with no runtime creation overhead.
+**Why sqlx + block_export_sync, not rusqlite**: rusqlite was fully removed from all
+crates in nxs-011 (PR #299). Reintroducing it would undo that migration and introduce
+a second bundled SQLite binary. `VACUUM INTO` is valid SQL that sqlx executes directly.
+The `block_export_sync` wrapper (already used by `export.rs`, `eval scenarios`, and
+`eval run`) is the established pattern for bridging the pre-tokio CLI dispatch to async
+sqlx. ADR-001.
 
 ---
 
@@ -198,8 +200,8 @@ See Open Question 3 answer below.
 ```
 CLI (main.rs)
   │
-  ├── Snapshot (sync, pre-tokio)
-  │     └── rusqlite Connection → VACUUM INTO → snapshot.db
+  ├── Snapshot (pre-tokio, block_export_sync)
+  │     └── sqlx pool (ro, raw) → VACUUM INTO → snapshot.db
   │
   └── Eval subcommand group (sync dispatch, async internals)
         ├── scenarios → raw SqlitePool (ro) → query_log scan → JSONL
@@ -229,12 +231,15 @@ Steps 5 (UDS client) and 6 (hook client) are independent and require a live daem
 
 ## Technology Decisions
 
-### VACUUM INTO: rusqlite synchronous (ADR-001)
+### VACUUM INTO: sqlx + block_export_sync wrapper (ADR-001)
 
-`VACUUM INTO` is issued via a synchronous rusqlite connection. Rationale: the snapshot
-subcommand is dispatched before the tokio runtime (C-10), `rusqlite` is already a
-transitive dependency of `unimatrix-store`, and `VACUUM INTO` is a single DDL
-statement requiring no connection pool or async framing.
+`VACUUM INTO` is issued via sqlx using the `block_export_sync` helper from `export.rs`.
+Rationale: rusqlite was fully removed from all crates in nxs-011 (PR #299) and cannot
+be reintroduced. `VACUUM INTO` is valid SQL that sqlx executes directly. The
+`block_export_sync` wrapper (a current-thread tokio runtime bridging sync CLI dispatch
+to async sqlx) is the established pattern used by `export`, `eval scenarios`, and
+`eval run`. `VACUUM INTO` is SQLite-specific; a future Postgres migration would require
+a full snapshot command rewrite regardless of this choice.
 
 ### AnalyticsMode suppression in EvalServiceLayer (ADR-002)
 
@@ -314,7 +319,7 @@ compile-time breakage detection.
 | `AnalyticsMode` | `enum { Live, Suppressed }` | `eval/profile.rs` (new) | Passed at ServiceLayer construction |
 | `EvalProfile` | `struct { name: String, description: Option<String>, config_overrides: UnimatrixConfig }` | `eval/profile.rs` (new) | Parsed from profile TOML |
 | `EvalError` | `enum` with `ModelNotFound`, `ConfigInvariant(String)`, `LiveDbPath`, `Io(...)`, `Store(...)` | `eval/profile.rs` (new) | Structured errors; no panics. `LiveDbPath` is returned when `db_path` canonicalizes to the active daemon DB. |
-| `run_snapshot` | `fn(project_dir: Option<&Path>, out: &Path) -> Result<(), Box<dyn Error>>` | `snapshot.rs` (new) | Sync; rusqlite; pre-tokio |
+| `run_snapshot` | `fn(project_dir: Option<&Path>, out: &Path) -> Result<(), Box<dyn Error>>` | `snapshot.rs` (new) | Pre-tokio; sqlx + block_export_sync; no migration |
 | `run_scenarios` | `fn(db: &Path, source: ScenarioSource, limit: Option<usize>, out: &Path) -> Result<(), Box<dyn Error>>` | `eval/scenarios.rs` (new) | block_on wrapper |
 | `run_eval` | `fn(db: &Path, scenarios: &Path, configs: &[PathBuf], k: usize, out: &Path) -> Result<(), Box<dyn Error>>` | `eval/runner.rs` (new) | block_on wrapper |
 | `run_report` | `fn(results: &Path, scenarios: Option<&Path>, out: &Path) -> Result<(), Box<dyn Error>>` | `eval/report.rs` (new) | Sync; filesystem only |
@@ -332,15 +337,15 @@ compile-time breakage detection.
 
 ### 1. VACUUM INTO: sync rusqlite vs async sqlx
 
-**Decision: rusqlite synchronous.**
+**Decision: sqlx + block_export_sync (revised).**
 
-`VACUUM INTO` is a single DDL statement. rusqlite is already a transitive dependency
-via `unimatrix-store` (the store crate uses it for bundled SQLite). The snapshot
-subcommand is dispatched before the tokio runtime (C-10), making rusqlite the natural
-fit — it avoids creating any runtime for a one-shot DDL call. The `export.rs`
-`block_export_sync` wrapper is the precedent for async bridging in sync subcommands,
-but for `VACUUM INTO` specifically, the overhead of creating a tokio runtime or using
-`block_in_place` is unnecessary given that rusqlite handles it in three lines.
+The original decision (rusqlite synchronous) was invalidated by nxs-011 (PR #299),
+which fully removed rusqlite from all crates. Reintroducing it would undo that
+migration. The revised decision uses `sqlx::query("VACUUM INTO ?").bind(path).execute(&pool).await`
+inside `block_export_sync` — the same pattern already used by `export.rs`, `eval
+scenarios`, and `eval run`. `VACUUM INTO` is valid SQL that sqlx executes directly; no
+rusqlite dependency is required. A minimal read-only `SqlitePool` opened via raw
+`SqliteConnectOptions` (not `SqlxStore::open()`) avoids triggering migrations.
 Reference: ADR-001.
 
 ### 2. Nested eval subcommand structure in clap 4.x
@@ -394,7 +399,7 @@ exposes both paths. No `ProjectPaths` struct changes required.
 
 ```
 crates/unimatrix-server/src/
-  snapshot.rs              -- D1: VACUUM INTO, rusqlite, sync
+  snapshot.rs              -- D1: VACUUM INTO, sqlx + block_export_sync, pre-tokio
   eval/
     mod.rs                 -- re-exports, EvalCommand enum
     profile.rs             -- EvalProfile, EvalServiceLayer, AnalyticsMode, EvalError
