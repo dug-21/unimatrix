@@ -132,6 +132,13 @@ fn test_cross_encoder_provider_object_safe() {
 
 // ---- Model-dependent tests (require model on disk, marked #[ignore]) ----
 
+fn deberta_path() -> std::path::PathBuf {
+    dirs::home_dir()
+        .unwrap()
+        .join(".cache/unimatrix/models")
+        .join(NliModel::NliDebertaV3Small.cache_subdir())
+}
+
 fn model_path() -> std::path::PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/root".into());
     std::path::PathBuf::from(home)
@@ -257,4 +264,25 @@ fn test_score_pair_extreme_logits_finite_output() {
     assert!(scores.contradiction.is_finite());
     assert!(!scores.entailment.is_nan());
     assert!(!scores.contradiction.is_nan());
+}
+
+#[test]
+#[ignore = "Requires both NLI models on disk; run with --include-ignored"]
+fn test_compare_minilm2_vs_deberta_scores() {
+    let query = "idempotency sentinel duplicate detection MCP store";
+    let passage = "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes";
+
+    let ml2 = NliProvider::new(NliModel::NliMiniLM2L6H768, &model_path()).unwrap();
+    let deb = NliProvider::new(NliModel::NliDebertaV3Small, &deberta_path()).unwrap();
+
+    let ml2_scores = ml2.score_pair(query, passage).unwrap();
+    let deb_scores = deb.score_pair(query, passage).unwrap();
+
+    println!("MiniLM2:  entailment={:.4} neutral={:.4} contradiction={:.4}", ml2_scores.entailment, ml2_scores.neutral, ml2_scores.contradiction);
+    println!("DeBERTa:  entailment={:.4} neutral={:.4} contradiction={:.4}", deb_scores.entailment, deb_scores.neutral, deb_scores.contradiction);
+
+    // The two models should produce meaningfully different scores for this pair.
+    // If they're identical, something is wrong with model loading.
+    let entailment_diff = (ml2_scores.entailment - deb_scores.entailment).abs();
+    println!("Entailment diff: {:.4}", entailment_diff);
 }

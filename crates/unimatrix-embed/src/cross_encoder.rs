@@ -269,9 +269,14 @@ impl CrossEncoderProvider for NliProvider {
         let seq_len = encodings[0].get_ids().len(); // padded to longest in batch
 
         // Step 3: Flatten to contiguous [batch_size, seq_len] arrays (i64 for ONNX).
+        //
+        // Only input_ids and attention_mask are passed. Modern cross-encoder ONNX exports
+        // (optimum, sentence-transformers) do not include token_type_ids as a model input;
+        // both nli-MiniLM2-L6-H768 and nli-deberta-v3-small use only these two inputs.
+        // Passing token_type_ids causes ORT to return "Invalid input name" immediately,
+        // which was silently caught and fell back to cosine ranking.
         let mut input_ids_flat: Vec<i64> = Vec::with_capacity(batch_size * seq_len);
         let mut attention_mask_flat: Vec<i64> = Vec::with_capacity(batch_size * seq_len);
-        let mut token_type_ids_flat: Vec<i64> = Vec::with_capacity(batch_size * seq_len);
 
         for enc in &encodings {
             for &id in enc.get_ids() {
@@ -280,20 +285,15 @@ impl CrossEncoderProvider for NliProvider {
             for &mask in enc.get_attention_mask() {
                 attention_mask_flat.push(mask as i64);
             }
-            for &tid in enc.get_type_ids() {
-                token_type_ids_flat.push(tid as i64);
-            }
         }
 
         let shape = vec![batch_size as i64, seq_len as i64];
         let ids_tensor = Tensor::from_array((shape.clone(), input_ids_flat))?;
-        let mask_tensor = Tensor::from_array((shape.clone(), attention_mask_flat))?;
-        let types_tensor = Tensor::from_array((shape, token_type_ids_flat))?;
+        let mask_tensor = Tensor::from_array((shape, attention_mask_flat))?;
 
         let inputs = ort::inputs![
             "input_ids"      => ids_tensor,
             "attention_mask" => mask_tensor,
-            "token_type_ids" => types_tensor,
         ]?;
 
         // Step 4: Acquire mutex, run inference, release mutex.
