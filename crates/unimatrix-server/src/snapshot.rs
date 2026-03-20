@@ -31,6 +31,8 @@ use tracing::info;
 use crate::export::block_export_sync;
 use crate::project;
 
+const VECTOR_META_FILENAME: &str = "unimatrix-vector.meta";
+
 /// Produce a full-fidelity SQLite snapshot of the active database at `out`.
 ///
 /// # WARNING
@@ -76,7 +78,16 @@ pub fn run_snapshot(
     let source = paths.db_path.clone();
     block_export_sync(async move { do_snapshot(source, out).await })?;
 
-    // 4. Report success.
+    // 4. Copy HNSW vector files into a sibling `vector/` directory next to `out`
+    //    (FR-new, GH-323). The vector dir is a sibling of out, not nested inside it.
+    //    Silently skipped when the source vector dir has no meta file (empty index).
+    let src_vector_dir = paths.vector_dir.clone();
+    let out_parent = out
+        .parent()
+        .ok_or("snapshot --out path has no parent directory")?;
+    copy_vector_files(&src_vector_dir, out_parent)?;
+
+    // 5. Report success.
     eprintln!("snapshot written to {}", out.display());
 
     Ok(())
@@ -133,6 +144,98 @@ async fn do_snapshot(source: PathBuf, out: &Path) -> Result<(), Box<dyn std::err
     info!(out = %out.display(), "snapshot written");
 
     Ok(())
+}
+
+/// Copy the HNSW vector files from `src_vector_dir` into `{out_parent}/vector/`.
+///
+/// Reads the `unimatrix-vector.meta` file to discover the actual basename, then
+/// copies `{basename}.hnsw.graph`, `{basename}.hnsw.data`, and
+/// `unimatrix-vector.meta` into the output vector directory.
+///
+/// Silently does nothing when `src_vector_dir/unimatrix-vector.meta` is absent —
+/// this is the valid case where the live index is empty or has never been dumped.
+///
+/// The output vector directory is `{out_parent}/vector/` — a sibling of the
+/// snapshot db file, not a subdirectory of it.
+fn copy_vector_files(
+    src_vector_dir: &Path,
+    out_parent: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let meta_src = src_vector_dir.join(VECTOR_META_FILENAME);
+
+    // Silently skip if no meta file — empty or never-dumped index.
+    if !meta_src.exists() {
+        return Ok(());
+    }
+
+    // Parse basename from meta file.
+    let meta_content = std::fs::read_to_string(&meta_src).map_err(|e| {
+        format!(
+            "failed to read vector metadata '{}': {e}",
+            meta_src.display()
+        )
+    })?;
+
+    let basename = parse_basename_from_meta(&meta_content).ok_or_else(|| {
+        format!(
+            "vector metadata '{}' missing 'basename' field",
+            meta_src.display()
+        )
+    })?;
+
+    // Create output vector directory.
+    let dst_vector_dir = out_parent.join("vector");
+    std::fs::create_dir_all(&dst_vector_dir).map_err(|e| {
+        format!(
+            "failed to create output vector directory '{}': {e}",
+            dst_vector_dir.display()
+        )
+    })?;
+
+    // Copy the three files.
+    let files_to_copy = [
+        format!("{basename}.hnsw.graph"),
+        format!("{basename}.hnsw.data"),
+        VECTOR_META_FILENAME.to_string(),
+    ];
+
+    for filename in &files_to_copy {
+        let src = src_vector_dir.join(filename);
+        // Individual graph/data files may be absent for an empty index; skip them.
+        if !src.exists() {
+            continue;
+        }
+        let dst = dst_vector_dir.join(filename);
+        std::fs::copy(&src, &dst).map_err(|e| {
+            format!(
+                "failed to copy vector file '{}' to '{}': {e}",
+                src.display(),
+                dst.display()
+            )
+        })?;
+    }
+
+    info!(
+        src = %src_vector_dir.display(),
+        dst = %dst_vector_dir.display(),
+        "vector files copied into snapshot"
+    );
+
+    Ok(())
+}
+
+/// Extract the `basename` value from a vector metadata file's content.
+///
+/// Returns `None` when the `basename=` line is absent.
+fn parse_basename_from_meta(content: &str) -> Option<String> {
+    for line in content.lines() {
+        if let Some((key, value)) = line.split_once('=')
+            && key.trim() == "basename"
+        {
+            return Some(value.trim().to_string());
+        }
+    }
+    None
 }
 
 /// Resolve `path` to a canonical absolute path, tolerating a non-existent leaf.

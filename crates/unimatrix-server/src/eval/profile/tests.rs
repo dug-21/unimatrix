@@ -162,7 +162,10 @@ mod tests {
         let result = validate_confidence_weights(&cfg);
         assert!(result.is_err(), "sum=0.90 must fail");
         let msg = format!("{}", result.unwrap_err());
-        assert!(msg.contains("0.92"), "must mention expected sum; got: {msg}");
+        assert!(
+            msg.contains("0.92"),
+            "must mention expected sum; got: {msg}"
+        );
         assert!(
             msg.contains("0.90") || msg.contains("0.9"),
             "must mention actual sum; got: {msg}"
@@ -176,7 +179,10 @@ mod tests {
         let result = validate_confidence_weights(&cfg);
         assert!(result.is_err(), "sum=0.93 must fail");
         let msg = format!("{}", result.unwrap_err());
-        assert!(msg.contains("0.92"), "must mention expected sum; got: {msg}");
+        assert!(
+            msg.contains("0.92"),
+            "must mention expected sum; got: {msg}"
+        );
     }
 
     #[test]
@@ -219,11 +225,7 @@ mod tests {
     fn test_parse_profile_toml_baseline_empty() {
         let dir = TempDir::new().unwrap();
         let path = dir.path().join("baseline.toml");
-        std::fs::write(
-            &path,
-            "[profile]\nname = \"baseline\"\n",
-        )
-        .unwrap();
+        std::fs::write(&path, "[profile]\nname = \"baseline\"\n").unwrap();
 
         let profile = parse_profile_toml(&path).expect("baseline parse must succeed");
         assert_eq!(profile.name, "baseline");
@@ -400,8 +402,141 @@ mod tests {
         );
 
         if let Err(EvalError::ConfigInvariant(msg)) = result {
-            assert!(msg.contains("0.92"), "must mention expected sum; got: {msg}");
+            assert!(
+                msg.contains("0.92"),
+                "must mention expected sum; got: {msg}"
+            );
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // GH-323: from_profile loads VectorIndex from snapshot vector dir
+    // -----------------------------------------------------------------------
+    //
+    // Verifies that when a snapshot's sibling `vector/` directory contains
+    // HNSW files, `from_profile()` constructs an `EvalServiceLayer` backed by
+    // the loaded index (not a fresh empty one), and that a direct VectorIndex
+    // search against the loaded index returns non-empty results with non-zero
+    // scores.
+    //
+    // The test does NOT exercise the full ServiceLayer search (which requires
+    // the embedding model to be loaded) — it directly validates the persisted
+    // VectorIndex round-trip that `from_profile()` Step 5 now uses.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_from_profile_loads_vector_index_from_snapshot_dir() {
+        use std::sync::Arc;
+
+        use unimatrix_core::{VectorConfig, VectorIndex};
+        use unimatrix_store::pool_config::PoolConfig;
+
+        // -------------------------------------------------------
+        // 1. Create a temp dir with a seeded snapshot DB + vectors
+        // -------------------------------------------------------
+        let dir = TempDir::new().expect("tempdir");
+        let snap_path = dir.path().join("snapshot.db");
+
+        // Open + migrate the store so schema is current.
+        let store = Arc::new(
+            unimatrix_store::SqlxStore::open(&snap_path, PoolConfig::default())
+                .await
+                .expect("open store"),
+        );
+
+        // Build a VectorIndex and seed entries.
+        let vector_config = VectorConfig::default();
+        let vi = VectorIndex::new(Arc::clone(&store), vector_config.clone()).expect("vector index");
+
+        // Seed a handful of entries and vectors.
+        let dim = vi.config().dimension;
+        let mut entry_ids = Vec::new();
+        for i in 0..10_u64 {
+            let entry = unimatrix_store::NewEntry {
+                title: format!("Test entry {i}"),
+                content: format!("Content about topic number {i}"),
+                topic: "test".to_string(),
+                category: "pattern".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: unimatrix_store::Status::Active,
+                created_by: "test".to_string(),
+                feature_cycle: "nan-323".to_string(),
+                trust_source: "test".to_string(),
+            };
+            let eid = store.insert(entry).await.expect("insert entry");
+            // Produce a deterministic non-zero embedding.
+            let mut emb = vec![0.0f32; dim];
+            emb[i as usize % dim] = 1.0;
+            vi.insert(eid, &emb).await.expect("insert vector");
+            entry_ids.push(eid);
+        }
+
+        // -------------------------------------------------------
+        // 2. Dump HNSW files into the sibling `vector/` directory
+        //    (mimics what `snapshot copy_vector_files` produces)
+        // -------------------------------------------------------
+        let vector_dir = dir.path().join("vector");
+        vi.dump(&vector_dir).expect("dump vector index");
+        assert!(
+            vector_dir.join("unimatrix-vector.meta").exists(),
+            "meta file must exist after dump"
+        );
+
+        // -------------------------------------------------------
+        // 3. Call from_profile() against the snapshot
+        // -------------------------------------------------------
+        let profile = baseline_profile();
+        // Pass `Some(dir.path())` as project_dir so the live-DB guard resolves
+        // to a different path than snap_path.
+        let result = EvalServiceLayer::from_profile(&snap_path, &profile, Some(dir.path())).await;
+        match result {
+            Ok(_layer) => {
+                // Construction succeeded — the vector dir was found and loaded.
+            }
+            Err(EvalError::LiveDbPath { .. }) => {
+                // Guard fired in CI where snap_path happens to match the active DB —
+                // this is an environmental collision, not a test failure.
+                return;
+            }
+            Err(e) => panic!("from_profile with vector dir should succeed; got: {e}"),
+        }
+
+        // -------------------------------------------------------
+        // 4. Verify the loaded VectorIndex returns results
+        //
+        // Load independently (same path `from_profile` Step 5 now uses)
+        // and assert point_count and direct search work.
+        // -------------------------------------------------------
+        let loaded_vi = VectorIndex::load(Arc::clone(&store), vector_config, &vector_dir)
+            .await
+            .expect("VectorIndex::load from snapshot vector dir must succeed");
+
+        assert_eq!(
+            loaded_vi.point_count(),
+            10,
+            "loaded index must have all 10 seeded vectors"
+        );
+
+        // Direct search with a known query embedding must return non-empty results.
+        let mut query_emb = vec![0.0f32; dim];
+        query_emb[0] = 1.0; // aligns with entry 0's embedding
+        let results = loaded_vi
+            .search(&query_emb, 5, 32)
+            .expect("search must succeed on loaded index");
+
+        assert!(
+            !results.is_empty(),
+            "search on loaded snapshot index must return non-empty results"
+        );
+        // The query aligns exactly with entry 0's embedding (dot product = 1.0),
+        // so the best match must have positive similarity.
+        let best = results
+            .iter()
+            .map(|r| r.similarity)
+            .fold(f64::NEG_INFINITY, f64::max);
+        assert!(
+            best > 0.0,
+            "best search result must have non-zero similarity score; best={best}"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]

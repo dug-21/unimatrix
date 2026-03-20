@@ -147,11 +147,33 @@ impl EvalServiceLayer {
             .map_err(|e| EvalError::Store(Box::new(e)))?;
         let store_arc: Arc<Store> = Arc::new(store);
 
+        // Determine the sibling vector directory for this snapshot.
+        // Convention: {db_parent}/vector/ holds the HNSW files copied by `snapshot`.
         let vector_config = VectorConfig::default();
-        let vector_index = Arc::new(
-            VectorIndex::new(Arc::clone(&store_arc), vector_config)
-                .map_err(|e| EvalError::Store(Box::new(e)))?,
-        );
+        let db_parent = db_resolved.parent().ok_or_else(|| {
+            EvalError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "snapshot db path has no parent directory",
+            ))
+        })?;
+        let vector_dir = db_parent.join("vector");
+        let vector_meta = vector_dir.join("unimatrix-vector.meta");
+
+        let vector_index = if vector_meta.exists() {
+            // Load the persisted HNSW index from the snapshot's vector dir (GH-323).
+            Arc::new(
+                VectorIndex::load(Arc::clone(&store_arc), vector_config, &vector_dir)
+                    .await
+                    .map_err(|e| EvalError::Store(Box::new(e)))?,
+            )
+        } else {
+            // No vector files present (pre-fix snapshot or empty index) — fall back
+            // to a fresh empty index for backward compatibility (GH-323).
+            Arc::new(
+                VectorIndex::new(Arc::clone(&store_arc), vector_config)
+                    .map_err(|e| EvalError::Store(Box::new(e)))?,
+            )
+        };
 
         // ----------------------------------------------------------------
         // Step 6: Build embedding handle (model loading deferred to background)
