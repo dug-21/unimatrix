@@ -300,7 +300,7 @@ fn run_eval_command(
 | C-06 | Profile TOML with `[confidence]` overrides must supply all six weight fields summing to 0.92 ± 1e-9. Failure returns `EvalError::ConfigInvariant(String)` with a user-readable message naming expected/actual sums. |
 | C-07 | `unimatrix eval report` must not exit with non-zero code based on regression count. No CI gate logic in this subcommand. |
 | C-08 | MCP UDS socket path must not exceed 103 bytes. `UnimatrixUdsClient` validates before `connect()` and raises a descriptive error. |
-| C-09 | `snapshot` is dispatched pre-tokio (C-10 ordering). Uses rusqlite synchronously. `eval scenarios` and `eval run` use `block_export_sync` bridge for async sqlx within the sync dispatch arm. |
+| C-09 | `snapshot` is dispatched pre-tokio (C-10 ordering). Uses `block_export_sync` + async sqlx (ADR-001: rusqlite was removed in nxs-011; VACUUM INTO goes through sqlx via `block_export_sync`). `eval scenarios` and `eval run` also use `block_export_sync` bridge for async sqlx within the sync dispatch arm. |
 | C-10 | Eval test suites extend existing `TestHarness` fixtures. `kendall_tau()` from `unimatrix-engine::test_scenarios` is reused directly — no duplicate metric code. |
 | C-11 | All Python additions go in `product/test/infra-001/harness/` (clients) and `product/test/infra-001/tests/` (test suites). |
 | C-12 | No `--anonymize` flag. Snapshots must not be committed to the repo. CLI `--help` must include a warning about snapshot content sensitivity (NFR-07). |
@@ -316,10 +316,9 @@ fn run_eval_command(
 
 | Component | Location | Role in nan-007 |
 |-----------|----------|----------------|
-| `rusqlite` (bundled, transitive) | `crates/unimatrix-store` | `VACUUM INTO` in `snapshot.rs` |
-| `sqlx::SqlitePool` + `SqliteConnectOptions` | `crates/unimatrix-store` | Read-only snapshot pool in `eval/` |
+| `sqlx::SqlitePool` + `SqliteConnectOptions` | `crates/unimatrix-store` | Read-only snapshot pool in `eval/` and `VACUUM INTO` in `snapshot.rs` (via `block_export_sync`) |
 | `TestHarness::new()` pattern | `crates/unimatrix-server/src/test_support.rs` | Construction model for `EvalServiceLayer::from_profile()` |
-| `block_export_sync()` | `crates/unimatrix-server/src/export.rs` | Async bridge for `eval scenarios` and `eval run` |
+| `block_export_sync()` | `crates/unimatrix-server/src/export.rs` | Async bridge for `snapshot`, `eval scenarios`, and `eval run` |
 | `kendall_tau()`, `assert_ranked_above()` | `crates/unimatrix-engine/src/test_scenarios.rs` | Metric computation (via `test-support` feature) |
 | `QueryLogRecord::scan_query_log_by_sessions()` | `crates/unimatrix-store/src/query_log.rs` | Scenario extraction from snapshot |
 | `RetrievalMode`, `ServiceSearchParams` | `crates/unimatrix-server/src/services/search.rs` | Search replay per profile |
