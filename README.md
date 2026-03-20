@@ -348,6 +348,10 @@ Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdou
 | `import` | Import a knowledge base from a JSONL export file. Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data) |
 | `version` | Print version and exit. With `--project-dir`, also initializes the database. | `--project-dir <PATH>` |
 | `model-download` | Download the ONNX embedding model to cache. Used by npm postinstall. | None |
+| `snapshot` | Create a self-contained SQLite copy of the active database using `VACUUM INTO`. Includes all tables (entries, query_log, graph_edges, co_access, sessions, and all analytics tables). Refuses with a non-zero exit code if `--out` resolves to the same path as the live database. | `--out <PATH>` (required), `--project-dir <PATH>` |
+| `eval scenarios` | Mine the `query_log` table from a snapshot and write eval scenarios in JSONL format. Each scenario includes query text, retrieval context, baseline result set (soft ground truth), and source path (`mcp` or `uds`). | `--db <PATH>` (required), `--out <PATH>` (required), `--retrieval-mode mcp\|uds\|all` (default `all`), `--limit <N>` |
+| `eval run` | Replay eval scenarios through one or more configuration profile TOML files in-process, producing one JSON result file per scenario. Computes P@K, MRR, Kendall tau, rank change list, and latency delta per scenario per profile. Opens snapshot read-only; produces no writes to the snapshot. | `--db <PATH>` (required), `--scenarios <PATH>` (required), `--configs <TOML,...>` (required), `--out <DIR>` (required), `--k <N>` (default 5) |
+| `eval report` | Aggregate per-scenario JSON result files into a Markdown report. Report contains: summary table, notable ranking changes, latency distribution, entry-level analysis, and zero-regression check section. Human-reviewed artifact only — no automated pass/fail gate. | `--results <DIR>` (required), `--out <PATH>` (required), `--scenarios <PATH>` (optional, annotates queries) |
 
 ### Global Flags
 
