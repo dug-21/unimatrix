@@ -1,0 +1,1 @@
+{"date":"2026-03-20","scenarios":1528,"p_at_k":0.3256,"mrr":0.4466,"avg_latency_ms":7.2,"feature_cycle":"bugfix-323","note":"initial baseline, post-bugfix-323 snapshot+vector fix"}

@@ -14,8 +14,10 @@ are demonstrated, not assumed; the human reviewer sees exactly what changed and 
 - [Step 2 — Extract eval scenarios](#step-2--extract-eval-scenarios)
 - [Step 3 — Run the evaluation](#step-3--run-the-evaluation)
 - [Step 4 — Generate the report](#step-4--generate-the-report)
+- [Step 5 — Record the baseline](#step-5--record-the-baseline)
 - [Writing profile TOMLs](#writing-profile-tomls)
 - [Reading the report](#reading-the-report)
+- [Understanding the metrics](#understanding-the-metrics)
 - [Hand-authored scenarios](#hand-authored-scenarios)
 - [Live-path clients (D5/D6)](#live-path-clients-d5d6)
 - [Safety constraints](#safety-constraints)
@@ -121,30 +123,17 @@ unimatrix eval scenarios \
   --out /tmp/eval/scenarios.jsonl
 ```
 
-Filter by retrieval source if needed:
-
-```bash
-# Only queries that arrived via MCP (stdio transport)
-unimatrix eval scenarios --db /tmp/eval/snap.db --out /tmp/eval/scenarios.jsonl \
-  --retrieval-mode mcp
-
-# Only queries that arrived via UDS transport (D5 clients)
-unimatrix eval scenarios --db /tmp/eval/snap.db --out /tmp/eval/scenarios.jsonl \
-  --retrieval-mode uds
-
-# Both (default)
-unimatrix eval scenarios --db /tmp/eval/snap.db --out /tmp/eval/scenarios.jsonl \
-  --retrieval-mode all
-```
-
 **Flags:**
 
 | Flag | Required | Default | Description |
 |---|---|---|---|
 | `--db <path>` | Yes | — | Snapshot SQLite file (read-only). |
 | `--out <path>` | Yes | — | Output JSONL file. |
-| `--retrieval-mode mcp\|uds\|all` | No | `all` | Filter by query source. |
 | `--limit <N>` | No | (all) | Maximum number of scenarios to emit. |
+
+> **Note:** `--retrieval-mode` (filter by mcp/uds source) is planned but not
+> yet implemented. See [#326](https://github.com/dug-21/unimatrix/issues/326).
+> All query_log entries are emitted regardless of transport source.
 
 **Output format** (one JSON object per line):
 
@@ -288,6 +277,36 @@ artifact — there is no automated pass/fail gate.
 
 ---
 
+## Step 5 — Record the baseline
+
+After every eval run, append a single JSON line to
+`product/test/eval-baselines/log.jsonl`. This log is the persistent record of
+platform retrieval quality over time — it is the only way to know whether a
+future change improved or regressed the platform.
+
+```bash
+echo '{"date":"'$(date +%Y-%m-%d)'","scenarios":1528,"p_at_k":0.3256,"mrr":0.4466,"avg_latency_ms":7.2,"feature_cycle":"my-feature","note":"short description"}' \
+  >> product/test/eval-baselines/log.jsonl
+```
+
+Also store the run as a Unimatrix outcome entry so agents have semantic access
+to the measurements during future design sessions:
+
+```
+context_store(
+  topic="eval-baseline",
+  category="outcome",
+  title="Eval Baseline YYYY-MM-DD — P@5: X.XXXX, MRR: X.XXXX",
+  tags=["type:process", "eval", "baseline", "retrieval-quality"],
+  feature_cycle="<feature>",
+  content="Scenarios: N | P@5: X | MRR: X | Avg latency: Xms | <note>"
+)
+```
+
+See `product/test/eval-baselines/README.md` for the full field spec.
+
+---
+
 ## Writing profile TOMLs
 
 A profile TOML is a named, partial `UnimatrixConfig`. Missing sections fall back
@@ -372,6 +391,44 @@ If regressions exist, review each before deciding to ship. A regression in a
 low-value scenario (e.g., a one-off query with an unusual phrasing) is different
 from a regression in a high-frequency scenario. The harness surfaces the data;
 the human decides.
+
+---
+
+## Understanding the metrics
+
+The report summary table contains four measurements per profile:
+
+**P@K — Precision at K**
+
+Of the top K results returned for a query, how many were relevant? A score of
+`0.33` with `k=5` means roughly 1–2 of the 5 results were on-target. Relevance
+is defined by what the production system previously returned for the same query
+(soft ground truth) unless you use hand-authored scenarios with hard labels.
+
+**MRR — Mean Reciprocal Rank**
+
+Where does the first correct result appear? If the best result is rank 1 the
+score is 1.0; rank 2 → 0.5; rank 3 → 0.33. MRR averages this across all
+scenarios. An MRR of `0.45` means the first relevant result lands at roughly
+rank 2.2 on average.
+
+**Reading them together:** MRR higher than P@K is the normal, healthy pattern.
+It means the system surfaces one strong result near the top but fills the
+remaining slots with noise. Agents rely most heavily on the top result, so MRR
+is the more important number for day-to-day quality.
+
+**Current platform baseline (2026-03-20):**
+
+| Metric | Value |
+|--------|-------|
+| Scenarios | 1,528 |
+| P@5 | 0.3256 |
+| MRR | 0.4466 |
+| Avg latency | 7.2ms |
+
+These numbers are only meaningful relative to future changes. A candidate that
+moves MRR from 0.45 → 0.52 is a demonstrated improvement. One that drops it
+to 0.38 is a regression you should catch before shipping.
 
 ---
 
@@ -539,8 +596,7 @@ unimatrix snapshot --out /tmp/eval/$(date +%Y%m%d)-snap.db
 # 2. Extract scenarios from query_log
 unimatrix eval scenarios \
   --db /tmp/eval/$(date +%Y%m%d)-snap.db \
-  --out /tmp/eval/scenarios.jsonl \
-  --retrieval-mode all
+  --out /tmp/eval/scenarios.jsonl
 
 # Check how many you got
 wc -l /tmp/eval/scenarios.jsonl
@@ -565,4 +621,8 @@ unimatrix eval report \
 
 # 6. Review the report — focus on section 5 (Zero-Regression Check)
 cat /tmp/eval/report.md
+
+# 7. Record the baseline (always — even for baseline-only runs)
+echo '{"date":"'$(date +%Y-%m-%d)'","scenarios":<N>,"p_at_k":<value>,"mrr":<value>,"avg_latency_ms":<value>,"feature_cycle":"<feature>","note":"<short description>"}' \
+  >> product/test/eval-baselines/log.jsonl
 ```
