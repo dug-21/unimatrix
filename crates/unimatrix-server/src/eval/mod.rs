@@ -5,21 +5,24 @@
 //! a running daemon. The module is structured as:
 //!
 //! - `profile` — `EvalProfile`, `EvalServiceLayer`, `AnalyticsMode`, `EvalError`
-//! - `scenarios` — query_log scan → JSONL (Wave 2)
-//! - `runner` — per-profile in-process replay + metric computation (Wave 2)
-//! - `report` — Markdown aggregation + zero-regression check (Wave 2)
+//! - `scenarios` — query_log scan → JSONL (D2)
+//! - `runner` — per-profile in-process replay + metric computation (Wave 3)
+//! - `report` — Markdown aggregation + zero-regression check (nan-007 D4)
 //!
 //! CLI wiring (`Command::Eval`, `run_eval_command`) is added in Wave 3 (main.rs).
 
 pub mod profile;
-
-// Wave 2 modules (not yet implemented):
-// pub mod scenarios;
-// pub mod runner;
-// pub mod report;
+pub mod report;
+pub mod runner;
+pub mod scenarios;
 
 // Re-export core eval types for downstream modules.
 pub use profile::{AnalyticsMode, EvalError, EvalProfile, EvalServiceLayer};
+pub use report::run_report;
+pub use runner::{
+    ComparisonMetrics, ProfileResult, RankChange, ScenarioResult, ScoredEntry, run_eval,
+};
+pub use scenarios::{ScenarioBaseline, ScenarioContext, ScenarioRecord, ScenarioSource};
 
 /// Nested subcommand enum for `unimatrix eval`.
 ///
@@ -31,15 +34,15 @@ pub use profile::{AnalyticsMode, EvalError, EvalProfile, EvalServiceLayer};
 pub enum EvalCommand {
     /// Extract scenario records from a snapshot database.
     ///
-    /// Scans `query_log`, joins with `entries` to build baselines, and writes
-    /// one JSONL line per record. Implemented in Wave 2.
+    /// Scans `query_log`, builds baselines from stored result IDs and scores,
+    /// and writes one JSONL line per record. Supports `--source mcp|uds|all`.
     Scenarios {
         /// Snapshot database path.
         #[arg(long)]
         db: std::path::PathBuf,
-        /// Filter by source: mcp, uds, or all.
+        /// Filter by source: mcp, uds, or all (default: all).
         #[arg(long, default_value = "all")]
-        source: String,
+        source: ScenarioSource,
         /// Limit the number of scenarios extracted.
         #[arg(long)]
         limit: Option<usize>,
@@ -52,7 +55,7 @@ pub enum EvalCommand {
     ///
     /// Constructs one `EvalServiceLayer` per profile, replays each scenario,
     /// computes metrics (P@K, MRR, Kendall tau, latency delta), and writes
-    /// per-scenario JSON result files. Implemented in Wave 2.
+    /// per-scenario JSON result files. Implemented in Wave 3.
     Run {
         /// Snapshot database path.
         #[arg(long)]
@@ -75,7 +78,7 @@ pub enum EvalCommand {
     ///
     /// Produces five Markdown sections with summary table, ranking changes,
     /// latency distribution, entry-level analysis, and zero-regression check.
-    /// Exits 0 regardless of regression count (C-07). Implemented in Wave 2.
+    /// Exits 0 regardless of regression count (C-07). Implemented in Wave 3.
     Report {
         /// Directory containing per-scenario JSON result files.
         #[arg(long)]
