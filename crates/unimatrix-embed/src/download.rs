@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::{EmbedError, Result};
-use crate::model::EmbeddingModel;
+use crate::model::{EmbeddingModel, NliModel};
 
 /// Ensure model files (ONNX model + tokenizer) exist in the cache directory.
 ///
@@ -40,6 +40,71 @@ pub fn ensure_model(model: EmbeddingModel, cache_dir: &Path) -> Result<PathBuf> 
     })?;
 
     // Download tokenizer
+    let downloaded_tokenizer = repo
+        .get("tokenizer.json")
+        .map_err(|e| EmbedError::Download(format!("failed to download tokenizer.json: {e}")))?;
+
+    // Copy from hf-hub cache to our cache directory if paths differ
+    if downloaded_onnx != onnx_path {
+        fs::copy(&downloaded_onnx, &onnx_path)?;
+    }
+
+    if downloaded_tokenizer != tokenizer_path {
+        fs::copy(&downloaded_tokenizer, &tokenizer_path)?;
+    }
+
+    // Validate files exist and are non-empty
+    if !onnx_path.exists() || file_size(&onnx_path) == 0 {
+        return Err(EmbedError::ModelNotFound { path: onnx_path });
+    }
+
+    if !tokenizer_path.exists() || file_size(&tokenizer_path) == 0 {
+        return Err(EmbedError::ModelNotFound {
+            path: tokenizer_path,
+        });
+    }
+
+    Ok(model_dir)
+}
+
+/// Ensure NLI model files (ONNX model + tokenizer.json) exist in the cache directory.
+///
+/// Downloads from HuggingFace Hub via `hf-hub` if not already cached.
+/// Returns the path to the model directory containing `model.onnx` and `tokenizer.json`.
+///
+/// Follows the same pattern as `ensure_model`. No changes to `ensure_model`.
+pub fn ensure_nli_model(model: NliModel, cache_dir: &Path) -> Result<PathBuf> {
+    let model_dir = cache_dir.join(model.cache_subdir());
+    let onnx_path = model_dir.join(model.onnx_filename());
+    let tokenizer_path = model_dir.join("tokenizer.json");
+
+    // Check if both files already exist and are non-empty
+    if onnx_path.exists()
+        && tokenizer_path.exists()
+        && file_size(&onnx_path) > 0
+        && file_size(&tokenizer_path) > 0
+    {
+        return Ok(model_dir);
+    }
+
+    // Create cache directory if needed
+    fs::create_dir_all(&model_dir)?;
+
+    // Download via hf-hub
+    let api = hf_hub::api::sync::Api::new()
+        .map_err(|e| EmbedError::Download(format!("failed to create HF Hub API: {e}")))?;
+
+    let repo = api.model(model.model_id().to_string());
+
+    // Download ONNX model file from repo (R-18: tokenizer must match model)
+    let downloaded_onnx = repo.get(model.onnx_repo_path()).map_err(|e| {
+        EmbedError::Download(format!(
+            "failed to download {}: {e}",
+            model.onnx_repo_path()
+        ))
+    })?;
+
+    // Download tokenizer.json from the same repo (R-18: tokenizer must match model)
     let downloaded_tokenizer = repo
         .get("tokenizer.json")
         .map_err(|e| EmbedError::Download(format!("failed to download tokenizer.json: {e}")))?;
