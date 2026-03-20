@@ -18,7 +18,7 @@
 //!
 //! # File layout
 //!
-//! ```
+//! ```text
 //! ~/.unimatrix/config.toml           (global)
 //! ~/.unimatrix/{project-hash}/config.toml  (per-project)
 //! ```
