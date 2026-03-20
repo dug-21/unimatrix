@@ -56,3 +56,16 @@
 - `unimatrix-server/src/services/store_ops.rs` — `nli_handle` field, fire-and-forget spawn
 - `unimatrix-server/src/services/background.rs` — bootstrap promotion task call
 - Server startup wiring + `EvalServiceLayer::from_profile()` stub
+
+---
+
+## Knowledge Stewardship
+
+- Queried: `/uni-query-patterns` before designing — retrieved entry #67 (nxs-003 ADR-001: single Mutex<Session> concurrency pattern for ONNX, used to resolve OQ-01), entry #1544 (crt-018b hold-on-error, confirmed unaffected by ADR-007), and crt-022 ADR-003 (pool floor minimum of 4, used to determine pool floor raise to 6 for OQ-01).
+- Stored: entry #2700 "ADR-001: NLI Session Concurrency — Single Mutex<Session> + Pool Floor 6" via `/uni-store-adr`
+- Stored: entry #2701 "ADR-002: NLI Score Replacement — Pure Entailment Replaces rerank_score" via `/uni-store-adr`
+- Stored: entry #2702 "ADR-003: NLI Model Config + Per-File SHA-256 Hash Pinning" via `/uni-store-adr`
+- Stored: entry #2703 "ADR-004: Post-Store Embedding Move Semantics — Zero-Copy NLI Handoff" via `/uni-store-adr`
+- Stored: entry #2704 "ADR-005: Bootstrap Promotion Idempotency via COUNTERS Table Key" via `/uni-store-adr`
+- Stored: entry #2705 "ADR-006: Eval CLI Missing NLI Model — Skip Not Fail" via `/uni-store-adr`
+- Stored: ADR-007 "NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold" — stored as architecture file `ADR-007-nli-auto-quarantine-threshold.md`; Unimatrix entry not yet assigned (ADR-007 was added after initial 6-ADR batch; coordinator should store via `/uni-store-adr` and record entry ID).

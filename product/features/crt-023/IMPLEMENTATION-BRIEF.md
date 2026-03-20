@@ -19,22 +19,20 @@
 |-----------|-----------|-----------|
 | NliProvider (`unimatrix-embed`) | pseudocode/nli-provider.md | test-plan/nli-provider.md |
 | NliServiceHandle (`unimatrix-server/infra`) | pseudocode/nli-service-handle.md | test-plan/nli-service-handle.md |
+| Config Extension (`infra/config.rs`) | pseudocode/config-extension.md | test-plan/config-extension.md |
 | Search Re-ranking (`services/search.rs`) | pseudocode/search-reranking.md | test-plan/search-reranking.md |
 | Post-Store NLI Detection (`services/nli_detection.rs`) | pseudocode/post-store-detection.md | test-plan/post-store-detection.md |
 | Bootstrap Edge Promotion (`services/nli_detection.rs`) | pseudocode/bootstrap-promotion.md | test-plan/bootstrap-promotion.md |
-| Config Extension (`infra/config.rs`) | pseudocode/config-extension.md | test-plan/config-extension.md |
+| Auto-Quarantine Threshold Guard (`background.rs`) | pseudocode/auto-quarantine-threshold.md | test-plan/auto-quarantine-threshold.md |
 | Eval Integration (`EvalServiceLayer`) | pseudocode/eval-integration.md | test-plan/eval-integration.md |
 | Model Download CLI | pseudocode/model-download-cli.md | test-plan/model-download-cli.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
-
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists
-expected components from the architecture. Actual file paths are filled during delivery.
 
 ---
 
