@@ -194,10 +194,25 @@ async fn run_post_store_nli(
 
 **Deferral** (FR-25): If NLI not ready at tick time → log info + return (no marker set). Re-attempts on next tick.
 
+**W1-2 rayon compliance**: All NLI inference in this task is CPU-bound ONNX work and MUST
+run on the rayon pool — never inline in the async background tick. Pairs are collected first,
+then batch-dispatched to rayon in a single `spawn()` call, and the async tick awaits the result.
+
 **Promotion logic**:
 ```
-FOR EACH row in GRAPH_EDGES WHERE bootstrap_only=1 AND relation_type='Contradicts':
-  score = nli.score_pair(source_entry_text, target_entry_text)
+// 1. Fetch all bootstrap rows (async DB read — tokio context, not rayon)
+rows = store.query_bootstrap_contradicts()   // SELECT ... WHERE bootstrap_only=1
+
+// 2. Fetch entry texts for all rows (async DB read)
+pairs = [(row.source_text, row.target_text) for row in rows]
+
+// 3. ALL NLI inference batched into a single rayon spawn — W1-2 contract
+scores: Vec<NliScores> = rayon_pool.spawn(move || {
+    provider.score_batch(&pairs)   // CPU-bound ONNX inference on rayon thread
+}).await?
+
+// 4. Write results (async DB writes — tokio context)
+FOR EACH (row, score) in zip(rows, scores):
   IF score.contradiction > nli_contradiction_threshold:
     BEGIN TRANSACTION
       DELETE FROM graph_edges WHERE id = row.id
@@ -205,6 +220,7 @@ FOR EACH row in GRAPH_EDGES WHERE bootstrap_only=1 AND relation_type='Contradict
     COMMIT
   ELSE:
     DELETE FROM graph_edges WHERE id = row.id
+
 SET COUNTERS bootstrap_nli_promotion_done = 1
 ```
 

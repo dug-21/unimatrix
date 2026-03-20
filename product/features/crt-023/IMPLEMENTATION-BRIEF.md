@@ -261,7 +261,7 @@ VALUES (?1, ?2, ?3, ?4, ?5, 'nli', 'nli', 0, ?6)
 
 1. `ort = "=2.0.0-rc.9"` is pinned and must not change. Both `OnnxProvider` and `NliProvider` use this exact version.
 2. NLI-confirmed edge writes use `write_pool_server()` directly. `AnalyticsWrite::GraphEdge` is prohibited for NLI writes (SR-02; already documented in `analytics.rs`).
-3. Single shared rayon pool from crt-022. No new pool. Pool floor raised to 6 when `nli_enabled=true` at startup.
+3. **All CPU-bound NLI inference runs on the rayon pool (W1-2 contract).** Every `NliProvider::score_pair` / `score_batch` call in every path — search re-ranking, post-store fire-and-forget, AND bootstrap promotion — must be dispatched via `rayon_pool.spawn()` or `rayon_pool.spawn_with_timeout()`. No NLI inference on tokio threads or via `spawn_blocking`. Single shared rayon pool from crt-022. No new pool. Pool floor raised to 6 when `nli_enabled=true` at startup.
 4. NLI absence must not prevent server startup. All MCP tools must function on cosine fallback.
 5. `max_contradicts_per_tick` circuit breaker applies per `context_store` call (FR-22). Config name retained for compatibility.
 6. Per-side input truncation (512 tokens / ~2000 chars) is a security requirement. Enforced inside `NliProvider`, not at call sites.

@@ -240,9 +240,12 @@ remains in effect and is unaffected by this change.
 
 **FR-23** — On the first background tick after server startup, a one-shot task must
 query all `GRAPH_EDGES` rows with `bootstrap_only = 1` and `relation_type = 'Contradicts'`.
-For each row:
+NLI inference for all rows **must** be batched and dispatched through `rayon_pool.spawn()`
+(W1-2 contract) — never called inline in the async background tick. The task collects all
+pairs first, dispatches a single `rayon_pool.spawn(|| provider.score_batch(&pairs))`, awaits
+the result, then performs async DB writes. For each row:
 
-- Score the `(source_entry_text, target_entry_text)` pair through NLI
+- Score the `(source_entry_text, target_entry_text)` pair through NLI (via rayon batch)
 - If `nli_scores.contradiction > nli_contradiction_threshold`: DELETE the row and INSERT
   a replacement with `source = 'nli'`, `bootstrap_only = 0`, and NLI metadata
 - If score does not exceed threshold: DELETE the row only
@@ -701,7 +704,11 @@ Writes use `INSERT OR IGNORE` for idempotency on the `UNIQUE(source_id, target_i
    integrity writes and must bypass the analytics queue (SR-02, already documented in
    `analytics.rs`).
 
-3. **Shared rayon pool (W1-2).** `NliProvider` inference uses the `Arc<RayonPool>` from
+3. **All CPU-bound NLI inference runs on the rayon pool (W1-2 contract).** Every call to
+   `NliProvider::score_pair` or `score_batch` — in the search path, post-store path, AND
+   bootstrap promotion path — must be dispatched via `rayon_pool.spawn()` or
+   `rayon_pool.spawn_with_timeout()`. No NLI inference may run inline in an async tokio
+   task or via `spawn_blocking`. `NliProvider` inference uses the `Arc<RayonPool>` from
    crt-022. No new pool is created. W2-4 (GGUF) gets a separate pool; that is not in scope
    here.
 
