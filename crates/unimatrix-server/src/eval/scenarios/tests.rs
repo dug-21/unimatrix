@@ -139,9 +139,15 @@ mod tests {
             assert!(line["query"].as_str().is_some(), "query must be a string");
             let ctx = &line["context"];
             assert!(ctx["agent_id"].as_str().is_some(), "context.agent_id");
-            assert!(ctx["feature_cycle"].as_str().is_some(), "context.feature_cycle");
+            assert!(
+                ctx["feature_cycle"].as_str().is_some(),
+                "context.feature_cycle"
+            );
             assert!(ctx["session_id"].as_str().is_some(), "context.session_id");
-            assert!(ctx["retrieval_mode"].as_str().is_some(), "context.retrieval_mode");
+            assert!(
+                ctx["retrieval_mode"].as_str().is_some(),
+                "context.retrieval_mode"
+            );
             assert!(line["source"].as_str().is_some(), "source must be a string");
             assert!(line["expected"].is_null(), "expected must be null");
             assert!(line["baseline"].is_object(), "baseline must be an object");
@@ -187,7 +193,11 @@ mod tests {
 
         let entry_ids = lines[0]["baseline"]["entry_ids"].as_array().unwrap();
         let scores = lines[0]["baseline"]["scores"].as_array().unwrap();
-        assert_eq!(entry_ids.len(), scores.len(), "lengths must be equal after truncation");
+        assert_eq!(
+            entry_ids.len(),
+            scores.len(),
+            "lengths must be equal after truncation"
+        );
         assert_eq!(entry_ids.len(), 2, "truncated to min(3,2)=2");
     }
 
@@ -199,8 +209,26 @@ mod tests {
     async fn test_run_scenarios_source_filter_mcp() {
         let (dir, db_path) = make_snapshot_db().await;
         let pool = open_write_pool(&db_path).await;
-        insert_query_log_row(&pool, "sess-m", "mcp query", "flexible", "mcp", Some("[1]"), Some("[0.9]")).await;
-        insert_query_log_row(&pool, "sess-u", "uds query", "flexible", "uds", Some("[2]"), Some("[0.8]")).await;
+        insert_query_log_row(
+            &pool,
+            "sess-m",
+            "mcp query",
+            "flexible",
+            "mcp",
+            Some("[1]"),
+            Some("[0.9]"),
+        )
+        .await;
+        insert_query_log_row(
+            &pool,
+            "sess-u",
+            "uds query",
+            "flexible",
+            "uds",
+            Some("[2]"),
+            Some("[0.8]"),
+        )
+        .await;
         pool.close().await;
 
         let out = dir.path().join("mcp.jsonl");
@@ -220,8 +248,26 @@ mod tests {
     async fn test_run_scenarios_source_filter_uds() {
         let (dir, db_path) = make_snapshot_db().await;
         let pool = open_write_pool(&db_path).await;
-        insert_query_log_row(&pool, "sess-m2", "mcp query 2", "flexible", "mcp", Some("[1]"), Some("[0.9]")).await;
-        insert_query_log_row(&pool, "sess-u2", "uds query 2", "flexible", "uds", Some("[2]"), Some("[0.8]")).await;
+        insert_query_log_row(
+            &pool,
+            "sess-m2",
+            "mcp query 2",
+            "flexible",
+            "mcp",
+            Some("[1]"),
+            Some("[0.9]"),
+        )
+        .await;
+        insert_query_log_row(
+            &pool,
+            "sess-u2",
+            "uds query 2",
+            "flexible",
+            "uds",
+            Some("[2]"),
+            Some("[0.8]"),
+        )
+        .await;
         pool.close().await;
 
         let out = dir.path().join("uds.jsonl");
@@ -241,8 +287,26 @@ mod tests {
     async fn test_run_scenarios_source_filter_all() {
         let (dir, db_path) = make_snapshot_db().await;
         let pool = open_write_pool(&db_path).await;
-        insert_query_log_row(&pool, "sess-ma", "mcp query a", "flexible", "mcp", Some("[1]"), Some("[0.9]")).await;
-        insert_query_log_row(&pool, "sess-ua", "uds query a", "flexible", "uds", Some("[2]"), Some("[0.8]")).await;
+        insert_query_log_row(
+            &pool,
+            "sess-ma",
+            "mcp query a",
+            "flexible",
+            "mcp",
+            Some("[1]"),
+            Some("[0.9]"),
+        )
+        .await;
+        insert_query_log_row(
+            &pool,
+            "sess-ua",
+            "uds query a",
+            "flexible",
+            "uds",
+            Some("[2]"),
+            Some("[0.8]"),
+        )
+        .await;
         pool.close().await;
 
         let out = dir.path().join("all.jsonl");
@@ -251,7 +315,10 @@ mod tests {
 
         let lines = read_jsonl(&out);
         assert_eq!(lines.len(), 2, "both rows expected");
-        let sources: Vec<&str> = lines.iter().map(|l| l["source"].as_str().unwrap()).collect();
+        let sources: Vec<&str> = lines
+            .iter()
+            .map(|l| l["source"].as_str().unwrap())
+            .collect();
         assert!(sources.contains(&"mcp"), "mcp must be present");
         assert!(sources.contains(&"uds"), "uds must be present");
     }
@@ -314,7 +381,16 @@ mod tests {
     async fn test_run_scenarios_expected_field_is_null() {
         let (dir, db_path) = make_snapshot_db().await;
         let pool = open_write_pool(&db_path).await;
-        insert_query_log_row(&pool, "sess-exp", "some query", "flexible", "mcp", Some("[1]"), Some("[0.9]")).await;
+        insert_query_log_row(
+            &pool,
+            "sess-exp",
+            "some query",
+            "flexible",
+            "mcp",
+            Some("[1]"),
+            Some("[0.9]"),
+        )
+        .await;
         pool.close().await;
 
         let out = dir.path().join("expected.jsonl");
@@ -420,7 +496,16 @@ mod tests {
     async fn test_run_scenarios_null_entry_ids_produces_null_baseline() {
         let (dir, db_path) = make_snapshot_db().await;
         let pool = open_write_pool(&db_path).await;
-        insert_query_log_row(&pool, "sess-null", "null baseline query", "flexible", "mcp", None, None).await;
+        insert_query_log_row(
+            &pool,
+            "sess-null",
+            "null baseline query",
+            "flexible",
+            "mcp",
+            None,
+            None,
+        )
+        .await;
         pool.close().await;
 
         let out = dir.path().join("null_baseline.jsonl");
@@ -444,7 +529,16 @@ mod tests {
         let (dir, db_path) = make_snapshot_db().await;
         let pool = open_write_pool(&db_path).await;
         let unicode_query = "こんにちは世界 — مرحبا بالعالم — 🦀";
-        insert_query_log_row(&pool, "sess-uni", unicode_query, "flexible", "mcp", None, None).await;
+        insert_query_log_row(
+            &pool,
+            "sess-uni",
+            unicode_query,
+            "flexible",
+            "mcp",
+            None,
+            None,
+        )
+        .await;
         pool.close().await;
 
         let out = dir.path().join("unicode.jsonl");

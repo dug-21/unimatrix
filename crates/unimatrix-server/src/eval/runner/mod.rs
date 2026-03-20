@@ -20,9 +20,9 @@ mod output;
 mod replay;
 
 #[cfg(test)]
-mod tests_metrics;
-#[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_metrics;
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};

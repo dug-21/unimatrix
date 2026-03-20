@@ -34,11 +34,7 @@ pub(super) async fn wait_for_embed_model(
     loop {
         match handle.get_adapter().await {
             Ok(_) => {
-                tracing::debug!(
-                    profile = profile_name,
-                    attempts,
-                    "embed model ready"
-                );
+                tracing::debug!(profile = profile_name, attempts, "embed model ready");
                 return Ok(());
             }
             Err(e) if attempts < MAX_EMBED_WAIT_ATTEMPTS => {
