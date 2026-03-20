@@ -165,65 +165,16 @@ pub async fn run_post_store_nli(
     // Cap counts BOTH Supports AND Contradicts edges combined (not just Contradicts).
     // NOTE: This is named max_contradicts_per_tick in config for compatibility;
     // semantic is per-call.
-    let mut edges_written: usize = 0;
-    let now = current_timestamp_secs();
-
-    for (idx, (neighbor_id, _)) in neighbor_texts.iter().enumerate() {
-        if edges_written >= max_edges_per_call {
-            let remaining = neighbor_texts.len() - idx;
-            tracing::debug!(
-                entry_id = new_entry_id,
-                cap = max_edges_per_call,
-                dropped = remaining,
-                "post-store NLI: edge cap reached; dropping remaining pairs"
-            );
-            break;
-        }
-
-        if idx >= nli_scores.len() {
-            break; // defensive: score count mismatch (should not happen)
-        }
-
-        let scores = &nli_scores[idx];
-        let metadata = format_nli_metadata(scores);
-
-        // Write Supports edge if entailment exceeds threshold (strict >).
-        if scores.entailment > nli_entailment_threshold {
-            let wrote = write_nli_edge(
-                &store,
-                new_entry_id,
-                *neighbor_id,
-                "Supports",
-                scores.entailment,
-                now,
-                &metadata,
-            )
-            .await;
-            if wrote {
-                edges_written += 1;
-            }
-            if edges_written >= max_edges_per_call {
-                continue; // recheck after writing
-            }
-        }
-
-        // Write Contradicts edge if contradiction exceeds threshold (strict >).
-        if scores.contradiction > nli_contradiction_threshold {
-            let wrote = write_nli_edge(
-                &store,
-                new_entry_id,
-                *neighbor_id,
-                "Contradicts",
-                scores.contradiction,
-                now,
-                &metadata,
-            )
-            .await;
-            if wrote {
-                edges_written += 1;
-            }
-        }
-    }
+    let edges_written = write_edges_with_cap(
+        &store,
+        new_entry_id,
+        &neighbor_texts,
+        &nli_scores,
+        nli_entailment_threshold,
+        nli_contradiction_threshold,
+        max_edges_per_call,
+    )
+    .await;
 
     tracing::debug!(
         entry_id = new_entry_id,
@@ -495,6 +446,84 @@ async fn run_bootstrap_promotion(
 // ---------------------------------------------------------------------------
 // Private helpers
 // ---------------------------------------------------------------------------
+
+/// Write NLI-confirmed graph edges with circuit-breaker cap (R-09, FR-22, AC-13).
+///
+/// The cap counts BOTH Supports AND Contradicts edges combined — not each type independently.
+/// Processing stops as soon as `max_edges` edges have been written, regardless of type.
+///
+/// Returns the total number of edges written.
+async fn write_edges_with_cap(
+    store: &Store,
+    source_id: u64,
+    neighbor_texts: &[(u64, String)],
+    nli_scores: &[NliScores],
+    nli_entailment_threshold: f32,
+    nli_contradiction_threshold: f32,
+    max_edges: usize,
+) -> usize {
+    let mut edges_written: usize = 0;
+    let now = current_timestamp_secs();
+
+    for (idx, (neighbor_id, _)) in neighbor_texts.iter().enumerate() {
+        if edges_written >= max_edges {
+            let remaining = neighbor_texts.len() - idx;
+            tracing::debug!(
+                entry_id = source_id,
+                cap = max_edges,
+                dropped = remaining,
+                "post-store NLI: edge cap reached; dropping remaining pairs"
+            );
+            break;
+        }
+
+        if idx >= nli_scores.len() {
+            break; // defensive: score count mismatch (should not happen)
+        }
+
+        let scores = &nli_scores[idx];
+        let metadata = format_nli_metadata(scores);
+
+        // Write Supports edge if entailment exceeds threshold (strict >).
+        if scores.entailment > nli_entailment_threshold {
+            let wrote = write_nli_edge(
+                store,
+                source_id,
+                *neighbor_id,
+                "Supports",
+                scores.entailment,
+                now,
+                &metadata,
+            )
+            .await;
+            if wrote {
+                edges_written += 1;
+            }
+            if edges_written >= max_edges {
+                continue; // recheck after writing
+            }
+        }
+
+        // Write Contradicts edge if contradiction exceeds threshold (strict >).
+        if scores.contradiction > nli_contradiction_threshold {
+            let wrote = write_nli_edge(
+                store,
+                source_id,
+                *neighbor_id,
+                "Contradicts",
+                scores.contradiction,
+                now,
+                &metadata,
+            )
+            .await;
+            if wrote {
+                edges_written += 1;
+            }
+        }
+    }
+
+    edges_written
+}
 
 /// Write a single NLI-confirmed graph edge via `write_pool_server()` (SR-02).
 ///
@@ -1229,5 +1258,116 @@ mod tests {
         counters::read_counter(store.write_pool_server(), "bootstrap_nli_promotion_done")
             .await
             .unwrap_or(0)
+    }
+
+    /// Count GRAPH_EDGES rows with source='nli' (for circuit breaker assertions).
+    async fn count_nli_edges(store: &Arc<Store>) -> i64 {
+        sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges WHERE source = 'nli'")
+            .fetch_one(store.write_pool_server())
+            .await
+            .unwrap_or(0)
+    }
+
+    // ---------------------------------------------------------------------------
+    // Unit tests: circuit breaker (R-09, FR-22, AC-13)
+    // ---------------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_circuit_breaker_stops_at_cap() {
+        // R-09 (Critical, non-negotiable):
+        // max_edges=2; 5 neighbor pairs all scoring above contradiction_threshold.
+        // Both Supports AND Contradicts count toward the combined cap.
+        // Assert: exactly 2 edges written to graph_edges (not 5).
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+        let arc_store: Arc<Store> = Arc::new(store);
+
+        // Insert 5 neighbor entries for content fetch.
+        for id in 1u64..=5 {
+            insert_test_entry_raw(&arc_store, id, &format!("neighbor text {id}")).await;
+        }
+
+        // Build neighbor_texts and nli_scores: every pair scores above both thresholds.
+        let neighbor_texts: Vec<(u64, String)> = (1u64..=5)
+            .map(|id| (id, format!("neighbor text {id}")))
+            .collect();
+        let scores_above_both = NliScores {
+            entailment: 0.9,    // above 0.6 → Supports edge
+            neutral: 0.0,
+            contradiction: 0.9, // above 0.6 → Contradicts edge (but cap stops before all)
+        };
+        let nli_scores: Vec<NliScores> = vec![scores_above_both; 5];
+
+        // source_id=100 (does not collide with neighbors 1-5).
+        write_edges_with_cap(
+            &arc_store,
+            100,
+            &neighbor_texts,
+            &nli_scores,
+            0.6, // nli_entailment_threshold
+            0.6, // nli_contradiction_threshold
+            2,   // max_edges = cap
+        )
+        .await;
+
+        let edge_count = count_nli_edges(&arc_store).await;
+        assert_eq!(
+            edge_count, 2,
+            "Circuit breaker must limit TOTAL edges (Supports+Contradicts combined) to cap=2, got: {edge_count}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_counts_all_edge_types() {
+        // R-09: cap=3 with 4 neighbors alternating Supports-only and Contradicts-only scores.
+        // Pairs: [Supports, Contradicts, Supports, Contradicts] → would write 4 without cap.
+        // Assert: exactly 3 edges written (first 3 processed, regardless of type).
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+        let arc_store: Arc<Store> = Arc::new(store);
+
+        // Insert 4 neighbor entries.
+        for id in 1u64..=4 {
+            insert_test_entry_raw(&arc_store, id, &format!("neighbor text {id}")).await;
+        }
+
+        let neighbor_texts: Vec<(u64, String)> = (1u64..=4)
+            .map(|id| (id, format!("neighbor text {id}")))
+            .collect();
+
+        // Alternating: odd neighbors → Supports-only; even neighbors → Contradicts-only.
+        let supports_only = NliScores {
+            entailment: 0.9,
+            neutral: 0.0,
+            contradiction: 0.0, // below threshold → no Contradicts edge
+        };
+        let contradicts_only = NliScores {
+            entailment: 0.0, // below threshold → no Supports edge
+            neutral: 0.0,
+            contradiction: 0.9,
+        };
+        let nli_scores = vec![
+            supports_only.clone(),    // neighbor 1 → 1 Supports edge
+            contradicts_only.clone(), // neighbor 2 → 1 Contradicts edge
+            supports_only,            // neighbor 3 → 1 Supports edge (hits cap=3 here)
+            contradicts_only,         // neighbor 4 → dropped by cap
+        ];
+
+        write_edges_with_cap(
+            &arc_store,
+            200,
+            &neighbor_texts,
+            &nli_scores,
+            0.6, // nli_entailment_threshold
+            0.6, // nli_contradiction_threshold
+            3,   // max_edges = cap
+        )
+        .await;
+
+        let edge_count = count_nli_edges(&arc_store).await;
+        assert_eq!(
+            edge_count, 3,
+            "Cap=3 must stop at 3 edges across mixed Supports+Contradicts types, got: {edge_count}"
+        );
     }
 }
