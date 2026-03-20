@@ -16,6 +16,8 @@ pub(crate) mod types;
 pub(crate) mod validation;
 
 #[cfg(test)]
+mod layer_tests;
+#[cfg(test)]
 mod tests;
 
 // Public re-exports consumed by eval/mod.rs and runner.rs.
