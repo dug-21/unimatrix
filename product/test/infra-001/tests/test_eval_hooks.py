@@ -89,6 +89,16 @@ class TestPayloadSizeGuard:
         assert captured == [], "sendall must NOT be called when payload is too large"
         assert str(MAX_PAYLOAD_SIZE) in str(exc_info.value)
         assert str(MAX_PAYLOAD_SIZE + 1) in str(exc_info.value)
+        # AC-14: HookPayloadTooLargeError is also a ValueError.
+        assert isinstance(exc_info.value, ValueError), (
+            "AC-14 requires HookPayloadTooLargeError to be catchable as ValueError"
+        )
+
+    def test_payload_too_large_raises_as_value_error(self):
+        """AC-14: oversized payload is catchable as Python's built-in ValueError."""
+        client = _make_connected_client()
+        with pytest.raises(ValueError):
+            client._send(b"x" * (MAX_PAYLOAD_SIZE + 1))
 
     def test_payload_exactly_at_limit_accepted(self):
         """Payload of exactly MAX_PAYLOAD_SIZE bytes passes the size guard."""

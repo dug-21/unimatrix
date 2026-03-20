@@ -40,7 +40,7 @@ class HookTimeoutError(HookClientError):
         super().__init__(f"Timeout after {timeout}s during {op}")
 
 
-class HookPayloadTooLargeError(HookClientError):
+class HookPayloadTooLargeError(HookClientError, ValueError):
     """Raised before any send when payload exceeds MAX_PAYLOAD_SIZE (AC-14, R-13)."""
 
     def __init__(self, size: int):
