@@ -20,6 +20,7 @@
 ```
 /crates/unimatrix-{store,vector,embed,core,server}/  - Rust workspace
 /product/features/{phase}-{NNN}/                      - Feature docs per feature
+/product/research/{ASS}-{NNN}/                        - Research spikes
 /.claude/agents/uni/                                  - Agent definitions (active)
 /.claude/protocols/uni/                               - Workflow protocols (design, delivery, bugfix)
 /.claude/skills/                                      - Skills (/uni-review-pr, /uni-retro, /uni-git, etc.)
