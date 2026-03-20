@@ -102,6 +102,17 @@ pub enum ServerError {
     ObservationError(String),
     /// Rayon ML inference pool failed to initialize at startup.
     InferencePoolInit(String),
+    /// NLI service is still loading or retrying; try again shortly.
+    ///
+    /// Maps to `ERROR_EMBED_NOT_READY` (-32004) for callers — same code as
+    /// `EmbedNotReady` (NLI absence does not warrant a separate error code).
+    NliNotReady,
+    /// NLI service failed to load after exhausting retries, or the underlying
+    /// `Mutex<Session>` was poisoned.
+    ///
+    /// Maps to `ERROR_EMBED_NOT_READY` (-32004) for callers. Server continues
+    /// running on cosine fallback; NLI will not recover until restart.
+    NliFailed(String),
 }
 
 impl fmt::Display for ServerError {
@@ -157,6 +168,8 @@ impl fmt::Display for ServerError {
             ServerError::InferencePoolInit(msg) => {
                 write!(f, "inference pool initialization failed: {msg}")
             }
+            ServerError::NliNotReady => write!(f, "NLI service is initializing"),
+            ServerError::NliFailed(msg) => write!(f, "NLI service failed: {msg}"),
         }
     }
 }
@@ -287,6 +300,16 @@ impl From<ServerError> for ErrorData {
             ServerError::InferencePoolInit(msg) => ErrorData::new(
                 ERROR_INTERNAL,
                 format!("Inference pool initialization failed: {msg}"),
+                None,
+            ),
+            ServerError::NliNotReady => ErrorData::new(
+                ERROR_EMBED_NOT_READY,
+                "NLI service is initializing. Try again in a few seconds, or use context_lookup which does not require NLI.",
+                None,
+            ),
+            ServerError::NliFailed(msg) => ErrorData::new(
+                ERROR_EMBED_NOT_READY,
+                format!("NLI service failed to load: {msg}. Restart the server to retry."),
                 None,
             ),
         }
@@ -565,6 +588,69 @@ mod tests {
         assert!(
             data.message.contains("lockout"),
             "message should mention lockout: {}",
+            data.message
+        );
+    }
+
+    // -- crt-023: NliNotReady and NliFailed --
+
+    #[test]
+    fn test_nli_not_ready_maps_to_32004() {
+        let err = ServerError::NliNotReady;
+        let data: ErrorData = err.into();
+        assert_eq!(data.code, ERROR_EMBED_NOT_READY);
+    }
+
+    #[test]
+    fn test_nli_not_ready_display() {
+        let err = ServerError::NliNotReady;
+        let msg = format!("{err}");
+        assert!(msg.contains("NLI"), "display should mention NLI: {msg}");
+        assert!(
+            !msg.contains("ServerError"),
+            "should not leak Rust type: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_nli_not_ready_error_data_message_actionable() {
+        let err = ServerError::NliNotReady;
+        let data: ErrorData = err.into();
+        assert!(
+            data.message.contains("NLI") || data.message.contains("initializing"),
+            "message should be actionable: {}",
+            data.message
+        );
+    }
+
+    #[test]
+    fn test_nli_failed_maps_to_32004() {
+        let err = ServerError::NliFailed("hash mismatch".to_string());
+        let data: ErrorData = err.into();
+        assert_eq!(data.code, ERROR_EMBED_NOT_READY);
+    }
+
+    #[test]
+    fn test_nli_failed_display_contains_message() {
+        let err = ServerError::NliFailed("security: hash mismatch".to_string());
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("security: hash mismatch"),
+            "display must contain message: {msg}"
+        );
+        assert!(
+            !msg.contains("ServerError"),
+            "should not leak Rust type: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_nli_failed_error_data_message_contains_cause() {
+        let err = ServerError::NliFailed("model file not found".to_string());
+        let data: ErrorData = err.into();
+        assert!(
+            data.message.contains("model file not found"),
+            "message should contain cause: {}",
             data.message
         );
     }
