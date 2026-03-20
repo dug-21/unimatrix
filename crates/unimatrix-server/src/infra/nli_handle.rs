@@ -282,7 +282,7 @@ impl NliServiceHandle {
             // Step 3: SHA-256 hash verification (ADR-003, NFR-09, R-05).
             // Performed BEFORE Session::builder() to detect tampered/corrupt files.
             if let Some(ref expected_hash) = config.nli_model_sha256 {
-                match verify_sha256(&model_dir, expected_hash) {
+                match verify_sha256(&model_dir, model.onnx_filename(), expected_hash) {
                     Ok(()) => {
                         // Hash matches — proceed.
                     }
@@ -549,8 +549,8 @@ fn resolve_model_dir(model: &NliModel, config: &NliConfig) -> Result<PathBuf, Em
 ///
 /// `model_dir` is the directory returned by `resolve_model_dir`.
 /// Returns `Ok(())` on match, `Err(String)` with a mismatch description on failure.
-fn verify_sha256(model_dir: &Path, expected_hex: &str) -> Result<(), String> {
-    let onnx_file = model_dir.join("model.onnx");
+fn verify_sha256(model_dir: &Path, onnx_filename: &str, expected_hex: &str) -> Result<(), String> {
+    let onnx_file = model_dir.join(onnx_filename);
     let bytes = std::fs::read(&onnx_file)
         .map_err(|e| format!("failed to read model file for hash check: {e}"))?;
 
@@ -784,7 +784,7 @@ mod tests {
         hasher.update(content);
         let expected = format!("{:x}", hasher.finalize());
 
-        let result = verify_sha256(tmp_dir.path(), &expected);
+        let result = verify_sha256(tmp_dir.path(), "model.onnx", &expected);
         assert!(
             result.is_ok(),
             "Correct hash must pass verification: {result:?}"
@@ -798,7 +798,7 @@ mod tests {
         std::fs::write(&model_file, b"some bytes").unwrap();
 
         let wrong_hash = "b".repeat(64);
-        let result = verify_sha256(tmp_dir.path(), &wrong_hash);
+        let result = verify_sha256(tmp_dir.path(), "model.onnx", &wrong_hash);
         assert!(result.is_err(), "Wrong hash must fail verification");
         let msg = result.unwrap_err();
         // The error message contains the expected and actual hashes.
@@ -812,7 +812,7 @@ mod tests {
     fn test_verify_sha256_missing_file_returns_err() {
         let tmp_dir = tempfile::TempDir::new().unwrap();
         // No model.onnx in tmp_dir.
-        let result = verify_sha256(tmp_dir.path(), &"a".repeat(64));
+        let result = verify_sha256(tmp_dir.path(), "model.onnx", &"a".repeat(64));
         assert!(result.is_err(), "Missing file must fail hash verification");
         assert!(
             result.unwrap_err().contains("failed to read"),

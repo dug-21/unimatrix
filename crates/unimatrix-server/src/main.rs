@@ -1199,16 +1199,15 @@ fn handle_model_download(
     }
 
     // Step 3: Resolve the NLI model variant.
-    let nli_model: NliModel = match nli_model_name.as_deref() {
-        None | Some("minilm2") => NliModel::NliMiniLM2L6H768,
-        Some("deberta") => NliModel::NliDebertaV3Small,
-        Some(unknown) => {
+    let nli_model: NliModel = {
+        let name = nli_model_name.as_deref().unwrap_or("minilm2");
+        NliModel::from_config_name(name).ok_or_else(|| {
             eprintln!(
-                "Error: unrecognized --nli-model value '{}'; valid: minilm2, deberta",
-                unknown
+                "Error: unrecognized --nli-model value '{}'; valid: minilm2, minilm2-q8, deberta, deberta-q8",
+                name
             );
-            return Err(format!("unrecognized nli-model: {}", unknown).into());
-        }
+            format!("unrecognized nli-model: {name}")
+        })?
     };
 
     // Step 4: Download the NLI model via ensure_nli_model (mirrors ensure_model pattern).
