@@ -8,8 +8,8 @@ use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use crate::analytics::{AnalyticsWrite, spawn_drain_task};
 use crate::error::{PoolKind, Result, StoreError};
 use crate::pool_config::{
-    ANALYTICS_QUEUE_CAPACITY, DRAIN_SHUTDOWN_TIMEOUT, PoolConfig, apply_pragmas_to_connection,
-    build_connect_options,
+    ANALYTICS_QUEUE_CAPACITY, DRAIN_SHUTDOWN_TIMEOUT, PoolConfig, READ_POOL_ACQUIRE_TIMEOUT,
+    apply_pragmas_to_connection, build_connect_options,
 };
 
 /// The sqlx-backed storage engine handle.
@@ -127,6 +127,53 @@ impl SqlxStore {
             analytics_tx,
             shutdown_tx: Some(shutdown_tx),
             drain_handle: Some(drain_handle),
+            shed_counter,
+        })
+    }
+
+    /// Open an existing database in read-only mode — no migrations, no drain task.
+    ///
+    /// Intended for eval snapshot access (nan-007, FR-24, C-02). The returned
+    /// `SqlxStore` has only a read pool; the write pool is a read-only clone of
+    /// the same pool so that `write_pool_server()` callers receive an error from
+    /// SQLite on any write attempt. No migrations are run, no drain task is
+    /// spawned, and `enqueue_analytics` is a silent no-op (sender dropped).
+    ///
+    /// Callers MUST NOT call `enqueue_analytics` on a readonly store — it silently
+    /// discards all events (the receiver is immediately dropped).
+    ///
+    /// Returns `StoreError::Open` if the database file cannot be opened.
+    pub async fn open_readonly(path: impl AsRef<Path>) -> Result<SqlxStore> {
+        let db_path = path.as_ref();
+
+        let opts = build_connect_options(db_path).read_only(true).create_if_missing(false);
+
+        let read_pool = SqlitePoolOptions::new()
+            .max_connections(8)
+            .acquire_timeout(READ_POOL_ACQUIRE_TIMEOUT)
+            .connect_with(opts.clone())
+            .await
+            .map_err(|e| StoreError::Open(e.into()))?;
+
+        // write_pool reuses the same read-only options; SQLite will reject any
+        // write attempt with SQLITE_READONLY, which is the correct behaviour for
+        // a snapshot-backed store. We need a non-empty pool so write_pool_server()
+        // callers don't panic on acquire.
+        let write_pool = read_pool.clone();
+
+        // Create a no-op analytics channel — drop the receiver immediately so
+        // all enqueue_analytics calls hit the Closed branch and are silently discarded.
+        let (analytics_tx, _rx) = tokio::sync::mpsc::channel(1);
+
+        // No drain task; no shutdown signal needed.
+        let shed_counter = Arc::new(AtomicU64::new(0));
+
+        Ok(SqlxStore {
+            read_pool,
+            write_pool,
+            analytics_tx,
+            shutdown_tx: None,
+            drain_handle: None,
             shed_counter,
         })
     }
