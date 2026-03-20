@@ -128,6 +128,45 @@ enum Command {
     ///
     /// Exit codes: 0 = stopped, 1 = no daemon / stale PID, 2 = timeout.
     Stop,
+
+    /// Take a full-fidelity snapshot of the active database using VACUUM INTO.
+    ///
+    /// The snapshot is a self-contained SQLite file containing ALL tables.
+    /// It is the input to `unimatrix eval scenarios` and `unimatrix eval run`.
+    ///
+    /// WARNING: The snapshot contains all database content including agent_id,
+    /// session_id, and query history. Do not commit snapshots to version control
+    /// or share outside your development environment. (NFR-07)
+    ///
+    /// The snapshot can be taken while the daemon is running. WAL-mode SQLite
+    /// guarantees isolation: VACUUM INTO reads a consistent point-in-time snapshot.
+    ///
+    /// Synchronous path (pre-tokio). Uses block_export_sync internally for async sqlx.
+    Snapshot {
+        /// Output file path for the snapshot SQLite file (required).
+        #[arg(long)]
+        out: PathBuf,
+    },
+
+    /// Offline evaluation harness for Unimatrix intelligence changes.
+    ///
+    /// Subcommands: scenarios, run, report
+    ///
+    /// Use `unimatrix snapshot` first to produce a snapshot database, then:
+    ///   unimatrix eval scenarios --db snap.db --out scenarios.jsonl
+    ///   unimatrix eval run --db snap.db --scenarios scenarios.jsonl --configs a.toml --out results/
+    ///   unimatrix eval report --results results/ --out report.md
+    ///
+    /// Memory note: each profile in `eval run` loads a separate vector index.
+    /// For large snapshots (50k entries) with multiple profiles, ensure adequate RAM.
+    /// Recommended: <= 2 candidate profiles on machines with 8 GB RAM.
+    ///
+    /// Synchronous path (pre-tokio). Async work uses block_export_sync internally.
+    Eval {
+        /// Eval subcommand (scenarios, run, report).
+        #[command(subcommand)]
+        command: unimatrix_server::eval::EvalCommand,
+    },
 }
 
 /// Entry point: branches between sync subcommands and async paths.
@@ -199,6 +238,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // run_stop returns an exit code; we call std::process::exit here.
             let code = run_stop(cli.project_dir);
             std::process::exit(code);
+        }
+        Some(Command::Snapshot { out }) => {
+            // Sync path: dispatched pre-tokio (C-09, C-10).
+            // run_snapshot uses block_export_sync internally for async sqlx.
+            return unimatrix_server::snapshot::run_snapshot(cli.project_dir.as_deref(), &out);
+        }
+        Some(Command::Eval { command: eval_cmd }) => {
+            // Sync path: dispatched pre-tokio (C-10, ADR-005).
+            // run_eval_command uses block_export_sync internally for async subcommands.
+            return unimatrix_server::eval::run_eval_command(eval_cmd, cli.project_dir.as_deref());
         }
         Some(Command::Serve {
             daemon: true,

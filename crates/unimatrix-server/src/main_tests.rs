@@ -405,3 +405,373 @@ fn test_arc_confidence_params_from_empirical_preset() {
         params.freshness_half_life_hours
     );
 }
+
+// ---------------------------------------------------------------------------
+// nan-007: CLI wiring tests (AC-15, ADR-005, NFR-07)
+// ---------------------------------------------------------------------------
+
+/// AC-15 / ADR-005: `snapshot` subcommand is registered and parseable.
+#[test]
+fn test_snapshot_command_parsed() {
+    let cli = Cli::try_parse_from(["unimatrix", "snapshot", "--out", "/tmp/snap.db"]).unwrap();
+    match cli.command {
+        Some(Command::Snapshot { out }) => {
+            assert_eq!(out, PathBuf::from("/tmp/snap.db"));
+        }
+        other => panic!("expected Snapshot, got {other:?}"),
+    }
+}
+
+/// AC-15 / ADR-005: `eval scenarios` nested subcommand parses correctly.
+#[test]
+fn test_eval_scenarios_command_parsed() {
+    use unimatrix_server::eval::EvalCommand;
+
+    let cli = Cli::try_parse_from([
+        "unimatrix",
+        "eval",
+        "scenarios",
+        "--db",
+        "/tmp/snap.db",
+        "--out",
+        "/tmp/out.jsonl",
+    ])
+    .unwrap();
+    match cli.command {
+        Some(Command::Eval { command }) => match command {
+            EvalCommand::Scenarios { db, out, limit, .. } => {
+                assert_eq!(db, PathBuf::from("/tmp/snap.db"));
+                assert_eq!(out, PathBuf::from("/tmp/out.jsonl"));
+                assert!(limit.is_none(), "limit should default to None");
+            }
+            other => panic!("expected EvalCommand::Scenarios, got {other:?}"),
+        },
+        other => panic!("expected Eval, got {other:?}"),
+    }
+}
+
+/// AC-15 / ADR-005: `eval run` parses with all required and optional flags.
+#[test]
+fn test_eval_run_command_parsed() {
+    use unimatrix_server::eval::EvalCommand;
+
+    let cli = Cli::try_parse_from([
+        "unimatrix",
+        "eval",
+        "run",
+        "--db",
+        "/tmp/snap.db",
+        "--scenarios",
+        "/tmp/scenarios.jsonl",
+        "--configs",
+        "a.toml,b.toml",
+        "--out",
+        "/tmp/results",
+        "--k",
+        "10",
+    ])
+    .unwrap();
+    match cli.command {
+        Some(Command::Eval { command }) => match command {
+            EvalCommand::Run {
+                db,
+                scenarios,
+                configs,
+                out,
+                k,
+            } => {
+                assert_eq!(db, PathBuf::from("/tmp/snap.db"));
+                assert_eq!(scenarios, PathBuf::from("/tmp/scenarios.jsonl"));
+                assert_eq!(configs, "a.toml,b.toml");
+                assert_eq!(out, PathBuf::from("/tmp/results"));
+                assert_eq!(k, 10);
+            }
+            other => panic!("expected EvalCommand::Run, got {other:?}"),
+        },
+        other => panic!("expected Eval, got {other:?}"),
+    }
+}
+
+/// AC-15 / ADR-005: `eval report` parses with and without optional `--scenarios`.
+#[test]
+fn test_eval_report_command_parsed() {
+    use unimatrix_server::eval::EvalCommand;
+
+    // Without --scenarios
+    let cli = Cli::try_parse_from([
+        "unimatrix",
+        "eval",
+        "report",
+        "--results",
+        "/tmp/results",
+        "--out",
+        "/tmp/report.md",
+    ])
+    .unwrap();
+    match cli.command {
+        Some(Command::Eval { command }) => match command {
+            EvalCommand::Report {
+                results,
+                scenarios,
+                out,
+            } => {
+                assert_eq!(results, PathBuf::from("/tmp/results"));
+                assert_eq!(out, PathBuf::from("/tmp/report.md"));
+                assert!(
+                    scenarios.is_none(),
+                    "scenarios should be None when not supplied"
+                );
+            }
+            other => panic!("expected EvalCommand::Report, got {other:?}"),
+        },
+        other => panic!("expected Eval, got {other:?}"),
+    }
+
+    // With --scenarios
+    let cli2 = Cli::try_parse_from([
+        "unimatrix",
+        "eval",
+        "report",
+        "--results",
+        "/tmp/results",
+        "--out",
+        "/tmp/report.md",
+        "--scenarios",
+        "/tmp/scenarios.jsonl",
+    ])
+    .unwrap();
+    match cli2.command {
+        Some(Command::Eval { command }) => match command {
+            EvalCommand::Report { scenarios, .. } => {
+                assert_eq!(
+                    scenarios,
+                    Some(PathBuf::from("/tmp/scenarios.jsonl")),
+                    "scenarios should be Some when supplied"
+                );
+            }
+            other => panic!("expected EvalCommand::Report, got {other:?}"),
+        },
+        other => panic!("expected Eval, got {other:?}"),
+    }
+}
+
+/// ADR-005: Invalid `--source` value is rejected at parse time (clap ValueEnum).
+#[test]
+fn test_eval_scenarios_invalid_source_rejected() {
+    let result = Cli::try_parse_from([
+        "unimatrix",
+        "eval",
+        "scenarios",
+        "--db",
+        "/tmp/snap.db",
+        "--out",
+        "/tmp/o.jsonl",
+        "--source",
+        "invalid",
+    ]);
+    assert!(
+        result.is_err(),
+        "invalid --source value must be rejected at parse time"
+    );
+    // clap returns clap::Error; convert to string via Display (no Debug needed).
+    let err_str = result.err().map(|e| e.to_string()).unwrap_or_default();
+    // clap should list the valid values in the error message
+    assert!(
+        err_str.contains("mcp") || err_str.contains("uds") || err_str.contains("all"),
+        "error should list valid source values; got: {err_str}"
+    );
+}
+
+/// FR-14 / ADR-005: `--k` defaults to 5 when not supplied.
+#[test]
+fn test_eval_run_k_default() {
+    use unimatrix_server::eval::EvalCommand;
+
+    let cli = Cli::try_parse_from([
+        "unimatrix",
+        "eval",
+        "run",
+        "--db",
+        "/tmp/snap.db",
+        "--scenarios",
+        "/tmp/s.jsonl",
+        "--configs",
+        "a.toml",
+        "--out",
+        "/tmp/out",
+    ])
+    .unwrap();
+    match cli.command {
+        Some(Command::Eval { command }) => match command {
+            EvalCommand::Run { k, .. } => {
+                assert_eq!(k, 5, "--k must default to 5 when not supplied");
+            }
+            other => panic!("expected EvalCommand::Run, got {other:?}"),
+        },
+        other => panic!("expected Eval, got {other:?}"),
+    }
+}
+
+/// AC-15 / NFR-07: `snapshot` appears in the top-level help output.
+#[test]
+fn test_snapshot_appears_in_help() {
+    let mut cmd = Cli::command();
+    let help = format!("{}", cmd.render_help());
+    assert!(
+        help.contains("snapshot"),
+        "`snapshot` must appear in `unimatrix --help`; got:\n{help}"
+    );
+}
+
+/// AC-15: `eval` appears in the top-level help output.
+#[test]
+fn test_eval_appears_in_help() {
+    let mut cmd = Cli::command();
+    let help = format!("{}", cmd.render_help());
+    assert!(
+        help.contains("eval"),
+        "`eval` must appear in `unimatrix --help`; got:\n{help}"
+    );
+}
+
+/// AC-15: `unimatrix eval --help` lists `scenarios`, `run`, and `report`.
+#[test]
+fn test_eval_subcommands_visible_in_eval_help() {
+    let mut cmd = Cli::command();
+    if let Some(eval_cmd) = cmd.find_subcommand_mut("eval") {
+        let help = format!("{}", eval_cmd.render_help());
+        assert!(
+            help.contains("scenarios"),
+            "`scenarios` must appear in `eval --help`; got:\n{help}"
+        );
+        assert!(
+            help.contains("run"),
+            "`run` must appear in `eval --help`; got:\n{help}"
+        );
+        assert!(
+            help.contains("report"),
+            "`report` must appear in `eval --help`; got:\n{help}"
+        );
+    } else {
+        panic!("`eval` subcommand not found in CLI");
+    }
+}
+
+/// NFR-07 / C-12: `snapshot --help` includes content-sensitivity warning.
+///
+/// Note: clap renders long doc comments only in `render_long_help()` (shown when
+/// the user passes `--help`). The `render_help()` method shows only the first
+/// paragraph (shown for `-h`). The test uses `render_long_help()` to match
+/// the actual `unimatrix snapshot --help` output.
+#[test]
+fn test_snapshot_help_includes_content_sensitivity_warning() {
+    let mut cmd = Cli::command();
+    if let Some(snapshot_cmd) = cmd.find_subcommand_mut("snapshot") {
+        let help = format!("{}", snapshot_cmd.render_long_help());
+        // Must contain at least one of the required warning keywords (NFR-07, C-12).
+        let has_warning = help.contains("sensitive")
+            || help.contains("agent_id")
+            || help.contains("session_id")
+            || help.contains("commit")
+            || help.contains("WARNING")
+            || help.contains("content");
+        assert!(
+            has_warning,
+            "`snapshot --help` must include a content-sensitivity warning (NFR-07); got:\n{help}"
+        );
+    } else {
+        panic!("`snapshot` subcommand not found in CLI");
+    }
+}
+
+/// ADR-005: `run_eval_command` with EvalCommand::Report dispatches without
+/// runtime panic (pre-tokio sync dispatch, R-11).
+#[test]
+fn test_run_eval_command_report_dispatch_is_sync() {
+    use unimatrix_server::eval::{EvalCommand, run_eval_command};
+
+    // Use a real temp dir so run_report can open it.
+    let tmp = tempfile::TempDir::new().unwrap();
+    let results_dir = tmp.path().to_path_buf();
+    let out = tmp.path().join("report.md");
+
+    // EvalCommand::Report is pure sync — must not panic with runtime error.
+    let result = run_eval_command(
+        EvalCommand::Report {
+            results: results_dir,
+            scenarios: None,
+            out,
+        },
+        None,
+    );
+    // run_report on an empty dir must return Ok(()) (C-07, FR-29).
+    assert!(
+        result.is_ok(),
+        "run_eval_command(Report) must succeed on empty results dir: {:?}",
+        result.err()
+    );
+}
+
+/// ADR-005: `--configs` with only an empty string is rejected before any I/O.
+#[test]
+fn test_run_eval_command_empty_configs_rejected() {
+    use unimatrix_server::eval::{EvalCommand, run_eval_command};
+
+    let tmp = tempfile::TempDir::new().unwrap();
+    let result = run_eval_command(
+        EvalCommand::Run {
+            db: tmp.path().join("snap.db"),
+            scenarios: tmp.path().join("s.jsonl"),
+            configs: String::new(),
+            out: tmp.path().join("out"),
+            k: 5,
+        },
+        None,
+    );
+    assert!(result.is_err(), "empty --configs must return Err");
+    let msg = result.unwrap_err().to_string();
+    assert!(
+        msg.contains("at least one"),
+        "error must mention 'at least one'; got: {msg}"
+    );
+}
+
+/// ADR-005: `--configs` comma-separated string splits into multiple PathBufs.
+#[test]
+fn test_eval_run_configs_comma_split() {
+    use unimatrix_server::eval::EvalCommand;
+
+    // Parse the CLI to get configs as a String, then verify split logic matches
+    // what run_eval_command does.
+    let cli = Cli::try_parse_from([
+        "unimatrix",
+        "eval",
+        "run",
+        "--db",
+        "/tmp/snap.db",
+        "--scenarios",
+        "/tmp/s.jsonl",
+        "--configs",
+        "a.toml,b.toml,c.toml",
+        "--out",
+        "/tmp/out",
+    ])
+    .unwrap();
+    match cli.command {
+        Some(Command::Eval { command }) => match command {
+            EvalCommand::Run { configs, .. } => {
+                let paths: Vec<PathBuf> = configs
+                    .split(',')
+                    .map(|s| PathBuf::from(s.trim()))
+                    .filter(|p| !p.as_os_str().is_empty())
+                    .collect();
+                assert_eq!(paths.len(), 3, "must split into 3 paths");
+                assert_eq!(paths[0], PathBuf::from("a.toml"));
+                assert_eq!(paths[1], PathBuf::from("b.toml"));
+                assert_eq!(paths[2], PathBuf::from("c.toml"));
+            }
+            other => panic!("expected EvalCommand::Run, got {other:?}"),
+        },
+        other => panic!("expected Eval, got {other:?}"),
+    }
+}
