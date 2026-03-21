@@ -14,19 +14,21 @@
 
 ## Component Map
 
-| Component | Pseudocode | Test Plan |
-|-----------|-----------|-----------|
-| `SearchService` (search pipeline) | pseudocode/search-service.md | test-plan/search-service.md |
-| `InferenceConfig` (weight fields + validation) | pseudocode/inference-config.md | test-plan/inference-config.md |
-| `compute_fused_score` (pure function) | pseudocode/compute-fused-score.md | test-plan/compute-fused-score.md |
-| `ScoreWeights` / `FusedScoreInputs` (structs) | pseudocode/score-structs.md | test-plan/score-structs.md |
+| Component | File | Pseudocode | Test Plan |
+|-----------|------|-----------|-----------|
+| `InferenceConfig` (weight fields + validation) | `crates/unimatrix-server/src/infra/config.rs` | pseudocode/inference-config.md | test-plan/inference-config.md |
+| `FusedScoreInputs` + `FusionWeights` (structs) | `crates/unimatrix-server/src/services/search.rs` | pseudocode/score-structs.md | test-plan/score-structs.md |
+| `compute_fused_score` (pure function) | `crates/unimatrix-server/src/services/search.rs` | pseudocode/compute-fused-score.md | test-plan/compute-fused-score.md |
+| `SearchService` pipeline rewrite | `crates/unimatrix-server/src/services/search.rs` | pseudocode/search-service.md | test-plan/search-service.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+**Wave plan**: Wave 1 = `InferenceConfig` (config.rs). Wave 2 = structs + pure function + pipeline (search.rs).
+
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/crt-024/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/crt-024/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
