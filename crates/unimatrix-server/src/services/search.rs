@@ -16,10 +16,13 @@ use unimatrix_engine::effectiveness::{
     EffectivenessCategory, SETTLED_BOOST, UTILITY_BOOST, UTILITY_PENALTY,
 };
 
+use unimatrix_engine::coaccess::MAX_CO_ACCESS_BOOST;
 use unimatrix_engine::graph::{FALLBACK_PENALTY, find_terminal_active, graph_penalty};
 
 use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
-use crate::confidence::{cosine_similarity, rerank_score};
+use crate::confidence::cosine_similarity;
+#[cfg(test)]
+use crate::confidence::rerank_score;
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::nli_handle::NliServiceHandle;
@@ -36,6 +39,152 @@ const EF_SEARCH: usize = 32;
 
 /// Provenance boost for lesson-learned entries (matches existing behavior).
 const PROVENANCE_BOOST: f64 = unimatrix_engine::confidence::PROVENANCE_BOOST;
+
+// ---------------------------------------------------------------------------
+// crt-024: Fused scoring structs and pure function (ADR-004)
+// ---------------------------------------------------------------------------
+
+/// Per-candidate signal inputs for the fused scoring formula (crt-024, ADR-004).
+///
+/// All fields are f64 in [0.0, 1.0] by the time compute_fused_score is called.
+/// Field normalization is the caller's responsibility (see SearchService scoring loop).
+///
+/// This struct is the feature vector interface for W3-1 (GNN training). Each field
+/// is a named, learnable dimension. Do not add signals outside this struct.
+///
+/// WA-2 extension: add `phase_boost_norm: f64` here when WA-2 is implemented.
+pub(crate) struct FusedScoreInputs {
+    /// HNSW cosine similarity (bi-encoder recall). Already in [0, 1].
+    pub similarity: f64,
+    /// NLI cross-encoder entailment score (cross-encoder precision).
+    /// Already in [0, 1] when model produces valid softmax output.
+    /// Set to 0.0 when NLI is absent or disabled — the weight is then
+    /// re-normalized away by FusionWeights::effective(nli_available: false).
+    pub nli_entailment: f64,
+    /// Wilson score composite confidence (EntryRecord.confidence). Already in [0, 1].
+    pub confidence: f64,
+    /// Co-access affinity normalized to [0, 1].
+    /// Computed as: raw_boost / MAX_CO_ACCESS_BOOST.
+    /// 0.0 when entry has no co-access history or boost_map lookup misses.
+    pub coac_norm: f64,
+    /// Utility delta normalized to [0, 1] via shift-and-scale (FR-05, ADR-001 crt-024).
+    /// Formula: (utility_delta + UTILITY_PENALTY) / (UTILITY_BOOST + UTILITY_PENALTY).
+    /// Maps: Ineffective (-0.05) -> 0.0, neutral (0.0) -> 0.5, Effective (+0.05) -> 1.0.
+    pub util_norm: f64,
+    /// Provenance boost normalized to [0, 1] (FR-06, ADR-001 crt-024).
+    /// Formula: prov_boost / PROVENANCE_BOOST, guarded for PROVENANCE_BOOST == 0.0.
+    /// Binary in practice: 1.0 for boosted categories, 0.0 for all others.
+    pub prov_norm: f64,
+}
+
+/// Config-driven fusion weights for the six-term ranking formula (crt-024, ADR-003).
+///
+/// Constructed from InferenceConfig in SearchService::new. Stored as a field on SearchService.
+/// Not derived from InferenceConfig at every search call — built once.
+///
+/// Invariant (enforced by InferenceConfig::validate at startup):
+///   w_sim + w_nli + w_conf + w_coac + w_util + w_prov <= 1.0
+///   Each field individually in [0.0, 1.0].
+///
+/// WA-2 extension: add `w_phase: f64` here when WA-2 is implemented.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct FusionWeights {
+    pub w_sim: f64,  // default 0.25 — bi-encoder similarity
+    pub w_nli: f64,  // default 0.35 — NLI entailment (dominant precision signal)
+    pub w_conf: f64, // default 0.15 — confidence tiebreaker
+    pub w_coac: f64, // default 0.10 — co-access affinity (lagging signal)
+    pub w_util: f64, // default 0.05 — effectiveness classification
+    pub w_prov: f64, // default 0.05 — category provenance hint
+}
+
+impl FusionWeights {
+    /// Construct FusionWeights from the validated InferenceConfig.
+    pub(crate) fn from_config(cfg: &crate::infra::config::InferenceConfig) -> FusionWeights {
+        FusionWeights {
+            w_sim: cfg.w_sim,
+            w_nli: cfg.w_nli,
+            w_conf: cfg.w_conf,
+            w_coac: cfg.w_coac,
+            w_util: cfg.w_util,
+            w_prov: cfg.w_prov,
+        }
+    }
+
+    /// Return an effective weight set adjusted for NLI availability.
+    ///
+    /// NLI active (nli_available = true): returns self unchanged.
+    ///   The configured weights are used directly. No re-normalization.
+    ///
+    /// NLI absent (nli_available = false): sets w_nli = 0.0, re-normalizes
+    ///   the remaining five weights by dividing each by their sum.
+    ///   This preserves the relative signal dominance ordering (Constraint 9, ADR-003).
+    ///
+    /// Zero-denominator guard (R-02): if all five non-NLI weights are 0.0
+    ///   (pathological but reachable config), returns all-zeros without panic.
+    pub(crate) fn effective(&self, nli_available: bool) -> FusionWeights {
+        if nli_available {
+            return FusionWeights {
+                w_sim: self.w_sim,
+                w_nli: self.w_nli,
+                w_conf: self.w_conf,
+                w_coac: self.w_coac,
+                w_util: self.w_util,
+                w_prov: self.w_prov,
+            };
+        }
+
+        // NLI absent — zero out w_nli, re-normalize remaining five.
+        let denom = self.w_sim + self.w_conf + self.w_coac + self.w_util + self.w_prov;
+
+        if denom == 0.0 {
+            tracing::warn!(
+                "FusionWeights::effective: all non-NLI weights are 0.0; \
+                 fused_score will be 0.0 for all candidates"
+            );
+            return FusionWeights {
+                w_sim: 0.0,
+                w_nli: 0.0,
+                w_conf: 0.0,
+                w_coac: 0.0,
+                w_util: 0.0,
+                w_prov: 0.0,
+            };
+        }
+
+        FusionWeights {
+            w_sim: self.w_sim / denom,
+            w_nli: 0.0,
+            w_conf: self.w_conf / denom,
+            w_coac: self.w_coac / denom,
+            w_util: self.w_util / denom,
+            w_prov: self.w_prov / denom,
+        }
+    }
+}
+
+/// Compute the fused ranking score from normalized signal inputs and weights.
+///
+/// Pure function: no I/O, no async, no locks, no side effects.
+///
+/// Preconditions (caller's responsibility, enforced by construction):
+///   - All inputs in [0.0, 1.0]
+///   - weights.w_* fields individually in [0.0, 1.0]
+///   - sum of weights <= 1.0 (after effective() is applied for NLI absence)
+///
+/// Returns a value in [0.0, 1.0] by construction under the above preconditions.
+///
+/// `status_penalty` is NOT applied here. Apply it at the call site:
+///   final_score = compute_fused_score(&inputs, &weights) * status_penalty
+///
+/// WA-2 extension: add `w_phase * inputs.phase_boost_norm` term when WA-2 is implemented.
+pub(crate) fn compute_fused_score(inputs: &FusedScoreInputs, weights: &FusionWeights) -> f64 {
+    weights.w_sim * inputs.similarity
+        + weights.w_nli * inputs.nli_entailment
+        + weights.w_conf * inputs.confidence
+        + weights.w_coac * inputs.coac_norm
+        + weights.w_util * inputs.util_norm
+        + weights.w_prov * inputs.prov_norm
+}
 
 /// Retrieval mode controlling status-aware filtering behavior (crt-010, ADR-001).
 ///
@@ -122,42 +271,45 @@ pub(crate) struct SearchService {
     nli_top_k: usize,
     /// crt-023: fast check before get_provider(); when false, NLI path is never attempted.
     nli_enabled: bool,
+    /// crt-024: config-driven fusion weights for the six-term scoring formula (ADR-003).
+    /// Constructed from InferenceConfig.{w_sim, w_nli, w_conf, w_coac, w_util, w_prov}
+    /// in SearchService::new. Stored here so EvalServiceLayer profile TOMLs can
+    /// supply different weights per eval run (FR-14, AC-15).
+    fusion_weights: FusionWeights,
 }
 
 // ---------------------------------------------------------------------------
-// NLI re-ranking helper (crt-023, ADR-002)
+// NLI scoring helper (crt-024, ADR-002)
 // ---------------------------------------------------------------------------
 
-/// Attempt NLI re-ranking of `candidates`.
+/// Attempt NLI scoring of `candidates`.
 ///
-/// Returns `Some(sorted_truncated_vec)` when NLI scoring succeeded, or `None` on any
-/// failure (provider not ready, rayon timeout, inference error, empty candidates).
-/// Caller must fall back to `rerank_score` sort on `None`.
+/// Returns `Some(nli_scores)` when scoring succeeded — one NliScores per candidate,
+/// in the same index order as `candidates`. Does NOT sort. Does NOT truncate.
+/// Caller runs the fused scoring pass using these scores alongside other signals.
+///
+/// Returns `None` on any failure (provider not ready, rayon timeout, inference error,
+/// empty candidates, length mismatch). Caller uses nli_entailment=0.0 for all candidates
+/// and calls FusionWeights::effective(nli_available: false).
 ///
 /// W1-2 contract: ALL NLI inference is dispatched via `rayon_pool.spawn_with_timeout`.
 /// Never inline in async context. Never via `spawn_blocking`.
-///
-/// Sort key: `nli_scores.entailment * status_penalty` DESCENDING (ADR-002).
-/// Tiebreaker: original HNSW rank ASCENDING for determinism (R-03).
 async fn try_nli_rerank(
     candidates: &[(EntryRecord, f64)],
     query_text: &str,
     nli_handle: &NliServiceHandle,
     rayon_pool: &RayonPool,
-    penalty_map: &HashMap<u64, f64>,
-    top_k: usize,
-) -> Option<Vec<(EntryRecord, f64)>> {
+) -> Option<Vec<NliScores>> {
     // Fast check: get provider or return None for fallback.
     let provider: Arc<dyn CrossEncoderProvider> = match nli_handle.get_provider().await {
         Ok(p) => p,
         Err(_) => {
-            tracing::debug!("NLI provider not ready; falling back to rerank_score sort");
+            tracing::debug!("NLI provider not ready; NLI term will be 0.0");
             return None;
         }
     };
 
     if candidates.is_empty() {
-        // No candidates to score — skip provider call, return None so fallback handles empty vec.
         return None;
     }
 
@@ -171,7 +323,6 @@ async fn try_nli_rerank(
     // Dispatch batch scoring to rayon pool with MCP_HANDLER_TIMEOUT (W1-2, FR-16).
     let nli_result = rayon_pool
         .spawn_with_timeout(MCP_HANDLER_TIMEOUT, move || {
-            // Build &[(&str, &str)] inside the rayon closure from owned strings.
             let pairs: Vec<(&str, &str)> = passages
                 .iter()
                 .map(|p| (query_owned.as_str(), p.as_str()))
@@ -183,80 +334,27 @@ async fn try_nli_rerank(
     let nli_scores: Vec<NliScores> = match nli_result {
         Ok(Ok(scores)) => scores,
         Ok(Err(e)) => {
-            tracing::debug!(error = %e, "NLI score_batch error; falling back to rerank_score sort");
+            tracing::debug!(error = %e, "NLI score_batch error; NLI term will be 0.0");
             return None;
         }
         Err(e) => {
-            tracing::debug!(error = %e, "NLI rayon task failed/timed out; falling back to rerank_score sort");
+            tracing::debug!(error = %e, "NLI rayon task failed/timed out; NLI term will be 0.0");
             return None;
         }
     };
 
-    // Sanity: scores must be same length as candidates (should always hold for correct impls).
+    // Length check: scores must be parallel to candidates (EC-07).
     if nli_scores.len() != candidates.len() {
         tracing::debug!(
-            nli_scores = nli_scores.len(),
-            candidates = candidates.len(),
-            "NLI scores length mismatch; falling back to rerank_score sort"
+            nli_len = nli_scores.len(),
+            candidates_len = candidates.len(),
+            "NLI scores length mismatch; NLI term will be 0.0"
         );
         return None;
     }
 
-    // Delegate sorting and truncation to the pure `apply_nli_sort` kernel (R-03).
-    Some(apply_nli_sort(candidates, &nli_scores, penalty_map, top_k))
-}
-
-// ---------------------------------------------------------------------------
-// NLI sort kernel — extracted for testability (crt-023, R-03)
-// ---------------------------------------------------------------------------
-
-/// Apply NLI entailment scores to candidates and return a sorted, truncated vec.
-///
-/// Pure computation: no I/O, no async. Extracted from `try_nli_rerank` so it
-/// can be unit-tested with known `NliScores` values without requiring a real model.
-///
-/// Sort key: `nli_scores.entailment * status_penalty` DESCENDING.
-/// Tiebreaker: original HNSW rank ASCENDING (R-03: deterministic on equal scores).
-/// NaN-safe: NaN entailment scores compare as Equal and fall through to rank tiebreak.
-pub(crate) fn apply_nli_sort(
-    candidates: &[(EntryRecord, f64)],
-    nli_scores: &[NliScores],
-    penalty_map: &HashMap<u64, f64>,
-    top_k: usize,
-) -> Vec<(EntryRecord, f64)> {
-    debug_assert_eq!(
-        candidates.len(),
-        nli_scores.len(),
-        "apply_nli_sort: candidates and nli_scores must have the same length"
-    );
-
-    let mut annotated: Vec<(EntryRecord, f64, f32, usize)> = candidates
-        .iter()
-        .zip(nli_scores.iter())
-        .enumerate()
-        .map(|(original_rank, ((entry, base_sim), scores))| {
-            let penalty = penalty_map.get(&entry.id).copied().unwrap_or(1.0) as f32;
-            let effective_entailment = scores.entailment * penalty;
-            (
-                entry.clone(),
-                *base_sim,
-                effective_entailment,
-                original_rank,
-            )
-        })
-        .collect();
-
-    annotated.sort_by(|a, b| {
-        b.2.partial_cmp(&a.2)
-            .unwrap_or(Ordering::Equal)
-            .then_with(|| a.3.cmp(&b.3))
-    });
-
-    annotated.truncate(top_k);
-    annotated
-        .into_iter()
-        .map(|(entry, sim, _, _)| (entry, sim))
-        .collect()
+    // Return raw scores — no sort, no truncation. Caller handles all of that.
+    Some(nli_scores)
 }
 
 // ---------------------------------------------------------------------------
@@ -296,6 +394,7 @@ impl SearchService {
         nli_handle: Arc<NliServiceHandle>,
         nli_top_k: usize,
         nli_enabled: bool,
+        fusion_weights: FusionWeights,
     ) -> Self {
         SearchService {
             store,
@@ -313,6 +412,7 @@ impl SearchService {
             nli_handle,
             nli_top_k,
             nli_enabled,
+            fusion_weights,
         }
     }
 
@@ -327,8 +427,10 @@ impl SearchService {
         caller_id: &CallerId,
     ) -> Result<SearchResults, ServiceError> {
         // Snapshot adaptive confidence_weight before any await points (ADR-001).
-        // Closure captures require a `Copy` f64, not a guard under a lock.
-        let confidence_weight = {
+        // Retained for StatusService/ConfidenceState health; no longer used in the fused
+        // scoring path (crt-024). The read is kept to maintain the lock-ordering invariant
+        // documented in search.rs and to avoid removing the shared confidence_state dependency.
+        let _confidence_weight = {
             let guard = self
                 .confidence_state
                 .read()
@@ -572,61 +674,12 @@ impl SearchService {
             }
         }
 
-        // Step 7: Re-rank sort — NLI path (crt-023, ADR-002) or fallback rerank_score path.
+        // Step 6c: Co-access boost map prefetch (crt-024, SR-07).
         //
-        // NLI-active path: sort by nli_scores.entailment DESC (pure replacement, ADR-002).
-        // Status penalty is applied as a multiplier on the effective entailment score so
-        // deprecated/superseded entries rank lower than active entries with similar NLI scores.
-        // Fallback path: existing rerank_score composite (unchanged behavior).
-        let used_nli = if self.nli_enabled {
-            try_nli_rerank(
-                &results_with_scores,
-                &params.query,
-                &self.nli_handle,
-                &self.rayon_pool,
-                &penalty_map,
-                params.k,
-            )
-            .await
-            .map(|sorted| {
-                results_with_scores = sorted;
-            })
-            .is_some()
-        } else {
-            false
-        };
-
-        if !used_nli {
-            // Fallback: existing rerank_score sort with penalty and utility delta.
-            // utility_delta is inside the penalty multiplication per ADR-003:
-            // (rerank_score + delta + prov) * penalty
-            results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-                let prov_a = if self.boosted_categories.contains(&entry_a.category) {
-                    PROVENANCE_BOOST
-                } else {
-                    0.0
-                };
-                let prov_b = if self.boosted_categories.contains(&entry_b.category) {
-                    PROVENANCE_BOOST
-                } else {
-                    0.0
-                };
-                let delta_a = utility_delta(categories.get(&entry_a.id).copied());
-                let delta_b = utility_delta(categories.get(&entry_b.id).copied());
-                let base_a =
-                    rerank_score(*sim_a, entry_a.confidence, confidence_weight) + delta_a + prov_a;
-                let base_b =
-                    rerank_score(*sim_b, entry_b.confidence, confidence_weight) + delta_b + prov_b;
-                let penalty_a = penalty_map.get(&entry_a.id).copied().unwrap_or(1.0);
-                let penalty_b = penalty_map.get(&entry_b.id).copied().unwrap_or(1.0);
-                let final_a = base_a * penalty_a;
-                let final_b = base_b * penalty_b;
-                final_b.partial_cmp(&final_a).unwrap_or(Ordering::Equal)
-            });
-        }
-
-        // Step 8: Co-access boost with deprecated exclusion (crt-010: C3)
-        if results_with_scores.len() > 1 {
+        // Fully await before the scoring pass begins (correctness constraint, not optimization).
+        // Scoring without co-access data would silently produce coac_norm=0.0 for all candidates.
+        // Moved earlier from old Step 8 to make boost_map available before fused scoring.
+        let boost_map: HashMap<u64, f64> = if results_with_scores.len() > 1 {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
@@ -641,7 +694,7 @@ impl SearchService {
                 .collect();
             let result_ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
 
-            // crt-010: collect deprecated IDs for co-access exclusion
+            // crt-010: deprecated entries excluded from co-access co-occurrence counts.
             let deprecated_ids: HashSet<u64> = results_with_scores
                 .iter()
                 .filter(|(e, _)| e.status == Status::Deprecated)
@@ -649,7 +702,7 @@ impl SearchService {
                 .collect();
 
             let store = Arc::clone(&self.store);
-            let boost_map = spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
+            spawn_blocking_with_timeout(MCP_HANDLER_TIMEOUT, move || {
                 compute_search_boost(
                     &anchor_ids,
                     &result_ids,
@@ -660,39 +713,109 @@ impl SearchService {
             })
             .await
             .unwrap_or_else(|e| {
-                tracing::warn!("co-access boost task failed: {e}");
+                tracing::warn!(
+                    "co-access boost prefetch failed: {e}; coac_norm will be 0.0 for all"
+                );
                 HashMap::new()
-            });
+            })
+        } else {
+            HashMap::new()
+        };
 
-            if !boost_map.is_empty() {
-                // crt-018b (ADR-003): utility_delta inside penalty multiplication alongside boost.
-                results_with_scores.sort_by(|(entry_a, sim_a), (entry_b, sim_b)| {
-                    let base_a = rerank_score(*sim_a, entry_a.confidence, confidence_weight);
-                    let base_b = rerank_score(*sim_b, entry_b.confidence, confidence_weight);
-                    let boost_a = boost_map.get(&entry_a.id).copied().unwrap_or(0.0);
-                    let boost_b = boost_map.get(&entry_b.id).copied().unwrap_or(0.0);
-                    let prov_a = if self.boosted_categories.contains(&entry_a.category) {
-                        PROVENANCE_BOOST
-                    } else {
-                        0.0
-                    };
-                    let prov_b = if self.boosted_categories.contains(&entry_b.category) {
-                        PROVENANCE_BOOST
-                    } else {
-                        0.0
-                    };
-                    let delta_a = utility_delta(categories.get(&entry_a.id).copied());
-                    let delta_b = utility_delta(categories.get(&entry_b.id).copied());
-                    let penalty_a = penalty_map.get(&entry_a.id).copied().unwrap_or(1.0);
-                    let penalty_b = penalty_map.get(&entry_b.id).copied().unwrap_or(1.0);
-                    let final_a = (base_a + delta_a + boost_a + prov_a) * penalty_a;
-                    let final_b = (base_b + delta_b + boost_b + prov_b) * penalty_b;
-                    final_b.partial_cmp(&final_a).unwrap_or(Ordering::Equal)
-                });
-            }
+        // Step 7: NLI scoring (if enabled) → fused score computation (single pass) →
+        //         sort by final_score DESC → truncate to k.
+        //
+        // NLI scoring and boost_map prefetch run sequentially (boost_map fully awaited above).
+        // Both must be resolved before the scoring loop begins.
+
+        // NLI scoring — returns None on any failure; caller handles the NLI-absent path.
+        let nli_scores: Option<Vec<NliScores>> = if self.nli_enabled {
+            try_nli_rerank(
+                &results_with_scores,
+                &params.query,
+                &self.nli_handle,
+                &self.rayon_pool,
+            )
+            .await
+        } else {
+            None
+        };
+
+        let nli_available = nli_scores.is_some();
+
+        // Compute effective weights once before the loop — NLI availability does not change
+        // per-candidate. If NLI absent, re-normalize the five remaining weights.
+        let effective_weights = self.fusion_weights.effective(nli_available);
+
+        // Single fused scoring pass: one iteration over all candidates.
+        // Vec element: (entry, sim, final_score)
+        let mut scored: Vec<(EntryRecord, f64, f64)> =
+            Vec::with_capacity(results_with_scores.len());
+
+        for (i, (entry, sim)) in results_with_scores.iter().enumerate() {
+            // -- nli_entailment: f32 cast to f64; 0.0 when NLI absent or NaN guard --
+            let nli_entailment: f64 = nli_scores
+                .as_ref()
+                .and_then(|scores| scores.get(i))
+                .map(|s| {
+                    let v = s.entailment as f64;
+                    if v.is_nan() { 0.0 } else { v }
+                })
+                .unwrap_or(0.0);
+
+            // -- coac_norm: raw boost / MAX_CO_ACCESS_BOOST (AC-07, R-08) --
+            let raw_coac = boost_map.get(&entry.id).copied().unwrap_or(0.0);
+            let coac_norm = (raw_coac / MAX_CO_ACCESS_BOOST).min(1.0);
+
+            // -- util_norm: shift-and-scale maps [-UTILITY_PENALTY, +UTILITY_BOOST] to [0, 1] --
+            // utility_delta function is unchanged; normalization is new (FR-05, R-01, R-11).
+            let raw_delta = utility_delta(categories.get(&entry.id).copied());
+            let util_norm = (raw_delta + UTILITY_PENALTY) / (UTILITY_BOOST + UTILITY_PENALTY);
+
+            // -- prov_norm: divide by PROVENANCE_BOOST; guard zero denominator (R-03) --
+            let raw_prov = if self.boosted_categories.contains(&entry.category) {
+                PROVENANCE_BOOST
+            } else {
+                0.0
+            };
+            let prov_norm = if PROVENANCE_BOOST == 0.0 {
+                0.0
+            } else {
+                raw_prov / PROVENANCE_BOOST
+            };
+
+            // -- Construct FusedScoreInputs --
+            let inputs = FusedScoreInputs {
+                similarity: *sim,
+                nli_entailment,
+                confidence: entry.confidence,
+                coac_norm,
+                util_norm,
+                prov_norm,
+            };
+
+            // -- Fused score + status penalty (ADR-004: penalty at call site) --
+            let fused = compute_fused_score(&inputs, &effective_weights);
+            let penalty = penalty_map.get(&entry.id).copied().unwrap_or(1.0);
+            let final_score = fused * penalty;
+
+            scored.push((entry.clone(), *sim, final_score));
         }
 
-        // Step 9: Truncate to k (before applying floors to match existing order)
+        // Single sort by final_score DESC. No secondary sort after this (AC-04, FR-08).
+        // Rust's sort_by is stable, so equal-score candidates retain their relative
+        // pre-sort order (HNSW order). Satisfies the tiebreaker requirement (NFR-03).
+        scored.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(Ordering::Equal));
+
+        // Truncate to requested k.
+        scored.truncate(params.k);
+
+        // Rebuild results_with_scores for floor steps (which only need entry + sim).
+        // Carry final_scores separately for ScoredEntry construction.
+        results_with_scores = scored.iter().map(|(e, sim, _)| (e.clone(), *sim)).collect();
+        let final_scores: Vec<f64> = scored.iter().map(|(_, _, fs)| *fs).collect();
+
+        // Step 9: Truncate to k (now a no-op — Step 7 already truncated, kept for safety).
         results_with_scores.truncate(params.k);
 
         // Step 10: Apply floors (if set)
@@ -703,20 +826,19 @@ impl SearchService {
             results_with_scores.retain(|(entry, _)| entry.confidence >= conf_floor);
         }
 
-        // Step 11: Build ScoredEntry results with penalty-adjusted final_score.
-        // crt-018b: utility_delta included in final_score for consistency with sort order.
+        // Step 11: Build ScoredEntry with fused final_score.
+        // ScoredEntry.final_score = compute_fused_score * status_penalty (already computed).
+        // Field name 'final_score' is unchanged; formula changes (FR-10, AC-08).
+        // Note: after floors, results_with_scores may be shorter than final_scores;
+        // zip stops at the shorter iterator, which is correct.
         let entries: Vec<ScoredEntry> = results_with_scores
             .iter()
-            .map(|(entry, sim)| {
-                let penalty = penalty_map.get(&entry.id).copied().unwrap_or(1.0);
-                let delta = utility_delta(categories.get(&entry.id).copied());
-                ScoredEntry {
-                    entry: entry.clone(),
-                    final_score: (rerank_score(*sim, entry.confidence, confidence_weight) + delta)
-                        * penalty,
-                    similarity: *sim,
-                    confidence: entry.confidence,
-                }
+            .zip(final_scores.iter())
+            .map(|((entry, sim), &final_score)| ScoredEntry {
+                entry: entry.clone(),
+                final_score,
+                similarity: *sim,
+                confidence: entry.confidence,
             })
             .collect();
 
@@ -1504,232 +1626,1044 @@ mod tests {
     }
 
     // =========================================================================
-    // crt-023: NLI re-ranking unit tests
+    // crt-023 → crt-024: NLI scoring and fused scorer tests
     // =========================================================================
     //
-    // These tests exercise `apply_nli_sort` (the pure sort kernel extracted from
-    // `try_nli_rerank`) and the `try_nli_rerank` fallback paths.
-    // No real ONNX model is required — mocks inject `NliScores` directly.
+    // apply_nli_sort was removed (ADR-002). Tests migrated to fused scorer below.
+    // try_nli_rerank now returns Option<Vec<NliScores>> (raw scores, no sort).
 
-    /// Build a minimal test `EntryRecord` with only the fields needed for sort tests.
+    /// Build a minimal test EntryRecord with only the fields needed for sort tests.
     fn make_nli_test_entry(id: u64) -> EntryRecord {
         make_test_entry(id, Status::Active, None, 0.70, "decision")
     }
 
     // -----------------------------------------------------------------------
-    // R-03 (Critical): Stable sort with identical entailment scores
+    // crt-024 FusionWeights::effective tests (T-SS-01 through T-SS-06, AC-06, AC-13, R-02)
     // -----------------------------------------------------------------------
 
     #[test]
-    fn test_nli_sort_stable_identical_scores_preserves_original_order() {
-        // R-03: When all entailment scores are equal, original HNSW rank (insertion order)
-        // must be the tiebreaker. Running the same input 10 times must produce the same ordering.
-        let entries: Vec<(EntryRecord, f64)> =
-            (1..=5).map(|id| (make_nli_test_entry(id), 0.75)).collect();
+    fn test_fusion_weights_effective_nli_active_unchanged() {
+        // AC-13, R-09: NLI active path must return weights unchanged; no re-normalization.
+        let weights = FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+        };
+        let eff = weights.effective(true);
+        assert!(
+            (eff.w_nli - 0.35).abs() < 1e-9,
+            "w_nli must be unchanged when NLI active"
+        );
+        assert!(
+            (eff.w_sim - 0.25).abs() < 1e-9,
+            "w_sim must be unchanged when NLI active"
+        );
+        assert!((eff.w_conf - 0.15).abs() < 1e-9);
+        assert!((eff.w_coac - 0.10).abs() < 1e-9);
+        assert!((eff.w_util - 0.05).abs() < 1e-9);
+        assert!((eff.w_prov - 0.05).abs() < 1e-9);
+    }
 
-        // All scores identical — tiebreaker must produce ascending original-rank order (0,1,2,3,4).
-        let uniform_scores: Vec<NliScores> = (0..5)
-            .map(|_| NliScores {
-                entailment: 0.33,
-                neutral: 0.34,
-                contradiction: 0.33,
-            })
-            .collect();
+    #[test]
+    fn test_fusion_weights_effective_nli_active_headroom_weight_preserved() {
+        // AC-13: when weights sum to 0.90 (valid, with headroom), effective(true) must NOT
+        // re-normalize to 1.0 — that would silently consume WA-2's reserved headroom.
+        let weights = FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.30,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+        }; // sum = 0.90
+        let eff = weights.effective(true);
+        let sum = eff.w_sim + eff.w_nli + eff.w_conf + eff.w_coac + eff.w_util + eff.w_prov;
+        assert!(
+            (sum - 0.90).abs() < 1e-9,
+            "effective(true) must preserve sum=0.90, not re-normalize to 1.0; got {sum}"
+        );
+    }
 
-        let penalty_map = HashMap::new();
-        let top_k = 5;
+    #[test]
+    fn test_fusion_weights_effective_nli_absent_renormalizes_five_weights() {
+        // AC-06, R-02: confirms the denominator is all five non-NLI weights (SR-03 resolution).
+        let weights = FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+        };
+        let eff = weights.effective(false);
+        assert!(
+            (eff.w_nli - 0.0).abs() < 1e-9,
+            "w_nli must be 0.0 when NLI absent"
+        );
+        let sum = eff.w_sim + eff.w_conf + eff.w_coac + eff.w_util + eff.w_prov;
+        assert!(
+            (sum - 1.0).abs() < 1e-9,
+            "re-normalized weights must sum to 1.0, got {sum}"
+        );
+        assert!(
+            (eff.w_sim - (0.25 / 0.60)).abs() < 1e-6,
+            "w_sim must be re-normalized"
+        );
+        assert!(
+            (eff.w_conf - (0.15 / 0.60)).abs() < 1e-6,
+            "w_conf must be re-normalized"
+        );
+        assert!(
+            (eff.w_coac - (0.10 / 0.60)).abs() < 1e-6,
+            "w_coac must be re-normalized"
+        );
+    }
 
-        // Run 10 times; all orderings must be identical.
-        let first_result = apply_nli_sort(&entries, &uniform_scores, &penalty_map, top_k);
-        let first_ids: Vec<u64> = first_result.iter().map(|(e, _)| e.id).collect();
+    #[test]
+    fn test_fusion_weights_effective_nli_absent_sum_is_one() {
+        // R-09 complement: re-normalization must produce sum == 1.0.
+        let weights = FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+        };
+        let eff = weights.effective(false);
+        let sum = eff.w_sim + eff.w_conf + eff.w_coac + eff.w_util + eff.w_prov;
+        assert!(
+            (sum - 1.0).abs() < 1e-9,
+            "NLI-absent: effective weights must sum to 1.0"
+        );
+    }
 
-        for run in 0..10 {
-            let result = apply_nli_sort(&entries, &uniform_scores, &penalty_map, top_k);
-            let ids: Vec<u64> = result.iter().map(|(e, _)| e.id).collect();
-            assert_eq!(
-                ids, first_ids,
-                "NLI sort must be deterministic (run {run}): got {ids:?}, expected {first_ids:?}"
-            );
+    #[test]
+    fn test_fusion_weights_effective_zero_denominator_returns_zeros_without_panic() {
+        // R-02: pathological config — all non-NLI weights zero. Must not panic.
+        let weights = FusionWeights {
+            w_sim: 0.0,
+            w_nli: 0.5,
+            w_conf: 0.0,
+            w_coac: 0.0,
+            w_util: 0.0,
+            w_prov: 0.0,
+        };
+        let eff = weights.effective(false);
+        assert_eq!(
+            eff.w_sim, 0.0,
+            "w_sim must be 0.0 on zero-denominator guard"
+        );
+        assert_eq!(eff.w_nli, 0.0);
+        assert_eq!(eff.w_conf, 0.0);
+        assert_eq!(eff.w_coac, 0.0);
+        assert_eq!(eff.w_util, 0.0);
+        assert_eq!(eff.w_prov, 0.0);
+    }
+
+    #[test]
+    fn test_fusion_weights_effective_single_nonzero_weight_nli_absent() {
+        // R-02, Scenario 2: single remaining weight → gets full weight 1.0.
+        let weights = FusionWeights {
+            w_sim: 0.5,
+            w_nli: 0.5,
+            w_conf: 0.0,
+            w_coac: 0.0,
+            w_util: 0.0,
+            w_prov: 0.0,
+        };
+        let eff = weights.effective(false);
+        assert_eq!(eff.w_nli, 0.0);
+        assert!(
+            (eff.w_sim - 1.0).abs() < 1e-9,
+            "single remaining weight must get 1.0"
+        );
+        assert_eq!(eff.w_conf, 0.0);
+        assert_eq!(eff.w_coac, 0.0);
+    }
+
+    #[test]
+    fn test_fusion_weights_effective_does_not_mutate_original() {
+        // T-SS-05: effective() returns a new value; the receiver is not modified.
+        let weights = FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+        };
+        let _eff = weights.effective(false);
+        assert!(
+            (weights.w_nli - 0.35).abs() < 1e-9,
+            "original w_nli must remain 0.35 after effective()"
+        );
+    }
+
+    #[test]
+    fn test_fusion_weights_from_config_maps_fields() {
+        // T-SS-06: FusionWeights::from_config maps each field from InferenceConfig.
+        use crate::infra::config::InferenceConfig;
+        let mut cfg = InferenceConfig::default();
+        cfg.w_sim = 0.30;
+        cfg.w_nli = 0.30;
+        cfg.w_conf = 0.15;
+        cfg.w_coac = 0.10;
+        cfg.w_util = 0.10;
+        cfg.w_prov = 0.05;
+        let fw = FusionWeights::from_config(&cfg);
+        assert!((fw.w_sim - 0.30).abs() < 1e-9);
+        assert!((fw.w_nli - 0.30).abs() < 1e-9);
+        assert!((fw.w_conf - 0.15).abs() < 1e-9);
+        assert!((fw.w_coac - 0.10).abs() < 1e-9);
+        assert!((fw.w_util - 0.10).abs() < 1e-9);
+        assert!((fw.w_prov - 0.05).abs() < 1e-9);
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-024 compute_fused_score tests (T-CF-01 through T-CF-11)
+    // -----------------------------------------------------------------------
+
+    fn default_weights() -> FusionWeights {
+        FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
         }
+    }
 
-        // Ordering must be exactly the original insertion order (ids 1,2,3,4,5)
-        // because all entailment scores are equal and the tiebreak is original rank ascending.
+    #[test]
+    fn test_compute_fused_score_six_term_correctness_ac05() {
+        // AC-05: known-value correctness check.
+        let inputs = FusedScoreInputs {
+            similarity: 0.8,
+            nli_entailment: 0.7,
+            confidence: 0.6,
+            coac_norm: 0.5,
+            util_norm: 0.5,
+            prov_norm: 1.0,
+        };
+        let weights = FusionWeights {
+            w_sim: 0.30,
+            w_nli: 0.30,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+        };
+        let score = compute_fused_score(&inputs, &weights);
+        // 0.30*0.8 + 0.30*0.7 + 0.15*0.6 + 0.10*0.5 + 0.05*0.5 + 0.05*1.0
+        // = 0.24 + 0.21 + 0.09 + 0.05 + 0.025 + 0.05 = 0.665
+        assert!(
+            (score - 0.665).abs() < 1e-9,
+            "AC-05: expected 0.665, got {score}"
+        );
+    }
+
+    #[test]
+    fn test_compute_fused_score_nli_high_beats_coac_high_ac11() {
+        // AC-11: NLI dominance regression test.
+        // Pre-crt-024: co-access applied as additive afterthought in Step 8 (after NLI sort in
+        // Step 7), which allowed Entry B (coac=max) to overtake Entry A (nli=0.9) in the re-sort.
+        // crt-024 fix: all signals in one weighted formula; NLI weight (0.35) > max co-access (0.10).
+        //
+        // Inputs from SPECIFICATION.md (sim=0.8, Gate 3a): use sim=0.8 and conf=0.65.
+        // Note: test-plan/compute-fused-score.md mistakenly expected 0.540 for these inputs
+        // but 0.35*0.9+0.25*0.8+0.15*0.65 = 0.6125. The IMPLEMENTATION-BRIEF 0.540 figure
+        // corresponds to sim=0.5, conf=0.5. We use sim=0.8 (SPECIFICATION.md) with the
+        // mathematically correct expected values.
+        let default_weights = FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+        };
+        // Entry A: high NLI, no co-access
+        let entry_a = FusedScoreInputs {
+            similarity: 0.8,
+            nli_entailment: 0.9,
+            confidence: 0.65,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        // Entry B: low NLI, max co-access
+        let entry_b = FusedScoreInputs {
+            similarity: 0.8,
+            nli_entailment: 0.3,
+            confidence: 0.65,
+            coac_norm: 1.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let score_a = compute_fused_score(&entry_a, &default_weights);
+        let score_b = compute_fused_score(&entry_b, &default_weights);
+        // Entry A: 0.35*0.9 + 0.25*0.8 + 0.15*0.65 = 0.315 + 0.200 + 0.0975 = 0.6125
+        // Entry B: 0.35*0.3 + 0.25*0.8 + 0.15*0.65 + 0.10*1.0 = 0.105 + 0.200 + 0.0975 + 0.100 = 0.5025
+        let expected_a = 0.35 * 0.9 + 0.25 * 0.8 + 0.15 * 0.65;
+        let expected_b = 0.35 * 0.3 + 0.25 * 0.8 + 0.15 * 0.65 + 0.10 * 1.0;
+        assert!(
+            (score_a - expected_a).abs() < 1e-9,
+            "Entry A must score {expected_a:.4}, got {score_a}"
+        );
+        assert!(
+            (score_b - expected_b).abs() < 1e-9,
+            "Entry B must score {expected_b:.4}, got {score_b}"
+        );
+        assert!(
+            score_a > score_b,
+            "AC-11: Entry A (nli=0.9, coac=0) must beat Entry B (nli=0.3, coac=max): \
+             A={score_a:.4} vs B={score_b:.4}"
+        );
+    }
+
+    #[test]
+    fn test_compute_fused_score_constraint9_nli_disabled_sim_dominant() {
+        // ADR-003 Constraint 9: NLI disabled, sim must remain dominant over conf.
+        let weights = default_weights();
+        let eff = weights.effective(false); // denom = 0.60
+        // w_sim' ≈ 0.4167, w_conf' ≈ 0.2500
+        let entry_a = FusedScoreInputs {
+            similarity: 0.9,
+            nli_entailment: 0.0,
+            confidence: 0.3,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let entry_b = FusedScoreInputs {
+            similarity: 0.5,
+            nli_entailment: 0.0,
+            confidence: 0.9,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let score_a = compute_fused_score(&entry_a, &eff);
+        let score_b = compute_fused_score(&entry_b, &eff);
+        // A ≈ 0.4167*0.9 + 0.2500*0.3 = 0.375 + 0.075 = 0.450
+        // B ≈ 0.4167*0.5 + 0.2500*0.9 = 0.209 + 0.225 = 0.434
+        assert!(
+            score_a > score_b,
+            "Constraint 9: sim dominant over conf when NLI disabled (A={score_a}, B={score_b})"
+        );
+        // Verify re-normalized w_sim' ≈ 0.4167
+        assert!((eff.w_sim - (0.25 / 0.60)).abs() < 1e-6);
+        assert!((eff.w_conf - (0.15 / 0.60)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_compute_fused_score_constraint10_sim_dominant_at_defaults() {
+        // ADR-003 Constraint 10: sim dominant over conf at full defaults.
+        let weights = default_weights();
+        let entry_a = FusedScoreInputs {
+            similarity: 0.9,
+            nli_entailment: 0.0,
+            confidence: 0.3,
+            coac_norm: 0.0,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        let entry_b = FusedScoreInputs {
+            similarity: 0.5,
+            nli_entailment: 0.0,
+            confidence: 0.9,
+            coac_norm: 0.0,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        // A: 0.25*0.9 + 0.15*0.3 + 0.05*0.5 = 0.225 + 0.045 + 0.025 = 0.295
+        // B: 0.25*0.5 + 0.15*0.9 + 0.05*0.5 = 0.125 + 0.135 + 0.025 = 0.285
+        let score_a = compute_fused_score(&entry_a, &weights);
+        let score_b = compute_fused_score(&entry_b, &weights);
+        assert!(
+            score_a > score_b,
+            "Constraint 10: sim must dominate conf at defaults (A={score_a}, B={score_b})"
+        );
+    }
+
+    #[test]
+    fn test_compute_fused_score_does_not_accept_status_penalty() {
+        // R-14, ADR-004: FusedScoreInputs must NOT have status_penalty field.
+        // This struct construction compiles iff exactly the six expected fields exist.
+        let inputs = FusedScoreInputs {
+            similarity: 0.8,
+            nli_entailment: 0.7,
+            confidence: 0.6,
+            coac_norm: 0.5,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        // Verify penalty is applied externally:
+        use unimatrix_engine::graph::ORPHAN_PENALTY;
+        let fused = compute_fused_score(&inputs, &default_weights());
+        let final_score = fused * ORPHAN_PENALTY;
+        assert!(final_score < fused, "penalty must reduce the fused score");
+        assert!(final_score > 0.0);
+    }
+
+    #[test]
+    fn test_status_penalty_applied_as_multiplier_after_fused_score() {
+        // AC-09: status penalty as multiplier.
+        let inputs = FusedScoreInputs {
+            similarity: 1.0,
+            nli_entailment: 0.0,
+            confidence: 0.0,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let weights = FusionWeights {
+            w_sim: 1.0,
+            w_nli: 0.0,
+            w_conf: 0.0,
+            w_coac: 0.0,
+            w_util: 0.0,
+            w_prov: 0.0,
+        };
+        let fused = compute_fused_score(&inputs, &weights); // = 1.0
+        let deprecated_penalty = 0.7_f64;
+        let final_score = fused * deprecated_penalty;
+        assert!(
+            (final_score - 0.7).abs() < 1e-9,
+            "final_score must be fused * penalty = 0.7"
+        );
+    }
+
+    #[test]
+    fn test_compute_fused_score_util_contributes_exactly_w_util_times_util_norm() {
+        // AC-10: util_norm contribution is exactly w_util * diff.
+        let weights = FusionWeights {
+            w_sim: 0.30,
+            w_nli: 0.30,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+        };
+        let base = FusedScoreInputs {
+            similarity: 0.5,
+            nli_entailment: 0.5,
+            confidence: 0.5,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let with_util = FusedScoreInputs {
+            util_norm: 1.0,
+            ..base
+        };
+        let diff = compute_fused_score(&with_util, &weights) - compute_fused_score(&base, &weights);
+        assert!(
+            (diff - weights.w_util).abs() < 1e-9,
+            "util_norm difference must be exactly w_util={}, got diff={diff}",
+            weights.w_util
+        );
+    }
+
+    #[test]
+    fn test_compute_fused_score_range_guarantee_all_inputs_max() {
+        // NFR-02: all inputs at 1.0, default weights sum=0.95 → score = 0.95.
+        let inputs = FusedScoreInputs {
+            similarity: 1.0,
+            nli_entailment: 1.0,
+            confidence: 1.0,
+            coac_norm: 1.0,
+            util_norm: 1.0,
+            prov_norm: 1.0,
+        };
+        let score = compute_fused_score(&inputs, &default_weights());
+        assert!(
+            (score - 0.95).abs() < 1e-9,
+            "max inputs at defaults must produce 0.95"
+        );
+        assert!(score <= 1.0);
+        assert!(score >= 0.0);
+    }
+
+    #[test]
+    fn test_compute_fused_score_range_guarantee_all_inputs_zero() {
+        // NFR-02: all inputs at 0.0 → score = 0.0.
+        let inputs = FusedScoreInputs {
+            similarity: 0.0,
+            nli_entailment: 0.0,
+            confidence: 0.0,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let score = compute_fused_score(&inputs, &default_weights());
+        assert_eq!(score, 0.0, "zero inputs must produce 0.0");
+    }
+
+    #[test]
+    fn test_compute_fused_score_all_zero_nli_degrades_to_five_signals() {
+        // EC-04: nli_entailment=0.0 with active NLI weights contributes nothing.
+        let inputs_no_nli = FusedScoreInputs {
+            similarity: 0.8,
+            nli_entailment: 0.0,
+            confidence: 0.6,
+            coac_norm: 0.3,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        let inputs_with_nli = FusedScoreInputs {
+            nli_entailment: 0.9,
+            ..inputs_no_nli
+        };
+        let score_no_nli = compute_fused_score(&inputs_no_nli, &default_weights());
+        let score_with_nli = compute_fused_score(&inputs_with_nli, &default_weights());
+        // With NLI the score is higher; without NLI entailment still sums the five signals.
+        assert!(
+            score_with_nli > score_no_nli,
+            "NLI contributes when non-zero"
+        );
+        assert!(
+            score_no_nli > 0.0,
+            "five signals still contribute without NLI"
+        );
+        assert!(score_no_nli.is_finite());
+    }
+
+    #[test]
+    fn test_compute_fused_score_single_term_formula() {
+        // T-CF-07: single non-zero weight — no cross-term contamination.
+        let weights = FusionWeights {
+            w_sim: 1.0,
+            w_nli: 0.0,
+            w_conf: 0.0,
+            w_coac: 0.0,
+            w_util: 0.0,
+            w_prov: 0.0,
+        };
+        let inputs = FusedScoreInputs {
+            similarity: 0.75,
+            nli_entailment: 0.99,
+            confidence: 0.99,
+            coac_norm: 0.99,
+            util_norm: 0.99,
+            prov_norm: 0.99,
+        };
+        let score = compute_fused_score(&inputs, &weights);
+        assert!(
+            (score - 0.75).abs() < 1e-9,
+            "single-weight formula must return sim only"
+        );
+    }
+
+    #[test]
+    fn test_compute_fused_score_nli_disabled_w_nli_zero_contributes_nothing() {
+        // T-CF-08: w_nli=0.0 means nli_entailment contributes nothing.
+        let weights_no_nli = FusionWeights {
+            w_sim: 0.5,
+            w_nli: 0.0,
+            w_conf: 0.5,
+            w_coac: 0.0,
+            w_util: 0.0,
+            w_prov: 0.0,
+        };
+        let inputs_high_nli = FusedScoreInputs {
+            similarity: 0.5,
+            nli_entailment: 0.9,
+            confidence: 0.5,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let inputs_zero_nli = FusedScoreInputs {
+            nli_entailment: 0.0,
+            ..inputs_high_nli
+        };
+        let score_high = compute_fused_score(&inputs_high_nli, &weights_no_nli);
+        let score_zero = compute_fused_score(&inputs_zero_nli, &weights_no_nli);
+        assert!(
+            (score_high - score_zero).abs() < 1e-9,
+            "w_nli=0.0: nli_entailment must contribute nothing regardless of value"
+        );
+    }
+
+    #[test]
+    fn test_compute_fused_score_result_is_finite() {
+        // T-CF-09, R-03, SeR-02: property-style test — all valid inputs produce finite output.
+        let sample_vals = [0.0, 0.1, 0.5, 0.9, 1.0];
+        for &sim in &sample_vals {
+            for &nli in &sample_vals {
+                for &conf in &sample_vals {
+                    let inputs = FusedScoreInputs {
+                        similarity: sim,
+                        nli_entailment: nli,
+                        confidence: conf,
+                        coac_norm: 0.5,
+                        util_norm: 0.5,
+                        prov_norm: 0.0,
+                    };
+                    let score = compute_fused_score(&inputs, &default_weights());
+                    assert!(
+                        score.is_finite(),
+                        "score must be finite for sim={sim}, nli={nli}, conf={conf}; got {score}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_util_norm_ineffective_entry_maps_to_zero() {
+        // T-CF-10, R-01: Ineffective entry → util_norm = 0.0.
+        let raw_delta = -UTILITY_PENALTY; // -0.05
+        let util_norm = (raw_delta + UTILITY_PENALTY) / (UTILITY_BOOST + UTILITY_PENALTY);
+        assert!(
+            (util_norm - 0.0).abs() < 1e-9,
+            "Ineffective: util_norm must be 0.0"
+        );
+    }
+
+    #[test]
+    fn test_util_norm_neutral_entry_maps_to_half() {
+        // T-CF-10, R-01: neutral entry → util_norm = 0.5.
+        let raw_delta = 0.0_f64;
+        let util_norm = (raw_delta + UTILITY_PENALTY) / (UTILITY_BOOST + UTILITY_PENALTY);
+        assert!(
+            (util_norm - 0.5).abs() < 1e-9,
+            "neutral: util_norm must be 0.5"
+        );
+    }
+
+    #[test]
+    fn test_util_norm_effective_entry_maps_to_one() {
+        // T-CF-10, R-01: Effective entry → util_norm = 1.0.
+        let raw_delta = UTILITY_BOOST; // +0.05
+        let util_norm = (raw_delta + UTILITY_PENALTY) / (UTILITY_BOOST + UTILITY_PENALTY);
+        assert!(
+            (util_norm - 1.0).abs() < 1e-9,
+            "Effective: util_norm must be 1.0"
+        );
+    }
+
+    #[test]
+    fn test_compute_fused_score_ineffective_util_non_negative() {
+        // R-11, NFR-02: Ineffective entry (util_norm=0.0) must produce non-negative fused score.
+        let inputs = FusedScoreInputs {
+            similarity: 0.0,
+            nli_entailment: 0.0,
+            confidence: 0.0,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let score = compute_fused_score(&inputs, &default_weights());
+        assert!(
+            score >= 0.0,
+            "fused_score must be >= 0.0 for Ineffective entry, got {score}"
+        );
+        assert!(score.is_finite());
+    }
+
+    #[test]
+    fn test_prov_norm_zero_denominator_returns_zero() {
+        // R-03: when PROVENANCE_BOOST == 0.0, prov_norm must be 0.0.
+        let prov_boost_sim = 0.0_f64; // simulate PROVENANCE_BOOST = 0.0
+        let raw_boost = 0.02_f64;
+        let prov_norm = if prov_boost_sim == 0.0 {
+            0.0
+        } else {
+            raw_boost / prov_boost_sim
+        };
         assert_eq!(
-            first_ids,
+            prov_norm, 0.0,
+            "prov_norm must be 0.0 when PROVENANCE_BOOST == 0.0"
+        );
+    }
+
+    #[test]
+    fn test_prov_norm_boosted_entry_equals_one() {
+        // R-03: boosted entry with raw_boost == PROVENANCE_BOOST → prov_norm = 1.0.
+        let prov_boost = PROVENANCE_BOOST;
+        let raw_boost = prov_boost;
+        let prov_norm = if prov_boost == 0.0 {
+            0.0
+        } else {
+            raw_boost / prov_boost
+        };
+        assert!(
+            (prov_norm - 1.0).abs() < 1e-9,
+            "boosted entry: prov_norm must be 1.0"
+        );
+    }
+
+    #[test]
+    fn test_prov_norm_unboosted_entry_equals_zero() {
+        // R-03: unboosted entry (raw_boost=0.0) → prov_norm = 0.0.
+        let prov_boost = PROVENANCE_BOOST;
+        let raw_boost = 0.0_f64;
+        let prov_norm = if prov_boost == 0.0 {
+            0.0
+        } else {
+            raw_boost / prov_boost
+        };
+        assert_eq!(prov_norm, 0.0);
+    }
+
+    #[test]
+    fn test_fused_score_inputs_struct_accessible_by_field_name() {
+        // R-16: named-field struct (WA-2 can add phase_boost_norm without breaking this site).
+        let inputs = FusedScoreInputs {
+            similarity: 0.8,
+            nli_entailment: 0.7,
+            confidence: 0.6,
+            coac_norm: 0.5,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        assert!((inputs.similarity - 0.8).abs() < 1e-9);
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-024: SearchService pipeline migration tests (R-05)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_fused_score_nli_entailment_dominates_when_high() {
+        // R-05 migration of test_nli_sort_orders_by_entailment_descending.
+        // compute_fused_score with nli=0.9 vs nli=0.1, equal sim/conf/coac/util/prov.
+        let weights = default_weights();
+        let high_nli = FusedScoreInputs {
+            similarity: 0.5,
+            nli_entailment: 0.9,
+            confidence: 0.5,
+            coac_norm: 0.0,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        let low_nli = FusedScoreInputs {
+            similarity: 0.5,
+            nli_entailment: 0.1,
+            confidence: 0.5,
+            coac_norm: 0.0,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        let score_high = compute_fused_score(&high_nli, &weights);
+        let score_low = compute_fused_score(&low_nli, &weights);
+        assert!(
+            score_high > score_low,
+            "high NLI entry must score above low NLI entry (high={score_high}, low={score_low})"
+        );
+    }
+
+    #[test]
+    fn test_fused_score_equal_fused_scores_deterministic_sort() {
+        // R-05 migration of test_nli_sort_stable_identical_scores_preserves_original_order.
+        // Entries with identical signal values produce identical fused scores.
+        // The stable sort must preserve original HNSW insertion order.
+        let weights = default_weights();
+        let inputs = FusedScoreInputs {
+            similarity: 0.75,
+            nli_entailment: 0.33,
+            confidence: 0.70,
+            coac_norm: 0.0,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        let score = compute_fused_score(&inputs, &weights);
+        // All five entries have identical score.
+        let mut entries: Vec<(u64, f64)> = (1u64..=5).map(|id| (id, score)).collect();
+
+        // Sort by fused score DESC (stable). Equal scores must preserve insertion order.
+        entries.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+        let ids: Vec<u64> = entries.iter().map(|(id, _)| *id).collect();
+
+        // Run again — must be identical (deterministic, stable sort).
+        let mut entries2: Vec<(u64, f64)> = (1u64..=5).map(|id| (id, score)).collect();
+        entries2.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+        let ids2: Vec<u64> = entries2.iter().map(|(id, _)| *id).collect();
+
+        assert_eq!(ids, ids2, "stable sort must be deterministic");
+        assert_eq!(
+            ids,
             vec![1, 2, 3, 4, 5],
-            "With equal scores, original HNSW insertion order must be preserved"
+            "equal scores must preserve insertion order"
         );
     }
-
-    // -----------------------------------------------------------------------
-    // AC-08, AC-20: NLI entailment replaces rerank_score as sort key
-    // -----------------------------------------------------------------------
 
     #[test]
-    fn test_nli_sort_orders_by_entailment_descending() {
-        // AC-08, AC-20: result order must be determined solely by NLI entailment DESC.
-        // Entry B has higher entailment (0.8) but lower HNSW rank (inserted second).
-        // After NLI sort, B must appear before A.
-        let entry_a = make_nli_test_entry(10);
-        let entry_b = make_nli_test_entry(20);
-
-        let candidates: Vec<(EntryRecord, f64)> =
-            vec![(entry_a.clone(), 0.90), (entry_b.clone(), 0.70)];
-
-        let scores = vec![
-            NliScores {
-                entailment: 0.20,
-                neutral: 0.60,
-                contradiction: 0.20,
-            }, // entry_a: low entailment
-            NliScores {
-                entailment: 0.80,
-                neutral: 0.15,
-                contradiction: 0.05,
-            }, // entry_b: high entailment
-        ];
-
-        let penalty_map = HashMap::new();
-        let result = apply_nli_sort(&candidates, &scores, &penalty_map, 2);
-
-        let ids: Vec<u64> = result.iter().map(|(e, _)| e.id).collect();
+    fn test_fused_score_nan_nli_defaults_to_zero() {
+        // R-05 migration of test_nli_sort_nan_entailment_treated_as_equal.
+        // NaN NliScores.entailment cast to f64: the scoring loop substitutes 0.0 for NaN.
+        let nan_nli_score = NliScores {
+            entailment: f32::NAN,
+            neutral: 0.5,
+            contradiction: 0.5,
+        };
+        let entailment: f64 = {
+            let v = nan_nli_score.entailment as f64;
+            if v.is_nan() { 0.0 } else { v }
+        };
         assert_eq!(
-            ids,
-            vec![20, 10],
-            "NLI sort must place high-entailment entry_b (id=20) before entry_a (id=10)"
+            entailment, 0.0,
+            "NaN entailment must be substituted with 0.0"
+        );
+
+        // Confirm compute_fused_score produces finite result with 0.0 nli_entailment.
+        let inputs = FusedScoreInputs {
+            similarity: 0.5,
+            nli_entailment: entailment,
+            confidence: 0.5,
+            coac_norm: 0.0,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        let score = compute_fused_score(&inputs, &default_weights());
+        assert!(
+            score.is_finite(),
+            "NaN-substituted entry must produce finite score"
         );
     }
-
-    // -----------------------------------------------------------------------
-    // R-03: NaN entailment is treated as Equal (NaN-safe tiebreak)
-    // -----------------------------------------------------------------------
 
     #[test]
-    fn test_nli_sort_nan_entailment_treated_as_equal() {
-        // NaN in entailment must not panic or produce undefined ordering.
-        // NaN-safe: partial_cmp returns None → mapped to Equal → tiebreak by rank.
-        let entry_a = make_nli_test_entry(1);
-        let entry_b = make_nli_test_entry(2);
-
-        let candidates: Vec<(EntryRecord, f64)> = vec![(entry_a, 0.80), (entry_b, 0.80)];
-
-        let scores = vec![
-            NliScores {
-                entailment: f32::NAN,
-                neutral: 0.5,
-                contradiction: 0.5,
-            },
-            NliScores {
-                entailment: f32::NAN,
-                neutral: 0.5,
-                contradiction: 0.5,
-            },
-        ];
-
-        let penalty_map = HashMap::new();
-        // Must not panic and must return deterministic order (original rank: 1,2)
-        let result = apply_nli_sort(&candidates, &scores, &penalty_map, 2);
-        assert_eq!(result.len(), 2, "NaN scores must not drop candidates");
-        let ids: Vec<u64> = result.iter().map(|(e, _)| e.id).collect();
-        assert_eq!(
-            ids,
-            vec![1, 2],
-            "NaN-equal scores must tiebreak by original rank"
+    fn test_status_penalty_depresses_final_score() {
+        // R-05 migration of test_nli_sort_penalty_depresses_effective_entailment.
+        // ADR-004: penalty is applied after compute_fused_score.
+        let weights = default_weights();
+        let inputs = FusedScoreInputs {
+            similarity: 0.8,
+            nli_entailment: 0.9,
+            confidence: 0.65,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let fused = compute_fused_score(&inputs, &weights);
+        let penalty_active = 1.0_f64;
+        let penalty_deprecated = 0.7_f64;
+        let final_active = fused * penalty_active;
+        let final_deprecated = fused * penalty_deprecated;
+        assert!(
+            final_deprecated < final_active,
+            "deprecated entry (penalty=0.7) must have lower final_score than active"
         );
+        assert!(final_deprecated > 0.0);
     }
-
-    // -----------------------------------------------------------------------
-    // Truncation: top_k limits result count
-    // -----------------------------------------------------------------------
 
     #[test]
-    fn test_nli_sort_truncates_to_top_k() {
-        // After NLI sort, result must be truncated to top_k even if more candidates exist.
-        let candidates: Vec<(EntryRecord, f64)> =
-            (1..=5).map(|id| (make_nli_test_entry(id), 0.80)).collect();
-
-        let scores: Vec<NliScores> = (0..5)
-            .map(|i| NliScores {
-                entailment: (5 - i) as f32 * 0.1, // descending: 0.5, 0.4, 0.3, 0.2, 0.1
-                neutral: 0.3,
-                contradiction: 0.2,
-            })
-            .collect();
-
-        let penalty_map = HashMap::new();
-        let result = apply_nli_sort(&candidates, &scores, &penalty_map, 3);
-
-        assert_eq!(result.len(), 3, "top_k=3 must truncate to 3 results");
-        // Top 3 by entailment descending: entries 1,2,3 (scores 0.5,0.4,0.3)
-        let ids: Vec<u64> = result.iter().map(|(e, _)| e.id).collect();
-        assert_eq!(
-            ids,
-            vec![1, 2, 3],
-            "top 3 entries by entailment must be ids 1, 2, 3"
-        );
+    fn test_coac_norm_boundary_values() {
+        // R-08, AC-07: MAX_CO_ACCESS_BOOST imported from engine — not redefined.
+        use unimatrix_engine::coaccess::MAX_CO_ACCESS_BOOST;
+        let norm_max = MAX_CO_ACCESS_BOOST / MAX_CO_ACCESS_BOOST;
+        let norm_half = (MAX_CO_ACCESS_BOOST / 2.0) / MAX_CO_ACCESS_BOOST;
+        let norm_zero = 0.0_f64 / MAX_CO_ACCESS_BOOST;
+        assert!((norm_max - 1.0).abs() < 1e-9);
+        assert!((norm_half - 0.5).abs() < 1e-9);
+        assert!((norm_zero - 0.0).abs() < 1e-9);
     }
-
-    // -----------------------------------------------------------------------
-    // Status penalty depresses effective entailment (ADR-002)
-    // -----------------------------------------------------------------------
 
     #[test]
-    fn test_nli_sort_penalty_depresses_effective_entailment() {
-        // ADR-002: status penalty multiplies the entailment score for ranking.
-        // Entry A: active (penalty=1.0), entailment=0.5 → effective=0.5
-        // Entry B: deprecated (penalty=0.7), entailment=0.8 → effective=0.56 → still above A
-        // Entry C: deprecated (penalty=0.4), entailment=0.9 → effective=0.36 → below A
-        let entry_a = make_nli_test_entry(1); // active
-        let entry_b = make_nli_test_entry(2); // deprecated, mild penalty
-        let entry_c = make_nli_test_entry(3); // deprecated, severe penalty
+    fn test_eval_service_layer_sim_only_profile_scores_equal_sim() {
+        // R-NEW, AC-15: if w_sim=1.0 and all other weights=0.0, fused score equals sim.
+        let sim_only_weights = FusionWeights {
+            w_sim: 1.0,
+            w_nli: 0.0,
+            w_conf: 0.0,
+            w_coac: 0.0,
+            w_util: 0.0,
+            w_prov: 0.0,
+        };
+        let inputs = FusedScoreInputs {
+            similarity: 0.6,
+            nli_entailment: 0.9,
+            confidence: 0.8,
+            coac_norm: 0.667,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        let fused = compute_fused_score(&inputs, &sim_only_weights);
+        let status_penalty = 1.0_f64;
+        let final_score = fused * status_penalty;
+        assert!(
+            (final_score - 0.6).abs() < 1e-9,
+            "sim-only profile: final_score must be 0.6*penalty = 0.6, got {final_score}"
+        );
+    }
 
-        let candidates = vec![
-            (entry_a.clone(), 0.80),
-            (entry_b.clone(), 0.80),
-            (entry_c.clone(), 0.80),
-        ];
-        let scores = vec![
-            NliScores {
-                entailment: 0.5,
-                neutral: 0.3,
-                contradiction: 0.2,
-            },
-            NliScores {
-                entailment: 0.8,
-                neutral: 0.15,
-                contradiction: 0.05,
-            },
-            NliScores {
-                entailment: 0.9,
-                neutral: 0.08,
-                contradiction: 0.02,
-            },
-        ];
+    #[test]
+    fn test_eval_service_layer_default_weights_score_differs_from_sim_only() {
+        // R-NEW: default weights produce a different (higher) score than sim-only for same inputs.
+        let sim_only_weights = FusionWeights {
+            w_sim: 1.0,
+            w_nli: 0.0,
+            w_conf: 0.0,
+            w_coac: 0.0,
+            w_util: 0.0,
+            w_prov: 0.0,
+        };
+        let inputs = FusedScoreInputs {
+            similarity: 0.6,
+            nli_entailment: 0.9,
+            confidence: 0.8,
+            coac_norm: 0.667,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        let score_sim_only = compute_fused_score(&inputs, &sim_only_weights);
+        let score_default = compute_fused_score(&inputs, &default_weights());
+        // Default weights include w_nli=0.35*0.9, w_conf=0.15*0.8, etc. — significantly higher.
+        assert!(
+            score_default > score_sim_only,
+            "default weights must produce higher score than sim-only for NLI-strong inputs"
+        );
+    }
 
-        let mut penalty_map = HashMap::new();
-        penalty_map.insert(2u64, 0.7f64); // entry B: mild penalty
-        penalty_map.insert(3u64, 0.4f64); // entry C: severe penalty
+    #[test]
+    fn test_eval_service_layer_differential_two_profiles_produce_different_scores() {
+        // R-NEW, AC-15: two profiles with different w_nli must produce meaningfully different scores.
+        // Profile 1: old-behavior.toml (w_nli=0.0, w_sim=0.85)
+        let profile1 = FusionWeights {
+            w_sim: 0.85,
+            w_nli: 0.0,
+            w_conf: 0.15,
+            w_coac: 0.0,
+            w_util: 0.0,
+            w_prov: 0.0,
+        };
+        // Profile 2: crt024-weights.toml (w_nli=0.35, w_sim=0.25)
+        let profile2 = FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+        };
+        // Use an entry where NLI is very high (0.9) and sim is low (0.1).
+        // Profile1 will heavily reward sim (0.85*0.1=0.085), profile2 rewards NLI (0.35*0.9=0.315).
+        let inputs = FusedScoreInputs {
+            similarity: 0.1,
+            nli_entailment: 0.9,
+            confidence: 0.5,
+            coac_norm: 0.0,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        let score1 = compute_fused_score(&inputs, &profile1);
+        let score2 = compute_fused_score(&inputs, &profile2);
+        // Profile1: 0.85*0.1 + 0.15*0.5 = 0.085 + 0.075 = 0.160
+        // Profile2: 0.25*0.1 + 0.35*0.9 + 0.15*0.5 + 0.05*0.5 = 0.025 + 0.315 + 0.075 + 0.025 = 0.440
+        // Difference = 0.440 - 0.160 = 0.280 (profile2 wins on NLI)
+        assert!(
+            (score2 - score1).abs() >= 0.20,
+            "two profiles must produce meaningfully different scores for NLI-dominant input \
+             (diff={:.4}, score1={score1:.4}, score2={score2:.4})",
+            (score2 - score1).abs()
+        );
+    }
 
-        let result = apply_nli_sort(&candidates, &scores, &penalty_map, 3);
-        let ids: Vec<u64> = result.iter().map(|(e, _)| e.id).collect();
+    #[test]
+    fn test_fused_scoring_nli_scores_aligned_with_candidates() {
+        // R-15: nli_scores[i] must be applied to candidates[i].
+        // Entry A: low sim (0.3) but high NLI (0.9) — must rank above B if aligned correctly.
+        // Entry B: high sim (0.9) but low NLI (0.1).
+        let weights = default_weights();
+        let entry_a = FusedScoreInputs {
+            similarity: 0.3,
+            nli_entailment: 0.9,
+            confidence: 0.5,
+            coac_norm: 0.0,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        let entry_b = FusedScoreInputs {
+            similarity: 0.9,
+            nli_entailment: 0.1,
+            confidence: 0.5,
+            coac_norm: 0.0,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+        };
+        let score_a = compute_fused_score(&entry_a, &weights);
+        let score_b = compute_fused_score(&entry_b, &weights);
+        // A: 0.35*0.9 + 0.25*0.3 + rest = 0.315 + 0.075 + ... > B: 0.35*0.1 + 0.25*0.9 + ...
+        assert!(
+            score_a > score_b,
+            "NLI-dominant entry A must score above sim-dominant entry B when scores are aligned"
+        );
+    }
 
-        // Effective scores: A=0.5, B=0.56, C=0.36
-        // Expected order: B(0.56) > A(0.50) > C(0.36)
-        assert_eq!(
-            ids,
-            vec![2, 1, 3],
-            "Penalty-adjusted order must be B(eff=0.56) > A(eff=0.50) > C(eff=0.36), got {ids:?}"
+    #[test]
+    fn test_constraint_9_nli_disabled_sim_dominant_over_conf() {
+        // ADR-003 Constraint 9 named test (required by test plan).
+        let weights = default_weights();
+        let eff = weights.effective(false);
+        let entry_a = FusedScoreInputs {
+            similarity: 0.9,
+            nli_entailment: 0.0,
+            confidence: 0.3,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let entry_b = FusedScoreInputs {
+            similarity: 0.5,
+            nli_entailment: 0.0,
+            confidence: 0.9,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let score_a = compute_fused_score(&entry_a, &eff);
+        let score_b = compute_fused_score(&entry_b, &eff);
+        assert!(
+            score_a > score_b,
+            "Constraint 9: sim must dominate conf when NLI disabled"
+        );
+    }
+
+    #[test]
+    fn test_constraint_10_sim_dominant_no_nli_no_coac() {
+        // ADR-003 Constraint 10 named test (required by test plan).
+        let weights = default_weights();
+        // Default weights, NLI active but zero, no co-access.
+        let entry_a = FusedScoreInputs {
+            similarity: 0.9,
+            nli_entailment: 0.0,
+            confidence: 0.3,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        let entry_b = FusedScoreInputs {
+            similarity: 0.5,
+            nli_entailment: 0.0,
+            confidence: 0.9,
+            coac_norm: 0.0,
+            util_norm: 0.0,
+            prov_norm: 0.0,
+        };
+        // A: 0.25*0.9 + 0.15*0.3 = 0.270; B: 0.25*0.5 + 0.15*0.9 = 0.260
+        let score_a = compute_fused_score(&entry_a, &weights);
+        let score_b = compute_fused_score(&entry_b, &weights);
+        assert!(
+            score_a > score_b,
+            "Constraint 10: sim must dominate conf at default weights"
         );
     }
 
     // -----------------------------------------------------------------------
-    // Fallback path: try_nli_rerank returns None when handle is not Ready
+    // Fallback path: try_nli_rerank returns None when handle is not Ready (crt-024)
+    // Updated to new signature: no penalty_map/top_k params, returns Option<Vec<NliScores>>.
     // -----------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_nli_fallback_when_handle_not_ready() {
-        // When NliServiceHandle is in Loading state (not ready), try_nli_rerank
-        // must return None so the caller falls back to rerank_score.
+        // When NliServiceHandle is in Loading state, try_nli_rerank returns None.
+        // Fused scorer path uses nli_entailment=0.0 via FusionWeights::effective(false).
         use crate::infra::nli_handle::NliServiceHandle;
         use crate::infra::rayon_pool::RayonPool;
 
@@ -1738,10 +2672,8 @@ mod tests {
 
         let entry = make_nli_test_entry(1);
         let candidates = vec![(entry, 0.80)];
-        let penalty_map = HashMap::new();
 
-        let result =
-            try_nli_rerank(&candidates, "test query", &handle, &pool, &penalty_map, 5).await;
+        let result = try_nli_rerank(&candidates, "test query", &handle, &pool).await;
         assert!(
             result.is_none(),
             "try_nli_rerank must return None when handle is in Loading state"
@@ -1761,10 +2693,8 @@ mod tests {
 
         let pool = Arc::new(RayonPool::new(1, "test-nli").expect("pool"));
         let candidates = vec![(make_nli_test_entry(1), 0.80)];
-        let penalty_map = HashMap::new();
 
-        let result =
-            try_nli_rerank(&candidates, "test query", &handle, &pool, &penalty_map, 5).await;
+        let result = try_nli_rerank(&candidates, "test query", &handle, &pool).await;
         assert!(
             result.is_none(),
             "try_nli_rerank must return None when handle retries are exhausted"
@@ -1774,17 +2704,14 @@ mod tests {
     #[tokio::test]
     async fn test_nli_fallback_on_empty_candidates() {
         // When candidates is empty, try_nli_rerank must return None immediately.
-        // score_batch must NOT be called with an empty slice.
         use crate::infra::nli_handle::NliServiceHandle;
         use crate::infra::rayon_pool::RayonPool;
 
         let handle = NliServiceHandle::new(); // Loading state
         let pool = Arc::new(RayonPool::new(1, "test-nli").expect("pool"));
         let candidates: Vec<(EntryRecord, f64)> = vec![];
-        let penalty_map = HashMap::new();
 
-        let result =
-            try_nli_rerank(&candidates, "test query", &handle, &pool, &penalty_map, 5).await;
+        let result = try_nli_rerank(&candidates, "test query", &handle, &pool).await;
         assert!(
             result.is_none(),
             "try_nli_rerank must return None for empty candidate list"

@@ -650,6 +650,9 @@ mod tests {
             crate::infra::nli_handle::NliServiceHandle::new(),
             20,    // nli_top_k default
             false, // nli_enabled: disabled for tests
+            crate::services::search::FusionWeights::from_config(
+                &crate::infra::config::InferenceConfig::default(),
+            ),
         );
 
         let service = BriefingService::new(
