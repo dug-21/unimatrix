@@ -1112,7 +1112,7 @@ impl UnimatrixServer {
             crate::infra::timeout::MCP_HANDLER_TIMEOUT,
             move || -> std::result::Result<Vec<unimatrix_observe::ObservationRecord>, unimatrix_observe::ObserveError> {
                 use unimatrix_observe::ObservationSource;
-                let source = crate::services::observation::SqlObservationSource::new(store_for_obs);
+                let source = crate::services::observation::SqlObservationSource::new_default(store_for_obs);
 
                 // Fast path: direct feature_cycle query
                 let direct = source.load_feature_observations(&feature_cycle_for_load)?;
@@ -1364,9 +1364,10 @@ impl UnimatrixServer {
                     crate::infra::timeout::MCP_HANDLER_TIMEOUT,
                     move || {
                         use unimatrix_observe::ObservationSource;
-                        let source = crate::services::observation::SqlObservationSource::new(
-                            store_for_discover,
-                        );
+                        let source =
+                            crate::services::observation::SqlObservationSource::new_default(
+                                store_for_discover,
+                            );
                         source.discover_sessions_for_feature(&fc_for_discover)
                     },
                 )

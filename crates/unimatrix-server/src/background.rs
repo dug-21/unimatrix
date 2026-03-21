@@ -23,7 +23,7 @@ use unimatrix_observe::extraction::{
     ExtractionContext, ExtractionStats, ProposedEntry, QualityGateResult, default_extraction_rules,
     quality_gate, run_extraction_rules,
 };
-use unimatrix_observe::types::{HookType, ObservationRecord};
+use unimatrix_observe::types::ObservationRecord;
 use unimatrix_store::{ShadowEvalRow, Status};
 
 use unimatrix_adapt::AdaptationService;
@@ -1137,15 +1137,12 @@ fn emit_auto_quarantine_audit(
     });
 }
 
-/// Parse a hook type string into a HookType enum.
-fn parse_hook_type(s: &str) -> HookType {
-    match s {
-        "PreToolUse" => HookType::PreToolUse,
-        "PostToolUse" => HookType::PostToolUse,
-        "SubagentStart" => HookType::SubagentStart,
-        "SubagentStop" => HookType::SubagentStop,
-        _ => HookType::PreToolUse, // fallback
-    }
+/// Return the event_type string unchanged (all event types pass through, FR-03.1, AC-11).
+///
+/// Retained as a function for call-site symmetry with the old parse_hook_type —
+/// allows fetch_observation_batch to keep its structure intact.
+fn parse_event_type(s: &str) -> String {
+    s.to_string()
 }
 
 /// Fetch the next batch of observations since `watermark`.
@@ -1192,15 +1189,18 @@ async fn fetch_observation_batch(
         if id as u64 > max_id {
             max_id = id as u64;
         }
-        let hook = parse_hook_type(&hook_str);
-        let input = match (&hook, input_str) {
-            (HookType::SubagentStart, Some(s)) => Some(serde_json::Value::String(s)),
+        let event_type = parse_event_type(&hook_str);
+        // All hook-path records get source_domain = "claude-code" (FR-03.3).
+        let source_domain = "claude-code".to_string();
+        let input = match (event_type.as_str(), input_str) {
+            ("SubagentStart", Some(s)) => Some(serde_json::Value::String(s)),
             (_, Some(s)) => serde_json::from_str(&s).ok(),
             (_, None) => None,
         };
         records.push(ObservationRecord {
             ts: ts as u64,
-            hook,
+            event_type,
+            source_domain,
             session_id,
             tool,
             input,
@@ -1494,24 +1494,14 @@ mod tests {
     }
 
     #[test]
-    fn parse_hook_type_variants() {
-        assert!(matches!(
-            parse_hook_type("PreToolUse"),
-            HookType::PreToolUse
-        ));
-        assert!(matches!(
-            parse_hook_type("PostToolUse"),
-            HookType::PostToolUse
-        ));
-        assert!(matches!(
-            parse_hook_type("SubagentStart"),
-            HookType::SubagentStart
-        ));
-        assert!(matches!(
-            parse_hook_type("SubagentStop"),
-            HookType::SubagentStop
-        ));
-        assert!(matches!(parse_hook_type("Unknown"), HookType::PreToolUse));
+    fn parse_event_type_passthrough() {
+        assert_eq!(parse_event_type("PreToolUse"), "PreToolUse");
+        assert_eq!(parse_event_type("PostToolUse"), "PostToolUse");
+        assert_eq!(parse_event_type("SubagentStart"), "SubagentStart");
+        assert_eq!(parse_event_type("SubagentStop"), "SubagentStop");
+        // Unknown event types pass through unchanged (FR-03.1, AC-11)
+        assert_eq!(parse_event_type("Unknown"), "Unknown");
+        assert_eq!(parse_event_type("widget_exploded"), "widget_exploded");
     }
 
     #[test]

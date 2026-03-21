@@ -712,8 +712,9 @@ impl StatusService {
 
         // Phase 6: Observation stats from SQL (col-012)
         let obs_stats = {
-            let source =
-                crate::services::observation::SqlObservationSource::new(Arc::clone(&self.store));
+            let source = crate::services::observation::SqlObservationSource::new_default(
+                Arc::clone(&self.store),
+            );
             source.observation_stats_async().await.unwrap_or_else(|e| {
                 tracing::error!("observation stats failed: {e}");
                 unimatrix_observe::ObservationStats {

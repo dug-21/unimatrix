@@ -2036,13 +2036,13 @@ mod tests {
                 .await
                 .unwrap();
 
-            // Verify schema version is now current (13, crt-021 graph_edges migration)
+            // Verify schema version is now current (14, col-023 domain_metrics_json migration)
             let version: i64 =
                 sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
                     .fetch_one(store.read_pool_test())
                     .await
                     .unwrap();
-            assert_eq!(version, 13);
+            assert_eq!(version, 14);
 
             // Verify backfill: quarantined entry should have pre_quarantine_status = 0
             let pre_q: Option<i64> =
@@ -2067,7 +2067,7 @@ mod tests {
                     .fetch_one(store.read_pool_test())
                     .await
                     .unwrap();
-            assert_eq!(version, 13, "schema version should remain 13 on re-open");
+            assert_eq!(version, 14, "schema version should remain 14 on re-open");
         }
     }
 
