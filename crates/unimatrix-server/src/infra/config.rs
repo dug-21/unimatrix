@@ -75,7 +75,41 @@ pub struct UnimatrixConfig {
     pub confidence: ConfidenceConfig,
     #[serde(default)]
     pub inference: InferenceConfig,
+    #[serde(default)]
+    pub observation: ObservationConfig,
     // CycleConfig is intentionally absent (ADR-004: stub removed, rename is hardcoded).
+}
+
+/// `[observation]` section — domain pack registration.
+///
+/// Absent section defaults to empty `domain_packs` (the built-in "claude-code" pack
+/// is always loaded regardless via `DomainPackRegistry::with_builtin_claude_code()`).
+#[derive(Debug, Default, Clone, PartialEq, serde::Deserialize)]
+#[serde(default)]
+pub struct ObservationConfig {
+    /// Additional domain packs to register at startup.
+    /// The built-in "claude-code" pack is always registered regardless of this list.
+    pub domain_packs: Vec<DomainPackConfig>,
+}
+
+/// Configuration for one domain pack, from `[[observation.domain_packs]]`.
+///
+/// No struct-level `#[serde(default)]` — `source_domain`, `event_types`, and `categories`
+/// are all required in a valid config stanza. Absent fields produce a serde parse error
+/// which propagates as a server startup failure.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+pub struct DomainPackConfig {
+    /// Domain identifier. Must match `^[a-z0-9_-]{1,64}$`; `"unknown"` is reserved
+    /// and will be rejected at startup (ADR-002, EC-04).
+    pub source_domain: String,
+    /// Known event type strings for this domain.
+    pub event_types: Vec<String>,
+    /// Knowledge categories this domain's agents may store entries under.
+    pub categories: Vec<String>,
+    /// Path to a TOML file containing `[[rules]]` stanzas (`RuleDescriptor`).
+    /// If absent, the pack registers no DSL rules (built-in Rust rules only).
+    #[serde(default)]
+    pub rule_file: Option<PathBuf>,
 }
 
 /// `[profile]` section — preset selection.
@@ -592,6 +626,17 @@ pub enum ConfigError {
         /// Human-readable valid range description.
         reason: &'static str,
     },
+    /// `[observation.domain_packs]` entry has an empty or invalid `source_domain`.
+    ///
+    /// Must match `^[a-z0-9_-]{1,64}$`. An empty string, a string with uppercase letters,
+    /// or a string with spaces fails this check (ADR-007, EC-04).
+    InvalidObservationSourceDomain {
+        path: PathBuf,
+        /// The offending `source_domain` value.
+        value: String,
+        /// Human-readable reason (e.g., "empty", "reserved", "invalid characters").
+        reason: &'static str,
+    },
     /// `nli_auto_quarantine_threshold` is not strictly greater than `nli_contradiction_threshold`.
     ///
     /// Names both fields in the error message (ADR-007 crt-023, AC-17).
@@ -757,6 +802,14 @@ impl fmt::Display for ConfigError {
                 "config error in {}: [inference] field '{}' = '{}' is invalid: {}",
                 path.display(),
                 field,
+                value,
+                reason
+            ),
+            ConfigError::InvalidObservationSourceDomain { path, value, reason } => write!(
+                f,
+                "config error in {}: [[observation.domain_packs]] source_domain {:?} is invalid \
+                 ({}); must match ^[a-z0-9_-]{{1,64}}$ and must not be \"unknown\" (reserved)",
+                path.display(),
                 value,
                 reason
             ),
@@ -993,6 +1046,35 @@ pub fn validate_config(config: &UnimatrixConfig, path: &Path) -> Result<(), Conf
                 );
             }
             // No validation of weight values for named presets — they are not used.
+        }
+    }
+
+    // --- Validate [observation] domain_packs ---
+    // source_domain must match ^[a-z0-9_-]{1,64}$ and must not be "unknown" (reserved).
+    // Compile the regex once per validate_config call (startup only — not a hot path).
+    let source_domain_re =
+        regex::Regex::new(r"^[a-z0-9_-]{1,64}$").expect("source_domain regex is valid");
+    for pack in &config.observation.domain_packs {
+        if pack.source_domain.is_empty() {
+            return Err(ConfigError::InvalidObservationSourceDomain {
+                path: path.into(),
+                value: pack.source_domain.clone(),
+                reason: "empty",
+            });
+        }
+        if pack.source_domain == "unknown" {
+            return Err(ConfigError::InvalidObservationSourceDomain {
+                path: path.into(),
+                value: pack.source_domain.clone(),
+                reason: "reserved",
+            });
+        }
+        if !source_domain_re.is_match(&pack.source_domain) {
+            return Err(ConfigError::InvalidObservationSourceDomain {
+                path: path.into(),
+                value: pack.source_domain.clone(),
+                reason: "must match ^[a-z0-9_-]{1,64}$",
+            });
         }
     }
 
@@ -1242,6 +1324,15 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             // here is a simple Option::or — cross-level inheritance prohibition is enforced
             // during per-file validation before merge is called.
             weights: project.confidence.weights.or(global.confidence.weights),
+        },
+        observation: ObservationConfig {
+            domain_packs: if project.observation.domain_packs
+                != default.observation.domain_packs
+            {
+                project.observation.domain_packs
+            } else {
+                global.observation.domain_packs
+            },
         },
         inference: InferenceConfig {
             rayon_pool_size: if project.inference.rayon_pool_size
@@ -3338,6 +3429,269 @@ mod tests {
         assert!(
             msg.contains("0.6") || msg.contains("0.7"),
             "message must contain values: {msg}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // T-CFG-01: ObservationConfig absent section defaults to empty (AC-03)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_observation_config_absent_section_is_default() {
+        // No [observation] section — must deserialize without error and default to empty.
+        let toml_str = r#"
+[knowledge]
+categories = ["outcome", "lesson-learned", "decision", "convention",
+              "pattern", "procedure", "duties", "reference"]
+"#;
+        let config: UnimatrixConfig = toml::from_str(toml_str)
+            .expect("toml must parse without [observation] section");
+        assert!(
+            config.observation.domain_packs.is_empty(),
+            "domain_packs must be empty when [observation] is absent"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // T-CFG-02: domain_packs stanza deserializes correctly
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_observation_config_toml_domain_pack_deserialization() {
+        let toml_str = r#"
+[[observation.domain_packs]]
+source_domain = "sre"
+event_types = ["incident_opened", "incident_resolved"]
+categories = ["runbook", "post-mortem"]
+"#;
+        let config: UnimatrixConfig =
+            toml::from_str(toml_str).expect("toml must parse");
+        assert_eq!(config.observation.domain_packs.len(), 1);
+        let pack = &config.observation.domain_packs[0];
+        assert_eq!(pack.source_domain, "sre");
+        assert_eq!(
+            pack.event_types,
+            vec!["incident_opened".to_string(), "incident_resolved".to_string()]
+        );
+        assert_eq!(
+            pack.categories,
+            vec!["runbook".to_string(), "post-mortem".to_string()]
+        );
+        assert!(pack.rule_file.is_none(), "absent rule_file must be None");
+    }
+
+    // -----------------------------------------------------------------------
+    // T-CFG-03: rule_file path deserializes as Some(PathBuf)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_domain_pack_config_rule_file_deserialization() {
+        let toml_str = r#"
+[[observation.domain_packs]]
+source_domain = "sre"
+event_types = ["incident_opened"]
+categories = ["runbook"]
+rule_file = "/etc/unimatrix/sre-rules.toml"
+"#;
+        let config: UnimatrixConfig =
+            toml::from_str(toml_str).expect("toml must parse");
+        let pack = &config.observation.domain_packs[0];
+        assert_eq!(
+            pack.rule_file,
+            Some(PathBuf::from("/etc/unimatrix/sre-rules.toml"))
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // T-CFG-04: Multiple domain packs deserialized
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_observation_config_multiple_packs() {
+        let toml_str = r#"
+[[observation.domain_packs]]
+source_domain = "sre"
+event_types = ["incident_opened", "incident_resolved"]
+categories = ["runbook"]
+
+[[observation.domain_packs]]
+source_domain = "ci-cd"
+event_types = ["build_started", "build_completed"]
+categories = ["pipeline"]
+"#;
+        let config: UnimatrixConfig =
+            toml::from_str(toml_str).expect("toml must parse");
+        assert_eq!(config.observation.domain_packs.len(), 2);
+        assert_eq!(config.observation.domain_packs[0].source_domain, "sre");
+        assert_eq!(config.observation.domain_packs[1].source_domain, "ci-cd");
+    }
+
+    // -----------------------------------------------------------------------
+    // T-CFG-05: ObservationConfig nested in UnimatrixConfig (structural test)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_observation_config_follows_existing_config_hierarchy_pattern() {
+        // Structural compile-time check: UnimatrixConfig.observation is ObservationConfig.
+        // If this compiles, the hierarchy is correct.
+        let config = UnimatrixConfig::default();
+        let _obs: &ObservationConfig = &config.observation;
+        let _packs: &Vec<DomainPackConfig> = &config.observation.domain_packs;
+        assert!(config.observation.domain_packs.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // T-CFG-06 (unit portion): Default ObservationConfig has empty domain_packs
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_observation_config_default_empty_domain_packs() {
+        let obs = ObservationConfig::default();
+        assert!(
+            obs.domain_packs.is_empty(),
+            "ObservationConfig::default() must have domain_packs = vec![]"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Validation: "unknown" source_domain is rejected (EC-04)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_config_rejects_reserved_unknown_source_domain() {
+        let toml_str = r#"
+[[observation.domain_packs]]
+source_domain = "unknown"
+event_types = ["some_event"]
+categories = ["some-cat"]
+"#;
+        let config: UnimatrixConfig =
+            toml::from_str(toml_str).expect("toml must parse");
+        let err = validate_config(&config, Path::new("/tmp/config.toml"))
+            .expect_err("validate_config must reject source_domain = 'unknown'");
+        match &err {
+            ConfigError::InvalidObservationSourceDomain { value, reason, .. } => {
+                assert_eq!(value, "unknown");
+                assert_eq!(*reason, "reserved");
+            }
+            other => panic!("unexpected error variant: {other}"),
+        }
+        let msg = err.to_string();
+        assert!(msg.contains("unknown"), "error message must name the domain: {msg}");
+    }
+
+    // -----------------------------------------------------------------------
+    // Validation: empty source_domain is rejected
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_config_rejects_empty_source_domain() {
+        let config = UnimatrixConfig {
+            observation: ObservationConfig {
+                domain_packs: vec![DomainPackConfig {
+                    source_domain: String::new(),
+                    event_types: vec!["e".to_string()],
+                    categories: vec![],
+                    rule_file: None,
+                }],
+            },
+            ..Default::default()
+        };
+        let err = validate_config(&config, Path::new("/tmp/config.toml"))
+            .expect_err("validate_config must reject empty source_domain");
+        match &err {
+            ConfigError::InvalidObservationSourceDomain { reason, .. } => {
+                assert_eq!(*reason, "empty");
+            }
+            other => panic!("unexpected error variant: {other}"),
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Validation: source_domain with invalid chars is rejected (ADR-007)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_config_rejects_invalid_source_domain_chars() {
+        let invalid_domains: Vec<String> = vec![
+            "My Domain".to_string(),    // space and uppercase
+            "SRE".to_string(),          // uppercase
+            "sre!".to_string(),         // invalid char
+            "a".repeat(65),             // too long (> 64 chars)
+        ];
+        for bad in &invalid_domains {
+            let config = UnimatrixConfig {
+                observation: ObservationConfig {
+                    domain_packs: vec![DomainPackConfig {
+                        source_domain: bad.to_string(),
+                        event_types: vec!["e".to_string()],
+                        categories: vec![],
+                        rule_file: None,
+                    }],
+                },
+                ..Default::default()
+            };
+            validate_config(&config, Path::new("/tmp/config.toml"))
+                .expect_err(&format!("source_domain {:?} must be rejected", bad));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Validation: valid source_domain passes (boundary cases)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_config_accepts_valid_source_domain() {
+        let max_len = "a".repeat(64);
+        let valid_domains: Vec<&str> = vec![
+            "sre",
+            "ci-cd",
+            "my_domain",
+            "a1b2c3",
+            "a",           // length 1
+            &max_len,      // length 64 (max)
+            "claude-code",
+        ];
+        for good in &valid_domains {
+            let config = UnimatrixConfig {
+                observation: ObservationConfig {
+                    domain_packs: vec![DomainPackConfig {
+                        source_domain: good.to_string(),
+                        event_types: vec![],
+                        categories: vec![],
+                        rule_file: None,
+                    }],
+                },
+                ..Default::default()
+            };
+            validate_config(&config, Path::new("/tmp/config.toml"))
+                .unwrap_or_else(|e| panic!("source_domain {:?} must be accepted: {e}", good));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Display: InvalidObservationSourceDomain error message is actionable
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_display_invalid_observation_source_domain() {
+        let err = ConfigError::InvalidObservationSourceDomain {
+            path: PathBuf::from("/tmp/config.toml"),
+            value: "My Domain".to_string(),
+            reason: "must match ^[a-z0-9_-]{1,64}$",
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("/tmp/config.toml"),
+            "message must contain path: {msg}"
+        );
+        assert!(
+            msg.contains("My Domain"),
+            "message must name the offending value: {msg}"
+        );
+        assert!(
+            msg.contains("unknown"),
+            "message must mention 'unknown' reserved constraint: {msg}"
         );
     }
 }
