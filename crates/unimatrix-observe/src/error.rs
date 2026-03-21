@@ -15,6 +15,22 @@ pub enum ObserveError {
     TimestampParse(String),
     /// Database query error (col-012: ObservationSource implementations).
     Database(String),
+    /// Ingest payload exceeds the 64 KB size limit (col-023 ADR-007).
+    PayloadTooLarge {
+        session_id: String,
+        event_type: String,
+        size: usize,
+    },
+    /// Ingest payload nesting exceeds 10 levels (col-023 ADR-007).
+    PayloadNestingTooDeep {
+        session_id: String,
+        event_type: String,
+        depth: usize,
+    },
+    /// `source_domain` value is reserved or does not match regex `^[a-z0-9_-]{1,64}$`.
+    InvalidSourceDomain { domain: String },
+    /// A `RuleDescriptor` in a domain pack failed startup validation.
+    InvalidRuleDescriptor { rule_name: String, reason: String },
 }
 
 impl fmt::Display for ObserveError {
@@ -25,6 +41,28 @@ impl fmt::Display for ObserveError {
             ObserveError::Serialization(msg) => write!(f, "serialization error: {msg}"),
             ObserveError::TimestampParse(msg) => write!(f, "timestamp parse error: {msg}"),
             ObserveError::Database(msg) => write!(f, "database error: {msg}"),
+            ObserveError::PayloadTooLarge {
+                session_id,
+                event_type,
+                size,
+            } => write!(
+                f,
+                "payload too large: session={session_id} event={event_type} size={size} bytes"
+            ),
+            ObserveError::PayloadNestingTooDeep {
+                session_id,
+                event_type,
+                depth,
+            } => write!(
+                f,
+                "payload nesting too deep: session={session_id} event={event_type} depth={depth}"
+            ),
+            ObserveError::InvalidSourceDomain { domain } => {
+                write!(f, "invalid source_domain: '{domain}'")
+            }
+            ObserveError::InvalidRuleDescriptor { rule_name, reason } => {
+                write!(f, "invalid rule descriptor '{rule_name}': {reason}")
+            }
         }
     }
 }

@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 // Re-export core observation types for backward compatibility (col-013 ADR-002)
-pub use unimatrix_core::{HookType, ObservationRecord, ObservationStats, ParsedSession};
+// HookType enum removed in col-023 ADR-001; use hook_type string constants module instead
+pub use unimatrix_core::{ObservationRecord, ObservationStats, ParsedSession};
 
 // Re-export metric types from unimatrix-store for backward compatibility (nxs-009 ADR-001)
 pub use unimatrix_store::{MetricVector, PhaseMetrics, UniversalMetrics};

@@ -7,6 +7,7 @@
 pub mod attribution;
 pub mod baseline;
 pub mod detection;
+pub mod domain;
 pub mod error;
 pub mod extraction;
 pub mod metrics;
@@ -20,6 +21,7 @@ pub mod types;
 pub use attribution::{attribute_sessions, extract_topic_signal};
 pub use baseline::{compare_to_baseline, compute_baselines};
 pub use detection::{DetectionRule, default_rules, detect_hotspots};
+pub use domain::{DomainPack, DomainPackRegistry};
 pub use error::{ObserveError, Result};
 pub use metrics::compute_metric_vector;
 pub use report::{build_report, recommendations_for_hotspots};
@@ -28,8 +30,8 @@ pub use source::ObservationSource;
 pub use synthesis::synthesize_narratives;
 pub use types::{
     AttributionMetadata, BaselineComparison, BaselineEntry, BaselineSet, BaselineStatus,
-    EntryAnalysis, EvidenceCluster, EvidenceRecord, FeatureKnowledgeReuse, HookType,
-    HotspotCategory, HotspotFinding, HotspotNarrative, MetricVector, ObservationRecord,
-    ObservationStats, ParsedSession, PhaseMetrics, Recommendation, RetrospectiveReport,
-    SessionSummary, Severity, UniversalMetrics,
+    EntryAnalysis, EvidenceCluster, EvidenceRecord, FeatureKnowledgeReuse, HotspotCategory,
+    HotspotFinding, HotspotNarrative, MetricVector, ObservationRecord, ObservationStats,
+    ParsedSession, PhaseMetrics, Recommendation, RetrospectiveReport, SessionSummary, Severity,
+    UniversalMetrics,
 };
