@@ -801,3 +801,201 @@ fn test_event_type_pretooluse_resolves_to_claude_code_domain() {
         "claude-code"
     );
 }
+
+// ── GAP-03: Startup failure tests ─────────────────────────────────────────────
+
+/// GAP-03-a: DomainPackRegistry::new() returns Err for pack with a rule descriptor
+/// that has window_secs = 0 (invalid rule config = startup failure).
+#[test]
+fn test_startup_fails_on_invalid_rule_descriptor_window_secs_zero() {
+    let pack = DomainPack {
+        source_domain: "ci-cd".to_string(),
+        event_types: vec!["build_started".to_string()],
+        categories: vec!["ci".to_string()],
+        rules: vec![
+            unimatrix_observe::domain::evaluator::RuleDescriptor::TemporalWindow(
+                unimatrix_observe::domain::evaluator::TemporalWindowRule {
+                    name: "build-storm".to_string(),
+                    source_domain: "ci-cd".to_string(),
+                    event_type_filter: vec!["build_started".to_string()],
+                    window_secs: 0, // invalid: must be > 0
+                    threshold: 3.0,
+                    severity: "warning".to_string(),
+                    claim_template: "{measured} builds in {window_secs}s".to_string(),
+                },
+            ),
+        ],
+    };
+    let result = DomainPackRegistry::new(vec![pack]);
+    assert!(
+        matches!(result, Err(ObserveError::InvalidRuleDescriptor { reason, .. }) if reason.contains("window_secs")),
+        "window_secs = 0 in rule must cause startup failure"
+    );
+}
+
+/// GAP-03-b: DomainPackRegistry::new() returns Err when rule source_domain does not
+/// match the pack source_domain (source_domain mismatch = startup failure).
+/// The error must name the mismatched domains so operators can diagnose the failure.
+#[test]
+fn test_startup_fails_on_rule_source_domain_mismatch_names_both_domains() {
+    let pack = DomainPack {
+        source_domain: "ci-cd".to_string(),
+        event_types: vec!["build_started".to_string()],
+        categories: vec![],
+        rules: vec![
+            unimatrix_observe::domain::evaluator::RuleDescriptor::Threshold(
+                unimatrix_observe::domain::evaluator::ThresholdRule {
+                    name: "wrong-domain-rule".to_string(),
+                    source_domain: "sre".to_string(), // mismatch: pack is "ci-cd"
+                    event_type_filter: vec!["build_started".to_string()],
+                    field_path: String::new(),
+                    threshold: 1.0,
+                    severity: "warning".to_string(),
+                    claim_template: "{measured} events".to_string(),
+                },
+            ),
+        ],
+    };
+    let result = DomainPackRegistry::new(vec![pack]);
+    assert!(
+        matches!(result, Err(ObserveError::InvalidRuleDescriptor { reason, .. })
+            if reason.contains("sre") && reason.contains("ci-cd")),
+        "source_domain mismatch error must name both domains in the reason"
+    );
+}
+
+/// GAP-03-c: DomainPackRegistry::new() returns Err for an empty source_domain
+/// (startup validation catches this before any rules are processed).
+#[test]
+fn test_startup_fails_on_empty_source_domain_with_rules() {
+    let pack = DomainPack {
+        source_domain: String::new(), // invalid: empty
+        event_types: vec![],
+        categories: vec![],
+        rules: vec![
+            unimatrix_observe::domain::evaluator::RuleDescriptor::Threshold(
+                unimatrix_observe::domain::evaluator::ThresholdRule {
+                    name: "some-rule".to_string(),
+                    source_domain: String::new(),
+                    event_type_filter: vec![],
+                    field_path: String::new(),
+                    threshold: 1.0,
+                    severity: "info".to_string(),
+                    claim_template: "{measured}".to_string(),
+                },
+            ),
+        ],
+    };
+    let result = DomainPackRegistry::new(vec![pack]);
+    assert!(
+        matches!(result, Err(ObserveError::InvalidSourceDomain { .. })),
+        "empty source_domain must cause startup failure even when rules are present"
+    );
+}
+
+// ── GAP-04: CategoryAllowlist duplicate and invalid format tests ───────────────
+
+/// GAP-04-a: Registering two DomainPacks with the same source_domain is idempotent
+/// (second registration silently overrides the first — last writer wins).
+/// iter_packs() must return exactly one pack for that domain.
+#[test]
+fn test_duplicate_source_domain_registration_last_writer_wins() {
+    let pack_v1 = DomainPack {
+        source_domain: "sre".to_string(),
+        event_types: vec!["incident_opened".to_string()],
+        categories: vec!["incident".to_string()],
+        rules: vec![],
+    };
+    let pack_v2 = DomainPack {
+        source_domain: "sre".to_string(),
+        event_types: vec!["incident_resolved".to_string()], // different event_types
+        categories: vec!["resolved".to_string()],
+        rules: vec![],
+    };
+    let registry = DomainPackRegistry::new(vec![pack_v1, pack_v2])
+        .expect("two packs with same source_domain must be accepted (last wins)");
+
+    // iter_packs must return only one "sre" pack (not two).
+    let packs = registry.iter_packs();
+    let sre_packs: Vec<_> = packs
+        .iter()
+        .filter(|p| p.source_domain == "sre")
+        .collect();
+    assert_eq!(
+        sre_packs.len(),
+        1,
+        "duplicate source_domain registration must yield exactly one pack; got: {}",
+        sre_packs.len()
+    );
+    // The second registration (pack_v2) must have won.
+    assert_eq!(
+        sre_packs[0].event_types,
+        vec!["incident_resolved".to_string()],
+        "last registered pack must be the active one"
+    );
+}
+
+/// GAP-04-b: A DomainPack with duplicate category strings in its categories list
+/// is accepted at registration time (no validation on category string format in
+/// the observe crate — format validation lives in unimatrix-server config).
+/// iter_packs() must include the pack; duplicate strings are preserved as-is.
+#[test]
+fn test_duplicate_categories_in_pack_accepted() {
+    let pack = DomainPack {
+        source_domain: "sre".to_string(),
+        event_types: vec!["incident_opened".to_string()],
+        // Duplicate category string — registry must not reject this.
+        categories: vec![
+            "incident".to_string(),
+            "incident".to_string(),
+            "postmortem".to_string(),
+        ],
+        rules: vec![],
+    };
+    let result = DomainPackRegistry::new(vec![pack]);
+    assert!(
+        result.is_ok(),
+        "duplicate categories in pack must not cause startup failure; err: {:?}",
+        result.err()
+    );
+    let registry = result.unwrap();
+    let pack = registry
+        .lookup("sre")
+        .expect("sre pack must be registered");
+    // The categories are stored as-is (deduplication is a higher-layer concern).
+    assert!(
+        pack.categories.contains(&"incident".to_string()),
+        "registered pack must include the 'incident' category"
+    );
+    assert!(
+        pack.categories.contains(&"postmortem".to_string()),
+        "registered pack must include the 'postmortem' category"
+    );
+}
+
+/// GAP-04-c: A DomainPack with an invalid category name format (uppercase, spaces)
+/// is accepted by DomainPackRegistry::new() (no format validation in observe crate).
+/// Category name format validation is enforced at the server config layer
+/// (unimatrix-server::infra::config::validate_config), not at pack registration time.
+/// This test documents and verifies that behavior explicitly.
+#[test]
+fn test_invalid_category_name_format_accepted_at_registry_level() {
+    // These would be rejected by validate_config() in unimatrix-server,
+    // but the observe-crate registry imposes no format constraint on categories.
+    let pack = DomainPack {
+        source_domain: "sre".to_string(),
+        event_types: vec![],
+        categories: vec![
+            "Invalid Category With Spaces".to_string(),
+            "UPPERCASE".to_string(),
+            "has!special@chars".to_string(),
+        ],
+        rules: vec![],
+    };
+    let result = DomainPackRegistry::new(vec![pack]);
+    assert!(
+        result.is_ok(),
+        "observe-crate registry must not reject invalid category format; err: {:?}",
+        result.err()
+    );
+}
