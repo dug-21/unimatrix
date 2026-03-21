@@ -21,6 +21,7 @@ pub fn compute_metric_vector(
         computed_at,
         universal,
         phases,
+        domain_metrics: std::collections::HashMap::new(),
     }
 }
 

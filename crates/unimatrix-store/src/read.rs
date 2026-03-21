@@ -651,7 +651,8 @@ impl SqlxStore {
                 total_context_loaded_kb, post_completion_work_pct,
                 follow_up_issues_created, knowledge_entries_stored,
                 sleep_workaround_count, agent_hotspot_count,
-                friction_hotspot_count, session_hotspot_count, scope_hotspot_count
+                friction_hotspot_count, session_hotspot_count, scope_hotspot_count,
+                domain_metrics_json
              FROM observation_metrics WHERE feature_cycle = ?1",
         )
         .bind(feature_cycle)
@@ -661,6 +662,18 @@ impl SqlxStore {
 
         let Some(row) = parent_row else {
             return Ok(None);
+        };
+
+        // Deserialize domain_metrics_json: NULL → empty map (v13 rows, FR-05.4).
+        // Malformed JSON → empty map (best-effort degradation, never panic).
+        let domain_metrics_json: Option<String> = row
+            .try_get(22)
+            .map_err(|e| StoreError::Database(e.into()))?;
+        let domain_metrics: std::collections::HashMap<String, f64> = match domain_metrics_json {
+            None => std::collections::HashMap::new(),
+            Some(ref json_str) => {
+                serde_json::from_str(json_str).unwrap_or_else(|_| std::collections::HashMap::new())
+            }
         };
 
         let mv = crate::metrics::MetricVector {
@@ -741,6 +754,7 @@ impl SqlxStore {
                     as u64,
             },
             phases: BTreeMap::new(),
+            domain_metrics,
         };
 
         // Load phase rows
@@ -784,7 +798,8 @@ impl SqlxStore {
                 total_context_loaded_kb, post_completion_work_pct,
                 follow_up_issues_created, knowledge_entries_stored,
                 sleep_workaround_count, agent_hotspot_count,
-                friction_hotspot_count, session_hotspot_count, scope_hotspot_count
+                friction_hotspot_count, session_hotspot_count, scope_hotspot_count,
+                domain_metrics_json
              FROM observation_metrics ORDER BY feature_cycle",
         )
         .fetch_all(self.read_pool())
@@ -795,6 +810,17 @@ impl SqlxStore {
             .iter()
             .map(|row| -> Result<(String, crate::metrics::MetricVector)> {
                 let fc: String = row.try_get(0).map_err(|e| StoreError::Database(e.into()))?;
+                // Deserialize domain_metrics_json: NULL → empty map (v13 rows, FR-05.4).
+                // Malformed JSON → empty map (best-effort degradation, never panic).
+                let domain_metrics_json: Option<String> = row
+                    .try_get(23)
+                    .map_err(|e| StoreError::Database(e.into()))?;
+                let domain_metrics: std::collections::HashMap<String, f64> =
+                    match domain_metrics_json {
+                        None => std::collections::HashMap::new(),
+                        Some(ref json_str) => serde_json::from_str(json_str)
+                            .unwrap_or_else(|_| std::collections::HashMap::new()),
+                    };
                 let mv = crate::metrics::MetricVector {
                     computed_at: row
                         .try_get::<i64, _>(1)
@@ -880,6 +906,7 @@ impl SqlxStore {
                             as u64,
                     },
                     phases: BTreeMap::new(),
+                    domain_metrics,
                 };
                 Ok((fc, mv))
             })

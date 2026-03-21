@@ -669,6 +669,7 @@ fn sample_metric_vector() -> MetricVector {
             scope_hotspot_count: 1,
         },
         phases,
+        domain_metrics: std::collections::HashMap::new(),
     }
 }
 
@@ -746,6 +747,7 @@ async fn test_store_metrics_empty_phases() {
         computed_at: 500,
         universal: UniversalMetrics::default(),
         phases: BTreeMap::new(),
+        domain_metrics: std::collections::HashMap::new(),
     };
     store.store_metrics("empty-phases", &mv);
     let store = flush(store, &dir).await;
@@ -901,9 +903,10 @@ async fn test_schema_column_count() {
             .fetch_one(store.read_pool_test())
             .await
             .unwrap();
+    // Schema v14 (col-023): feature_cycle + computed_at + 21 typed + domain_metrics_json = 24.
     assert_eq!(
-        metric_cols, 23,
-        "observation_metrics should have 23 columns"
+        metric_cols, 24,
+        "observation_metrics should have 24 columns (schema v14, ADR-006)"
     );
 
     let phase_cols: i64 =
@@ -1001,12 +1004,13 @@ async fn test_sql_analytics_query() {
     store.close().await.unwrap();
 }
 
+// Note: test was test_schema_version_is_13 (crt-021). Updated to 14 for col-023.
 #[tokio::test]
-async fn test_schema_version_is_13() {
+async fn test_schema_version_is_14() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
-    assert_eq!(version, 13, "schema version must be 13 after crt-021");
+    assert_eq!(version, 14, "schema version must be 14 after col-023");
     store.close().await.unwrap();
 }
 

@@ -364,8 +364,8 @@ async fn test_migration_v10_to_v11_basic() {
     assert_eq!(tb.created_at, 3000);
     assert_eq!(tb.status, "completed");
 
-    // Assert: schema_version bumped to 13 (migration runs all the way through v12→v13)
-    assert_eq!(read_schema_version(&store).await, 13);
+    // Assert: schema_version bumped to 14 (migration runs all the way through v13→v14)
+    assert_eq!(read_schema_version(&store).await, 14);
 
     // Assert: query_log table is empty (no backfill for query_log)
     assert_eq!(count_query_log(&store).await, 0);
@@ -388,7 +388,7 @@ async fn test_migration_v10_to_v11_idempotent() {
             .await
             .expect("open store");
         assert_eq!(count_topic_deliveries(&store).await, 1);
-        assert_eq!(read_schema_version(&store).await, 13);
+        assert_eq!(read_schema_version(&store).await, 14);
         store.close().await.unwrap();
     }
 
@@ -399,7 +399,7 @@ async fn test_migration_v10_to_v11_idempotent() {
 
     // Assert: no error, no duplicates
     assert_eq!(count_topic_deliveries(&store).await, 1);
-    assert_eq!(read_schema_version(&store).await, 13);
+    assert_eq!(read_schema_version(&store).await, 14);
 
     store.close().await.unwrap();
 }
@@ -419,7 +419,7 @@ async fn test_migration_v10_to_v11_empty_sessions() {
 
     // Assert
     assert_eq!(count_topic_deliveries(&store).await, 0);
-    assert_eq!(read_schema_version(&store).await, 13);
+    assert_eq!(read_schema_version(&store).await, 14);
 
     store.close().await.unwrap();
 }
@@ -442,7 +442,7 @@ async fn test_migration_v10_to_v11_no_attributed_sessions() {
 
     // Assert: all excluded by WHERE clause
     assert_eq!(count_topic_deliveries(&store).await, 0);
-    assert_eq!(read_schema_version(&store).await, 13);
+    assert_eq!(read_schema_version(&store).await, 14);
 
     store.close().await.unwrap();
 }
@@ -582,8 +582,8 @@ async fn test_migration_v10_to_v11_partial_rerun() {
     assert_eq!(tp.total_sessions, 1);
     assert_eq!(tp.total_duration_secs, 500);
 
-    // schema_version updated to 13 (migration runs all the way through v12→v13)
-    assert_eq!(read_schema_version(&store).await, 13);
+    // schema_version updated to 14 (migration runs all the way through v13→v14)
+    assert_eq!(read_schema_version(&store).await, 14);
 
     store.close().await.unwrap();
 }

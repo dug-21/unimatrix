@@ -195,5 +195,6 @@ pub(crate) fn deserialize_metric_vector_v8(bytes: &[u8]) -> Result<crate::metric
             scope_hotspot_count: v8.universal.scope_hotspot_count,
         },
         phases,
+        domain_metrics: std::collections::HashMap::new(),
     })
 }
