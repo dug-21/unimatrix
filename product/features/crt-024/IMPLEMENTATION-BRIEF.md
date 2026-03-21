@@ -204,6 +204,63 @@ No new crate dependencies are introduced.
 
 ---
 
+## Eval Harness Steps (After Tests Pass, Before PR Ready)
+
+These steps are required before marking the PR ready for review (AC-16).
+
+### 1. Confirm Pre-Implementation Snapshot
+
+Pre-implementation snapshot already taken:
+- DB: `/tmp/eval/pre-crt024-snap.db`
+- Scenarios: `/tmp/eval/pre-crt024-scenarios.jsonl`
+
+Do not regenerate the snapshot. This snapshot captures pre-crt024 state for the regression comparison.
+
+### 2. Prepare Profile TOMLs
+
+**`old-behavior.toml`** — approximates the pre-crt024 formula (NLI and new signals zeroed out):
+```toml
+[inference]
+w_sim  = 0.85
+w_nli  = 0.0
+w_conf = 0.15
+w_coac = 0.0
+w_util = 0.0
+w_prov = 0.0
+```
+
+**`crt024-weights.toml`** — new default weights (ADR-003):
+```toml
+[inference]
+w_nli  = 0.35
+w_sim  = 0.25
+w_conf = 0.15
+w_coac = 0.10
+w_util = 0.05
+w_prov = 0.05
+```
+
+### 3. Run D1–D4 Eval
+
+```
+eval-harness run --db /tmp/eval/pre-crt024-snap.db \
+  --scenarios /tmp/eval/pre-crt024-scenarios.jsonl \
+  --profiles old-behavior.toml crt024-weights.toml \
+  --out /tmp/eval/crt024-report.json
+```
+
+### 4. Human Reviews Report
+
+Human reviews `/tmp/eval/crt024-report.json` before approving the PR. Ranking changes fall into two categories:
+- **Intentional NLI-override corrections** (expected): entries with low NLI entailment that previously floated via co-access boost now rank correctly below high-entailment entries.
+- **True regressions** (must be zero): clearly correct results drop rank with no NLI-based explanation.
+
+### 5. Baseline Log Update
+
+After human sign-off, update the baseline log to reflect the new ranking behavior. Include a brief summary of the report outcome in the PR description.
+
+---
+
 ## NOT in Scope
 
 - **WA-1** — Phase Signal + FEATURE_ENTRIES tagging; `current_phase` in `SessionState`.

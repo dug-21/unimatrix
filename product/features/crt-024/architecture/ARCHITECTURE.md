@@ -325,6 +325,80 @@ is a cross-field invariant.
 
 ---
 
+## EvalServiceLayer Integration
+
+`EvalServiceLayer` constructs `SearchService` from a profile config for use in the D1–D4 eval
+harness. Before crt-024, the `[inference]` section in profile TOMLs was documented as "accepted
+but has no effect" — the eval harness docs carried this statement because no fusion weights existed
+to wire. **crt-024 supersedes that statement.** After crt-024, the `[inference]` fusion weights
+ARE wired and profile TOMLs can express distinct weight configurations.
+
+### Wiring Requirement
+
+`EvalServiceLayer` must pass the full `InferenceConfig` (including `w_sim`, `w_nli`, `w_conf`,
+`w_coac`, `w_util`, `w_prov`) through to `SearchService::new()`. If `EvalServiceLayer` constructs
+`SearchService` with a hardcoded or default `InferenceConfig` rather than the one deserialized from
+the profile TOML, `[inference]` overrides in profile TOMLs have no effect — the eval harness
+compares two runs that are actually identical, making the regression report meaningless.
+
+This is a correctness constraint on `EvalServiceLayer`, not on `SearchService` itself. `SearchService`
+is correct by design (it accepts weights via `InferenceConfig`). The risk is that the eval wiring
+layer silently ignores the profile's `[inference]` section.
+
+### Profile TOML Examples
+
+Two profiles are required for the crt-024 eval run:
+
+**`old-behavior.toml`** — approximates the pre-crt024 ranking formula. Sets NLI and all new
+signals to zero weight so the fused formula degrades to the pre-crt024 two-signal blend:
+
+```toml
+[inference]
+w_sim  = 0.85
+w_nli  = 0.0
+w_conf = 0.15
+w_coac = 0.0
+w_util = 0.0
+w_prov = 0.0
+```
+
+**`crt024-weights.toml`** — uses the new default weights from ADR-003:
+
+```toml
+[inference]
+w_nli  = 0.35
+w_sim  = 0.25
+w_conf = 0.15
+w_coac = 0.10
+w_util = 0.05
+w_prov = 0.05
+```
+
+### Eval Run Procedure
+
+1. Post-implementation, with snapshot at `/tmp/eval/pre-crt024-snap.db` and scenarios at
+   `/tmp/eval/pre-crt024-scenarios.jsonl`:
+   ```
+   eval-harness run --db /tmp/eval/pre-crt024-snap.db \
+     --scenarios /tmp/eval/pre-crt024-scenarios.jsonl \
+     --profiles old-behavior.toml crt024-weights.toml \
+     --out /tmp/eval/crt024-report.json
+   ```
+2. Human reviews the report. Ranking changes caused by NLI-override corrections (entries with
+   low entailment that previously floated via co-access) are expected and intentional. True
+   regressions — cases where a clearly correct result drops rank without an NLI explanation — must
+   be zero.
+3. Baseline log updated before PR is marked ready.
+
+### "No Effect" Statement Superseded
+
+The eval harness documentation note that `[inference]` is "accepted but has no effect" was written
+before crt-024. After crt-024 ships, that note must be removed or updated to: "`[inference]` fusion
+weights are honored by `EvalServiceLayer`." This documentation update is part of crt-024's
+acceptance criteria (AC-15, AC-16).
+
+---
+
 ## ADR Index
 
 | ADR | Title | Decision |

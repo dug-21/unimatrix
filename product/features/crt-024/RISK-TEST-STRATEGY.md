@@ -20,6 +20,7 @@
 | R-14 | `status_penalty` applied inside `compute_fused_score` instead of outside: if implementer applies penalty inside the pure function, `FusedScoreInputs` must carry `status_penalty` and the function is no longer a pure signal combiner — ADR-004 invariant violated | Med | Med | Med |
 | R-15 | NLI score index misalignment: `NliScores` returned from `try_nli_rerank` are indexed parallel to the input candidates slice; if candidates are reordered between NLI scoring and the fused pass, indices misalign — wrong NLI score applied per entry | High | Low | Med |
 | R-16 | WA-2 extension: `FusedScoreInputs` and `FusionWeights` structs are fixed-field; WA-2 requires adding `phase_boost_norm` and `w_phase` — if these structs are defined without non-exhaustive markers or the extension contract is not tested, WA-2 becomes a breaking change | Low | Med | Low |
+| R-NEW | `EvalServiceLayer` does not wire `InferenceConfig` fusion weights to `SearchService`, causing eval profile TOMLs to silently use compiled defaults regardless of `[inference]` overrides. Two eval runs with different profiles produce identical scores — the regression report is meaningless but no error is surfaced | High | Med | High |
 
 ---
 
@@ -188,6 +189,42 @@
 
 ---
 
+### R-NEW: EvalServiceLayer Does Not Wire InferenceConfig Fusion Weights
+**Severity**: High
+**Likelihood**: Med
+**Impact**: `EvalServiceLayer` constructs `SearchService` with a default or hardcoded
+`InferenceConfig` rather than the one deserialized from the eval profile TOML. Profile-level
+`[inference]` overrides are silently ignored. Two eval profiles (`old-behavior.toml` and
+`crt024-weights.toml`) produce identical ranked results. The regression report shows no differences
+— not because there are no regressions, but because the wiring is broken. This is a silent failure:
+no test fails, no server error is raised, and the human reviewing the report has no indication that
+the comparison was meaningless.
+
+**Test Scenarios**:
+1. Unit test: construct `EvalServiceLayer` with a profile TOML containing `w_sim=1.0` and all
+   other weights `0.0`. Run scoring on a candidate with `sim=0.6, nli=0.9, conf=0.8, coac=0.02`.
+   Assert `final_score == 0.6 * status_penalty` — i.e., only the similarity signal contributed.
+   If `EvalServiceLayer` is using default weights (`w_nli=0.35`), the actual score would be
+   materially higher (`~0.6+` without penalty), causing this assertion to fail and exposing the
+   wiring bug.
+
+2. Unit test: construct `EvalServiceLayer` with the default-weights profile (`w_nli=0.35,
+   w_sim=0.25, ...`). Run scoring on the same candidate. Assert `final_score > sim * status_penalty`
+   — i.e., NLI and confidence signals contributed. This test is the complement: it confirms that
+   when weights are correctly wired, non-similarity signals have visible effect.
+
+3. Differential test: run the same candidate through two `EvalServiceLayer` instances — one
+   constructed with `old-behavior.toml` (w_nli=0.0) and one with `crt024-weights.toml`
+   (w_nli=0.35). Assert the scores differ by at least `0.35 * nli_score - epsilon`. If scores are
+   equal, the wiring is broken.
+
+**Coverage Requirement**: At least tests 1 and 3 must be automated. Test 1 is the primary
+regression guard (it fails loudly when wiring is broken). Test 3 is the differential guard (it
+fails when two profiles that should differ produce the same result). Both must be present before
+the eval harness gate run (AC-16).
+
+---
+
 ## Integration Risks
 
 ### IR-01: Pipeline Step Ordering — Boost Map Before NLI Scoring
@@ -283,7 +320,7 @@ Degenerate input (all signals at minimum, all weights at 0.0, or pathological no
 | Priority | Risk Count | Required Scenarios |
 |----------|-----------|-------------------|
 | Critical | 3 (R-01, R-04, R-05) | 12 scenarios (utility normalization correctness, test preservation audit, apply_nli_sort migration) |
-| High | 8 (R-02, R-03, R-06, R-07, R-08, R-09, R-10, R-11) | 24 scenarios |
+| High | 9 (R-02, R-03, R-06, R-07, R-08, R-09, R-10, R-11, R-NEW) | 27 scenarios |
 | Medium | 4 (R-12, R-13, R-14, R-15) | 8 scenarios |
 | Low | 1 (R-16) | 1 scenario |
 

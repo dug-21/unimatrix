@@ -58,6 +58,10 @@ existing signals must be fused correctly."
 7. Set default weights based on principled signal reasoning (not placeholder splits) — these are
    W3-1's initialization point and training signal origin.
 8. Update all existing ranking tests to reflect the new score semantics; no test logic regressions.
+9. `EvalServiceLayer` wires `InferenceConfig` fusion weights through to `SearchService`, so that
+   `[inference]` overrides in profile TOMLs take effect during eval harness runs.
+10. D1–D4 eval harness run required before merging crt-024: compare old-behavior profile vs.
+    new-weights profile on the pre-crt024 snapshot; human reviews report before merge.
 
 ---
 
@@ -306,6 +310,14 @@ fused score inline within a single pass. Option B is simpler and preferred.
 - AC-14: The `briefing` service co-access boost path (uses `MAX_BRIEFING_CO_ACCESS_BOOST = 0.01`)
   is NOT changed by this feature. Only `SearchService` receives the fused formula. `BriefingService`
   remains on its existing pipeline.
+- AC-15: `EvalServiceLayer` passes `InferenceConfig` (including fusion weights) from the profile
+  TOML to `SearchService`. A profile TOML with `w_sim=1.0` and all other weights=0.0 must produce
+  `final_score` values equal to `similarity_score * status_penalty` for all candidates.
+- AC-16: D1–D4 eval harness run completed on the pre-crt024 snapshot
+  (`/tmp/eval/pre-crt024-snap.db`, scenarios at `/tmp/eval/pre-crt024-scenarios.jsonl`) before
+  merge. Human reviews the generated report. Zero-regression check reviewed; any soft-truth
+  regressions caused by NLI-override corrections are identified as intentional and distinguished
+  from true regressions.
 
 ---
 
@@ -313,6 +325,11 @@ fused score inline within a single pass. Option B is simpler and preferred.
 
 1. **`InferenceConfig` is the only config change surface.** Weights live under `[inference]` in
    `config.toml`. No new config sections.
+11. **Eval run must use the pre-crt024 snapshot.** The pre-implementation snapshot is at
+    `/tmp/eval/pre-crt024-snap.db` with scenarios at `/tmp/eval/pre-crt024-scenarios.jsonl`.
+    Post-implementation, run D1–D4 eval comparing `old-behavior.toml` (w_sim=0.85, w_nli=0.0,
+    w_conf=0.15, all others 0.0) vs. `crt024-weights.toml` (new defaults). Do not use a live
+    database for this eval run.
 2. **No engine crate changes.** `unimatrix-engine/src/coaccess.rs` (compute_search_boost,
    MAX_CO_ACCESS_BOOST) is unchanged. The normalization step lives in `SearchService`, not the engine.
 3. **No schema migration.** This is a runtime scoring formula change only — no DB schema involved.

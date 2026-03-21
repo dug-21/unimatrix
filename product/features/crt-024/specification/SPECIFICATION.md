@@ -194,6 +194,21 @@ option is chosen, there must be no gap in test coverage for NLI entailment scori
 the fallback path and existing tests. It may serve as a building block called inside the fused
 formula implementation (SR-09: avoids behavioral divergence from inline duplication).
 
+### FR-14: EvalServiceLayer Config Wiring
+
+`EvalServiceLayer` must construct `SearchService` by passing the full `InferenceConfig`
+deserialized from the eval profile TOML — including all six fusion weight fields. It must not
+construct `SearchService` with a default or hardcoded `InferenceConfig`.
+
+This is the mechanism by which the `[inference]` section in profile TOMLs takes effect during eval
+runs. Without this wiring, profile-level weight overrides are silently ignored and the eval harness
+compares two identical runs regardless of how profiles differ.
+
+**Boundary**: The previous eval harness documentation stated that `[inference]` is "accepted but
+has no effect." That statement is superseded by crt-024. After this feature ships, `[inference]`
+fusion weights are wired and profile overrides are honored. Any eval harness documentation
+containing the "no effect" statement must be updated.
+
 ### FR-13: BriefingService Untouched
 
 The `BriefingService` co-access boost path — which uses `MAX_BRIEFING_CO_ACCESS_BOOST = 0.01` —
@@ -384,6 +399,36 @@ the briefing pipeline.
 **Verification**: `git diff` for the briefing service source file shows no changes. Existing
 briefing integration tests pass without modification.
 
+### AC-15: EvalServiceLayer Passes InferenceConfig to SearchService
+
+`EvalServiceLayer` constructs `SearchService` using the `InferenceConfig` deserialized from the
+eval profile TOML. A profile with `w_sim=1.0` and all other weights set to `0.0` must produce
+`final_score` values equal to `similarity_score * status_penalty` for all candidates (i.e., only
+the similarity signal contributes). A profile with default weights must produce different scores
+from the `w_sim=1.0` profile on any candidate with non-zero NLI, confidence, or co-access signals.
+
+**Verification**: Unit test constructs `EvalServiceLayer` with a profile TOML containing
+`w_sim=1.0, w_nli=0.0, w_conf=0.0, w_coac=0.0, w_util=0.0, w_prov=0.0`. Runs scoring on a
+candidate with known signals. Asserts `final_score == similarity_score * status_penalty` within
+f64 epsilon. A second test uses default weights and asserts a different (higher) score for the
+same candidate when NLI or confidence signals are non-zero.
+
+### AC-16: D1–D4 Eval Harness Run Completed Before Merge
+
+The D1–D4 eval harness is run on the pre-crt024 snapshot (`/tmp/eval/pre-crt024-snap.db`, scenarios
+at `/tmp/eval/pre-crt024-scenarios.jsonl`) comparing `old-behavior.toml` vs. `crt024-weights.toml`
+profiles. Human reviews the generated report before the PR is marked ready to merge.
+
+The review must classify any ranking changes as one of:
+- **Intentional NLI-override correction**: an entry with low NLI entailment that previously ranked
+  above a high-entailment entry due to co-access boost now ranks correctly below it. These are
+  expected outcomes of the fix and must not be treated as regressions.
+- **True regression**: a clearly correct result drops rank with no NLI-based explanation. Zero
+  such regressions are acceptable.
+
+**Verification**: Eval report file exists at `/tmp/eval/crt024-report.json`. Baseline log is
+updated. PR description includes a summary of the report review outcome.
+
 ---
 
 ## Domain Models
@@ -519,10 +564,11 @@ Steps 1-4 identical. Step 5 skipped. Step 6: fused scoring uses `ScoreWeights::e
 6. **Briefing pipeline untouched**: `BriefingService` code, `MAX_BRIEFING_CO_ACCESS_BOOST`, and
    all briefing integration tests are unchanged.
 
-7. **No eval harness gate for this feature**: the fused formula is formula-deterministic (no
-   model involved). Unit and integration tests are the verification mechanism. No separate eval
-   profile or eval gate is required (confirmed by scope: "formula-deterministic and fully testable
-   with unit assertions").
+7. **Eval harness gate required before merge** (supersedes prior "no eval gate" statement): D1–D4
+   eval harness run on the pre-crt024 snapshot is required before the PR is merged (AC-16).
+   `EvalServiceLayer` must wire `InferenceConfig` fusion weights to `SearchService` (AC-15, FR-14)
+   so that profile TOMLs control scoring behavior. Pre-implementation snapshot:
+   `/tmp/eval/pre-crt024-snap.db`; scenarios: `/tmp/eval/pre-crt024-scenarios.jsonl`.
 
 8. **config.toml migration is manual**: operators update `config.toml` by hand. No migration
    assistant or automatic config conversion tool is provided.
@@ -574,7 +620,8 @@ variance requiring design leader approval:
 - **Changing GRAPH_EDGES schema**: no schema change of any kind.
 - **Config migration tooling**: operators migrate manually.
 - **MCP response schema changes**: `ScoredEntry` field names and shape are unchanged.
-- **Eval harness changes**: no new eval profiles or eval gate.
+- **Eval harness structural changes**: no new eval pipeline components. However, `EvalServiceLayer`
+  wiring (FR-14) and the D1–D4 gate run (AC-16) are in scope.
 - **Briefing service**: any modification to `BriefingService` or `MAX_BRIEFING_CO_ACCESS_BOOST`.
 
 ---
