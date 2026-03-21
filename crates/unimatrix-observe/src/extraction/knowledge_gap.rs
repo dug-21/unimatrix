@@ -5,7 +5,6 @@
 
 use std::collections::{HashMap, HashSet};
 
-use unimatrix_core::HookType;
 use unimatrix_store::SqlxStore;
 
 use super::{ExtractionRule, ProposedEntry};
@@ -23,12 +22,18 @@ impl ExtractionRule for KnowledgeGapRule {
         observations: &[ObservationRecord],
         _store: &SqlxStore,
     ) -> Vec<ProposedEntry> {
+        // ADR-005: source_domain guard is MANDATORY as first operation.
+        let observations: Vec<&ObservationRecord> = observations
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         // Collect zero-result context_search calls grouped by query and session
         let mut query_sessions: HashMap<String, HashSet<String>> = HashMap::new();
 
-        for obs in observations {
+        for obs in &observations {
             // Look for PostToolUse context_search with zero results
-            if obs.hook != HookType::PostToolUse {
+            if obs.event_type != "PostToolUse" {
                 continue;
             }
             let tool = match &obs.tool {
@@ -110,7 +115,8 @@ mod tests {
     ) -> ObservationRecord {
         ObservationRecord {
             ts: 1700000000000,
-            hook: HookType::PostToolUse,
+            event_type: "PostToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session_id.to_string(),
             tool: Some("mcp__unimatrix__context_search".to_string()),
             input: Some(serde_json::json!({"query": query})),

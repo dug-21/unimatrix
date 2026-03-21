@@ -274,24 +274,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_hooktype_serde_roundtrip() {
-        for hook in [
-            HookType::PreToolUse,
-            HookType::PostToolUse,
-            HookType::SubagentStart,
-            HookType::SubagentStop,
-        ] {
-            let json = serde_json::to_string(&hook).expect("serialize");
-            let back: HookType = serde_json::from_str(&json).expect("deserialize");
-            assert_eq!(hook, back);
-        }
+    fn test_event_type_string_constants() {
+        use unimatrix_core::observation::hook_type;
+        assert_eq!(hook_type::PRETOOLUSE, "PreToolUse");
+        assert_eq!(hook_type::POSTTOOLUSE, "PostToolUse");
+        assert_eq!(hook_type::SUBAGENTSTART, "SubagentStart");
+        assert_eq!(hook_type::SUBAGENTSTOPPED, "SubagentStop");
     }
 
     #[test]
     fn test_observation_record_serde() {
         let record = ObservationRecord {
             ts: 1700000000000,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "test-session".to_string(),
             tool: Some("Read".to_string()),
             input: Some(serde_json::json!({"file_path": "/tmp/test.rs"})),
@@ -301,7 +297,8 @@ mod tests {
         let json = serde_json::to_string(&record).expect("serialize");
         let back: ObservationRecord = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back.ts, 1700000000000);
-        assert_eq!(back.hook, HookType::PreToolUse);
+        assert_eq!(back.event_type, "PreToolUse");
+        assert_eq!(back.source_domain, "claude-code");
         assert_eq!(back.tool, Some("Read".to_string()));
     }
 

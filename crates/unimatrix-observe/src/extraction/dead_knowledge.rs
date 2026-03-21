@@ -22,9 +22,15 @@ impl ExtractionRule for DeadKnowledgeRule {
         observations: &[ObservationRecord],
         store: &SqlxStore,
     ) -> Vec<ProposedEntry> {
+        // ADR-005: source_domain guard is MANDATORY as first operation.
+        let observations: Vec<&ObservationRecord> = observations
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         // 1. Get session timestamps, sorted newest first
         let mut session_times: HashMap<String, u64> = HashMap::new();
-        for obs in observations {
+        for obs in &observations {
             let ts = session_times.entry(obs.session_id.clone()).or_insert(0);
             if obs.ts > *ts {
                 *ts = obs.ts;
@@ -45,7 +51,7 @@ impl ExtractionRule for DeadKnowledgeRule {
         // 2. Collect entry IDs accessed in recent 5 sessions
         // Look for context_get, context_lookup, context_search PostToolUse with entry IDs in response
         let mut recent_entry_ids: HashSet<u64> = HashSet::new();
-        for obs in observations {
+        for obs in &observations {
             if !recent_5.contains(obs.session_id.as_str()) {
                 continue;
             }
@@ -164,8 +170,6 @@ fn query_accessed_active_entries(store: &SqlxStore) -> Result<Vec<(u64, String, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use unimatrix_core::HookType;
-
     fn make_obs(
         session_id: &str,
         ts: u64,
@@ -174,7 +178,8 @@ mod tests {
     ) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PostToolUse,
+            event_type: "PostToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session_id.to_string(),
             tool: tool.map(|t| t.to_string()),
             input: None,
@@ -315,7 +320,8 @@ mod tests {
             };
             observations.push(ObservationRecord {
                 ts: (1000 + i * 100) as u64,
-                hook: HookType::PostToolUse,
+                event_type: "PostToolUse".to_string(),
+                source_domain: "claude-code".to_string(),
                 session_id: format!("s{}", i),
                 tool: Some("mcp__unimatrix__context_search".to_string()),
                 input: None,

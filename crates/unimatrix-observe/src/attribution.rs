@@ -172,12 +172,11 @@ pub fn attribute_sessions(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::HookType;
-
     fn make_record(ts: u64, tool: Option<&str>, input_str: Option<&str>) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: tool.map(|s| s.to_string()),
             input: input_str.map(|s| serde_json::Value::String(s.to_string())),

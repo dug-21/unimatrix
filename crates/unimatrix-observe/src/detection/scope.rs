@@ -6,8 +6,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::types::{
-    EvidenceRecord, HookType, HotspotCategory, HotspotFinding, MetricVector, ObservationRecord,
-    Severity,
+    EvidenceRecord, HotspotCategory, HotspotFinding, MetricVector, ObservationRecord, Severity,
 };
 
 use super::{
@@ -30,12 +29,17 @@ impl DetectionRule for SourceFileCountRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut written_rs_files: HashSet<String> = HashSet::new();
         let mut evidence = Vec::new();
 
-        for record in records {
+        for record in &records {
             let is_write_post =
-                record.tool.as_deref() == Some("Write") && record.hook == HookType::PostToolUse;
+                record.tool.as_deref() == Some("Write") && record.event_type == "PostToolUse";
             if !is_write_post {
                 continue;
             }
@@ -88,10 +92,15 @@ impl DetectionRule for DesignArtifactCountRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut artifact_paths: HashSet<String> = HashSet::new();
         let mut evidence = Vec::new();
 
-        for record in records {
+        for record in &records {
             let tool = record.tool.as_deref().unwrap_or("");
             if tool == "Write" || tool == "Edit" {
                 if let Some(input) = &record.input {
@@ -145,10 +154,15 @@ impl DetectionRule for AdrCountRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut adr_paths: HashSet<String> = HashSet::new();
         let mut evidence = Vec::new();
 
-        for record in records {
+        for record in &records {
             if record.tool.as_deref() == Some("Write") {
                 if let Some(input) = &record.input {
                     if let Some(path) = input_to_file_path(input) {
@@ -198,17 +212,22 @@ impl DetectionRule for PostDeliveryIssuesRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
-        let boundary = match find_completion_boundary(records) {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
+        let boundary = match find_completion_boundary(&records) {
             Some(ts) => ts,
             None => return vec![],
         };
 
         let mut issue_creates = Vec::new();
 
-        for record in records {
+        for record in &records {
             if record.ts > boundary
                 && record.tool.as_deref() == Some("Bash")
-                && record.hook == HookType::PreToolUse
+                && record.event_type == "PreToolUse"
             {
                 if let Some(input) = &record.input {
                     let cmd = input_to_command_string(input);
@@ -288,7 +307,12 @@ impl DetectionRule for PhaseDurationOutlierRule {
         HotspotCategory::Scope
     }
 
-    fn detect(&self, _records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+    fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        // ADR-005: source_domain guard is MANDATORY as first operation.
+        let _records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
         // Phase duration outlier detection is handled by the baseline comparison module
         // (compare_to_baseline in baseline.rs) because:
         // 1. Phase durations come from MetricVector, computed AFTER detection runs
@@ -312,7 +336,8 @@ mod tests {
     fn make_write_rs(ts: u64, path: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PostToolUse,
+            event_type: "PostToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Write".to_string()),
             input: Some(serde_json::json!({"file_path": path})),
@@ -324,7 +349,8 @@ mod tests {
     fn make_write_pre(ts: u64, path: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Write".to_string()),
             input: Some(serde_json::json!({"file_path": path})),
@@ -336,7 +362,8 @@ mod tests {
     fn make_edit(ts: u64, path: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Edit".to_string()),
             input: Some(serde_json::json!({"file_path": path})),
@@ -348,7 +375,8 @@ mod tests {
     fn make_bash(ts: u64, command: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Bash".to_string()),
             input: Some(serde_json::json!({"command": command})),
@@ -360,7 +388,8 @@ mod tests {
     fn make_task_update(ts: u64, task_id: &str, status: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("TaskUpdate".to_string()),
             input: Some(serde_json::json!({"taskId": task_id, "status": status})),
@@ -585,6 +614,7 @@ mod tests {
                 computed_at: 0,
                 universal: Default::default(),
                 phases: phases.clone(),
+                domain_metrics: Default::default(),
             })
             .collect();
 

@@ -22,6 +22,12 @@ impl ExtractionRule for ImplicitConventionRule {
         observations: &[ObservationRecord],
         _store: &SqlxStore,
     ) -> Vec<ProposedEntry> {
+        // ADR-005: source_domain guard is MANDATORY as first operation.
+        let observations: Vec<&ObservationRecord> = observations
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let all_sessions: HashSet<String> =
             observations.iter().map(|o| o.session_id.clone()).collect();
 
@@ -31,7 +37,7 @@ impl ExtractionRule for ImplicitConventionRule {
 
         // Collect file path patterns per session
         let mut session_patterns: HashMap<String, HashSet<String>> = HashMap::new();
-        for obs in observations {
+        for obs in &observations {
             let tool = match &obs.tool {
                 Some(t) if is_file_tool(t) => t,
                 _ => continue,
@@ -115,12 +121,11 @@ fn normalize_path_pattern(path: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use unimatrix_core::HookType;
-
     fn make_file_obs(session_id: &str, tool: &str, path: &str) -> ObservationRecord {
         ObservationRecord {
             ts: 1700000000000,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session_id.to_string(),
             tool: Some(tool.to_string()),
             input: Some(serde_json::json!({"file_path": path})),

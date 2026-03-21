@@ -116,7 +116,8 @@ pub(crate) fn truncate(s: &str, max_len: usize) -> String {
 /// Find the timestamp of the LAST TaskUpdate with "completed" status.
 ///
 /// Shared by PostCompletionWorkRule and PostDeliveryIssuesRule.
-pub(crate) fn find_completion_boundary(records: &[ObservationRecord]) -> Option<u64> {
+/// Accepts a pre-filtered slice of references (ADR-005: caller supplies domain-filtered refs).
+pub(crate) fn find_completion_boundary(records: &[&ObservationRecord]) -> Option<u64> {
     let mut last_completion_ts: Option<u64> = None;
 
     for record in records {
@@ -143,12 +144,13 @@ pub(crate) fn find_completion_boundary(records: &[ObservationRecord]) -> Option<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{EvidenceRecord, HookType, Severity};
+    use crate::types::{EvidenceRecord, Severity};
 
     fn make_pre(ts: u64, tool: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some(tool.to_string()),
             input: None,
@@ -160,7 +162,8 @@ mod tests {
     fn make_post(ts: u64, tool: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PostToolUse,
+            event_type: "PostToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some(tool.to_string()),
             input: None,
@@ -172,7 +175,8 @@ mod tests {
     fn make_bash_with_input(ts: u64, command: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Bash".to_string()),
             input: Some(serde_json::json!({"command": command})),
@@ -184,7 +188,8 @@ mod tests {
     fn make_record_in_session(ts: u64, session: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session.to_string(),
             tool: Some("Read".to_string()),
             input: None,
@@ -309,6 +314,7 @@ mod tests {
                 computed_at: 0,
                 universal: Default::default(),
                 phases: phases.clone(),
+                domain_metrics: Default::default(),
             })
             .collect();
 
@@ -364,14 +370,16 @@ mod tests {
     fn test_find_completion_boundary_found() {
         let records = vec![ObservationRecord {
             ts: 5000,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "s1".to_string(),
             tool: Some("TaskUpdate".to_string()),
             input: Some(serde_json::json!({"status": "completed", "taskId": "1"})),
             response_size: None,
             response_snippet: None,
         }];
-        assert_eq!(find_completion_boundary(&records), Some(5000));
+        let refs: Vec<&ObservationRecord> = records.iter().collect();
+        assert_eq!(find_completion_boundary(&refs), Some(5000));
     }
 
     #[test]
@@ -379,7 +387,8 @@ mod tests {
         let records = vec![
             ObservationRecord {
                 ts: 3000,
-                hook: HookType::PreToolUse,
+                event_type: "PreToolUse".to_string(),
+                source_domain: "claude-code".to_string(),
                 session_id: "s1".to_string(),
                 tool: Some("TaskUpdate".to_string()),
                 input: Some(serde_json::json!({"status": "completed", "taskId": "1"})),
@@ -388,7 +397,8 @@ mod tests {
             },
             ObservationRecord {
                 ts: 8000,
-                hook: HookType::PreToolUse,
+                event_type: "PreToolUse".to_string(),
+                source_domain: "claude-code".to_string(),
                 session_id: "s1".to_string(),
                 tool: Some("TaskUpdate".to_string()),
                 input: Some(serde_json::json!({"status": "completed", "taskId": "2"})),
@@ -396,26 +406,30 @@ mod tests {
                 response_snippet: None,
             },
         ];
-        assert_eq!(find_completion_boundary(&records), Some(8000));
+        let refs: Vec<&ObservationRecord> = records.iter().collect();
+        assert_eq!(find_completion_boundary(&refs), Some(8000));
     }
 
     #[test]
     fn test_find_completion_boundary_not_found() {
         let records = vec![make_pre(1000, "Read")];
-        assert_eq!(find_completion_boundary(&records), None);
+        let refs: Vec<&ObservationRecord> = records.iter().collect();
+        assert_eq!(find_completion_boundary(&refs), None);
     }
 
     #[test]
     fn test_find_completion_boundary_non_completed() {
         let records = vec![ObservationRecord {
             ts: 5000,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "s1".to_string(),
             tool: Some("TaskUpdate".to_string()),
             input: Some(serde_json::json!({"status": "in_progress", "taskId": "1"})),
             response_size: None,
             response_snippet: None,
         }];
-        assert_eq!(find_completion_boundary(&records), None);
+        let refs: Vec<&ObservationRecord> = records.iter().collect();
+        assert_eq!(find_completion_boundary(&refs), None);
     }
 }

@@ -95,12 +95,13 @@ fn recommendation_for(hotspot: &HotspotFinding) -> Option<Recommendation> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{HookType, HotspotCategory, MetricVector, Severity, UniversalMetrics};
+    use crate::types::{HotspotCategory, MetricVector, Severity, UniversalMetrics};
 
     fn make_record(session: &str) -> ObservationRecord {
         ObservationRecord {
             ts: 1000,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session.to_string(),
             tool: Some("Read".to_string()),
             input: None,
