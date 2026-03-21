@@ -165,9 +165,6 @@ entries without reducing its coverage of the 21 existing fields.
 No change is required to `BaselineSet` or `OUTCOME_INDEX`. The existing serialized
 baseline data deserializes into `HashMap` without aliases or migration.
 
-<!-- FR-06 (Admin Runtime Override) removed: ADR-002 decision, human-confirmed.
-     Domain pack registration is config-file-driven only. No runtime re-registration
-     in W1-5 scope. -->
 
 ---
 
@@ -279,7 +276,11 @@ domain pack registration and event ingest with `InvalidSourceDomain`. Test cases
 empty string, string with uppercase letters, string with spaces, string exceeding
 64 characters, string with special characters outside the allowed set.
 
-<!-- AC-08 removed: FR-06 removed from scope (ADR-002, human-confirmed config-only). -->
+**AC-08** (Verification: structural assertion)
+`DomainPackRegistry` has no MCP write path. There is no runtime registration endpoint.
+Verified by: code review that no MCP tool handler calls a registry mutation method;
+assertion in the registry type that its only public write method is `load_from_config()`
+called at server startup.
 
 **AC-09** (Verification: schema migration test + read-back test)
 The `OBSERVATION_METRICS` table has a `domain_metrics_json TEXT` column after startup
@@ -372,7 +373,6 @@ match any registered pack.
 4. Incoming "sre" events are ingested, stored, and processed by the "sre" detection rules.
 5. "claude-code" rules do not fire on "sre" events.
 
-<!-- Workflow 3 (Admin Runtime Pack Override) removed: FR-06 removed from scope. -->
 
 ---
 
@@ -478,8 +478,6 @@ None. This feature is entirely server-side.
 
 ## Open Questions
 
-<!-- OQ-01 resolved: FR-06 removed from scope (ADR-002, human-confirmed config-only).
-     No Admin runtime override tool needed in W1-5. -->
 
 **OQ-02 (Architect)** Wave partitioning for the HookType refactor blast radius
 (NFR-09): Entry #2843 identifies ~59 files. The architect must enumerate all callsites,

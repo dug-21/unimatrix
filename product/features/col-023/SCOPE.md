@@ -29,9 +29,7 @@ work that assumes domain-neutral training labels.
    pattern-matching on `HookType` variants and Claude Code tool names.
 4. Implement config-file-driven domain pack registration (TOML at startup) with a
    "claude-code" default pack pre-bundled so existing behavior is preserved.
-5. Expose runtime re-registration for Admin callers as an override mechanism, with the
-   same security constraints as other Admin-only tools.
-6. Enforce security constraints on all untyped external input: payload max 64 KB,
+5. Enforce security constraints on all untyped external input: payload max 64 KB,
    nesting depth ≤ 10 levels, `source_domain` validated `[a-z0-9_-]` max 64 chars,
    extraction rules sandboxed (no filesystem/env references).
 
@@ -52,8 +50,8 @@ work that assumes domain-neutral training labels.
   RetrospectiveReport shape is unchanged; only the internal computation becomes domain-aware.
 - Implementing GNN training label generation (W3-1). This feature enables it but does not
   build it.
-- Runtime domain pack hot-reload without server restart (startup config only; Admin
-  override is the runtime path).
+- Runtime domain pack registration of any kind. Domain pack changes require a server
+  restart with an updated config file. There is no MCP tool or Admin override path.
 
 ## Background Research
 
@@ -142,8 +140,6 @@ categories = ["outcome", "lesson-learned", "decision", "convention",
 
 At startup, load domain packs from TOML config following the same two-level hierarchy as
 `UnimatrixConfig`. A "claude-code" pack is always loaded as the baseline default.
-Admin-level MCP call for runtime re-registration follows the same security model as
-`context_enroll` (Admin capability required).
 
 ### Phase 3: Rewrite detection rules
 
@@ -156,10 +152,12 @@ generalized record. Domain pack rules can be loaded from config-specified rule d
 
 ### Phase 4: Generalize UniversalMetrics
 
-Adopt Option B: retain 21 columns as "claude-code" domain defaults, add a nullable
-`domain_metrics_json TEXT` column to OBSERVATION_METRICS for extension metric key-value
-pairs. `MetricVector.universal` becomes a `HashMap<String, f64>` at the logical level
-(with serde compat aliases for the 21 existing field names). Schema version bumps to v14.
+Adopt Option B (typed struct stays canonical): retain `UniversalMetrics` as the sole
+canonical representation for `MetricVector.universal`. Add a nullable `domain_metrics_json
+TEXT` column to OBSERVATION_METRICS as an extension side-channel for non-claude-code
+domain metrics. `MetricVector` gains one new `domain_metrics: HashMap<String, f64>` field
+(empty for claude-code). No changes to the 21 typed fields or `baseline.rs`. Schema
+version bumps to v14.
 
 ### Security
 
@@ -168,7 +166,6 @@ pairs. `MetricVector.universal` becomes a `HashMap<String, f64>` at the logical 
 - `source_domain` regex validation: `^[a-z0-9_-]{1,64}$` at registration and ingest
 - Extraction rule sandboxing: rules are pure data transformations expressed as JSON path
   expressions, no Turing-complete evaluation, no env/fs access
-- Runtime re-registration requires Admin capability (same pattern as `context_enroll`)
 
 ## Acceptance Criteria
 
@@ -190,8 +187,9 @@ pairs. `MetricVector.universal` becomes a `HashMap<String, f64>` at the logical 
   JSON nesting deeper than 10 levels is rejected at ingest.
 - AC-07: `source_domain` values not matching `[a-z0-9_-]` max 64 chars are rejected
   at both domain pack registration and event ingest.
-- AC-08: Admin-only MCP runtime re-registration of a domain pack is callable by an
-  Admin agent and rejected (with `PermissionDenied`) by a non-Admin agent.
+- AC-08: The `DomainPackRegistry` has no MCP write path. There is no runtime
+  registration endpoint — attempts to modify the registry at runtime via any MCP tool
+  are not possible by design.
 - AC-09: The `OBSERVATION_METRICS` table gains a `domain_metrics_json` column (schema
   v14). Existing rows (schema v13 and below) read back with NULL for this column, which
   deserializes as an empty map.

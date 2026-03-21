@@ -7,7 +7,7 @@
 | R-01 | Cross-domain false findings: a claude-code rule fires on `source_domain = "unknown"` or future domain records if the `source_domain` guard preamble is missing from any of the 21 rewritten rules | High | High | Critical |
 | R-02 | Backward compatibility regression: the claude-code retrospective produces different findings or metric values post-refactor due to a string comparison error in any of the 21 rewritten rules or `compute_universal()` | High | Med | Critical |
 | R-03 | Wave 4 test fixture gap: integration tests that construct `ObservationRecord` directly (bypassing the hook path) are not updated to supply both `event_type` and `source_domain`, causing test coverage to silently narrow rather than fail | High | Med | Critical |
-| R-04 | Spec/architecture conflict on FR-06: SPECIFICATION.md retains FR-06 (Admin runtime domain pack override) but ADR-002 explicitly removes Admin runtime re-registration from W1-5 scope. If implemented, it introduces an unresolved MCP tool schema delta; if not implemented, AC-08 will fail | High | High | Critical |
+| R-04 | ~~Spec/architecture conflict on FR-06~~ **RESOLVED**: FR-06 (Admin runtime domain pack override) removed from all documents. SCOPE.md, SPECIFICATION.md, and ADR-002 are aligned: config-only registration, no MCP write path. AC-08 redefined as a structural assertion that no write path exists. | ~~High~~ N/A | ~~High~~ N/A | ~~Critical~~ Closed |
 | R-05 | v13→v14 migration breakage: `domain_metrics_json TEXT NULL` column added via `ALTER TABLE ADD COLUMN`; if any existing query against `OBSERVATION_METRICS` uses positional column indexing rather than named columns, it will silently read the wrong field | Med | Med | High |
 | R-06 | `parse_observation_rows` passthrough gap: records with unregistered `event_type` are now assigned `source_domain = "unknown"` instead of being dropped; if the detection pipeline does not tolerate mixed-domain slices, a rule without a domain guard can produce phantom findings (SR-07 materialized) | High | Med | High |
 | R-07 | Temporal window sort assumption: the two-pointer sliding window in `RuleEvaluator` assumes records are sorted by `ts`; if `detect()` receives an unsorted slice, the window logic silently under-counts and rules fail to fire on real violations | Med | High | High |
@@ -17,7 +17,7 @@
 | R-11 | `UNIVERSAL_METRICS_FIELDS` count mismatch: FR-05.5 requires `domain_metrics_json` as the 22nd entry in `UNIVERSAL_METRICS_FIELDS`; if the structural test (R-03/C-06) is updated to expect 22 but the count check is loosened rather than tightened, the test becomes permanently ineffective | Med | Med | Medium |
 | R-12 | Schema v14 rollback: `ALTER TABLE ADD COLUMN` cannot be reversed in SQLite; a server downgrade from v14 to v13 will encounter an `OBSERVATION_METRICS` table with an unexpected column, potentially causing deserialization failures on the downgraded binary | Low | Med | Medium |
 | R-13 | HookType constants module visibility: ADR-001 retains `HookType` as `pub mod hook_type` in `unimatrix-core`; if it is inadvertently used as a type rather than string constant in any Wave 3 rule rewrite, the compile-time exhaustiveness guarantee is silently restored for that one rule while all others are string-based — creating an inconsistent contract | Med | Low | Medium |
-| R-14 | `DomainPackRegistry` `Arc<RwLock<_>>` write contention: the Admin runtime override path (if FR-06 is implemented) acquires a write lock on the registry while detection rule dispatch may hold a read lock; a slow Admin call during active retrospective analysis could delay detection | Low | Low | Low |
+| R-14 | ~~`DomainPackRegistry` write contention~~ **N/A**: FR-06 removed from scope. `DomainPackRegistry` has no runtime write path — only `load_from_config()` at startup. Read lock contention during detection is the only concern, which is standard RwLock read-read parallelism (no risk). | N/A | N/A | Closed |
 
 ---
 
@@ -65,17 +65,17 @@
 
 ---
 
-### R-04: Spec/Architecture Conflict on FR-06 (Admin Runtime Override)
-**Severity**: High
-**Likelihood**: High
-**Impact**: SPECIFICATION.md FR-06 requires Admin runtime domain pack override; ADR-002 removes it from scope. If FR-06 is built, an unresolved MCP tool target (OQ-01 still open) means schema breakage risk on the chosen tool. If FR-06 is not built, AC-08 fails.
+### R-04: ~~Spec/Architecture Conflict on FR-06~~ — RESOLVED
 
-**Test Scenarios**:
-1. Pre-implementation gate check: confirm FR-06 and AC-08 are explicitly resolved — either removed from the spec or a target tool is named and its schema delta is defined. This test scenario is a gate-entry blocker, not a runtime test.
-2. If FR-06 is in scope: integration test with two agent trust levels — Admin caller succeeds in registering a domain pack; non-Admin caller receives `PermissionDenied` (same pattern as `context_enroll` tests in alc-002, AC-08).
-3. If FR-06 is out of scope: AC-08 is removed from the acceptance criteria. Assert that `DomainPackRegistry` has no write path accessible via MCP.
+**Resolution**: FR-06 (Admin runtime domain pack override) is removed from all source documents. SCOPE.md, SPECIFICATION.md, and ADR-002 are now aligned: config-file-driven registration only, no MCP write path, no Admin override in W1-5.
 
-**Coverage Requirement**: Resolution of the FR-06/ADR-002 conflict is a hard prerequisite for implementation. The scenario branches on the resolution; both branches are fully testable once the decision is made.
+AC-08 is redefined in both SCOPE.md and SPECIFICATION.md as a **structural assertion**: `DomainPackRegistry` exposes no runtime write path; its only public write method is `load_from_config()` called at startup.
+
+**Test Scenario** (replaces gate-entry blocker):
+1. Code review gate: assert no MCP tool handler calls a registry mutation method (static analysis, not runtime test).
+2. Unit test: instantiate `DomainPackRegistry`, confirm the only method that modifies it is `load_from_config()`.
+
+**Coverage Requirement**: Gate-3a reviewer checks that no MCP handler references `DomainPackRegistry` write methods.
 
 ---
 
@@ -251,8 +251,7 @@ The size check operates on raw byte length (`input_str.len()`) before JSON parse
 **SEC-03: `field_path` injection in rule descriptors**
 JSON Pointer strings accept `~0` (tilde-escape for `~`) and `~1` (escape for `/`). A maliciously crafted `field_path` could attempt to reference unexpected paths in the payload. `serde_json::Value::pointer()` is a read-only path navigator with no side effects — there is no injection risk at the Rust level. Risk is Low. Test: assert that a `field_path` with `~0~1` escape sequences resolves to the correct nested value and produces no side effects.
 
-**SEC-04: Admin override path (FR-06) — write lock during concurrent retrospective analysis**
-If FR-06 is implemented: a write lock on `DomainPackRegistry` while `detect_hotspots` holds a read lock (for `rules_for_domain`) can cause a blocking delay. The blast radius is a delayed retrospective response, not data corruption or security breach. Risk is Low. Test: concurrent Admin override + retrospective analysis under load; assert both complete without deadlock within a reasonable timeout.
+**SEC-04: N/A** — FR-06 removed from scope. `DomainPackRegistry` has no runtime write path, eliminating all write lock contention risk.
 
 **SEC-05: `source_domain` set server-side — but future ingress paths may not enforce this**
 W1-5 only generalizes the `RecordEvent` hook path. The `source_domain` is always `"claude-code"` on this path. If a future ingress path accepts a client-declared `source_domain`, the regex validation at ingest (ADR-007 Bound 3) is the only defense. This is a future-path risk. The mitigation is that the validation code path exists now. Test: assert the validation function is covered by unit tests even though it is currently a no-op on the hook path (AC-07).
@@ -270,8 +269,7 @@ Expected behavior: the specific event is skipped; a WARN-level log is emitted wi
 **FM-03: `detect_hotspots` panic prevention**
 Expected behavior: if any rule's `detect()` panics (e.g., due to an unexpected `None` in a field it expected to be `Some`), the panic must not crash the server. The retrospective pipeline runs rules via `spawn_blocking`/rayon — panics within individual rules must be caught via `catch_unwind` or an equivalent boundary. A panicking rule returns an empty finding set and logs an error.
 
-**FM-04: `DomainPackRegistry` write lock poisoning**
-If the Admin override write operation panics with the lock held, the `RwLock` is poisoned. The poison recovery pattern (`.unwrap_or_else(|e| e.into_inner())`) used in the `CategoryAllowlist` (production precedent) must be applied here as well. Expected behavior: subsequent reads succeed; poisoned write operation is logged at ERROR.
+**FM-04: N/A** — FR-06 removed from scope. `DomainPackRegistry` has no runtime write path; the only write is `load_from_config()` at startup before the server begins accepting requests. No RwLock poisoning risk during operation.
 
 **FM-05: Schema v14 migration on a corrupted or partially-migrated database**
 Expected behavior: if `OBSERVATION_METRICS` already has a `domain_metrics_json` column (from a failed partial migration), `ALTER TABLE ADD COLUMN` returns a SQLite error. The migration system must detect and handle this idempotently (check column existence before applying, or use `IF NOT EXISTS` if available for the SQLite version in use).
@@ -286,7 +284,7 @@ Expected behavior: if `OBSERVATION_METRICS` already has a `domain_metrics_json` 
 | SR-02 (Two live representations of UniversalMetrics) | R-11 | Resolved by ADR-006 (Option A): `UniversalMetrics` typed struct is the single canonical representation. No HashMap at the logical level. `domain_metrics` is a separate extension field. |
 | SR-03 (Multi-domain path has no production exercising) | R-03, R-06 | Partially mitigated by AC-05 synthetic integration test. The hook ingress will always produce `source_domain = "claude-code"` in W1-5. W3-1's unblocking gate is explicitly narrowed: pipeline accepts multi-domain events, rules gate on `source_domain` — no production multi-domain ingress required. |
 | SR-04 (HookType blast radius across 25+ files) | R-03, R-13 | Resolved by ADR-004: four-wave compilation-gated refactor with `cargo check --workspace` gate between waves. All 25 callsites enumerated and partitioned into waves. |
-| SR-05 (Admin runtime re-registration unresolved) | **R-04** | **CONFLICT**: ADR-002 explicitly removes Admin runtime re-registration from W1-5 scope. SPECIFICATION.md FR-06 retains it as a functional requirement with OQ-01 still open. This is an unresolved spec/architecture conflict. The implementor must resolve before implementation begins: either remove FR-06 and AC-08 from the spec, or name the target tool and define the schema delta. This is a gate-entry blocker. |
+| SR-05 (Admin runtime re-registration unresolved) | R-04 | **RESOLVED**: FR-06, AC-08 (old), Workflow 3, and OQ-01 removed from all documents. SCOPE.md, SPECIFICATION.md, and ADR-002 are aligned: config-only, no MCP write path. AC-08 redefined as a structural assertion. Gate-entry blocker closed. |
 | SR-06 (BaselineSet deserialization assumption) | R-05 | Accepted: ADR-006 confirms `BaselineSet.universal` is already `HashMap<String, BaselineEntry>` with string keys matching field names. No migration required. OQ-03 in the spec documents the verification obligation for the architect. |
 | SR-07 (Cross-domain false findings from unknown passthrough) | R-01, R-06 | Resolved by ADR-005: mandatory `source_domain` guard preamble in every `DetectionRule::detect()` implementation. Enforced at gate-3a review checklist. AC-05 tests the cross-domain isolation. |
 | SR-08 (W3-1 "fully functional" gate ambiguity) | — | Resolved in spec AC-05: W3-1 requires only that the pipeline accepts multi-domain events and that detection rules gate correctly on `source_domain`. Pre-built multi-domain production rules are not required. |
@@ -297,17 +295,17 @@ Expected behavior: if `OBSERVATION_METRICS` already has a `domain_metrics_json` 
 
 | Priority | Risk Count | Required Scenarios |
 |----------|-----------|-------------------|
-| Critical | 4 (R-01, R-02, R-03, R-04) | 12 scenarios minimum; R-04 is a gate blocker before any runtime tests apply |
+| Critical | 3 (R-01, R-02, R-03) | 9 scenarios minimum |
 | High | 5 (R-05, R-06, R-07, R-08, R-09) | 15 scenarios |
 | Medium | 4 (R-10, R-11, R-12, R-13) | 8 scenarios |
-| Low | 1 (R-14) | 1 scenario |
+| Closed | 2 (R-04, R-14) | N/A — FR-06 removed from scope |
 
 Non-negotiable tests (must pass for gate-3c):
 - R-01: mixed-domain rule isolation for all 21 rules
 - R-02: backward compatibility snapshot test (AC-04)
+- R-04: structural assertion — no MCP write path to `DomainPackRegistry` (AC-08)
 - R-06: unknown event passthrough test (AC-11)
 - R-07: temporal window with unsorted input
-- SEC-04 (if FR-06 implemented): concurrent lock test
 
 ---
 
