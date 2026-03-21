@@ -315,6 +315,8 @@ impl EvalServiceLayer {
             nli_top_k,
             nli_enabled,
             Arc::new(profile.config_overrides.inference.clone()),
+            // col-023: built-in default registry for eval profiles
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
         );
 
         Ok(EvalServiceLayer {

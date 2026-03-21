@@ -14,6 +14,8 @@ use unimatrix_store::sessions::{DELETE_THRESHOLD_SECS, TIMED_OUT_THRESHOLD_SECS}
 
 use unimatrix_adapt::AdaptationService;
 
+use unimatrix_observe::domain::DomainPackRegistry;
+
 use crate::infra::coherence;
 use crate::infra::contradiction;
 use crate::infra::embed_handle::EmbedServiceHandle;
@@ -176,6 +178,9 @@ pub(crate) struct StatusService {
     contradiction_cache: ContradictionScanCacheHandle,
     /// crt-022 (ADR-004): shared rayon thread pool for ML inference (ONNX embedding).
     rayon_pool: Arc<RayonPool>,
+    /// col-023 (ADR-002): startup-configured domain pack registry threaded into
+    /// SqlObservationSource at the observation stats call site.
+    observation_registry: Arc<DomainPackRegistry>,
 }
 
 /// Result of maintenance operations.
@@ -212,6 +217,7 @@ impl StatusService {
         confidence_state: ConfidenceStateHandle,
         contradiction_cache: ContradictionScanCacheHandle,
         rayon_pool: Arc<RayonPool>,
+        observation_registry: Arc<DomainPackRegistry>,
     ) -> Self {
         StatusService {
             store,
@@ -221,6 +227,7 @@ impl StatusService {
             confidence_state,
             contradiction_cache,
             rayon_pool,
+            observation_registry,
         }
     }
 
@@ -712,8 +719,9 @@ impl StatusService {
 
         // Phase 6: Observation stats from SQL (col-012)
         let obs_stats = {
-            let source = crate::services::observation::SqlObservationSource::new_default(
+            let source = crate::services::observation::SqlObservationSource::new(
                 Arc::clone(&self.store),
+                Arc::clone(&self.observation_registry),
             );
             source.observation_stats_async().await.unwrap_or_else(|e| {
                 tracing::error!("observation stats failed: {e}");
@@ -1617,6 +1625,8 @@ mod maintenance_snapshot_tests {
             crate::infra::rayon_pool::RayonPool::new(1, "test_pool")
                 .expect("test rayon pool construction"),
         );
+        let observation_registry =
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code());
         StatusService::new(
             Arc::clone(store),
             vector_index,
@@ -1625,6 +1635,7 @@ mod maintenance_snapshot_tests {
             confidence_state,
             contradiction_cache,
             test_rayon_pool,
+            observation_registry,
         )
     }
 

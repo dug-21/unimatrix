@@ -12,6 +12,8 @@ use unimatrix_store::StoreError;
 
 use unimatrix_adapt::AdaptationService;
 
+use unimatrix_observe::domain::DomainPackRegistry;
+
 use crate::error::ServerError;
 use crate::infra::audit::AuditLog;
 use crate::infra::config::InferenceConfig;
@@ -310,6 +312,7 @@ impl ServiceLayer {
         nli_top_k: usize,
         nli_enabled: bool,
         inference_config: Arc<InferenceConfig>,
+        observation_registry: Arc<DomainPackRegistry>,
     ) -> Self {
         Self::with_rate_config(
             store,
@@ -327,6 +330,7 @@ impl ServiceLayer {
             nli_top_k,
             nli_enabled,
             inference_config,
+            observation_registry,
         )
     }
 
@@ -346,6 +350,7 @@ impl ServiceLayer {
         nli_top_k: usize,
         nli_enabled: bool,
         inference_config: Arc<InferenceConfig>,
+        observation_registry: Arc<DomainPackRegistry>,
     ) -> Self {
         let gateway = Arc::new(SecurityGateway::with_rate_config(
             Arc::clone(&audit),
@@ -427,6 +432,7 @@ impl ServiceLayer {
             Arc::clone(&confidence_state_handle),
             Arc::clone(&contradiction_cache),
             Arc::clone(&ml_inference_pool),
+            Arc::clone(&observation_registry),
         );
 
         let usage = UsageService::new(

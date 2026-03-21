@@ -418,6 +418,10 @@ async fn run_single_tick(
     tracing::info!("background tick starting");
 
     // 1. Maintenance tick (with timeout, #236)
+    // The background tick uses load_maintenance_snapshot (not compute_report),
+    // so the observation registry is not consulted. Use the built-in default. (col-023)
+    let tick_observation_registry =
+        Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code());
     let status_svc = StatusService::new(
         Arc::clone(store),
         Arc::clone(vector_index),
@@ -426,6 +430,7 @@ async fn run_single_tick(
         Arc::clone(confidence_state),
         Arc::clone(contradiction_cache),
         Arc::clone(ml_inference_pool),
+        tick_observation_registry,
     );
     match tokio::time::timeout(
         TICK_TIMEOUT,

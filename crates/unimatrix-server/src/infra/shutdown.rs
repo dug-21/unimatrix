@@ -313,6 +313,8 @@ mod tests {
             20,    // nli_top_k default
             false, // nli_enabled: disabled for tests
             Arc::new(crate::infra::config::InferenceConfig::default()),
+            // col-023: built-in default registry for test
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
         );
 
         // Build LifecycleHandles with ServiceLayer included (#92 fix).
@@ -410,6 +412,8 @@ mod tests {
             20,    // nli_top_k default
             false, // nli_enabled: disabled for tests
             Arc::new(crate::infra::config::InferenceConfig::default()),
+            // col-023: built-in default registry for test
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
         );
 
         // Drop locals except ServiceLayer

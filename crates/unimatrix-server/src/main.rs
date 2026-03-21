@@ -547,7 +547,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // Build DomainPackRegistry from [observation] config (col-023 ADR-002).
     // The built-in claude-code pack is always loaded; TOML stanzas are merged in.
-    let _observation_registry = {
+    let observation_registry = {
         let packs: Vec<DomainPack> = config
             .observation
             .domain_packs
@@ -646,6 +646,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         config.inference.nli_top_k,
         config.inference.nli_enabled,
         Arc::clone(&inference_config), // crt-023: NLI store config snapshot
+        Arc::clone(&observation_registry), // col-023: thread registry into StatusService
     );
 
     // Start UDS listener for hook IPC.
@@ -682,6 +683,8 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
     server.session_registry = Arc::clone(&session_registry);
+    // col-023: thread startup-configured domain pack registry into MCP tool handlers.
+    server.observation_registry = Arc::clone(&observation_registry);
 
     // Extract state handles before services is moved.
     let confidence_state_handle = services.confidence_state_handle();
@@ -927,7 +930,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // Build DomainPackRegistry from [observation] config (col-023 ADR-002).
     // The built-in claude-code pack is always loaded; TOML stanzas are merged in.
-    let _observation_registry = {
+    let observation_registry = {
         let packs: Vec<DomainPack> = config
             .observation
             .domain_packs
@@ -1025,6 +1028,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         config.inference.nli_top_k,
         config.inference.nli_enabled,
         Arc::clone(&inference_config), // crt-023: NLI store config snapshot
+        Arc::clone(&observation_registry), // col-023: thread registry into StatusService
     );
 
     // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009).
@@ -1061,6 +1065,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
     server.session_registry = Arc::clone(&session_registry);
+    // col-023: thread startup-configured domain pack registry into MCP tool handlers.
+    server.observation_registry = Arc::clone(&observation_registry);
 
     // crt-019: extract ConfidenceStateHandle before services is moved.
     let confidence_state_handle = services.confidence_state_handle();

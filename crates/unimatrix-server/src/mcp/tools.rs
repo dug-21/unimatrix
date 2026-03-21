@@ -1107,12 +1107,13 @@ impl UnimatrixServer {
         //    First try direct feature_cycle query (fast path).
         //    If empty, fall back to content-based attribution (#162).
         let store_for_obs = Arc::clone(&self.store);
+        let registry_for_obs = Arc::clone(&self.observation_registry);
         let feature_cycle_for_load = params.feature_cycle.clone();
         let attributed = crate::infra::timeout::spawn_blocking_with_timeout(
             crate::infra::timeout::MCP_HANDLER_TIMEOUT,
             move || -> std::result::Result<Vec<unimatrix_observe::ObservationRecord>, unimatrix_observe::ObserveError> {
                 use unimatrix_observe::ObservationSource;
-                let source = crate::services::observation::SqlObservationSource::new_default(store_for_obs);
+                let source = crate::services::observation::SqlObservationSource::new(store_for_obs, registry_for_obs);
 
                 // Fast path: direct feature_cycle query
                 let direct = source.load_feature_observations(&feature_cycle_for_load)?;
@@ -1359,15 +1360,16 @@ impl UnimatrixServer {
             // Step 16: Attribution metadata (ADR-003)
             match (|| async {
                 let store_for_discover = Arc::clone(&store);
+                let registry_for_discover = Arc::clone(&self.observation_registry);
                 let fc_for_discover = feature_cycle.clone();
                 let discovered_ids = crate::infra::timeout::spawn_blocking_with_timeout(
                     crate::infra::timeout::MCP_HANDLER_TIMEOUT,
                     move || {
                         use unimatrix_observe::ObservationSource;
-                        let source =
-                            crate::services::observation::SqlObservationSource::new_default(
-                                store_for_discover,
-                            );
+                        let source = crate::services::observation::SqlObservationSource::new(
+                            store_for_discover,
+                            registry_for_discover,
+                        );
                         source.discover_sessions_for_feature(&fc_for_discover)
                     },
                 )
