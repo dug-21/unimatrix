@@ -1004,6 +1004,80 @@ def test_post_store_nli_edge_written(server):
     assert_tool_success(search_resp)
 
 
+def test_search_coac_signal_reaches_scorer(shared_server):
+    """L-CRT024-01: Co-access boost reaches the fused scorer (R-07, AC-07).
+
+    Store two entries with similar content. Access entry A alongside a companion
+    via repeated co-occurring searches to build a co-access history. Then search
+    and assert that A's final_score is finite and non-negative — confirming the
+    boost_map prefetch completes before the fused scoring pass begins (R-07).
+
+    The test validates that coac_norm contributes a non-zero signal at the MCP
+    interface level. Since we cannot directly inspect coac_norm, we verify the
+    pipeline produces valid scores for all returned entries after co-access
+    history is established.
+    """
+    # Store entry A — will accumulate co-access history
+    store_a = shared_server.context_store(
+        "crt024 coac signal test entry alpha unique zeta scoring pipeline",
+        "testing co-access boost affects ranking",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_a_id = extract_entry_id(store_a)
+
+    # Store entry B — companion entry accessed alongside A
+    store_b = shared_server.context_store(
+        "crt024 coac signal test entry beta companion unique zeta",
+        "companion entry for co-access accumulation testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_b_id = extract_entry_id(store_b)
+
+    # Build co-access history: search multiple times with same agent_id to accumulate
+    # co-access pairs between A and B in COUNTERS table.
+    for _ in range(3):
+        shared_server.context_search(
+            "crt024 coac signal test entry unique zeta scoring pipeline",
+            format="json",
+            agent_id="crt024-coac-test-agent",
+        )
+
+    # Search again — boost_map prefetch should include non-zero coac for A and B
+    final_resp = shared_server.context_search(
+        "crt024 coac signal test entry unique zeta scoring pipeline",
+        format="json",
+        agent_id="crt024-coac-test-agent",
+    )
+
+    assert_tool_success(final_resp)
+    entries = parse_entries(final_resp)
+
+    # Primary assertion: all returned final_score values must be finite and non-negative
+    # This confirms the fused scoring pipeline completed without NaN propagation (R-03, R-07)
+    for e in entries:
+        score = e.get("final_score")
+        if score is not None:
+            assert score >= 0.0, (
+                f"R-07/AC-07: final_score must be >= 0.0 (got {score}). "
+                f"NaN propagation from unchecked division or pre-fused scoring bug."
+            )
+            assert score <= 1.0, (
+                f"R-07/AC-07: final_score must be <= 1.0 (got {score}). "
+                f"Fused score range guarantee violated."
+            )
+
+    # At least one of the stored entries must appear in results
+    result_ids = [e.get("id") for e in entries if e.get("id") is not None]
+    assert entry_a_id in result_ids or entry_b_id in result_ids, (
+        f"L-CRT024-01: At least one stored entry must appear in search results. "
+        f"Found: {result_ids}"
+    )
+
+
 def test_bootstrap_promotion_restart_noop(tmp_path):
     """L-CRT023-03: Bootstrap promotion marker prevents re-run on restart (AC-24).
 

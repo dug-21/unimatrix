@@ -1230,6 +1230,66 @@ def test_search_nli_not_ready_fallback_results(server):
     )
 
 
+def test_search_nli_absent_uses_renormalized_weights(server):
+    """T-CRT024-01: NLI-absent path re-normalizes weights; all scores finite and in [0,1] (R-09, AC-06).
+
+    In CI, the NLI model is not loaded, so FusionWeights::effective(nli_available=false)
+    is invoked. The five non-NLI weights are re-normalized to sum to 1.0. The returned
+    final_score values for all ScoredEntry items must be:
+      - finite (no NaN from zero-denominator or unchecked division, R-02, R-03)
+      - in [0.0, 1.0] (NFR-02 range guarantee)
+      - non-negative (R-11: Ineffective entries must not produce negative scores)
+
+    Fixture: server (fresh DB, NLI absent — cold start).
+    """
+    # Store an entry to ensure search has something to score
+    store_resp = server.context_store(
+        "crt024 nli absent renormalized weights test unique omega scoring",
+        "testing NLI-absent scoring path with re-normalized fusion weights",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+
+    # Search — NLI absent in CI means FusionWeights::effective(false) is used
+    search_resp = server.context_search(
+        "crt024 nli absent renormalized weights test unique omega scoring",
+        format="json",
+        agent_id="human",
+    )
+
+    assert_tool_success(search_resp)
+    entries = parse_entries(search_resp)
+
+    # Must find at least one entry (the one we stored)
+    result_ids = [e.get("id") for e in entries if e.get("id") is not None]
+    assert entry_id in result_ids, (
+        f"T-CRT024-01: stored entry must be findable via NLI-absent scoring path. "
+        f"entry_id={entry_id} not in results: {result_ids}"
+    )
+
+    # All returned scores must be finite and in [0, 1] — NLI-absent re-normalization guard
+    for e in entries:
+        score = e.get("final_score")
+        if score is not None:
+            assert isinstance(score, (int, float)), (
+                f"T-CRT024-01/R-02: final_score must be numeric, got {type(score)}"
+            )
+            import math
+            assert math.isfinite(score), (
+                f"T-CRT024-01/R-02: final_score must be finite (no NaN/Inf). "
+                f"NLI-absent zero-denominator guard may have failed. Got: {score}"
+            )
+            assert score >= 0.0, (
+                f"T-CRT024-01/R-11: final_score must be >= 0.0 (shift-and-scale for "
+                f"Ineffective entries). Got: {score}"
+            )
+            assert score <= 1.0, (
+                f"T-CRT024-01/NFR-02: final_score must be <= 1.0. Got: {score}"
+            )
+
+
 def test_store_response_not_blocked_by_nli_task(server):
     """T-CRT023-02: context_store MCP response returns promptly; not blocked by NLI task (NFR-02).
 
