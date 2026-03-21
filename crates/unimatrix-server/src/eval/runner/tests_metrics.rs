@@ -80,7 +80,10 @@ fn test_kendall_tau_reachable_from_eval_runner() {
 #[test]
 fn test_kendall_tau_single_element_no_panic() {
     let tau = kendall_tau(&[5], &[5]);
-    assert!(!tau.is_nan(), "tau must not be NaN for single-element lists");
+    assert!(
+        !tau.is_nan(),
+        "tau must not be NaN for single-element lists"
+    );
     assert_eq!(tau, 1.0, "single-element list: tau must be 1.0");
 }
 
@@ -94,7 +97,10 @@ fn test_pak_soft_ground_truth_query_log_scenario() {
     let entries = make_entries(&[10, 20, 50]);
     let p = compute_p_at_k(&entries, &ground_truth, 3);
     let expected = 2.0 / 3.0;
-    assert!((p - expected).abs() < 1e-9, "P@3 = {p}, expected ≈ {expected}");
+    assert!(
+        (p - expected).abs() < 1e-9,
+        "P@3 = {p}, expected ≈ {expected}"
+    );
 }
 
 #[test]
@@ -103,7 +109,10 @@ fn test_pak_hard_labels_hand_authored_scenario() {
     let entries = make_entries(&[10, 30, 20]);
     let p = compute_p_at_k(&entries, &ground_truth, 3);
     let expected = 2.0 / 3.0;
-    assert!((p - expected).abs() < 1e-9, "P@3 = {p}, expected ≈ {expected}");
+    assert!(
+        (p - expected).abs() < 1e-9,
+        "P@3 = {p}, expected ≈ {expected}"
+    );
 }
 
 #[test]
@@ -224,7 +233,10 @@ fn test_rank_changes_entry_new_in_candidate() {
     assert_eq!(changes.len(), 1);
     let change = &changes[0];
     assert_eq!(change.entry_id, 2);
-    assert_eq!(change.from_rank, 2, "from_rank = baseline_len + 1 = 1 + 1 = 2");
+    assert_eq!(
+        change.from_rank, 2,
+        "from_rank = baseline_len + 1 = 1 + 1 = 2"
+    );
     assert_eq!(change.to_rank, 2);
 }
 
@@ -248,7 +260,10 @@ fn test_tau_safe_empty_lists_returns_zero() {
 #[test]
 fn test_tau_safe_identical_lists() {
     let tau = compute_tau_safe(&[1, 2, 3], &[1, 2, 3]);
-    assert!((tau - 1.0).abs() < 1e-9, "identical lists → tau = 1.0, got {tau}");
+    assert!(
+        (tau - 1.0).abs() < 1e-9,
+        "identical lists → tau = 1.0, got {tau}"
+    );
 }
 
 #[test]

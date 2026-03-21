@@ -30,6 +30,10 @@ pub enum EmbedError {
     /// Embedding dimension mismatch (unexpected output from model).
     #[error("dimension mismatch: expected {expected}, got {got}")]
     DimensionMismatch { expected: usize, got: usize },
+
+    /// Inference failed (session mutex poisoned, empty batch result, or other runtime error).
+    #[error("inference failed: {0}")]
+    InferenceFailed(String),
 }
 
 /// Result type alias for the embedding pipeline.

@@ -1200,6 +1200,107 @@ impl SqlxStore {
             .collect::<Result<Vec<_>>>()
     }
 
+    /// Fetch all GRAPH_EDGES rows with bootstrap_only=1 AND relation_type='Contradicts'.
+    ///
+    /// Returns (edge_id, source_id, target_id) for all bootstrap contradiction edges.
+    /// Used by the bootstrap NLI promotion task (crt-023).
+    pub async fn query_bootstrap_contradicts(&self) -> Result<Vec<(u64, u64, u64)>> {
+        let rows = sqlx::query(
+            "SELECT id, source_id, target_id FROM graph_edges \
+             WHERE bootstrap_only = 1 AND relation_type = 'Contradicts'",
+        )
+        .fetch_all(self.write_pool_server())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        rows.into_iter()
+            .map(|row| {
+                let edge_id =
+                    row.try_get::<i64, _>("id")
+                        .map_err(|e| StoreError::Database(e.into()))? as u64;
+                let source_id =
+                    row.try_get::<i64, _>("source_id")
+                        .map_err(|e| StoreError::Database(e.into()))? as u64;
+                let target_id =
+                    row.try_get::<i64, _>("target_id")
+                        .map_err(|e| StoreError::Database(e.into()))? as u64;
+                Ok((edge_id, source_id, target_id))
+            })
+            .collect::<Result<Vec<_>>>()
+    }
+
+    /// Fetch entry content by ID using the write pool.
+    ///
+    /// Used by the NLI bootstrap promotion path (crt-023) to read entry content
+    /// immediately after it has been written — the write pool sees all committed data
+    /// while the read pool (opened read-only) may lag behind in WAL mode.
+    ///
+    /// Returns `StoreError::EntryNotFound` if the entry does not exist.
+    pub async fn get_content_via_write_pool(&self, entry_id: u64) -> Result<String> {
+        let row: Option<sqlx::sqlite::SqliteRow> =
+            sqlx::query("SELECT content FROM entries WHERE id = ?1")
+                .bind(entry_id as i64)
+                .fetch_optional(self.write_pool_server())
+                .await
+                .map_err(|e| StoreError::Database(e.into()))?;
+        let row = row.ok_or(StoreError::EntryNotFound(entry_id))?;
+        row.try_get::<String, _>("content")
+            .map_err(|e| StoreError::Database(e.into()))
+    }
+
+    /// Fetch all Contradicts edges targeting `entry_id` from `graph_edges`.
+    ///
+    /// Returns one `ContradictEdgeRow` per matching row. Includes the edge `id` and
+    /// `metadata` JSON blob so the caller can inspect NLI-origin scores.
+    ///
+    /// Used by the background tick NLI auto-quarantine threshold guard (ADR-007 crt-023).
+    pub async fn query_contradicts_edges_for_entry(
+        &self,
+        entry_id: u64,
+    ) -> Result<Vec<ContradictEdgeRow>> {
+        let rows = sqlx::query(
+            "SELECT id, source_id, target_id, source, bootstrap_only, metadata \
+             FROM graph_edges \
+             WHERE target_id = ?1 AND relation_type = 'Contradicts'",
+        )
+        .bind(entry_id as i64)
+        .fetch_all(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        rows.into_iter()
+            .map(|row| {
+                let id = row
+                    .try_get::<i64, _>("id")
+                    .map_err(|e| StoreError::Database(e.into()))? as u64;
+                let source_id =
+                    row.try_get::<i64, _>("source_id")
+                        .map_err(|e| StoreError::Database(e.into()))? as u64;
+                let target_id =
+                    row.try_get::<i64, _>("target_id")
+                        .map_err(|e| StoreError::Database(e.into()))? as u64;
+                let source: String = row
+                    .try_get("source")
+                    .map_err(|e| StoreError::Database(e.into()))?;
+                let bootstrap_only: bool = row
+                    .try_get::<i64, _>("bootstrap_only")
+                    .map_err(|e| StoreError::Database(e.into()))?
+                    != 0;
+                let metadata: Option<String> = row
+                    .try_get("metadata")
+                    .map_err(|e| StoreError::Database(e.into()))?;
+                Ok(ContradictEdgeRow {
+                    id,
+                    source_id,
+                    target_id,
+                    source,
+                    bootstrap_only,
+                    metadata,
+                })
+            })
+            .collect::<Result<Vec<_>>>()
+    }
+
     /// Load entry metadata for effectiveness classification (crt-018).
     pub async fn load_entry_classification_meta(&self) -> Result<Vec<EntryClassificationMeta>> {
         let rows = sqlx::query(
@@ -1257,6 +1358,28 @@ pub struct GraphEdgeRow {
     pub created_by: String,
     pub source: String,
     pub bootstrap_only: bool,
+}
+
+/// One `Contradicts` edge row from `graph_edges` for a specific target entry.
+///
+/// Includes the raw `metadata` JSON blob and `source` field needed by the
+/// NLI auto-quarantine threshold guard (ADR-007 crt-023). Only `Contradicts`
+/// edges targeting the queried entry_id are returned.
+#[derive(Debug, Clone)]
+pub struct ContradictEdgeRow {
+    /// Row primary key.
+    pub id: u64,
+    /// Entry ID of the source (the entry that contradicts the target).
+    pub source_id: u64,
+    /// Entry ID of the target (the entry being evaluated for quarantine).
+    pub target_id: u64,
+    /// Edge source system: `"nli"` for NLI-written edges, `"manual"` otherwise.
+    pub source: String,
+    /// True when this edge was written during the bootstrap NLI pass only.
+    pub bootstrap_only: bool,
+    /// Raw JSON metadata blob, e.g. `{"nli_entailment": 0.1, "nli_contradiction": 0.92}`.
+    /// `None` when the column is NULL (pre-crt-023 edges).
+    pub metadata: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

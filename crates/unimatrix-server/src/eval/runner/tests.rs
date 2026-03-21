@@ -8,8 +8,8 @@ use std::collections::HashMap;
 
 use tempfile::TempDir;
 
-use super::output::{ComparisonMetrics, ProfileResult, RankChange, ScenarioResult, ScoredEntry};
 use super::output::write_scenario_result;
+use super::output::{ComparisonMetrics, ProfileResult, RankChange, ScenarioResult, ScoredEntry};
 use super::replay::load_scenarios;
 use super::run_eval;
 
@@ -130,7 +130,10 @@ fn test_write_scenario_result_sanitizes_id() {
     };
     write_scenario_result(result, dir.path()).expect("write must succeed");
     let expected_file = dir.path().join("a_b_c.json");
-    assert!(expected_file.exists(), "sanitized filename must be a_b_c.json");
+    assert!(
+        expected_file.exists(),
+        "sanitized filename must be a_b_c.json"
+    );
 }
 
 // -----------------------------------------------------------------------
@@ -184,12 +187,36 @@ fn test_output_json_schema_completeness() {
     assert!(v["scenario_id"].is_string(), "scenario_id must be string");
     assert!(v["query"].is_string(), "query must be string");
     assert!(v["profiles"].is_object(), "profiles must be object");
-    assert!(v["profiles"]["baseline"]["latency_ms"].is_number(), "latency_ms must be number");
-    assert!(v["profiles"]["baseline"]["p_at_k"].is_number(), "p_at_k must be number");
-    assert!(v["profiles"]["baseline"]["mrr"].is_number(), "mrr must be number");
-    assert!(v["comparison"]["kendall_tau"].is_number(), "kendall_tau must be number");
-    assert!(v["comparison"]["mrr_delta"].is_number(), "mrr_delta must be number");
-    assert!(v["comparison"]["p_at_k_delta"].is_number(), "p_at_k_delta must be number");
-    assert!(v["comparison"]["latency_overhead_ms"].is_number(), "latency_overhead_ms must be number");
-    assert!(v["comparison"]["rank_changes"].is_array(), "rank_changes must be array");
+    assert!(
+        v["profiles"]["baseline"]["latency_ms"].is_number(),
+        "latency_ms must be number"
+    );
+    assert!(
+        v["profiles"]["baseline"]["p_at_k"].is_number(),
+        "p_at_k must be number"
+    );
+    assert!(
+        v["profiles"]["baseline"]["mrr"].is_number(),
+        "mrr must be number"
+    );
+    assert!(
+        v["comparison"]["kendall_tau"].is_number(),
+        "kendall_tau must be number"
+    );
+    assert!(
+        v["comparison"]["mrr_delta"].is_number(),
+        "mrr_delta must be number"
+    );
+    assert!(
+        v["comparison"]["p_at_k_delta"].is_number(),
+        "p_at_k_delta must be number"
+    );
+    assert!(
+        v["comparison"]["latency_overhead_ms"].is_number(),
+        "latency_overhead_ms must be number"
+    );
+    assert!(
+        v["comparison"]["rank_changes"].is_array(),
+        "rank_changes must be array"
+    );
 }

@@ -11,6 +11,7 @@ pub mod config;
 pub mod contradiction;
 pub mod daemon;
 pub mod embed_handle;
+pub mod nli_handle;
 pub mod outcome_tags;
 pub mod pidfile;
 pub mod rayon_pool;

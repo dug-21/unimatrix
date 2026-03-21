@@ -29,8 +29,10 @@ use unimatrix_store::{ShadowEvalRow, Status};
 use unimatrix_adapt::AdaptationService;
 
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
+use crate::infra::config::InferenceConfig;
 use crate::infra::contradiction::{self, ContradictionConfig};
 use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::nli_handle::NliServiceHandle;
 use crate::infra::rayon_pool::RayonPool;
 use crate::infra::session::SessionRegistry;
 use crate::server::PendingEntriesAnalysis;
@@ -40,6 +42,7 @@ use crate::services::contradiction_cache::{
     CONTRADICTION_SCAN_INTERVAL_TICKS, ContradictionScanCacheHandle, ContradictionScanResult,
 };
 use crate::services::effectiveness::EffectivenessStateHandle;
+use crate::services::nli_detection::maybe_run_bootstrap_promotion;
 use crate::services::status::{MaintenanceDataSnapshot, StatusService};
 use crate::services::typed_graph::{TypedGraphState, TypedGraphStateHandle};
 use unimatrix_engine::effectiveness::EffectivenessCategory;
@@ -228,6 +231,10 @@ pub fn spawn_background_tick(
     auto_quarantine_cycles: u32,
     confidence_params: Arc<ConfidenceParams>, // dsn-001: operator-configured weights
     ml_inference_pool: Arc<RayonPool>,        // crt-022 (ADR-004): ML inference pool
+    nli_enabled: bool,                        // crt-023 (ADR-007): NLI auto-quarantine guard
+    nli_auto_quarantine_threshold: f32,       // crt-023 (ADR-007): threshold for NLI-only edges
+    nli_handle: Arc<NliServiceHandle>,        // crt-023: bootstrap promotion on each tick
+    inference_config: Arc<InferenceConfig>,   // crt-023: bootstrap promotion config
 ) -> tokio::task::JoinHandle<()> {
     // Outer supervisor — this handle is stored as tick_handle and aborted on shutdown.
     tokio::spawn(async move {
@@ -251,6 +258,10 @@ pub fn spawn_background_tick(
                 auto_quarantine_cycles,
                 Arc::clone(&confidence_params),
                 Arc::clone(&ml_inference_pool),
+                nli_enabled,
+                nli_auto_quarantine_threshold,
+                Arc::clone(&nli_handle),
+                Arc::clone(&inference_config),
             ));
 
             match inner_handle.await {
@@ -291,6 +302,10 @@ async fn background_tick_loop(
     auto_quarantine_cycles: u32,
     _confidence_params: Arc<ConfidenceParams>, // dsn-001: operator-configured weights (for future use in run_single_tick)
     ml_inference_pool: Arc<RayonPool>,         // crt-022 (ADR-004): ML inference pool
+    nli_enabled: bool,                         // crt-023 (ADR-007): NLI auto-quarantine guard
+    nli_auto_quarantine_threshold: f32,        // crt-023 (ADR-007): threshold for NLI-only edges
+    nli_handle: Arc<NliServiceHandle>,         // crt-023: bootstrap promotion on each tick
+    inference_config: Arc<InferenceConfig>,    // crt-023: bootstrap promotion config
 ) {
     let tick_interval_secs = read_tick_interval();
     let mut interval = tokio::time::interval(Duration::from_secs(tick_interval_secs));
@@ -346,6 +361,10 @@ async fn background_tick_loop(
             auto_quarantine_cycles,
             tick_interval_secs,
             &ml_inference_pool,
+            nli_enabled,
+            nli_auto_quarantine_threshold,
+            &nli_handle,
+            &inference_config,
         )
         .await;
 
@@ -390,6 +409,10 @@ async fn run_single_tick(
     auto_quarantine_cycles: u32,
     tick_interval_secs: u64, // nan-006: configurable via UNIMATRIX_TICK_INTERVAL_SECS
     ml_inference_pool: &Arc<RayonPool>, // crt-022 (ADR-004): ML inference pool
+    nli_enabled: bool,       // crt-023 (ADR-007): NLI auto-quarantine guard
+    nli_auto_quarantine_threshold: f32, // crt-023 (ADR-007): threshold for NLI-only edges
+    nli_handle: &Arc<NliServiceHandle>, // crt-023: bootstrap promotion on each tick
+    inference_config: &Arc<InferenceConfig>, // crt-023: bootstrap promotion config
 ) -> Result<(), String> {
     let tick_start = now_secs();
     tracing::info!("background tick starting");
@@ -415,6 +438,8 @@ async fn run_single_tick(
             audit_log,
             auto_quarantine_cycles,
             store,
+            nli_enabled,
+            nli_auto_quarantine_threshold,
         ),
     )
     .await
@@ -617,6 +642,13 @@ async fn run_single_tick(
         }
     }
 
+    // crt-023: Bootstrap NLI promotion (one-shot, idempotent via COUNTERS marker).
+    // Called on every tick; fast no-op if marker already set (O(1) DB read).
+    // When NLI is not ready, defers silently without setting marker (FR-25).
+    if inference_config.nli_enabled {
+        maybe_run_bootstrap_promotion(store, nli_handle, ml_inference_pool, inference_config).await;
+    }
+
     // Update next scheduled time
     if let Ok(mut meta) = tick_metadata.lock() {
         meta.next_scheduled = Some(now_secs() + tick_interval_secs);
@@ -644,6 +676,8 @@ async fn maintenance_tick(
     audit_log: &Arc<AuditLog>,
     auto_quarantine_cycles: u32,
     store: &Arc<Store>,
+    nli_enabled: bool, // crt-023 (ADR-007): NLI auto-quarantine guard
+    nli_auto_quarantine_threshold: f32, // crt-023 (ADR-007): threshold for NLI-only edges
 ) -> Result<(), ServiceError> {
     // Step 1: Load the lightweight maintenance snapshot (#280).
     // Replaces the full compute_report() call which ran phases 2–7 unnecessarily.
@@ -772,6 +806,8 @@ async fn maintenance_tick(
             store,
             audit_log,
             auto_quarantine_cycles,
+            nli_enabled,
+            nli_auto_quarantine_threshold,
         )
         .await;
 
@@ -809,6 +845,8 @@ async fn process_auto_quarantine(
     store: &Arc<Store>,
     audit_log: &Arc<AuditLog>,
     auto_quarantine_cycles: u32,
+    nli_enabled: bool, // crt-023 (ADR-007): NLI auto-quarantine guard
+    nli_auto_quarantine_threshold: f32, // crt-023 (ADR-007): threshold for NLI-only edges
 ) -> Vec<u64> {
     if to_quarantine.is_empty() || auto_quarantine_cycles == 0 {
         return Vec::new();
@@ -823,6 +861,38 @@ async fn process_auto_quarantine(
         match category {
             EffectivenessCategory::Ineffective | EffectivenessCategory::Noisy => { /* proceed */ }
             _ => continue, // stale entry — defensive skip
+        }
+
+        // crt-023 ADR-007: NLI auto-quarantine threshold guard.
+        //
+        // Before quarantining, check if the topology penalty for this entry is driven
+        // EXCLUSIVELY by NLI-origin Contradicts edges (source='nli', bootstrap_only=false).
+        // If so, ALL those edges must have nli_contradiction score > nli_auto_quarantine_threshold.
+        // If any NLI edge is below the threshold, skip quarantine for this entry this cycle.
+        //
+        // Mixed penalty (NLI + manual/curated edges): existing logic proceeds unchanged.
+        // Guard skipped when nli_enabled=false (never writes NLI edges).
+        if nli_enabled {
+            match nli_auto_quarantine_allowed(store, entry_id, nli_auto_quarantine_threshold).await
+            {
+                NliQuarantineCheck::Allowed => { /* proceed with quarantine */ }
+                NliQuarantineCheck::BlockedBelowThreshold => {
+                    tracing::debug!(
+                        entry_id,
+                        nli_auto_quarantine_threshold,
+                        "auto-quarantine: NLI-only penalty below threshold; skipping entry this cycle"
+                    );
+                    continue;
+                }
+                NliQuarantineCheck::StoreError(e) => {
+                    tracing::warn!(
+                        entry_id,
+                        error = %e,
+                        "auto-quarantine: NLI guard store query failed; skipping entry defensively"
+                    );
+                    continue;
+                }
+            }
         }
 
         // Fetch entry metadata for audit event (title, topic).
@@ -903,6 +973,83 @@ fn find_entry_metadata_in_report(
                 ee.trust_source.clone(),
             )
         })
+}
+
+// ---------------------------------------------------------------------------
+// NLI auto-quarantine threshold guard (crt-023, ADR-007)
+// ---------------------------------------------------------------------------
+
+/// Result of the NLI auto-quarantine threshold check for a single entry.
+#[derive(Debug)]
+enum NliQuarantineCheck {
+    /// Quarantine is permitted: either no NLI-only penalty, or all NLI edges exceed threshold.
+    Allowed,
+    /// Quarantine is blocked: the penalty is exclusively NLI-origin and at least one
+    /// edge's `nli_contradiction` score is at or below `nli_auto_quarantine_threshold`.
+    BlockedBelowThreshold,
+    /// Store query failed; quarantine is skipped defensively.
+    StoreError(unimatrix_store::StoreError),
+}
+
+/// Determine whether auto-quarantine is allowed for `entry_id` under the NLI
+/// threshold guard (ADR-007 crt-023).
+///
+/// Algorithm:
+/// 1. Load all `Contradicts` edges targeting `entry_id`.
+/// 2. If no edges exist → Allowed (no graph penalty at all; effectiveness-driven quarantine proceeds).
+/// 3. Partition into NLI-origin edges (`source='nli'`, `bootstrap_only=false`) and others.
+/// 4. If any non-NLI edge exists → Allowed (mixed penalty; standard logic applies).
+/// 5. All edges are NLI-origin: check every edge's `nli_contradiction` metadata score.
+///    - If ALL scores > threshold → Allowed.
+///    - If ANY score is missing or <= threshold → BlockedBelowThreshold.
+async fn nli_auto_quarantine_allowed(
+    store: &Arc<Store>,
+    entry_id: u64,
+    threshold: f32,
+) -> NliQuarantineCheck {
+    let edges = match store.query_contradicts_edges_for_entry(entry_id).await {
+        Ok(e) => e,
+        Err(e) => return NliQuarantineCheck::StoreError(e),
+    };
+
+    // No Contradicts edges at all — quarantine is effectiveness-driven, not graph-driven.
+    if edges.is_empty() {
+        return NliQuarantineCheck::Allowed;
+    }
+
+    // Partition: NLI-origin (`source='nli'`, `bootstrap_only=false`) vs others.
+    let has_non_nli = edges.iter().any(|e| e.source != "nli" || e.bootstrap_only);
+
+    if has_non_nli {
+        // Mixed penalty: standard quarantine logic applies.
+        return NliQuarantineCheck::Allowed;
+    }
+
+    // All edges are NLI-origin. Apply the higher threshold.
+    // Every edge must have nli_contradiction > threshold.
+    for edge in &edges {
+        let score = parse_nli_contradiction_from_metadata(edge.metadata.as_deref());
+        match score {
+            Some(s) if s > threshold => { /* this edge passes */ }
+            _ => {
+                // Missing score or score at/below threshold — block quarantine.
+                return NliQuarantineCheck::BlockedBelowThreshold;
+            }
+        }
+    }
+
+    NliQuarantineCheck::Allowed
+}
+
+/// Parse the `nli_contradiction` f32 from the edge metadata JSON blob.
+///
+/// Expected format: `{"nli_entailment": 0.05, "nli_contradiction": 0.92}`.
+/// Returns `None` if the field is absent, the metadata is NULL, or JSON is malformed.
+fn parse_nli_contradiction_from_metadata(metadata: Option<&str>) -> Option<f32> {
+    let json_str = metadata?;
+    let value: serde_json::Value = serde_json::from_str(json_str).ok()?;
+    let score = value.get("nli_contradiction")?.as_f64()?;
+    Some(score as f32)
 }
 
 /// Emit a `tick_skipped` audit event when `compute_report()` returns an error.
@@ -2770,5 +2917,210 @@ mod tests {
                 "old state all_entries must be retained (not replaced on cycle)"
             );
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    // NLI auto-quarantine threshold guard unit tests (crt-023, ADR-007)
+    // ---------------------------------------------------------------------------
+
+    // ---- parse_nli_contradiction_from_metadata --------------------------------
+
+    #[test]
+    fn test_parse_nli_contradiction_from_metadata_valid_json() {
+        let json = r#"{"nli_entailment": 0.05, "nli_contradiction": 0.92}"#;
+        let score = parse_nli_contradiction_from_metadata(Some(json));
+        assert!(score.is_some(), "valid JSON must return Some");
+        let s = score.unwrap();
+        assert!((s - 0.92_f32).abs() < 1e-5, "score must be ~0.92, got {s}");
+    }
+
+    #[test]
+    fn test_parse_nli_contradiction_from_metadata_none_input() {
+        let score = parse_nli_contradiction_from_metadata(None);
+        assert!(score.is_none(), "None input must return None");
+    }
+
+    #[test]
+    fn test_parse_nli_contradiction_from_metadata_missing_field() {
+        let json = r#"{"nli_entailment": 0.95}"#;
+        let score = parse_nli_contradiction_from_metadata(Some(json));
+        assert!(
+            score.is_none(),
+            "missing nli_contradiction field must return None"
+        );
+    }
+
+    #[test]
+    fn test_parse_nli_contradiction_from_metadata_malformed_json() {
+        let score = parse_nli_contradiction_from_metadata(Some("not-json"));
+        assert!(score.is_none(), "malformed JSON must return None");
+    }
+
+    #[test]
+    fn test_parse_nli_contradiction_from_metadata_zero_score() {
+        let json = r#"{"nli_contradiction": 0.0}"#;
+        let score = parse_nli_contradiction_from_metadata(Some(json));
+        assert!(score.is_some());
+        assert!((score.unwrap() - 0.0_f32).abs() < 1e-7);
+    }
+
+    // ---- nli_auto_quarantine_allowed integration tests (requires sqlx store) ---
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_nli_edges_below_auto_quarantine_threshold_no_quarantine() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().unwrap();
+        let store = Arc::new(open_test_store(&tmp).await);
+
+        // Insert a test entry.
+        let entry_id: u64 = 999;
+        sqlx::query(
+            "INSERT OR IGNORE INTO entries \
+             (id, title, content, topic, category, source, status, confidence, \
+              created_at, updated_at, last_accessed_at, access_count, \
+              correction_count, embedding_dim, created_by, modified_by, \
+              content_hash, previous_hash, version, feature_cycle, \
+              trust_source, helpful_count, unhelpful_count, pre_quarantine_status) \
+             VALUES (999, 'test', 'content', 'topic', 'pattern', 'test', 0, 0.5, \
+                     0, 0, 0, 0, 0, 0, 'test', 'test', 'hash', NULL, 1, NULL, NULL, 0, 0, 0)",
+        )
+        .execute(store.write_pool_server())
+        .await
+        .unwrap();
+
+        // Insert an NLI-origin Contradicts edge with nli_contradiction score BELOW threshold (0.85).
+        // Score = 0.70 < 0.85 → must block quarantine.
+        sqlx::query(
+            "INSERT INTO graph_edges \
+             (source_id, target_id, relation_type, weight, created_at, created_by, \
+              source, bootstrap_only, metadata) \
+             VALUES (1, 999, 'Contradicts', 1.0, 0, 'nli', 'nli', 0, \
+                     '{\"nli_entailment\": 0.1, \"nli_contradiction\": 0.70}')",
+        )
+        .execute(store.write_pool_server())
+        .await
+        .unwrap();
+
+        let threshold = 0.85_f32;
+        let result = nli_auto_quarantine_allowed(&store, entry_id, threshold).await;
+        assert!(
+            matches!(result, NliQuarantineCheck::BlockedBelowThreshold),
+            "NLI-only edge below threshold must block quarantine"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_nli_edges_above_auto_quarantine_threshold_may_quarantine() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().unwrap();
+        let store = Arc::new(open_test_store(&tmp).await);
+
+        let entry_id: u64 = 998;
+        sqlx::query(
+            "INSERT OR IGNORE INTO entries \
+             (id, title, content, topic, category, source, status, confidence, \
+              created_at, updated_at, last_accessed_at, access_count, \
+              correction_count, embedding_dim, created_by, modified_by, \
+              content_hash, previous_hash, version, feature_cycle, \
+              trust_source, helpful_count, unhelpful_count, pre_quarantine_status) \
+             VALUES (998, 'test2', 'content2', 'topic2', 'pattern', 'test', 0, 0.5, \
+                     0, 0, 0, 0, 0, 0, 'test', 'test', 'hash2', NULL, 1, NULL, NULL, 0, 0, 0)",
+        )
+        .execute(store.write_pool_server())
+        .await
+        .unwrap();
+
+        // Insert NLI-origin Contradicts edge with nli_contradiction score ABOVE threshold (0.85).
+        // Score = 0.91 > 0.85 → must allow quarantine.
+        sqlx::query(
+            "INSERT INTO graph_edges \
+             (source_id, target_id, relation_type, weight, created_at, created_by, \
+              source, bootstrap_only, metadata) \
+             VALUES (2, 998, 'Contradicts', 1.0, 0, 'nli', 'nli', 0, \
+                     '{\"nli_entailment\": 0.05, \"nli_contradiction\": 0.91}')",
+        )
+        .execute(store.write_pool_server())
+        .await
+        .unwrap();
+
+        let threshold = 0.85_f32;
+        let result = nli_auto_quarantine_allowed(&store, entry_id, threshold).await;
+        assert!(
+            matches!(result, NliQuarantineCheck::Allowed),
+            "NLI-only edge above threshold must allow quarantine"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_nli_mixed_edges_allow_quarantine() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().unwrap();
+        let store = Arc::new(open_test_store(&tmp).await);
+
+        let entry_id: u64 = 997;
+        sqlx::query(
+            "INSERT OR IGNORE INTO entries \
+             (id, title, content, topic, category, source, status, confidence, \
+              created_at, updated_at, last_accessed_at, access_count, \
+              correction_count, embedding_dim, created_by, modified_by, \
+              content_hash, previous_hash, version, feature_cycle, \
+              trust_source, helpful_count, unhelpful_count, pre_quarantine_status) \
+             VALUES (997, 'test3', 'content3', 'topic3', 'pattern', 'test', 0, 0.5, \
+                     0, 0, 0, 0, 0, 0, 'test', 'test', 'hash3', NULL, 1, NULL, NULL, 0, 0, 0)",
+        )
+        .execute(store.write_pool_server())
+        .await
+        .unwrap();
+
+        // One NLI edge (below threshold) + one manual edge → mixed penalty → Allowed.
+        sqlx::query(
+            "INSERT INTO graph_edges \
+             (source_id, target_id, relation_type, weight, created_at, created_by, \
+              source, bootstrap_only, metadata) \
+             VALUES (3, 997, 'Contradicts', 1.0, 0, 'nli', 'nli', 0, \
+                     '{\"nli_contradiction\": 0.50}')",
+        )
+        .execute(store.write_pool_server())
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO graph_edges \
+             (source_id, target_id, relation_type, weight, created_at, created_by, \
+              source, bootstrap_only, metadata) \
+             VALUES (4, 997, 'Contradicts', 1.0, 0, 'human', 'manual', 0, NULL)",
+        )
+        .execute(store.write_pool_server())
+        .await
+        .unwrap();
+
+        let threshold = 0.85_f32;
+        let result = nli_auto_quarantine_allowed(&store, entry_id, threshold).await;
+        assert!(
+            matches!(result, NliQuarantineCheck::Allowed),
+            "mixed penalty (NLI + manual) must allow quarantine"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_no_contradicts_edges_allows_quarantine() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().unwrap();
+        let store = Arc::new(open_test_store(&tmp).await);
+
+        // No edges at all — quarantine is effectiveness-driven → Allowed.
+        let result = nli_auto_quarantine_allowed(&store, 12345, 0.85).await;
+        assert!(
+            matches!(result, NliQuarantineCheck::Allowed),
+            "no Contradicts edges must return Allowed"
+        );
     }
 }

@@ -646,6 +646,10 @@ mod tests {
             typed_graph_state,                // crt-021: cold-start empty state for tests
             std::collections::HashSet::from(["lesson-learned".to_string()]),
             test_rayon_pool,
+            // crt-023: disabled NLI for test helper (no model in test env)
+            crate::infra::nli_handle::NliServiceHandle::new(),
+            20,    // nli_top_k default
+            false, // nli_enabled: disabled for tests
         );
 
         let service = BriefingService::new(

@@ -1,24 +1,27 @@
 //! Unimatrix knowledge engine entry point.
 
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::io::Read as _;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use clap::{Parser, Subcommand};
 use rmcp::ServiceExt;
+use sha2::{Digest, Sha256};
 use unimatrix_adapt::{AdaptConfig, AdaptationService};
 use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{CoreError, EmbedConfig, Store, VectorAdapter, VectorConfig, VectorIndex};
+use unimatrix_embed::NliModel;
 use unimatrix_engine::confidence::ConfidenceParams;
 use unimatrix_server::error::ServerError;
 use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
 use unimatrix_server::infra::config::{UnimatrixConfig, load_config, resolve_confidence_params};
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
+use unimatrix_server::infra::nli_handle::{NliConfig, NliServiceHandle};
 use unimatrix_server::infra::pidfile;
 use unimatrix_server::infra::rayon_pool::RayonPool;
-// TODO(W3-1): add unimatrix-onnx crate extraction here
 use unimatrix_server::infra::registry::{AgentRegistry, Capability};
 use unimatrix_server::infra::shutdown::{self, LifecycleHandles};
 use unimatrix_server::infra::usage_dedup::UsageDedup;
@@ -103,9 +106,26 @@ enum Command {
 
     /// Download the ONNX model to cache.
     ///
-    /// Used by npm postinstall to pre-download the embedding model.
+    /// With no flags: downloads the embedding model (existing behavior).
+    /// With --nli: downloads the NLI cross-encoder model.
+    /// With --nli --nli-model <name>: downloads the specified NLI model variant.
+    /// Outputs the SHA-256 hash of the downloaded NLI ONNX file to stdout so the
+    /// operator can pin it in config.toml under nli_model_sha256.
+    ///
     /// Synchronous path, no tokio runtime.
-    ModelDownload,
+    ModelDownload {
+        /// Download the NLI cross-encoder model.
+        ///
+        /// When absent: download embedding model only (unchanged existing behavior).
+        #[arg(long)]
+        nli: bool,
+
+        /// NLI model variant to download. Valid values: "minilm2", "minilm2-q8", "deberta", "deberta-q8".
+        ///
+        /// Only valid with --nli. Defaults to "minilm2-q8" when --nli is given without --nli-model.
+        #[arg(long, requires = "nli")]
+        nli_model: Option<String>,
+    },
 
     /// Start the MCP server in daemon or stdio mode.
     ///
@@ -229,9 +249,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Sync path: NO tokio
             return handle_version(cli.project_dir);
         }
-        Some(Command::ModelDownload) => {
+        Some(Command::ModelDownload { nli, nli_model }) => {
             // Sync path: NO tokio
-            return handle_model_download();
+            return handle_model_download(nli, nli_model);
         }
         Some(Command::Stop) => {
             // Sync path: NO tokio (ADR-006)
@@ -534,20 +554,46 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         .validate(&paths.data_dir.join("config.toml"))
         .map_err(|e| ServerError::InferencePoolInit(e.to_string()))?;
 
+    // crt-023 (ADR-001): apply NLI pool floor — when nli_enabled, pool must be >= 6 (max 8).
+    let effective_pool_size = if config.inference.nli_enabled {
+        config.inference.rayon_pool_size.max(6).min(8)
+    } else {
+        config.inference.rayon_pool_size
+    };
+
     let ml_inference_pool = Arc::new(
-        RayonPool::new(config.inference.rayon_pool_size, "ml_inference_pool")
+        RayonPool::new(effective_pool_size, "ml_inference_pool")
             .map_err(|e| ServerError::InferencePoolInit(e.to_string()))?,
     );
     tracing::info!(
-        pool_size = config.inference.rayon_pool_size,
+        pool_size = effective_pool_size,
+        nli_enabled = config.inference.nli_enabled,
         "ml_inference_pool initialized"
     );
-    // TODO(W1-4): ml_inference_pool will also be accessed via AppState for NLI
     // TODO(W2-4): add gguf_rayon_pool: Arc<RayonPool> here
     // ── end crt-022 ───────────────────────────────────────────────────────────────────
 
+    // crt-023: Build NLI service handle and start loading when enabled.
+    let nli_handle = NliServiceHandle::new();
+    if config.inference.nli_enabled {
+        let cache_dir = unimatrix_embed::EmbedConfig::default().resolve_cache_dir();
+        let nli_config = NliConfig {
+            nli_enabled: true,
+            nli_model_name: config.inference.nli_model_name.clone(),
+            nli_model_path: config.inference.nli_model_path.clone(),
+            nli_model_sha256: config.inference.nli_model_sha256.clone(),
+            cache_dir,
+        };
+        nli_handle.start_loading(nli_config);
+    } else {
+        tracing::info!(
+            "NLI cross-encoder disabled (nli_enabled=false); search uses cosine fallback"
+        );
+    }
+
     // Build shared ServiceLayer for UDS and MCP transports (vnc-006, vnc-009).
     let usage_dedup = Arc::new(UsageDedup::new());
+    let inference_config = Arc::new(config.inference.clone()); // crt-023: snapshot for service layer
     let services = unimatrix_server::services::ServiceLayer::new(
         Arc::clone(&store),
         Arc::clone(&vector_index),
@@ -559,6 +605,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&usage_dedup),
         boosted_categories,
         Arc::clone(&ml_inference_pool),
+        Arc::clone(&nli_handle), // clone: nli_handle also needed by spawn_background_tick
+        config.inference.nli_top_k,
+        config.inference.nli_enabled,
+        Arc::clone(&inference_config), // crt-023: NLI store config snapshot
     );
 
     // Start UDS listener for hook IPC.
@@ -625,6 +675,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         auto_quarantine_cycles,
         Arc::clone(&confidence_params),
         Arc::clone(&ml_inference_pool),
+        config.inference.nli_enabled, // crt-023 (ADR-007)
+        config.inference.nli_auto_quarantine_threshold, // crt-023 (ADR-007)
+        nli_handle,                   // crt-023: bootstrap promotion
+        Arc::clone(&inference_config), // crt-023: bootstrap promotion config
     );
 
     // Create daemon CancellationToken (ADR-002).
@@ -858,20 +912,46 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         .validate(&paths.data_dir.join("config.toml"))
         .map_err(|e| ServerError::InferencePoolInit(e.to_string()))?;
 
+    // crt-023 (ADR-001): apply NLI pool floor — when nli_enabled, pool must be >= 6 (max 8).
+    let effective_pool_size = if config.inference.nli_enabled {
+        config.inference.rayon_pool_size.max(6).min(8)
+    } else {
+        config.inference.rayon_pool_size
+    };
+
     let ml_inference_pool = Arc::new(
-        RayonPool::new(config.inference.rayon_pool_size, "ml_inference_pool")
+        RayonPool::new(effective_pool_size, "ml_inference_pool")
             .map_err(|e| ServerError::InferencePoolInit(e.to_string()))?,
     );
     tracing::info!(
-        pool_size = config.inference.rayon_pool_size,
+        pool_size = effective_pool_size,
+        nli_enabled = config.inference.nli_enabled,
         "ml_inference_pool initialized"
     );
-    // TODO(W1-4): ml_inference_pool will also be accessed via AppState for NLI
     // TODO(W2-4): add gguf_rayon_pool: Arc<RayonPool> here
     // ── end crt-022 ───────────────────────────────────────────────────────────────────
 
+    // crt-023: Build NLI service handle and start loading when enabled.
+    let nli_handle = NliServiceHandle::new();
+    if config.inference.nli_enabled {
+        let cache_dir = unimatrix_embed::EmbedConfig::default().resolve_cache_dir();
+        let nli_config = NliConfig {
+            nli_enabled: true,
+            nli_model_name: config.inference.nli_model_name.clone(),
+            nli_model_path: config.inference.nli_model_path.clone(),
+            nli_model_sha256: config.inference.nli_model_sha256.clone(),
+            cache_dir,
+        };
+        nli_handle.start_loading(nli_config);
+    } else {
+        tracing::info!(
+            "NLI cross-encoder disabled (nli_enabled=false); search uses cosine fallback"
+        );
+    }
+
     // Build shared ServiceLayer for UDS and MCP transports (vnc-006, vnc-009).
     let usage_dedup = Arc::new(UsageDedup::new());
+    let inference_config = Arc::new(config.inference.clone()); // crt-023: snapshot for service layer
     let services = unimatrix_server::services::ServiceLayer::new(
         Arc::clone(&store),
         Arc::clone(&vector_index),
@@ -883,6 +963,10 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&usage_dedup),
         boosted_categories,
         Arc::clone(&ml_inference_pool),
+        Arc::clone(&nli_handle), // clone: nli_handle also needed by spawn_background_tick
+        config.inference.nli_top_k,
+        config.inference.nli_enabled,
+        Arc::clone(&inference_config), // crt-023: NLI store config snapshot
     );
 
     // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009).
@@ -952,6 +1036,10 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         auto_quarantine_cycles,     // crt-018b: auto-quarantine threshold
         Arc::clone(&confidence_params),
         Arc::clone(&ml_inference_pool), // crt-022 (ADR-004): ML inference pool
+        config.inference.nli_enabled,   // crt-023 (ADR-007)
+        config.inference.nli_auto_quarantine_threshold, // crt-023 (ADR-007)
+        nli_handle,                     // crt-023: bootstrap promotion
+        Arc::clone(&inference_config),  // crt-023: bootstrap promotion config
     );
 
     // Prepare lifecycle handles for shutdown.
@@ -1077,27 +1165,109 @@ fn handle_version(project_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error
     Ok(())
 }
 
-/// Download the ONNX embedding model to cache.
+/// Download ONNX model(s) to cache (crt-023: extended with --nli / --nli-model, AC-16).
 ///
-/// Uses `EmbedConfig::default()` to resolve the cache directory, then calls
-/// `ensure_model()` synchronously. Progress messages go to stderr (stdout
-/// is reserved for structured output / MCP protocol).
-fn handle_model_download() -> Result<(), Box<dyn std::error::Error>> {
-    let config = EmbedConfig::default();
-    let cache_dir = config.resolve_cache_dir();
+/// When `nli = false` (default): downloads embedding model only (unchanged behavior).
+/// When `nli = true`: downloads embedding model AND the specified NLI model, then
+///   computes and prints the SHA-256 hash of the NLI ONNX file to stdout.
+///
+/// Progress messages go to stderr; hash output goes to stdout (operator captures via pipe).
+fn handle_model_download(
+    nli: bool,
+    nli_model_name: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Step 1: Download embedding model (unchanged existing behavior).
+    let embed_config = EmbedConfig::default();
+    let cache_dir = embed_config.resolve_cache_dir();
 
-    eprintln!("Downloading ONNX model to {}...", cache_dir.display());
+    eprintln!(
+        "Downloading ONNX embedding model to {}...",
+        cache_dir.display()
+    );
 
-    match unimatrix_embed::ensure_model(config.model, &cache_dir) {
-        Ok(model_dir) => {
-            eprintln!("Model ready: {}", model_dir.display());
-            Ok(())
-        }
+    match unimatrix_embed::ensure_model(embed_config.model, &cache_dir) {
+        Ok(model_dir) => eprintln!("Embedding model ready: {}", model_dir.display()),
         Err(e) => {
-            eprintln!("Model download failed: {e}");
-            Err(Box::new(e))
+            eprintln!("Embedding model download failed: {e}");
+            return Err(Box::new(e));
         }
     }
+
+    // Step 2: If --nli flag not given, return here (existing behavior preserved).
+    if !nli {
+        return Ok(());
+    }
+
+    // Step 3: Resolve the NLI model variant.
+    let nli_model: NliModel = {
+        let name = nli_model_name.as_deref().unwrap_or("minilm2-q8");
+        NliModel::from_config_name(name).ok_or_else(|| {
+            eprintln!(
+                "Error: unrecognized --nli-model value '{}'; valid: minilm2, minilm2-q8, deberta, deberta-q8",
+                name
+            );
+            format!("unrecognized nli-model: {name}")
+        })?
+    };
+
+    // Step 4: Download the NLI model via ensure_nli_model (mirrors ensure_model pattern).
+    eprintln!(
+        "Downloading NLI model '{}' to {}...",
+        nli_model.model_id(),
+        cache_dir.display()
+    );
+
+    let model_dir = match unimatrix_embed::ensure_nli_model(nli_model, &cache_dir) {
+        Ok(dir) => {
+            eprintln!("NLI model ready: {}", dir.display());
+            dir
+        }
+        Err(e) => {
+            eprintln!("NLI model download failed: {e}");
+            return Err(Box::new(e));
+        }
+    };
+
+    // Step 5: Compute SHA-256 hash of the ONNX file.
+    let onnx_path = model_dir.join(nli_model.onnx_filename());
+    eprintln!("Computing SHA-256 hash of {}...", onnx_path.display());
+    let hash_hex = compute_file_sha256(&onnx_path)?;
+
+    // Step 6: Print hash to stdout (operator copies to config.toml).
+    // Format: one line, lowercase hex, 64 chars. Ready to paste.
+    println!("{}", hash_hex);
+
+    // Step 7: Print guidance to stderr.
+    eprintln!();
+    eprintln!("Add the following to your config.toml under [inference]:");
+    eprintln!("  nli_model_sha256 = \"{}\"", hash_hex);
+
+    Ok(())
+}
+
+/// Compute the SHA-256 hash of a file and return as a lowercase hex string (64 chars).
+///
+/// Reads the file in 64 KB chunks to avoid loading the entire model into memory.
+fn compute_file_sha256(path: &Path) -> Result<String, Box<dyn std::error::Error>> {
+    let file =
+        std::fs::File::open(path).map_err(|e| format!("failed to open {}: {e}", path.display()))?;
+
+    let mut reader = std::io::BufReader::new(file);
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; 65536];
+
+    loop {
+        let n = reader
+            .read(&mut buf)
+            .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+
+    let result = hasher.finalize();
+    Ok(format!("{:x}", result))
 }
 
 /// Maximum number of database open attempts before giving up.

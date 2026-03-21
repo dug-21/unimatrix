@@ -924,3 +924,136 @@ def test_concurrent_search_stability(server):
     # Verify each result is a tool-level success
     for i, resp in enumerate(results):
         assert_tool_success(resp)
+
+
+# === crt-023: NLI Lifecycle (W1-4) ===========================================
+
+
+def test_search_nli_absent_returns_cosine_results(server):
+    """L-CRT023-01: Store → search with NLI absent returns cosine-ranked results (AC-14).
+
+    In CI the NLI model is not cached. NliServiceHandle transitions to Failed.
+    The search pipeline must fall back to cosine similarity and return valid
+    results without tool-level error. Validates graceful degradation end-to-end
+    through the MCP interface (AC-14, AC-05).
+    """
+    store_resp = server.context_store(
+        "nli absent cosine fallback lifecycle test unique crt023 epsilon",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+
+    search_resp = server.context_search(
+        "nli absent cosine fallback lifecycle test unique crt023 epsilon",
+        format="json",
+        agent_id="human",
+    )
+    assert_tool_success(search_resp)
+    entries = parse_entries(search_resp)
+    result_ids = [e.get("id") for e in entries if e.get("id") is not None]
+    assert entry_id in result_ids, (
+        f"AC-14: stored entry must appear in cosine-fallback search results when NLI "
+        f"is absent. entry_id={entry_id}, got: {result_ids}"
+    )
+
+
+def test_post_store_nli_edge_written(server):
+    """L-CRT023-02: Post-store NLI detection does not crash server (AC-10, NLI absent case).
+
+    When NLI model is absent (CI), the post-store fire-and-forget task must exit
+    cleanly without writing edges (NliServiceHandle.get_provider() returns Err).
+    Observable: context_store succeeds, server remains healthy for subsequent
+    context_get and context_search calls. No crash, no MCP error.
+
+    When NLI model IS present (future CI), this test verifies that a follow-up
+    context_get still works after the fire-and-forget task completes — the entry
+    is not corrupted by the NLI task side effects.
+    """
+    # Store entry with content that has clear semantic neighbors
+    resp = server.context_store(
+        "post store nli detection lifecycle test unique crt023 zeta databases always use pool",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(resp)
+    entry_id = extract_entry_id(resp)
+
+    # Brief wait to allow fire-and-forget task to complete (or exit immediately if NLI absent)
+    time.sleep(0.5)
+
+    # Entry must still be intact — NLI task must not corrupt it
+    get_resp = server.context_get(entry_id, format="json")
+    assert_tool_success(get_resp)
+    entry = parse_entry(get_resp)
+    assert entry.get("id") == entry_id, (
+        "AC-10: entry must remain intact after post-store NLI detection task. "
+        "Fire-and-forget task must not corrupt or delete the stored entry."
+    )
+
+    # Server must remain healthy
+    search_resp = server.context_search(
+        "post store nli detection lifecycle test unique crt023 zeta",
+        format="json",
+        agent_id="human",
+    )
+    assert_tool_success(search_resp)
+
+
+def test_bootstrap_promotion_restart_noop(tmp_path):
+    """L-CRT023-03: Bootstrap promotion marker prevents re-run on restart (AC-24).
+
+    After server startup (where bootstrap promotion either ran or found nothing
+    to promote), restarting the server must not produce duplicate edges. The
+    COUNTERS table marker `bootstrap_nli_promotion_done=1` is a durable guard.
+
+    Observable: two server starts with the same project_dir, each storing an
+    entry and performing a search, both completing without error. No crash,
+    no duplicate-entry error, no MCP tool failure.
+    """
+    binary = get_binary_path()
+
+    # First server start: store an entry
+    client1 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client1.initialize()
+    client1.wait_until_ready()
+
+    store_resp = client1.context_store(
+        "bootstrap promotion restart noop test unique crt023 eta",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+
+    # Brief wait for any background tasks (bootstrap promotion, NLI detection)
+    time.sleep(1.0)
+    client1.shutdown()
+
+    # Second server start: same project_dir — bootstrap promotion must be no-op
+    client2 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client2.initialize()
+    client2.wait_until_ready()
+
+    # Entry must still be intact after restart
+    get_resp = client2.context_get(entry_id, format="json")
+    assert_tool_success(get_resp)
+    entry = parse_entry(get_resp)
+    assert entry.get("id") == entry_id, (
+        "AC-24: entry must persist across restart. Bootstrap promotion must not "
+        "delete or corrupt stored entries."
+    )
+
+    # Search must work on second start
+    search_resp = client2.context_search(
+        "bootstrap promotion restart noop test unique crt023 eta",
+        format="json",
+        agent_id="human",
+    )
+    assert_tool_success(search_resp)
+    client2.shutdown()

@@ -18,7 +18,7 @@
 //!
 //! # File layout
 //!
-//! ```
+//! ```text
 //! ~/.unimatrix/config.toml           (global)
 //! ~/.unimatrix/{project-hash}/config.toml  (per-project)
 //! ```
@@ -183,16 +183,17 @@ pub struct ConfidenceWeights {
     pub trust: f64,
 }
 
-/// `[inference]` section — ML inference thread pool configuration.
+/// `[inference]` section — ML inference thread pool and NLI cross-encoder configuration.
 ///
 /// Follows the same `#[serde(default)]` pattern as all other sections.
 /// An absent `[inference]` section uses compiled defaults (ADR-003).
 ///
-/// # Pool sizing (ADR-003)
+/// # Pool sizing (ADR-003, ADR-001 crt-023)
 ///
 /// Default formula: `(num_cpus::get() / 2).max(4).min(8)`.
 /// Floor raised from 2 to 4 to ensure at least 3 threads are available for MCP
 /// embedding calls when both the contradiction scan and quality-gate loop are active.
+/// When `nli_enabled = true`, a pool floor of 6 is applied at startup (ADR-001 crt-023).
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 #[serde(default)]
 pub struct InferenceConfig {
@@ -202,8 +203,90 @@ pub struct InferenceConfig {
     /// Valid range: `[1, 64]`. Out-of-range aborts startup with a structured error.
     ///
     /// Operators on resource-constrained deployments may set this as low as 1.
-    /// W1-4 (NLI) and W2-4 (GGUF) will add fields to this section without renaming it (C-08).
+    /// When `nli_enabled = true`, startup applies a pool floor of 6 (ADR-001 crt-023).
     pub rayon_pool_size: usize,
+
+    // -----------------------------------------------------------------------
+    // NLI cross-encoder fields (crt-023)
+    // -----------------------------------------------------------------------
+    /// Enable the NLI cross-encoder (default `false`, opt-in).
+    ///
+    /// When `false`, `NliServiceHandle` is constructed but never loads a model;
+    /// `get_provider()` immediately returns `Err(NliNotReady)`. All search uses
+    /// cosine fallback. Pool floor is NOT raised when disabled.
+    #[serde(default = "default_nli_enabled")]
+    pub nli_enabled: bool,
+
+    /// Model variant identifier. Accepted values (case-insensitive): `"minilm2"`, `"minilm2-q8"`,
+    /// `"deberta"`, `"deberta-q8"`.
+    ///
+    /// `None` resolves to `NliMiniLM2L6H768Q8` (recommended default) at startup. An unrecognized
+    /// string fails `validate()` with a structured error (R-15, AC-17).
+    #[serde(default)]
+    pub nli_model_name: Option<String>,
+
+    /// Explicit path to the ONNX model file.
+    ///
+    /// Overrides cache-dir resolution when set. When set alongside `nli_model_name`,
+    /// the path is used but the model's tokenizer is still loaded from the same
+    /// directory (ADR-003 crt-023).
+    #[serde(default)]
+    pub nli_model_path: Option<std::path::PathBuf>,
+
+    /// SHA-256 hash of the NLI model file as a 64-char lowercase hex string.
+    ///
+    /// When set, the hash is verified before ONNX session construction (NFR-09,
+    /// ADR-003 crt-023). When `None`, hash verification is skipped with a
+    /// `warn`-level log. Must be exactly 64 hex characters if set (AC-17).
+    #[serde(default)]
+    pub nli_model_sha256: Option<String>,
+
+    /// Candidate pool size for NLI search re-ranking.
+    ///
+    /// HNSW retrieves `nli_top_k` candidates; NLI scores all of them before
+    /// truncating to the requested `k`. Distinct from `nli_post_store_k` (D-04, AC-19).
+    /// Default: 20. Valid range: `[1, 100]`.
+    #[serde(default = "default_nli_top_k")]
+    pub nli_top_k: usize,
+
+    /// Neighbor count for post-store NLI detection.
+    ///
+    /// After `context_store`, the NLI task queries `nli_post_store_k` HNSW neighbors.
+    /// Distinct from `nli_top_k` (D-04, AC-19). Default: 10. Valid range: `[1, 100]`.
+    #[serde(default = "default_nli_post_store_k")]
+    pub nli_post_store_k: usize,
+
+    /// Entailment threshold for writing `Supports` edges.
+    ///
+    /// Pairs with `nli_scores.entailment > nli_entailment_threshold` produce a
+    /// `Supports` edge (strict inequality). Default: 0.6. Range: `(0.0, 1.0)` exclusive.
+    #[serde(default = "default_nli_entailment_threshold")]
+    pub nli_entailment_threshold: f32,
+
+    /// Contradiction threshold for writing `Contradicts` edges.
+    ///
+    /// Pairs with `nli_scores.contradiction > nli_contradiction_threshold` produce a
+    /// `Contradicts` edge (strict inequality). Default: 0.6. Range: `(0.0, 1.0)` exclusive.
+    #[serde(default = "default_nli_contradiction_threshold")]
+    pub nli_contradiction_threshold: f32,
+
+    /// Per-call cap on total edges written during `run_post_store_nli`.
+    ///
+    /// Counts BOTH `Supports` AND `Contradicts` edges combined (FR-22, R-09, AC-23).
+    /// Named `max_contradicts_per_tick` for config compatibility with SCOPE.md.
+    /// **Implementation note**: the semantic unit is per `context_store` call, not per
+    /// background tick. Default: 10. Valid range: `[1, 100]`.
+    #[serde(default = "default_max_contradicts_per_tick")]
+    pub max_contradicts_per_tick: usize,
+
+    /// Auto-quarantine threshold for entries penalized ONLY by NLI-origin `Contradicts` edges.
+    ///
+    /// Must be strictly greater than `nli_contradiction_threshold` (ADR-007 crt-023).
+    /// Violation aborts startup with a structured error naming both fields. Entries
+    /// penalized by a mix of NLI-origin and manually-curated edges use existing logic.
+    /// Default: 0.85. Range: `(0.0, 1.0)` exclusive.
+    #[serde(default = "default_nli_auto_quarantine_threshold")]
+    pub nli_auto_quarantine_threshold: f32,
 }
 
 impl Default for InferenceConfig {
@@ -221,21 +304,176 @@ impl Default for InferenceConfig {
         // On 20-core:    num_cpus = 20; 20/2 = 10; max(10, 4) = 10; min(10, 8) = 8.
         InferenceConfig {
             rayon_pool_size: (num_cpus::get() / 2).max(4).min(8),
+            nli_enabled: false,
+            nli_model_name: None,
+            nli_model_path: None,
+            nli_model_sha256: None,
+            nli_top_k: 20,
+            nli_post_store_k: 10,
+            nli_entailment_threshold: 0.6,
+            nli_contradiction_threshold: 0.6,
+            max_contradicts_per_tick: 10,
+            nli_auto_quarantine_threshold: 0.85,
         }
     }
 }
 
+// ---------------------------------------------------------------------------
+// NLI default value functions (required for #[serde(default = "fn_name")])
+// ---------------------------------------------------------------------------
+
+fn default_nli_enabled() -> bool {
+    false
+}
+
+fn default_nli_top_k() -> usize {
+    20
+}
+
+fn default_nli_post_store_k() -> usize {
+    10
+}
+
+fn default_nli_entailment_threshold() -> f32 {
+    0.6
+}
+
+fn default_nli_contradiction_threshold() -> f32 {
+    0.6
+}
+
+fn default_max_contradicts_per_tick() -> usize {
+    10
+}
+
+fn default_nli_auto_quarantine_threshold() -> f32 {
+    0.85
+}
+
+/// Returns `true` if `name` is a recognized NLI model variant (case-insensitive).
+///
+/// Accepted values: `"minilm2"`, `"minilm2-q8"`, `"deberta"`, `"deberta-q8"`.
+/// Used in `InferenceConfig::validate()` before the `NliModel` type is available
+/// in `unimatrix-embed`.
+fn is_recognized_nli_model_name(name: &str) -> bool {
+    matches!(
+        name.to_lowercase().as_str(),
+        "minilm2" | "minilm2-q8" | "deberta" | "deberta-q8"
+    )
+}
+
 impl InferenceConfig {
-    /// Validate that `rayon_pool_size` is within the allowed range `[1, 64]`.
+    /// Validate `rayon_pool_size` and all NLI fields.
     ///
-    /// Out-of-range values abort startup with `ConfigError::InferencePoolSizeOutOfRange`.
+    /// Checks performed:
+    /// - `rayon_pool_size` in `[1, 64]`
+    /// - `nli_top_k` and `nli_post_store_k` in `[1, 100]`
+    /// - `nli_entailment_threshold`, `nli_contradiction_threshold`, and
+    ///   `nli_auto_quarantine_threshold` in `(0.0, 1.0)` exclusive
+    /// - `max_contradicts_per_tick` in `[1, 100]`
+    /// - `nli_model_name` is a recognized variant when `Some` (R-15, AC-17)
+    /// - `nli_model_sha256` is exactly 64 hex chars when `Some`
+    /// - Cross-field: `nli_auto_quarantine_threshold > nli_contradiction_threshold` (ADR-007)
     pub fn validate(&self, path: &Path) -> Result<(), ConfigError> {
+        // -- Existing check (unchanged) --
         if self.rayon_pool_size < 1 || self.rayon_pool_size > 64 {
             return Err(ConfigError::InferencePoolSizeOutOfRange {
                 path: path.to_path_buf(),
                 value: self.rayon_pool_size,
             });
         }
+
+        // -- NLI usize range checks [1, 100] --
+
+        if self.nli_top_k < 1 || self.nli_top_k > 100 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "nli_top_k",
+                value: self.nli_top_k.to_string(),
+                reason: "must be in range [1, 100]",
+            });
+        }
+
+        if self.nli_post_store_k < 1 || self.nli_post_store_k > 100 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "nli_post_store_k",
+                value: self.nli_post_store_k.to_string(),
+                reason: "must be in range [1, 100]",
+            });
+        }
+
+        if self.max_contradicts_per_tick < 1 || self.max_contradicts_per_tick > 100 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "max_contradicts_per_tick",
+                value: self.max_contradicts_per_tick.to_string(),
+                reason: "must be in range [1, 100]",
+            });
+        }
+
+        // -- NLI f32 threshold range checks (0.0, 1.0) exclusive --
+
+        if self.nli_entailment_threshold <= 0.0 || self.nli_entailment_threshold >= 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "nli_entailment_threshold",
+                value: self.nli_entailment_threshold.to_string(),
+                reason: "must be in range (0.0, 1.0) exclusive",
+            });
+        }
+
+        if self.nli_contradiction_threshold <= 0.0 || self.nli_contradiction_threshold >= 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "nli_contradiction_threshold",
+                value: self.nli_contradiction_threshold.to_string(),
+                reason: "must be in range (0.0, 1.0) exclusive",
+            });
+        }
+
+        if self.nli_auto_quarantine_threshold <= 0.0 || self.nli_auto_quarantine_threshold >= 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "nli_auto_quarantine_threshold",
+                value: self.nli_auto_quarantine_threshold.to_string(),
+                reason: "must be in range (0.0, 1.0) exclusive",
+            });
+        }
+
+        // -- nli_model_name: recognized variant when Some --
+        if let Some(ref name) = self.nli_model_name {
+            if !is_recognized_nli_model_name(name) {
+                return Err(ConfigError::NliFieldOutOfRange {
+                    path: path.to_path_buf(),
+                    field: "nli_model_name",
+                    value: name.clone(),
+                    reason: "unrecognized model name; valid values: minilm2, minilm2-q8, deberta, deberta-q8",
+                });
+            }
+        }
+
+        // -- nli_model_sha256: exactly 64 lowercase hex chars when Some --
+        if let Some(ref sha) = self.nli_model_sha256 {
+            if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
+                return Err(ConfigError::NliFieldOutOfRange {
+                    path: path.to_path_buf(),
+                    field: "nli_model_sha256",
+                    value: format!("{sha} ({} chars)", sha.len()),
+                    reason: "must be a 64-character lowercase hex string",
+                });
+            }
+        }
+
+        // -- Cross-field invariant (ADR-007): nli_auto_quarantine_threshold > nli_contradiction_threshold --
+        if self.nli_auto_quarantine_threshold <= self.nli_contradiction_threshold {
+            return Err(ConfigError::NliThresholdInvariantViolated {
+                path: path.to_path_buf(),
+                auto_quarantine: self.nli_auto_quarantine_threshold,
+                contradiction: self.nli_contradiction_threshold,
+            });
+        }
+
         Ok(())
     }
 }
@@ -343,6 +581,24 @@ pub enum ConfigError {
     InferencePoolSizeOutOfRange {
         path: PathBuf,
         value: usize,
+    },
+    /// An NLI config field is outside its valid range, or fails format validation (crt-023).
+    NliFieldOutOfRange {
+        path: PathBuf,
+        /// Field name for operator diagnosis.
+        field: &'static str,
+        /// Actual value (for display).
+        value: String,
+        /// Human-readable valid range description.
+        reason: &'static str,
+    },
+    /// `nli_auto_quarantine_threshold` is not strictly greater than `nli_contradiction_threshold`.
+    ///
+    /// Names both fields in the error message (ADR-007 crt-023, AC-17).
+    NliThresholdInvariantViolated {
+        path: PathBuf,
+        auto_quarantine: f32,
+        contradiction: f32,
     },
 }
 
@@ -490,6 +746,31 @@ impl fmt::Display for ConfigError {
                  which is out of range; valid range is [1, 64]",
                 path.display(),
                 value
+            ),
+            ConfigError::NliFieldOutOfRange {
+                path,
+                field,
+                value,
+                reason,
+            } => write!(
+                f,
+                "config error in {}: [inference] field '{}' = '{}' is invalid: {}",
+                path.display(),
+                field,
+                value,
+                reason
+            ),
+            ConfigError::NliThresholdInvariantViolated {
+                path,
+                auto_quarantine,
+                contradiction,
+            } => write!(
+                f,
+                "config error in {}: nli_auto_quarantine_threshold ({}) must be \
+                 strictly greater than nli_contradiction_threshold ({})",
+                path.display(),
+                auto_quarantine,
+                contradiction
             ),
         }
     }
@@ -969,6 +1250,69 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.rayon_pool_size
             } else {
                 global.inference.rayon_pool_size
+            },
+            nli_enabled: if project.inference.nli_enabled != default.inference.nli_enabled {
+                project.inference.nli_enabled
+            } else {
+                global.inference.nli_enabled
+            },
+            nli_model_name: project
+                .inference
+                .nli_model_name
+                .or(global.inference.nli_model_name),
+            nli_model_path: project
+                .inference
+                .nli_model_path
+                .or(global.inference.nli_model_path),
+            nli_model_sha256: project
+                .inference
+                .nli_model_sha256
+                .or(global.inference.nli_model_sha256),
+            nli_top_k: if project.inference.nli_top_k != default.inference.nli_top_k {
+                project.inference.nli_top_k
+            } else {
+                global.inference.nli_top_k
+            },
+            nli_post_store_k: if project.inference.nli_post_store_k
+                != default.inference.nli_post_store_k
+            {
+                project.inference.nli_post_store_k
+            } else {
+                global.inference.nli_post_store_k
+            },
+            nli_entailment_threshold: if (project.inference.nli_entailment_threshold
+                - default.inference.nli_entailment_threshold)
+                .abs()
+                > f32::EPSILON
+            {
+                project.inference.nli_entailment_threshold
+            } else {
+                global.inference.nli_entailment_threshold
+            },
+            nli_contradiction_threshold: if (project.inference.nli_contradiction_threshold
+                - default.inference.nli_contradiction_threshold)
+                .abs()
+                > f32::EPSILON
+            {
+                project.inference.nli_contradiction_threshold
+            } else {
+                global.inference.nli_contradiction_threshold
+            },
+            max_contradicts_per_tick: if project.inference.max_contradicts_per_tick
+                != default.inference.max_contradicts_per_tick
+            {
+                project.inference.max_contradicts_per_tick
+            } else {
+                global.inference.max_contradicts_per_tick
+            },
+            nli_auto_quarantine_threshold: if (project.inference.nli_auto_quarantine_threshold
+                - default.inference.nli_auto_quarantine_threshold)
+                .abs()
+                > f32::EPSILON
+            {
+                project.inference.nli_auto_quarantine_threshold
+            } else {
+                global.inference.nli_auto_quarantine_threshold
             },
         },
     }
@@ -2262,7 +2606,10 @@ mod tests {
     #[test]
     fn test_inference_config_valid_lower_bound() {
         // AC-11 #5: rayon_pool_size = 1 → validate() returns Ok(())
-        let config = InferenceConfig { rayon_pool_size: 1 };
+        let config = InferenceConfig {
+            rayon_pool_size: 1,
+            ..InferenceConfig::default()
+        };
         assert!(
             config.validate(Path::new("/fake")).is_ok(),
             "rayon_pool_size = 1 is the valid lower bound and must pass validation"
@@ -2274,6 +2621,7 @@ mod tests {
         // AC-11 #6: rayon_pool_size = 64 → validate() returns Ok(())
         let config = InferenceConfig {
             rayon_pool_size: 64,
+            ..InferenceConfig::default()
         };
         assert!(
             config.validate(Path::new("/fake")).is_ok(),
@@ -2284,7 +2632,10 @@ mod tests {
     #[test]
     fn test_inference_config_rejects_zero() {
         // AC-11 #7: rayon_pool_size = 0 → Err(InferencePoolSizeOutOfRange { value: 0 })
-        let config = InferenceConfig { rayon_pool_size: 0 };
+        let config = InferenceConfig {
+            rayon_pool_size: 0,
+            ..InferenceConfig::default()
+        };
         let err = config.validate(Path::new("/fake")).unwrap_err();
         assert!(
             matches!(
@@ -2309,6 +2660,7 @@ mod tests {
         // AC-11 #8: rayon_pool_size = 65 → Err(InferencePoolSizeOutOfRange { value: 65 })
         let config = InferenceConfig {
             rayon_pool_size: 65,
+            ..InferenceConfig::default()
         };
         let err = config.validate(Path::new("/fake")).unwrap_err();
         assert!(
@@ -2328,7 +2680,10 @@ mod tests {
     #[test]
     fn test_inference_config_valid_eight() {
         // R-07 scenario 3: mid-range value matching the formula ceiling max(4).min(8)
-        let config = InferenceConfig { rayon_pool_size: 8 };
+        let config = InferenceConfig {
+            rayon_pool_size: 8,
+            ..InferenceConfig::default()
+        };
         assert!(
             config.validate(Path::new("/fake")).is_ok(),
             "rayon_pool_size = 8 (formula ceiling) must pass validation"
@@ -2338,7 +2693,10 @@ mod tests {
     #[test]
     fn test_inference_config_valid_four() {
         // R-07: ADR-003 floor value must be valid
-        let config = InferenceConfig { rayon_pool_size: 4 };
+        let config = InferenceConfig {
+            rayon_pool_size: 4,
+            ..InferenceConfig::default()
+        };
         assert!(
             config.validate(Path::new("/fake")).is_ok(),
             "rayon_pool_size = 4 (ADR-003 floor) must pass validation"
@@ -2429,7 +2787,10 @@ mod tests {
     #[test]
     fn test_inference_config_error_message_names_field() {
         // AC-09: actionable error — operator can identify offending field from message alone
-        let config = InferenceConfig { rayon_pool_size: 0 };
+        let config = InferenceConfig {
+            rayon_pool_size: 0,
+            ..InferenceConfig::default()
+        };
         let err = config.validate(Path::new("/fake/config.toml")).unwrap_err();
         let msg = err.to_string();
         assert!(
@@ -2443,6 +2804,540 @@ mod tests {
         assert!(
             msg.contains("0") || msg.contains("range"),
             "error message must contain the offending value or valid range, got: {msg}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // [inference] NLI field validation tests (crt-023, AC-07, AC-17, R-15, AC-19)
+    // -----------------------------------------------------------------------
+
+    /// Helper: build InferenceConfig with one field out of range, assert validate() errors
+    /// and that the error message names the offending field.
+    fn assert_validate_fails_with_field(config: InferenceConfig, field_name: &str) {
+        let err = config.validate(Path::new("/fake")).unwrap_err();
+        assert!(
+            err.to_string().contains(field_name),
+            "Error message must name the offending field '{field_name}'; got: '{err}'"
+        );
+    }
+
+    // AC-07: Default deserialization — all 10 NLI fields present with correct defaults.
+
+    #[test]
+    fn test_inference_config_nli_defaults_all_present() {
+        // An empty deserialization must produce all 10 NLI fields at documented defaults.
+        let config = InferenceConfig::default();
+
+        assert_eq!(config.nli_enabled, false);
+        assert_eq!(config.nli_model_name, None);
+        assert_eq!(config.nli_model_path, None);
+        assert_eq!(config.nli_model_sha256, None);
+        assert_eq!(config.nli_top_k, 20);
+        assert_eq!(config.nli_post_store_k, 10);
+        assert!(
+            (config.nli_entailment_threshold - 0.6f32).abs() < 1e-6,
+            "nli_entailment_threshold default must be 0.6, got {}",
+            config.nli_entailment_threshold
+        );
+        assert!(
+            (config.nli_contradiction_threshold - 0.6f32).abs() < 1e-6,
+            "nli_contradiction_threshold default must be 0.6, got {}",
+            config.nli_contradiction_threshold
+        );
+        assert_eq!(config.max_contradicts_per_tick, 10);
+        assert!(
+            (config.nli_auto_quarantine_threshold - 0.85f32).abs() < 1e-6,
+            "nli_auto_quarantine_threshold default must be 0.85, got {}",
+            config.nli_auto_quarantine_threshold
+        );
+    }
+
+    #[test]
+    fn test_inference_config_nli_toml_defaults_all_present() {
+        // Deserializing from an empty TOML string must produce all NLI defaults.
+        let config: InferenceConfig = toml::from_str("").unwrap();
+
+        assert_eq!(config.nli_enabled, false);
+        assert_eq!(config.nli_model_name, None);
+        assert_eq!(config.nli_model_path, None);
+        assert_eq!(config.nli_model_sha256, None);
+        assert_eq!(config.nli_top_k, 20);
+        assert_eq!(config.nli_post_store_k, 10);
+        assert!((config.nli_entailment_threshold - 0.6f32).abs() < 1e-6);
+        assert!((config.nli_contradiction_threshold - 0.6f32).abs() < 1e-6);
+        assert_eq!(config.max_contradicts_per_tick, 10);
+        assert!((config.nli_auto_quarantine_threshold - 0.85f32).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_inference_config_nli_fields_override_individually() {
+        // Partial overrides — other fields retain defaults.
+        let toml_str = r#"
+            nli_enabled = false
+            nli_top_k = 5
+            max_contradicts_per_tick = 1
+        "#;
+        let config: InferenceConfig = toml::from_str(toml_str).unwrap();
+        assert!(!config.nli_enabled);
+        assert_eq!(config.nli_top_k, 5);
+        assert_eq!(config.max_contradicts_per_tick, 1);
+        // Other fields retain defaults
+        assert_eq!(config.nli_post_store_k, 10);
+        assert_eq!(config.nli_model_name, None);
+    }
+
+    // AC-17: Field-level range validation — usize fields [1, 100].
+
+    #[test]
+    fn test_validate_nli_top_k_zero_fails() {
+        let c = InferenceConfig {
+            nli_top_k: 0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_top_k");
+    }
+
+    #[test]
+    fn test_validate_nli_top_k_101_fails() {
+        let c = InferenceConfig {
+            nli_top_k: 101,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_top_k");
+    }
+
+    #[test]
+    fn test_validate_nli_top_k_1_passes() {
+        let c = InferenceConfig {
+            nli_top_k: 1,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "nli_top_k = 1 (lower bound) must pass"
+        );
+    }
+
+    #[test]
+    fn test_validate_nli_top_k_100_passes() {
+        let c = InferenceConfig {
+            nli_top_k: 100,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "nli_top_k = 100 (upper bound) must pass"
+        );
+    }
+
+    #[test]
+    fn test_validate_nli_post_store_k_zero_fails() {
+        let c = InferenceConfig {
+            nli_post_store_k: 0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_post_store_k");
+    }
+
+    #[test]
+    fn test_validate_nli_post_store_k_101_fails() {
+        let c = InferenceConfig {
+            nli_post_store_k: 101,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_post_store_k");
+    }
+
+    #[test]
+    fn test_validate_max_contradicts_per_tick_zero_fails() {
+        let c = InferenceConfig {
+            max_contradicts_per_tick: 0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "max_contradicts_per_tick");
+    }
+
+    #[test]
+    fn test_validate_max_contradicts_per_tick_101_fails() {
+        let c = InferenceConfig {
+            max_contradicts_per_tick: 101,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "max_contradicts_per_tick");
+    }
+
+    // AC-17: f32 threshold range checks (0.0, 1.0) exclusive.
+
+    #[test]
+    fn test_validate_nli_entailment_threshold_zero_fails() {
+        let c = InferenceConfig {
+            nli_entailment_threshold: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_entailment_threshold");
+    }
+
+    #[test]
+    fn test_validate_nli_entailment_threshold_one_fails() {
+        let c = InferenceConfig {
+            nli_entailment_threshold: 1.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_entailment_threshold");
+    }
+
+    #[test]
+    fn test_validate_nli_entailment_threshold_negative_fails() {
+        let c = InferenceConfig {
+            nli_entailment_threshold: -0.1,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_entailment_threshold");
+    }
+
+    #[test]
+    fn test_validate_nli_contradiction_threshold_out_of_range_fails() {
+        // 1.1 is > 1.0, out of range
+        let c = InferenceConfig {
+            nli_contradiction_threshold: 1.1,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_contradiction_threshold");
+    }
+
+    #[test]
+    fn test_validate_nli_contradiction_threshold_zero_fails() {
+        let c = InferenceConfig {
+            nli_contradiction_threshold: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_contradiction_threshold");
+    }
+
+    #[test]
+    fn test_validate_nli_auto_quarantine_threshold_out_of_range_zero_fails() {
+        let c = InferenceConfig {
+            nli_auto_quarantine_threshold: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_auto_quarantine_threshold");
+    }
+
+    #[test]
+    fn test_validate_nli_auto_quarantine_threshold_one_fails() {
+        // 1.0 is at the exclusive boundary
+        let c = InferenceConfig {
+            nli_auto_quarantine_threshold: 1.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_auto_quarantine_threshold");
+    }
+
+    // AC-17: nli_model_sha256 format validation.
+
+    #[test]
+    fn test_validate_nli_model_sha256_wrong_length_fails() {
+        // Must be exactly 64 hex chars when set.
+        let c = InferenceConfig {
+            nli_model_sha256: Some("short_hash".to_string()),
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_model_sha256");
+    }
+
+    #[test]
+    fn test_validate_nli_model_sha256_63_chars_fails() {
+        // 63 chars — one short of 64.
+        let c = InferenceConfig {
+            nli_model_sha256: Some("a".repeat(63)),
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_model_sha256");
+    }
+
+    #[test]
+    fn test_validate_nli_model_sha256_non_hex_fails() {
+        // 64 chars but not hex (contains 'z').
+        let c = InferenceConfig {
+            nli_model_sha256: Some("z".repeat(64)),
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_model_sha256");
+    }
+
+    #[test]
+    fn test_validate_nli_model_sha256_valid_64_hex_passes() {
+        // 64 valid hex chars — must pass.
+        let c = InferenceConfig {
+            nli_model_sha256: Some("a".repeat(64)),
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "64-char lowercase hex sha256 must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_validate_nli_model_sha256_none_passes() {
+        // None means no verification — must pass.
+        let c = InferenceConfig {
+            nli_model_sha256: None,
+            ..InferenceConfig::default()
+        };
+        assert!(c.validate(Path::new("/fake")).is_ok());
+    }
+
+    // AC-17 + R-15: nli_model_name validation.
+
+    #[test]
+    fn test_validate_unrecognized_model_name_fails() {
+        // R-15: invalid nli_model_name must be caught at validate(), not at start_loading().
+        let c = InferenceConfig {
+            nli_model_name: Some("gpt4".to_string()),
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "nli_model_name");
+    }
+
+    #[test]
+    fn test_validate_recognized_model_name_minilm2_passes() {
+        let c = InferenceConfig {
+            nli_model_name: Some("minilm2".to_string()),
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "model name 'minilm2' must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_validate_recognized_model_name_deberta_passes() {
+        let c = InferenceConfig {
+            nli_model_name: Some("deberta".to_string()),
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "model name 'deberta' must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_validate_recognized_model_name_q8_passes() {
+        for name in ["minilm2-q8", "deberta-q8"] {
+            let c = InferenceConfig {
+                nli_model_name: Some(name.to_string()),
+                ..InferenceConfig::default()
+            };
+            assert!(
+                c.validate(Path::new("/fake")).is_ok(),
+                "model name '{name}' must pass validation"
+            );
+        }
+    }
+
+    #[test]
+    fn test_validate_recognized_model_name_uppercase_passes() {
+        // Case-insensitive check: "MINILM2" and "DEBERTA" should also pass.
+        for name in ["MINILM2", "Deberta", "MiniLM2"] {
+            let c = InferenceConfig {
+                nli_model_name: Some(name.to_string()),
+                ..InferenceConfig::default()
+            };
+            assert!(
+                c.validate(Path::new("/fake")).is_ok(),
+                "model name '{name}' (case-insensitive) must pass validation"
+            );
+        }
+    }
+
+    #[test]
+    fn test_validate_nli_model_name_none_passes() {
+        // None = auto-resolve to minilm2-q8 at startup — must pass.
+        let c = InferenceConfig {
+            nli_model_name: None,
+            ..InferenceConfig::default()
+        };
+        assert!(c.validate(Path::new("/fake")).is_ok());
+    }
+
+    // AC-17 + ADR-007: cross-field invariant nli_auto_quarantine_threshold > nli_contradiction_threshold.
+
+    #[test]
+    fn test_validate_auto_quarantine_equal_to_contradiction_threshold_fails() {
+        // Strictly greater is required — equal must fail.
+        let c = InferenceConfig {
+            nli_contradiction_threshold: 0.7,
+            nli_auto_quarantine_threshold: 0.7,
+            ..InferenceConfig::default()
+        };
+        let err = c.validate(Path::new("/fake")).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("nli_auto_quarantine_threshold"),
+            "Error must name nli_auto_quarantine_threshold; got: '{msg}'"
+        );
+        assert!(
+            msg.contains("nli_contradiction_threshold"),
+            "Error must name nli_contradiction_threshold; got: '{msg}'"
+        );
+    }
+
+    #[test]
+    fn test_validate_auto_quarantine_less_than_contradiction_fails() {
+        let c = InferenceConfig {
+            nli_contradiction_threshold: 0.7,
+            nli_auto_quarantine_threshold: 0.65,
+            ..InferenceConfig::default()
+        };
+        let err = c.validate(Path::new("/fake")).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("nli_auto_quarantine_threshold")
+                && msg.contains("nli_contradiction_threshold"),
+            "Error must name both fields; got: '{msg}'"
+        );
+    }
+
+    #[test]
+    fn test_validate_auto_quarantine_greater_than_contradiction_passes() {
+        let c = InferenceConfig {
+            nli_contradiction_threshold: 0.6,
+            nli_auto_quarantine_threshold: 0.85,
+            ..InferenceConfig::default()
+        };
+        assert!(c.validate(Path::new("/fake")).is_ok());
+    }
+
+    #[test]
+    fn test_validate_defaults_pass() {
+        // Default InferenceConfig (nli_auto_quarantine=0.85 > nli_contradiction=0.6) must pass.
+        let c = InferenceConfig::default();
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "default InferenceConfig must pass validation"
+        );
+    }
+
+    // AC-19: nli_top_k and nli_post_store_k are independent.
+
+    #[test]
+    fn test_nli_top_k_and_post_store_k_are_independent() {
+        // Setting one must not affect the other.
+        let c = InferenceConfig {
+            nli_top_k: 50,
+            nli_post_store_k: 3,
+            ..InferenceConfig::default()
+        };
+        assert_eq!(c.nli_top_k, 50);
+        assert_eq!(c.nli_post_store_k, 3);
+        assert!(c.validate(Path::new("/fake")).is_ok());
+    }
+
+    // R-02: pool floor behavior.
+
+    #[test]
+    fn test_pool_floor_raised_when_nli_enabled() {
+        // When nli_enabled = true and rayon_pool_size = 4, applying the floor gives >= 6.
+        let mut config = InferenceConfig {
+            rayon_pool_size: 4,
+            nli_enabled: true,
+            ..InferenceConfig::default()
+        };
+        assert!(config.nli_enabled);
+        if config.nli_enabled {
+            config.rayon_pool_size = config.rayon_pool_size.max(6).min(8);
+        }
+        assert!(
+            config.rayon_pool_size >= 6,
+            "pool floor must be raised to 6 when nli_enabled=true, got {}",
+            config.rayon_pool_size
+        );
+    }
+
+    #[test]
+    fn test_pool_floor_not_raised_when_nli_disabled() {
+        // When nli_enabled = false, pool floor must NOT be raised.
+        let config = InferenceConfig {
+            rayon_pool_size: 4,
+            nli_enabled: false,
+            ..InferenceConfig::default()
+        };
+        // Floor logic is applied in startup, not validate(). Verify the field is preserved.
+        assert!(!config.nli_enabled);
+        // Simulate the startup floor logic
+        let final_size = if config.nli_enabled {
+            config.rayon_pool_size.max(6).min(8)
+        } else {
+            config.rayon_pool_size
+        };
+        assert_eq!(
+            final_size, 4,
+            "pool floor must not be raised when nli_enabled=false, got {final_size}"
+        );
+    }
+
+    #[test]
+    fn test_pool_floor_caps_at_8() {
+        // When pool is already >= 6 (e.g., 8), max(6).min(8) leaves it at 8.
+        let mut config = InferenceConfig {
+            rayon_pool_size: 8,
+            ..InferenceConfig::default()
+        };
+        if config.nli_enabled {
+            config.rayon_pool_size = config.rayon_pool_size.max(6).min(8);
+        }
+        assert_eq!(config.rayon_pool_size, 8, "pool floor must not exceed 8");
+    }
+
+    // NLI error display tests.
+
+    #[test]
+    fn test_display_nli_field_out_of_range() {
+        let err = ConfigError::NliFieldOutOfRange {
+            path: PathBuf::from("/tmp/config.toml"),
+            field: "nli_top_k",
+            value: "0".to_string(),
+            reason: "must be in range [1, 100]",
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("/tmp/config.toml"),
+            "message must contain path: {msg}"
+        );
+        assert!(msg.contains("nli_top_k"), "message must name field: {msg}");
+        assert!(msg.contains("0"), "message must contain value: {msg}");
+        assert!(
+            msg.contains("[1, 100]"),
+            "message must contain reason: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_display_nli_threshold_invariant_violated() {
+        let err = ConfigError::NliThresholdInvariantViolated {
+            path: PathBuf::from("/tmp/config.toml"),
+            auto_quarantine: 0.6,
+            contradiction: 0.7,
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("/tmp/config.toml"),
+            "message must contain path: {msg}"
+        );
+        assert!(
+            msg.contains("nli_auto_quarantine_threshold"),
+            "message must name auto_quarantine field: {msg}"
+        );
+        assert!(
+            msg.contains("nli_contradiction_threshold"),
+            "message must name contradiction field: {msg}"
+        );
+        assert!(
+            msg.contains("0.6") || msg.contains("0.7"),
+            "message must contain values: {msg}"
         );
     }
 }

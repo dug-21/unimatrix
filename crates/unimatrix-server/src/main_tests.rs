@@ -36,7 +36,45 @@ fn test_version_subcommand_parsed() {
 #[test]
 fn test_model_download_subcommand_parsed() {
     let cli = Cli::try_parse_from(["unimatrix", "model-download"]).unwrap();
-    assert!(matches!(cli.command, Some(Command::ModelDownload)));
+    // crt-023: ModelDownload now has optional --nli and --nli-model fields.
+    assert!(matches!(
+        cli.command,
+        Some(Command::ModelDownload {
+            nli: false,
+            nli_model: None
+        })
+    ));
+}
+
+#[test]
+fn test_model_download_nli_flag_parsed() {
+    let cli = Cli::try_parse_from(["unimatrix", "model-download", "--nli"]).unwrap();
+    assert!(matches!(
+        cli.command,
+        Some(Command::ModelDownload {
+            nli: true,
+            nli_model: None
+        })
+    ));
+}
+
+#[test]
+fn test_model_download_nli_model_flag_parsed() {
+    let cli = Cli::try_parse_from([
+        "unimatrix",
+        "model-download",
+        "--nli",
+        "--nli-model",
+        "minilm2",
+    ])
+    .unwrap();
+    assert!(matches!(
+        cli.command,
+        Some(Command::ModelDownload {
+            nli: true,
+            nli_model: Some(_)
+        })
+    ));
 }
 
 #[test]
@@ -734,6 +772,40 @@ fn test_run_eval_command_empty_configs_rejected() {
         msg.contains("at least one"),
         "error must mention 'at least one'; got: {msg}"
     );
+}
+
+/// crt-023: `--nli-model` without `--nli` must be rejected (requires = "nli").
+#[test]
+fn test_model_download_nli_model_requires_nli() {
+    let result = Cli::try_parse_from(["unimatrix", "model-download", "--nli-model", "minilm2"]);
+    assert!(
+        result.is_err(),
+        "--nli-model without --nli must be rejected"
+    );
+}
+
+/// crt-023: `--nli --nli-model deberta` parses correctly.
+#[test]
+fn test_model_download_nli_deberta_flag_parsed() {
+    let cli = Cli::try_parse_from([
+        "unimatrix",
+        "model-download",
+        "--nli",
+        "--nli-model",
+        "deberta",
+    ])
+    .unwrap();
+    match cli.command {
+        Some(Command::ModelDownload { nli, nli_model }) => {
+            assert!(nli, "--nli must be true");
+            assert_eq!(
+                nli_model.as_deref(),
+                Some("deberta"),
+                "--nli-model must be 'deberta'"
+            );
+        }
+        other => panic!("expected ModelDownload, got {other:?}"),
+    }
 }
 
 /// ADR-005: `--configs` comma-separated string splits into multiple PathBufs.

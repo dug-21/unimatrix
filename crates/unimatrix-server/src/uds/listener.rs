@@ -2442,6 +2442,11 @@ mod tests {
             // dsn-001: default; test helper preserves pre-dsn-001 behavior.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
             test_pool,
+            // crt-023: disabled NLI for test (no model in test env)
+            crate::infra::nli_handle::NliServiceHandle::new(),
+            20,    // nli_top_k default
+            false, // nli_enabled: disabled for tests
+            Arc::new(crate::infra::config::InferenceConfig::default()),
         )
     }
 

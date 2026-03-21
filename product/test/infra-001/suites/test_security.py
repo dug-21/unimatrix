@@ -11,7 +11,7 @@ import threading
 import time
 import pytest
 from pathlib import Path
-from harness.assertions import assert_tool_success, assert_tool_error
+from harness.assertions import assert_tool_success, assert_tool_error, extract_entry_id, parse_entries
 from harness.conftest import get_binary_path
 
 
@@ -327,4 +327,82 @@ def test_auto_quarantine_cycles_zero_accepted_at_startup(tmp_path):
         f"Server must NOT exit immediately when UNIMATRIX_AUTO_QUARANTINE_CYCLES=0. "
         f"Value 0 is the disable sentinel (AC-12). "
         f"Stderr: {stderr_all[-500:]}"
+    )
+
+
+# === crt-023: NLI Security Boundaries ========================================
+
+
+@pytest.mark.security
+def test_store_large_content_nli_no_crash(server):
+    """S-CRT023-01: Storing 100,000-char content does not crash server or NLI path (AC-03, NFR-08).
+
+    Any content stored through context_store becomes a candidate passage for NLI
+    inference. Per-side truncation (512 tokens / ~2000 chars) must be enforced
+    inside NliProvider before inference. This test verifies that a vastly oversized
+    payload does not panic the server, poison the NLI session, or return a tool
+    error on a subsequent context_search call.
+    """
+    # 100,000 char content — well beyond NLI truncation boundary
+    large_content = ("unimatrix nli truncation boundary test alpha " * 2400)[:100_000]
+    store_resp = server.context_store(
+        large_content,
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    # Store itself must succeed (large content is a valid payload up to server limits)
+    # If rejected by content scanner, that is also acceptable — key is: no crash
+    assert store_resp.result is not None or store_resp.error is not None, (
+        "context_store must return some response (not a dead connection) for 100k-char content"
+    )
+
+    # Server must still be healthy — subsequent search must work
+    search_resp = server.context_search(
+        "nli truncation boundary test alpha", format="json", agent_id="human"
+    )
+    assert_tool_success(search_resp), (
+        "AC-03/NFR-08: Server must remain healthy after storing large content. "
+        "NLI session must not be poisoned by oversized input."
+    )
+
+
+@pytest.mark.security
+def test_nli_hash_mismatch_graceful_degradation(server):
+    """S-CRT023-02: Server with NLI hash mismatch still serves all MCP tools (AC-06, AC-14).
+
+    In CI the NLI model is absent, which causes NliServiceHandle to transition
+    to Failed — equivalent to a hash mismatch degradation path. The server must
+    start successfully and serve context_search without returning an error to
+    callers. This validates the graceful degradation contract for both the
+    absent-model and hash-mismatch cases (the observable MCP behavior is
+    identical: cosine fallback, no tool-level error).
+    """
+    # Store an entry
+    store_resp = server.context_store(
+        "nli hash mismatch degradation test unique crt023 gamma",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(store_resp)
+    entry_id = extract_entry_id(store_resp)
+
+    # Search must return results — cosine fallback active (AC-14)
+    search_resp = server.context_search(
+        "nli hash mismatch degradation test unique crt023 gamma",
+        format="json",
+        agent_id="human",
+    )
+    assert_tool_success(search_resp), (
+        "AC-06/AC-14: context_search must return results when NLI is unavailable "
+        "(hash mismatch / model absent). No error must be returned to callers."
+    )
+    entries = parse_entries(search_resp)
+    result_ids = [e.get("id") for e in entries if e.get("id") is not None]
+    assert entry_id in result_ids, (
+        f"Stored entry must be findable via cosine fallback. "
+        f"entry_id={entry_id} not in results: {result_ids}"
     )
