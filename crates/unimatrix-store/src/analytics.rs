@@ -82,7 +82,9 @@ pub enum AnalyticsWrite {
 
     /// Table: `observation_metrics` — upsert (INSERT OR REPLACE) by `feature_cycle`.
     ///
-    /// All 23 fields from the `observation_metrics` DDL (schema v12, OQ-DURING-03).
+    /// 24 fields: feature_cycle + computed_at + 21 UniversalMetrics columns +
+    /// domain_metrics_json (schema v14, ADR-006). `domain_metrics_json` is NULL for
+    /// claude-code sessions (empty domain_metrics map).
     ObservationMetric {
         feature_cycle: String,
         computed_at: i64,
@@ -107,6 +109,8 @@ pub enum AnalyticsWrite {
         friction_hotspot_count: i64,
         session_hotspot_count: i64,
         scope_hotspot_count: i64,
+        /// NULL when domain_metrics is empty (claude-code sessions). JSON object otherwise.
+        domain_metrics_json: Option<String>,
     },
 
     /// Table: `shadow_evaluations` — append-only insert.
@@ -558,8 +562,9 @@ async fn execute_analytics_write(
             friction_hotspot_count,
             session_hotspot_count,
             scope_hotspot_count,
+            domain_metrics_json,
         } => {
-            // All 22 non-primary-key columns listed explicitly per pseudocode note.
+            // 23 non-primary-key columns: 22 typed + domain_metrics_json (schema v14, ADR-006).
             sqlx::query(
                 "INSERT INTO observation_metrics
                     (feature_cycle, computed_at, total_tool_calls, total_duration_secs,
@@ -570,9 +575,10 @@ async fn execute_analytics_write(
                      post_completion_work_pct, follow_up_issues_created,
                      knowledge_entries_stored, sleep_workaround_count,
                      agent_hotspot_count, friction_hotspot_count,
-                     session_hotspot_count, scope_hotspot_count)
+                     session_hotspot_count, scope_hotspot_count,
+                     domain_metrics_json)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13,
-                         ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23)
+                         ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)
                  ON CONFLICT (feature_cycle) DO UPDATE SET
                     computed_at                        = excluded.computed_at,
                     total_tool_calls                   = excluded.total_tool_calls,
@@ -595,7 +601,8 @@ async fn execute_analytics_write(
                     agent_hotspot_count                = excluded.agent_hotspot_count,
                     friction_hotspot_count             = excluded.friction_hotspot_count,
                     session_hotspot_count              = excluded.session_hotspot_count,
-                    scope_hotspot_count                = excluded.scope_hotspot_count",
+                    scope_hotspot_count                = excluded.scope_hotspot_count,
+                    domain_metrics_json                = excluded.domain_metrics_json",
             )
             .bind(feature_cycle)
             .bind(computed_at)
@@ -620,6 +627,7 @@ async fn execute_analytics_write(
             .bind(friction_hotspot_count)
             .bind(session_hotspot_count)
             .bind(scope_hotspot_count)
+            .bind(domain_metrics_json)
             .execute(&mut **txn)
             .await?;
         }
@@ -953,8 +961,9 @@ mod tests {
 
     #[test]
     fn test_observation_metric_field_count() {
-        // Construct ObservationMetric with all 23 fields to verify the struct
-        // matches the schema v12 DDL (OQ-DURING-03).
+        // Construct ObservationMetric with all 24 fields (schema v14, ADR-006).
+        // 23 data columns + feature_cycle primary key = 24 struct fields.
+        // domain_metrics_json is None for claude-code sessions (empty domain_metrics).
         let _metric = AnalyticsWrite::ObservationMetric {
             feature_cycle: "nxs-011".into(),
             computed_at: 1,
@@ -979,8 +988,9 @@ mod tests {
             friction_hotspot_count: 13,
             session_hotspot_count: 14,
             scope_hotspot_count: 15,
+            domain_metrics_json: None,
         };
-        // If this test compiles, all 23 fields are correctly typed.
+        // If this test compiles, all 24 fields are correctly typed.
     }
 
     #[test]
