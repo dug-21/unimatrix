@@ -14,25 +14,25 @@
 
 ## Component Map
 
-| Component | Pseudocode | Test Plan |
-|-----------|-----------|-----------|
-| observation-record | pseudocode/observation-record.md | test-plan/observation-record.md |
-| domain-pack-registry | pseudocode/domain-pack-registry.md | test-plan/domain-pack-registry.md |
-| ingest-security | pseudocode/ingest-security.md | test-plan/ingest-security.md |
-| detection-rules | pseudocode/detection-rules.md | test-plan/detection-rules.md |
-| rule-dsl-evaluator | pseudocode/rule-dsl-evaluator.md | test-plan/rule-dsl-evaluator.md |
-| metrics-extension | pseudocode/metrics-extension.md | test-plan/metrics-extension.md |
-| schema-migration | pseudocode/schema-migration.md | test-plan/schema-migration.md |
-| config-extension | pseudocode/config-extension.md | test-plan/config-extension.md |
+| Component | Wave | Pseudocode | Test Plan |
+|-----------|------|-----------|-----------|
+| observation-record | 1 | pseudocode/observation-record.md | test-plan/observation-record.md |
+| domain-pack-registry | 2 | pseudocode/domain-pack-registry.md | test-plan/domain-pack-registry.md |
+| rule-dsl-evaluator | 2 | pseudocode/rule-dsl-evaluator.md | test-plan/rule-dsl-evaluator.md |
+| config-extension | 2 | pseudocode/config-extension.md | test-plan/config-extension.md |
+| detection-rules | 3 | pseudocode/detection-rules.md | test-plan/detection-rules.md |
+| metrics-extension | 3 | pseudocode/metrics-extension.md | test-plan/metrics-extension.md |
+| schema-migration | 3 | pseudocode/schema-migration.md | test-plan/schema-migration.md |
+| ingest-security | 4 | pseudocode/ingest-security.md | test-plan/ingest-security.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists expected components from the architecture — actual file paths are filled during delivery. The Cross-Cutting Artifacts section tracks files that don't belong to a single component but are consumed by specific stages.
+**Wave order is mandated by ADR-004**: Wave 1 must compile before Wave 2 begins; Wave 2 before Wave 3; Wave 3 before Wave 4. Run `cargo check --workspace` after each wave.
 
 ---
 
