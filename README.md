@@ -42,7 +42,7 @@ Automatic context injection on every prompt via the `UserPromptSubmit` hook. Fiv
 
 ### Retrospective Analysis
 
-Analyzes session telemetry for a completed feature cycle. 21 detection rules across 4 categories: agent behavior, friction points, session health, and scope indicators. Historical baselines with outlier detection surface anomalies. Evidence synthesis produces actionable findings with supporting data. Lessons and patterns extracted from retrospectives are stored back in the knowledge base with de-duplication via correction chains.
+Analyzes session telemetry for a completed feature cycle. 21 detection rules across 4 categories: agent behavior, friction points, session health, and scope indicators. Rules are domain-aware: each rule guards on `source_domain` as its first filter, so Claude Code rules never fire on events from other domains. A domain pack registry loaded at startup from TOML defines which event types, categories, and detection rules apply to each domain; the "claude-code" pack is always active with no config required. Historical baselines with outlier detection surface anomalies. Evidence synthesis produces actionable findings with supporting data. Lessons and patterns extracted from retrospectives are stored back in the knowledge base with de-duplication via correction chains.
 
 ### Contradiction Detection and NLI Edge Classification
 
@@ -284,6 +284,18 @@ max_contradicts_per_tick = 10
 nli_auto_quarantine_threshold = 0.85
 ```
 
+```toml
+# [observation] — domain pack registry (optional; omit for Claude Code-only deployments)
+# The "claude-code" pack is always loaded as the built-in default.
+# Domain pack changes require a server restart — runtime re-registration is not supported.
+[[observation.domain_packs]]
+source_domain = "sre"                    # Must match ^[a-z0-9_-]{1,64}$
+event_types   = ["incident_opened", "incident_resolved", "alert_fired"]
+categories    = ["runbook", "post-mortem"]
+# Built-in domain packs (claude-code) register detection rules as Rust code.
+# External packs declare threshold or temporal-window rules as TOML descriptors.
+```
+
 Config files are validated for security at load time: world-writable files abort startup; group-writable files log a warning. `[server] instructions` is scanned for injection patterns before use.
 
 ---
@@ -396,7 +408,7 @@ Unimatrix is a 9-crate Rust workspace that ships as a single binary.
 
 ### Storage
 
-SQLite local database (`unimatrix.db`). 19 tables. Schema version 11. Zero cloud dependency — all data stays on your machine.
+SQLite local database (`unimatrix.db`). 19 tables. Schema version 14. Zero cloud dependency — all data stays on your machine.
 
 ### Vector Search
 
@@ -425,7 +437,7 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
   config.toml                # Global config (optional — see Configuration section)
 ~/.unimatrix/{project-hash}/
   config.toml                # Per-project config override (optional)
-  unimatrix.db               # SQLite knowledge database (schema v11)
+  unimatrix.db               # SQLite knowledge database (schema v14)
   unimatrix.pid              # PID file with flock advisory lock
   unimatrix.sock             # Unix domain socket for hook IPC
   unimatrix-mcp.sock         # Unix domain socket for MCP sessions (daemon mode)
@@ -473,6 +485,14 @@ Append-only audit log records every operation with agent identity (who performed
 ### Hash-Chained Corrections
 
 SHA-256 content hashes with `previous_hash` links create tamper-evident correction chains. Any break in the chain is detectable.
+
+### Observation Ingest Constraints
+
+Three hard limits apply to all observation events before any processing:
+
+- **Payload size**: events with a payload exceeding 64 KB are rejected with a `PayloadTooLarge` error.
+- **JSON nesting depth**: payloads nested more than 10 levels deep are rejected with a `NestingTooDeep` error.
+- **Source domain format**: `source_domain` must match `^[a-z0-9_-]{1,64}$` at both domain pack registration and event ingest. Invalid values are rejected with an `InvalidSourceDomain` error — they do not silently coerce or pass through.
 
 ### NLI Model Integrity
 
