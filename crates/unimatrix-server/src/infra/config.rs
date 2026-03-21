@@ -321,6 +321,36 @@ pub struct InferenceConfig {
     /// Default: 0.85. Range: `(0.0, 1.0)` exclusive.
     #[serde(default = "default_nli_auto_quarantine_threshold")]
     pub nli_auto_quarantine_threshold: f32,
+
+    // -----------------------------------------------------------------------
+    // Ranking signal fusion weights (crt-024, ADR-003)
+    // -----------------------------------------------------------------------
+    /// Fusion weight for cosine similarity signal (bi-encoder recall). Default: 0.25.
+    #[serde(default = "default_w_sim")]
+    pub w_sim: f64,
+
+    /// Fusion weight for NLI entailment signal (cross-encoder precision). Default: 0.35.
+    /// When NLI is disabled or absent, this term contributes 0.0 and remaining weights
+    /// are re-normalized by `FusionWeights::effective(nli_available: false)`.
+    #[serde(default = "default_w_nli")]
+    pub w_nli: f64,
+
+    /// Fusion weight for confidence signal (Wilson score composite). Default: 0.15.
+    #[serde(default = "default_w_conf")]
+    pub w_conf: f64,
+
+    /// Fusion weight for co-access affinity signal (normalized usage pattern). Default: 0.10.
+    #[serde(default = "default_w_coac")]
+    pub w_coac: f64,
+
+    /// Fusion weight for utility delta signal (effectiveness classification). Default: 0.05.
+    #[serde(default = "default_w_util")]
+    pub w_util: f64,
+
+    /// Fusion weight for provenance signal (boosted-category hint). Default: 0.05.
+    /// Defaults sum to 0.95; the remaining 0.05 is headroom for WA-2's phase boost term.
+    #[serde(default = "default_w_prov")]
+    pub w_prov: f64,
 }
 
 impl Default for InferenceConfig {
@@ -348,6 +378,12 @@ impl Default for InferenceConfig {
             nli_contradiction_threshold: 0.6,
             max_contradicts_per_tick: 10,
             nli_auto_quarantine_threshold: 0.85,
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
         }
     }
 }
@@ -382,6 +418,34 @@ fn default_max_contradicts_per_tick() -> usize {
 
 fn default_nli_auto_quarantine_threshold() -> f32 {
     0.85
+}
+
+// ---------------------------------------------------------------------------
+// Fusion weight default value functions (crt-024, ADR-003)
+// ---------------------------------------------------------------------------
+
+fn default_w_sim() -> f64 {
+    0.25
+}
+
+fn default_w_nli() -> f64 {
+    0.35
+}
+
+fn default_w_conf() -> f64 {
+    0.15
+}
+
+fn default_w_coac() -> f64 {
+    0.10
+}
+
+fn default_w_util() -> f64 {
+    0.05
+}
+
+fn default_w_prov() -> f64 {
+    0.05
 }
 
 /// Returns `true` if `name` is a recognized NLI model variant (case-insensitive).
@@ -505,6 +569,44 @@ impl InferenceConfig {
                 path: path.to_path_buf(),
                 auto_quarantine: self.nli_auto_quarantine_threshold,
                 contradiction: self.nli_contradiction_threshold,
+            });
+        }
+
+        // -- Per-field fusion weight range checks [0.0, 1.0] inclusive (crt-024, ADR-003) --
+        let fusion_weight_checks: &[(&'static str, f64)] = &[
+            ("w_sim", self.w_sim),
+            ("w_nli", self.w_nli),
+            ("w_conf", self.w_conf),
+            ("w_coac", self.w_coac),
+            ("w_util", self.w_util),
+            ("w_prov", self.w_prov),
+        ];
+
+        for (field, value) in fusion_weight_checks {
+            if *value < 0.0 || *value > 1.0 {
+                return Err(ConfigError::NliFieldOutOfRange {
+                    path: path.to_path_buf(),
+                    field,
+                    value: value.to_string(),
+                    reason: "fusion weight must be in range [0.0, 1.0]",
+                });
+            }
+        }
+
+        // -- Sum-of-six constraint (crt-024, ADR-003): sum <= 1.0 --
+        let fusion_weight_sum =
+            self.w_sim + self.w_nli + self.w_conf + self.w_coac + self.w_util + self.w_prov;
+
+        if fusion_weight_sum > 1.0 {
+            return Err(ConfigError::FusionWeightSumExceeded {
+                path: path.to_path_buf(),
+                sum: fusion_weight_sum,
+                w_sim: self.w_sim,
+                w_nli: self.w_nli,
+                w_conf: self.w_conf,
+                w_coac: self.w_coac,
+                w_util: self.w_util,
+                w_prov: self.w_prov,
             });
         }
 
@@ -644,6 +746,21 @@ pub enum ConfigError {
         path: PathBuf,
         auto_quarantine: f32,
         contradiction: f32,
+    },
+    /// The six fusion weight fields (`w_sim + w_nli + w_conf + w_coac + w_util + w_prov`) sum
+    /// to more than 1.0.
+    ///
+    /// Reports the computed sum and all six field values so operators can diagnose which
+    /// weights to reduce (AC-02, FR-03, ADR-003 crt-024).
+    FusionWeightSumExceeded {
+        path: PathBuf,
+        sum: f64,
+        w_sim: f64,
+        w_nli: f64,
+        w_conf: f64,
+        w_coac: f64,
+        w_util: f64,
+        w_prov: f64,
     },
 }
 
@@ -828,6 +945,23 @@ impl fmt::Display for ConfigError {
                 path.display(),
                 auto_quarantine,
                 contradiction
+            ),
+            ConfigError::FusionWeightSumExceeded {
+                path,
+                sum,
+                w_sim,
+                w_nli,
+                w_conf,
+                w_coac,
+                w_util,
+                w_prov,
+            } => write!(
+                f,
+                "config error in {}: [inference] fusion weights sum to {:.6} which exceeds 1.0; \
+                 reduce one or more of: w_sim={w_sim}, w_nli={w_nli}, w_conf={w_conf}, \
+                 w_coac={w_coac}, w_util={w_util}, w_prov={w_prov}",
+                path.display(),
+                sum,
             ),
         }
     }
@@ -1406,6 +1540,36 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.nli_auto_quarantine_threshold
             } else {
                 global.inference.nli_auto_quarantine_threshold
+            },
+            w_sim: if (project.inference.w_sim - default.inference.w_sim).abs() > f64::EPSILON {
+                project.inference.w_sim
+            } else {
+                global.inference.w_sim
+            },
+            w_nli: if (project.inference.w_nli - default.inference.w_nli).abs() > f64::EPSILON {
+                project.inference.w_nli
+            } else {
+                global.inference.w_nli
+            },
+            w_conf: if (project.inference.w_conf - default.inference.w_conf).abs() > f64::EPSILON {
+                project.inference.w_conf
+            } else {
+                global.inference.w_conf
+            },
+            w_coac: if (project.inference.w_coac - default.inference.w_coac).abs() > f64::EPSILON {
+                project.inference.w_coac
+            } else {
+                global.inference.w_coac
+            },
+            w_util: if (project.inference.w_util - default.inference.w_util).abs() > f64::EPSILON {
+                project.inference.w_util
+            } else {
+                global.inference.w_util
+            },
+            w_prov: if (project.inference.w_prov - default.inference.w_prov).abs() > f64::EPSILON {
+                project.inference.w_prov
+            } else {
+                global.inference.w_prov
             },
         },
     }
@@ -3696,6 +3860,389 @@ categories = ["some-cat"]
         assert!(
             msg.contains("unknown"),
             "message must mention 'unknown' reserved constraint: {msg}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-024: InferenceConfig fusion weight tests
+    // -----------------------------------------------------------------------
+
+    /// Helper: build an InferenceConfig with all six weights at valid defaults.
+    fn make_weight_config() -> InferenceConfig {
+        InferenceConfig {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+            ..InferenceConfig::default()
+        }
+    }
+
+    // AC-01: Default deserialization — absent weight fields get correct defaults
+    #[test]
+    fn test_inference_config_weight_defaults_when_absent() {
+        let toml = "[inference]\nnli_enabled = false\n";
+        let config: UnimatrixConfig = toml::from_str(toml).expect("must parse");
+        let inf = &config.inference;
+        assert!(
+            (inf.w_sim - 0.25).abs() < 1e-9,
+            "w_sim default must be 0.25"
+        );
+        assert!(
+            (inf.w_nli - 0.35).abs() < 1e-9,
+            "w_nli default must be 0.35"
+        );
+        assert!(
+            (inf.w_conf - 0.15).abs() < 1e-9,
+            "w_conf default must be 0.15"
+        );
+        assert!(
+            (inf.w_coac - 0.10).abs() < 1e-9,
+            "w_coac default must be 0.10"
+        );
+        assert!(
+            (inf.w_util - 0.05).abs() < 1e-9,
+            "w_util default must be 0.05"
+        );
+        assert!(
+            (inf.w_prov - 0.05).abs() < 1e-9,
+            "w_prov default must be 0.05"
+        );
+        let sum = inf.w_sim + inf.w_nli + inf.w_conf + inf.w_coac + inf.w_util + inf.w_prov;
+        assert!(
+            sum <= 0.95 + 1e-9,
+            "default weight sum must be <= 0.95, got {sum}"
+        );
+    }
+
+    // AC-01b: Default sum <= 0.95 (ADR-003 numerical invariant, R-06)
+    #[test]
+    fn test_inference_config_default_weights_sum_within_headroom() {
+        let cfg = InferenceConfig::default();
+        let sum = cfg.w_sim + cfg.w_nli + cfg.w_conf + cfg.w_coac + cfg.w_util + cfg.w_prov;
+        assert!(
+            sum <= 0.95 + 1e-9,
+            "default weight sum must be <= 0.95, got {sum}"
+        );
+        assert!(
+            sum > 0.0,
+            "default weights must be non-zero for meaningful scoring"
+        );
+    }
+
+    // AC-02: Sum > 1.0 is rejected with FusionWeightSumExceeded
+    #[test]
+    fn test_inference_config_validate_rejects_sum_exceeding_one() {
+        let mut cfg = InferenceConfig::default();
+        cfg.w_sim = 0.5;
+        cfg.w_nli = 0.4;
+        cfg.w_conf = 0.15;
+        cfg.w_coac = 0.0;
+        cfg.w_util = 0.0;
+        cfg.w_prov = 0.0;
+        // sum = 1.05
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject sum > 1.0");
+        let msg = err.to_string();
+        assert!(msg.contains("w_sim"), "error must name w_sim: {msg}");
+        assert!(msg.contains("w_nli"), "error must name w_nli: {msg}");
+        assert!(msg.contains("w_conf"), "error must name w_conf: {msg}");
+        assert!(msg.contains("w_coac"), "error must name w_coac: {msg}");
+        assert!(msg.contains("w_util"), "error must name w_util: {msg}");
+        assert!(msg.contains("w_prov"), "error must name w_prov: {msg}");
+        // sum value must appear in message
+        assert!(
+            msg.contains("1.05") || msg.contains("1.050"),
+            "error must contain computed sum: {msg}"
+        );
+        // Must be the FusionWeightSumExceeded variant
+        assert!(
+            matches!(err, ConfigError::FusionWeightSumExceeded { .. }),
+            "must be FusionWeightSumExceeded variant"
+        );
+    }
+
+    // AC-02b: Sum exactly 1.0 is valid (EC-02)
+    #[test]
+    fn test_inference_config_validate_accepts_sum_exactly_one() {
+        let mut cfg = InferenceConfig::default();
+        cfg.w_sim = 0.30;
+        cfg.w_nli = 0.35;
+        cfg.w_conf = 0.15;
+        cfg.w_coac = 0.10;
+        cfg.w_util = 0.05;
+        cfg.w_prov = 0.05;
+        // sum = 1.0
+        assert!(
+            cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
+            "sum exactly 1.0 must be accepted"
+        );
+    }
+
+    // EC-01: All weights zero is a valid (degenerate) config
+    #[test]
+    fn test_inference_config_validate_accepts_all_zeros() {
+        let cfg = InferenceConfig {
+            w_sim: 0.0,
+            w_nli: 0.0,
+            w_conf: 0.0,
+            w_coac: 0.0,
+            w_util: 0.0,
+            w_prov: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
+            "all-zero weights must be accepted (degenerate but valid)"
+        );
+    }
+
+    // AC-12: validate() returns Result, not panics
+    #[test]
+    fn test_inference_config_validate_uses_result_not_panic() {
+        let cfg = InferenceConfig {
+            w_sim: -0.5,
+            w_nli: 2.0,
+            ..InferenceConfig::default()
+        };
+        // Must return Err, not panic
+        let result = cfg.validate(Path::new("/tmp/c.toml"));
+        assert!(result.is_err(), "invalid config must return Err, not panic");
+    }
+
+    // R-13: Partial TOML with only some weight fields set — unset fields use defaults
+    #[test]
+    fn test_inference_config_partial_toml_gets_defaults_not_error() {
+        let toml = "[inference]\nw_nli = 0.40\n";
+        let config: UnimatrixConfig = toml::from_str(toml).expect("partial TOML must parse");
+        let inf = &config.inference;
+        assert!(
+            (inf.w_nli - 0.40).abs() < 1e-9,
+            "set field w_nli must equal 0.40"
+        );
+        assert!(
+            (inf.w_sim - 0.25).abs() < 1e-9,
+            "unset w_sim must default to 0.25"
+        );
+        // Total sum: 0.40 + 0.25 + 0.15 + 0.10 + 0.05 + 0.05 = 1.00 <= 1.0
+        let sum = inf.w_sim + inf.w_nli + inf.w_conf + inf.w_coac + inf.w_util + inf.w_prov;
+        assert!(
+            sum <= 1.0 + 1e-9,
+            "partial config sum must not exceed 1.0, got {sum}"
+        );
+    }
+
+    // AC-03: Per-field negative rejection — one test per field
+    #[test]
+    fn test_inference_config_validate_rejects_w_sim_below_zero() {
+        let mut cfg = make_weight_config();
+        cfg.w_sim = -0.01;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject negative w_sim");
+        assert!(err.to_string().contains("w_sim"), "error must name w_sim");
+    }
+
+    #[test]
+    fn test_inference_config_validate_rejects_w_nli_below_zero() {
+        let mut cfg = make_weight_config();
+        cfg.w_nli = -0.01;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject negative w_nli");
+        assert!(err.to_string().contains("w_nli"), "error must name w_nli");
+    }
+
+    #[test]
+    fn test_inference_config_validate_rejects_w_conf_below_zero() {
+        let mut cfg = make_weight_config();
+        cfg.w_conf = -0.01;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject negative w_conf");
+        assert!(err.to_string().contains("w_conf"), "error must name w_conf");
+    }
+
+    #[test]
+    fn test_inference_config_validate_rejects_w_coac_below_zero() {
+        let mut cfg = make_weight_config();
+        cfg.w_coac = -0.01;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject negative w_coac");
+        assert!(err.to_string().contains("w_coac"), "error must name w_coac");
+    }
+
+    #[test]
+    fn test_inference_config_validate_rejects_w_util_below_zero() {
+        let mut cfg = make_weight_config();
+        cfg.w_util = -0.01;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject negative w_util");
+        assert!(err.to_string().contains("w_util"), "error must name w_util");
+    }
+
+    #[test]
+    fn test_inference_config_validate_rejects_w_prov_below_zero() {
+        let mut cfg = make_weight_config();
+        cfg.w_prov = -0.01;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject negative w_prov");
+        assert!(err.to_string().contains("w_prov"), "error must name w_prov");
+    }
+
+    // AC-03: Per-field > 1.0 rejection — one test per field
+    #[test]
+    fn test_inference_config_validate_rejects_w_sim_above_one() {
+        let mut cfg = make_weight_config();
+        cfg.w_sim = 1.01;
+        // Other fields are 0 to avoid tripping sum check first
+        cfg.w_nli = 0.0;
+        cfg.w_conf = 0.0;
+        cfg.w_coac = 0.0;
+        cfg.w_util = 0.0;
+        cfg.w_prov = 0.0;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject w_sim > 1.0");
+        assert!(err.to_string().contains("w_sim"), "error must name w_sim");
+    }
+
+    #[test]
+    fn test_inference_config_validate_rejects_w_nli_above_one() {
+        let mut cfg = make_weight_config();
+        cfg.w_nli = 1.01;
+        cfg.w_sim = 0.0;
+        cfg.w_conf = 0.0;
+        cfg.w_coac = 0.0;
+        cfg.w_util = 0.0;
+        cfg.w_prov = 0.0;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject w_nli > 1.0");
+        assert!(err.to_string().contains("w_nli"), "error must name w_nli");
+    }
+
+    #[test]
+    fn test_inference_config_validate_rejects_w_conf_above_one() {
+        let mut cfg = make_weight_config();
+        cfg.w_conf = 1.01;
+        cfg.w_sim = 0.0;
+        cfg.w_nli = 0.0;
+        cfg.w_coac = 0.0;
+        cfg.w_util = 0.0;
+        cfg.w_prov = 0.0;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject w_conf > 1.0");
+        assert!(err.to_string().contains("w_conf"), "error must name w_conf");
+    }
+
+    #[test]
+    fn test_inference_config_validate_rejects_w_coac_above_one() {
+        let mut cfg = make_weight_config();
+        cfg.w_coac = 1.01;
+        cfg.w_sim = 0.0;
+        cfg.w_nli = 0.0;
+        cfg.w_conf = 0.0;
+        cfg.w_util = 0.0;
+        cfg.w_prov = 0.0;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject w_coac > 1.0");
+        assert!(err.to_string().contains("w_coac"), "error must name w_coac");
+    }
+
+    #[test]
+    fn test_inference_config_validate_rejects_w_util_above_one() {
+        let mut cfg = make_weight_config();
+        cfg.w_util = 1.01;
+        cfg.w_sim = 0.0;
+        cfg.w_nli = 0.0;
+        cfg.w_conf = 0.0;
+        cfg.w_coac = 0.0;
+        cfg.w_prov = 0.0;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject w_util > 1.0");
+        assert!(err.to_string().contains("w_util"), "error must name w_util");
+    }
+
+    #[test]
+    fn test_inference_config_validate_rejects_w_prov_above_one() {
+        let mut cfg = make_weight_config();
+        cfg.w_prov = 1.01;
+        cfg.w_sim = 0.0;
+        cfg.w_nli = 0.0;
+        cfg.w_conf = 0.0;
+        cfg.w_coac = 0.0;
+        cfg.w_util = 0.0;
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject w_prov > 1.0");
+        assert!(err.to_string().contains("w_prov"), "error must name w_prov");
+    }
+
+    // T-IC-06: Default config (sum=0.95) passes validation
+    #[test]
+    fn test_inference_config_validate_accepts_default_weights() {
+        let cfg = make_weight_config();
+        assert!(
+            cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
+            "default weights (sum=0.95) must pass validation"
+        );
+    }
+
+    // T-IC-08: Existing NLI cross-field invariant still triggers before fusion weight checks
+    #[test]
+    fn test_inference_config_existing_nli_invariant_still_works() {
+        let cfg = InferenceConfig {
+            nli_auto_quarantine_threshold: 0.5,
+            nli_contradiction_threshold: 0.7,
+            ..InferenceConfig::default()
+        };
+        let err = cfg
+            .validate(Path::new("/tmp/c.toml"))
+            .expect_err("must reject invalid NLI threshold invariant");
+        assert!(
+            matches!(err, ConfigError::NliThresholdInvariantViolated { .. }),
+            "must be NliThresholdInvariantViolated variant"
+        );
+    }
+
+    // FusionWeightSumExceeded Display test
+    #[test]
+    fn test_display_fusion_weight_sum_exceeded() {
+        let err = ConfigError::FusionWeightSumExceeded {
+            path: PathBuf::from("/tmp/config.toml"),
+            sum: 1.05,
+            w_sim: 0.5,
+            w_nli: 0.4,
+            w_conf: 0.15,
+            w_coac: 0.0,
+            w_util: 0.0,
+            w_prov: 0.0,
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("/tmp/config.toml"), "must contain path: {msg}");
+        assert!(msg.contains("w_sim"), "must name w_sim: {msg}");
+        assert!(msg.contains("w_nli"), "must name w_nli: {msg}");
+        assert!(msg.contains("w_conf"), "must name w_conf: {msg}");
+        assert!(msg.contains("w_coac"), "must name w_coac: {msg}");
+        assert!(msg.contains("w_util"), "must name w_util: {msg}");
+        assert!(msg.contains("w_prov"), "must name w_prov: {msg}");
+        assert!(
+            msg.contains("1.05") || msg.contains("1.050"),
+            "must contain sum value: {msg}"
+        );
+        assert!(
+            msg.contains("exceeds 1.0"),
+            "must mention exceeds 1.0: {msg}"
         );
     }
 }
