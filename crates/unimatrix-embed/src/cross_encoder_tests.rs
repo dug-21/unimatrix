@@ -278,8 +278,14 @@ fn test_compare_minilm2_vs_deberta_scores() {
     let ml2_scores = ml2.score_pair(query, passage).unwrap();
     let deb_scores = deb.score_pair(query, passage).unwrap();
 
-    println!("MiniLM2:  entailment={:.4} neutral={:.4} contradiction={:.4}", ml2_scores.entailment, ml2_scores.neutral, ml2_scores.contradiction);
-    println!("DeBERTa:  entailment={:.4} neutral={:.4} contradiction={:.4}", deb_scores.entailment, deb_scores.neutral, deb_scores.contradiction);
+    println!(
+        "MiniLM2:  entailment={:.4} neutral={:.4} contradiction={:.4}",
+        ml2_scores.entailment, ml2_scores.neutral, ml2_scores.contradiction
+    );
+    println!(
+        "DeBERTa:  entailment={:.4} neutral={:.4} contradiction={:.4}",
+        deb_scores.entailment, deb_scores.neutral, deb_scores.contradiction
+    );
 
     // The two models should produce meaningfully different scores for this pair.
     // If they're identical, something is wrong with model loading.

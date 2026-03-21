@@ -805,7 +805,11 @@ impl fmt::Display for ConfigError {
                 value,
                 reason
             ),
-            ConfigError::InvalidObservationSourceDomain { path, value, reason } => write!(
+            ConfigError::InvalidObservationSourceDomain {
+                path,
+                value,
+                reason,
+            } => write!(
                 f,
                 "config error in {}: [[observation.domain_packs]] source_domain {:?} is invalid \
                  ({}); must match ^[a-z0-9_-]{{1,64}}$ and must not be \"unknown\" (reserved)",
@@ -1326,9 +1330,7 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             weights: project.confidence.weights.or(global.confidence.weights),
         },
         observation: ObservationConfig {
-            domain_packs: if project.observation.domain_packs
-                != default.observation.domain_packs
-            {
+            domain_packs: if project.observation.domain_packs != default.observation.domain_packs {
                 project.observation.domain_packs
             } else {
                 global.observation.domain_packs
@@ -3444,8 +3446,8 @@ mod tests {
 categories = ["outcome", "lesson-learned", "decision", "convention",
               "pattern", "procedure", "duties", "reference"]
 "#;
-        let config: UnimatrixConfig = toml::from_str(toml_str)
-            .expect("toml must parse without [observation] section");
+        let config: UnimatrixConfig =
+            toml::from_str(toml_str).expect("toml must parse without [observation] section");
         assert!(
             config.observation.domain_packs.is_empty(),
             "domain_packs must be empty when [observation] is absent"
@@ -3464,14 +3466,16 @@ source_domain = "sre"
 event_types = ["incident_opened", "incident_resolved"]
 categories = ["runbook", "post-mortem"]
 "#;
-        let config: UnimatrixConfig =
-            toml::from_str(toml_str).expect("toml must parse");
+        let config: UnimatrixConfig = toml::from_str(toml_str).expect("toml must parse");
         assert_eq!(config.observation.domain_packs.len(), 1);
         let pack = &config.observation.domain_packs[0];
         assert_eq!(pack.source_domain, "sre");
         assert_eq!(
             pack.event_types,
-            vec!["incident_opened".to_string(), "incident_resolved".to_string()]
+            vec![
+                "incident_opened".to_string(),
+                "incident_resolved".to_string()
+            ]
         );
         assert_eq!(
             pack.categories,
@@ -3493,8 +3497,7 @@ event_types = ["incident_opened"]
 categories = ["runbook"]
 rule_file = "/etc/unimatrix/sre-rules.toml"
 "#;
-        let config: UnimatrixConfig =
-            toml::from_str(toml_str).expect("toml must parse");
+        let config: UnimatrixConfig = toml::from_str(toml_str).expect("toml must parse");
         let pack = &config.observation.domain_packs[0];
         assert_eq!(
             pack.rule_file,
@@ -3519,8 +3522,7 @@ source_domain = "ci-cd"
 event_types = ["build_started", "build_completed"]
 categories = ["pipeline"]
 "#;
-        let config: UnimatrixConfig =
-            toml::from_str(toml_str).expect("toml must parse");
+        let config: UnimatrixConfig = toml::from_str(toml_str).expect("toml must parse");
         assert_eq!(config.observation.domain_packs.len(), 2);
         assert_eq!(config.observation.domain_packs[0].source_domain, "sre");
         assert_eq!(config.observation.domain_packs[1].source_domain, "ci-cd");
@@ -3565,8 +3567,7 @@ source_domain = "unknown"
 event_types = ["some_event"]
 categories = ["some-cat"]
 "#;
-        let config: UnimatrixConfig =
-            toml::from_str(toml_str).expect("toml must parse");
+        let config: UnimatrixConfig = toml::from_str(toml_str).expect("toml must parse");
         let err = validate_config(&config, Path::new("/tmp/config.toml"))
             .expect_err("validate_config must reject source_domain = 'unknown'");
         match &err {
@@ -3577,7 +3578,10 @@ categories = ["some-cat"]
             other => panic!("unexpected error variant: {other}"),
         }
         let msg = err.to_string();
-        assert!(msg.contains("unknown"), "error message must name the domain: {msg}");
+        assert!(
+            msg.contains("unknown"),
+            "error message must name the domain: {msg}"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -3614,10 +3618,10 @@ categories = ["some-cat"]
     #[test]
     fn test_validate_config_rejects_invalid_source_domain_chars() {
         let invalid_domains: Vec<String> = vec![
-            "My Domain".to_string(),    // space and uppercase
-            "SRE".to_string(),          // uppercase
-            "sre!".to_string(),         // invalid char
-            "a".repeat(65),             // too long (> 64 chars)
+            "My Domain".to_string(), // space and uppercase
+            "SRE".to_string(),       // uppercase
+            "sre!".to_string(),      // invalid char
+            "a".repeat(65),          // too long (> 64 chars)
         ];
         for bad in &invalid_domains {
             let config = UnimatrixConfig {
@@ -3648,8 +3652,8 @@ categories = ["some-cat"]
             "ci-cd",
             "my_domain",
             "a1b2c3",
-            "a",           // length 1
-            &max_len,      // length 64 (max)
+            "a",      // length 1
+            &max_len, // length 64 (max)
             "claude-code",
         ];
         for good in &valid_domains {

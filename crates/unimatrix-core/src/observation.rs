@@ -115,10 +115,12 @@ mod tests {
 
         assert_eq!(v["event_type"], "PostToolUse");
         assert_eq!(v["source_domain"], "claude-code");
-        assert!(v.get("hook").is_none(), "serialized JSON must not have 'hook' key");
+        assert!(
+            v.get("hook").is_none(),
+            "serialized JSON must not have 'hook' key"
+        );
 
-        let deserialized: ObservationRecord =
-            serde_json::from_value(v).expect("deserialize");
+        let deserialized: ObservationRecord = serde_json::from_value(v).expect("deserialize");
         assert_eq!(deserialized.ts, record.ts);
         assert_eq!(deserialized.event_type, record.event_type);
         assert_eq!(deserialized.source_domain, record.source_domain);
