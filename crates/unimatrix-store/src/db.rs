@@ -484,7 +484,8 @@ pub(crate) async fn create_tables_if_needed(
             agent_hotspot_count                INTEGER NOT NULL DEFAULT 0,
             friction_hotspot_count             INTEGER NOT NULL DEFAULT 0,
             session_hotspot_count              INTEGER NOT NULL DEFAULT 0,
-            scope_hotspot_count                INTEGER NOT NULL DEFAULT 0
+            scope_hotspot_count                INTEGER NOT NULL DEFAULT 0,
+            domain_metrics_json                TEXT    NULL
         )",
     )
     .execute(&mut *conn)
@@ -711,7 +712,7 @@ pub(crate) async fn create_tables_if_needed(
     .await?;
 
     // Initialize counters that other modules expect.
-    sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 13)")
+    sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 14)")
         .execute(&mut *conn)
         .await?;
     sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('next_entry_id', 1)")
@@ -1106,7 +1107,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_schema_version_initialized_to_13_on_fresh_db() {
+    async fn test_schema_version_initialized_to_14_on_fresh_db() {
         let (store, _dir) = open_test_store().await;
 
         let v: i64 = sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
@@ -1114,7 +1115,10 @@ mod tests {
             .await
             .expect("query schema_version");
 
-        assert_eq!(v, 13, "schema_version must initialize to 13 on fresh db");
+        assert_eq!(
+            v, 14,
+            "schema_version must initialize to 14 on fresh db (col-023)"
+        );
         store.close().await.unwrap();
     }
 }

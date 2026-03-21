@@ -4,9 +4,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::types::{
-    EvidenceRecord, HookType, HotspotCategory, HotspotFinding, ObservationRecord, Severity,
-};
+use crate::types::{EvidenceRecord, HotspotCategory, HotspotFinding, ObservationRecord, Severity};
 
 use super::{DetectionRule, contains_sleep_command, input_to_command_string, truncate};
 
@@ -24,29 +22,30 @@ impl DetectionRule for PermissionRetriesRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut pre_counts: HashMap<String, u64> = HashMap::new();
         let mut post_counts: HashMap<String, u64> = HashMap::new();
         let mut evidence_records: HashMap<String, Vec<EvidenceRecord>> = HashMap::new();
 
-        for record in records {
+        for record in &records {
             if let Some(tool) = &record.tool {
-                match record.hook {
-                    HookType::PreToolUse => {
-                        *pre_counts.entry(tool.clone()).or_default() += 1;
-                        evidence_records
-                            .entry(tool.clone())
-                            .or_default()
-                            .push(EvidenceRecord {
-                                description: format!("PreToolUse for {tool}"),
-                                ts: record.ts,
-                                tool: Some(tool.clone()),
-                                detail: format!("Pre-use event at ts={}", record.ts),
-                            });
-                    }
-                    HookType::PostToolUse => {
-                        *post_counts.entry(tool.clone()).or_default() += 1;
-                    }
-                    _ => {}
+                if record.event_type == "PreToolUse" {
+                    *pre_counts.entry(tool.clone()).or_default() += 1;
+                    evidence_records
+                        .entry(tool.clone())
+                        .or_default()
+                        .push(EvidenceRecord {
+                            description: format!("PreToolUse for {tool}"),
+                            ts: record.ts,
+                            tool: Some(tool.clone()),
+                            detail: format!("Pre-use event at ts={}", record.ts),
+                        });
+                } else if record.event_type == "PostToolUse" {
+                    *post_counts.entry(tool.clone()).or_default() += 1;
                 }
             }
         }
@@ -90,9 +89,14 @@ impl DetectionRule for SleepWorkaroundsRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut evidence = Vec::new();
 
-        for record in records {
+        for record in &records {
             if record.tool.as_deref() == Some("Bash") {
                 if let Some(input) = &record.input {
                     let input_str = input_to_command_string(input);
@@ -160,12 +164,17 @@ impl DetectionRule for SearchViaBashRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut total_bash = 0u64;
         let mut search_bash = 0u64;
         let mut evidence = Vec::new();
 
-        for record in records {
-            if record.tool.as_deref() == Some("Bash") && record.hook == HookType::PreToolUse {
+        for record in &records {
+            if record.tool.as_deref() == Some("Bash") && record.event_type == "PreToolUse" {
                 total_bash += 1;
                 if let Some(input) = &record.input {
                     let cmd = input_to_command_string(input);
@@ -222,14 +231,19 @@ impl DetectionRule for OutputParsingStruggleRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         // Collect Bash commands with pipes: (ts, base_command, full_command)
         let mut piped_commands: Vec<(u64, String, String)> = Vec::new();
 
-        let mut sorted: Vec<&ObservationRecord> = records.iter().collect();
+        let mut sorted: Vec<&ObservationRecord> = records.clone();
         sorted.sort_by_key(|r| r.ts);
 
         for record in &sorted {
-            if record.tool.as_deref() == Some("Bash") && record.hook == HookType::PreToolUse {
+            if record.tool.as_deref() == Some("Bash") && record.event_type == "PreToolUse" {
                 if let Some(input) = &record.input {
                     let cmd = input_to_command_string(input);
                     if cmd.contains('|') {
@@ -321,7 +335,8 @@ mod tests {
     fn make_pre(ts: u64, tool: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some(tool.to_string()),
             input: None,
@@ -333,7 +348,8 @@ mod tests {
     fn make_post(ts: u64, tool: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PostToolUse,
+            event_type: "PostToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some(tool.to_string()),
             input: None,
@@ -345,7 +361,8 @@ mod tests {
     fn make_bash_with_input(ts: u64, command: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Bash".to_string()),
             input: Some(serde_json::json!({"command": command})),

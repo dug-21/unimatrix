@@ -1292,7 +1292,7 @@ mod tests {
             .map(|id| (id, format!("neighbor text {id}")))
             .collect();
         let scores_above_both = NliScores {
-            entailment: 0.9,    // above 0.6 → Supports edge
+            entailment: 0.9, // above 0.6 → Supports edge
             neutral: 0.0,
             contradiction: 0.9, // above 0.6 → Contradicts edge (but cap stops before all)
         };

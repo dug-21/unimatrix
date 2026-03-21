@@ -14,10 +14,13 @@ use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{CoreError, EmbedConfig, Store, VectorAdapter, VectorConfig, VectorIndex};
 use unimatrix_embed::NliModel;
 use unimatrix_engine::confidence::ConfidenceParams;
+use unimatrix_observe::domain::{DomainPack, DomainPackRegistry};
 use unimatrix_server::error::ServerError;
 use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
-use unimatrix_server::infra::config::{UnimatrixConfig, load_config, resolve_confidence_params};
+use unimatrix_server::infra::config::{
+    DomainPackConfig, UnimatrixConfig, load_config, resolve_confidence_params,
+};
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
 use unimatrix_server::infra::nli_handle::{NliConfig, NliServiceHandle};
 use unimatrix_server::infra::pidfile;
@@ -32,6 +35,19 @@ use unimatrix_server::uds_listener;
 /// Timeout for waiting on a stale process to exit after SIGTERM.
 /// Increased from 5s to 10s to accommodate heavier shutdown since vnc-006 (#92).
 const STALE_PROCESS_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Convert a TOML `DomainPackConfig` to a `DomainPack`.
+///
+/// The `rule_file` field is not yet implemented (W1-5 scope: built-in claude-code rules only).
+/// External rule files will be supported in a follow-on feature.
+fn domain_pack_from_config(cfg: &DomainPackConfig) -> DomainPack {
+    DomainPack {
+        source_domain: cfg.source_domain.clone(),
+        event_types: cfg.event_types.clone(),
+        categories: cfg.categories.clone(),
+        rules: vec![], // External rule files not yet supported (W1-5 scope).
+    }
+}
 
 /// Unimatrix knowledge engine.
 #[derive(Parser)]
@@ -529,6 +545,27 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize category allowlist from config (dsn-001).
     let categories = Arc::new(CategoryAllowlist::from_categories(knowledge_categories));
 
+    // Build DomainPackRegistry from [observation] config (col-023 ADR-002).
+    // The built-in claude-code pack is always loaded; TOML stanzas are merged in.
+    let observation_registry = {
+        let packs: Vec<DomainPack> = config
+            .observation
+            .domain_packs
+            .iter()
+            .map(domain_pack_from_config)
+            .collect();
+        let reg = DomainPackRegistry::new(packs).map_err(|e| {
+            ServerError::ProjectInit(format!("domain pack registry init failed: {e}"))
+        })?;
+        // Register domain pack categories into CategoryAllowlist (IR-02 ordering).
+        for pack in reg.iter_packs() {
+            for category in &pack.categories {
+                categories.add_category(category.clone());
+            }
+        }
+        Arc::new(reg)
+    };
+
     // Initialize adaptation service (crt-006).
     let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
     if let Err(e) = adapt_service.load_state(&paths.data_dir) {
@@ -609,6 +646,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         config.inference.nli_top_k,
         config.inference.nli_enabled,
         Arc::clone(&inference_config), // crt-023: NLI store config snapshot
+        Arc::clone(&observation_registry), // col-023: thread registry into StatusService
     );
 
     // Start UDS listener for hook IPC.
@@ -645,6 +683,8 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
     server.session_registry = Arc::clone(&session_registry);
+    // col-023: thread startup-configured domain pack registry into MCP tool handlers.
+    server.observation_registry = Arc::clone(&observation_registry);
 
     // Extract state handles before services is moved.
     let confidence_state_handle = services.confidence_state_handle();
@@ -888,6 +928,27 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize category allowlist from config (dsn-001).
     let categories = Arc::new(CategoryAllowlist::from_categories(knowledge_categories));
 
+    // Build DomainPackRegistry from [observation] config (col-023 ADR-002).
+    // The built-in claude-code pack is always loaded; TOML stanzas are merged in.
+    let observation_registry = {
+        let packs: Vec<DomainPack> = config
+            .observation
+            .domain_packs
+            .iter()
+            .map(domain_pack_from_config)
+            .collect();
+        let reg = DomainPackRegistry::new(packs).map_err(|e| {
+            ServerError::ProjectInit(format!("domain pack registry init failed: {e}"))
+        })?;
+        // Register domain pack categories into CategoryAllowlist (IR-02 ordering).
+        for pack in reg.iter_packs() {
+            for category in &pack.categories {
+                categories.add_category(category.clone());
+            }
+        }
+        Arc::new(reg)
+    };
+
     // Initialize adaptation service (crt-006).
     let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
     if let Err(e) = adapt_service.load_state(&paths.data_dir) {
@@ -967,6 +1028,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         config.inference.nli_top_k,
         config.inference.nli_enabled,
         Arc::clone(&inference_config), // crt-023: NLI store config snapshot
+        Arc::clone(&observation_registry), // col-023: thread registry into StatusService
     );
 
     // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009).
@@ -1003,6 +1065,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
     server.session_registry = Arc::clone(&session_registry);
+    // col-023: thread startup-configured domain pack registry into MCP tool handlers.
+    server.observation_registry = Arc::clone(&observation_registry);
 
     // crt-019: extract ConfidenceStateHandle before services is moved.
     let confidence_state_handle = services.confidence_state_handle();

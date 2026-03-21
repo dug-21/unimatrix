@@ -25,9 +25,15 @@ impl ExtractionRule for FileDependencyRule {
         observations: &[ObservationRecord],
         _store: &SqlxStore,
     ) -> Vec<ProposedEntry> {
+        // ADR-005: source_domain guard is MANDATORY as first operation.
+        let observations: Vec<&ObservationRecord> = observations
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         // Group observations by session
         let mut session_records: HashMap<String, Vec<&ObservationRecord>> = HashMap::new();
-        for obs in observations {
+        for obs in &observations {
             session_records
                 .entry(obs.session_id.clone())
                 .or_default()
@@ -107,12 +113,11 @@ impl ExtractionRule for FileDependencyRule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use unimatrix_core::HookType;
-
     fn make_read_obs(session_id: &str, ts: u64, path: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session_id.to_string(),
             tool: Some("Read".to_string()),
             input: Some(serde_json::json!({"file_path": path})),
@@ -124,7 +129,8 @@ mod tests {
     fn make_edit_obs(session_id: &str, ts: u64, path: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session_id.to_string(),
             tool: Some("Edit".to_string()),
             input: Some(serde_json::json!({"file_path": path})),

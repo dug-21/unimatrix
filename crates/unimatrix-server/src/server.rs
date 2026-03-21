@@ -13,6 +13,7 @@ use unimatrix_core::{
 use unimatrix_store::StoreError;
 
 use unimatrix_adapt::AdaptationService;
+use unimatrix_observe::domain::DomainPackRegistry;
 
 use crate::background::TickMetadata;
 use crate::error::ServerError;
@@ -224,6 +225,12 @@ pub struct UnimatrixServer {
     tool_router: ToolRouter<Self>,
     /// Cached server info for MCP handshake.
     server_info: ServerInfo,
+    /// col-023 (ADR-002): startup-configured domain pack registry threaded into
+    /// SqlObservationSource at the retrospective call sites in MCP tool handlers.
+    ///
+    /// Initialized with the built-in claude-code pack in `new()` (for tests).
+    /// Overwritten from `main.rs` with the config-loaded registry (daemon/stdio paths).
+    pub observation_registry: Arc<DomainPackRegistry>,
 }
 
 impl UnimatrixServer {
@@ -285,6 +292,8 @@ impl UnimatrixServer {
             20,    // nli_top_k default
             false, // nli_enabled: disabled for tests
             Arc::new(crate::infra::config::InferenceConfig::default()),
+            // col-023: built-in default registry for test server
+            Arc::new(DomainPackRegistry::with_builtin_claude_code()),
         );
 
         // crt-018b: extract handle after ServiceLayer is fully constructed so
@@ -312,6 +321,8 @@ impl UnimatrixServer {
             tick_metadata,
             tool_router: Self::tool_router(),
             server_info,
+            // col-023: built-in default for test server; overwritten in main.rs daemon/stdio paths.
+            observation_registry: Arc::new(DomainPackRegistry::with_builtin_claude_code()),
         }
     }
 
@@ -2036,13 +2047,13 @@ mod tests {
                 .await
                 .unwrap();
 
-            // Verify schema version is now current (13, crt-021 graph_edges migration)
+            // Verify schema version is now current (14, col-023 domain_metrics_json migration)
             let version: i64 =
                 sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
                     .fetch_one(store.read_pool_test())
                     .await
                     .unwrap();
-            assert_eq!(version, 13);
+            assert_eq!(version, 14);
 
             // Verify backfill: quarantined entry should have pre_quarantine_status = 0
             let pre_q: Option<i64> =
@@ -2067,7 +2078,7 @@ mod tests {
                     .fetch_one(store.read_pool_test())
                     .await
                     .unwrap();
-            assert_eq!(version, 13, "schema version should remain 13 on re-open");
+            assert_eq!(version, 14, "schema version should remain 14 on re-open");
         }
     }
 

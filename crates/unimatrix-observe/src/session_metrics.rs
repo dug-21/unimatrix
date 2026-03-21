@@ -4,7 +4,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::types::{HookType, ObservationRecord, SessionSummary};
+use crate::types::{ObservationRecord, SessionSummary};
 
 /// Compute per-session activity profiles from observation records.
 ///
@@ -51,7 +51,7 @@ pub fn compute_context_reload_pct(
     // Build per-session file sets from observation records
     let mut session_files: HashMap<String, HashSet<String>> = HashMap::new();
     for record in records {
-        if record.hook != HookType::PreToolUse {
+        if record.event_type != "PreToolUse" {
             continue;
         }
         let path = record
@@ -112,7 +112,7 @@ fn build_session_summary(
     // Tool distribution: only PreToolUse events (FR-01.2)
     let mut tool_distribution: HashMap<String, u64> = HashMap::new();
     for record in session_records {
-        if record.hook != HookType::PreToolUse {
+        if record.event_type != "PreToolUse" {
             continue;
         }
         let tool_name = record.tool.as_deref().unwrap_or("");
@@ -123,7 +123,7 @@ fn build_session_summary(
     // File zones: only PreToolUse events for file-touching tools
     let mut file_counts: HashMap<String, u64> = HashMap::new();
     for record in session_records {
-        if record.hook != HookType::PreToolUse {
+        if record.event_type != "PreToolUse" {
             continue;
         }
         let path = record
@@ -145,7 +145,7 @@ fn build_session_summary(
     // Agents spawned: SubagentStart events (FR-01.5)
     let mut agents_spawned: Vec<String> = Vec::new();
     for record in session_records {
-        if record.hook != HookType::SubagentStart {
+        if record.event_type != "SubagentStart" {
             continue;
         }
         if let Some(tool_name) = &record.tool {
@@ -157,7 +157,7 @@ fn build_session_summary(
     let knowledge_served = session_records
         .iter()
         .filter(|r| {
-            r.hook == HookType::PreToolUse
+            r.event_type == "PreToolUse"
                 && r.tool
                     .as_deref()
                     .map(normalize_tool_name)
@@ -170,7 +170,7 @@ fn build_session_summary(
     let knowledge_stored = session_records
         .iter()
         .filter(|r| {
-            r.hook == HookType::PreToolUse
+            r.event_type == "PreToolUse"
                 && r.tool
                     .as_deref()
                     .map(normalize_tool_name)
@@ -181,7 +181,7 @@ fn build_session_summary(
     let knowledge_curated = session_records
         .iter()
         .filter(|r| {
-            r.hook == HookType::PreToolUse
+            r.event_type == "PreToolUse"
                 && r.tool
                     .as_deref()
                     .map(normalize_tool_name)
@@ -277,13 +277,14 @@ mod tests {
     fn make_record(
         session_id: &str,
         ts: u64,
-        hook: HookType,
+        event_type: &str,
         tool: Option<&str>,
         input: Option<serde_json::Value>,
     ) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook,
+            event_type: event_type.to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session_id.to_string(),
             tool: tool.map(String::from),
             input,
@@ -293,7 +294,7 @@ mod tests {
     }
 
     fn pre_tool(session_id: &str, ts: u64, tool: &str) -> ObservationRecord {
-        make_record(session_id, ts, HookType::PreToolUse, Some(tool), None)
+        make_record(session_id, ts, "PreToolUse", Some(tool), None)
     }
 
     fn pre_tool_with_input(
@@ -302,13 +303,7 @@ mod tests {
         tool: &str,
         input: serde_json::Value,
     ) -> ObservationRecord {
-        make_record(
-            session_id,
-            ts,
-            HookType::PreToolUse,
-            Some(tool),
-            Some(input),
-        )
+        make_record(session_id, ts, "PreToolUse", Some(tool), Some(input))
     }
 
     // ---- compute_session_summaries tests ----
@@ -394,7 +389,7 @@ mod tests {
         let records = vec![
             pre_tool("s1", 1000, "Read"),
             pre_tool("s1", 2000, "Read"),
-            make_record("s1", 3000, HookType::PostToolUse, Some("Read"), None),
+            make_record("s1", 3000, "PostToolUse", Some("Read"), None),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries[0].tool_distribution.get("read"), Some(&2));
@@ -423,9 +418,9 @@ mod tests {
     #[test]
     fn test_session_summaries_agents_spawned() {
         let records = vec![
-            make_record("s1", 1000, HookType::SubagentStart, Some("agent-a"), None),
-            make_record("s1", 2000, HookType::SubagentStart, Some("agent-b"), None),
-            make_record("s1", 3000, HookType::SubagentStart, Some("agent-c"), None),
+            make_record("s1", 1000, "SubagentStart", Some("agent-a"), None),
+            make_record("s1", 2000, "SubagentStart", Some("agent-b"), None),
+            make_record("s1", 3000, "SubagentStart", Some("agent-c"), None),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries[0].agents_spawned.len(), 3);

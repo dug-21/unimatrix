@@ -135,6 +135,8 @@ impl TestHarness {
             false, // nli_enabled: disabled for tests
             // crt-023: default InferenceConfig for tests (NLI disabled via nli_enabled=false above)
             Arc::new(crate::infra::config::InferenceConfig::default()),
+            // col-023: built-in default registry for test harness
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
         );
 
         Some(TestHarness { layer, store })

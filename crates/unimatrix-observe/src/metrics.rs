@@ -2,9 +2,11 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use unimatrix_core::observation::hook_type;
+
 use crate::detection::{contains_sleep_command, input_to_command_string};
 use crate::types::{
-    HookType, HotspotCategory, HotspotFinding, MetricVector, ObservationRecord, PhaseMetrics,
+    HotspotCategory, HotspotFinding, MetricVector, ObservationRecord, PhaseMetrics,
     UniversalMetrics,
 };
 
@@ -16,24 +18,36 @@ pub fn compute_metric_vector(
 ) -> MetricVector {
     let universal = compute_universal(records, hotspots);
     let phases = compute_phases(records);
+    let domain_metrics = compute_domain_metrics(records);
 
     MetricVector {
         computed_at,
         universal,
         phases,
+        domain_metrics,
     }
 }
 
+/// Compute universal metrics from claude-code records only (IR-03).
+/// Records with `source_domain != "claude-code"` are excluded from all
+/// UniversalMetrics computations — they contain domain-specific events
+/// that are not comparable to claude-code session metrics.
 fn compute_universal(
     records: &[ObservationRecord],
     hotspots: &[HotspotFinding],
 ) -> UniversalMetrics {
+    // IR-03: pre-filter to claude-code domain only.
+    let records: Vec<&ObservationRecord> = records
+        .iter()
+        .filter(|r| r.source_domain == "claude-code")
+        .collect();
+
     let mut m = UniversalMetrics::default();
 
     // Count tool calls (PreToolUse events)
     m.total_tool_calls = records
         .iter()
-        .filter(|r| r.hook == HookType::PreToolUse)
+        .filter(|r| r.event_type == hook_type::PRETOOLUSE)
         .count() as u64;
 
     // Total duration: max_ts - min_ts (in seconds, from millis)
@@ -51,12 +65,12 @@ fn compute_universal(
     // Permission friction: sum of (pre - post) per tool, only positive values
     let mut pre_counts: HashMap<&str, u64> = HashMap::new();
     let mut post_counts: HashMap<&str, u64> = HashMap::new();
-    for r in records {
+    for r in &records {
         if let Some(tool) = &r.tool {
-            match r.hook {
-                HookType::PreToolUse => *pre_counts.entry(tool).or_default() += 1,
-                HookType::PostToolUse => *post_counts.entry(tool).or_default() += 1,
-                _ => {}
+            if r.event_type == hook_type::PRETOOLUSE {
+                *pre_counts.entry(tool).or_default() += 1;
+            } else if r.event_type == hook_type::POSTTOOLUSE {
+                *post_counts.entry(tool).or_default() += 1;
             }
         }
     }
@@ -91,9 +105,9 @@ fn compute_universal(
 
     // Search miss rate: Grep/Glob PostToolUse records with empty results
     {
-        let search_posts: Vec<&ObservationRecord> = records
+        let search_posts: Vec<&&ObservationRecord> = records
             .iter()
-            .filter(|r| r.hook == HookType::PostToolUse)
+            .filter(|r| r.event_type == hook_type::POSTTOOLUSE)
             .filter(|r| {
                 r.tool
                     .as_deref()
@@ -117,7 +131,7 @@ fn compute_universal(
     // Context loaded: sum response_size from all PostToolUse records
     let total_response_bytes: u64 = records
         .iter()
-        .filter(|r| r.hook == HookType::PostToolUse)
+        .filter(|r| r.event_type == hook_type::POSTTOOLUSE)
         .filter_map(|r| r.response_size)
         .sum();
     m.total_context_loaded_kb = total_response_bytes as f64 / 1024.0;
@@ -126,7 +140,7 @@ fn compute_universal(
     {
         let edit_response_bytes: u64 = records
             .iter()
-            .filter(|r| r.hook == HookType::PostToolUse)
+            .filter(|r| r.event_type == hook_type::POSTTOOLUSE)
             .filter(|r| r.tool.as_deref() == Some("Edit"))
             .filter_map(|r| r.response_size)
             .sum();
@@ -137,7 +151,7 @@ fn compute_universal(
     if total_response_bytes > 0 {
         let edit_response_bytes: u64 = records
             .iter()
-            .filter(|r| r.hook == HookType::PostToolUse)
+            .filter(|r| r.event_type == hook_type::POSTTOOLUSE)
             .filter(|r| r.tool.as_deref() == Some("Edit"))
             .filter_map(|r| r.response_size)
             .sum();
@@ -146,19 +160,19 @@ fn compute_universal(
 
     // Context load before first write: sum Read PostToolUse response_size until first Write/Edit PreToolUse
     {
-        let mut sorted_records: Vec<&ObservationRecord> = records.iter().collect();
+        let mut sorted_records: Vec<&&ObservationRecord> = records.iter().collect();
         sorted_records.sort_by_key(|r| r.ts);
 
         let mut read_bytes: u64 = 0;
         for r in &sorted_records {
-            if r.hook == HookType::PreToolUse {
+            if r.event_type == hook_type::PRETOOLUSE {
                 if let Some(tool) = &r.tool {
                     if tool == "Write" || tool == "Edit" {
                         break;
                     }
                 }
             }
-            if r.hook == HookType::PostToolUse && r.tool.as_deref() == Some("Read") {
+            if r.event_type == hook_type::POSTTOOLUSE && r.tool.as_deref() == Some("Read") {
                 read_bytes += r.response_size.unwrap_or(0);
             }
         }
@@ -167,7 +181,7 @@ fn compute_universal(
 
     // Cold restart events: count timestamp gaps > 30 minutes between consecutive records
     {
-        let mut sorted_records: Vec<&ObservationRecord> = records.iter().collect();
+        let mut sorted_records: Vec<&&ObservationRecord> = records.iter().collect();
         sorted_records.sort_by_key(|r| r.ts);
 
         let cold_restart_threshold_ms: u64 = 1_800_000; // 30 minutes
@@ -183,9 +197,9 @@ fn compute_universal(
 
     // Parallel call rate: PreToolUse records sharing same timestamp / total PreToolUse
     {
-        let pre_records: Vec<&ObservationRecord> = records
+        let pre_records: Vec<&&ObservationRecord> = records
             .iter()
-            .filter(|r| r.hook == HookType::PreToolUse)
+            .filter(|r| r.event_type == hook_type::PRETOOLUSE)
             .collect();
         let total_pre = pre_records.len();
         if total_pre > 0 {
@@ -200,18 +214,18 @@ fn compute_universal(
 
     // Post-completion work %: PreToolUse records after last TaskUpdate with status "completed"
     {
-        let mut sorted_records: Vec<&ObservationRecord> = records.iter().collect();
+        let mut sorted_records: Vec<&&ObservationRecord> = records.iter().collect();
         sorted_records.sort_by_key(|r| r.ts);
 
         let total_pre = records
             .iter()
-            .filter(|r| r.hook == HookType::PreToolUse)
+            .filter(|r| r.event_type == hook_type::PRETOOLUSE)
             .count();
 
         // Find the last TaskUpdate PreToolUse with status "completed" in input
         let mut last_completion_ts: Option<u64> = None;
         for r in sorted_records.iter() {
-            if r.hook == HookType::PreToolUse && r.tool.as_deref() == Some("TaskUpdate") {
+            if r.event_type == hook_type::PRETOOLUSE && r.tool.as_deref() == Some("TaskUpdate") {
                 if let Some(input) = &r.input {
                     if let Some(obj) = input.as_object() {
                         if obj.get("status").and_then(|v| v.as_str()) == Some("completed") {
@@ -226,7 +240,7 @@ fn compute_universal(
             if total_pre > 0 {
                 let post_work = records
                     .iter()
-                    .filter(|r| r.hook == HookType::PreToolUse && r.ts > completion_ts)
+                    .filter(|r| r.event_type == hook_type::PRETOOLUSE && r.ts > completion_ts)
                     .count();
                 m.post_completion_work_pct = post_work as f64 / total_pre as f64 * 100.0;
             }
@@ -236,7 +250,7 @@ fn compute_universal(
     // Follow-up issues created: Bash PreToolUse records with "gh issue create"
     m.follow_up_issues_created = records
         .iter()
-        .filter(|r| r.hook == HookType::PreToolUse)
+        .filter(|r| r.event_type == hook_type::PRETOOLUSE)
         .filter(|r| r.tool.as_deref() == Some("Bash"))
         .filter(|r| {
             r.input.as_ref().is_some_and(|input| {
@@ -249,7 +263,7 @@ fn compute_universal(
     // Coordinator respawn count: SubagentStart for coordinator-like agents
     m.coordinator_respawn_count = records
         .iter()
-        .filter(|r| r.hook == HookType::SubagentStart)
+        .filter(|r| r.event_type == hook_type::SUBAGENTSTART)
         .filter(|r| {
             r.tool
                 .as_deref()
@@ -260,7 +274,7 @@ fn compute_universal(
     // Knowledge entries stored: context_store calls
     m.knowledge_entries_stored = records
         .iter()
-        .filter(|r| r.hook == HookType::PreToolUse)
+        .filter(|r| r.event_type == hook_type::PRETOOLUSE)
         .filter(|r| {
             r.tool
                 .as_deref()
@@ -296,7 +310,7 @@ fn compute_phases(records: &[ObservationRecord]) -> BTreeMap<String, PhaseMetric
     for record in records {
         // Check TaskCreate/TaskUpdate PreToolUse records for phase transitions (FR-07.3).
         // Phase names come from task subject prefixes using "{phase-id}: {description}".
-        if record.hook == HookType::PreToolUse {
+        if record.event_type == hook_type::PRETOOLUSE {
             if let Some(tool) = &record.tool {
                 if tool == "TaskCreate" || tool == "TaskUpdate" {
                     if let Some(input) = &record.input {
@@ -317,7 +331,7 @@ fn compute_phases(records: &[ObservationRecord]) -> BTreeMap<String, PhaseMetric
     for (phase, phase_records) in &phases {
         let tool_call_count = phase_records
             .iter()
-            .filter(|r| r.hook == HookType::PreToolUse)
+            .filter(|r| r.event_type == hook_type::PRETOOLUSE)
             .count() as u64;
 
         let duration_secs = if let (Some(first), Some(last)) = (
@@ -339,6 +353,12 @@ fn compute_phases(records: &[ObservationRecord]) -> BTreeMap<String, PhaseMetric
     }
 
     result
+}
+
+/// Compute domain-specific extension metrics.
+/// Returns an empty map for W1-5 (extension point for W3-1 and later domain packs).
+fn compute_domain_metrics(_records: &[ObservationRecord]) -> HashMap<String, f64> {
+    HashMap::new()
 }
 
 /// Extract phase name from TaskCreate/TaskUpdate input (FR-07.3).
@@ -374,12 +394,13 @@ fn contains_search_pattern(s: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{HookType, HotspotCategory, HotspotFinding, Severity};
+    use crate::types::{HotspotCategory, HotspotFinding, Severity};
 
     fn make_pre(ts: u64, tool: &str, session: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: hook_type::PRETOOLUSE.to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session.to_string(),
             tool: Some(tool.to_string()),
             input: None,
@@ -391,7 +412,8 @@ mod tests {
     fn make_post(ts: u64, tool: &str, session: &str, response_size: u64) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PostToolUse,
+            event_type: hook_type::POSTTOOLUSE.to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session.to_string(),
             tool: Some(tool.to_string()),
             input: None,
@@ -403,7 +425,8 @@ mod tests {
     fn make_task_create(ts: u64, session: &str, subject: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: hook_type::PRETOOLUSE.to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session.to_string(),
             tool: Some("TaskCreate".to_string()),
             input: Some(serde_json::json!({"subject": subject})),
@@ -613,7 +636,8 @@ mod tests {
         let records = vec![
             ObservationRecord {
                 ts: 1000,
-                hook: HookType::PreToolUse,
+                event_type: hook_type::PRETOOLUSE.to_string(),
+                source_domain: "claude-code".to_string(),
                 session_id: "s1".to_string(),
                 tool: Some("Bash".to_string()),
                 input: Some(serde_json::json!({"command": "grep -r 'test' ."})),
@@ -622,7 +646,8 @@ mod tests {
             },
             ObservationRecord {
                 ts: 2000,
-                hook: HookType::PreToolUse,
+                event_type: hook_type::PRETOOLUSE.to_string(),
+                source_domain: "claude-code".to_string(),
                 session_id: "s1".to_string(),
                 tool: Some("Bash".to_string()),
                 input: Some(serde_json::json!({"command": "cargo build"})),
@@ -646,7 +671,8 @@ mod tests {
     ) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PostToolUse,
+            event_type: hook_type::POSTTOOLUSE.to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session.to_string(),
             tool: Some(tool.to_string()),
             input: None,
@@ -663,7 +689,8 @@ mod tests {
     ) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: hook_type::PRETOOLUSE.to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session.to_string(),
             tool: Some(tool.to_string()),
             input: Some(input),
@@ -948,7 +975,8 @@ mod tests {
     fn test_sleep_workaround_count_in_metrics() {
         let records = vec![ObservationRecord {
             ts: 1000,
-            hook: HookType::PreToolUse,
+            event_type: hook_type::PRETOOLUSE.to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "s1".to_string(),
             tool: Some("Bash".to_string()),
             input: Some(serde_json::json!({"command": "sleep 5"})),
@@ -967,7 +995,8 @@ mod tests {
         let records = vec![
             ObservationRecord {
                 ts: 1000,
-                hook: HookType::SubagentStart,
+                event_type: hook_type::SUBAGENTSTART.to_string(),
+                source_domain: "claude-code".to_string(),
                 session_id: "s1".to_string(),
                 tool: Some("uni-scrum-master".to_string()),
                 input: None,
@@ -976,7 +1005,8 @@ mod tests {
             },
             ObservationRecord {
                 ts: 2000,
-                hook: HookType::SubagentStart,
+                event_type: hook_type::SUBAGENTSTART.to_string(),
+                source_domain: "claude-code".to_string(),
                 session_id: "s1".to_string(),
                 tool: Some("uni-pseudocode".to_string()),
                 input: None,
@@ -987,5 +1017,124 @@ mod tests {
 
         let mv = compute_metric_vector(&records, &[], 0);
         assert_eq!(mv.universal.coordinator_respawn_count, 1);
+    }
+
+    // -------------------------------------------------------------------------
+    // T-MET-10: Non-claude-code records produce zero universal metrics (IR-03)
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_compute_universal_zeros_for_non_claude_code_domain() {
+        // Records with source_domain != "claude-code" must be excluded entirely.
+        let records = vec![
+            ObservationRecord {
+                ts: 1000,
+                event_type: hook_type::PRETOOLUSE.to_string(),
+                source_domain: "sre".to_string(),
+                session_id: "s1".to_string(),
+                tool: Some("Read".to_string()),
+                input: None,
+                response_size: None,
+                response_snippet: None,
+            },
+            ObservationRecord {
+                ts: 2000,
+                event_type: hook_type::POSTTOOLUSE.to_string(),
+                source_domain: "sre".to_string(),
+                session_id: "s1".to_string(),
+                tool: Some("Read".to_string()),
+                input: None,
+                response_size: Some(4096),
+                response_snippet: None,
+            },
+        ];
+
+        let mv = compute_metric_vector(&records, &[], 0);
+        assert_eq!(
+            mv.universal.total_tool_calls, 0,
+            "non-claude-code must not count as tool calls"
+        );
+        assert_eq!(
+            mv.universal.session_count, 0,
+            "non-claude-code must not count sessions"
+        );
+        assert_eq!(
+            mv.universal.total_context_loaded_kb, 0.0,
+            "non-claude-code response bytes must be excluded"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // T-MET-11: Mixed slice — only claude-code records contribute (IR-03)
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_compute_universal_filters_mixed_domain_slice() {
+        let records = vec![
+            // claude-code: should be counted
+            make_pre(1000, "Read", "s1"),
+            make_pre(2000, "Write", "s1"),
+            // sre domain: must be excluded
+            ObservationRecord {
+                ts: 3000,
+                event_type: hook_type::PRETOOLUSE.to_string(),
+                source_domain: "sre".to_string(),
+                session_id: "s2".to_string(),
+                tool: Some("Bash".to_string()),
+                input: None,
+                response_size: None,
+                response_snippet: None,
+            },
+            ObservationRecord {
+                ts: 4000,
+                event_type: hook_type::PRETOOLUSE.to_string(),
+                source_domain: "sre".to_string(),
+                session_id: "s2".to_string(),
+                tool: Some("Read".to_string()),
+                input: None,
+                response_size: None,
+                response_snippet: None,
+            },
+        ];
+
+        let mv = compute_metric_vector(&records, &[], 0);
+        // Only the 2 claude-code PreToolUse records count
+        assert_eq!(
+            mv.universal.total_tool_calls, 2,
+            "only claude-code tool calls should count"
+        );
+        // Only claude-code session "s1" counts
+        assert_eq!(
+            mv.universal.session_count, 1,
+            "only claude-code sessions should count"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // T-MET-12: Empty slice produces zero MetricVector (baseline)
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_compute_metric_vector_empty_slice_all_zeros() {
+        let mv = compute_metric_vector(&[], &[], 42);
+        assert_eq!(mv.computed_at, 42);
+        assert_eq!(mv.universal.total_tool_calls, 0);
+        assert_eq!(mv.universal.session_count, 0);
+        assert_eq!(mv.universal.total_duration_secs, 0);
+        assert_eq!(mv.universal.search_miss_rate, 0.0);
+        assert_eq!(mv.universal.parallel_call_rate, 0.0);
+        assert_eq!(mv.universal.post_completion_work_pct, 0.0);
+        assert!(mv.phases.is_empty());
+        assert!(mv.domain_metrics.is_empty());
+    }
+
+    // -------------------------------------------------------------------------
+    // T-MET-domain: compute_domain_metrics returns empty map (W1-5 extension point)
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_compute_domain_metrics_returns_empty_map() {
+        let records = vec![make_pre(1000, "Read", "s1")];
+        let mv = compute_metric_vector(&records, &[], 0);
+        assert!(
+            mv.domain_metrics.is_empty(),
+            "domain_metrics must be empty HashMap in W1-5"
+        );
     }
 }

@@ -2,7 +2,6 @@
 //!
 //! Tests rule firing, quality gate, and neural enhancer behavior.
 
-use unimatrix_core::HookType;
 use unimatrix_learn::models::{ConventionScorer, SignalClassifier};
 use unimatrix_observe::extraction::neural::{EnhancerMode, NeuralEnhancer};
 use unimatrix_observe::extraction::{
@@ -19,7 +18,8 @@ use unimatrix_store::test_helpers::TestDb;
 fn make_search_obs(session_id: &str, query: &str) -> ObservationRecord {
     ObservationRecord {
         ts: 1_700_000_000_000,
-        hook: HookType::PostToolUse,
+        event_type: "PostToolUse".to_string(),
+        source_domain: "claude-code".to_string(),
         session_id: session_id.to_string(),
         tool: Some("mcp__unimatrix__context_search".to_string()),
         input: Some(serde_json::json!({"query": query})),

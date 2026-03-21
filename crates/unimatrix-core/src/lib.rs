@@ -18,7 +18,8 @@ pub use traits::{EmbedService, VectorStore};
 pub use adapters::{EmbedAdapter, VectorAdapter};
 
 // Observation types (col-013 ADR-002: moved from unimatrix-observe)
-pub use observation::{HookType, ObservationRecord, ObservationStats, ParsedSession};
+// HookType enum removed in col-023 ADR-001; replaced by hook_type constants module
+pub use observation::{ObservationRecord, ObservationStats, ParsedSession};
 
 // Domain types from unimatrix-store
 pub use unimatrix_store::{

@@ -599,6 +599,25 @@ impl SqlxStore {
     /// routing rule (AC-08) — `observation_metrics` is an analytics table.
     pub fn store_metrics(&self, feature_cycle: &str, mv: &crate::metrics::MetricVector) {
         let u = &mv.universal;
+
+        // Serialize domain_metrics to JSON. NULL when empty (FR-05.3: claude-code sessions).
+        // Non-empty maps are stored as a flat JSON object: {"key": value, ...}.
+        let domain_metrics_json: Option<String> = if mv.domain_metrics.is_empty() {
+            None
+        } else {
+            match serde_json::to_string(&mv.domain_metrics) {
+                Ok(json) => Some(json),
+                Err(e) => {
+                    tracing::error!(
+                        feature_cycle,
+                        error = %e,
+                        "failed to serialize domain_metrics; storing NULL"
+                    );
+                    None
+                }
+            }
+        };
+
         self.enqueue_analytics(AnalyticsWrite::ObservationMetric {
             feature_cycle: feature_cycle.to_owned(),
             computed_at: mv.computed_at as i64,
@@ -623,6 +642,7 @@ impl SqlxStore {
             friction_hotspot_count: u.friction_hotspot_count as i64,
             session_hotspot_count: u.session_hotspot_count as i64,
             scope_hotspot_count: u.scope_hotspot_count as i64,
+            domain_metrics_json,
         });
 
         // Enqueue delete of all existing phase rows for this feature_cycle BEFORE

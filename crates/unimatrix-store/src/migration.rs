@@ -15,8 +15,8 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 12 to 13 by crt-021 (W1-1).
-pub const CURRENT_SCHEMA_VERSION: u64 = 13;
+/// Current schema version. Incremented from 13 to 14 by col-023 (domain_metrics_json).
+pub const CURRENT_SCHEMA_VERSION: u64 = 14;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -451,7 +451,31 @@ async fn run_main_migrations(
         // This comment documents the decision; no SQL is emitted.
     }
 
-    // Update schema_version counter to CURRENT_SCHEMA_VERSION (13).
+    // v13 → v14: domain_metrics_json column on observation_metrics (col-023).
+    //
+    // Idempotency (FM-05): ALTER TABLE ADD COLUMN fails if the column already exists
+    // in SQLite (no IF NOT EXISTS for ADD COLUMN). We pre-check with pragma_table_info
+    // to avoid an error on a partially-migrated database.
+    if current_version < 14 {
+        let has_domain_metrics_json: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM pragma_table_info('observation_metrics') WHERE name = 'domain_metrics_json'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|count| count > 0)
+        .unwrap_or(false);
+
+        if !has_domain_metrics_json {
+            sqlx::query("ALTER TABLE observation_metrics ADD COLUMN domain_metrics_json TEXT NULL")
+                .execute(&mut **txn)
+                .await
+                .map_err(|e| StoreError::Migration {
+                    source: Box::new(e),
+                })?;
+        }
+    }
+
+    // Update schema_version counter to CURRENT_SCHEMA_VERSION (14).
     sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', ?1)")
         .bind(CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut **txn)

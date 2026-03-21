@@ -23,13 +23,19 @@ impl ExtractionRule for RecurringFrictionRule {
         observations: &[ObservationRecord],
         _store: &SqlxStore,
     ) -> Vec<ProposedEntry> {
+        // ADR-005: source_domain guard is MANDATORY as first operation.
+        let filtered: Vec<&ObservationRecord> = observations
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         // Group observations by session
         let mut session_records: HashMap<String, Vec<ObservationRecord>> = HashMap::new();
-        for obs in observations {
+        for obs in &filtered {
             session_records
                 .entry(obs.session_id.clone())
                 .or_default()
-                .push(obs.clone());
+                .push((*obs).clone());
         }
 
         // Run detection rules per session
@@ -81,7 +87,6 @@ impl ExtractionRule for RecurringFrictionRule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use unimatrix_core::HookType;
 
     async fn make_store() -> SqlxStore {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -93,21 +98,33 @@ mod tests {
     }
 
     /// Create observations that will trigger the PermissionRetriesRule.
-    /// That rule fires when there are 3+ permission denial events per session.
+    ///
+    /// PermissionRetriesRule fires when pre_count - post_count > 2 for a tool.
+    /// We create 5 PreToolUse + 2 PostToolUse for "Read" => 3 retries > threshold(2).
     fn make_permission_friction_obs(session_id: &str) -> Vec<ObservationRecord> {
-        // PermissionRetriesRule looks for PostToolUse with response_snippet containing "denied"
-        // or similar. Let's create Bash tool calls that look like permission retries.
-        (0..4)
+        let mut obs: Vec<ObservationRecord> = (0..5)
             .map(|i| ObservationRecord {
                 ts: 1700000000000 + i * 1000,
-                hook: HookType::PostToolUse,
+                event_type: "PreToolUse".to_string(),
+                source_domain: "claude-code".to_string(),
                 session_id: session_id.to_string(),
-                tool: Some("Bash".to_string()),
-                input: Some(serde_json::json!({"command": "cargo test"})),
-                response_size: Some(100),
-                response_snippet: Some("The user denied the tool call".to_string()),
+                tool: Some("Read".to_string()),
+                input: Some(serde_json::json!({"file_path": "/tmp/test.rs"})),
+                response_size: None,
+                response_snippet: None,
             })
-            .collect()
+            .collect();
+        obs.extend((0..2).map(|i| ObservationRecord {
+            ts: 1700000000000 + 5000 + i * 1000,
+            event_type: "PostToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
+            session_id: session_id.to_string(),
+            tool: Some("Read".to_string()),
+            input: None,
+            response_size: Some(100),
+            response_snippet: None,
+        }));
+        obs
     }
 
     #[tokio::test]

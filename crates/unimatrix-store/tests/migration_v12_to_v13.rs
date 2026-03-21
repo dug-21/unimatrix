@@ -361,12 +361,14 @@ async fn count_all_graph_edges(store: &SqlxStore) -> i64 {
 // Test 9: CURRENT_SCHEMA_VERSION constant = 13 (AC-18)
 // ---------------------------------------------------------------------------
 
+// Note: CURRENT_SCHEMA_VERSION was 13 when this test was written; it is now 14 (col-023).
+// The v12→v13 migration behaviour is verified by the functional tests below.
+// The constant is tested in migration_v13_to_v14.rs::test_current_schema_version_is_14.
 #[test]
-fn test_current_schema_version_is_13() {
-    assert_eq!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
-        13,
-        "CURRENT_SCHEMA_VERSION must be 13"
+fn test_current_schema_version_is_at_least_13() {
+    assert!(
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 13,
+        "CURRENT_SCHEMA_VERSION must be >= 13"
     );
 }
 
@@ -390,8 +392,8 @@ async fn test_v12_to_v13_supersedes_bootstrap() {
         .await
         .expect("open store");
 
-    // Assert: schema_version = 13
-    assert_eq!(read_schema_version(&store).await, 13);
+    // Assert: schema_version = 14 (migration continues through v13→v14)
+    assert_eq!(read_schema_version(&store).await, 14);
 
     // Assert: graph_edges table exists
     assert!(graph_edges_table_exists(&store).await);
@@ -453,8 +455,8 @@ async fn test_v12_to_v13_empty_co_access_succeeds() {
         .await
         .expect("migration must succeed with empty co_access (R-06)");
 
-    // Assert: schema_version = 13
-    assert_eq!(read_schema_version(&store).await, 13);
+    // Assert: schema_version = 14 (migration continues through v13→v14)
+    assert_eq!(read_schema_version(&store).await, 14);
 
     // Assert: zero CoAccess edges — no weight NOT NULL violation triggered
     assert_eq!(count_graph_edges_by_type(&store, "CoAccess").await, 0);
@@ -584,7 +586,7 @@ async fn test_v12_to_v13_co_access_all_below_threshold() {
 
     // Assert: zero CoAccess edges, migration completed without error
     assert_eq!(count_graph_edges_by_type(&store, "CoAccess").await, 0);
-    assert_eq!(read_schema_version(&store).await, 13);
+    assert_eq!(read_schema_version(&store).await, 14);
 
     store.close().await.unwrap();
 }
@@ -640,12 +642,12 @@ async fn test_v12_to_v13_idempotent_double_run() {
         let store = SqlxStore::open(&db_path, PoolConfig::default())
             .await
             .expect("first open");
-        assert_eq!(read_schema_version(&store).await, 13);
+        assert_eq!(read_schema_version(&store).await, 14);
         edge_count_first = count_all_graph_edges(&store).await;
         store.close().await.unwrap();
     }
 
-    // Act: second open — migration must be a no-op (already at v13)
+    // Act: second open — migration must be a no-op (already at v14)
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
         .expect("second open must succeed (no UNIQUE constraint error)");
@@ -657,8 +659,8 @@ async fn test_v12_to_v13_idempotent_double_run() {
         "row counts must be identical after double migration run"
     );
 
-    // Assert: schema_version still 13
-    assert_eq!(read_schema_version(&store).await, 13);
+    // Assert: schema_version still 14
+    assert_eq!(read_schema_version(&store).await, 14);
 
     store.close().await.unwrap();
 }
@@ -773,7 +775,7 @@ async fn test_v12_to_v13_empty_entries_and_co_access() {
         .expect("migration must succeed with no data");
 
     // Assert: migration completed without error, zero graph_edges rows
-    assert_eq!(read_schema_version(&store).await, 13);
+    assert_eq!(read_schema_version(&store).await, 14);
     assert!(graph_edges_table_exists(&store).await);
     assert_eq!(count_all_graph_edges(&store).await, 0);
 
@@ -796,7 +798,8 @@ fn inspect_migration_no_analytics_write_calls() {
     // Structural proof: CURRENT_SCHEMA_VERSION is accessible from migration module.
     // Any AnalyticsWrite import would require unimatrix_store::analytics, which is
     // not imported in migration.rs (see file-level imports).
-    assert_eq!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION, 13);
+    // Note: CURRENT_SCHEMA_VERSION is 14 (col-023). The R-13 boundary still holds.
+    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 13);
 }
 
 // ---------------------------------------------------------------------------

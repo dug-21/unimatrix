@@ -253,6 +253,7 @@ mod tests {
                 ..Default::default()
             },
             phases: BTreeMap::new(),
+            domain_metrics: Default::default(),
         }
     }
 
@@ -261,6 +262,7 @@ mod tests {
             computed_at: 0,
             universal: UniversalMetrics::default(),
             phases,
+            domain_metrics: Default::default(),
         }
     }
 

@@ -1570,7 +1570,7 @@ async fn process_session_close(
 /// candidate feature, returns the feature with the most attributed observations.
 fn content_based_attribution_fallback(store: &Store, session_id: &str) -> Option<String> {
     use sqlx::Row as _;
-    use unimatrix_observe::types::{HookType, ObservationRecord, ParsedSession};
+    use unimatrix_observe::types::{ObservationRecord, ParsedSession};
 
     // Use block_in_place to bridge async sqlx into this sync context.
     // block_in_place works in both spawn_blocking and multi_thread test contexts.
@@ -1597,13 +1597,10 @@ fn content_based_attribution_fallback(store: &Store, session_id: &str) -> Option
             let input_str: Option<String> = row.get::<Option<String>, _>(4);
             ObservationRecord {
                 ts: (ts_millis / 1000) as u64,
-                hook: match hook_str.as_str() {
-                    "PreToolUse" => HookType::PreToolUse,
-                    "PostToolUse" => HookType::PostToolUse,
-                    "SubagentStart" => HookType::SubagentStart,
-                    "SubagentStop" => HookType::SubagentStop,
-                    _ => HookType::PreToolUse,
-                },
+                // All hook-path records get source_domain = "claude-code" (FR-03.3).
+                // event_type passes through unchanged; unknown types are not dropped (AC-11).
+                event_type: hook_str,
+                source_domain: "claude-code".to_string(),
                 session_id,
                 tool,
                 input: input_str.map(serde_json::Value::String),
@@ -2447,6 +2444,8 @@ mod tests {
             20,    // nli_top_k default
             false, // nli_enabled: disabled for tests
             Arc::new(crate::infra::config::InferenceConfig::default()),
+            // col-023: built-in default registry for test helper
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
         )
     }
 

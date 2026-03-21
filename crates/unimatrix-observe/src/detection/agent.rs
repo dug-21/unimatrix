@@ -5,9 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::types::{
-    EvidenceRecord, HookType, HotspotCategory, HotspotFinding, ObservationRecord, Severity,
-};
+use crate::types::{EvidenceRecord, HotspotCategory, HotspotFinding, ObservationRecord, Severity};
 
 use super::{DetectionRule, input_to_command_string, input_to_file_path, truncate};
 
@@ -27,14 +25,19 @@ impl DetectionRule for ContextLoadRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
-        let mut sorted: Vec<&ObservationRecord> = records.iter().collect();
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
+        let mut sorted: Vec<&ObservationRecord> = records.to_vec();
         sorted.sort_by_key(|r| r.ts);
 
         let mut total_kb = 0.0;
         let mut evidence = Vec::new();
 
         for record in sorted {
-            if record.hook == HookType::PostToolUse {
+            if record.event_type == "PostToolUse" {
                 let tool = record.tool.as_deref().unwrap_or("");
                 if tool == "Write" || tool == "Edit" {
                     break;
@@ -90,22 +93,23 @@ impl DetectionRule for LifespanRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut starts: HashMap<&str, Vec<(u64, &str)>> = HashMap::new();
         let mut stops: HashMap<&str, Vec<u64>> = HashMap::new();
 
-        for record in records {
-            match record.hook {
-                HookType::SubagentStart => {
-                    let agent_type = record.tool.as_deref().unwrap_or("unknown");
-                    starts
-                        .entry(&record.session_id)
-                        .or_default()
-                        .push((record.ts, agent_type));
-                }
-                HookType::SubagentStop => {
-                    stops.entry(&record.session_id).or_default().push(record.ts);
-                }
-                _ => {}
+        for record in &records {
+            if record.event_type == "SubagentStart" {
+                let agent_type = record.tool.as_deref().unwrap_or("unknown");
+                starts
+                    .entry(&record.session_id)
+                    .or_default()
+                    .push((record.ts, agent_type));
+            } else if record.event_type == "SubagentStop" {
+                stops.entry(&record.session_id).or_default().push(record.ts);
             }
         }
 
@@ -171,10 +175,15 @@ impl DetectionRule for FileBreadthRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut file_paths: HashSet<String> = HashSet::new();
         let mut path_counts: HashMap<String, u64> = HashMap::new();
 
-        for record in records {
+        for record in &records {
             let tool = record.tool.as_deref().unwrap_or("");
             if tool == "Read" || tool == "Write" || tool == "Edit" {
                 if let Some(input) = &record.input {
@@ -230,9 +239,14 @@ impl DetectionRule for RereadRateRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut read_counts: HashMap<String, u64> = HashMap::new();
 
-        for record in records {
+        for record in &records {
             if record.tool.as_deref() == Some("Read") {
                 if let Some(input) = &record.input {
                     if let Some(path) = input_to_file_path(input) {
@@ -290,10 +304,15 @@ impl DetectionRule for MutationSpreadRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut mutated_files: HashSet<String> = HashSet::new();
         let mut evidence = Vec::new();
 
-        for record in records {
+        for record in &records {
             let tool = record.tool.as_deref().unwrap_or("");
             if tool == "Write" || tool == "Edit" {
                 if let Some(input) = &record.input {
@@ -359,11 +378,16 @@ impl DetectionRule for CompileCyclesRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut compile_count = 0u64;
         let mut evidence = Vec::new();
 
-        for record in records {
-            if record.tool.as_deref() == Some("Bash") && record.hook == HookType::PreToolUse {
+        for record in &records {
+            if record.tool.as_deref() == Some("Bash") && record.event_type == "PreToolUse" {
                 if let Some(input) = &record.input {
                     let cmd = input_to_command_string(input);
                     if is_compile_command(&cmd) {
@@ -411,12 +435,17 @@ impl DetectionRule for EditBloatRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut edit_sizes = Vec::new();
         let mut evidence = Vec::new();
 
-        for record in records {
+        for record in &records {
             let is_edit_post =
-                record.tool.as_deref() == Some("Edit") && record.hook == HookType::PostToolUse;
+                record.tool.as_deref() == Some("Edit") && record.event_type == "PostToolUse";
             if let (true, Some(size)) = (is_edit_post, record.response_size) {
                 let kb = size as f64 / 1024.0;
                 edit_sizes.push(kb);
@@ -461,7 +490,8 @@ mod tests {
     fn make_post_read(ts: u64, size: u64, path: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PostToolUse,
+            event_type: "PostToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Read".to_string()),
             input: Some(serde_json::json!({"file_path": path})),
@@ -473,7 +503,8 @@ mod tests {
     fn make_pre_read(ts: u64, path: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Read".to_string()),
             input: Some(serde_json::json!({"file_path": path})),
@@ -485,7 +516,8 @@ mod tests {
     fn make_post_write(ts: u64) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PostToolUse,
+            event_type: "PostToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Write".to_string()),
             input: Some(serde_json::json!({"file_path": "/tmp/out.rs"})),
@@ -497,7 +529,8 @@ mod tests {
     fn make_pre_write(ts: u64, path: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Write".to_string()),
             input: Some(serde_json::json!({"file_path": path})),
@@ -509,7 +542,8 @@ mod tests {
     fn make_pre_edit(ts: u64, path: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Edit".to_string()),
             input: Some(serde_json::json!({"file_path": path})),
@@ -521,7 +555,8 @@ mod tests {
     fn make_post_edit(ts: u64, size: u64) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PostToolUse,
+            event_type: "PostToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Edit".to_string()),
             input: Some(serde_json::json!({"file_path": "/tmp/edit.rs"})),
@@ -533,7 +568,8 @@ mod tests {
     fn make_bash(ts: u64, command: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Bash".to_string()),
             input: Some(serde_json::json!({"command": command})),
@@ -545,7 +581,8 @@ mod tests {
     fn make_subagent_start(ts: u64, session: &str, agent_type: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::SubagentStart,
+            event_type: "SubagentStart".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session.to_string(),
             tool: Some(agent_type.to_string()),
             input: None,
@@ -557,7 +594,8 @@ mod tests {
     fn make_subagent_stop(ts: u64, session: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::SubagentStop,
+            event_type: "SubagentStop".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session.to_string(),
             tool: None,
             input: None,

@@ -5,9 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::types::{
-    EvidenceRecord, HookType, HotspotCategory, HotspotFinding, ObservationRecord, Severity,
-};
+use crate::types::{EvidenceRecord, HotspotCategory, HotspotFinding, ObservationRecord, Severity};
 
 use super::{DetectionRule, find_completion_boundary, input_to_file_path};
 
@@ -28,8 +26,13 @@ impl DetectionRule for SessionTimeoutRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut by_session: HashMap<&str, Vec<&ObservationRecord>> = HashMap::new();
-        for record in records {
+        for record in &records {
             by_session
                 .entry(&record.session_id)
                 .or_default()
@@ -93,11 +96,16 @@ impl DetectionRule for ColdRestartRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         if records.is_empty() {
             return vec![];
         }
 
-        let mut sorted: Vec<&ObservationRecord> = records.iter().collect();
+        let mut sorted: Vec<&ObservationRecord> = records.clone();
         sorted.sort_by_key(|r| r.ts);
 
         let mut files_read_before: HashSet<String> = HashSet::new();
@@ -190,11 +198,16 @@ impl DetectionRule for CoordinatorRespawnsRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut coordinator_spawns = 0u64;
         let mut evidence = Vec::new();
 
-        for record in records {
-            if record.hook == HookType::SubagentStart {
+        for record in &records {
+            if record.event_type == "SubagentStart" {
                 if let Some(agent_type) = &record.tool {
                     let lower = agent_type.to_lowercase();
                     if lower.contains("scrum-master")
@@ -245,11 +258,16 @@ impl DetectionRule for PostCompletionWorkRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         if records.is_empty() {
             return vec![];
         }
 
-        let boundary_ts = match find_completion_boundary(records) {
+        let boundary_ts = match find_completion_boundary(&records) {
             Some(ts) => ts,
             None => return vec![],
         };
@@ -305,10 +323,15 @@ impl DetectionRule for ReworkEventsRule {
     }
 
     fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
         let mut task_states: HashMap<String, String> = HashMap::new();
         let mut rework_evidence = Vec::new();
 
-        let mut sorted: Vec<&ObservationRecord> = records.iter().collect();
+        let mut sorted: Vec<&ObservationRecord> = records.clone();
         sorted.sort_by_key(|r| r.ts);
 
         for record in &sorted {
@@ -362,7 +385,8 @@ mod tests {
     fn make_record_in_session(ts: u64, session: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: session.to_string(),
             tool: Some("Read".to_string()),
             input: None,
@@ -374,7 +398,8 @@ mod tests {
     fn make_read_with_path(ts: u64, path: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Read".to_string()),
             input: Some(serde_json::json!({"file_path": path})),
@@ -386,7 +411,8 @@ mod tests {
     fn make_subagent_start(ts: u64, agent_type: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::SubagentStart,
+            event_type: "SubagentStart".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some(agent_type.to_string()),
             input: None,
@@ -398,7 +424,8 @@ mod tests {
     fn make_task_update(ts: u64, task_id: &str, status: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("TaskUpdate".to_string()),
             input: Some(serde_json::json!({"taskId": task_id, "status": status})),
@@ -410,7 +437,8 @@ mod tests {
     fn make_pre(ts: u64, tool: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
-            hook: HookType::PreToolUse,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some(tool.to_string()),
             input: None,

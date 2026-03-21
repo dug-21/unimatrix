@@ -104,9 +104,9 @@ impl NliModel {
     /// Recognized names (case-sensitive): `"minilm2"`, `"minilm2-q8"`, `"deberta"`, `"deberta-q8"`.
     pub fn from_config_name(name: &str) -> Option<Self> {
         match name {
-            "minilm2"    => Some(Self::NliMiniLM2L6H768),
+            "minilm2" => Some(Self::NliMiniLM2L6H768),
             "minilm2-q8" => Some(Self::NliMiniLM2L6H768Q8),
-            "deberta"    => Some(Self::NliDebertaV3Small),
+            "deberta" => Some(Self::NliDebertaV3Small),
             "deberta-q8" => Some(Self::NliDebertaV3SmallQ8),
             _ => None,
         }
@@ -117,8 +117,12 @@ impl NliModel {
     /// Q8 quantized variants use the same repo as their FP32 counterpart.
     pub fn model_id(&self) -> &'static str {
         match self {
-            Self::NliMiniLM2L6H768 | Self::NliMiniLM2L6H768Q8 => "cross-encoder/nli-MiniLM2-L6-H768",
-            Self::NliDebertaV3Small | Self::NliDebertaV3SmallQ8 => "cross-encoder/nli-deberta-v3-small",
+            Self::NliMiniLM2L6H768 | Self::NliMiniLM2L6H768Q8 => {
+                "cross-encoder/nli-MiniLM2-L6-H768"
+            }
+            Self::NliDebertaV3Small | Self::NliDebertaV3SmallQ8 => {
+                "cross-encoder/nli-deberta-v3-small"
+            }
         }
     }
 
@@ -177,8 +181,14 @@ mod nli_model_tests {
 
     #[test]
     fn test_from_config_name_q8_variants() {
-        assert_eq!(NliModel::from_config_name("minilm2-q8"), Some(NliModel::NliMiniLM2L6H768Q8));
-        assert_eq!(NliModel::from_config_name("deberta-q8"), Some(NliModel::NliDebertaV3SmallQ8));
+        assert_eq!(
+            NliModel::from_config_name("minilm2-q8"),
+            Some(NliModel::NliMiniLM2L6H768Q8)
+        );
+        assert_eq!(
+            NliModel::from_config_name("deberta-q8"),
+            Some(NliModel::NliDebertaV3SmallQ8)
+        );
     }
 
     #[test]
@@ -211,8 +221,14 @@ mod nli_model_tests {
     fn test_nli_model_onnx_filename() {
         assert_eq!(NliModel::NliMiniLM2L6H768.onnx_filename(), "model.onnx");
         assert_eq!(NliModel::NliDebertaV3Small.onnx_filename(), "model.onnx");
-        assert_eq!(NliModel::NliMiniLM2L6H768Q8.onnx_filename(), "model_qint8_avx512.onnx");
-        assert_eq!(NliModel::NliDebertaV3SmallQ8.onnx_filename(), "model_qint8_avx512.onnx");
+        assert_eq!(
+            NliModel::NliMiniLM2L6H768Q8.onnx_filename(),
+            "model_qint8_avx512.onnx"
+        );
+        assert_eq!(
+            NliModel::NliDebertaV3SmallQ8.onnx_filename(),
+            "model_qint8_avx512.onnx"
+        );
     }
 
     #[test]
@@ -230,13 +246,24 @@ mod nli_model_tests {
 
     #[test]
     fn test_nli_model_q8_uses_quantized_repo_path() {
-        assert_eq!(NliModel::NliMiniLM2L6H768Q8.onnx_repo_path(), "onnx/model_qint8_avx512.onnx");
-        assert_eq!(NliModel::NliDebertaV3SmallQ8.onnx_repo_path(), "onnx/model_qint8_avx512.onnx");
+        assert_eq!(
+            NliModel::NliMiniLM2L6H768Q8.onnx_repo_path(),
+            "onnx/model_qint8_avx512.onnx"
+        );
+        assert_eq!(
+            NliModel::NliDebertaV3SmallQ8.onnx_repo_path(),
+            "onnx/model_qint8_avx512.onnx"
+        );
     }
 
     #[test]
     fn test_nli_model_methods_return_non_empty() {
-        for model in [NliModel::NliMiniLM2L6H768, NliModel::NliMiniLM2L6H768Q8, NliModel::NliDebertaV3Small, NliModel::NliDebertaV3SmallQ8] {
+        for model in [
+            NliModel::NliMiniLM2L6H768,
+            NliModel::NliMiniLM2L6H768Q8,
+            NliModel::NliDebertaV3Small,
+            NliModel::NliDebertaV3SmallQ8,
+        ] {
             assert!(!model.model_id().is_empty(), "{model:?} has empty model_id");
             assert!(
                 !model.onnx_repo_path().is_empty(),
@@ -270,7 +297,12 @@ mod nli_model_tests {
     #[test]
     fn test_nli_model_cache_subdirs_no_slash() {
         // R-18: no slashes in cache subdir (safe for filesystem paths).
-        for model in [NliModel::NliMiniLM2L6H768, NliModel::NliMiniLM2L6H768Q8, NliModel::NliDebertaV3Small, NliModel::NliDebertaV3SmallQ8] {
+        for model in [
+            NliModel::NliMiniLM2L6H768,
+            NliModel::NliMiniLM2L6H768Q8,
+            NliModel::NliDebertaV3Small,
+            NliModel::NliDebertaV3SmallQ8,
+        ] {
             let subdir = model.cache_subdir();
             assert!(
                 !subdir.contains('/'),
