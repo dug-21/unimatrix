@@ -67,7 +67,7 @@ The Bugfix Manager:
    context_cycle(
      type: "start",
      topic: "bugfix-{issue-number}",
-     keywords: ["{keyword-1}", "{keyword-2}", ...],  // 3-5 semantic terms for the bug area
+     next_phase: "discovery",
      agent_id: "{issue-number}-bugfix-leader"
    )
    ```
@@ -119,6 +119,12 @@ Report: write back to the GH issue
 
 Human action required: Review diagnosis and approve to proceed with fix.
 If the diagnosis is wrong, provide feedback and I will re-investigate.
+```
+
+On human approval:
+
+```
+context_cycle(type: "phase-end", phase: "discovery", next_phase: "fix", agent_id: "{issue-number}-bugfix-leader")
 ```
 
 **If the human disagrees**: Re-spawn the investigator with the human's feedback:
@@ -176,8 +182,11 @@ Task(subagent_type: "uni-rust-dev",
     4. Issues: [blockers]")
 ```
 
-Wait for the rust-dev to complete.
-Provide updates back to the GH issue periodically
+Wait for the rust-dev to complete. Provide updates back to the GH issue periodically.
+
+```
+context_cycle(type: "phase-end", phase: "fix", next_phase: "testing", agent_id: "{issue-number}-bugfix-leader")
+```
 
 ---
 
@@ -260,7 +269,9 @@ Task(subagent_type: "uni-validator",
 ```
 
 **Gate results:**
-- **PASS** → Commit fix code + tests, open PR, proceed to Phase 4
+- **PASS** →
+  1. `context_cycle(type: "phase-end", phase: "testing", next_phase: "bug-review", agent_id: "{issue-number}-bugfix-leader")`
+  2. Commit fix code + tests, open PR, proceed to Phase 4
 - **REWORKABLE FAIL** → Loop back to Phase 2 with failure details (max 2 iterations). Include the gate report path in the re-spawn prompt.
 - **SCOPE FAIL** → Session stops. Return to human with recommendation.
 
@@ -381,44 +392,53 @@ NEVER pipe full cargo output into context.
 ```
 BUGFIX LEADER (you):
   Init:       /uni-query-patterns + /uni-knowledge-search — prior knowledge
-              context_cycle(type: "start", topic: "bugfix-{issue-number}", keywords: [...], agent_id: "{issue-number}-bugfix-leader")
+              context_cycle(type: "start", topic: "bugfix-{issue-number}", next_phase: "discovery", agent_id: "{issue-number}-bugfix-leader")
   Phase 1:    Task(uni-bug-investigator) — diagnose root cause → GH Issue comment
               ...present diagnosis to human...
               ★ HUMAN CHECKPOINT — human approves diagnosis ★
+              context_cycle(type: "phase-end", phase: "discovery", next_phase: "fix", ...)
   Phase 2:    git checkout -b bugfix/{issue}-{desc}
               Task(uni-rust-dev) — implement fix + tests → GH Issue comment
               ...wait...
+              context_cycle(type: "phase-end", phase: "fix", next_phase: "testing", ...)
   Phase 3:    Task(uni-tester) — full test suite verification → GH Issue comment
               ...wait...
   Gate 3:     Task(uni-validator, bugfix check set) → GH Issue comment
-              ...PASS → continue / FAIL → rework or stop...
-              git commit + push + gh pr create
+              ...PASS → context_cycle(phase-end, testing → bug-review) → commit + push + PR
+              ...FAIL → rework or stop...
   Phase 4:    /uni-review-pr — security review + merge readiness → GH Issue comment
               ...wait...
-  Phase 5:    context_cycle(type: "stop", topic: "bugfix-{issue-number}", agent_id: "{issue-number}-bugfix-leader")
-              /uni-record-outcome + /uni-store-lesson (if generalizable)
-              Present PR + security assessment to human — SESSION ENDS
+  Phase 5:    Present PR + security assessment to human — SESSION ENDS
+              context_cycle(type: "phase-end", phase: "bug-review", ...)
+              context_cycle(type: "stop", topic: "bugfix-{issue-number}", outcome: "...", agent_id: "{issue-number}-bugfix-leader")
+              /uni-store-lesson (if generalizable)
 ```
 
 ---
 
 ## Outcome Recording
 
-After presenting the PR to the human, close the feature cycle and record the bugfix outcome:
+After presenting the PR to the human, close the bug-review phase and stop the cycle:
 
 ```
 context_cycle(
+  type: "phase-end",
+  phase: "bug-review",
+  agent_id: "{issue-number}-bugfix-leader"
+)
+
+context_cycle(
   type: "stop",
   topic: "bugfix-{issue-number}",
+  outcome: "Bugfix complete. Root cause: {summary}. PR: {url}",
   agent_id: "{issue-number}-bugfix-leader"
 )
 ```
 
-Then use Unimatrix skills:
+Then use Unimatrix skills as applicable:
 
-1. **Always**: `/uni-record-outcome` — record the bugfix result (pass/fail, root cause summary, PR link). Include `caused_by_feature:{feature-id}` tag when the originating feature is known.
-2. **If root cause is generalizable**: `/uni-store-lesson` — persist the root cause pattern so future investigators find it via `/uni-knowledge-search`. Tag with `caused_by_feature:{feature-id}` when applicable. Include what could have been done during the originating feature's design phase to prevent the bug.
-3. **If diagnostic/repair sequence is reproducible**: `/uni-store-procedure` — store the technique so future agents can find it
+1. **If root cause is generalizable**: `/uni-store-lesson` — persist the root cause pattern so future investigators find it via `/uni-knowledge-search`. Tag with `caused_by_feature:{feature-id}` when applicable. Include what could have been done during the originating feature's design phase to prevent the bug.
+2. **If diagnostic/repair sequence is reproducible**: `/uni-store-procedure` — store the technique so future agents can find it.
 
 ### Stewardship Compliance
 

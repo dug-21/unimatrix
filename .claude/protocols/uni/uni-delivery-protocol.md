@@ -59,7 +59,7 @@ The Delivery Leader:
    context_cycle(
      type: "start",
      topic: "{feature-id}",
-     keywords: ["{keyword-1}", "{keyword-2}", ...],  // 3-5 semantic terms for the feature
+     next_phase: "spec",
      agent_id: "{feature-id}-delivery-leader"
    )
    ```
@@ -127,6 +127,10 @@ Task(subagent_type: "uni-tester",
 
 Wait for both agents to complete.
 
+```
+context_cycle(type: "phase-end", phase: "spec", next_phase: "spec-review", agent_id: "{feature-id}-delivery-leader")
+```
+
 ### Component Map Update (MANDATORY — between Stage 3a and Gate 3a)
 
 After Stage 3a agents return, the Delivery Leader MUST update the IMPLEMENTATION-BRIEF.md with actual file paths before proceeding to Gate 3a.
@@ -181,7 +185,9 @@ Task(subagent_type: "uni-validator",
 ```
 
 **Gate results:**
-- **PASS** → Commit pseudocode + test plans + updated brief (`pseudocode: component design + test plans (#{issue})`), then proceed to Stage 3b
+- **PASS** →
+  1. `context_cycle(type: "phase-end", phase: "spec-review", next_phase: "develop", agent_id: "{feature-id}-delivery-leader")`
+  2. Commit pseudocode + test plans + updated brief (`pseudocode: component design + test plans (#{issue})`), then proceed to Stage 3b
 - **REWORKABLE FAIL** → Loop back to Stage 3a agents (max 2 iterations). Include failure details in re-spawn prompt.
 - **SCOPE FAIL** → Session stops. Return to human with recommendation.
 
@@ -280,7 +286,9 @@ Task(subagent_type: "uni-validator",
 ```
 
 **Gate results:**
-- **PASS** → Commit all implementation code (`impl: Stage 3b complete (#{issue})`), then proceed to Stage 3c
+- **PASS** →
+  1. `context_cycle(type: "phase-end", phase: "develop", next_phase: "test", agent_id: "{feature-id}-delivery-leader")`
+  2. Commit all implementation code (`impl: Stage 3b complete (#{issue})`), then proceed to Stage 3c
 - **REWORKABLE FAIL** / **SCOPE FAIL** → Same as Gate 3a
 
 ---
@@ -357,7 +365,11 @@ Task(subagent_type: "uni-validator",
     Return: PASS / REWORKABLE FAIL / SCOPE FAIL, report path, issues.")
 ```
 
-**Gate results:** Same as Gates 3a/3b.
+**Gate results:**
+- **PASS** →
+  1. `context_cycle(type: "phase-end", phase: "test", next_phase: "pr-review", agent_id: "{feature-id}-delivery-leader")`
+  2. Proceed to Phase 4
+- **REWORKABLE FAIL** / **SCOPE FAIL** → Same as Gates 3a/3b.
 
 ---
 
@@ -453,6 +465,13 @@ GH Issue: {URL} (updated)
 Human action required: {Approve and merge | Address blocking items}.
 ```
 
+After returning to the human, close the pr-review phase and stop the cycle:
+
+```
+context_cycle(type: "phase-end", phase: "pr-review", agent_id: "{feature-id}-delivery-leader")
+context_cycle(type: "stop", topic: "{feature-id}", outcome: "Session 2 complete. All gates passed. PR: {url}", agent_id: "{feature-id}-delivery-leader")
+```
+
 ### Post-Delivery Review (Optional)
 
 After Phase 4, the Delivery Leader may optionally review for tech debt or cleanup opportunities discovered during implementation. If found, file GH Issues — do not include in this PR.
@@ -513,28 +532,33 @@ NEVER pipe full cargo output into context.
 ```
 DELIVERY LEADER (you):
   Init:       Read IMPLEMENTATION-BRIEF.md + ACCEPTANCE-MAP.md
-              context_cycle(type: "start", topic: "{feature-id}", keywords: [...], agent_id: "{feature-id}-delivery-leader")
+              context_cycle(type: "start", topic: "{feature-id}", next_phase: "spec", agent_id: "{feature-id}-delivery-leader")
   Stage 3a:   Task(uni-pseudocode) + Task(uni-tester) — parallel, ONE message
               ...wait for both to complete...
+              context_cycle(type: "phase-end", phase: "spec", next_phase: "spec-review", ...)
               UPDATE Component Map in IMPLEMENTATION-BRIEF.md with actual file paths
               Task(uni-validator, Gate 3a) — MANDATORY BLOCK
-              ...PASS → continue / FAIL → rework or stop...
+              ...PASS → context_cycle(phase-end, spec-review → develop) → commit → Stage 3b
+              ...FAIL → rework or stop...
   Stage 3b:   PLAN waves from IMPLEMENTATION-BRIEF (1 wave = all parallel, N waves = sequential)
               FOR EACH WAVE: Task(uni-rust-dev × components-in-wave) — ONE message, no worktree isolation
               Each agent gets ONLY its component's pseudocode + test plan
               ...wait for wave... commit wave... spawn next wave...
               ...wait...
               Task(uni-validator, Gate 3b)
-              ...PASS → continue / FAIL → rework or stop...
+              ...PASS → context_cycle(phase-end, develop → test) → commit → Stage 3c
+              ...FAIL → rework or stop...
   Stage 3c:   Task(uni-tester, execution mode)
               ...wait...
               Task(uni-validator, Gate 3c)
-              ...PASS → continue / FAIL → rework or stop...
+              ...PASS → context_cycle(phase-end, test → pr-review) → Phase 4
+              ...FAIL → rework or stop...
   Phase 4:    git commit + push + gh pr create
               [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
               /uni-review-pr — security review + merge readiness
-              context_cycle(type: "stop", topic: "{feature-id}", agent_id: "{feature-id}-delivery-leader")
               Combined return — SESSION 2 ENDS
+              context_cycle(type: "phase-end", phase: "pr-review", ...)
+              context_cycle(type: "stop", topic: "{feature-id}", outcome: "...", agent_id: "{feature-id}-delivery-leader")
 ```
 
 ---
@@ -554,19 +578,19 @@ The uni-tester agent has full integration harness knowledge (suite selection, tr
 
 ## Outcome Recording
 
-After Phase 4, close the feature cycle and record the session outcome:
+After Phase 4, close the feature cycle:
 
 ```
 context_cycle(
-  type: "stop",
-  topic: "{feature-id}",
+  type: "phase-end",
+  phase: "pr-review",
   agent_id: "{feature-id}-delivery-leader"
 )
 
-context_store(
-  category: "outcome",
-  feature_cycle: "{feature-id}",
-  tags: ["type:feature", "phase:delivery", "result:pass", "gate:3c"],
-  content: "Session 2 complete. All gates passed. PR: {url}"
+context_cycle(
+  type: "stop",
+  topic: "{feature-id}",
+  outcome: "Session 2 complete. All gates passed. PR: {url}",
+  agent_id: "{feature-id}-delivery-leader"
 )
 ```

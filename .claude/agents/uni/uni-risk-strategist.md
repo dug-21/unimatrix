@@ -125,7 +125,7 @@ Write to `product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md` (at feature ro
 Before generating risks, query Unimatrix for historical context:
 
 1. `/uni-knowledge-search` — `"lesson-learned failures gate rejection"` to find past failures relevant to this feature's components
-2. `/uni-knowledge-lookup` — `category: "outcome"` filtered to features touching similar crates/components to find what went wrong in adjacent work
+2. `/uni-knowledge-lookup` — `category: "lesson-learned"` filtered to features touching similar crates/components to find what went wrong in adjacent work
 3. `/uni-knowledge-search` — `"risk pattern"` with `category: "pattern"` to find recurring risk patterns
 4. `/uni-knowledge-search` — query the specific technology or component names from the architecture doc (e.g., `"SQLite migration"`, `"confidence scoring"`) to surface relevant ADRs and their "Harder:" consequences
 
