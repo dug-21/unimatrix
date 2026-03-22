@@ -26,7 +26,7 @@ Unimatrix provides these capabilities out of the box.
 
 ### Self-Learning Knowledge Engine
 
-Captures decisions, patterns, conventions, procedures, lessons, and outcomes from real feature work. Eight knowledge categories ensure entries surface in the right context. Confidence scoring combines usage signals, correction quality, creator trust, freshness, helpfulness, and co-access patterns into a composite score that evolves automatically. No manual curation required — the system learns what is useful from how knowledge is accessed and rated.
+Captures decisions, patterns, conventions, procedures, and lessons from real feature work. Seven knowledge categories ensure entries surface in the right context. Confidence scoring combines usage signals, correction quality, creator trust, freshness, helpfulness, and co-access patterns into a composite score that evolves automatically. No manual curation required — the system learns what is useful from how knowledge is accessed and rated.
 
 ### Adaptive Embeddings (MicroLoRA)
 
@@ -233,9 +233,9 @@ preset = "collaborative"   # default — matches current compiled behavior
 
 ```toml
 [knowledge]
-# Replace the built-in 8-category list with domain-appropriate categories.
+# Replace the built-in 7-category list with domain-appropriate categories.
 # Values: lowercase, [a-z0-9_-], max 64 chars, up to 64 categories total.
-categories = ["outcome", "lesson-learned", "decision", "convention",
+categories = ["lesson-learned", "decision", "convention",
               "pattern", "procedure", "duties", "reference"]
 # Categories that receive a provenance boost in search ranking.
 boosted_categories = ["lesson-learned"]
@@ -302,7 +302,7 @@ Config files are validated for security at load time: world-writable files abort
 
 ## MCP Tool Reference
 
-Unimatrix exposes 11 MCP tools. All tools accept `format: "summary" | "markdown" | "json"` as a common parameter.
+Unimatrix exposes 12 MCP tools. All tools accept `format: "summary" | "markdown" | "json"` as a common parameter.
 
 | Tool | Purpose | When to Use |
 |------|---------|-------------|
@@ -316,7 +316,8 @@ Unimatrix exposes 11 MCP tools. All tools accept `format: "summary" | "markdown"
 | `context_status` | Get knowledge base health metrics. Shows entry counts, distributions, correction chains, coherence score, security metrics. **Admin only.** | When you need to assess knowledge base health. The `maintain` parameter is accepted but silently ignored — a background tick handles maintenance automatically. Key params: `topic`, `category`, `check_embeddings`. |
 | `context_briefing` | Get an orientation briefing for a role and task. Includes role conventions and task-relevant context. | At the start of any task to get oriented. Gated on `mcp-briefing` feature flag. Key params: `role` (required), `task` (required), `feature`, `max_tokens` (default 3000, range 500-10000). |
 | `context_enroll` | Enroll or update an agent's trust level and capabilities. **Admin only.** | When managing agent permissions. Protected agents (`system`, `human`) cannot be modified. Self-lockout prevention active. Key params: `target_agent_id` (required), `trust_level` (required), `capabilities` (required). |
-| `context_cycle_review` | Analyze observation data for a work cycle. Parses session telemetry, detects hotspots, computes metrics. | After a work cycle completes, to extract patterns and lessons. Key params: `feature_cycle` (required), `evidence_limit`, `format` ("markdown" default, "json"). |
+| `context_cycle` | Signal feature cycle lifecycle events: start, phase transitions, and stop. Records one append-only event row per call in `CYCLE_EVENTS`; tags subsequent `context_store` entries with the active phase. | At cycle start/stop and at each phase boundary. Key params: `type` (required: `"start"` \| `"phase-end"` \| `"stop"`), `topic` (required), `phase`, `outcome`, `next_phase`, `agent_id`. Phase tokens must be lowercase with no spaces (canonical set: `scope`, `design`, `implementation`, `testing`, `gate-review`). |
+| `context_cycle_review` | Analyze observation data for a work cycle. Parses session telemetry, detects hotspots, computes metrics, and renders a phase narrative when phase-signal data is present. | After a work cycle completes, to extract patterns and lessons. Key params: `feature_cycle` (required), `evidence_limit`, `format` ("markdown" default, "json"). Phase narrative (ordered phase sequence, rework detection, per-phase category counts, cross-cycle comparison) is included when `CYCLE_EVENTS` data exists for the cycle; silently omitted for pre-WA-1 cycles. |
 
 **`context_search` vs `context_lookup`**: `context_search` uses semantic similarity (natural language). `context_lookup` uses exact filters (topic, category, tags, status). Use search when exploring; use lookup when you know what you want.
 
@@ -351,11 +352,10 @@ Skills that interact with the MCP server require the server to be running and co
 
 ## Knowledge Categories
 
-Unimatrix uses 8 built-in knowledge categories. Category discipline matters for retrieval quality — miscategorized entries surface in wrong contexts during semantic search.
+Unimatrix uses 7 built-in knowledge categories. Category discipline matters for retrieval quality — miscategorized entries surface in wrong contexts during semantic search.
 
 | Category | Description | Example |
 |----------|-------------|---------|
-| `outcome` | Session completion records — what shipped, how it went. | "col-015 delivered. All gates passed. PR #42 merged." |
 | `lesson-learned` | Lessons from failures, gate rejections, unexpected issues. | "Always verify hook latency after adding new UDS handlers — we hit 200ms in col-008." |
 | `decision` | Architectural and design decisions (ADRs). | "Use SQLite for local storage — single-file, zero cloud dependency, bundled via rusqlite." |
 | `convention` | Project conventions and rules agents should follow. | "All MCP tool handlers follow the execution order: identity -> capability -> validation -> category -> scanning -> business logic -> format -> audit." |
@@ -364,7 +364,9 @@ Unimatrix uses 8 built-in knowledge categories. Category discipline matters for 
 | `duties` | Role duties for `context_briefing` orientation. | "Architect duties: read SCOPE.md, decompose into components, define integration surface, produce ADRs." |
 | `reference` | General reference material. | "ONNX Runtime 1.20.x compatibility matrix for supported platforms." |
 
-The default category list can be replaced at startup via `[knowledge] categories` in `~/.unimatrix/config.toml`. The 8 built-in categories cover the primary use cases for software delivery; operators targeting other domains can supply a domain-appropriate list.
+The `outcome` category has been retired: cycle outcomes are now recorded as structured events in `CYCLE_EVENTS` via `context_cycle`, not as knowledge base entries. Attempting to store an entry with `category = "outcome"` returns an `InvalidCategory` error.
+
+The default category list can be replaced at startup via `[knowledge] categories` in `~/.unimatrix/config.toml`. The 7 built-in categories cover the primary use cases for software delivery; operators targeting other domains can supply a domain-appropriate list.
 
 ---
 
@@ -408,7 +410,7 @@ Unimatrix is a 9-crate Rust workspace that ships as a single binary.
 
 ### Storage
 
-SQLite local database (`unimatrix.db`). 19 tables. Schema version 14. Zero cloud dependency — all data stays on your machine.
+SQLite local database (`unimatrix.db`). 20 tables. Schema version 15. Zero cloud dependency — all data stays on your machine.
 
 ### Vector Search
 
@@ -437,7 +439,7 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
   config.toml                # Global config (optional — see Configuration section)
 ~/.unimatrix/{project-hash}/
   config.toml                # Per-project config override (optional)
-  unimatrix.db               # SQLite knowledge database (schema v14)
+  unimatrix.db               # SQLite knowledge database (schema v15)
   unimatrix.pid              # PID file with flock advisory lock
   unimatrix.sock             # Unix domain socket for hook IPC
   unimatrix-mcp.sock         # Unix domain socket for MCP sessions (daemon mode)
