@@ -73,7 +73,10 @@ fn make_sre_tool_response(ts: u64, event_type: &str, tool: &str, size: u64) -> O
 }
 
 // Helper to run a single named rule from default_rules() against records.
-fn run_rule(rule_name: &str, records: &[ObservationRecord]) -> Vec<unimatrix_observe::HotspotFinding> {
+fn run_rule(
+    rule_name: &str,
+    records: &[ObservationRecord],
+) -> Vec<unimatrix_observe::HotspotFinding> {
     let rules = default_rules(None);
     let rule = rules
         .into_iter()
@@ -277,9 +280,7 @@ fn test_post_completion_work_ignores_non_claude_code_domain() {
         response_size: None,
         response_snippet: None,
     });
-    records.extend(
-        (0u64..20).map(|i| make_sre_tool(8100 + i * 100, "PreToolUse", "Read")),
-    );
+    records.extend((0u64..20).map(|i| make_sre_tool(8100 + i * 100, "PreToolUse", "Read")));
     let findings = run_rule("post_completion_work", &records);
     assert!(
         findings.is_empty(),
@@ -386,17 +387,15 @@ fn test_lifespan_ignores_non_claude_code_domain() {
 #[test]
 fn test_file_breadth_ignores_non_claude_code_domain() {
     let records: Vec<ObservationRecord> = (0u64..25)
-        .map(|i| {
-            ObservationRecord {
-                ts: i * 1000,
-                event_type: "PreToolUse".to_string(),
-                source_domain: "sre".to_string(),
-                session_id: "sre-sess-1".to_string(),
-                tool: Some("Read".to_string()),
-                input: Some(serde_json::json!({"file_path": format!("/tmp/file_{i}.log")})),
-                response_size: None,
-                response_snippet: None,
-            }
+        .map(|i| ObservationRecord {
+            ts: i * 1000,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "sre".to_string(),
+            session_id: "sre-sess-1".to_string(),
+            tool: Some("Read".to_string()),
+            input: Some(serde_json::json!({"file_path": format!("/tmp/file_{i}.log")})),
+            response_size: None,
+            response_snippet: None,
         })
         .collect();
     let findings = run_rule("file_breadth", &records);
@@ -657,13 +656,15 @@ fn test_retrospective_report_backward_compat_claude_code_fixture() {
     let mv = compute_metric_vector(&fixture, &findings, 1_000_000);
 
     // RetrospectiveReport fields: computed_at must be set.
-    assert_eq!(mv.computed_at, 1_000_000, "MetricVector.computed_at must be preserved");
+    assert_eq!(
+        mv.computed_at, 1_000_000,
+        "MetricVector.computed_at must be preserved"
+    );
 
     // The fixture contains claude-code records of categories: Agent, Friction, Session, Scope.
     // Verify that at minimum the Agent and Friction categories appear in findings —
     // these are reliably triggered by the fixture (compile cycles + permission retries).
-    let categories: Vec<HotspotCategory> =
-        findings.iter().map(|f| f.category.clone()).collect();
+    let categories: Vec<HotspotCategory> = findings.iter().map(|f| f.category.clone()).collect();
 
     // Compile cycles (Agent category) must fire: fixture has 8 cargo test commands.
     assert!(
