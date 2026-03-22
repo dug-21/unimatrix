@@ -168,14 +168,12 @@ def test_concurrent_store_operations(server):
     """E-12: Sequential store operations all succeed."""
     topics = ["testing", "architecture", "deployment", "security", "performance",
               "database", "monitoring", "caching", "networking", "logging"]
-    categories = ["convention", "pattern", "decision", "outcome"]
+    # crt-025: "outcome" retired from CategoryAllowlist; replaced with "procedure" (ADR-005)
+    categories = ["convention", "pattern", "decision", "procedure"]
     ids = []
     for i in range(20):
         category = categories[i % len(categories)]
         kwargs = {"agent_id": "human", "format": "json"}
-        # outcome category requires a type: tag (col-001 validation)
-        if category == "outcome":
-            kwargs["tags"] = ["type:feature"]
         resp = server.context_store(
             f"Sequential store operation number {i}: This entry covers {topics[i % len(topics)]} "
             f"with a completely distinct perspective on {category} "
