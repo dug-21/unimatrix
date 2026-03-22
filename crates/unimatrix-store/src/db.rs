@@ -295,6 +295,50 @@ impl SqlxStore {
         &self.write_pool
     }
 
+    /// Insert a single row into the `cycle_events` table (crt-025).
+    ///
+    /// Uses the direct write pool (ADR-003): `CYCLE_EVENTS` is a structural audit-trail
+    /// table, not an observational-telemetry table, so it must not go through the analytics
+    /// drain where it could be shed under queue pressure.
+    ///
+    /// `seq` is advisory (ADR-002): computed by the caller as
+    /// `COALESCE(MAX(seq), -1) + 1` scoped to `cycle_id`. True ordering at query
+    /// time uses `ORDER BY timestamp ASC, seq ASC`.
+    pub async fn insert_cycle_event(
+        &self,
+        cycle_id: &str,
+        seq: i64,
+        event_type: &str,
+        phase: Option<&str>,
+        outcome: Option<&str>,
+        next_phase: Option<&str>,
+        timestamp: i64,
+    ) -> Result<()> {
+        let mut conn = self
+            .write_pool
+            .acquire()
+            .await
+            .map_err(|e| crate::error::StoreError::Database(e.into()))?;
+
+        sqlx::query(
+            "INSERT INTO cycle_events
+                (cycle_id, seq, event_type, phase, outcome, next_phase, timestamp)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        )
+        .bind(cycle_id)
+        .bind(seq)
+        .bind(event_type)
+        .bind(phase)
+        .bind(outcome)
+        .bind(next_phase)
+        .bind(timestamp)
+        .execute(&mut *conn)
+        .await
+        .map_err(|e| crate::error::StoreError::Database(e.into()))?;
+
+        Ok(())
+    }
+
     /// WAL checkpoint + VACUUM compaction. Run during graceful shutdown when
     /// `Arc::try_unwrap(store)` succeeds. Safe to call from async context.
     pub async fn compact(&self) -> Result<()> {
@@ -425,10 +469,32 @@ pub(crate) async fn create_tables_if_needed(
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS feature_entries (
-            feature_id TEXT NOT NULL,
-            entry_id INTEGER NOT NULL,
+            feature_id TEXT    NOT NULL,
+            entry_id   INTEGER NOT NULL,
+            phase      TEXT,
             PRIMARY KEY (feature_id, entry_id)
         )",
+    )
+    .execute(&mut *conn)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS cycle_events (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            cycle_id   TEXT    NOT NULL,
+            seq        INTEGER NOT NULL,
+            event_type TEXT    NOT NULL,
+            phase      TEXT,
+            outcome    TEXT,
+            next_phase TEXT,
+            timestamp  INTEGER NOT NULL
+        )",
+    )
+    .execute(&mut *conn)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_cycle_events_cycle_id ON cycle_events (cycle_id)",
     )
     .execute(&mut *conn)
     .await?;
@@ -712,7 +778,9 @@ pub(crate) async fn create_tables_if_needed(
     .await?;
 
     // Initialize counters that other modules expect.
-    sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', 14)")
+    // Bind CURRENT_SCHEMA_VERSION to avoid drift between this and migration.rs (crt-025).
+    sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', ?1)")
+        .bind(crate::migration::CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut *conn)
         .await?;
     sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('next_entry_id', 1)")
@@ -1107,7 +1175,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_schema_version_initialized_to_14_on_fresh_db() {
+    async fn test_schema_version_initialized_to_current_on_fresh_db() {
         let (store, _dir) = open_test_store().await;
 
         let v: i64 = sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
@@ -1116,8 +1184,9 @@ mod tests {
             .expect("query schema_version");
 
         assert_eq!(
-            v, 14,
-            "schema_version must initialize to 14 on fresh db (col-023)"
+            v,
+            crate::migration::CURRENT_SCHEMA_VERSION as i64,
+            "schema_version must initialize to CURRENT_SCHEMA_VERSION on fresh db"
         );
         store.close().await.unwrap();
     }

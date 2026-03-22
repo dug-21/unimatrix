@@ -393,7 +393,7 @@ async fn test_v12_to_v13_supersedes_bootstrap() {
         .expect("open store");
 
     // Assert: schema_version = 14 (migration continues through v13→v14)
-    assert_eq!(read_schema_version(&store).await, 14);
+    assert!(read_schema_version(&store).await >= 14); // crt-025: bumped to 15; keep >= 14 (pattern #2933)
 
     // Assert: graph_edges table exists
     assert!(graph_edges_table_exists(&store).await);
@@ -456,7 +456,7 @@ async fn test_v12_to_v13_empty_co_access_succeeds() {
         .expect("migration must succeed with empty co_access (R-06)");
 
     // Assert: schema_version = 14 (migration continues through v13→v14)
-    assert_eq!(read_schema_version(&store).await, 14);
+    assert!(read_schema_version(&store).await >= 14); // crt-025: bumped to 15; keep >= 14 (pattern #2933)
 
     // Assert: zero CoAccess edges — no weight NOT NULL violation triggered
     assert_eq!(count_graph_edges_by_type(&store, "CoAccess").await, 0);
@@ -586,7 +586,7 @@ async fn test_v12_to_v13_co_access_all_below_threshold() {
 
     // Assert: zero CoAccess edges, migration completed without error
     assert_eq!(count_graph_edges_by_type(&store, "CoAccess").await, 0);
-    assert_eq!(read_schema_version(&store).await, 14);
+    assert!(read_schema_version(&store).await >= 14); // crt-025: bumped to 15; keep >= 14 (pattern #2933)
 
     store.close().await.unwrap();
 }
@@ -642,7 +642,7 @@ async fn test_v12_to_v13_idempotent_double_run() {
         let store = SqlxStore::open(&db_path, PoolConfig::default())
             .await
             .expect("first open");
-        assert_eq!(read_schema_version(&store).await, 14);
+        assert!(read_schema_version(&store).await >= 14); // crt-025: bumped to 15; keep >= 14 (pattern #2933)
         edge_count_first = count_all_graph_edges(&store).await;
         store.close().await.unwrap();
     }
@@ -660,7 +660,7 @@ async fn test_v12_to_v13_idempotent_double_run() {
     );
 
     // Assert: schema_version still 14
-    assert_eq!(read_schema_version(&store).await, 14);
+    assert!(read_schema_version(&store).await >= 14); // crt-025: bumped to 15; keep >= 14 (pattern #2933)
 
     store.close().await.unwrap();
 }
@@ -775,7 +775,7 @@ async fn test_v12_to_v13_empty_entries_and_co_access() {
         .expect("migration must succeed with no data");
 
     // Assert: migration completed without error, zero graph_edges rows
-    assert_eq!(read_schema_version(&store).await, 14);
+    assert!(read_schema_version(&store).await >= 14); // crt-025: bumped to 15; keep >= 14 (pattern #2933)
     assert!(graph_edges_table_exists(&store).await);
     assert_eq!(count_all_graph_edges(&store).await, 0);
 
