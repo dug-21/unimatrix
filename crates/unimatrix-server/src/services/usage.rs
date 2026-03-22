@@ -57,6 +57,12 @@ pub(crate) struct UsageContext {
     /// Default MUST be 1. A value of 0 silently drops the access increment (EC-04).
     /// UsageDedup fires BEFORE this multiplier is applied (C-05).
     pub access_weight: u32,
+    /// Workflow phase active at the moment `context_store` was called (ADR-001 crt-025).
+    ///
+    /// Snapshotted from `SessionState.current_phase` at call time — never re-read from
+    /// live state during drain or spawn. `None` for all non-store operations (search,
+    /// lookup, get, correct, deprecate, etc.) and for store calls with no active phase.
+    pub current_phase: Option<String>,
 }
 
 impl UsageService {
@@ -137,6 +143,11 @@ impl UsageService {
         // Previously each write (usage+confidence, feature_entries, co_access) was
         // a separate spawn_blocking, each independently acquiring the Store mutex.
         // This caused blocking pool saturation under concurrent MCP requests.
+
+        // ADR-001 crt-025: Capture phase snapshot BEFORE the spawn so the closure
+        // uses the call-time value, not live SessionState at flush time.
+        let phase_snapshot = ctx.current_phase.clone();
+
         let store = Arc::clone(&self.store);
 
         // R-11 VERIFIED: The store loops over `all_ids` (outer loop) and uses
@@ -221,9 +232,11 @@ impl UsageService {
             }
 
             if let Some((feature_str, ids)) = feature_recording {
-                // phase: None — Wave 3 (context-store-phase-capture) will thread the
-                // actual phase value here once SessionState.current_phase is propagated.
-                if let Err(e) = store.record_feature_entries(&feature_str, &ids, None).await {
+                // ADR-001 crt-025: use call-time phase snapshot, not live SessionState.
+                if let Err(e) = store
+                    .record_feature_entries(&feature_str, &ids, phase_snapshot.as_deref())
+                    .await
+                {
                     tracing::warn!("failed to record feature entries: {e}");
                 }
             }
@@ -266,6 +279,10 @@ impl UsageService {
             return;
         }
 
+        // ADR-001 crt-025: Capture phase snapshot BEFORE any spawn so the closure
+        // uses the call-time value, not live SessionState at flush time.
+        let phase_snapshot = ctx.current_phase.clone();
+
         let store = Arc::clone(&self.store);
         // co_access: fire-and-forget via analytics drain (eventual consistency acceptable)
         if let Some(pairs) = co_access_pairs {
@@ -278,9 +295,11 @@ impl UsageService {
         if let Some((feature_str, ids)) = feature_recording {
             let s = Arc::clone(&store);
             tokio::spawn(async move {
-                // phase: None — Wave 3 (context-store-phase-capture) will thread the
-                // actual phase value here once SessionState.current_phase is propagated.
-                if let Err(e) = s.record_feature_entries(&feature_str, &ids, None).await {
+                // ADR-001 crt-025: use call-time phase snapshot, not live SessionState.
+                if let Err(e) = s
+                    .record_feature_entries(&feature_str, &ids, phase_snapshot.as_deref())
+                    .await
+                {
                     tracing::warn!("failed to record feature entries: {e}");
                 }
             });
@@ -373,6 +392,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: None,
                 access_weight: 1,
+                current_phase: None,
             },
         );
     }
@@ -392,6 +412,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
 
@@ -421,6 +442,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
 
@@ -445,6 +467,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
 
@@ -470,6 +493,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -485,6 +509,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -511,6 +536,7 @@ mod usage_tests {
                     feature_cycle: None,
                     trust_level: Some(TrustLevel::Internal),
                     access_weight: 1,
+                    current_phase: None,
                 },
             );
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -537,6 +563,7 @@ mod usage_tests {
                     feature_cycle: None,
                     trust_level: Some(TrustLevel::Internal),
                     access_weight: 1,
+                    current_phase: None,
                 },
             );
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -564,6 +591,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -587,6 +615,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
         let elapsed = start.elapsed();
@@ -612,6 +641,7 @@ mod usage_tests {
                 feature_cycle: Some("vnc-009".to_string()),
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -646,6 +676,7 @@ mod usage_tests {
                 feature_cycle: Some("vnc-009".to_string()),
                 trust_level: Some(TrustLevel::Restricted),
                 access_weight: 1,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -683,6 +714,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -713,6 +745,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -729,6 +762,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -756,6 +790,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -784,6 +819,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -816,6 +852,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 2, // context_lookup sets this
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -849,6 +886,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 2,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -870,6 +908,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 2,
+                current_phase: None,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -877,6 +916,121 @@ mod usage_tests {
             store.get(id).await.unwrap().access_count,
             2,
             "second lookup same agent: access_count must remain 2 (dedup before multiply)"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // crt-025 Component 8: Context Store Phase Capture — UsageContext unit tests
+    // (R-14, FR-06.1)
+    // ---------------------------------------------------------------------------
+
+    /// test_usage_context_has_current_phase_field (R-14)
+    ///
+    /// Structural compile-time test: `UsageContext` has `current_phase: Option<String>`.
+    /// This test compiles only if the field exists on the struct.
+    #[test]
+    fn test_usage_context_has_current_phase_field() {
+        // Construct with explicit current_phase — fails to compile if field is absent.
+        let ctx = UsageContext {
+            session_id: None,
+            agent_id: None,
+            helpful: None,
+            feature_cycle: None,
+            trust_level: None,
+            access_weight: 1,
+            current_phase: Some("scope".to_string()),
+        };
+        assert_eq!(ctx.current_phase.as_deref(), Some("scope"));
+
+        let ctx_none = UsageContext {
+            session_id: None,
+            agent_id: None,
+            helpful: None,
+            feature_cycle: None,
+            trust_level: None,
+            access_weight: 1,
+            current_phase: None,
+        };
+        assert!(ctx_none.current_phase.is_none());
+    }
+
+    /// test_usage_context_current_phase_propagates_to_feature_entry (R-14, FR-06.1)
+    ///
+    /// Verifies that when `UsageContext.current_phase = Some("scope")` is provided
+    /// along with a valid feature_cycle, the recorded feature_entries row has phase
+    /// = "scope" (not NULL). Exercises the full MCP usage recording path.
+    #[tokio::test]
+    async fn test_usage_context_current_phase_propagates_to_feature_entry() {
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
+
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-phase-1".to_string()),
+                helpful: None,
+                feature_cycle: Some("crt-025".to_string()),
+                trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
+                current_phase: Some("scope".to_string()),
+            },
+        );
+
+        // Allow spawn to complete
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        let row = sqlx::query(
+            "SELECT phase FROM feature_entries WHERE feature_id = 'crt-025' AND entry_id = ?1",
+        )
+        .bind(id as i64)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("feature_entries row must exist");
+
+        let phase: Option<String> = row.get(0);
+        assert_eq!(
+            phase.as_deref(),
+            Some("scope"),
+            "phase must be 'scope' (not NULL) when current_phase=Some('scope') (R-14, FR-06.1)"
+        );
+    }
+
+    /// Verify that `current_phase = None` produces a NULL phase in feature_entries.
+    #[tokio::test]
+    async fn test_usage_context_phase_none_produces_null_phase() {
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
+
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-phase-2".to_string()),
+                helpful: None,
+                feature_cycle: Some("crt-025-null".to_string()),
+                trust_level: Some(TrustLevel::Internal),
+                access_weight: 1,
+                current_phase: None,
+            },
+        );
+
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        let row = sqlx::query(
+            "SELECT phase FROM feature_entries WHERE feature_id = 'crt-025-null' AND entry_id = ?1",
+        )
+        .bind(id as i64)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("feature_entries row must exist");
+
+        let phase: Option<String> = row.get(0);
+        assert!(
+            phase.is_none(),
+            "phase must be NULL when current_phase=None"
         );
     }
 }
