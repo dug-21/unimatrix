@@ -917,10 +917,7 @@ fn test_duplicate_source_domain_registration_last_writer_wins() {
 
     // iter_packs must return only one "sre" pack (not two).
     let packs = registry.iter_packs();
-    let sre_packs: Vec<_> = packs
-        .iter()
-        .filter(|p| p.source_domain == "sre")
-        .collect();
+    let sre_packs: Vec<_> = packs.iter().filter(|p| p.source_domain == "sre").collect();
     assert_eq!(
         sre_packs.len(),
         1,
@@ -959,9 +956,7 @@ fn test_duplicate_categories_in_pack_accepted() {
         result.err()
     );
     let registry = result.unwrap();
-    let pack = registry
-        .lookup("sre")
-        .expect("sre pack must be registered");
+    let pack = registry.lookup("sre").expect("sre pack must be registered");
     // The categories are stored as-is (deduplication is a higher-layer concern).
     assert!(
         pack.categories.contains(&"incident".to_string()),

@@ -493,11 +493,9 @@ pub(crate) async fn create_tables_if_needed(
     .execute(&mut *conn)
     .await?;
 
-    sqlx::query(
-        "CREATE INDEX IF NOT EXISTS idx_cycle_events_cycle_id ON cycle_events (cycle_id)",
-    )
-    .execute(&mut *conn)
-    .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_cycle_events_cycle_id ON cycle_events (cycle_id)")
+        .execute(&mut *conn)
+        .await?;
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS co_access (
