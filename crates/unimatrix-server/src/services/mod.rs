@@ -46,7 +46,7 @@ pub use contradiction_cache::{
 };
 pub use effectiveness::{EffectivenessState, EffectivenessStateHandle};
 pub(crate) use gateway::{RateLimitConfig, SecurityGateway};
-pub(crate) use search::{RetrievalMode, SearchService, ServiceSearchParams};
+pub(crate) use search::{FusionWeights, RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
 pub(crate) use store_ops::StoreService;
 pub use typed_graph::{TypedGraphState, TypedGraphStateHandle};
@@ -391,6 +391,7 @@ impl ServiceLayer {
             Arc::clone(&nli_handle),
             nli_top_k,
             nli_enabled,
+            FusionWeights::from_config(&inference_config),
         );
 
         let nli_store_cfg = NliStoreConfig {
