@@ -37,7 +37,7 @@ const DEFAULT_K: usize = 5;
 const DEFAULT_LIMIT: usize = 10;
 
 fn check_length(field_name: &str, value: &str, max: usize) -> Result<(), ServerError> {
-    if value.len() > max {
+    if value.chars().count() > max {
         return Err(ServerError::InvalidInput {
             field: field_name.to_string(),
             reason: format!("exceeds {max} characters"),
@@ -428,7 +428,7 @@ pub fn validate_cycle_params(
     let validated_outcome = match outcome {
         None => None,
         Some(s) => {
-            if s.len() > MAX_OUTCOME_LEN {
+            if s.chars().count() > MAX_OUTCOME_LEN {
                 return Err("outcome exceeds 512 characters".to_string());
             }
             Some(s.to_string())
@@ -456,7 +456,7 @@ fn validate_phase_field(field_name: &str, value: Option<&str>) -> Result<Option<
                 return Err(format!("{field_name} must not be empty when provided"));
             }
             let normalized = trimmed.to_lowercase();
-            if normalized.len() > MAX_PHASE_LEN {
+            if normalized.chars().count() > MAX_PHASE_LEN {
                 return Err(format!("{field_name} exceeds 64 characters"));
             }
             if normalized.contains(' ') {
@@ -1685,5 +1685,91 @@ mod tests {
     #[test]
     fn test_cycle_phase_end_event_constant_value() {
         assert_eq!(CYCLE_PHASE_END_EVENT, "cycle_phase_end");
+    }
+
+    // -- #340: multibyte character boundary tests (chars().count() fix) --
+
+    /// check_length: exactly MAX_TITLE_LEN multibyte chars — must pass.
+    ///
+    /// Each "🟩" is 4 bytes. Before the fix, 512 * 4 = 2048 bytes > 200 byte limit
+    /// would cause a false rejection. After fix, char count is used.
+    #[test]
+    fn test_check_length_multibyte_at_max_passes() {
+        // Use MAX_TITLE_LEN (200) as a representative general-field boundary.
+        let s: String = "🟩".repeat(MAX_TITLE_LEN);
+        assert_eq!(s.chars().count(), MAX_TITLE_LEN);
+        assert!(check_length("title", &s, MAX_TITLE_LEN).is_ok());
+    }
+
+    /// check_length: MAX_TITLE_LEN + 1 multibyte chars — must be rejected.
+    #[test]
+    fn test_check_length_multibyte_over_max_rejected() {
+        let s: String = "🟩".repeat(MAX_TITLE_LEN + 1);
+        assert_eq!(s.chars().count(), MAX_TITLE_LEN + 1);
+        assert!(check_length("title", &s, MAX_TITLE_LEN).is_err());
+    }
+
+    /// validate_cycle_params outcome: exactly MAX_OUTCOME_LEN (512) multibyte chars — must pass.
+    ///
+    /// Before the fix, 512 * 4 = 2048 bytes > 512 would cause a false rejection.
+    #[test]
+    fn test_validate_outcome_multibyte_at_max_passes() {
+        let outcome: String = "🟩".repeat(MAX_OUTCOME_LEN);
+        assert_eq!(outcome.chars().count(), MAX_OUTCOME_LEN);
+        let result = validate_cycle_params("phase-end", "crt-025", None, Some(&outcome), None);
+        assert!(result.is_ok());
+    }
+
+    /// validate_cycle_params outcome: MAX_OUTCOME_LEN + 1 multibyte chars — must be rejected.
+    #[test]
+    fn test_validate_outcome_multibyte_over_max_rejected() {
+        let outcome: String = "🟩".repeat(MAX_OUTCOME_LEN + 1);
+        assert_eq!(outcome.chars().count(), MAX_OUTCOME_LEN + 1);
+        let result = validate_cycle_params("phase-end", "crt-025", None, Some(&outcome), None);
+        let err = result.unwrap_err();
+        assert!(err.contains("outcome"));
+    }
+
+    /// validate_phase_field (via validate_cycle_params): exactly MAX_PHASE_LEN (64) multibyte
+    /// chars — must pass.
+    ///
+    /// Note: validate_phase_field calls .to_lowercase() before the length check, which for
+    /// multibyte chars (e.g. emoji) returns the same char, so char count is preserved.
+    #[test]
+    fn test_validate_phase_multibyte_at_max_passes() {
+        // Use chars that survive to_lowercase unchanged (emoji).
+        let phase: String = "🟩".repeat(MAX_PHASE_LEN);
+        assert_eq!(phase.chars().count(), MAX_PHASE_LEN);
+        let result = validate_cycle_params("phase-end", "crt-025", Some(&phase), None, None);
+        assert!(result.is_ok());
+    }
+
+    /// validate_phase_field: MAX_PHASE_LEN + 1 multibyte chars — must be rejected.
+    #[test]
+    fn test_validate_phase_multibyte_over_max_rejected() {
+        let phase: String = "🟩".repeat(MAX_PHASE_LEN + 1);
+        assert_eq!(phase.chars().count(), MAX_PHASE_LEN + 1);
+        let result = validate_cycle_params("phase-end", "crt-025", Some(&phase), None, None);
+        let err = result.unwrap_err();
+        assert!(err.contains("phase") || err.contains("64"));
+    }
+
+    /// validate_phase_field (next_phase): exactly MAX_PHASE_LEN multibyte chars — must pass.
+    #[test]
+    fn test_validate_next_phase_multibyte_at_max_passes() {
+        let phase: String = "🟩".repeat(MAX_PHASE_LEN);
+        assert_eq!(phase.chars().count(), MAX_PHASE_LEN);
+        let result = validate_cycle_params("phase-end", "crt-025", None, None, Some(&phase));
+        assert!(result.is_ok());
+    }
+
+    /// validate_phase_field (next_phase): MAX_PHASE_LEN + 1 multibyte chars — must be rejected.
+    #[test]
+    fn test_validate_next_phase_multibyte_over_max_rejected() {
+        let phase: String = "🟩".repeat(MAX_PHASE_LEN + 1);
+        assert_eq!(phase.chars().count(), MAX_PHASE_LEN + 1);
+        let result = validate_cycle_params("phase-end", "crt-025", None, None, Some(&phase));
+        let err = result.unwrap_err();
+        assert!(err.contains("next_phase") || err.contains("64"));
     }
 }
