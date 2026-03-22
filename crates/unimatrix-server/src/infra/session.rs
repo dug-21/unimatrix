@@ -125,6 +125,8 @@ pub struct SessionState {
     pub last_activity_at: u64,          // tracks staleness for sweep
     // col-017 fields
     pub topic_signals: HashMap<String, TopicTally>, // accumulated topic signals for majority vote
+    // crt-025 fields
+    pub current_phase: Option<String>, // active workflow phase; None until first phase signal
 }
 
 /// Thread-safe registry for per-session state.
@@ -166,6 +168,7 @@ impl SessionRegistry {
                 agent_actions: Vec::new(),
                 last_activity_at: now,
                 topic_signals: HashMap::new(),
+                current_phase: None,
             },
         );
     }
@@ -270,6 +273,20 @@ impl SessionRegistry {
                 }
             },
         }
+    }
+
+    /// Set the active workflow phase for a session (crt-025, ADR-001 / SR-01).
+    ///
+    /// Called SYNCHRONOUSLY in the UDS listener before any `spawn_blocking` DB write.
+    /// Passing `None` clears the phase (used on `cycle_stop`).
+    /// Silent no-op if the session is not registered.
+    /// Mutex lock poisoning is recovered via `unwrap_or_else(|e| e.into_inner())`.
+    pub fn set_current_phase(&self, session_id: &str, phase: Option<String>) {
+        let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(state) = sessions.get_mut(session_id) {
+            state.current_phase = phase;
+        }
+        // Unregistered session: silent no-op
     }
 
     /// Check if a session's leading topic signal meets the eager attribution threshold (#198, Part 2).
@@ -1003,6 +1020,7 @@ mod tests {
             agent_actions: Vec::new(),
             last_activity_at: 0,
             topic_signals: HashMap::new(),
+            current_phase: None,
         }
     }
 

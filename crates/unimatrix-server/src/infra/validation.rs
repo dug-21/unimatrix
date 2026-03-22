@@ -795,6 +795,7 @@ mod tests {
             agent_id: None,
             format: None,
             feature_cycle: None,
+            session_id: None,
         };
         assert!(validate_store_params(&params).is_ok());
     }
@@ -811,6 +812,7 @@ mod tests {
             agent_id: Some("agent".to_string()),
             format: Some("json".to_string()),
             feature_cycle: Some("col-001".to_string()),
+            session_id: None,
         };
         assert!(validate_store_params(&params).is_ok());
     }
@@ -827,6 +829,7 @@ mod tests {
             agent_id: None,
             format: None,
             feature_cycle: Some("a".repeat(129)),
+            session_id: None,
         };
         assert!(validate_store_params(&params).is_err());
     }
@@ -843,6 +846,7 @@ mod tests {
             agent_id: None,
             format: None,
             feature_cycle: Some("a".repeat(128)),
+            session_id: None,
         };
         assert!(validate_store_params(&params).is_ok());
     }
