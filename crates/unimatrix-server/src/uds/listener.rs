@@ -961,6 +961,21 @@ async fn handle_context_search(
         feature_cycle: None,
     };
 
+    // crt-026: Pre-resolve session histogram for histogram affinity boost (WA-2, ADR-002).
+    // Follows the crt-025 SR-07 snapshot pattern: session state is read once synchronously
+    // before any await point (R-13).
+    //
+    // session_id in this path comes from HookRequest::ContextSearch payload field (OQ-B confirmed).
+    // sanitize_session_id was already applied in the dispatch block at lines 796-803 before
+    // this function was called — no additional sanitization needed here.
+    //
+    // Maps is_empty() → None: cold-start path (category_histogram = None → boost = 0.0).
+    let category_histogram: Option<std::collections::HashMap<String, u32>> =
+        session_id.as_deref().and_then(|sid| {
+            let h = session_registry.get_category_histogram(sid);
+            if h.is_empty() { None } else { Some(h) }
+        });
+
     // 2. Build ServiceSearchParams with UDS-specific floors
     let service_params = crate::services::ServiceSearchParams {
         query: query.clone(),
@@ -972,8 +987,8 @@ async fn handle_context_search(
         co_access_anchors: None,
         caller_agent_id: None,
         retrieval_mode: crate::services::RetrievalMode::Strict, // crt-010: UDS uses strict mode
-        session_id: None, // crt-026: no histogram in UDS search (non-hook path)
-        category_histogram: None, // crt-026: placeholder; hook path wires this separately
+        session_id: session_id.clone(), // crt-026: thread session_id for logging/tracing
+        category_histogram,             // crt-026: pre-resolved histogram (WA-2)
     };
 
     // 3. Delegate to SearchService (UDS sessions are rate-exempt via CallerId::UdsSession)
@@ -1141,6 +1156,10 @@ async fn handle_compact_payload(
         .map(|s| s.compaction_count)
         .unwrap_or(0);
 
+    // crt-026: Extract category histogram for CompactPayload summary block (WA-2, FR-12).
+    // get_category_histogram returns a clone or empty map — no await needed (NFR-01, NFR-05).
+    let category_histogram = session_registry.get_category_histogram(session_id);
+
     // 3. Determine path
     let has_injection_history = session_state
         .as_ref()
@@ -1228,6 +1247,7 @@ async fn handle_compact_payload(
         effective_feature.as_deref(),
         compaction_count,
         max_bytes,
+        &category_histogram, // crt-026: histogram summary block (WA-2)
     );
 
     // 10. Increment compaction count (transport concern)
@@ -1248,10 +1268,14 @@ fn format_compaction_payload(
     feature: Option<&str>,
     compaction_count: u32,
     max_bytes: usize,
+    category_histogram: &std::collections::HashMap<String, u32>, // crt-026: histogram summary block (WA-2)
 ) -> Option<String> {
+    // crt-026: also allow through when histogram is non-empty (a session may have only
+    // histogram data to show, with all briefing categories empty).
     if categories.decisions.is_empty()
         && categories.injections.is_empty()
         && categories.conventions.is_empty()
+        && category_histogram.is_empty()
     {
         return None;
     }
@@ -1310,6 +1334,43 @@ fn format_compaction_payload(
         &categories.conventions,
         convention_budget,
     );
+
+    // crt-026: Histogram summary block (WA-2, FR-12).
+    // Appended when the session histogram is non-empty.
+    // Format: "Recent session activity: decision × 3, pattern × 2"
+    // Rules: top-5 by count descending, counts > 0 only, omit when empty (R-10, AC-11).
+    // Fits within MAX_INJECTION_BYTES: < 100 bytes for typical sessions (< 20 categories).
+    if !category_histogram.is_empty() {
+        // Collect categories with count > 0 (all should be, but guard for safety)
+        let mut entries: Vec<(&String, u32)> = category_histogram
+            .iter()
+            .filter(|(_, count)| **count > 0)
+            .map(|(cat, count)| (cat, *count))
+            .collect();
+
+        if !entries.is_empty() {
+            // Sort by count descending (tiebreaking order non-deterministic — acceptable per EC-04)
+            entries.sort_by(|a, b| b.1.cmp(&a.1));
+
+            // Cap at top-5 (EC-07)
+            entries.truncate(5);
+
+            // Format the line: "Recent session activity: decision × 3, pattern × 2"
+            // Uses Unicode MULTIPLICATION SIGN U+00D7 per architecture spec
+            let parts: Vec<String> = entries
+                .iter()
+                .map(|(cat, count)| format!("{} \u{00d7} {}", cat, count))
+                .collect();
+            let summary_line = format!("Recent session activity: {}\n", parts.join(", "));
+
+            // Append only if within remaining budget
+            let remaining = max_bytes.saturating_sub(output.len());
+            if summary_line.len() <= remaining {
+                output.push_str(&summary_line);
+            }
+            // If over budget, omit the block silently (MAX_INJECTION_BYTES is the hard limit)
+        }
+    }
 
     // Hard ceiling check
     if output.len() > max_bytes {
@@ -2954,7 +3015,15 @@ mod tests {
             conventions: vec![],
         };
         assert!(
-            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).is_none()
+            format_compaction_payload(
+                &categories,
+                None,
+                None,
+                0,
+                MAX_COMPACTION_BYTES,
+                &std::collections::HashMap::new()
+            )
+            .is_none()
         );
     }
 
@@ -2965,8 +3034,15 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        let result =
-            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        let result = format_compaction_payload(
+            &categories,
+            None,
+            None,
+            0,
+            MAX_COMPACTION_BYTES,
+            &std::collections::HashMap::new(),
+        )
+        .unwrap();
         assert!(result.starts_with("--- Unimatrix Compaction Context ---\n"));
     }
 
@@ -2977,8 +3053,15 @@ mod tests {
             injections: vec![(make_entry(2, "Pattern", "pcontent", "pattern", 0.8), 0.8)],
             conventions: vec![],
         };
-        let result =
-            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        let result = format_compaction_payload(
+            &categories,
+            None,
+            None,
+            0,
+            MAX_COMPACTION_BYTES,
+            &std::collections::HashMap::new(),
+        )
+        .unwrap();
         let dec_pos = result.find("[Decision]").unwrap();
         let inj_pos = result.find("[Pattern]").unwrap();
         assert!(dec_pos < inj_pos, "decisions must appear before injections");
@@ -2995,8 +3078,15 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        let result =
-            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        let result = format_compaction_payload(
+            &categories,
+            None,
+            None,
+            0,
+            MAX_COMPACTION_BYTES,
+            &std::collections::HashMap::new(),
+        )
+        .unwrap();
         let high_pos = result.find("[High]").expect("High entry missing");
         let low_pos = result.find("[Low]").expect("Low entry missing");
         assert!(
@@ -3016,8 +3106,15 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        let result =
-            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        let result = format_compaction_payload(
+            &categories,
+            None,
+            None,
+            0,
+            MAX_COMPACTION_BYTES,
+            &std::collections::HashMap::new(),
+        )
+        .unwrap();
         assert!(
             result.len() <= MAX_COMPACTION_BYTES,
             "output {} exceeds budget {}",
@@ -3034,7 +3131,15 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        let result = format_compaction_payload(&categories, None, None, 0, 500).unwrap();
+        let result = format_compaction_payload(
+            &categories,
+            None,
+            None,
+            0,
+            500,
+            &std::collections::HashMap::new(),
+        )
+        .unwrap();
         assert!(result.len() <= 500);
         assert!(std::str::from_utf8(result.as_bytes()).is_ok());
     }
@@ -3052,6 +3157,7 @@ mod tests {
             Some("col-008"),
             2,
             MAX_COMPACTION_BYTES,
+            &std::collections::HashMap::new(),
         )
         .unwrap();
         assert!(result.contains("Role: developer"));
@@ -3068,8 +3174,15 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        let result =
-            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        let result = format_compaction_payload(
+            &categories,
+            None,
+            None,
+            0,
+            MAX_COMPACTION_BYTES,
+            &std::collections::HashMap::new(),
+        )
+        .unwrap();
         assert!(result.contains("[deprecated]"));
     }
 
@@ -3080,8 +3193,15 @@ mod tests {
             injections: vec![],
             conventions: vec![],
         };
-        let result =
-            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES).unwrap();
+        let result = format_compaction_payload(
+            &categories,
+            None,
+            None,
+            0,
+            MAX_COMPACTION_BYTES,
+            &std::collections::HashMap::new(),
+        )
+        .unwrap();
         assert!(result.contains("<!-- id:42 -->"));
     }
 
@@ -3094,8 +3214,263 @@ mod tests {
             conventions: vec![],
         };
         // 100 tokens = 400 bytes
-        let result = format_compaction_payload(&categories, None, None, 0, 400).unwrap();
+        let result = format_compaction_payload(
+            &categories,
+            None,
+            None,
+            0,
+            400,
+            &std::collections::HashMap::new(),
+        )
+        .unwrap();
         assert!(result.len() <= 400);
+    }
+
+    // -- crt-026: UDS histogram tests --
+
+    /// T-UDS-04 (GATE BLOCKER) AC-11 | R-10
+    /// Non-empty histogram produces "Recent session activity:" block;
+    /// empty histogram omits it entirely.
+    #[test]
+    fn test_compact_payload_histogram_block_present_and_absent() {
+        let empty_categories = CompactionCategories {
+            decisions: vec![(make_entry(1, "D", "c", "decision", 0.9), 0.9)],
+            injections: vec![],
+            conventions: vec![],
+        };
+
+        // Subtest A — Non-empty histogram: block present
+        let mut histogram = std::collections::HashMap::new();
+        histogram.insert("decision".to_string(), 3u32);
+        histogram.insert("pattern".to_string(), 2u32);
+
+        let payload = format_compaction_payload(
+            &empty_categories,
+            None,
+            None,
+            0,
+            MAX_COMPACTION_BYTES,
+            &histogram,
+        )
+        .expect("should produce Some with non-empty histogram");
+
+        assert!(
+            payload.contains("Recent session activity:"),
+            "non-empty histogram must produce 'Recent session activity:' block in CompactPayload"
+        );
+        assert!(
+            payload.contains("decision"),
+            "histogram block must include category name 'decision'"
+        );
+        assert!(
+            payload.contains('3'.to_string().as_str()),
+            "histogram block must include count 3"
+        );
+        assert!(
+            payload.contains("pattern"),
+            "histogram block must include category name 'pattern'"
+        );
+        assert!(
+            payload.contains('2'.to_string().as_str()),
+            "histogram block must include count 2"
+        );
+
+        // Subtest B — Empty histogram: block absent
+        let empty_histogram: std::collections::HashMap<String, u32> =
+            std::collections::HashMap::new();
+        let payload_no_hist = format_compaction_payload(
+            &empty_categories,
+            None,
+            None,
+            0,
+            MAX_COMPACTION_BYTES,
+            &empty_histogram,
+        )
+        .expect("should produce Some with non-empty categories");
+
+        assert!(
+            !payload_no_hist.contains("Recent session activity"),
+            "empty histogram must NOT produce 'Recent session activity' block (no spurious output)"
+        );
+    }
+
+    /// T-UDS-01 AC-05 partial | R-05
+    /// UDS handle_context_search pre-resolution: session with stores yields Some histogram.
+    #[test]
+    fn test_uds_search_path_histogram_pre_resolution() {
+        let reg = SessionRegistry::new();
+        reg.register_session("hook-session-1", None, None);
+        reg.record_category_store("hook-session-1", "decision");
+        reg.record_category_store("hook-session-1", "pattern");
+
+        // Simulating the pre-resolution block in handle_context_search:
+        // session_id comes from HookRequest::ContextSearch (NOT from audit_ctx)
+        let session_id_from_hook = Some("hook-session-1".to_string());
+
+        let category_histogram: Option<std::collections::HashMap<String, u32>> =
+            session_id_from_hook.as_deref().and_then(|sid| {
+                let h = reg.get_category_histogram(sid);
+                if h.is_empty() { None } else { Some(h) }
+            });
+
+        assert!(
+            category_histogram.is_some(),
+            "UDS path must pre-resolve histogram to Some when session has stores (R-05)"
+        );
+        let h = category_histogram.unwrap();
+        assert_eq!(h.get("decision"), Some(&1));
+        assert_eq!(h.get("pattern"), Some(&1));
+    }
+
+    /// T-UDS-02 AC-08 partial | R-02
+    /// Cold-start: session registered but no stores → category_histogram = None.
+    #[test]
+    fn test_uds_search_path_empty_session_produces_none_histogram() {
+        let reg = SessionRegistry::new();
+        reg.register_session("hook-session-cold", None, None);
+        // No stores
+
+        let category_histogram: Option<std::collections::HashMap<String, u32>> =
+            Some("hook-session-cold").and_then(|sid| {
+                let h = reg.get_category_histogram(sid);
+                if h.is_empty() { None } else { Some(h) }
+            });
+
+        assert!(
+            category_histogram.is_none(),
+            "UDS path must produce None histogram for a session with no stores (cold start)"
+        );
+    }
+
+    /// T-UDS-05 R-10 (top-5 cap), EC-07
+    /// Histogram with 7 categories → only top 5 by count appear in output.
+    #[test]
+    fn test_compact_payload_histogram_top5_cap() {
+        let categories = CompactionCategories {
+            decisions: vec![(make_entry(1, "D", "c", "decision", 0.9), 0.9)],
+            injections: vec![],
+            conventions: vec![],
+        };
+
+        let mut histogram = std::collections::HashMap::new();
+        histogram.insert("decision".to_string(), 10u32);
+        histogram.insert("pattern".to_string(), 8u32);
+        histogram.insert("convention".to_string(), 6u32);
+        histogram.insert("lesson-learned".to_string(), 4u32);
+        histogram.insert("procedure".to_string(), 2u32);
+        histogram.insert("adr".to_string(), 1u32); // rank 6 — must NOT appear
+        histogram.insert("outcome".to_string(), 1u32); // rank 7 — must NOT appear
+
+        let result =
+            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES, &histogram)
+                .expect("should produce Some");
+
+        // Top 5 appear
+        assert!(result.contains("decision"), "top-1 category must appear");
+        assert!(result.contains("pattern"), "top-2 category must appear");
+        assert!(result.contains("convention"), "top-3 category must appear");
+        assert!(
+            result.contains("lesson-learned"),
+            "top-4 category must appear"
+        );
+        assert!(result.contains("procedure"), "top-5 category must appear");
+        // 6th and 7th must NOT appear in the summary line
+        // (note: "decision" is also an entry title — check the "adr" and "outcome" exclusion
+        //  by verifying the summary line specifically)
+        let summary_start = result
+            .find("Recent session activity:")
+            .expect("summary block must be present");
+        let summary_line = &result[summary_start..];
+        assert!(
+            !summary_line.contains("adr"),
+            "rank-6 category must not appear (top-5 cap)"
+        );
+        assert!(
+            !summary_line.contains("outcome"),
+            "rank-7 category must not appear (top-5 cap)"
+        );
+    }
+
+    /// T-UDS-06 AC-11 format verification
+    /// Histogram block uses correct format: "Recent session activity: decision × 3, pattern × 2"
+    /// with Unicode MULTIPLICATION SIGN U+00D7 and count-descending sort.
+    #[test]
+    fn test_compact_payload_histogram_format() {
+        let categories = CompactionCategories {
+            decisions: vec![(make_entry(1, "D", "c", "decision", 0.9), 0.9)],
+            injections: vec![],
+            conventions: vec![],
+        };
+
+        let mut histogram = std::collections::HashMap::new();
+        histogram.insert("decision".to_string(), 3u32);
+        histogram.insert("pattern".to_string(), 2u32);
+
+        let result =
+            format_compaction_payload(&categories, None, None, 0, MAX_COMPACTION_BYTES, &histogram)
+                .expect("should produce Some");
+
+        assert!(
+            result.contains("Recent session activity:"),
+            "block must contain the canonical prefix"
+        );
+
+        // Decision (3) must appear before pattern (2) — sorted by count descending
+        let decision_pos = result
+            .find("decision \u{00d7} 3")
+            .expect("'decision × 3' must be in block");
+        let pattern_pos = result
+            .find("pattern \u{00d7} 2")
+            .expect("'pattern × 2' must be in block");
+        assert!(
+            decision_pos < pattern_pos,
+            "categories must be sorted by count descending: decision before pattern"
+        );
+
+        // Verify the summary line is < 100 bytes (MAX_INJECTION_BYTES budget)
+        let summary_start = result.find("Recent session activity:").unwrap();
+        let summary_end = result[summary_start..]
+            .find('\n')
+            .unwrap_or(result.len() - summary_start);
+        let summary_line = &result[summary_start..summary_start + summary_end];
+        assert!(
+            summary_line.len() < 100,
+            "histogram summary line must be < 100 bytes for typical sessions; got {} bytes",
+            summary_line.len()
+        );
+    }
+
+    /// Test that all-empty categories + non-empty histogram still produces Some output.
+    /// (Ensures the early-return guard allows through histogram-only sessions.)
+    #[test]
+    fn test_compact_payload_histogram_only_categories_empty() {
+        let empty_categories = CompactionCategories {
+            decisions: vec![],
+            injections: vec![],
+            conventions: vec![],
+        };
+
+        let mut histogram = std::collections::HashMap::new();
+        histogram.insert("pattern".to_string(), 1u32);
+
+        let result = format_compaction_payload(
+            &empty_categories,
+            None,
+            None,
+            0,
+            MAX_COMPACTION_BYTES,
+            &histogram,
+        );
+
+        assert!(
+            result.is_some(),
+            "non-empty histogram with all-empty categories must produce Some (histogram-only path)"
+        );
+        let content = result.unwrap();
+        assert!(
+            content.contains("Recent session activity:"),
+            "histogram-only output must contain the summary block"
+        );
     }
 
     // -- truncate_utf8 tests --
