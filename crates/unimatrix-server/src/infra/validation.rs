@@ -318,7 +318,7 @@ pub fn validated_max_tokens(max_tokens: Option<i64>) -> Result<usize, ServerErro
     }
 }
 
-// -- col-022: cycle lifecycle validation --
+// -- col-022 / crt-025: cycle lifecycle validation --
 
 /// Shared event type constant for cycle_start events (ADR-001, R-04 mitigation).
 pub const CYCLE_START_EVENT: &str = "cycle_start";
@@ -326,15 +326,20 @@ pub const CYCLE_START_EVENT: &str = "cycle_start";
 /// Shared event type constant for cycle_stop events (ADR-001, R-04 mitigation).
 pub const CYCLE_STOP_EVENT: &str = "cycle_stop";
 
+/// Shared event type constant for cycle_phase_end events (crt-025).
+pub const CYCLE_PHASE_END_EVENT: &str = "cycle_phase_end";
+
 /// Validation limits for cycle parameters.
 const MAX_CYCLE_TOPIC_LEN: usize = 128;
-const MAX_KEYWORD_LEN: usize = 64;
-const MAX_KEYWORDS_COUNT: usize = 5;
+const MAX_PHASE_LEN: usize = 64;
+const MAX_OUTCOME_LEN: usize = 512;
 
 /// The type of cycle event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CycleType {
     Start,
+    /// Phase transition event (crt-025). Maps from "phase-end" wire value.
+    PhaseEnd,
     Stop,
 }
 
@@ -343,7 +348,12 @@ pub enum CycleType {
 pub struct ValidatedCycleParams {
     pub cycle_type: CycleType,
     pub topic: String,
-    pub keywords: Vec<String>,
+    /// Normalized phase string (lowercase, trimmed). Set on phase-end events.
+    pub phase: Option<String>,
+    /// Free-form outcome text (max 512 chars). Set on phase-end events.
+    pub outcome: Option<String>,
+    /// Normalized next-phase string (lowercase, trimmed). Set on start/phase-end events.
+    pub next_phase: Option<String>,
 }
 
 /// Structural check for feature cycle identifiers.
@@ -364,20 +374,27 @@ fn is_valid_feature_id(s: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
 }
 
-/// Validate cycle parameters for both MCP tool and hook handler (ADR-004).
+/// Validate cycle parameters for both MCP tool and hook handler (ADR-004, C-02).
 ///
 /// Returns `Result<ValidatedCycleParams, String>` (not `ServerError`) because
 /// the hook handler needs a plain string error and does not use `ServerError`.
 pub fn validate_cycle_params(
     type_str: &str,
     topic: &str,
-    keywords: Option<&[String]>,
+    phase: Option<&str>,
+    outcome: Option<&str>,
+    next_phase: Option<&str>,
 ) -> Result<ValidatedCycleParams, String> {
     // Step 1: Validate type (case-sensitive, lowercase only)
     let cycle_type = match type_str {
         "start" => CycleType::Start,
+        "phase-end" => CycleType::PhaseEnd,
         "stop" => CycleType::Stop,
-        other => return Err(format!("invalid type '{other}': must be 'start' or 'stop'")),
+        other => {
+            return Err(format!(
+                "invalid type '{other}': must be 'start', 'phase-end', or 'stop'"
+            ));
+        }
     };
 
     // Step 2: Validate topic
@@ -401,26 +418,53 @@ pub fn validate_cycle_params(
         return Err("topic is not a valid feature cycle identifier".to_string());
     }
 
-    // Step 3: Validate keywords
-    let mut validated_keywords = Vec::new();
-    if let Some(kw_slice) = keywords {
-        for kw in kw_slice.iter().take(MAX_KEYWORDS_COUNT) {
-            // Truncate individual keywords to 64 chars (UTF-8 safe)
-            let truncated: String = kw.chars().take(MAX_KEYWORD_LEN).collect();
+    // Step 3: Validate phase (crt-025)
+    let validated_phase = validate_phase_field("phase", phase)?;
 
-            // Skip empty strings after truncation
-            if !truncated.is_empty() {
-                validated_keywords.push(truncated);
+    // Step 4: Validate next_phase (crt-025)
+    let validated_next_phase = validate_phase_field("next_phase", next_phase)?;
+
+    // Step 5: Validate outcome (crt-025, FR-02.6)
+    let validated_outcome = match outcome {
+        None => None,
+        Some(s) => {
+            if s.len() > MAX_OUTCOME_LEN {
+                return Err("outcome exceeds 512 characters".to_string());
             }
+            Some(s.to_string())
         }
-        // Keywords beyond index 4 are silently ignored (FR-05)
-    }
+    };
 
     Ok(ValidatedCycleParams {
         cycle_type,
         topic: clean_topic,
-        keywords: validated_keywords,
+        phase: validated_phase,
+        outcome: validated_outcome,
+        next_phase: validated_next_phase,
     })
+}
+
+/// Validate and normalize a phase field (trim, lowercase, reject empty / spaces / > 64 chars).
+///
+/// Used for both `phase` and `next_phase` parameters (crt-025, C-01).
+fn validate_phase_field(field_name: &str, value: Option<&str>) -> Result<Option<String>, String> {
+    match value {
+        None => Ok(None),
+        Some(s) => {
+            let trimmed = s.trim();
+            if trimmed.is_empty() {
+                return Err(format!("{field_name} must not be empty when provided"));
+            }
+            let normalized = trimmed.to_lowercase();
+            if normalized.len() > MAX_PHASE_LEN {
+                return Err(format!("{field_name} exceeds 64 characters"));
+            }
+            if normalized.contains(' ') {
+                return Err(format!("{field_name} must not contain spaces"));
+            }
+            Ok(Some(normalized))
+        }
+    }
 }
 
 // -- alc-002: enrollment validation --
@@ -1321,68 +1365,77 @@ mod tests {
         assert!(validate_retrospective_params(&params).is_err());
     }
 
-    // -- col-022: validate_cycle_params -- type parameter (AC-07) --
+    // -- col-022 / crt-025: validate_cycle_params -- type parameter (AC-07) --
 
     #[test]
     fn test_validate_cycle_params_type_start() {
-        let result = validate_cycle_params("start", "col-022", None);
+        let result = validate_cycle_params("start", "col-022", None, None, None);
         let v = result.unwrap();
         assert_eq!(v.cycle_type, CycleType::Start);
         assert_eq!(v.topic, "col-022");
-        assert!(v.keywords.is_empty());
     }
 
     #[test]
     fn test_validate_cycle_params_type_stop() {
-        let result = validate_cycle_params("stop", "col-022", None);
+        let result = validate_cycle_params("stop", "col-022", None, None, None);
         let v = result.unwrap();
         assert_eq!(v.cycle_type, CycleType::Stop);
     }
 
     #[test]
     fn test_validate_cycle_params_type_invalid_pause() {
-        let result = validate_cycle_params("pause", "col-022", None);
+        let result = validate_cycle_params("pause", "col-022", None, None, None);
         let err = result.unwrap_err();
         assert!(err.contains("start"));
+        assert!(err.contains("phase-end"));
         assert!(err.contains("stop"));
     }
 
     #[test]
     fn test_validate_cycle_params_type_invalid_restart() {
-        let result = validate_cycle_params("restart", "col-022", None);
+        let result = validate_cycle_params("restart", "col-022", None, None, None);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_validate_cycle_params_type_empty() {
-        let result = validate_cycle_params("", "col-022", None);
+        let result = validate_cycle_params("", "col-022", None, None, None);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_validate_cycle_params_type_case_sensitive_start_upper() {
-        let result = validate_cycle_params("Start", "col-022", None);
+        let result = validate_cycle_params("Start", "col-022", None, None, None);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_validate_cycle_params_type_case_sensitive_stop_upper() {
-        let result = validate_cycle_params("STOP", "col-022", None);
+        let result = validate_cycle_params("STOP", "col-022", None, None, None);
         assert!(result.is_err());
+    }
+
+    // -- crt-025: validate_cycle_params -- PhaseEnd type --
+
+    #[test]
+    fn test_validate_cycle_params_type_phase_end_accepted() {
+        let result = validate_cycle_params("phase-end", "crt-025", None, None, None);
+        let v = result.unwrap();
+        assert_eq!(v.cycle_type, CycleType::PhaseEnd);
     }
 
     // -- col-022: validate_cycle_params -- topic parameter (AC-06) --
 
     #[test]
     fn test_validate_cycle_params_topic_valid() {
-        let result = validate_cycle_params("start", "col-022", None);
+        let result = validate_cycle_params("start", "col-022", None, None, None);
         let v = result.unwrap();
         assert_eq!(v.topic, "col-022");
     }
 
     #[test]
     fn test_validate_cycle_params_topic_empty() {
-        let result = validate_cycle_params("start", "", None);
+        let result = validate_cycle_params("start", "", None, None, None);
         let err = result.unwrap_err();
         assert!(err.contains("empty"));
     }
@@ -1392,7 +1445,7 @@ mod tests {
         // 128 chars with a hyphen to pass is_valid_feature_id
         let topic = format!("{}-{}", "a".repeat(64), "b".repeat(63));
         assert_eq!(topic.len(), 128);
-        let result = validate_cycle_params("start", &topic, None);
+        let result = validate_cycle_params("start", &topic, None, None, None);
         assert!(result.is_ok());
     }
 
@@ -1406,20 +1459,20 @@ mod tests {
         let topic = format!("{}x", base);
         assert_eq!(topic.len(), 129);
         // After truncation to 128, the result is the base which is valid
-        let result = validate_cycle_params("start", &topic, None);
+        let result = validate_cycle_params("start", &topic, None, None, None);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_validate_cycle_params_topic_control_chars_stripped() {
-        let result = validate_cycle_params("start", "col-022\t\r\n", None);
+        let result = validate_cycle_params("start", "col-022\t\r\n", None, None, None);
         let v = result.unwrap();
         assert_eq!(v.topic, "col-022");
     }
 
     #[test]
     fn test_validate_cycle_params_topic_only_control_chars() {
-        let result = validate_cycle_params("start", "\x00\x01\x02", None);
+        let result = validate_cycle_params("start", "\x00\x01\x02", None, None, None);
         let err = result.unwrap_err();
         assert!(err.contains("invalid characters"));
     }
@@ -1428,122 +1481,39 @@ mod tests {
 
     #[test]
     fn test_validate_cycle_params_topic_valid_feature_id_format() {
-        let result = validate_cycle_params("start", "col-022", None);
+        let result = validate_cycle_params("start", "col-022", None, None, None);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_validate_cycle_params_topic_no_hyphen_rejected() {
-        let result = validate_cycle_params("start", "foobar", None);
+        let result = validate_cycle_params("start", "foobar", None, None, None);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_validate_cycle_params_topic_leading_hyphen_rejected() {
-        let result = validate_cycle_params("start", "-col022", None);
+        let result = validate_cycle_params("start", "-col022", None, None, None);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_validate_cycle_params_topic_trailing_hyphen_rejected() {
-        let result = validate_cycle_params("start", "col022-", None);
+        let result = validate_cycle_params("start", "col022-", None, None, None);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_validate_cycle_params_topic_feature_ids() {
         // Various valid feature IDs
-        assert!(validate_cycle_params("start", "col-022", None).is_ok());
-        assert!(validate_cycle_params("start", "nxs-001", None).is_ok());
-        assert!(validate_cycle_params("start", "ASS-014", None).is_ok());
-        assert!(validate_cycle_params("start", "c-1", None).is_ok());
-        assert!(validate_cycle_params("start", "ab-999", None).is_ok());
+        assert!(validate_cycle_params("start", "col-022", None, None, None).is_ok());
+        assert!(validate_cycle_params("start", "nxs-001", None, None, None).is_ok());
+        assert!(validate_cycle_params("start", "ASS-014", None, None, None).is_ok());
+        assert!(validate_cycle_params("start", "c-1", None, None, None).is_ok());
+        assert!(validate_cycle_params("start", "ab-999", None, None, None).is_ok());
 
         // Invalid: no hyphen
-        assert!(validate_cycle_params("start", "col022", None).is_err());
-    }
-
-    // -- col-022: validate_cycle_params -- keywords parameter (AC-13) --
-
-    #[test]
-    fn test_validate_cycle_params_keywords_none() {
-        let result = validate_cycle_params("start", "col-022", None);
-        let v = result.unwrap();
-        assert!(v.keywords.is_empty());
-    }
-
-    #[test]
-    fn test_validate_cycle_params_keywords_empty_vec() {
-        let kw: Vec<String> = vec![];
-        let result = validate_cycle_params("start", "col-022", Some(&kw));
-        let v = result.unwrap();
-        assert!(v.keywords.is_empty());
-    }
-
-    #[test]
-    fn test_validate_cycle_params_keywords_valid() {
-        let kw = vec!["attr".to_string(), "lifecycle".to_string()];
-        let result = validate_cycle_params("start", "col-022", Some(&kw));
-        let v = result.unwrap();
-        assert_eq!(v.keywords, vec!["attr", "lifecycle"]);
-    }
-
-    #[test]
-    fn test_validate_cycle_params_keywords_five() {
-        let kw: Vec<String> = vec!["a", "b", "c", "d", "e"]
-            .into_iter()
-            .map(String::from)
-            .collect();
-        let result = validate_cycle_params("start", "col-022", Some(&kw));
-        let v = result.unwrap();
-        assert_eq!(v.keywords.len(), 5);
-    }
-
-    #[test]
-    fn test_validate_cycle_params_keywords_six_truncated_to_five() {
-        let kw: Vec<String> = vec!["a", "b", "c", "d", "e", "f"]
-            .into_iter()
-            .map(String::from)
-            .collect();
-        let result = validate_cycle_params("start", "col-022", Some(&kw));
-        let v = result.unwrap();
-        assert_eq!(v.keywords, vec!["a", "b", "c", "d", "e"]);
-    }
-
-    #[test]
-    fn test_validate_cycle_params_keywords_seven_truncated_to_five() {
-        let kw: Vec<String> = vec!["a", "b", "c", "d", "e", "f", "g"]
-            .into_iter()
-            .map(String::from)
-            .collect();
-        let result = validate_cycle_params("start", "col-022", Some(&kw));
-        let v = result.unwrap();
-        assert_eq!(v.keywords.len(), 5);
-    }
-
-    #[test]
-    fn test_validate_cycle_params_keyword_64_chars() {
-        let kw = vec!["a".repeat(64)];
-        let result = validate_cycle_params("start", "col-022", Some(&kw));
-        let v = result.unwrap();
-        assert_eq!(v.keywords[0].len(), 64);
-    }
-
-    #[test]
-    fn test_validate_cycle_params_keyword_65_chars_truncated() {
-        let kw = vec!["a".repeat(65)];
-        let result = validate_cycle_params("start", "col-022", Some(&kw));
-        let v = result.unwrap();
-        assert_eq!(v.keywords[0].len(), 64);
-    }
-
-    #[test]
-    fn test_validate_cycle_params_keyword_empty_string() {
-        let kw = vec!["".to_string()];
-        let result = validate_cycle_params("start", "col-022", Some(&kw));
-        let v = result.unwrap();
-        // Empty strings are filtered out
-        assert!(v.keywords.is_empty());
+        assert!(validate_cycle_params("start", "col022", None, None, None).is_err());
     }
 
     // -- col-022: CycleType enum --
@@ -1560,48 +1530,23 @@ mod tests {
         let params = ValidatedCycleParams {
             cycle_type: CycleType::Start,
             topic: "x-1".to_string(),
-            keywords: vec![],
+            phase: None,
+            outcome: None,
+            next_phase: None,
         };
         assert_eq!(params.cycle_type, CycleType::Start);
         assert_eq!(params.topic, "x-1");
-        assert!(params.keywords.is_empty());
+        assert!(params.phase.is_none());
     }
 
     // -- col-022: edge cases --
 
     #[test]
-    fn test_validate_cycle_params_keyword_whitespace_only() {
-        // Whitespace-only keywords should be accepted (no stripping specified)
-        let kw = vec!["   ".to_string()];
-        let result = validate_cycle_params("start", "col-022", Some(&kw));
-        let v = result.unwrap();
-        assert_eq!(v.keywords, vec!["   "]);
-    }
-
-    #[test]
     fn test_validate_cycle_params_topic_with_null_byte() {
         // Null byte is a control char, stripped by sanitize
-        let result = validate_cycle_params("start", "col\x00-022", None);
+        let result = validate_cycle_params("start", "col\x00-022", None, None, None);
         let v = result.unwrap();
         assert_eq!(v.topic, "col-022");
-    }
-
-    #[test]
-    fn test_validate_cycle_params_keyword_unicode_truncation() {
-        // Unicode chars -- truncation must respect char boundaries
-        // Each emoji is 1 char but multiple bytes
-        let emoji_kw = "x".repeat(63) + "\u{1F600}"; // 63 + 1 = 64 chars
-        let kw = vec![emoji_kw.clone()];
-        let result = validate_cycle_params("start", "col-022", Some(&kw));
-        let v = result.unwrap();
-        assert_eq!(v.keywords[0].chars().count(), 64);
-
-        // 65 chars with unicode -- should truncate to 64
-        let long_emoji_kw = "x".repeat(64) + "\u{1F600}"; // 64 + 1 = 65 chars
-        let kw2 = vec![long_emoji_kw];
-        let result2 = validate_cycle_params("start", "col-022", Some(&kw2));
-        let v2 = result2.unwrap();
-        assert_eq!(v2.keywords[0].chars().count(), 64);
     }
 
     // -- col-022: event type constants --
@@ -1610,5 +1555,131 @@ mod tests {
     fn test_cycle_event_constants() {
         assert_eq!(CYCLE_START_EVENT, "cycle_start");
         assert_eq!(CYCLE_STOP_EVENT, "cycle_stop");
+    }
+
+    // -- crt-025: validate_cycle_params -- phase normalization (AC-03, FR-02) --
+
+    #[test]
+    fn test_validate_phase_lowercase_normalization() {
+        let result = validate_cycle_params("phase-end", "crt-025", Some("Scope"), None, None);
+        let v = result.unwrap();
+        assert_eq!(v.phase, Some("scope".to_string()));
+    }
+
+    #[test]
+    fn test_validate_phase_uppercase_normalization() {
+        let result =
+            validate_cycle_params("phase-end", "crt-025", Some("IMPLEMENTATION"), None, None);
+        let v = result.unwrap();
+        assert_eq!(v.phase, Some("implementation".to_string()));
+    }
+
+    #[test]
+    fn test_validate_phase_mixed_case_normalization() {
+        let result = validate_cycle_params("phase-end", "crt-025", Some("Design"), None, None);
+        let v = result.unwrap();
+        assert_eq!(v.phase, Some("design".to_string()));
+    }
+
+    #[test]
+    fn test_validate_next_phase_normalization() {
+        let result = validate_cycle_params("phase-end", "crt-025", None, None, Some("Design"));
+        let v = result.unwrap();
+        assert_eq!(v.next_phase, Some("design".to_string()));
+    }
+
+    #[test]
+    fn test_validate_phase_none_always_valid() {
+        // phase = None is valid for any event type (FR-02.5)
+        assert!(validate_cycle_params("start", "crt-025", None, None, None).is_ok());
+        assert!(validate_cycle_params("phase-end", "crt-025", None, None, None).is_ok());
+        assert!(validate_cycle_params("stop", "crt-025", None, None, None).is_ok());
+    }
+
+    // -- crt-025: validate_cycle_params -- phase format rejection (R-06, FR-02) --
+
+    #[test]
+    fn test_validate_phase_space_rejected() {
+        let result =
+            validate_cycle_params("phase-end", "crt-025", Some("scope review"), None, None);
+        let err = result.unwrap_err();
+        assert!(err.contains("phase"));
+    }
+
+    #[test]
+    fn test_validate_phase_leading_space_trimmed_internal_space_rejected() {
+        // "a b" has an internal space after trim — rejected
+        let result = validate_cycle_params("phase-end", "crt-025", Some("a b"), None, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_phase_leading_trailing_space_trimmed_passes() {
+        // " scope " trims to "scope" — no internal space, passes
+        let result = validate_cycle_params("phase-end", "crt-025", Some(" scope "), None, None);
+        let v = result.unwrap();
+        assert_eq!(v.phase, Some("scope".to_string()));
+    }
+
+    #[test]
+    fn test_validate_phase_empty_rejected() {
+        let result = validate_cycle_params("phase-end", "crt-025", Some(""), None, None);
+        let err = result.unwrap_err();
+        assert!(err.contains("phase"));
+    }
+
+    #[test]
+    fn test_validate_phase_64_char_boundary_accepted() {
+        let phase_64 = "a".repeat(64);
+        let result = validate_cycle_params("phase-end", "crt-025", Some(&phase_64), None, None);
+        let v = result.unwrap();
+        assert_eq!(v.phase, Some("a".repeat(64)));
+    }
+
+    #[test]
+    fn test_validate_phase_65_char_rejected() {
+        let phase_65 = "a".repeat(65);
+        let result = validate_cycle_params("phase-end", "crt-025", Some(&phase_65), None, None);
+        let err = result.unwrap_err();
+        assert!(err.contains("phase") || err.contains("64"));
+    }
+
+    #[test]
+    fn test_validate_phase_underscore_accepted() {
+        // Underscore is not a space — passes format check (R-06 clarification)
+        let result = validate_cycle_params("phase-end", "crt-025", Some("gate_review"), None, None);
+        let v = result.unwrap();
+        assert_eq!(v.phase, Some("gate_review".to_string()));
+    }
+
+    // -- crt-025: validate_cycle_params -- outcome validation (FR-02.6) --
+
+    #[test]
+    fn test_validate_outcome_max_512_chars_accepted() {
+        let outcome_512 = "x".repeat(512);
+        let result = validate_cycle_params("phase-end", "crt-025", None, Some(&outcome_512), None);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_outcome_513_chars_rejected() {
+        let outcome_513 = "x".repeat(513);
+        let result = validate_cycle_params("phase-end", "crt-025", None, Some(&outcome_513), None);
+        let err = result.unwrap_err();
+        assert!(err.contains("outcome"));
+    }
+
+    #[test]
+    fn test_validate_outcome_none_always_valid() {
+        let result = validate_cycle_params("phase-end", "crt-025", None, None, None);
+        let v = result.unwrap();
+        assert!(v.outcome.is_none());
+    }
+
+    // -- crt-025: CYCLE_PHASE_END_EVENT constant --
+
+    #[test]
+    fn test_cycle_phase_end_event_constant_value() {
+        assert_eq!(CYCLE_PHASE_END_EVENT, "cycle_phase_end");
     }
 }

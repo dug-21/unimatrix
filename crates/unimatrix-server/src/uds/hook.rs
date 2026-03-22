@@ -17,7 +17,7 @@ use unimatrix_engine::wire::{
 use unimatrix_observe::extract_topic_signal;
 
 use crate::infra::validation::{
-    CYCLE_START_EVENT, CYCLE_STOP_EVENT, CycleType, validate_cycle_params,
+    CYCLE_PHASE_END_EVENT, CYCLE_START_EVENT, CYCLE_STOP_EVENT, CycleType, validate_cycle_params,
 };
 
 /// Default timeout for transport operations: 40ms.
@@ -417,17 +417,18 @@ fn build_cycle_event_or_fallthrough(
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
-    let keywords_opt: Option<Vec<String>> = tool_input
-        .get("keywords")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|item| item.as_str().map(|s| s.to_string()))
-                .collect()
-        });
+    let phase_opt = tool_input.get("phase").and_then(|v| v.as_str());
+    let outcome_opt = tool_input.get("outcome").and_then(|v| v.as_str());
+    let next_phase_opt = tool_input.get("next_phase").and_then(|v| v.as_str());
 
-    // Step 3: Validate using shared function (ADR-004)
-    let validated = match validate_cycle_params(type_str, topic_str, keywords_opt.as_deref()) {
+    // Step 3: Validate using shared function (ADR-004, C-02)
+    let validated = match validate_cycle_params(
+        type_str,
+        topic_str,
+        phase_opt,
+        outcome_opt,
+        next_phase_opt,
+    ) {
         Ok(v) => v,
         Err(msg) => {
             // Hook must never fail (FR-03.7). Log warning, fall through.
@@ -441,20 +442,25 @@ fn build_cycle_event_or_fallthrough(
     // Step 4: Build specialized RecordEvent
     let event_type = match validated.cycle_type {
         CycleType::Start => CYCLE_START_EVENT.to_string(),
+        CycleType::PhaseEnd => CYCLE_PHASE_END_EVENT.to_string(),
         CycleType::Stop => CYCLE_STOP_EVENT.to_string(),
     };
 
-    // Build payload with feature_cycle and keywords.
+    // Build payload with feature_cycle and optional phase/outcome/next_phase.
     // The feature_cycle key in payload is what the #198 extraction path and
-    // the new cycle_start handler both look for.
+    // the cycle event handlers look for.
     let mut payload = serde_json::json!({
         "feature_cycle": validated.topic,
     });
 
-    if !validated.keywords.is_empty() {
-        let keywords_json =
-            serde_json::to_string(&validated.keywords).unwrap_or_else(|_| "[]".to_string());
-        payload["keywords"] = serde_json::Value::String(keywords_json);
+    if let Some(ref p) = validated.phase {
+        payload["phase"] = serde_json::Value::String(p.clone());
+    }
+    if let Some(ref o) = validated.outcome {
+        payload["outcome"] = serde_json::Value::String(o.clone());
+    }
+    if let Some(ref np) = validated.next_phase {
+        payload["next_phase"] = serde_json::Value::String(np.clone());
     }
 
     // Set topic_signal to the topic value -- strong signal for eager attribution
@@ -2075,7 +2081,9 @@ mod tests {
     }
 
     #[test]
-    fn test_build_request_cycle_start_with_keywords() {
+    fn test_build_request_cycle_start_with_keywords_silently_discarded() {
+        // crt-025: keywords are no longer extracted or propagated. Old callers passing
+        // `keywords` in the hook payload should have it silently discarded.
         let input = pretooluse_input(serde_json::json!({
             "tool_name": "mcp__unimatrix__context_cycle",
             "tool_input": {
@@ -2089,12 +2097,8 @@ mod tests {
             HookRequest::RecordEvent { event } => {
                 assert_eq!(event.event_type, "cycle_start");
                 assert_eq!(event.payload["feature_cycle"], "col-022");
-                // Keywords are serialized as a JSON string inside the payload
-                let kw_str = event.payload["keywords"]
-                    .as_str()
-                    .expect("keywords should be string");
-                let kw: Vec<String> = serde_json::from_str(kw_str).expect("keywords should parse");
-                assert_eq!(kw, vec!["attribution", "lifecycle"]);
+                // keywords no longer propagated to payload (crt-025, C-04)
+                assert!(event.payload.get("keywords").is_none());
             }
             _ => panic!("expected cycle_start RecordEvent"),
         }
@@ -2250,8 +2254,9 @@ mod tests {
     }
 
     #[test]
-    fn test_build_request_cycle_keywords_with_non_string_items() {
-        // Keywords array with mixed types: only strings should be kept
+    fn test_build_request_cycle_keywords_silently_discarded_mixed_types() {
+        // crt-025: keywords no longer extracted. Payload with mixed-type keywords array
+        // should be accepted as a cycle_start with no keywords in the result payload.
         let input = pretooluse_input(serde_json::json!({
             "tool_name": "mcp__unimatrix__context_cycle",
             "tool_input": {
@@ -2264,11 +2269,8 @@ mod tests {
         match req {
             HookRequest::RecordEvent { event } => {
                 assert_eq!(event.event_type, "cycle_start");
-                let kw_str = event.payload["keywords"]
-                    .as_str()
-                    .expect("keywords should be string");
-                let kw: Vec<String> = serde_json::from_str(kw_str).expect("parse keywords");
-                assert_eq!(kw, vec!["valid", "also-valid"]);
+                // keywords no longer propagated to payload (crt-025, C-04)
+                assert!(event.payload.get("keywords").is_none());
             }
             _ => panic!("expected cycle_start RecordEvent"),
         }
