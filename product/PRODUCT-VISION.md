@@ -12,1144 +12,639 @@ Unimatrix is a self-learning knowledge integrity engine. It captures knowledge t
 
 Unimatrix began in agentic software delivery, where the problem was specific: AI agents forget, contradict each other, and confidently repeat mistakes. We built a knowledge engine where nothing is merely stored — everything is attributed, hash-chained for integrity, scored by real usage, and correctable with full provenance. Agents stopped relitigating decisions. Knowledge started improving with every delivery.
 
-That foundation became a platform. A typed knowledge graph formalizes relationships — not just what agents retrieve together, but why: support, contradiction, supersession, dependency. A confidence system learns from actual usage rather than manual calibration, adapting weights and decay rates to each domain's signal patterns. Contradiction detection is semantic. Any event source — hooks, webhooks, automated pipelines — feeds the learning layer without agent cooperation. Any knowledge-intensive domain — environmental monitoring, SRE operations, scientific research, regulatory compliance — runs on the same engine, configured not rebuilt. Secured with OAuth, containerized, serving any number of repositories from a single instance. The integrity chain runs through all of it: hash-chained corrections, immutable audit log, trust-attributed provenance — tamper-evident from first write to last.
+That foundation became a platform. A typed knowledge graph formalizes relationships — not just what agents retrieve together, but why: support, contradiction, supersession, dependency. A confidence system learns from actual usage rather than manual calibration. Contradiction detection is semantic. Any event source — hooks, webhooks, automated pipelines — feeds the learning layer without agent cooperation. Any knowledge-intensive domain — environmental monitoring, SRE operations, scientific research, regulatory compliance — runs on the same engine, configured not rebuilt.
+
+The intelligence pipeline is the core of the platform. It is not a retrieval engine with additive boosts. It is a session-conditioned, self-improving relevance function: given what the agent knows, what they have been doing, and where they are in their workflow, surface the right knowledge — before they ask for it. The graph, the confidence system, the observation pipeline, and the GNN are all inputs to this function. The function learns. Every session makes it better.
+
+Secured with OAuth, containerized, serving any number of repositories from a single instance. The integrity chain runs through all of it: hash-chained corrections, immutable audit log, trust-attributed provenance — tamper-evident from first write to last.
 
 ---
 
 ## The Critical Gaps
 
-Before the roadmap, a clear-eyed list of where Unimatrix has strayed from
-its domain-agnostic foundations, and where new surface area has been accumulated:
+Before the roadmap, a clear-eyed list of where Unimatrix has strayed from its domain-agnostic foundations, and where new surface area has been accumulated. Status reflects current state.
 
-### Domain Coupling (strayed from)
-| Gap | Severity | Location |
-|-----|----------|----------|
-| Freshness half-life hardcoded at 168h (1 week) | Critical | `confidence.rs` |
-| "lesson-learned" category name hardcoded in scoring | Critical | `search.rs` |
-| Lambda dimension weights hardcoded (freshness 0.35, graph 0.30, contradiction 0.20, embedding 0.15) | Critical | `confidence.rs` |
-| SERVER_INSTRUCTIONS const uses dev-workflow language | High | `server.rs` |
-| Initial category allowlist hardcoded (8 dev categories) | High | `categories.rs` |
-| `context_cycle_review` tool name is SDLC-specific ("retrospective" is Agile vocabulary) | Medium | `tools.rs` |
-| `context_cycle` parameter labels dev-specific (feature, sprint) — tool concept is domain-neutral | Low | `tools.rs` |
-| HookType enum tied to Claude Code events | Medium | `observations.rs` |
-| trust_source vocabulary dev-flavored ("agent","neural","auto") | Low | `confidence.rs` |
-| Observation metrics schema (bash_for_search, coordinator_respawn) | Low | `observations.rs` |
+### Domain Coupling
+| Gap | Severity | Status |
+|-----|----------|--------|
+| Freshness half-life hardcoded at 168h | Critical | **Fixed** — W0-3 config externalization |
+| "lesson-learned" category name hardcoded in scoring | Critical | **Fixed** — W0-3 `boosted_categories` config |
+| Lambda dimension weights hardcoded | Critical | **Fixed** — W0-3; W3-1 will learn them |
+| SERVER_INSTRUCTIONS const uses dev-workflow language | High | **Fixed** — W0-3 `[server] instructions` config |
+| Initial category allowlist hardcoded | High | **Fixed** — W0-3 / dsn-001 |
+| `context_cycle_review` tool name is SDLC-specific | Medium | **Fixed** — renamed to `context_cycle_review` |
+| HookType enum tied to Claude Code events | Medium | **In progress** — col-023 / W1-5 |
+| trust_source vocabulary dev-flavored | Low | Open |
+| Observation metrics schema (bash_for_search, etc.) | Low | **In progress** — W1-5 `domain_metrics_json` |
 
-**Note on `context_cycle`**: The tool concept is domain-neutral — start/stop of any bounded work
-unit applies equally to a sprint, an incident, a measurement campaign, or a legal case. What
-is dev-specific is the parameter vocabulary ("feature", "sprint"). W0-3 config externalizes
-those labels; the tool itself does not need to change.
-
-**Note on `context_cycle_review`**: "Retrospective" is Agile/Scrum
-vocabulary. The rename to `context_cycle_review` is domain-neutral ("review" applies to any
-cycle — post-incident review, campaign review, case review) and makes the pairing with
-`context_cycle` self-evident: you start/stop a cycle, then review it. This rename is
-a W0-3 scope addition — low-effort, high clarity gain.
-
-**Note on `feature_cycle` and `topic`**: These fields are domain-neutral free-form strings.
-`topic` is what the knowledge is *about*; `feature_cycle` is what *work context produced* it.
-Non-dev deployments should map their domain equivalent (incident ID, campaign ID, case number)
-to these fields — neither is dev-specific in function, only in naming convention.
-Domain pack documentation must make this explicit to prevent operators from leaving
-`feature_cycle` unwired.
-
-### Security (needs upgrade)
-| Gap | Severity |
-|-----|----------|
-| Auto-enroll gives read access to any unknown process | High |
-| agent_id per-call model: friction, unreliable, spoofable | High |
-| No token-based client identity for STDIO | High |
-| No path to OAuth for centralized deployment | Medium |
+### Security
+| Gap | Severity | Status |
+|-----|----------|--------|
+| Auto-enroll gives read access to any unknown process | High | Configurable via `PERMISSIVE_AUTO_ENROLL`; W2-3 OAuth closes it fully |
+| agent_id per-call model: friction, unreliable, spoofable | High | W2-3 OAuth path |
+| No token-based client identity for STDIO | High | W2-3 JWT path |
+| No path to OAuth for centralized deployment | Medium | W2-3 |
 
 ### Scalability & Architecture
-| Gap | Severity |
-|-----|----------|
-| Process exits on session end — background tick, write queue, ML inference stop | Critical |
-| Single SQLite writer — MCP requests compete with all background work | High |
-| No backup/recovery story — SQLite lives in project directory | High |
-| No container deployment model | Medium |
-| No HTTP transport — stdio only | Medium |
-| Graph rebuilt at query time from snapshot, not persisted | Medium |
+| Gap | Severity | Status |
+|-----|----------|--------|
+| Process exits on session end | Critical | **Fixed** — W0-0 daemon mode |
+| Single SQLite writer | High | **Fixed** — W0-1 dual-pool sqlx |
+| No backup/recovery story | High | W2-1 container packaging |
+| No container deployment model | Medium | W2-1 |
+| No HTTP transport — stdio only | Medium | W2-2 |
+| Graph rebuilt at query time, not persisted | Medium | **Fixed** — W1-1 GRAPH_EDGES persistence |
 
 ### Intelligence & Confidence
-| Gap | Severity |
-|-----|----------|
-| Confidence weights hardcoded — cannot adapt to domain or usage | High |
-| Only supersession edge type — no typed relationships | High |
-| Contradiction detection uses cosine heuristic, not NLI | Medium |
-| Graph edges not persisted — lost on restart | Medium |
-| Co-access and contradiction never formalized as graph edges | Medium |
+| Gap | Severity | Status |
+|-----|----------|--------|
+| Confidence weights hardcoded — cannot adapt | High | Interim fix W0-3; W3-1 learns them |
+| Only supersession edge type — no typed relationships | High | **Fixed** — W1-1 RelationEdge |
+| Contradiction detection uses cosine heuristic, not NLI | Medium | **Fixed** — W1-4 NLI cross-encoder |
+| Graph edges not persisted — lost on restart | Medium | **Fixed** — W1-1 GRAPH_EDGES |
+| Co-access and contradiction never formalized as graph edges | Medium | **Fixed** — W1-1 |
+| Intelligence pipeline is additive boosts, not a learned function | High | **Roadmapped** — Wave 1A + W3-1 |
+| No session-conditioned relevance — every query treated identically | High | **Roadmapped** — Wave 1A + W3-1 |
+| No proactive delivery — all surfaces are reactive | High | **Roadmapped** — Wave 1A (WA-4) |
+| GNN training loop has no closed feedback signal | High | **Roadmapped** — Wave 1A (WA-3) |
 
 ---
 
-## Wave 0 — Prerequisites (do first, unblock everything)
-*Estimated: ~1.5 weeks*
+## Wave 0 — Prerequisites — COMPLETE
 
-These are not features. They are the structural preconditions that everything
-else depends on. None changes external behavior.
+All Wave 0 items are complete. Brief summaries for context.
 
-### W0-0: Daemon Mode — **COMPLETE** (`vnc-005`, PR #295)
-**What**: Transform Unimatrix from a per-session stdio process into a persistent
-background daemon that survives MCP client disconnection.
+### W0-0: Daemon Mode — COMPLETE (`vnc-005`, PR #295)
+Unimatrix runs as a persistent background daemon on a Unix Domain Socket (0600 permissions). Survives MCP client disconnection. Auto-start on first connection. PidGuard + flock enforce one-daemon-per-project. Enables all background tick work — write queue draining, ML inference, GNN training — to run continuously between sessions.
 
-- `unimatrix serve --daemon` starts the server as a long-lived process
-- Listens on a **Unix Domain Socket** (UDS) in the project data directory
-- Claude Code connects via UDS instead of spawning a new stdio process per session
-- When a session ends (stdin closes / client disconnects), the daemon keeps running
-- PidGuard + flock already provides one-daemon-per-project enforcement (vnc-004)
-- Auto-start: if no daemon is running when a client connects, spawn one
+### W0-1: sqlx Migration — COMPLETE (`nxs-011`, PR #299)
+Replaced `rusqlite` + `Mutex<Connection>` with `sqlx` + dual connection pool (`read_pool` 6-8 connections, `write_pool` 2). Analytics writes routed through a bounded async write queue (batched ≤50 events or 500ms). All `spawn_blocking` DB call sites removed — storage is async-native. Positions the codebase for PostgreSQL with no application logic rewrite.
 
-**Why first**: Every Wave 1+ intelligence feature assumes continuous background
-processing — write queue draining, NLI post-store inference, tick-based cache
-rebuilds, GNN training, GGUF overnight synthesis. All of these are meaningless
-if the process exits at session end. Without daemon mode, Wave 1 delivers the
-infrastructure for background intelligence but the background never actually runs
-between sessions.
+### W0-2: Session Identity — DEFERRED
+Deferred; design analysis showed no security value before OAuth. W2-3 JWT `sub` claim is the correct non-spoofable identity anchor. See ADR #2267.
 
-**Why UDS not HTTP**: Keeps it local. No network exposure, no TLS management,
-no auth surface beyond file-system permissions. The daemon serves any number of
-dev workspace sessions from a single process. HTTP transport (W2-2) is an
-additive layer on top of an already-working daemon — not the first time background
-processing works.
-
-**Operational scope for now**: dev workspace only. Full container packaging
-and HTTP exposure are Wave 2. The daemon validates background processing
-end-to-end before containerization adds operational complexity.
-
-**Effort**: 2-3 days (UDS transport, client reconnect handling, auto-start logic).
-
-**Security requirements:**
-- [High] UDS socket file must be created with `0600` permissions (owner-only);
-  group or world-readable sockets allow any local process to connect without authentication.
-- [Medium] The auto-start path must not re-use a stale PID file from a crashed daemon —
-  verify the PID is live before concluding a daemon is already running; use the existing
-  `is_unimatrix_process` cmdline check (vnc-004).
-- [Low] The `CallerId::UdsSession` exemption from rate limiting (already established)
-  applies to UDS connections — document that this exemption is local-only and must
-  never extend to HTTP transport callers.
-
----
-
-### W0-1: sqlx Migration — Connection Pools + Async-Native Storage — **COMPLETE** (`nxs-011`, PR #299)
-**What**: Replace `rusqlite` + `Mutex<Connection>` with `sqlx` + a dual-pool
-architecture. Three coordinated changes that deliver immediate scalability and
-unlock future backend flexibility.
-
-**Dual connection pool**
-
-```
-read_pool:  SqlitePool { max_connections: 6-8 }  ← concurrent reads, no blocking
-write_pool: SqlitePool { max_connections: 2 }     ← serialized hot-path writes
-```
-
-MCP hot-path writes (entries, entry_tags, audit_log, agent_registry, vector_map,
-counters) go directly through `write_pool`. Analytics writes (co_access, sessions,
-injection_log, query_log, signal_queue, observations, observation_metrics,
-shadow_evaluations, feature_entries, topic_deliveries, outcome_index) are routed
-through a bounded async write queue that drains through `write_pool` — batching up
-to 50 events or 500ms per commit. MCP hot-path latency is isolated from background
-analytics volume without splitting the database file.
-
-**Analytics write queue**
-
-```rust
-enum AnalyticsWrite {
-    CoAccess { id_a: u64, id_b: u64 },
-    SessionUpdate { session_id: String, ... },
-    ObservationEvent { session_id: String, hook: String, ... },
-    QueryLog { ... },
-    // W1-1 adds: GraphEdge { ... }
-    // W3-1 adds: ConfidenceWeightUpdate { ... }
-}
-// Drain task owns a write_pool connection; commits batches of ≤50 or every 500ms.
-// Bounded channel (capacity 1000); shed-under-load: drop analytics writes + log.
-// Hot-path integrity writes (entries, audit_log) bypass queue entirely — never dropped.
-```
-
-**Async-native storage layer**
-
-`Store` methods become async. All `spawn_blocking(|| store.X())` call sites in the
-server are removed — DB operations are native async tasks. The `AsyncEntryStore`
-bridge wrapper (which existed solely to adapt sync DB calls for async callers) is
-retired. Background tick DB calls become proper tokio tasks.
-
-**Backend abstraction**
-
-`sqlx` supports SQLite and PostgreSQL with the same query API and pool interface.
-Application code is identical for both backends. When centralized deployment demands
-PostgreSQL: change the connection string, provision a server, resolve the handful of
-SQLite-specific pragma statements. No application logic rewrite. No new architectural
-patterns. Every W1 and W2 feature built on this foundation is automatically
-PostgreSQL-compatible.
-
-**sqlx compile-time query checking**: `sqlx::query!()` macros verify SQL against the
-schema at compile time — SQL errors are compiler errors. Use `SQLX_OFFLINE=true` with
-a committed `sqlx-data.json` schema cache. CI regenerates the cache via
-`cargo sqlx prepare` after schema changes.
-
-**Migration system**: existing `migration.rs` logic is preserved and executed through
-sqlx connections for W0-1. Migration to sqlx's built-in migration runner is a
-follow-on concern, not in scope here.
-
-**Rayon thread pool is orthogonal**: CPU-bound ML inference (NLI in W1-4, GNN in
-W3-1) runs on a dedicated rayon pool bridged to tokio via oneshot channel. Independent
-of database architecture — comes in with the rayon infrastructure (W1-2), not here.
-
-**Why not a database split**: A split solves SQLite write contention by splitting the
-file. `sqlx` + dual pool solves the same contention without splitting data, without
-cross-database join limitations, without an irreversible migration, and positions the
-codebase for a backend swap that a split never could. At centralized scale where
-SQLite genuinely cannot keep up, PostgreSQL is the answer — not two SQLite files.
-
-**Why now**: Every W1 and W2 feature built before this migration adds another
-`spawn_blocking` DB call site that must later be unwound. The `Mutex<Connection>`
-prevents concurrent reads that WAL mode would otherwise allow for free. Taking this
-medicine once at the foundation layer costs 1.5–2 weeks. The same migration after
-W1 and W2 are built costs significantly more and risks regressions across all of them.
-
-**Effort**: 1.5–2 weeks (storage crate: rusqlite → sqlx, dual pool, write queue;
-server crate: spawn_blocking removal, async service methods; test infrastructure:
-sync → async test conversion — the test surface is the long tail).
-
-**Security requirements:**
-- [High] Write pool `max_connections` must be capped (≤ 2 for SQLite); an unbounded
-  write pool allows concurrent writers and risks WAL corruption under contention.
-- [High] The analytics write queue shed policy (drop + log) applies only to analytics
-  writes. Hot-path integrity writes (entries, audit_log, agent_registry) bypass the
-  queue entirely and must never be dropped under any load condition.
-- [Medium] `sqlx-data.json` schema cache must be regenerated and committed after every
-  schema change; a stale cache silently disables compile-time SQL validation for
-  modified queries.
-- [Medium] `SQLX_OFFLINE=true` must be enforced in CI builds; without it, a missing
-  `DATABASE_URL` causes builds to silently fall back to unchecked queries.
-- [Low] Pool `acquire_timeout` must be configured to return a structured error under
-  write saturation rather than blocking indefinitely.
-
----
-
-### W0-2: Session Identity via Env Var — **DEFERRED** (GH #293 closed)
-
-**Why deferred**: Design analysis revealed this adds no real security value before OAuth.
-
-- **STDIO/local**: UDS socket is already 0600 (owner-only). `PERMISSIVE_AUTO_ENROLL=false`
-  adds friction not security — the LLM controls `agent_id` and retries until a name passes.
-- **HTTP/enterprise**: OAuth (W2-3) handles session authentication via non-spoofable JWT
-  claims. `UNIMATRIX_SESSION_AGENT` would be replaced immediately when HTTP transport ships.
-
-**What happens instead**:
-- **W0-3**: `PERMISSIVE_AUTO_ENROLL` moves to config (default `true` for local dev ergonomics)
-- **W2-3**: JWT `sub` claim is the real non-spoofable identity. `PERMISSIVE_AUTO_ENROLL=false`
-  becomes meaningful and enforceable under OAuth. The per-call `agent_id` → registry →
-  capability resolution infrastructure (preserved) becomes a real access control layer.
-
-**ADR #1839** (UNIMATRIX_CLIENT_TOKEN for STDIO) also deferred — same reasoning.
-**Unimatrix ADR**: Entry #2267.
-
----
-
-### W0-3: Config Externalization — **COMPLETE** (`dsn-001`)
-**What**: Move hardcoded constants to `~/.unimatrix/config.toml` (or per-project):
-
-```toml
-[knowledge]
-categories = ["outcome", "lesson-learned", "decision", "convention",
-              "pattern", "procedure", "duties", "reference"]
-boosted_categories = ["lesson-learned"]   # previously hardcoded in search.rs
-freshness_half_life_hours = 168.0         # previously hardcoded in confidence.rs
-
-[confidence]
-# Lambda dimension weights — previously hardcoded in confidence.rs
-# Operators MUST set these for non-dev domains (legal: high trust/low fresh;
-# air-quality: high fresh/low trust). Dev-domain defaults are shown below.
-weights = { freshness = 0.35, graph = 0.30, contradiction = 0.20, embedding = 0.15 }
-
-[server]
-instructions = """..."""                  # previously SERVER_INSTRUCTIONS const
-
-[agents]
-default_trust = "restricted"
-bootstrap = [
-  { id = "system", trust = "system",     capabilities = ["Admin", "Write", "Read", "Search"] },
-  { id = "human",  trust = "privileged", capabilities = ["Admin", "Write", "Read", "Search"] },
-]
-# Session agent default capabilities (used by W0-2):
-session_capabilities = ["Read", "Write", "Search"]
-
-[cycle]
-# context_cycle tool parameter labels — rename for non-dev domains
-work_context_label = "feature"   # label shown in tool descriptions
-cycle_label = "cycle"
-# context_cycle_review: "retrospective" was Agile vocabulary; "review" is domain-neutral
-```
-
-**Why first**: This is the single unlock for domain agnosticism. Every other
-domain-coupling gap either disappears (hardcoded category names, freshness rate,
-confidence weights, instructions) or becomes trivially fixable via config.
-
-**Lambda weights are now included**: The confidence dimension weights
-(freshness 0.35, graph 0.30, contradiction 0.20, embedding 0.15) are domain-specific
-constants. A legal knowledge base needs high `w_trust`, low `w_fresh`. An air quality
-deployment needs the inverse. Externalizing these is the interim fix that bridges
-the gap until W3-1's GNN learns them automatically. Without this, the confidence
-system remains domain-coupled through all of Wave 1 and 2.
-
-**`context_cycle` parameter labels**: The tool's dev-specific vocabulary
-("feature", "cycle", "sprint") is now configurable. Non-dev domain packs set
-labels appropriate to their domain without changing tool logic.
-
-**Domain packs** become possible immediately after: an SRE deployment sets different
-categories, different instructions, different freshness rates, different confidence
-weights. Same binary.
-
-**Effort**: 1-2 days (schema grows slightly from original estimate).
-
-**Security requirements:**
-- [Critical] `config.toml` `[server] instructions` is loaded verbatim into the MCP
-  server's system-level tool description — it is a direct prompt injection surface.
-  Validate and sanitize on load: strip or reject content matching the existing injection
-  pattern set (~50 patterns in `ContentScanner`). Refuse server startup if instructions
-  contain `ignore previous`, `you are now`, or other override triggers.
-- [High] `config.toml` file permissions must be validated at startup: reject
-  world-writable config (`mode & 0o002 != 0`) and log a warning if group-writable.
-  A compromised config can silently reconfigure category allowlists and server
-  instructions — both are trust-critical inputs.
-- [High] The `categories` allowlist is the sole gate preventing unknown category values
-  from entering the knowledge base. After externalization, validate all category values
-  in config against a max-length (64 chars), character allowlist (`[a-z0-9_-]`), and
-  a reasonable count ceiling (≤ 64 categories). Reject config load on violation.
-- [Medium] `boosted_categories` values must be a strict subset of `categories`; validate
-  this invariant at load time and fail startup on mismatch rather than silently boosting
-  an uncategorized label.
-- [Medium] Confidence weights must sum to ≤ 1.0 and each weight must be in [0.0, 1.0];
-  reject config on violation to prevent adversarial weight configurations that distort
-  all confidence scores.
+### W0-3: Config Externalization — COMPLETE (`dsn-001`)
+Categories, freshness half-life, confidence weights, server instructions, cycle parameter labels, and agent bootstrap config all externalized to `config.toml`. Two-level hierarchy (global + per-project, replace semantics). The single unlock for domain agnosticism — operators configure a new domain without code changes.
 
 ---
 
 ## Wave 1 — Intelligence Foundation
-*Estimated: 4-5 weeks, after Wave 0*
+*Estimated: 4-5 weeks, after Wave 0. Runs before and in parallel with Wave 2.*
 
-### W1-1: Typed Relationship Graph — **COMPLETE** (`crt-021`, PR #316)
-**What**: Upgrade `StableGraph<u64, ()>` to `StableGraph<u64, RelationEdge>`.
-Persist edges to `GRAPH_EDGES` in `analytics.db`. Bootstrap from existing data.
+### W1-1: Typed Relationship Graph — COMPLETE (`crt-021`, PR #316)
+Upgraded `StableGraph<u64, ()>` to `StableGraph<u64, RelationEdge>`. Edges persisted to `GRAPH_EDGES` in `analytics.db`. Bootstrapped from existing co-access and shadow evaluation data. `RelationType` stored as string (not integer discriminant) for extensibility. Bootstrap edges carry `bootstrap_only=1` flag — excluded from confidence scoring until NLI confirms or refutes.
 
-```rust
-// Store RelationType as a string in analytics.db — NOT an integer discriminant.
-// Integer encoding locks extensibility: adding a new type requires schema migration
-// AND GNN retraining (W3-1 feature vector changes). String encoding allows extension
-// without either.
-enum RelationType { Supersedes, Contradicts, Supports, CoAccess, Prerequisite }
-struct RelationEdge { relation_type: String, weight: f32, created_at, created_by, source }
-```
-
-On startup: populate `Supersedes` from `entries.supersedes`, `Contradicts` from
-`shadow_evaluations`, `CoAccess` from high-count `co_access` pairs.
-
-**In-memory cache model (required)**: The typed graph, like the existing petgraph
-in-memory cache (crt-014 fix), must follow the `Arc<RwLock<_>>` tick-rebuild pattern.
-The search hot path reads from the in-memory graph only — never from `analytics.db`
-directly at query time. The tick rebuilds the in-memory graph from the persisted
-`GRAPH_EDGES` after compaction completes. This insulates search from analytics.db
-consistency windows.
-
-**Bootstrap edge status**: Edges bootstrapped from `shadow_evaluations`
-(cosine-similarity heuristics known to produce false positives) must carry
-`source: "bootstrap"` and a `bootstrap_only: true` flag. Bootstrap edges are
-**excluded from confidence scoring** until W1-4 NLI either confirms (promotes to
-`source: "nli"`) or refutes (marks for deletion) them. Injecting unconfirmed
-contradiction edges into scoring from day one would penalize valid entries.
-
-**ADR-004 supersession required**: ADR #1604 (topology-derived penalty scoring)
-assumes `()` edge weights. W1-1 upgrades to `weight: f32`. ADR #1604 must be
-explicitly superseded with a new ADR before W1-1 ships or the penalty computation
-is architecturally inconsistent.
-
-**Compaction sequencing**: During maintenance tick, `GRAPH_EDGES` cleanup
-(orphaned edges from deprecated entries) and `VECTOR_MAP` compaction must both
-complete *before* the tick triggers an in-memory rebuild. Sequence within the tick;
-never run concurrently. The in-memory rebuild always sees a post-compaction consistent
-state from both databases.
-
-**Why now**: Foundation for NLI (W1-4) and GNN (Wave 3). Also unlocks free
-DOT/GraphViz export (petgraph supports it). Formalizes what the system already
-knows but never persists. Edges survive restarts.
-
-**Integrity**: Every edge write goes through the analytics write queue with
-`created_by` attribution. Edge creation is audited. Graph is a *view* of the
-integrity chain, not a separate truth.
-
-**Effort**: 3-4 days.
-
-**Security requirements:**
-- [High] Every `RelationEdge` write must carry `created_by` attribution and be
-  routed through the analytics write queue — not written directly. An unauthenticated
-  edge insertion path would allow privilege-adjacent manipulation (e.g., injecting a
-  `Contradicts` edge to suppress a valid entry via confidence penalty).
-- [Medium] Edge `weight` values are `f32` — validate that they are finite (not NaN or
-  ±Inf) before persisting; a NaN weight propagated into confidence scoring can corrupt
-  search rankings silently.
-- [Medium] Bootstrap edges carry `source: "bootstrap"` and are excluded from scoring
-  until confirmed by NLI — do not apply confidence penalties from bootstrap-only
-  contradiction edges.
-- [Low] DOT/GraphViz export must sanitize entry content embedded as node labels —
-  entry titles may contain characters that break DOT syntax or inject
-  visualization-layer payloads.
+In-memory cache follows `Arc<RwLock<_>>` tick-rebuild pattern. Search hot path reads from memory only.
 
 ---
 
-### W1-2: Rayon Thread Pool + Embedding Migration
-**Business outcome**: ML inference no longer competes with MCP request handling for thread resources — all future AI-driven capabilities run without degrading the agent experience, and the codebase has a single consistent pattern for CPU-bound inference that every Wave 1–3 feature builds on.
+### W1-2: Rayon Thread Pool + Embedding Migration — COMPLETE
+**What**: Dedicated `rayon::ThreadPool` for all CPU-bound ML inference, bridged to tokio via `oneshot` channel. ONNX embedding migrated off `spawn_blocking` as the first consumer.
 
-**What**: Establish a dedicated `rayon::ThreadPool` in `unimatrix-server` for all
-CPU-bound ML inference, bridged to tokio via `oneshot` channel. Migrate the existing
-ONNX embedding model off `spawn_blocking` as the first consumer and validation of
-the pattern.
+All ML inference (W1-4 NLI, W3-1 GNN) runs on the dedicated rayon pool. Panics in rayon closures drop the oneshot sender, returning `Err` to the awaiting async task — no cross-thread panic propagation. `spawn_blocking` handles only I/O-bound operations thereafter.
 
-CPU-bound ML inference must not run in `spawn_blocking`. The documented pool
-saturation incidents (#735, #1628, #1688) all stem from CPU-bound or long-duration
-work consuming the tokio blocking pool. All ML inference (W1-4 NLI, W2-4 GGUF,
-W3-1 GNN) runs on a **dedicated `rayon::ThreadPool`**:
-
-```rust
-// Bridge rayon → tokio async:
-let (tx, rx) = tokio::sync::oneshot::channel();
-rayon_pool.spawn(move || {
-    let result = run_inference(input);
-    tx.send(result).ok();
-});
-let result = rx.await?;  // async task suspends; zero tokio threads consumed
-```
-
-Panics in the closure cause `tx` to drop, which returns `Err` to `rx.await` — no
-panic propagation across thread boundaries.
-
-**Migrate the existing ONNX embedding model to rayon at W1-2.** Embedding inference
-is 10-50ms of CPU work. Migrating embedding first (lower stakes, already proven)
-validates the rayon pattern before W1-4 (NLI) and W2-4 (GGUF) depend on it.
-`spawn_blocking` then handles only short I/O-bound operations (DB writes, model
-loading, file reads). All ML inference is on rayon.
-
-**Crate placement**: The `AsyncEmbedService` wrapper moves from
-`unimatrix-core/src/async_wrappers.rs` to `unimatrix-server` — rayon is a
-deployment scheduling concern, not a domain abstraction. `unimatrix-core` stays lean.
-The rayon pool is a singleton `Arc<rayon::ThreadPool>` owned by the server and
-distributed to all inference consumers at startup.
-
-**GGUF thread budget**: W2-4 (GGUF) uses a separate bounded rayon pool sized for
-longer-duration inference (seconds, not milliseconds) so GGUF synthesis runs do not
-starve ONNX inference (W1-4 NLI, W3-1 GNN).
-
-**Why now**: W1-4 (NLI), W2-4 (GGUF), and W3-1 (GNN) all require this infrastructure.
-Establishing the pattern once, at the lowest-stakes migration point, validates the
-bridge before higher-stakes models depend on it.
-
-**Effort**: 1-2 days.
-
-**Security requirements:**
-- [High] A panic in any rayon closure must not propagate to the MCP handler thread —
-  the oneshot channel drop is the only signal of failure to the awaiting async task.
-- [Medium] `spawn_blocking` must not be used for ONNX inference after this feature
-  ships — only I/O-bound operations (model loading, DB writes, file reads) are permitted.
+GGUF (W2-4) uses a separate bounded rayon pool to prevent long synthesis runs from starving NLI inference.
 
 ---
 
 ### W1-3: Evaluation Harness
-**Business outcome**: Every intelligence change — retrieval model, confidence
-weights, NLI re-ranking, GNN training — is measured against real query scenarios
-before reaching agents. Capability improvements are demonstrated, not assumed.
-Regressions are caught before they affect production. The human can see exactly
-what changed and why.
-
-**Scope expanded from original estimate**: Research spike ASS-025 identified that
-the original 4-capability scope (snapshot + scenario extraction + eval run +
-report) was sufficient to gate W1-4 and W2-4 but left the live simulation layer
-unbuilt. W1-5 and W3-1 both depend on the ability to inject synthetic behavioral
-signal and validate the observation pipeline. All six deliverables ship together.
-See `product/research/ass-025/RECOMMENDATIONS.md` for full research findings,
-architectural decisions, and implementation guidance.
+**Business outcome**: Every intelligence change is measured against real query scenarios before reaching agents. Regressions caught before production. The human sees exactly what changed and why.
 
 **Six deliverables:**
 
-**1. `unimatrix snapshot`** — Full DB copy via `VACUUM INTO`, all tables
-included (unlike `unimatrix export` which is knowledge-only). The `--anonymize`
-flag replaces `agent_id` and `session_id` with seeded consistent pseudonyms,
-preserving co-access patterns while enabling snapshot fixtures to be committed
-to the repository. Refuses if the output path resolves to the live daemon DB.
+**1. `unimatrix snapshot`** — Full DB copy via `VACUUM INTO`. `--anonymize` replaces agent/session IDs with seeded consistent pseudonyms for safe fixture commits.
 
-```
-unimatrix snapshot --out eval/snapshot-2026-03-19.db [--anonymize]
-```
+**2. `unimatrix eval scenarios`** — Mines `query_log` from a snapshot into eval scenario JSONL. Soft ground truth from result_entry_ids at query time. Supports hand-authored scenarios with hard-labeled expected IDs.
 
-**2. `unimatrix eval scenarios`** — Mines `query_log` from a snapshot DB into
-eval scenario JSONL. The `result_entry_ids` at time-of-query becomes soft ground
-truth. Supports `--retrieval-mode mcp|uds|all` to filter by path. Also accepts
-hand-authored scenarios with hard-labeled `expected` entry IDs.
+**3. `unimatrix eval run`** — In-process A/B comparison. Opens snapshot read-only, constructs one `ServiceLayer` per profile config, replays scenarios through each. Computes P@K, MRR, Kendall tau, rank deltas, latency per scenario.
 
-```
-unimatrix eval scenarios --db snapshot.db --out scenarios.jsonl [--limit 500]
-```
+**4. `unimatrix eval report`** — Markdown comparison report: aggregate summary table, notable ranking changes, latency distribution, zero-regression checklist.
 
-**3. `unimatrix eval run`** — Rust in-process A/B comparison engine. Opens
-snapshot DB read-only, constructs one `ServiceLayer` per profile config (no
-running server, no IPC), replays each scenario through each profile. A profile
-is a TOML file with config overrides — baseline is empty (current defaults),
-candidate specifies only the change under test (e.g., `nli_model`, confidence
-`weights`). Computes P@K, MRR, Kendall tau, rank deltas, and latency per scenario.
+**5. `UnimatrixUdsClient` (Python)** — Connects to running daemon's UDS socket. Identical tool API to the stdio client. Enables eval against live production daemon.
 
-```
-unimatrix eval run \
-  --db snapshot.db --scenarios scenarios.jsonl \
-  --configs baseline.toml,candidate.toml --out results/
-```
+**6. `UnimatrixHookClient` (Python)** — Sends synthetic lifecycle and observation events to the hook IPC socket. Validates the observation pipeline and GNN training signal quality without requiring Claude Code.
 
-**4. `unimatrix eval report`** — Generates a Markdown comparison report from
-eval results. Contains: aggregate summary table (P@K, MRR, avg latency, rank
-change rate), notable ranking changes with side-by-side entry lists, latency
-distribution, entry-level gain/loss analysis, and an explicit zero-regression
-checklist. This is what the human reads to decide whether a change ships.
-
-```
-unimatrix eval report --results results/ --out report.md
-```
-
-**5. `UnimatrixUdsClient` (Python)** — New Python client in
-`product/test/infra-001/harness/uds_client.py` that connects to a running
-daemon's MCP UDS socket rather than spawning a subprocess. Identical tool API
-surface to `UnimatrixClient`. Enables `eval live` mode (replay against live
-production daemon) and validates MCP-over-UDS path parity with MCP-over-stdio.
-
-**6. `UnimatrixHookClient` (Python)** — New Python client in
-`product/test/infra-001/harness/hook_client.py` that sends synthetic lifecycle
-and observation events (`session_start`, `session_stop`, `pre_tool_use`,
-`post_tool_use`) to the daemon's hook IPC socket. Enables testing the observation
-pipeline, co-access accumulation, and W3-1 GNN training signal quality without
-requiring Claude Code to be running.
-
-**Scenario format** (soft ground truth from `query_log`, or hand-authored):
-```json
-{
-  "id": "qlog-4921",
-  "query": "integration test fixture initialization",
-  "context": {"agent_id": "anon-3a2f", "feature_cycle": "crt-022", "retrieval_mode": "flexible"},
-  "baseline": {"entry_ids": [45, 12, 3], "scores": [0.91, 0.87, 0.83]},
-  "source": "mcp",
-  "expected": null
-}
-```
-
-**Gate condition for W1-4 and W2-4**: The NLI model (W1-4) and GGUF module (W2-4)
-must demonstrate measurable improvement in P@K or MRR on a representative
-scenario set — or documented equivalence with no regression — before production
-deployment. The harness provides the measurement. No model ships without eval results.
-
-**Gate condition for W3-1**: The hook simulation client enables synthetic behavioral
-pattern injection to validate GNN training label quality before deploying on real
-production data.
-
-**Why now**: Without this harness there is no way to know whether NLI actually
-improves on the cosine heuristic for a given knowledge base, or whether GGUF
-reasoning improves proactive delivery. The live simulation layer is the only way
-to validate the observation pipeline and training signal quality for W3-1.
-The harness ships before W1-4 and W2-4, not after.
-
-**Effort**: ~1.5–2 weeks (offline eval: snapshot, scenario extraction, eval run,
-report — ~1 week; live simulation: UDS client, hook client, integration tests —
-~3–4 days. Mixed Rust + Python. The offline path is the critical gate blocker;
-the live simulation layer can proceed in parallel).
+**Gate condition for W1-4**: Eval results show measurable improvement on a representative query set before model ships.
+**Gate condition for W3-1**: Hook simulation client validates GNN training label quality on synthetic behavioral patterns before production deployment.
 
 **Security requirements:**
-- [High] Eval mode must operate on a DB snapshot copy, never the live production
-  database — `eval run` must refuse to accept the active daemon's DB file path.
-  Open snapshot DB with `?mode=ro` (read-only SQLite URI) to enforce at the
-  storage layer, not just by convention.
-- [High] `unimatrix snapshot` must apply `--anonymize` before any snapshot is
-  committed to a repository. The non-anonymized snapshot contains real `agent_id`
-  and `session_id` values from production sessions.
-- [Medium] Scenario input files are untrusted; validate structure and enforce a
-  maximum scenario count (≤ 10,000) and maximum query length (≤ 2,000 chars) to
-  prevent resource exhaustion.
-- [Medium] Profile TOML files are operator-supplied config; apply the same
-  validation as W0-3 config loading (weight sum ≤ 1.0, category values clean,
-  path values validated before model load).
-- [Low] Snapshot `--anonymize` must replace identifiers consistently (same
-  agent_id → same pseudonym, seeded by a per-snapshot random salt) to preserve
-  co-access patterns while protecting identity.
-- [Low] `UnimatrixUdsClient` and `UnimatrixHookClient` must validate the socket
-  path exists and is owned by the current user before connecting — connecting to
-  an arbitrary UDS path is a SSRF-equivalent risk in test infrastructure.
+- [High] Eval mode operates on DB snapshot copy only — `eval run` refuses the live daemon DB path. Open snapshot with `?mode=ro`.
+- [High] `unimatrix snapshot --anonymize` required before any snapshot is committed.
+- [Medium] Scenario input files validated: max 10,000 scenarios, max 2,000 chars per query.
+
+**Effort**: ~1.5–2 weeks (offline eval ~1 week; live simulation layer ~3–4 days; mixed Rust + Python).
 
 ---
 
-### W1-4: NLI + Cross-Encoder Re-ranking
-**Business outcome**: Agents retrieve the most semantically relevant knowledge, not just the most topically similar — search quality improves measurably for natural-language-dense knowledge bases. Contradictions are detected with semantic grounding rather than lexical heuristics, raising the quality floor for every graph edge W3-1 trains on.
+### W1-4: NLI + Cross-Encoder Re-ranking — COMPLETE (`crt-023`, PR #328)
+**What**: One small ONNX cross-encoder (~85MB, NLI fine-tuned) in two modes: (1) post-store contradiction/support detection between new entries and HNSW neighbors; (2) search re-ranking of top HNSW candidates against the actual query.
 
-**What**: One small ONNX cross-encoder model (~85MB, NLI fine-tuned) running in two
-complementary modes: (1) **post-store**, to detect contradiction and entailment
-relationships between new entries and their HNSW neighbors; (2) **search re-ranking**,
-to re-score the top HNSW candidates against the actual query before returning results.
-
-**The speed tier distinction**: NLI at 50–200ms per inference pair can process
-every post-store interaction and re-rank every query result continuously. W2-4 (GGUF)
-at 2–10s per inference cannot operate at this throughput. These capabilities are
-complementary — NLI provides continuous high-frequency signal; GGUF provides judgment
-on selected interactions. Neither supersedes the other.
-
-**Two retrieval paths**:
-
+**Pipeline with W1-4:**
 ```
-// Current: bi-encoder retrieval (fast, approximate topical similarity)
-query → embed → HNSW top-K → return
-
-// With W1-4: bi-encoder retrieval + cross-encoder re-ranking
-query → embed → HNSW top-20 → NLI re-rank → return top-K
+query → embed → HNSW top-20 → NLI re-rank → co-access boost → return top-K
 ```
 
-Bi-encoders find topically similar entries. Cross-encoders measure whether entries
-actually answer the query. The combination is the standard retrieval pattern for
-high-quality RAG systems. At 50–200ms per pair on rayon, re-ranking 20 candidates
-adds a bounded, configurable latency overhead.
+Post-store NLI runs fire-and-forget off the MCP hot path. Contradiction > threshold writes `Contradicts` edge to GRAPH_EDGES (`source='nli'`, `bootstrap_only=0`). Entailment writes `Supports` edge. NLI confidence score stored in `metadata` for W3-1 GNN edge features.
 
-**Post-store contradiction/support detection**:
+Bootstrap edge promotion from W1-1 handled as a first-tick background task.
 
-- Runs post-store, fire-and-forget — not on the MCP hot path
-- Input: (new entry, neighbor) pairs for top-K nearest HNSW neighbors
-- Output: {entailment, neutral, contradiction} softmax probabilities
-- Contradiction > threshold: write `Contradicts` edge to `GRAPH_EDGES` via direct
-  `write_pool`, `source='nli'`, `bootstrap_only=0`
-- Entailment > threshold: write `Supports` edge via direct `write_pool`
-- NLI confidence score stored in `metadata` column for W3-1 GNN edge features
+Circuit breaker on NLI → auto-quarantine: cap `Contradicts` edges per tick. NLI-derived auto-quarantine requires higher confidence threshold than manual correction.
 
-**Bootstrap edge promotion**: Processes any `bootstrap_only=1` Contradicts edges from
-W1-1. Confirmed → DELETE+INSERT with `source='nli'`, `bootstrap_only=0`. Refuted →
-DELETE only. W1-1 shipped zero such rows; the path is implemented as a future-proof
-first-tick background task.
-
-**Circuit breaker on NLI → auto-quarantine path**: NLI creates `Contradicts` edges
-→ topology penalty activates (ADR #1604 successor) → entries may fall below
-auto-quarantine threshold (crt-018b). This feedback loop must have a rate limit:
-cap the number of `Contradicts` edges created per tick. NLI-derived auto-quarantine
-should require a higher confidence threshold than the existing manual-correction path.
-
-**Graceful degradation**: If the NLI model file is absent, hash-invalid, or fails
-to load, the server starts successfully and falls back to the cosine-similarity
-heuristic with a logged warning. Re-ranking is skipped; HNSW results return directly.
-NLI absence must not prevent startup.
-
-**Model**: `cross-encoder/nli-MiniLM2-L6-H768` (~85MB, confirmed ONNX-available,
-Apache 2.0) as the baseline. `cross-encoder/nli-deberta-v3-small` (~180MB) as the
-higher-quality alternative if its ONNX export is available at implementation time.
-Final model selection validated through W1-3 evaluation harness — no model ships
-to production without eval results.
-
-**Domain qualifier**: NLI (trained on SNLI/MultiNLI) performs well on
-natural-language-dense knowledge bases. For terse, numeric, or code-heavy corpora,
-the cosine heuristic may perform comparably. The W1-3 eval harness quantifies this
-for any specific knowledge base before committing.
-
-**Why now**: W1-1 bootstrap Contradicts edges await NLI confirmation. W3-1 GNN needs
-NLI confidence scores as edge quality features. Cross-encoder re-ranking is the
-highest-leverage search quality improvement available without a full local LLM.
-
-**Effort**: 3-4 days (model integration + NliServiceHandle + post-store pipeline +
-re-ranking path).
-
-**Gate condition**: W1-3 eval harness results show measurable improvement on a
-representative query set.
-
-**Security requirements:**
-- [Critical] ONNX model integrity must be verified at load time via SHA-256 hash
-  pinned in config — a replaced model file is an undetectable model-poisoning attack
-  vector. Hash mismatch transitions `NliServiceHandle` to `Failed` state; server
-  continues on cosine fallback.
-- [High] NLI input pairs are derived from stored knowledge entries — content stored
-  by external callers. Run each input through length truncation (max 512 tokens /
-  ~2000 chars per side) before inference to prevent adversarial inputs that cause
-  ONNX runtime out-of-memory or extreme inference latency.
-- [High] NLI inference runs on rayon; if it panics (OOM, malformed tensor), the panic
-  must not propagate to the MCP handler thread. The oneshot channel drop signals
-  failure cleanly to the awaiting async task.
-- [Medium] The `Contradicts`/`Supports` edge creation thresholds, `nli_top_k`,
-  `max_contradicts_per_tick`, and re-ranking `top_k` must be config-driven — these
-  directly affect which knowledge entries are penalized or surfaced.
+Graceful degradation: absent or hash-invalid model file → server starts on cosine fallback with logged warning.
 
 ---
 
-### W1-5: Observation Pipeline Generalization
-**Business outcome**: Any domain — SRE operations, environmental monitoring, scientific research, legal review — can connect its native event stream to the learning layer without code changes, making Unimatrix's intelligence engine genuinely domain-agnostic and not just configurable.
+### W1-5: Observation Pipeline Generalization — IN PROGRESS (`col-023`, GH #331)
+**Business outcome**: Any domain can connect its native event stream to the learning layer without code changes.
 
-**What**: Make `HookType` pluggable rather than Claude Code-specific.
+**What**: Replace `HookType` closed enum with `ObservationEvent { event_type: String, source_domain: String, payload: JsonValue, session_id: String }`. Generalize `UniversalMetrics` so dev-specific metrics become the "claude-code" domain pack's metrics, not hardcoded struct fields. Rewrite all 21 detection rules to operate on the generic event schema. Implement config-file-driven domain pack registration loaded at startup.
+
+**Key constraints:**
+- No wire protocol changes — `ImplantEvent` is already generic
+- Backward compatibility — "claude-code" default pack produces identical retrospective output
+- Extraction rule sandboxing — pure data transformations, no env/fs access
+- Payload validation — max 64KB, nesting ≤ 10 levels at ingest
+- `source_domain` validated `^[a-z0-9_-]{1,64}$`
+
+**Why this matters for Wave 1A**: W1-5 is the behavioral signal collection layer. Without it, the observation pipeline generates only Claude Code-specific training labels. With it, W3-1 trains on domain-neutral behavioral signals from any event source.
+
+**Effort**: 5-7 days (detection rule rewrite is the long tail).
+
+---
+
+## Wave 1A — Adaptive Intelligence Pipeline
+*Runs after W1 foundation; completes before Wave 2 deployment begins*
+
+The intelligence pipeline cannot learn from usage it cannot observe, cannot predict what agents need without knowing where they are in the cycle, and cannot close the feedback loop without knowing when retrieval fails. This wave builds the complete signal collection, feedback closure, and proactive delivery infrastructure that makes W3-1 a genuinely session-conditioned, self-improving relevance engine — not just a weight calibrator.
+
+The three knowledge delivery surfaces — UDS injection, `context_briefing`, and `context_search` — are all outputs of this intelligence pipeline. They share the same session context vector, the same candidate scoring, and ultimately the same learned function. Wave 1A builds that shared foundation using computable formulas; W3-1 replaces those formulas with a learned function that keeps improving.
+
+**WA-0 comes first.** Before adding session-conditioned signals to the ranking pipeline, the pipeline's existing signals must be fused correctly. Adding more additive terms to a structurally broken formula makes the problem worse.
+
+---
+
+### WA-0: Ranking Signal Fusion — COMPLETE (`crt-024`, PR #336)
+Six-term fused linear combination replaces the sequential NLI sort + co-access re-sort pipeline. All signals normalized to [0, 1] and weighted proportionally via `[inference]` config. NLI is dominant at `w_nli=0.35` as W3-1's initialization point. `apply_nli_sort` removed; `compute_fused_score` pure function is W3-1's feature vector interface.
+
+**Shipped formula** (sum=0.95, 0.05 headroom for WA-2):
+```
+score = w_nli(0.35)*nli + w_sim(0.25)*sim + w_conf(0.15)*conf
+      + w_coac(0.10)*coac_norm + w_util(0.05)*util_norm + w_prov(0.05)*prov_norm
+final = score * status_penalty
+```
+Eval: 1,761 scenarios, P@5 0.3060, MRR 0.4222, zero true regressions. Follow-up: #337 (merge_configs re-validation gap).
+
+---
+
+### WA-1: Phase Signal + FEATURE_ENTRIES Tagging (GH #330)
+**Business outcome**: The engine knows where each agent session is in its workflow — not because agents declare it, but because the workflow coordinator signals it as part of normal orchestration. Every piece of knowledge stored is annotated with the phase that produced it.
+
+**What**: Add `type: "phase"` event to `context_cycle`, alongside existing `start` and `stop`.
+
+```
+context_cycle(type: "start",  topic: "crt-024")
+context_cycle(type: "phase",  topic: "crt-024", phase: "design")
+context_cycle(type: "phase",  topic: "crt-024", phase: "implementation")
+context_cycle(type: "stop",   topic: "crt-024")
+```
+
+The `phase` string is opaque to Unimatrix — stored as metadata, not interpreted, no vocabulary enforced. Consistency within a workflow is the only requirement.
+
+**SessionState change**: `current_phase: Option<String>`, updated on each phase event, cleared on stop.
+
+**FEATURE_ENTRIES schema**: Add `phase TEXT` (nullable) column. When an entry is stored, the active `current_phase` is written alongside it. Entries stored before any phase transition get `phase: null`.
+
+**Protocol integration**: SM calls `context_cycle(type: "phase", ...)` at existing protocol checkpoints. Design session: `scope → design → synthesis`. Delivery session: `pseudocode → implementation → testing → delivery`. Retro: `retro`. No new agent discipline required beyond the SM.
+
+**Why this matters**: `current_phase` is the explicit phase dimension of the session context vector. `FEATURE_ENTRIES.phase` is the supervised training data for W3-1 — without it, the GNN cannot learn category→phase→usefulness correlations from real workflow history.
+
+**Implementation scope**: `context_cycle` validation, `SessionState.current_phase`, FEATURE_ENTRIES schema migration (nullable column, non-breaking), `context_store` path writes active phase, protocol updates at existing checkpoints.
+
+**Effort**: ~1 day.
+
+---
+
+### WA-2: Session Context Enrichment (ASS-028 Recommendation 1)
+**Business outcome**: The ranking pipeline sees the current session's activity — what phase it is in, what kind of knowledge it has been producing — and uses that signal to surface more relevant results immediately, without any ML.
+
+**What**: Add `category_counts: HashMap<String, u32>` to `SessionState`. Call `record_category_store(session_id, category)` after each successful `context_store`. Thread `session_id` into `ServiceSearchParams`. Apply a phase-conditioned category affinity boost in `SearchService` as a final ranking step after NLI re-ranking and co-access boosting.
+
+**The complete ranking pipeline after this feature:**
+```
+HNSW(k=20) → NLI re-rank → co-access boost → category affinity boost → top-k
+```
+
+**Affinity boost formula (cold-start, manual — replaced by W3-1):**
+
+When `current_phase` is set (explicit signal from WA-1):
+```
+boost = phase_category_weight(entry.category, current_phase) * 0.015
+```
+
+When only histogram is available (implicit fallback):
+```
+p(category) = count(category) / total_stores
+boost = p(entry.category) * 0.005
+```
+
+The explicit phase signal is 3× the implicit histogram signal. Both are additive, bounded. The histogram is a fallback and a smoother — it reflects what the session has actually been doing, not just the last declared phase. When both signals are present, both apply. This weighting becomes W3-1's cold-start initialization, not permanent architecture.
+
+`AFFINITY_WEIGHT` constants are config-driven from the start — hardcoding them would repeat the pattern this whole wave is designed to eliminate.
+
+**Cold start**: empty histogram → zero boost for all entries. Existing behavior preserved exactly.
+
+**UDS injection**: At phase transitions and PreCompact, include a summary of the session's category histogram in the synthesis injection: `"Recent session activity: decision × 3, pattern × 2 (design phase signal)"`. Informational — agents can use it or ignore it.
+
+**Effort**: ~1 day.
+
+---
+
+### WA-3: MissedRetrieval Signal
+**Business outcome**: The training loop closes. When an agent has to store new knowledge to fill a gap that existing entries could have addressed, the system knows — automatically, without any explicit feedback from the agent.
+
+**What**: After each successful `context_store`, query the HNSW index for the new entry's nearest neighbors above a similarity threshold (0.75). For any neighbor that was Active but not in `session.injection_history`, log a `MissedRetrieval` event:
 
 ```rust
-// Instead of:
-enum HookType { PreToolUse, PostToolUse, SubagentStart, SubagentStop }
-
-// A registered event schema:
-struct ObservationEvent {
-    event_type: String,    // "pre_tool_use", "sensor_reading", "anomaly_detected"
-    source_domain: String, // "claude-code", "ndp", "custom"
-    payload: JsonValue,
-    session_id: String,
+// Post-store, fire-and-forget (analytics path)
+let neighbors = hnsw.query(new_entry.embedding, k=10);
+for neighbor in neighbors.filter(|n| n.similarity > 0.75) {
+    if !session.injection_history.contains(neighbor.id) {
+        analytics.send(AnalyticsWrite::MissedRetrieval {
+            session_id,
+            missed_entry_id: neighbor.id,
+            trigger_entry_id: new_entry.id,
+            similarity: neighbor.similarity,
+        });
+    }
 }
 ```
 
-**Domain pack registration is config-file-driven, not runtime MCP calls.**
-Domain packs register their event types and extraction rules via a TOML file loaded
-at startup — not via a runtime Admin `context_enroll` call. Runtime registration
-adds an Admin privilege barrier that prevents self-configuring deployments.
-Startup config registration is reproducible, version-controllable, and consistent
-with W0-3's config model. Runtime re-registration (for dynamic reconfiguration)
-remains available to Admin callers as an override.
+**Why this is a strong signal**: This is not a helpfulness vote. It is a structural observation: "this entry existed, was semantically close to what the agent needed, and was never served." The agent had to fill the gap themselves. This is the most actionable negative training label in the system — it names the specific entry that should have been surfaced earlier, and the session context in which it was missed.
 
-The `UniversalMetrics` schema similarly becomes configurable — dev-specific metrics
-(`bash_for_search`, `coordinator_respawn`) become the default domain pack's metrics,
-not hardcoded struct fields.
+**Schema**: New `MISSED_RETRIEVALS` table in `analytics.db` (or new `AnalyticsWrite` variant routed to existing analytics drain). Fields: `session_id`, `missed_entry_id`, `trigger_entry_id`, `similarity`, `ts`.
 
-**Detection rule rewrite is in scope for W1-5.** The 21 retrospective detection
-rules (col-002) reference `HookType` variants and `UniversalMetrics` field names
-structurally. Generalizing the event schema without simultaneously rewriting the
-detection rules breaks the retrospective pipeline for any non-Claude-Code domain.
-The detection rule rewrite is not optional — it is part of W1-5's deliverable.
-W3-1's implicit training labels depend on a functioning retrospective pipeline;
-broken detection rules break the GNN training signal.
+**Training label interpretation for W3-1**:
+- `missed_entry_id` in context `session_ctx_at_store_time` → strong negative (should have been surfaced)
+- `trigger_entry_id` → provides context for what the agent actually needed
 
-**Why now**: Required for any non-Claude-Code raw signal source (NDP events,
-SRE incidents, sensor anomalies). Also feeds the GNN training signal pipeline (Wave 3).
+**Effort**: ~1 day (post-store hook, analytics write variant, table schema, consumption in W3-1 training data preparation).
 
-**Effort**: 5-7 days (touches observation pipeline, detection rules, metrics schema,
-domain pack config loading — detection rule rewrite adds to original estimate).
+---
 
-**Security requirements:**
-- [High] Domain pack event type registration must be restricted to Admin capability
-  for runtime calls — any agent able to register event types can define extraction
-  rules that read arbitrary fields from `payload: JsonValue`.
-- [High] `payload: JsonValue` is fully untyped external input; enforce maximum payload
-  size (64KB) and depth limit (nesting ≤ 10 levels) to prevent DoS.
-- [Medium] Domain pack extraction rules must be sandboxed — pure data transformation,
-  no side effects, no environment variable or filesystem references.
-- [Medium] `source_domain` must be normalized and validated (max 64 chars,
-  `[a-z0-9_-]`) before use as an observation attribution label.
+### WA-4: Proactive Delivery
+**Business outcome**: Agents receive relevant knowledge before they search for it. UDS injection is phase-conditioned, not generic. `context_briefing` becomes the targeted handoff at each phase transition. The system is no longer purely reactive.
+
+**What**: Two related features that implement proactive and comprehensive delivery modes using the session context built in WA-1 and WA-2.
+
+#### WA-4a: Phase-Conditioned Proactive Injection
+
+Replace the generic semantic search used for UDS injection candidates with a session-conditioned candidate set, rebuilt at each phase transition and drawn from on subsequent hook events.
+
+**Phase-transition cache** (rebuilt when `current_phase` changes):
+```
+candidate_set = Active entries where:
+  topic = current feature_cycle
+  AND category ∈ expected_categories(current_phase)
+  AND entry_id NOT IN session.injection_history
+
+ranked by:
+  confidence
+  + co_access_affinity(entry, injection_history_entries)
+  + phase_category_boost(entry.category, current_phase)
+```
+
+On each PreToolUse hook: draw top-1 (or top-2 if budget allows) from the cached candidate set. No full-graph scan at hook time. Cache invalidated and rebuilt on phase transition. This is the proactive query mode — no user query, session context IS the retrieval anchor.
+
+**Why phase-transition cache not per-hook scoring**: Scoring all Active entries on every hook event is expensive and unnecessary. Phase changes infrequently; the candidate set is stable within a phase. The cache trades minor staleness for a clean hot path.
+
+#### WA-4b: Phase-Conditioned `context_briefing`
+
+Resurrect `context_briefing` as a targeted surface triggered by the SM at phase transitions, not called ad-hoc by agents.
+
+**New retrieval path in `context_briefing`**:
+- Filter by `topic` (current feature cycle)
+- Phase-condition the ranking using `current_phase` and category affinity
+- Return structured top-k results — decisions, patterns, procedures relevant to this phase
+- No injection_history filter — this is the comprehensive "here's what you need entering this phase" set
+
+**SM orchestration pattern**:
+```
+SM: context_cycle(type: "phase", phase: "implementation", topic: "crt-024")
+    context_briefing(topic: "crt-024")  ← immediately after
+```
+
+`context_briefing` returns the top-k entries for (topic=crt-024, phase=implementation), giving agents a structured knowledge handoff at each phase boundary without requiring them to search.
+
+**Effort**: ~2 days total (WA-4a: candidate cache management, hook integration; WA-4b: new briefing retrieval path, SM protocol updates).
+
+---
+
+### WA-5: PreCompact Transcript Restoration (ASS-028 Recommendation 2)
+**Business outcome**: Context window compaction no longer erases the recent conversation. The last few user prompts and assistant responses are restored alongside the Unimatrix briefing synthesis, giving the model continuity through the compaction boundary.
+
+**What**: The `PreCompact` hook already receives `transcript_path` in stdin JSON. This field is parsed but never used. Read the transcript file locally (no server round-trip) before sending the `CompactPayload` request:
+
+1. Open `input.transcript_path`
+2. Scan backward from end of file
+3. Collect last k `{user_text, assistant_text}` pairs — `type: "user"` records with `type: "text"` content blocks (skip tool_result blocks)
+4. Format as a "Recent conversation" block
+5. Prepend to the server's `BriefingContent` response before writing stdout
+
+**Extraction pattern (reverse scan)**:
+```
+for line in reverse(transcript_lines):
+    if type == "assistant": collect text blocks
+    if type == "user": collect text blocks (type: "text" only)
+        when both collected: push pair, k--
+    if k == 0: stop
+```
+
+**Output format**:
+```
+=== Recent conversation (last 3 exchanges) ===
+[User] {prompt text}
+[Assistant] {response text}
+...
+=== End recent conversation ===
+```
+
+**Budget**: Separate injection limit for PreCompact (recommended: 3000 bytes) rather than the general 1400-byte cap. PreCompact is the highest-value injection point in the system — more context at compaction is directly valuable.
+
+**Scope**: All logic in `uds/hook.rs`. No server changes. Fully independent — ships in any order relative to WA-1 through WA-4.
+
+**Effort**: ~1 day.
+
+---
+
+### ASS-029: GNN Architecture Spike — Required Before W3-1
+**Status**: Not yet started. Research prerequisite — W3-1 delivery cannot be scoped without this.
+
+**What**: A focused research spike that defines the GNN's architecture for three distinct query modes, the session context feature vector, the training batch structure, and the tick scheduling model. Without this, W3-1 cannot be properly estimated or implemented.
+
+Full research scope: `product/research/ass-029/SCOPE.md`.
+
+**Why this is a gate**: The expanded W3-1 scope (session-conditioned relevance function across three query modes) is architecturally different from the original W3-1 spec (weight vector learning). The forward pass differs by mode. The training batch structure must account for MissedRetrieval events and phase-labeled FEATURE_ENTRIES. The tick scheduling must compose with existing compaction, NLI, and confidence refresh work. These decisions compound — getting them wrong at design time cascades through all of W3-1.
+
+**Outputs from ASS-029**:
+1. GNN forward pass architecture per query mode
+2. Session context feature vector specification (complete, typed)
+3. Training batch construction from all three signal sources
+4. Candidate set management strategy for proactive mode
+5. Tick scheduling and resource envelope
+6. Cold-start initialization from WA-2 manual formula
 
 ---
 
 ## Wave 2 — Deployment
-*Estimated: 3 weeks, after Wave 0*
-*(Can run in parallel with Wave 1)*
+*Estimated: 3 weeks. Can run in parallel with Wave 1 and 1A after Wave 0.*
+
+Wave 2 delivers containerization, HTTP transport, multi-project routing, and OAuth. These are independent of the intelligence pipeline — they are the delivery infrastructure that makes Unimatrix accessible beyond a single developer workspace. Wave 1A should reach WA-3 (training signal closure) before Wave 2 deployment, so that the daemon accumulating usage data in production is already generating meaningful GNN training labels.
 
 ### W2-1: Container Packaging
-**Business outcome**: Knowledge survives infrastructure changes — production-grade deployment with clean backup, recovery, and standard container lifecycle means operators never lose their knowledge base to a migration or hardware failure.
+**Business outcome**: Knowledge survives infrastructure changes — production-grade deployment with clean backup, recovery, and standard container lifecycle.
 
-**What**: Dockerfile + docker-compose for single-binary container with named volumes.
+**What**: Dockerfile + docker-compose with separate named volumes:
+- `unimatrix-knowledge` — `knowledge.db` (back up frequently; integrity-critical)
+- `unimatrix-analytics` — `analytics.db` (back up less frequently; self-healing)
+- `unimatrix-shared` — models (re-downloadable), `config.toml` (mount as read-only bind)
 
-```
-unimatrix-knowledge volume:   ← back up frequently; integrity-critical
-  knowledge.db
-unimatrix-analytics volume:   ← back up less frequently; self-healing
-  analytics.db
-unimatrix-shared volume:
-  models/            ← ONNX weights (re-downloadable, not critical)
-  config.toml        ← mount as read-only bind mount (see security)
-```
-
-**Separate volumes for knowledge.db and analytics.db**: They have different backup
-cadences and different criticality. A single volume snapshot backs up both at the same
-frequency, making differential backup inoperable. Separate volumes allow the operator
-to snapshot `unimatrix-knowledge` frequently and `unimatrix-analytics` less often.
-
-**Container lifecycle**: Include a `HEALTHCHECK` that verifies the daemon is alive
-and the schema version is current. Without a health check, container orchestrators
-cannot determine readiness. For the STDIO/UDS daemon, use a process-level check
-or a minimal UDS probe.
-
-Container is stateless except the volumes. Backup = volume snapshot of
-`unimatrix-knowledge`. Works locally (alongside dev containers) or in cloud
-(EBS, Cloud Persistent Disk).
-
-**Solves**: The backup/recovery problem. SQLite no longer lives in project directories.
-Point-in-time recovery becomes standard container ops.
-
-**Effort**: 2 days.
+Container is stateless except the volumes. Backup = volume snapshot of `unimatrix-knowledge`. `HEALTHCHECK` verifies daemon liveness and schema version currency.
 
 **Security requirements:**
-- [High] Each named volume must be set to owner-only at container build time
-  (`chmod 0700 /data/knowledge`, `chmod 0700 /data/analytics`); world-readable
-  volumes expose both databases to any host process with volume access.
-- [Medium] Mount `config.toml` as a read-only bind mount from a secrets manager or
-  CI/CD vault rather than storing it in a data volume. Config-in-volume conflates
-  runtime state with configuration and makes version control of config harder.
-- [Low] Container must run as a non-root user (`USER unimatrix` in Dockerfile);
-  validate that both databases are created successfully under non-root ownership.
+- [High] Named volumes owner-only at container build time (`chmod 0700`)
+- [Medium] `config.toml` as read-only bind mount from secrets manager, not in data volume
+- [Low] Container runs as non-root (`USER unimatrix`)
+
+**Effort**: 2 days.
 
 ---
 
 ### W2-2: HTTP Transport + Basic Auth
-**Business outcome**: External systems and pipelines can call Unimatrix without being Claude Code plugins — the knowledge engine becomes an addressable platform service that any system with an HTTP client can integrate.
+**Business outcome**: External systems and pipelines call Unimatrix without being Claude Code plugins.
 
-**What**: Add HTTP/HTTPS transport alongside existing UDS/stdio.
-The MCP tools are unchanged — only the transport layer differs.
+**What**: HTTP/HTTPS transport alongside existing UDS/stdio. `--transport http --port 8080`. Validates `Authorization: Bearer <token>` against AGENT_REGISTRY. Capability check is identical — same service layer, different transport resolution.
 
-```
-unimatrix serve --transport uds    # daemon mode (W0-0), default
-unimatrix serve --transport stdio  # legacy stdio, unchanged
-unimatrix serve --transport http   # new, adds HTTP + token auth middleware
-             --port 8080
-             --tls-cert /certs/cert.pem
-             --tls-key  /certs/key.pem
-```
+**Privileged access separation (ASS-027)**: Two HTTPS listeners on separate ports — content port (8443) and admin port (8444). Admin tools (`context_enroll`, `context_quarantine`, admin-flagged `context_deprecate`) registered on admin port only. Content port exposed via load balancer; admin port internal-only (Kubernetes ClusterIP, VPN-accessible). Network-layer enforcement without SSH or local access.
 
-HTTP transport: validates `Authorization: Bearer <token>` header against
-AGENT_REGISTRY. Capability check is identical — same service layer, different
-transport resolution path.
-
-**Verify rmcp HTTP transport readiness before committing to estimate.** The claim
-"rmcp supports Streamable HTTP transport natively" must be verified against rmcp 0.16's
-actual implementation maturity before scoping this as 3-4 days. If gaps exist, the
-estimate expands and the Wave 2 schedule shifts.
-
-**Dual transport**: A deployment that wants to serve both Claude Code (UDS) and
-external systems (HTTP) simultaneously from a single process must be explicitly
-designed. The daemon (W0-0) already handles multiple UDS clients. HTTP is an
-additive transport on the same engine instance — both must be able to run
-concurrently against the same store.
-
-**Why now**: Required for the centralized (1 platform, N repositories) model.
-Also enables NDP and other external systems to call Unimatrix without being
-Claude Code plugins.
-
-**Effort**: 3-4 days (contingent on rmcp HTTP transport verification).
+**Prerequisite**: Verify rmcp 0.16 HTTP transport readiness before committing to estimate.
 
 **Security requirements:**
-- [Critical] TLS is non-negotiable for HTTP transport — do not ship an `--insecure`
-  or `--no-tls` flag. If TLS cert/key paths are not provided at startup, refuse to
-  start in HTTP mode.
-- [Critical] Bearer token validation must be constant-time comparison.
-- [High] Enforce: maximum request body size (≤ 1MB), connection timeout (30s),
-  maximum concurrent connections at the HTTP server layer.
-- [High] No unauthenticated health/metrics endpoints on the same port.
-- [Medium] Add IP-level rate limiting as a secondary defense layer for HTTP callers.
+- [Critical] TLS non-negotiable — no `--insecure` flag; refuse HTTP mode without cert/key paths
+- [Critical] Bearer token validation must be constant-time comparison
+- [High] Admin port never default — require explicit opt-in; omitting it gives content-only deployment
+- [High] Maximum request body (≤1MB), connection timeout (30s), max concurrent connections enforced
+
+**Effort**: 3-4 days.
 
 ---
 
 ### W2-3: Multi-Project Routing + OAuth Middleware
-**Business outcome**: Teams accumulate organizational knowledge that spans projects — lessons discovered in one project surface in another, with OAuth-enforced access control and full attribution that scales from personal use to enterprise deployment.
+**Business outcome**: Teams accumulate organizational knowledge spanning projects, with OAuth-enforced access control that scales from personal to enterprise.
 
-**What**: Two-tier knowledge hierarchy and OAuth 2.0 client credentials flow.
+**What**: Two-tier store routing (owner + project) and OAuth 2.0 client credentials flow.
 
-**Two-tier store routing** (personal collection and project isolation):
+Owner store holds cross-project conventions and patterns. Project store holds project-specific knowledge. At query time, search fans out to both (project weighted higher). Write always goes to project store. Promotion to owner tier is explicit, attributed, hash-chained.
 
-```
-Owner Store  (owner knowledge.db + analytics.db)
-  └── ProjectStore × N  (per-project knowledge.db + analytics.db each)
-```
+OAuth scopes map to capabilities: `unimatrix:search → Search`, `unimatrix:read → Read`, `unimatrix:write → Write`, `unimatrix:admin → Admin`. JWT `sub` → `agent_id` for attribution. Custom `unimatrix_project` claim → project store routing.
 
-At query time, search fans out to the project store (highest specificity, highest
-weight) and the owner store (shared conventions and patterns). Write always goes
-to the project store. Promotion from project to owner tier is explicit, attributed,
-and hash-chained — a new entry created at the owner level with provenance back to
-the source project entry.
-
-This is valuable even at personal scale: conventions and lessons that apply across
-all your projects accumulate in the owner store rather than being rediscovered
-per project. For teams, the owner store becomes the organization tier. A global
-tier (platform-curated domain packs) is deferred.
-
-**This adds a routing layer — "no changes to storage" is incorrect.** W2-3 requires
-a `TenantRouter` that resolves the correct `Arc<Store>` pair (project + owner) at
-request time. Tool logic is unchanged; the store resolution layer above it is new.
-Design the `TenantRouter` abstraction to accommodate future tiers (global) without
-a rewrite.
-
-**OAuth scopes map to Unimatrix capabilities:**
-
-```
-unimatrix:search → Search
-unimatrix:read   → Read
-unimatrix:write  → Write
-unimatrix:admin  → Admin
-```
-
-`sub` claim → `agent_id` for audit attribution. `unimatrix_project` custom claim
-→ project database routing.
-
-**`context_enroll` dual-use clarification**: Enrolling a knowledge workflow agent
-(a principal with a trust level) and registering an OAuth client (a service identity
-with scopes) are different operations with different lifecycle requirements (OAuth
-clients rotate secrets; agents do not). These should be distinct operations or at
-minimum clearly distinguished in the API, not conflated in a single tool call.
-
-**Effort**: 4-5 days (two-tier routing layer + OAuth middleware; larger than original
-"middleware only" estimate due to TenantRouter).
+`TenantRouter` resolves the correct `Arc<Store>` pair at request time. Tool logic unchanged.
 
 **Security requirements:**
-- [Critical] JWT validation must enforce: algorithm allowlist (`RS256`/`ES256` only),
-  expiry (`exp`), issuer (`iss`), and audience (`aud`). Missing `aud` check is OWASP A07.
-- [Critical] `sub` claim → `agent_id` must be validated against `[a-zA-Z0-9_-]{1,64}`.
-- [High] `unimatrix_project` claim for routing — path traversal risk. Validate against
-  a strict allowlist of registered project identifiers; never construct file paths
-  directly from claim values.
-- [High] OAuth client secrets must never be stored in `knowledge.db` or `analytics.db`.
-  `context_enroll` stores only `client_id`, never `client_secret`.
-- [Medium] Establish maximum token TTL policy (≤ 1 hour).
+- [Critical] JWT: algorithm allowlist (RS256/ES256 only), enforce exp/iss/aud
+- [Critical] `sub` claim validated `^[a-zA-Z0-9_-]{1,64}$`
+- [High] `unimatrix_project` claim validated against registered project allowlist — never construct file paths directly from claim values
+- [High] OAuth client secrets never stored in any database — only `client_id`
+
+**Effort**: 4-5 days.
 
 ---
 
 ### W2-4: Embedded GGUF Module
-**Business outcome**: The system reasons about what agents need — synthesizing knowledge, explaining contradictions, generating proactive recommendations — without any cloud or external LLM dependency. Every deployment, including air-gapped and resource-constrained environments, gains genuine local intelligence.
+**Business outcome**: The system reasons about what agents need — without any cloud or external LLM dependency. Every deployment, including air-gapped environments, gains local inference.
 
-**What**: An optional `unimatrix-infer` capability — a local GGUF model loaded via
-llama.cpp when configured. Enabled by a single config entry; absent means zero impact
-on existing behavior.
+**What**: Optional `unimatrix-infer` capability — local GGUF model via llama.cpp when configured. Enabled by a single config entry; absent means zero behavior change. All GGUF inference runs on a dedicated rayon pool (separate from the ONNX pool) — GGUF inference is seconds, not milliseconds, and must not starve NLI or GNN training.
 
-```toml
-[inference]
-model_path = "/absolute/path/to/models/phi-3.5-mini.Q4_K_M.gguf"
-# absent = graceful degradation; all existing behavior unchanged
+When present, qualitatively upgrades:
+- `context_cycle_review` — 21 detection rules produce genuinely reasoned recommendations, not pattern-matched findings
+- `context_status` — heuristic thresholds become specific, actionable explanations
+- Contradiction explanation — NLI gives a score; GGUF gives the *why*
+- Background intelligence without any external LLM — synthesis and retrospective analysis run overnight, ready when the next session begins
+
+Build behind Cargo feature flag (`features = ["infer"]`). Validate llama.cpp FFI integration in a proof-of-concept before committing to estimate — platform-specific compilation (ARM, x86), signal handler conflicts, and memory management in long-running processes are known risks.
+
+**Gate condition**: W1-3 eval harness results; proof-of-concept in target environment.
+
+**Security requirements:**
+- [Critical] GGUF model file SHA-256 hash-pinned in config — replaced model file is an undetectable reasoning-manipulation vector
+- [High] LLM input length-limited (~4000 tokens max); content scanner applied before passing to model
+- [High] LLM output passes full content scanner before storage or return
+
+**Effort**: 1-2 weeks (proof-of-concept required before committing).
+
+---
+
+## Wave 3 — Self-Improving Intelligence
+*After Wave 1 + 1A complete + ASS-029 + sufficient usage data from W0-0 daemon*
+
+### W3-1: GNN — Session-Conditioned Relevance Function
+**Business outcome**: Confidence weights, candidate ranking, and proactive delivery all adapt automatically to each deployment's actual usage patterns. The manual formulas from Wave 1A become the cold start. The GNN refines them continuously from real agent behavior — no manual tuning, no reconfiguration, no redeployment.
+
+**Expanded scope** (see ASS-029 for full design): W3-1 implements a session-conditioned relevance function, not just a weight vector learner. The function replaces the manual ranking formulas across all three delivery surfaces:
+
+```
+GNN(entry_features, session_context, interaction_features) → relevance_score
+
+Mode 1 — Proactive (UDS injection):
+  session_context as retrieval anchor (no query embedding)
+  candidate set = Active entries not in injection_history
+
+Mode 2 — Comprehensive (context_briefing at phase transition):
+  session_context at phase transition moment
+  candidate set = all entries for this topic
+
+Mode 3 — Reactive (context_search re-ranking):
+  session_context fused with query_embedding
+  candidate set = HNSW top-20
 ```
 
-**All GGUF inference runs on a dedicated rayon `ThreadPool`** (separate from the
-ONNX pool established in W1-2). GGUF inference is longer-duration (seconds, not
-milliseconds) and must not starve NLI inference (W1-4) or GNN training (W3-1)
-during overnight synthesis runs.
+**Session context vector** (fully defined by Wave 1A):
+```
+[current_phase,             ← WA-1 explicit signal
+ category_histogram[k],     ← WA-2 implicit signal
+ injection_count,           ← what has been served
+ query_count,               ← how many searches made
+ topic_embedding,           ← from feature_cycle
+ cycle_position_normalized, ← how far into this phase
+ rework_event_count]        ← quality pressure signal
+```
 
-**llama.cpp integration complexity**: llama.cpp via Rust FFI introduces a third ML
-stack alongside the two existing ONNX pipelines. Platform-specific compilation
-(ARM, x86, macOS, Linux), signal handler conflicts, and memory management differences
-from short-lived processes are known risks in long-running server processes. The
-"1 week" estimate should be validated against a proof-of-concept integration before
-committing to the timeline. Build the GGUF integration behind a Cargo feature flag
-(`features = ["infer"]`) so it doesn't affect builds for deployments that don't need it.
+**Entry features (node)**:
+```
+[confidence_6_factors, category_embedding, access_count,
+ helpful_ratio, correction_count, graph_degree,
+ days_since_last_access, nli_edge_confidence]
+```
 
-**Synthesis atomicity**: Overnight GGUF synthesis runs may be interrupted by daemon
-restart. The synthesis path must be atomic at the commitment point — a "synthesis in
-progress" state that survives restart without leaving orphaned partial entries. Do not
-commit a synthesized entry until the full LLM output is available and hash-chained.
+**Interaction features (dynamic)**:
+```
+[already_served,               ← binary, from injection_history
+ co_access_with_served_count,  ← affinity to already-served set
+ query_overlap_score]          ← appeared in prior query results this session
+```
 
-**When present, qualitatively upgrades:**
+**Training signal — three sources**:
+1. *Explicit*: `helpful_count` / `unhelpful_count` per entry
+2. *Implicit behavioral* (W1-5): retrieval → re-search = negative; retrieval → rework event = negative; retrieval → successful phase completion = positive
+3. *MissedRetrieval* (WA-3): entry existed, was similar, was never served, agent had to fill the gap themselves — strong targeted negative label
 
-- **context_cycle_review** — 21 detection rules produce pattern-matched findings today.
-  With LLM: genuinely reasoned recommendations. *"Three sessions this week showed the same
-  re-search pattern on integration test setup. The convention entry is technically correct
-  but missing the fixture initialization step every agent has had to rediscover."*
-  That is not a rule. That is reasoning.
+**Cold-start**: Initializes from the WA-2 manual formulas (explicit phase weight 0.015, histogram weight 0.005). As training data accumulates, the GNN refines from there. Config-defined `[confidence] weights` (W0-3) remain the fallback when the GNN has insufficient data.
 
-- **context_status recommendations** — heuristic thresholds → specific, actionable,
-  contextual explanations of why health is degraded and what to do.
+**In-memory weight cache**: Learned scores cached in `Arc<RwLock<_>>`, rebuilt after each training run on the maintenance tick. Search hot path reads from memory only. Missing or stale GNN output degrades gracefully to the manual formulas.
 
-- **W3-2 Knowledge Synthesis** — with LLM: genuine distillation of multiple entries
-  into a coherent, attributable, higher-quality single entry.
+**Gate condition**: ASS-029 design spike complete; 50+ helpfulness votes OR 2-4 weeks of active daemon use (W0-0) generating behavioral observation data; W1-3 hook simulation client validates training label quality on synthetic patterns.
 
-- **Contradiction explanation** — NLI (W1-4) gives a score; GGUF gives the *why*.
+**Training loop architecture** (defined in ASS-029): when training runs, batch construction, resource envelope, tick scheduling relative to compaction and NLI inference.
 
-- **Background intelligence without an external LLM** — With daemon mode (W0-0),
-  retrospectives, synthesis, and contradiction analysis run overnight, ready when the
-  next session begins — without Claude.
-
-**Why optional rather than required**: Unimatrix without the module is fully functional.
-All capabilities degrade gracefully to current behavior. The module is an enhancement
-tier, not a dependency. W3-2 synthesis, however, requires W2-4.
-
-**Recommended models by deployment:**
-
-| Deployment | Model | Size (Q4) | Notes |
-|-----------|-------|-----------|-------|
-| Raspberry Pi 5 (16GB) | Llama-3.2-1B | ~800MB | Sufficient for synthesis + recommendations |
-| Developer laptop | Phi-3.5-mini | ~2.2GB | Better reasoning quality |
-| Any deployment | Any GGUF-format model | — | User-supplied; Unimatrix provides the integration |
-
-**Reference deployment**: Raspberry Pi 5 (16GB) running neural-data-platform with no
-external LLM. Unimatrix + GGUF module transforms the Pi from reactive alerting
-(sensor exceeds threshold → alert) to a reasoning system (anomaly detected →
-knowledge search → LLM synthesis: *"This PM2.5 signature matches three prior events
-correlated with westerly winds during wildfire season — check sensor 4 for drift"*).
-Fully air-gapped. Zero cloud dependency. The Pi reasons about its own sensor data.
-
-**Gate condition**: User opt-in via config. Validation through W1-3 eval harness
-against a representative scenario set before production deployment. Validate the
-llama.cpp integration in the target deployment environment (ARM vs x86, available RAM)
-before enabling.
-
-**Effort**: 1-2 weeks (proof-of-concept integration required before committing).
+**Effort**: 1-2 weeks (no GNN infrastructure exists; ASS-029 must validate effort estimate).
 
 **Security requirements:**
-- [Critical] GGUF model file must be hash-verified at load — same SHA-256 pinning
-  pattern as W1-4 (NLI). A replaced model file is an undetectable prompt-injection
-  and reasoning-manipulation vector.
-- [High] LLM input is composed from stored knowledge entries. Apply length limits
-  (max ~4000 tokens total context) and run inputs through the content scanner before
-  passing to the model.
-- [High] LLM output stored as synthesized entries or returned as recommendations must
-  pass full content scanner before storage or return.
-- [Medium] `model_path` must be an absolute path validated against an allowed directory
-  prefix — prevent misuse of the GGUF loader's file read capability.
-- [Low] Run GGUF inference exclusively on the dedicated rayon pool with a bounded
-  thread budget to prevent monopolizing CPU during long synthesis operations.
+- [High] Per-agent vote-rate limit (max 10 helpfulness votes per agent per hour) before GNN trains on them — prevents synthetic label injection
+- [High] Implicit training labels attributed to sessions, not agent_ids
+- [Medium] Learned weight vector stored with checksum and training run input hash to detect tampering
 
 ---
 
-## Wave 3 — Adaptive Intelligence
-*Estimated: 2-3 weeks, after Wave 1 complete + sufficient usage data*
+### W3-2: Knowledge Synthesis — Future Option
+**Status**: Deferred. Revisit after W3-1 is deployed and knowledge base entry density is assessed.
 
-W3-1 and W3-2 require Wave 1 complete AND sufficient usage data from the W0-0 daemon
-running continuously (typically 2-4 weeks of active deployment).
+**What**: Maintenance-tick process that distills knowledge clusters into single synthesized entries when 3+ Active entries share a topic+category with mutual Supports/CoAccess edges and combined content exceeds a token threshold.
 
-### W3-1: GNN Confidence Learning
-**Business outcome**: Confidence weights adapt automatically to each deployment's actual usage patterns — a legal knowledge base, an SRE runbook, and an air-quality sensor network each develop scoring models calibrated to their domain without any manual tuning.
+**Hard prerequisites**: W3-1 (for GNN-weighted confidence on synthesized entries) and W2-4 (GGUF module — without an LLM, synthesis is concatenation with an authority label, not actual distillation). W3-2 must not ship without both.
 
-**What**: Replace hardcoded weight constants with a learned weight vector
-per knowledge base. A small Graph Attention Network (2-layer, ~400KB ONNX)
-trains on helpfulness signals and behavioral patterns from the observation pipeline.
-
-**Inputs**: Per-node features (6 raw factor scores, category, trust, graph structural
-features: degree, chain depth, contradiction neighbor count). Per-edge features:
-RelationType, NLI confidence score, co-access count.
-
-**Outputs**: `[w_base, w_usage, w_fresh, w_help, w_corr, w_trust]` learned weight
-vector (sum = 0.92) + learned `freshness_half_life_hours`.
-
-**In-memory weight cache (required)**: Learned confidence weights live in `analytics.db`
-(`confidence_weights` table) but are consumed on the search hot path. Follow the same
-in-memory tick-cache pattern as the graph — load weights into memory at startup and
-after each training run. The search hot path reads from memory only; `analytics.db`
-is the persistence layer. A missing or stale weight vector degrades gracefully to
-the config-defined defaults (W0-3 `[confidence] weights`).
-
-**Config-driven cold-start weights (W0-3 prerequisite)**: W3-1's cold-start
-initializes from the weights in `[confidence] weights` config, not hardcoded
-dev-domain constants. Operators of non-dev domains set domain-appropriate starting
-weights in config so cold-start is reasonable from day one, not after weeks of
-convergence. The GNN then refines from there.
-
-**Training loop architecture must be specified before implementation**:
-- When does training run? (maintenance tick recommendation; define resource envelope)
-- Batch retraining vs. incremental updates?
-- How long does a training run take at expected knowledge base sizes?
-- How does training interact with other tick work (compaction, confidence refresh)?
-- Runs on rayon `ThreadPool` (consistent with all ML inference from W1-2 onward)
-
-**Training signal — dual source**:
-1. *Explicit*: `helpful_count`/`unhelpful_count` per entry
-2. *Implicit*: observation pipeline behavioral patterns —
-   retrieval → successful completion = positive; retrieval → re-search = negative;
-   retrieval → error pattern = negative. Requires W1-5 detection rules to be fully
-   functional for the generalized event schema.
-
-**Gate condition**: Deploy when a knowledge base has 50+ helpfulness votes OR
-sufficient observation pipeline events (typically 2-4 weeks of active daemon use
-under W0-0).
-
-**Effort**: 1-2 weeks (no GNN infrastructure exists in the codebase; unimatrix-learn
-has MLP/EWC/MicroLoRA but not graph attention networks — effort estimate needs
-validation against actual implementation complexity).
-
-**Security requirements:**
-- [High] GNN training data integrity: enforce Wilson score minimum-vote guard (already
-  at 5 votes) and per-agent vote-rate limit (max 10 helpfulness votes per agent per
-  hour) before GNN is deployed.
-- [High] Implicit training labels must be attributed to sessions, not individual
-  agent_ids, to prevent synthetic label injection.
-- [Medium] Learned weight vector must be stored with a checksum and training run
-  input hash to detect tampering between runs.
-- [Medium] Cold-start from config-defined weights (not hardcoded dev-domain defaults)
-  must be documented as the operator's responsibility to configure for their domain.
-
----
-
-### W3-2: Knowledge Synthesis
-**Business outcome**: As the knowledge base matures, redundant and overlapping entries distill automatically into authoritative synthesized records — the knowledge base stays trustworthy and navigable at scale without manual curation.
-
-**What**: Maintenance-tick process that distills knowledge clusters into
-single synthesized entries.
-
-**W2-4 (GGUF module) is a hard prerequisite for W3-2.** Without an LLM, synthesis
-is concatenation with a label — a multi-entry blob stored as `trust_source="neural"`
-that appears authoritative but contains no actual distillation. Promoting concatenated
-content to neural trust level degrades the knowledge base by creating entries that
-look synthesized but aren't. W3-2 must not ship until W2-4 is deployed and the
-synthesis path produces genuine LLM-distilled output.
-
-Trigger: 3+ Active entries, same topic+category, mutual Supports/CoAccess edges,
-combined content > `synthesis_token_threshold` (config-driven, default 800 tokens),
-no existing synthesis entry for cluster, cluster cardinality ≤ `max_cluster_size`
-(config-driven, default 20 entries — prevents unbounded synthesis on high-cardinality
-sensor or event topics).
-
-Output: synthesized entry with `trust_source="neural"`, confidence = GNN-weighted
-average of sources, `supersedes` = lowest-confidence source. Source entries deprecated
-(not deleted), correction-chained to synthesis.
-
-**Gate condition**: Deploy when knowledge base exceeds ~200 clustered entries
-on any topic AND W2-4 is deployed. Premature synthesis at low entry counts produces
-noise; synthesis without LLM produces deceptive concatenations.
-
-**Effort**: 1 week (after W2-4).
-
-**Security requirements:**
-- [High] Synthesized entries must validate that all source entries are Active and not
-  quarantined before inclusion; a quarantined source blocks synthesis of that cluster.
-- [High] The `supersedes` chain from synthesized entry to source entries must go
-  through the same hash-chaining and audit-log path as manual corrections.
-- [Medium] Apply full content scanner (`S1`) to synthesized content before storing —
-  treat neural output as external input.
-- [Low] Gate condition uses a stable count snapshot from the start of the maintenance
-  tick, not a live query.
+**Gate condition**: Deploy when knowledge base exceeds ~200 clustered entries on any topic AND W3-1 AND W2-4 are deployed. Premature synthesis at low entry counts produces noise.
 
 ---
 
 ## Dependency Graph
 
 ```
-W0-0: Daemon mode (UDS, persistent) ─────────────────────────────────────────┐
-                                                                               ▼
-Wave 0 — COMPLETE
-  W0-1: sqlx migration / dual pool ────────────────────────────────────────┐
-  W0-2: Client token security (deferred) ──────────────────────────────────┤
-  W0-3: Config externalization ────────────────────────────────────────────┤
-                                                                             │
-        ┌────────────────────────────────────────────────────────────────────┤
-        ▼                                                                     ▼
-Wave 1 (intelligence foundation)                       Wave 2 (deployment, parallel)
-  W1-1: Typed graph (COMPLETE) ─────────────────────┐  W2-1: Container
-  W1-2: Rayon pool ──────────────────────┐          │  W2-2: HTTP transport ──┐
-  W1-3: Eval harness ────────────────────┤          │  W2-3: Multi-project    │
-  W1-4: NLI + re-ranking ←──(W1-2+W1-3)─┤          │        + OAuth ◄────────┘
-  W1-5: Obs generalization ──────────────┤          │  W2-4: GGUF ←──(W1-2+W1-3)
-                                          │          │
-        ┌─────────────────────────────────┘          │
-        ▼                                            │
-Wave 3 (adaptive intelligence — Wave 1 complete + usage data from W0-0 daemon)
-  W3-1: GNN learning   (needs W1-4 NLI edges + W1-5 signals + usage data)
-  W3-2: Synthesis      (needs W3-1 weights + W2-4 GGUF + entry density) ◄───┘
+Wave 0 (COMPLETE)
+  W0-0: Daemon ──────────────────────────────────────────────────────────────┐
+  W0-1: sqlx dual pool ──────────────────────────────────────────────────────┤
+  W0-3: Config externalization ──────────────────────────────────────────────┤
+                                                                              │
+              ┌───────────────────────────────────────────────────────────────┘
+              ▼
+Wave 1 — Intelligence Foundation
+  W1-1: Typed graph (COMPLETE) ──────────────────────────────────────────────┐
+  W1-2: Rayon pool (COMPLETE) ────────────────────────────────────────────┐  │
+  W1-3: Eval harness ─────────────────────────────────────────────────┐   │  │
+  W1-4: NLI re-ranking (COMPLETE) ◄──────────────────────(W1-2+W1-3)─┤   │  │
+  W1-5: Obs generalization (IN PROGRESS) ────────────────────────────┐│   │  │
+                                                                      ││   │  │
+              ┌───────────────────────────────────────────────────────┘│   │  │
+              │     ┌─────────────────────────────────────────────────┘│   │  │
+              ▼     ▼                                                   │   │  │
+Wave 1A — Adaptive Intelligence Pipeline                                │   │  │
+  WA-0: Ranking signal fusion ◄──────────────────────── (W1-4 done)─┐  │   │  │
+  WA-1: Phase signal (#330) ──────────────────────────── (WA-0)─────┤  │   │  │
+  WA-2: Session context enrichment (ASS-028 R1) ◄─────────(WA-1)───┤  │   │  │
+  WA-3: MissedRetrieval signal ◄───────────────────────── (WA-0)────┤  │   │  │
+  WA-4: Proactive delivery ◄─────────────────────────── (WA-1+WA-2)─┤  │   │  │
+  WA-5: PreCompact restoration (ASS-028 R2) ────────────────────────┘  │   │  │
+  ASS-029: GNN architecture spike ──────────────────────────────────┐  │   │  │
+                                                                     │  │   │  │
+        ┌────────────────────────────────────────────────────────────┘  │   │  │
+        │     Wave 2 (parallel, after Wave 0) ◄─────────────────────────┘   │  │
+        │       W2-1: Container                                              │  │
+        │       W2-2: HTTP transport                                         │  │
+        │       W2-3: Multi-project + OAuth                                  │  │
+        │       W2-4: GGUF ◄──────────────────────────────── (W1-2+W1-3)   │  │
+        │                                                                    │  │
+        ▼                                                                    │  │
+Wave 3 — Self-Improving Intelligence                                         │  │
+  W3-1: GNN session-conditioned relevance ◄───────── (ASS-029 + 1A + data) ◄┘  │
+                          needs W1-5 signals ◄──────────────────────────────────┘
+  W3-2: Knowledge synthesis ◄────────────────────── (W3-1 + W2-4 + density)
+        [future option]
 ```
 
-Waves 1 and 2 are fully independent — run in parallel after Wave 0.
-W2-4 (GGUF) requires W1-2 (rayon pool) and W1-3 (eval harness validation).
-W1-4 (NLI) requires W1-2 (rayon pool) and W1-3 (eval harness validation).
-Wave 3 requires Wave 1 complete AND sufficient usage data.
-W3-2 requires both W3-1 (learned weights) and W2-4 (GGUF inference for synthesis).
+Key sequencing rules:
+- WA-0 is the first Wave 1A item — adding session-context signals to a broken fusion formula compounds the problem
+- Wave 1A requires W1-5 behavioral signal infrastructure
+- W3-1 requires ASS-029 design spike + Wave 1A signal infrastructure + usage data from W0-0
+- Wave 2 is independent of Wave 1A — both run after Wave 0; Wave 1A should reach WA-3 before production deployment begins accumulating data without MissedRetrieval closure
+- W3-2 requires both W3-1 (learned weights) and W2-4 (GGUF inference for synthesis)
 
 ---
 
 ## Effort Summary
 
-| Wave | Items | Estimated Effort | Gate Condition |
-|------|-------|-----------------|----------------|
+| Wave | Item | Effort | Gate |
+|------|------|--------|------|
 | W0 | All items | **COMPLETE** | — |
 | W1-1 | Typed graph | **COMPLETE** | — |
-| W1-2 | Rayon pool | ~2 days | W0 complete |
-| W1-3 | Eval harness | ~1 week | W0 complete (parallel with W1-2) |
-| W1-4 | NLI + re-ranking | ~3-4 days | W1-2 + W1-3 eval results |
-| W1-5 | Obs generalization | ~5-7 days | W0 complete (detection rule rewrite is the long tail) |
+| W1-2 | Rayon pool | **COMPLETE** | — |
+| W1-3 | Eval harness | ~1.5-2 weeks | W0 complete |
+| W1-4 | NLI re-ranking | **COMPLETE** | — |
+| W1-5 | Obs generalization | ~5-7 days | W0 complete |
+| WA-0 | Ranking signal fusion | ~1-2 days | W1-4 complete; GH #329 subsumed |
+| WA-1 | Phase signal (#330) | ~1 day | WA-0 complete |
+| WA-2 | Session context enrichment | ~1 day | WA-1 complete |
+| WA-3 | MissedRetrieval signal | ~1 day | WA-0 complete |
+| WA-4 | Proactive delivery | ~2 days | WA-1 + WA-2 complete; cache strategy decided |
+| WA-5 | PreCompact restoration | ~1 day | Independent |
+| ASS-029 | GNN architecture spike | ~2-3 days | W1A scoped |
 | W2-1 | Container | ~2 days | W0 complete |
-| W2-2 | HTTP transport | ~3-4 days | W0 complete (rmcp HTTP verification required first) |
+| W2-2 | HTTP transport | ~3-4 days | W0 complete; rmcp HTTP verified |
 | W2-3 | Multi-project + OAuth | ~4-5 days | W2-2 complete |
-| W2-4 | GGUF module | ~1-2 weeks | W1-2 + W1-3 eval results; proof-of-concept first |
-| W3-1 | GNN learning | ~1-2 weeks | W1 complete + usage data; training loop design first |
-| W3-2 | Synthesis | ~1 week | W3-1 + W2-4 both deployed |
+| W2-4 | GGUF module | ~1-2 weeks | W1-2 + W1-3; proof-of-concept first |
+| W3-1 | GNN relevance function | ~1-2 weeks | ASS-029 + Wave 1A + usage data |
+| W3-2 | Knowledge synthesis | ~1 week | W3-1 + W2-4 + entry density |
 
-**Critical path to proactive intelligence**: W1-2 (rayon) → W1-3 (eval harness) →
-W1-4 (NLI, validated) + W2-4 (GGUF, validated) in parallel → W3-1 (GNN) → W3-2 (synthesis).
+**Total to adaptive, domain-agnostic, securely deployed platform**: ~10-12 weeks of focused work after Wave 0, including the intelligence pipeline maturation of Wave 1A.
 
-**Total to domain-agnostic, securely deployed, intelligent platform**: ~9-11 weeks of focused work.
-Wave 3 trails by however long it takes for daemon usage data to accumulate (weeks to months).
+**Wave 3 trails by** however long it takes for daemon usage data to accumulate under W0-0 (typically 2-4 weeks of active deployment). ASS-029 can begin during Wave 1A delivery.
 
 ---
 
@@ -1159,45 +654,43 @@ Every wave maintains these non-negotiables:
 
 - **Hash chain integrity**: `content_hash` / `previous_hash` on every entry — untouched by any wave
 - **Correction chain model**: `supersedes`/`superseded_by` — extended by W1-1 but not modified
-- **Immutable audit log**: every operation attributed and logged — W0-2 strengthens this
-- **ACID storage**: SQLite transactional guarantees — W0-1 migrates the driver but doesn't weaken the guarantees
+- **Immutable audit log**: every operation attributed and logged
+- **ACID storage**: SQLite transactional guarantees — W0-1 migrates the driver, not the guarantees
 - **Single binary**: all waves add capability to the same binary, not new services
-- **Zero infrastructure**: container is optional, not required; daemon + UDS works without it
-- **In-memory hot path**: all analytics-derived search data (graph, weights, co-access)
-  cached in `Arc<RwLock<_>>` rebuilt by tick — never read from the database directly at query time
+- **Zero infrastructure**: container is optional; daemon + UDS works without it
+- **In-memory hot path**: all analytics-derived search data (graph, weights, co-access, GNN scores) cached in `Arc<RwLock<_>>` rebuilt by tick — never read from the database directly at query time
+- **Graceful degradation**: every ML capability (NLI, GNN, GGUF) has a defined fallback to the previous behavior when absent, loading, or failed
 
-The integrity chain is the product's defensible moat. The roadmap is designed
-around it, not in spite of it.
+The integrity chain is the product's defensible moat. The roadmap is designed around it, not in spite of it.
 
 ---
 
 ## What This Unlocks
 
-After W0-0 (daemon):
+**After Wave 0 (COMPLETE)**:
 - Background tick, write queue, ML inference, and GNN training run continuously
-- "Overnight intelligence" (W3-2/W2-4) becomes possible — not container-only
+- Sessions no longer lose accumulated state at process exit
 
-After Wave 0 + W1 + W2:
-- Any domain can deploy with a config file (SRE, environmental, research, legal)
-- Raw signals from any source (Claude Code hooks, NDP events, custom) feed the learning layer
-- Contradiction detection is semantically grounded, not heuristic
-- Typed relationships are first-class, persistent, attributed
-- Container deployment with clean backup/recovery
-- HTTP endpoint for external integrations (NDP → Unimatrix)
-- Multi-project routing — your collection of projects shares a common knowledge tier
+**After Wave 1 + 1A**:
+- The intelligence pipeline knows where each session is in its workflow
+- UDS injection is phase-conditioned — agents receive relevant knowledge without searching
+- `context_briefing` is a targeted phase-transition handoff, not a generic summary
+- `context_search` re-ranking is session-conditioned — identical queries return different rankings based on session context
+- The GNN training loop has complete signal coverage: explicit votes, behavioral outcomes, and missed retrievals
+- Any domain can connect its event stream to the learning layer without code changes
+
+**After Wave 2**:
+- Any domain deploys with a config file (SRE, environmental, research, legal)
+- External systems integrate via HTTP without being Claude Code plugins
+- Multi-project routing — project knowledge + organization-tier conventions served together
 - OAuth-gated access for team deployments
+- Container deployment with clean backup/recovery
 
-After Wave 3:
-- Confidence weights adapt to each domain's actual usage patterns automatically
-- The freshness hardcoding problem dissolves — learned per deployment
-- Knowledge clusters self-compress as they mature
-- A new domain gets config-defined starting weights from day one and GNN-learned
-  weights within weeks of active daemon use
-- With W2-4 (GGUF module): retrospective and status recommendations become genuinely
-  intelligent; synthesis produces coherent distillations; contradiction explanation
-  surfaces the *why*; the system reasons about its own knowledge without an external LLM
-- Reference: a Raspberry Pi 5 running neural-data-platform, fully air-gapped,
-  becomes a self-contained intelligent sensor platform
+**After Wave 3**:
+- Confidence weights, candidate ranking, and proactive delivery all adapt automatically per deployment
+- A new domain gets config-defined starting weights from day one and GNN-learned weights within weeks
+- The manual ranking formulas from Wave 1A are the cold start — the GNN has long since replaced them
+- Reference: a Raspberry Pi 5 running neural-data-platform, fully air-gapped, becomes a self-contained intelligent sensor platform with local reasoning (W2-4 + W3-1)
 
 ---
 
@@ -1207,166 +700,105 @@ After Wave 3:
 
 **Wave 0 — daemon-local (hardened)**
 
-Threat actors are local processes on the same machine, now connecting to a persistent
-UDS socket rather than spawning a new process per session. The daemon changes the
-attack surface slightly: the UDS socket is a persistent connection endpoint.
-
-Primary risks:
-- A process claiming any `agent_id` it wants (spoofing) — W0-2 closes this partially
-- UDS socket accessible to any local user — file permissions (0600) gate access
-- Config files writable by any local user (config injection) — W0-3 must enforce file permissions
-- Auto-enroll granting write access to any unknown process — W0-2 closes this with `PERMISSIVE_AUTO_ENROLL=false`
-
-Blast radius: one machine, one knowledge base. Recovery = restore from backup.
+Primary risks: local process spoofing via agent_id; UDS socket access by local users; config file injection; auto-enroll granting write to unknown processes. Blast radius: one machine, one knowledge base. Recovery = restore from backup.
 
 **Wave 1 — daemon-local with ML inference**
 
-New threat actors: adversarial knowledge inputs designed to manipulate NLI scoring
-or GNN training. The knowledge base itself becomes an attack surface.
+New threat actors: adversarial knowledge inputs designed to manipulate NLI scoring or GNN training. The knowledge base itself becomes an attack surface.
 
 Risks:
-- Vote manipulation to corrupt GNN labels (W3-1 risk, enabled by W1 infrastructure)
+- Vote manipulation to corrupt GNN training labels
 - Adversarial entry pairs crafted to maximize false `Supports` edges
 - Model file replacement between ONNX integrity checks
 - NLI → auto-quarantine feedback loop without circuit breaker
 
-Blast radius: corrupted confidence weights affect every query result. Recovery =
-retrain GNN from clean observation snapshot + restore knowledge.db from backup.
+Blast radius: corrupted confidence weights affect every query result. Recovery = retrain GNN from clean observation snapshot + restore knowledge.db from backup.
+
+**Wave 1A — session-conditioned intelligence**
+
+New threat actors: adversarial session context injection. With session context driving ranking, manipulating `current_phase` or `category_counts` could bias retrieval.
+
+Risks:
+- Agent injecting false `context_cycle(phase: ...)` events to bias phase-conditioned ranking
+- Category histogram manipulation via bulk `context_store` calls with crafted categories
+- MissedRetrieval signal poisoning: flooding the analytics drain with synthetic missed events to skew training labels
+
+Mitigations: phase events are SM-sourced (SM has `Privileged` trust by convention); category allowlist constrains histogram; MissedRetrieval events require a real `context_store` call (write capability gate) and HNSW proximity check (cannot be fabricated without a real embedding).
 
 **Wave 2 — HTTP-exposed**
 
-The server becomes network-accessible. Standard network threat actors apply:
-- Token theft and replay (requires TLS)
-- Credential stuffing against the token validation endpoint
-- Request amplification / slow-read DoS
-- SSRF if any tool can be made to fetch external resources (Unimatrix currently cannot — maintain this)
+Standard network threat actors apply. TLS, constant-time token comparison, admin port internal-only, request size and connection limits. Blast radius: network-wide exposure of all knowledge content.
 
-Blast radius: network-wide exposure of all knowledge content and audit history.
-Recovery = token revocation + audit review.
+**Wave 3 — adaptive intelligence with learned weights**
 
-**Wave 3 — multi-project (personal collection, then team)**
+GNN training data integrity is the primary concern. A corrupted training set propagates into all ranking decisions silently.
 
-Multiple projects share one owner-tier knowledge base via token claims and store routing.
-Threat actors include misconfigured project routing:
-- Project claim manipulation to access another project's knowledge base (path traversal)
-- Cross-project observation data leakage via shared analytics infrastructure
-- Owner tier pollution from a compromised project's promoted entries
-
-Blast radius: cross-project data exposure. Recovery = per-project key rotation + audit review.
+Mitigations: per-agent vote-rate limiting (max 10 votes/agent/hour); implicit training labels attributed to sessions not agents; learned weight vector checksummed and input-hashed per training run.
 
 ---
 
 ### Non-Negotiables Across All Waves
 
 **1. Hash chain integrity is immutable.**
-`content_hash` and `previous_hash` on every entry must never be skipped, backdated,
-or made optional. This includes synthesized entries (W3-2), auto-extracted entries,
-and any entry produced by background maintenance. Every write path is a hash chain write.
+`content_hash` and `previous_hash` on every entry — never skipped, backdated, or made optional. Includes synthesized entries (W3-2), auto-extracted entries, and any entry produced by background maintenance.
 
 **2. Audit log is append-only and complete.**
-Every operation that changes the state of `knowledge.db` — store, correct, deprecate,
-quarantine, enroll, synthesize — must produce an AUDIT_LOG entry with `agent_id`,
-`session_id`, `operation`, `target_ids`, and `outcome`. No write path bypasses the audit.
-The analytics write queue (W0-1) must not become an audit bypass for analytics-side writes.
+Every operation that changes `knowledge.db` state produces an AUDIT_LOG entry with `agent_id`, `session_id`, `operation`, `target_ids`, and `outcome`. The analytics write queue must not become an audit bypass.
 
 **3. Capability checks are enforced at the service layer, not the transport layer.**
-Whether the caller arrives via UDS, stdio, HTTP bearer token, or OAuth JWT,
-the capability check (`Admin`, `Write`, `Read`, `Search`) happens in the service layer
-after identity resolution. Transport-layer authentication is a precondition, not a substitute.
+Whether the caller arrives via UDS, stdio, HTTP bearer token, or OAuth JWT, capability checks happen in the service layer after identity resolution. Transport authentication is a precondition, not a substitute.
 
 **4. Content scanning is not bypassed for machine-generated content.**
-`AuditSource::Internal` bypasses S1 content scanning (by design, for performance).
-This bypass must only apply to content generated by the Unimatrix process itself
-(confidence updates, usage increments, observation recording). It must never apply to:
-- Content synthesized from stored entries (W3-2) — treat as external
-- NLI model outputs stored as edge labels — treat as external
-- Config-derived content (server instructions) stored as knowledge — treat as external
+`AuditSource::Internal` bypass applies only to content generated by the Unimatrix process itself (confidence updates, usage increments, observation recording). Never applies to synthesized entries (W3-2), NLI edge labels, or config-derived content stored as knowledge.
 
-**5. No secret material in `knowledge.db` or `analytics.db`.**
-OAuth client secrets, API keys, TLS private keys, and any other credentials must
-never be stored in either database. If `context_enroll` is extended to support OAuth
-client registration, store only `client_id` — never `client_secret`.
+**5. No secret material in any database.**
+OAuth client secrets, API keys, TLS private keys never stored in `knowledge.db` or `analytics.db`.
 
 **6. The UDS session exemption from rate limiting remains local-only.**
-`CallerId::UdsSession` is exempt from rate limiting because it represents local traffic.
-This exemption must never extend to HTTP transport callers. Rate limiting for HTTP
-callers must be enforced without exception.
+`CallerId::UdsSession` rate limit exemption never extends to HTTP transport callers.
 
 **7. Analytics-derived data is never read directly on the search hot path.**
-`analytics.db` is eventually consistent. All analytics-derived data used during search
-(graph edges, confidence weights, co-access affinities) must be cached in memory and
-rebuilt by tick. Direct `analytics.db` reads at query time are an availability risk
-and must be treated as an architectural violation.
+All analytics-derived search data (graph edges, GNN scores, confidence weights, co-access affinities) cached in memory, rebuilt by tick. Direct `analytics.db` reads at query time are an architectural violation.
 
 ---
 
 ### Architectural Decisions Required Before Wave 2
 
-**Decision 1: Token format and validation strategy for HTTP bearer tokens**
+**Decision 1: Token format for HTTP bearer tokens**
+Option A (recommended for W2-2): Opaque tokens in AGENT_REGISTRY (lookup-based). Option B (W2-3 OAuth): Signed JWTs validated locally. Validation must be constant-time at comparison.
 
-Option A: Opaque tokens stored in AGENT_REGISTRY (lookup-based validation).
-Option B: Signed JWTs validated locally without DB lookup.
+**Decision 2: TLS termination**
+Option A: Unimatrix terminates TLS directly. Option B: TLS terminated by reverse proxy, Unimatrix binds `127.0.0.1` only. Support both — enforce `127.0.0.1` binding in Option B startup checks.
 
-Recommendation: Option A for W2-2. Reserve JWT for W2-3 (OAuth).
-The critical requirement: validation must be constant-time at the comparison step.
+**Decision 3: Multi-project isolation**
+Per-project `knowledge.db` + `analytics.db` for all tiers. Shared `analytics.db` across projects is a cross-project observation leakage risk. Per-project for both is the only safe model.
 
-**Decision 2: TLS termination responsibility**
+---
 
-Option A: Unimatrix terminates TLS directly.
-Option B: TLS terminated by a reverse proxy; Unimatrix sees plaintext HTTP.
+### Design Decisions Required Before Wave 1A Delivery
 
-Recommendation: Support both. If Option B, server must bind to `127.0.0.1` only —
-not `0.0.0.0`. Enforce this in the `--transport http` startup checks.
+**Decision 1: Affinity boost fusion rule (WA-2)**
+Explicit phase signal weight vs. implicit histogram weight. Proposed: `phase_boost * 0.015 + histogram_boost * 0.005` (explicit 3× implicit). These values become W3-1's cold-start initialization — document the rationale so it can be updated as the GNN learns.
 
-**Decision 3: Multi-project isolation model**
-
-Per-project `knowledge.db` + `analytics.db` for all tiers. Shared `analytics.db`
-across projects is a cross-project observation leakage risk — session patterns, query
-logs, and topic attributions from one project would appear in another project's
-retrospectives. Per-project for both is the only safe model.
-
-**Decision 4: W0-1 write pool topology**
-
-Two concrete choices before implementation begins:
-
-- **Pool sizing**: `read_pool` max_connections (6-8 recommended; tune to deployment
-  hardware) and `write_pool` max_connections (cap at 2; SQLite WAL arbitrates
-  concurrent writers, so >2 adds latency without throughput benefit).
-- **Analytics queue capacity and shed policy**: bounded channel capacity (1000
-  recommended) and what happens at capacity (drop + log is correct; analytics data
-  is eventually consistent and self-heals — integrity writes bypass the queue entirely
-  so the shed policy never touches the trust-critical path).
+**Decision 2: Proactive candidate cache strategy (WA-4a)**
+Full-graph scoring on every hook event vs. phase-transition cache rebuilt when `current_phase` changes. Recommendation: phase-transition cache. Rebuild at phase transition, draw from cache at hook time. Cache invalidated on phase change and explicitly on `context_correct` / `context_deprecate` for cached entries.
 
 ---
 
 ## Future Opportunities
 
-These are not roadmap items — they require no new waves and do not block anything.
-Each is additive and could be picked up after the roadmap waves complete.
+These are not roadmap items — they are additive and could be picked up after the roadmap waves complete.
 
 ### Proactive Knowledge Discovery
 
-**What**: `context_cycle_review` and `context_status` already analyze session evidence
-and have store access at call time. Extending them to produce structured `KnowledgeCandidate`
-records closes a gap in the feedback loop: today the system is entirely reactive (agents
-must decide to store). This adds a detection layer where the analysis tools surface
-topics that *should* have entries but don't.
+`context_cycle_review` and `context_status` already analyze session evidence and have store access at call time. Extending them to surface `KnowledgeCandidate` records — topics that *should* have entries but don't — closes a detection gap. Signal sources: recurring queries with low top-similarity across 3+ sessions; re-derivation sequences (searched → low results → succeeded → no store issued); co-access clusters with no synthesizing entry. With W2-4 (GGUF): candidates include a draft entry from the local LLM. Candidates are never auto-stored — they require explicit `context_store` from a human or privileged agent.
 
-**Signal sources** (no new infrastructure required):
-- `query_log` in `analytics.db`: recurring queries with low top-similarity (< 0.4 across
-  3+ sessions) — the gap is already proven by the search evidence, no re-search needed
-- Re-derivation sequences in `context_cycle_review`: agent searched → low results →
-  succeeded anyway → no `context_store` issued — pattern indicates missing knowledge
-- Co-access clusters in `analytics.db` with no synthesizing entry
+This capability is partially addressed by WA-3 (MissedRetrieval) at the session level. The broader cross-session detection layer remains a future opportunity.
 
-**Architecture**:
-- `candidate_topics` table in `analytics.db` accumulates signals across analysis runs
-- `context_cycle_review` and `context_status` produce a `candidates` section alongside
-  existing output when signal strength exceeds threshold (e.g., 3+ sessions)
-- Candidates are never auto-stored — they require an explicit `context_store` call from
-  a human or privileged agent; the integrity chain requires attributed intent
-- With W2-4 (GGUF): the review tool passes candidate + session evidence to the local LLM
-  and returns a draft entry; without GGUF, it surfaces the topic and evidence only
+### Domain-Specific GNN Pretraining
 
-**Effort**: Detection layer ~2 days (extends W1-5 retrospective pipeline + analytics schema).
-Drafting layer ~2-3 days added to W2-4. Fully additive — no wave restructuring required.
+Once W3-1 ships and deployment data accumulates, pretrained domain-specific weight vectors (SRE, legal, environmental monitoring) could be published as config-file starting points, dramatically reducing the cold-start period for new deployments in known domains.
+
+### W3-2: Knowledge Synthesis
+
+See Wave 3 section. Deferred pending W3-1 deployment and knowledge base density assessment.
