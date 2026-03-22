@@ -2339,4 +2339,252 @@ mod tests {
         );
         assert!(is_faf, "cycle events must be fire-and-forget");
     }
+
+    // -- crt-025: Hook path phase-end tests (AC-16, FR-03.7, R-09) --
+
+    /// AC-16 happy path: phase-end with valid phase and next_phase emits cycle_phase_end.
+    #[test]
+    fn test_hook_phase_end_valid_phase_emits_cycle_phase_end() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "phase-end",
+                "topic": "crt-025",
+                "phase": "scope",
+                "next_phase": "design"
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(
+                    event.event_type, CYCLE_PHASE_END_EVENT,
+                    "phase-end must emit cycle_phase_end event type"
+                );
+                assert_eq!(
+                    event.payload["phase"], "scope",
+                    "phase field must be present in payload"
+                );
+                assert_eq!(
+                    event.payload["next_phase"], "design",
+                    "next_phase field must be present in payload"
+                );
+                assert_eq!(event.payload["feature_cycle"], "crt-025");
+            }
+            _ => panic!("expected RecordEvent, got {req:?}"),
+        }
+    }
+
+    /// AC-16 error path, R-09: invalid phase with space must fall through to generic path.
+    /// The hook must never return an error to the transport.
+    #[test]
+    fn test_hook_phase_end_invalid_phase_space_falls_through() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "phase-end",
+                "topic": "crt-025",
+                "phase": "scope review"
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                // Falls through to generic -- event_type is "PreToolUse", not "cycle_phase_end"
+                assert_ne!(
+                    event.event_type, CYCLE_PHASE_END_EVENT,
+                    "invalid phase must NOT emit cycle_phase_end"
+                );
+                assert_eq!(
+                    event.event_type, "PreToolUse",
+                    "fallthrough must produce generic PreToolUse event"
+                );
+            }
+            _ => panic!("expected generic RecordEvent on validation failure"),
+        }
+    }
+
+    /// R-09: empty phase string is invalid per validate_phase_field — must fall through.
+    #[test]
+    fn test_hook_phase_end_empty_phase_falls_through() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "phase-end",
+                "topic": "crt-025",
+                "phase": ""
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_ne!(
+                    event.event_type, CYCLE_PHASE_END_EVENT,
+                    "empty phase must NOT emit cycle_phase_end"
+                );
+                assert_eq!(
+                    event.event_type, "PreToolUse",
+                    "empty phase must fall through to generic"
+                );
+            }
+            _ => panic!("expected generic RecordEvent on empty phase"),
+        }
+    }
+
+    /// R-09 edge: phase is optional per FR-02.5. Missing phase field must succeed.
+    #[test]
+    fn test_hook_phase_end_no_phase_field_accepted() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "phase-end",
+                "topic": "crt-025"
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(
+                    event.event_type, CYCLE_PHASE_END_EVENT,
+                    "phase-end with no phase field must succeed (phase is optional)"
+                );
+                assert_eq!(event.payload["feature_cycle"], "crt-025");
+                // phase absent from payload when None
+                assert!(
+                    event.payload.get("phase").is_none(),
+                    "absent phase must not appear in payload"
+                );
+            }
+            _ => panic!("expected cycle_phase_end RecordEvent, got {req:?}"),
+        }
+    }
+
+    /// R-06: Mixed-case phase must be normalized to lowercase in the emitted payload.
+    #[test]
+    fn test_hook_phase_end_phase_normalized() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "phase-end",
+                "topic": "crt-025",
+                "phase": "Scope"
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_PHASE_END_EVENT);
+                assert_eq!(
+                    event.payload["phase"], "scope",
+                    "phase must be normalized to lowercase"
+                );
+            }
+            _ => panic!("expected cycle_phase_end RecordEvent, got {req:?}"),
+        }
+    }
+
+    /// Regression: start type maps to cycle_start, next_phase is carried through.
+    #[test]
+    fn test_hook_start_type_extracted() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "start",
+                "topic": "crt-025",
+                "next_phase": "scope"
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_START_EVENT);
+                assert_eq!(event.payload["feature_cycle"], "crt-025");
+                assert_eq!(
+                    event.payload["next_phase"], "scope",
+                    "next_phase must be carried through on cycle_start"
+                );
+            }
+            _ => panic!("expected cycle_start RecordEvent, got {req:?}"),
+        }
+    }
+
+    /// Regression: stop type maps to cycle_stop.
+    #[test]
+    fn test_hook_stop_type_extracted() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "stop",
+                "topic": "crt-025"
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_STOP_EVENT);
+                assert_eq!(event.payload["feature_cycle"], "crt-025");
+            }
+            _ => panic!("expected cycle_stop RecordEvent, got {req:?}"),
+        }
+    }
+
+    /// Regression (FR-03.5): old callers passing keywords must not see keywords in the payload,
+    /// and must not cause an error.
+    #[test]
+    fn test_hook_keywords_not_extracted() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "start",
+                "topic": "crt-025",
+                "keywords": ["k1", "k2"]
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(
+                    event.event_type, CYCLE_START_EVENT,
+                    "keywords in input must not prevent cycle_start emission"
+                );
+                assert!(
+                    event.payload.get("keywords").is_none(),
+                    "keywords must NOT appear in the emitted payload (crt-025 removal)"
+                );
+            }
+            _ => panic!("expected cycle_start RecordEvent, got {req:?}"),
+        }
+    }
+
+    /// Phase-end with outcome field populates payload correctly.
+    #[test]
+    fn test_hook_phase_end_with_outcome() {
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "phase-end",
+                "topic": "crt-025",
+                "phase": "design",
+                "outcome": "no variances",
+                "next_phase": "implementation"
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_PHASE_END_EVENT);
+                assert_eq!(event.payload["phase"], "design");
+                assert_eq!(event.payload["outcome"], "no variances");
+                assert_eq!(event.payload["next_phase"], "implementation");
+                assert_eq!(event.payload["feature_cycle"], "crt-025");
+            }
+            _ => panic!("expected cycle_phase_end RecordEvent, got {req:?}"),
+        }
+    }
+
+    /// CYCLE_PHASE_END_EVENT constant value matches the expected wire string.
+    #[test]
+    fn test_cycle_phase_end_constant_value() {
+        assert_eq!(CYCLE_PHASE_END_EVENT, "cycle_phase_end");
+    }
 }
