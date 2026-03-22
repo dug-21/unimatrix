@@ -159,7 +159,7 @@ pub phase_narrative: Option<PhaseNarrative>,
 ```
 
 **Phase narrative construction** (`unimatrix-observe/src/phase_narrative.rs`, new module):
-- `build_phase_narrative(events: &[CycleEventRecord], current_dist: &PhaseCategoryDist, cross_dist: &PhaseCategoryDist) -> PhaseNarrative`
+- `build_phase_narrative(events: &[CycleEventRecord], current_dist: &PhaseCategoryDist, cross_dist: &HashMap<String, PhaseCategoryDist>) -> PhaseNarrative` — `cross_dist` keyed by feature_id so the function can compute `PhaseCategoryComparison.sample_features` (distinct contributing feature count)
 - Phase sequence: walk `cycle_events` ordered by `seq`, extract `phase` from `cycle_phase_end` and `cycle_start` events. A phase is "entered" when a `cycle_start` carries `next_phase` or when a `cycle_phase_end` specifies `phase`.
 - Rework detection: phase name appearing more than once in the ordered sequence.
 - Cross-cycle comparison: for each (phase, category) pair in the current feature, compute mean count across prior features.

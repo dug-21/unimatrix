@@ -25,20 +25,20 @@ Add explicit workflow phase awareness to the Unimatrix engine by extending `cont
 
 ## Component Map
 
-| Component | Pseudocode | Test Plan |
-|-----------|-----------|-----------|
-| Validation Layer | pseudocode/validation-layer.md | test-plan/validation-layer.md |
-| MCP Tool Handler | pseudocode/mcp-tool-handler.md | test-plan/mcp-tool-handler.md |
-| Hook Path | pseudocode/hook-path.md | test-plan/hook-path.md |
-| SessionState | pseudocode/session-state.md | test-plan/session-state.md |
-| UDS Listener | pseudocode/uds-listener.md | test-plan/uds-listener.md |
-| Store Layer | pseudocode/store-layer.md | test-plan/store-layer.md |
-| Schema Migration | pseudocode/schema-migration.md | test-plan/schema-migration.md |
-| Context Store Phase Capture | pseudocode/context-store-phase-capture.md | test-plan/context-store-phase-capture.md |
-| Phase Narrative (cycle_review) | pseudocode/phase-narrative.md | test-plan/phase-narrative.md |
-| CategoryAllowlist | pseudocode/category-allowlist.md | test-plan/category-allowlist.md |
+| Wave | Component | Pseudocode | Test Plan |
+|------|-----------|-----------|-----------|
+| 1 | CategoryAllowlist | pseudocode/category-allowlist.md | test-plan/category-allowlist.md |
+| 1 | SessionState | pseudocode/session-state.md | test-plan/session-state.md |
+| 1 | Schema Migration | pseudocode/schema-migration.md | test-plan/schema-migration.md |
+| 1 | Phase Narrative (cycle_review) | pseudocode/phase-narrative.md | test-plan/phase-narrative.md |
+| 2 | Validation Layer | pseudocode/validation-layer.md | test-plan/validation-layer.md |
+| 2 | Store Layer | pseudocode/store-layer.md | test-plan/store-layer.md |
+| 3 | Hook Path | pseudocode/hook-path.md | test-plan/hook-path.md |
+| 3 | UDS Listener | pseudocode/uds-listener.md | test-plan/uds-listener.md |
+| 3 | Context Store Phase Capture | pseudocode/context-store-phase-capture.md | test-plan/context-store-phase-capture.md |
+| 4 | MCP Tool Handler | pseudocode/mcp-tool-handler.md | test-plan/mcp-tool-handler.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
@@ -234,10 +234,12 @@ impl SqlxStore {
 }
 
 // unimatrix-observe/phase_narrative.rs
+// cross_dist is keyed by feature_id so build_phase_narrative can compute
+// sample_features (distinct feature count) for PhaseCategoryComparison.
 pub fn build_phase_narrative(
     events:       &[CycleEventRecord],
     current_dist: &PhaseCategoryDist,
-    cross_dist:   &PhaseCategoryDist,
+    cross_dist:   &HashMap<String, PhaseCategoryDist>,  // feature_id → dist
 ) -> PhaseNarrative;
 ```
 
