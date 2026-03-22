@@ -252,15 +252,20 @@ pub struct RetrospectiveParams {
 /// Parameters for the context_cycle tool.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CycleParams {
-    /// Cycle action: "start" or "stop".
+    /// Cycle action: "start", "phase-end", or "stop".
     pub r#type: String,
     /// Topic identifying a bounded work unit tracked across its lifecycle.
     /// Can be a software feature, incident, campaign, clinical trial, or any work unit a domain
     /// tracks from start to completion. The format is domain-defined; Unimatrix treats it as an
     /// opaque string identifier (e.g., "col-022", "inc-045", "trial-007").
     pub topic: String,
-    /// Semantic keywords describing the feature work (max 5, each max 64 chars).
-    pub keywords: Option<Vec<String>>,
+    /// The phase that is ending (for type="phase-end"). Normalized to lowercase, max 64 chars,
+    /// no spaces. Example: "design", "implementation".
+    pub phase: Option<String>,
+    /// Free-form outcome description for the ending phase (max 512 chars).
+    pub outcome: Option<String>,
+    /// The next phase beginning after this event (for type="start" or "phase-end").
+    pub next_phase: Option<String>,
     /// Agent making the request.
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
@@ -1525,9 +1530,14 @@ impl UnimatrixServer {
         self.require_cap(&identity.agent_id, Capability::Write)
             .await?;
 
-        // 3. Validation via shared validate_cycle_params (ADR-004)
-        let keywords_ref = params.keywords.as_deref();
-        let validated = match validate_cycle_params(&params.r#type, &params.topic, keywords_ref) {
+        // 3. Validation via shared validate_cycle_params (ADR-004, C-02)
+        let validated = match validate_cycle_params(
+            &params.r#type,
+            &params.topic,
+            params.phase.as_deref(),
+            params.outcome.as_deref(),
+            params.next_phase.as_deref(),
+        ) {
             Err(msg) => {
                 return Ok(CallToolResult::error(vec![rmcp::model::Content::text(
                     format!("Validation error: {msg}"),
@@ -1539,6 +1549,7 @@ impl UnimatrixServer {
         // 4. Build response (no business logic -- MCP server is session-unaware)
         let action = match validated.cycle_type {
             CycleType::Start => "cycle_started",
+            CycleType::PhaseEnd => "phase_ended",
             CycleType::Stop => "cycle_stopped",
         };
 
@@ -2452,7 +2463,7 @@ mod tests {
         assert!(!content.is_empty());
     }
 
-    // -- col-022: CycleParams deserialization --
+    // -- col-022 / crt-025: CycleParams deserialization --
 
     #[test]
     fn test_cycle_params_deserialize_start() {
@@ -2460,17 +2471,26 @@ mod tests {
         let params: CycleParams = serde_json::from_str(json).unwrap();
         assert_eq!(params.r#type, "start");
         assert_eq!(params.topic, "col-022");
-        assert!(params.keywords.is_none());
+        assert!(params.phase.is_none());
+        assert!(params.outcome.is_none());
+        assert!(params.next_phase.is_none());
     }
 
     #[test]
-    fn test_cycle_params_deserialize_with_keywords() {
-        let json = r#"{"type": "start", "topic": "col-022", "keywords": ["attr", "lifecycle"]}"#;
+    fn test_cycle_params_deserialize_phase_end() {
+        let json = r#"{"type": "phase-end", "topic": "crt-025", "phase": "design", "next_phase": "implementation"}"#;
         let params: CycleParams = serde_json::from_str(json).unwrap();
-        assert_eq!(
-            params.keywords,
-            Some(vec!["attr".to_string(), "lifecycle".to_string()])
-        );
+        assert_eq!(params.r#type, "phase-end");
+        assert_eq!(params.phase.as_deref(), Some("design"));
+        assert_eq!(params.next_phase.as_deref(), Some("implementation"));
+        assert!(params.outcome.is_none());
+    }
+
+    #[test]
+    fn test_cycle_params_deserialize_phase_end_with_outcome() {
+        let json = r#"{"type": "phase-end", "topic": "crt-025", "phase": "design", "outcome": "all tasks complete", "next_phase": "implementation"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.outcome.as_deref(), Some("all tasks complete"));
     }
 
     #[test]
@@ -2501,20 +2521,13 @@ mod tests {
     }
 
     #[test]
-    fn test_cycle_params_keywords_empty_array() {
-        let json = r#"{"type": "start", "topic": "col-022", "keywords": []}"#;
+    fn test_cycle_params_keywords_silently_discarded() {
+        // Old callers passing `keywords` in JSON should have it silently discarded (C-04 / no deny_unknown_fields).
+        let json = r#"{"type": "start", "topic": "col-022", "keywords": ["attr", "lifecycle"]}"#;
         let params: CycleParams = serde_json::from_str(json).unwrap();
-        assert_eq!(params.keywords, Some(vec![]));
-    }
-
-    #[test]
-    fn test_cycle_params_keywords_null_vs_absent() {
-        let json_null = r#"{"type": "start", "topic": "col-022", "keywords": null}"#;
-        let json_absent = r#"{"type": "start", "topic": "col-022"}"#;
-        let params_null: CycleParams = serde_json::from_str(json_null).unwrap();
-        let params_absent: CycleParams = serde_json::from_str(json_absent).unwrap();
-        assert!(params_null.keywords.is_none());
-        assert!(params_absent.keywords.is_none());
+        assert_eq!(params.r#type, "start");
+        assert_eq!(params.topic, "col-022");
+        // No keywords field on struct — unknown field is silently discarded.
     }
 
     // -- col-022: Response format (R-08) --
