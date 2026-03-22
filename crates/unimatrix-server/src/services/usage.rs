@@ -221,7 +221,9 @@ impl UsageService {
             }
 
             if let Some((feature_str, ids)) = feature_recording {
-                if let Err(e) = store.record_feature_entries(&feature_str, &ids).await {
+                // phase: None — Wave 3 (context-store-phase-capture) will thread the
+                // actual phase value here once SessionState.current_phase is propagated.
+                if let Err(e) = store.record_feature_entries(&feature_str, &ids, None).await {
                     tracing::warn!("failed to record feature entries: {e}");
                 }
             }
@@ -276,7 +278,9 @@ impl UsageService {
         if let Some((feature_str, ids)) = feature_recording {
             let s = Arc::clone(&store);
             tokio::spawn(async move {
-                if let Err(e) = s.record_feature_entries(&feature_str, &ids).await {
+                // phase: None — Wave 3 (context-store-phase-capture) will thread the
+                // actual phase value here once SessionState.current_phase is propagated.
+                if let Err(e) = s.record_feature_entries(&feature_str, &ids, None).await {
                     tracing::warn!("failed to record feature entries: {e}");
                 }
             });

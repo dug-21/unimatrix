@@ -126,7 +126,17 @@ pub enum AnalyticsWrite {
     },
 
     /// Table: `feature_entries` — idempotent insert (`INSERT OR IGNORE`).
-    FeatureEntry { feature_id: String, entry_id: u64 },
+    ///
+    /// `phase` is snapshotted at enqueue time (ADR-001 crt-025). The drain
+    /// handler writes whatever value is in this struct field — it never
+    /// re-reads `SessionState` at drain time (C-12).
+    FeatureEntry {
+        feature_id: String,
+        entry_id: u64,
+        /// Phase active when the entry was stored. `None` when no phase signal
+        /// has been emitted yet for the session.
+        phase: Option<String>,
+    },
 
     /// Table: `topic_deliveries` — upsert by `topic`.
     TopicDelivery {
@@ -663,12 +673,14 @@ async fn execute_analytics_write(
         AnalyticsWrite::FeatureEntry {
             feature_id,
             entry_id,
+            phase, // C-12: must destructure phase explicitly (no `..` shortcut)
         } => {
             sqlx::query(
-                "INSERT OR IGNORE INTO feature_entries (feature_id, entry_id) VALUES (?1, ?2)",
+                "INSERT OR IGNORE INTO feature_entries (feature_id, entry_id, phase) VALUES (?1, ?2, ?3)",
             )
             .bind(feature_id)
             .bind(entry_id as i64)
+            .bind(phase)  // Option<String> — sqlx encodes None as NULL
             .execute(&mut **txn)
             .await?;
         }
@@ -908,6 +920,7 @@ mod tests {
                 AnalyticsWrite::FeatureEntry {
                     feature_id: "f".into(),
                     entry_id: 1,
+                    phase: None,
                 },
             ),
             (
@@ -1301,5 +1314,170 @@ mod tests {
             meta.is_none(),
             "metadata must be NULL for all crt-021 writes"
         );
+    }
+
+    // ---------------------------------------------------------------------------
+    // crt-025 store-layer tests: FeatureEntry phase field (R-11, R-02, C-12)
+    // ---------------------------------------------------------------------------
+
+    /// Structural compile-time test: verify `FeatureEntry` can be constructed
+    /// with `phase: None` and `phase: Some(...)` (R-11, FR-06.2).
+    #[test]
+    fn test_analytics_write_feature_entry_has_phase_field() {
+        // phase: None — no phase signal emitted yet
+        let _ev_none = AnalyticsWrite::FeatureEntry {
+            feature_id: "f".into(),
+            entry_id: 1,
+            phase: None,
+        };
+        // phase: Some — phase was active at enqueue time
+        let _ev_some = AnalyticsWrite::FeatureEntry {
+            feature_id: "f".into(),
+            entry_id: 2,
+            phase: Some("scope".into()),
+        };
+        // If this test compiles, the `phase` field exists and is `Option<String>`.
+    }
+
+    /// Verify that the `FeatureEntry` variant name is still "FeatureEntry" after
+    /// adding the `phase` field (variant_name() uses `..` catch-all — correct for
+    /// the `variant_name` match; C-12 applies to the drain handler, not this arm).
+    #[test]
+    fn test_analytics_write_feature_entry_phase_some_matches_stored() {
+        let ev = AnalyticsWrite::FeatureEntry {
+            feature_id: "f".into(),
+            entry_id: 1,
+            phase: Some("implementation".into()),
+        };
+        // variant_name uses `..` which is correct for the name-only match (C-12
+        // applies to the execute_analytics_write drain arm, not variant_name).
+        assert_eq!(ev.variant_name(), "FeatureEntry");
+    }
+
+    /// Drain integration test: enqueue-time phase is preserved through drain.
+    ///
+    /// This is the R-02 critical test. The drain handler must read `phase` from the
+    /// enqueued struct — not from any live session state. Simulated by enqueueing
+    /// with `phase = Some("implementation")`, then checking the persisted row has
+    /// `phase = "implementation"` (not NULL, not any later value).
+    #[tokio::test]
+    async fn test_analytics_drain_uses_enqueue_time_phase() {
+        use crate::test_helpers::open_test_store;
+        use sqlx::Row as _;
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        // Insert a real entry so foreign-key constraints (if any) are satisfied.
+        let entry_id: u64 = sqlx::query_scalar("INSERT INTO entries (title, content, topic, category, source, status, confidence, created_at, updated_at, last_accessed_at, access_count, embedding_dim, created_by, modified_by, content_hash, previous_hash, version, feature_cycle, trust_source, helpful_count, unhelpful_count) VALUES ('t','c','top','decision','src',0,0.0,1,1,0,0,0,'','','','',1,'crt-025','',0,0) RETURNING id")
+            .fetch_one(&store.write_pool)
+            .await
+            .expect("insert entry");
+
+        // Enqueue with phase = Some("implementation") — simulating enqueue-time snapshot.
+        store.enqueue_analytics(AnalyticsWrite::FeatureEntry {
+            feature_id: "crt-025".into(),
+            entry_id,
+            phase: Some("implementation".into()),
+        });
+
+        // Conceptually: SessionState.current_phase has now advanced to "testing".
+        // The enqueued event still carries "implementation" — that's the guarantee.
+
+        // DRAIN_FLUSH_INTERVAL is 500ms; wait long enough for drain to commit.
+        tokio::time::sleep(tokio::time::Duration::from_millis(700)).await;
+
+        let row = sqlx::query(
+            "SELECT phase FROM feature_entries WHERE feature_id = 'crt-025' AND entry_id = ?1",
+        )
+        .bind(entry_id as i64)
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("feature_entries row must exist after drain");
+
+        let phase: Option<String> = row.try_get(0).unwrap();
+        assert_eq!(
+            phase.as_deref(),
+            Some("implementation"),
+            "drain must write the enqueue-time phase, not any later live-state value (R-02)"
+        );
+
+        store.close().await.expect("close");
+    }
+
+    /// Drain integration test: `phase: None` persists as SQL NULL.
+    #[tokio::test]
+    async fn test_analytics_drain_phase_none_persists_null() {
+        use crate::test_helpers::open_test_store;
+        use sqlx::Row as _;
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let entry_id: u64 = sqlx::query_scalar("INSERT INTO entries (title, content, topic, category, source, status, confidence, created_at, updated_at, last_accessed_at, access_count, embedding_dim, created_by, modified_by, content_hash, previous_hash, version, feature_cycle, trust_source, helpful_count, unhelpful_count) VALUES ('t2','c2','top2','decision','src',0,0.0,1,1,0,0,0,'','','','',1,'crt-025','',0,0) RETURNING id")
+            .fetch_one(&store.write_pool)
+            .await
+            .expect("insert entry");
+
+        store.enqueue_analytics(AnalyticsWrite::FeatureEntry {
+            feature_id: "crt-025".into(),
+            entry_id,
+            phase: None,
+        });
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(700)).await;
+
+        let row = sqlx::query(
+            "SELECT phase FROM feature_entries WHERE feature_id = 'crt-025' AND entry_id = ?1",
+        )
+        .bind(entry_id as i64)
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("feature_entries row must exist");
+
+        let phase: Option<String> = row.try_get(0).unwrap();
+        assert!(
+            phase.is_none(),
+            "phase: None must persist as SQL NULL (R-11, R-02)"
+        );
+
+        store.close().await.expect("close");
+    }
+
+    /// Drain integration test: `phase: Some("testing")` persists the value.
+    #[tokio::test]
+    async fn test_analytics_drain_phase_some_persists_value() {
+        use crate::test_helpers::open_test_store;
+        use sqlx::Row as _;
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let entry_id: u64 = sqlx::query_scalar("INSERT INTO entries (title, content, topic, category, source, status, confidence, created_at, updated_at, last_accessed_at, access_count, embedding_dim, created_by, modified_by, content_hash, previous_hash, version, feature_cycle, trust_source, helpful_count, unhelpful_count) VALUES ('t3','c3','top3','decision','src',0,0.0,1,1,0,0,0,'','','','',1,'crt-025','',0,0) RETURNING id")
+            .fetch_one(&store.write_pool)
+            .await
+            .expect("insert entry");
+
+        store.enqueue_analytics(AnalyticsWrite::FeatureEntry {
+            feature_id: "crt-025".into(),
+            entry_id,
+            phase: Some("testing".into()),
+        });
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(700)).await;
+
+        let row = sqlx::query(
+            "SELECT phase FROM feature_entries WHERE feature_id = 'crt-025' AND entry_id = ?1",
+        )
+        .bind(entry_id as i64)
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("feature_entries row must exist");
+
+        let phase: Option<String> = row.try_get(0).unwrap();
+        assert_eq!(
+            phase.as_deref(),
+            Some("testing"),
+            "phase: Some(\"testing\") must persist as 'testing' (R-11)"
+        );
+
+        store.close().await.expect("close");
     }
 }
