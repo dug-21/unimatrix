@@ -92,6 +92,8 @@ async fn run_single_profile(
         co_access_anchors: None,
         caller_agent_id: Some(record.context.agent_id.clone()),
         retrieval_mode,
+        session_id: None,
+        category_histogram: None,
     };
 
     let audit_ctx = AuditContext {
