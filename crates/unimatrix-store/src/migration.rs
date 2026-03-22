@@ -15,8 +15,8 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 13 to 14 by col-023 (domain_metrics_json).
-pub const CURRENT_SCHEMA_VERSION: u64 = 14;
+/// Current schema version. Incremented from 14 to 15 by crt-025 (cycle_events + feature_entries.phase).
+pub const CURRENT_SCHEMA_VERSION: u64 = 15;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -475,7 +475,62 @@ async fn run_main_migrations(
         }
     }
 
-    // Update schema_version counter to CURRENT_SCHEMA_VERSION (14).
+    // v14 → v15: CYCLE_EVENTS table + feature_entries.phase column (crt-025).
+    if current_version < 15 {
+        // Step 1: Create cycle_events table (idempotent — CREATE TABLE IF NOT EXISTS).
+        // DDL mirrors create_tables_if_needed in db.rs; both must be kept in sync.
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS cycle_events (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                cycle_id   TEXT    NOT NULL,
+                seq        INTEGER NOT NULL,
+                event_type TEXT    NOT NULL,
+                phase      TEXT,
+                outcome    TEXT,
+                next_phase TEXT,
+                timestamp  INTEGER NOT NULL
+            )",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_cycle_events_cycle_id ON cycle_events (cycle_id)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // Step 2: Add phase column to feature_entries (idempotent via pragma_table_info pre-check).
+        //
+        // SQLite does not support ALTER TABLE ADD COLUMN IF NOT EXISTS.
+        // Pattern from v7→v8 (pre_quarantine_status) and v13→v14 (domain_metrics_json).
+        let has_phase_column: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM pragma_table_info('feature_entries') WHERE name = 'phase'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|count| count > 0)
+        .unwrap_or(false);
+
+        if !has_phase_column {
+            sqlx::query("ALTER TABLE feature_entries ADD COLUMN phase TEXT")
+                .execute(&mut **txn)
+                .await
+                .map_err(|e| StoreError::Migration {
+                    source: Box::new(e),
+                })?;
+        }
+
+        // No backfill: pre-existing feature_entries rows get phase = NULL (C-05, FR-06.4).
+    }
+
+    // Update schema_version counter to CURRENT_SCHEMA_VERSION (15).
     sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', ?1)")
         .bind(CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut **txn)

@@ -330,7 +330,7 @@ async fn test_migration_v11_to_v12_adds_keywords_column() {
     );
 
     // Assert: schema_version bumped to 14 (migration continues through v13→v14)
-    assert_eq!(read_schema_version(&store).await, 14);
+    assert!(read_schema_version(&store).await >= 14); // crt-025: bumped to 15; keep >= 14 (pattern #2933)
 
     store.close().await.unwrap();
 }
@@ -391,7 +391,7 @@ async fn test_migration_v12_idempotency() {
         let store = SqlxStore::open(&db_path, PoolConfig::default())
             .await
             .expect("open store");
-        assert_eq!(read_schema_version(&store).await, 14);
+        assert!(read_schema_version(&store).await >= 14); // crt-025: bumped to 15; keep >= 14 (pattern #2933)
         store.close().await.unwrap();
     }
 
@@ -401,7 +401,7 @@ async fn test_migration_v12_idempotency() {
         .expect("re-open store");
 
     // Assert: no error, schema still 14
-    assert_eq!(read_schema_version(&store).await, 14);
+    assert!(read_schema_version(&store).await >= 14); // crt-025: bumped to 15; keep >= 14 (pattern #2933)
     assert!(has_column(&store, "sessions", "keywords").await);
 
     store.close().await.unwrap();
@@ -421,7 +421,7 @@ async fn test_migration_v12_empty_database() {
         .expect("open store");
 
     // Assert: migration succeeds with no rows
-    assert_eq!(read_schema_version(&store).await, 14);
+    assert!(read_schema_version(&store).await >= 14); // crt-025: bumped to 15; keep >= 14 (pattern #2933)
     assert!(has_column(&store, "sessions", "keywords").await);
 
     store.close().await.unwrap();

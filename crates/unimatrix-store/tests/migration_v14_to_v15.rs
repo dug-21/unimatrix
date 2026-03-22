@@ -1,9 +1,10 @@
-//! Integration tests for the v13→v14 schema migration (col-023).
+//! Integration tests for the v14→v15 schema migration (crt-025).
 //!
-//! Covers: AC-09 (domain_metrics_json column added), R-05 (no positional offset
-//! after migration), R-12 (named-column rollback safety), FM-05 (idempotency).
+//! Covers: AC-10 (cycle_events table created), AC-11 (feature_entries.phase column added),
+//! R-05 (no positional offset after migration), R-10 (fresh DB at v15), NFR-05 (idempotency),
+//! C-05 (no backfill), C-08 (pragma_table_info guard).
 //!
-//! Pattern: create a v13-shaped database, open with current SqlxStore to trigger
+//! Pattern: create a v14-shaped database, open with current SqlxStore to trigger
 //! migration, assert schema state and data round-trips.
 
 #![cfg(feature = "test-support")]
@@ -17,20 +18,21 @@ use unimatrix_store::SqlxStore;
 use unimatrix_store::pool_config::PoolConfig;
 
 // ---------------------------------------------------------------------------
-// V13 database builder
+// V14 database builder
 // ---------------------------------------------------------------------------
 
-/// Create a v13-shaped database at the given path.
+/// Create a v14-shaped database at the given path.
 ///
-/// Contains all tables present at v13 (with graph_edges). schema_version = 13.
-/// The observation_metrics table intentionally lacks `domain_metrics_json` —
-/// that column is what the v13→v14 migration adds.
-async fn create_v13_database(path: &Path) {
+/// Contains all tables present at v14 (with graph_edges and domain_metrics_json).
+/// schema_version = 14.
+/// `feature_entries` intentionally lacks a `phase` column.
+/// `cycle_events` table is absent — both are what v14→v15 adds.
+async fn create_v14_database(path: &Path) {
     let opts = SqliteConnectOptions::new()
         .filename(path)
         .create_if_missing(true);
 
-    let mut conn = opts.connect().await.expect("open v13 setup conn");
+    let mut conn = opts.connect().await.expect("open v14 setup conn");
 
     sqlx::query("PRAGMA journal_mode = WAL")
         .execute(&mut conn)
@@ -92,11 +94,13 @@ async fn create_v13_database(path: &Path) {
             entry_id INTEGER PRIMARY KEY,
             hnsw_data_id INTEGER NOT NULL
         )",
+        // feature_entries WITHOUT a phase column — this is what v14→v15 adds.
         "CREATE TABLE feature_entries (
             feature_id TEXT NOT NULL,
-            entry_id INTEGER NOT NULL,
+            entry_id   INTEGER NOT NULL,
             PRIMARY KEY (feature_id, entry_id)
         )",
+        // No cycle_events table — this is the other v14→v15 addition.
         "CREATE TABLE outcome_index (
             feature_cycle TEXT NOT NULL,
             entry_id INTEGER NOT NULL,
@@ -160,8 +164,7 @@ async fn create_v13_database(path: &Path) {
             response_snippet TEXT,
             topic_signal    TEXT
         )",
-        // observation_metrics WITHOUT domain_metrics_json — this is v13 shape.
-        // Migration adds that column.
+        // observation_metrics WITH domain_metrics_json — this is v14 shape.
         "CREATE TABLE observation_metrics (
             feature_cycle                      TEXT    PRIMARY KEY,
             computed_at                        INTEGER NOT NULL DEFAULT 0,
@@ -185,7 +188,8 @@ async fn create_v13_database(path: &Path) {
             agent_hotspot_count                INTEGER NOT NULL DEFAULT 0,
             friction_hotspot_count             INTEGER NOT NULL DEFAULT 0,
             session_hotspot_count              INTEGER NOT NULL DEFAULT 0,
-            scope_hotspot_count                INTEGER NOT NULL DEFAULT 0
+            scope_hotspot_count                INTEGER NOT NULL DEFAULT 0,
+            domain_metrics_json                TEXT    NULL
         )",
         "CREATE TABLE observation_phase_metrics (
             feature_cycle   TEXT    NOT NULL,
@@ -269,9 +273,9 @@ async fn create_v13_database(path: &Path) {
             .expect("create table/index");
     }
 
-    // Seed counters at v13.
+    // Seed counters at v14.
     for seed in &[
-        "INSERT INTO counters (name, value) VALUES ('schema_version', 13)",
+        "INSERT INTO counters (name, value) VALUES ('schema_version', 14)",
         "INSERT INTO counters (name, value) VALUES ('next_entry_id', 1)",
         "INSERT INTO counters (name, value) VALUES ('next_signal_id', 0)",
         "INSERT INTO counters (name, value) VALUES ('next_log_id', 0)",
@@ -295,416 +299,507 @@ async fn read_schema_version(store: &SqlxStore) -> i64 {
         .expect("read schema_version")
 }
 
-async fn domain_metrics_json_column_exists(store: &SqlxStore) -> bool {
+async fn cycle_events_table_exists(store: &SqlxStore) -> bool {
     let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM pragma_table_info('observation_metrics') WHERE name = 'domain_metrics_json'",
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='cycle_events'",
     )
     .fetch_one(store.read_pool_test())
     .await
-    .expect("check domain_metrics_json column");
+    .expect("check cycle_events table");
+    count > 0
+}
+
+async fn phase_column_exists_on_feature_entries(store: &SqlxStore) -> bool {
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM pragma_table_info('feature_entries') WHERE name = 'phase'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("check feature_entries.phase column");
     count > 0
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-08: CURRENT_SCHEMA_VERSION constant >= 14 (cascaded from crt-025)
-//
-// Note: constant was 14 when this test was written; bumped to 15 by crt-025.
-// Updated to use >= 14 per pattern #2933 (Schema Version Cascade).
+// Unit test: CURRENT_SCHEMA_VERSION constant = 15
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_current_schema_version_is_14() {
-    // Minimum bound: version must be >= 14. Exact value tested in migration_v14_to_v15.rs.
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 14,
-        "CURRENT_SCHEMA_VERSION must be >= 14"
+fn test_current_schema_version_is_15() {
+    // Simple constant check to catch accidental off-by-one in version bump.
+    assert_eq!(
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
+        15,
+        "CURRENT_SCHEMA_VERSION must be 15"
     );
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-01: Fresh database creates schema v14 directly (AC-09)
+// T-MIG-01: Fresh database creates schema v15 directly (AC-11, R-10)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_fresh_db_creates_schema_v14() {
+async fn test_fresh_db_creates_schema_v15() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    // Arrange: open a fresh database — no prior schema exists.
+    // Arrange: empty path — no prior DB.
     // Act: SqlxStore::open calls create_tables_if_needed() for fresh DBs.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
         .expect("open fresh store");
 
-    // Assert: schema_version >= 14 (fresh DB is created at CURRENT_SCHEMA_VERSION,
-    // which is 15 since crt-025 bumped the constant — see pattern #2933).
-    assert!(
-        read_schema_version(&store).await >= 14,
-        "fresh database schema_version must be >= 14"
+    // Assert: schema_version == 15
+    assert_eq!(
+        read_schema_version(&store).await,
+        15,
+        "fresh database must be at schema v15"
     );
 
-    // Assert: domain_metrics_json column exists in observation_metrics
+    // Assert: cycle_events table exists
     assert!(
-        domain_metrics_json_column_exists(&store).await,
-        "fresh database must have domain_metrics_json column (AC-09)"
+        cycle_events_table_exists(&store).await,
+        "fresh database must have cycle_events table"
+    );
+
+    // Assert: feature_entries has phase column
+    assert!(
+        phase_column_exists_on_feature_entries(&store).await,
+        "fresh database must have feature_entries.phase column"
     );
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-02: v13 → v14 migration adds domain_metrics_json column (AC-09, R-05)
+// T-MIG-01b: Fresh DB cycle_events table has correct schema (R-10, FR-07.2)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v13_to_v14_migration_adds_column() {
+async fn test_fresh_db_cycle_events_table_schema() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    // Arrange: v13 database without domain_metrics_json column.
-    create_v13_database(&db_path).await;
-
-    // Act: open with current code → triggers v13→v14 migration.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("open store after v13→v14 migration");
+        .expect("open fresh store");
 
-    // Assert: schema_version >= 14 (migration applied at minimum v14; actual is CURRENT_SCHEMA_VERSION)
-    assert!(
-        read_schema_version(&store).await >= 14,
-        "schema_version must be >= 14 after v13→v14 migration"
-    );
+    // Verify all expected columns are present via pragma_table_info.
+    let columns: Vec<String> =
+        sqlx::query_scalar("SELECT name FROM pragma_table_info('cycle_events') ORDER BY cid")
+            .fetch_all(store.read_pool_test())
+            .await
+            .expect("pragma_table_info cycle_events");
 
-    // Assert: column now exists
-    assert!(
-        domain_metrics_json_column_exists(&store).await,
-        "domain_metrics_json column must exist after v13→v14 migration (AC-09)"
-    );
+    for expected in &[
+        "id",
+        "cycle_id",
+        "seq",
+        "event_type",
+        "phase",
+        "outcome",
+        "next_phase",
+        "timestamp",
+    ] {
+        assert!(
+            columns.iter().any(|c| c == expected),
+            "cycle_events must have column '{expected}'"
+        );
+    }
 
-    // Assert: CURRENT_SCHEMA_VERSION Rust const is >= 14 (bumped to 15 by crt-025)
-    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 14);
-
-    store.close().await.unwrap();
-}
-
-// ---------------------------------------------------------------------------
-// T-MIG-03: Round-trip — write and read back all 21 original fields after migration (R-05)
-//
-// R-05: guards against positional column indexing regression. All 21 original
-// fields must read back at their original positions after domain_metrics_json
-// is appended as column 22. Named-column queries prevent offset errors.
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_v14_migration_round_trip_all_original_fields() {
-    let dir = TempDir::new().expect("temp dir");
-    let db_path = dir.path().join("test.db");
-
-    create_v13_database(&db_path).await;
-
-    let store = SqlxStore::open(&db_path, PoolConfig::default())
-        .await
-        .expect("open migrated store");
-
-    // Insert a row using all 21 named original columns (named bindings, not positional).
-    sqlx::query(
-        "INSERT INTO observation_metrics (
-            feature_cycle, computed_at,
-            total_tool_calls, total_duration_secs, session_count,
-            search_miss_rate, edit_bloat_total_kb, edit_bloat_ratio,
-            permission_friction_events, bash_for_search_count, cold_restart_events,
-            coordinator_respawn_count, parallel_call_rate, context_load_before_first_write_kb,
-            total_context_loaded_kb, post_completion_work_pct, follow_up_issues_created,
-            knowledge_entries_stored, sleep_workaround_count, agent_hotspot_count,
-            friction_hotspot_count, session_hotspot_count, scope_hotspot_count
-        ) VALUES (
-            'round-trip-fc', 1700000000,
-            42, 3600, 3,
-            0.25, 10.5, 0.3,
-            5, 2, 1,
-            0, 0.8, 128.0,
-            512.0, 0.05, 1,
-            7, 0, 1,
-            2, 1, 0
-        )",
-    )
-    .execute(store.write_pool_test())
-    .await
-    .expect("insert round-trip row");
-
-    // SELECT all 21 original columns individually by name — R-05: no positional offset regression.
-    // sqlx tuple FromRow is limited to 16 elements; use scalar queries per named column instead.
-    use sqlx::Row as _;
-
-    let row = sqlx::query(
-        "SELECT total_tool_calls, total_duration_secs, session_count,
-                search_miss_rate, edit_bloat_total_kb, edit_bloat_ratio,
-                permission_friction_events, bash_for_search_count, cold_restart_events,
-                coordinator_respawn_count, parallel_call_rate, context_load_before_first_write_kb,
-                total_context_loaded_kb, post_completion_work_pct, follow_up_issues_created,
-                knowledge_entries_stored, sleep_workaround_count, agent_hotspot_count,
-                friction_hotspot_count, session_hotspot_count, scope_hotspot_count
-         FROM observation_metrics WHERE feature_cycle = 'round-trip-fc'",
+    // Verify index exists.
+    let idx_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_cycle_events_cycle_id'",
     )
     .fetch_one(store.read_pool_test())
     .await
-    .expect("fetch round-trip row");
-
-    // Each field is verified by name to confirm no positional offset (R-05).
-    let total_tool_calls: i64 = row.try_get("total_tool_calls").unwrap();
-    let total_duration_secs: i64 = row.try_get("total_duration_secs").unwrap();
-    let session_count: i64 = row.try_get("session_count").unwrap();
-    let search_miss_rate: f64 = row.try_get("search_miss_rate").unwrap();
-    let edit_bloat_total_kb: f64 = row.try_get("edit_bloat_total_kb").unwrap();
-    let edit_bloat_ratio: f64 = row.try_get("edit_bloat_ratio").unwrap();
-    let permission_friction_events: i64 = row.try_get("permission_friction_events").unwrap();
-    let bash_for_search_count: i64 = row.try_get("bash_for_search_count").unwrap();
-    let cold_restart_events: i64 = row.try_get("cold_restart_events").unwrap();
-    let coordinator_respawn_count: i64 = row.try_get("coordinator_respawn_count").unwrap();
-    let parallel_call_rate: f64 = row.try_get("parallel_call_rate").unwrap();
-    let context_load_before_first_write_kb: f64 =
-        row.try_get("context_load_before_first_write_kb").unwrap();
-    let total_context_loaded_kb: f64 = row.try_get("total_context_loaded_kb").unwrap();
-    let post_completion_work_pct: f64 = row.try_get("post_completion_work_pct").unwrap();
-    let follow_up_issues_created: i64 = row.try_get("follow_up_issues_created").unwrap();
-    let knowledge_entries_stored: i64 = row.try_get("knowledge_entries_stored").unwrap();
-    let sleep_workaround_count: i64 = row.try_get("sleep_workaround_count").unwrap();
-    let agent_hotspot_count: i64 = row.try_get("agent_hotspot_count").unwrap();
-    let friction_hotspot_count: i64 = row.try_get("friction_hotspot_count").unwrap();
-    let session_hotspot_count: i64 = row.try_get("session_hotspot_count").unwrap();
-    let scope_hotspot_count: i64 = row.try_get("scope_hotspot_count").unwrap();
-
-    assert_eq!(total_tool_calls, 42, "total_tool_calls R-05");
-    assert_eq!(total_duration_secs, 3600, "total_duration_secs R-05");
-    assert_eq!(session_count, 3, "session_count R-05");
-    assert!(
-        (search_miss_rate - 0.25).abs() < 1e-9,
-        "search_miss_rate R-05"
-    );
-    assert!(
-        (edit_bloat_total_kb - 10.5).abs() < 1e-9,
-        "edit_bloat_total_kb R-05"
-    );
-    assert!(
-        (edit_bloat_ratio - 0.3).abs() < 1e-9,
-        "edit_bloat_ratio R-05"
-    );
-    assert_eq!(
-        permission_friction_events, 5,
-        "permission_friction_events R-05"
-    );
-    assert_eq!(bash_for_search_count, 2, "bash_for_search_count R-05");
-    assert_eq!(cold_restart_events, 1, "cold_restart_events R-05");
-    assert_eq!(
-        coordinator_respawn_count, 0,
-        "coordinator_respawn_count R-05"
-    );
-    assert!(
-        (parallel_call_rate - 0.8).abs() < 1e-9,
-        "parallel_call_rate R-05"
-    );
-    assert!(
-        (context_load_before_first_write_kb - 128.0).abs() < 1e-9,
-        "context_load_before_first_write_kb R-05"
-    );
-    assert!(
-        (total_context_loaded_kb - 512.0).abs() < 1e-9,
-        "total_context_loaded_kb R-05"
-    );
-    assert!(
-        (post_completion_work_pct - 0.05).abs() < 1e-9,
-        "post_completion_work_pct R-05"
-    );
-    assert_eq!(follow_up_issues_created, 1, "follow_up_issues_created R-05");
-    assert_eq!(knowledge_entries_stored, 7, "knowledge_entries_stored R-05");
-    assert_eq!(sleep_workaround_count, 0, "sleep_workaround_count R-05");
-    assert_eq!(agent_hotspot_count, 1, "agent_hotspot_count R-05");
-    assert_eq!(friction_hotspot_count, 2, "friction_hotspot_count R-05");
-    assert_eq!(session_hotspot_count, 1, "session_hotspot_count R-05");
-    assert_eq!(scope_hotspot_count, 0, "scope_hotspot_count R-05");
+    .expect("check index");
+    assert_eq!(idx_count, 1, "idx_cycle_events_cycle_id must exist");
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-04: v13 row reads back NULL for domain_metrics_json (AC-09, FR-05.4)
+// T-MIG-02: v14→v15 adds cycle_events table (AC-10, R-05)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v13_row_reads_null_domain_metrics_json() {
+async fn test_v14_to_v15_migration_adds_cycle_events_table() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    create_v13_database(&db_path).await;
+    // Arrange: v14 database without cycle_events table.
+    create_v14_database(&db_path).await;
 
+    // Act: open triggers v14→v15 migration.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("open migrated store");
+        .expect("open store after v14→v15 migration");
 
-    // Insert a row that omits domain_metrics_json — simulates a row written by a v13 binary.
-    sqlx::query(
-        "INSERT INTO observation_metrics (
-            feature_cycle, computed_at, total_tool_calls, scope_hotspot_count
-         ) VALUES ('v13-row', 1700000000, 10, 0)",
-    )
-    .execute(store.write_pool_test())
-    .await
-    .expect("insert v13-style row");
-
-    // Assert: domain_metrics_json is NULL for this row (AC-09).
-    let domain_json: Option<String> = sqlx::query_scalar(
-        "SELECT domain_metrics_json FROM observation_metrics WHERE feature_cycle = 'v13-row'",
-    )
-    .fetch_one(store.read_pool_test())
-    .await
-    .expect("fetch domain_metrics_json");
-
+    // Assert: cycle_events table now exists.
     assert!(
-        domain_json.is_none(),
-        "v13-style row must read back NULL for domain_metrics_json (AC-09, FR-05.4)"
+        cycle_events_table_exists(&store).await,
+        "cycle_events table must exist after v14→v15 migration (AC-10)"
     );
+
+    // Assert: schema_version == 15.
+    assert_eq!(read_schema_version(&store).await, 15);
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-05: Schema version assertion post-migration
+// T-MIG-02b: v14→v15 adds phase column to feature_entries (AC-10, R-05)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_schema_version_is_14_after_migration() {
+async fn test_v14_to_v15_migration_adds_phase_column_to_feature_entries() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    create_v13_database(&db_path).await;
+    // Arrange: v14 database — feature_entries has no phase column.
+    create_v14_database(&db_path).await;
 
+    // Act: open triggers migration.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("open migrated store");
+        .expect("open store after v14→v15 migration");
 
-    // Assert: counters table carries schema_version >= 14.
-    // After v13→v14 migration, the version advances to CURRENT_SCHEMA_VERSION (now 15 per crt-025).
+    // Assert: phase column now exists on feature_entries.
     assert!(
-        read_schema_version(&store).await >= 14,
-        "schema_version must be >= 14 after v13→v14 migration (pattern #2933)"
+        phase_column_exists_on_feature_entries(&store).await,
+        "feature_entries.phase column must exist after v14→v15 migration"
     );
-
-    // Assert: Rust const is >= 14 (bumped to 15 by crt-025)
-    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 14);
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-06: Migration is idempotent — running twice does not error (FM-05)
-//
-// FM-05: handles the case where the v14 migration was partially applied before
-// a crash. The ALTER TABLE ADD COLUMN is guarded by a pragma_table_info pre-check
-// so a second call is a no-op rather than an error.
+// T-MIG-02c: Pre-existing feature_entries rows have NULL phase (C-05, FR-06.4)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v13_to_v14_migration_idempotent() {
+async fn test_v14_pre_existing_rows_have_null_phase() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    create_v13_database(&db_path).await;
+    // Arrange: v14 database with a pre-seeded feature_entries row.
+    create_v14_database(&db_path).await;
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+        sqlx::query(
+            "INSERT INTO feature_entries (feature_id, entry_id) VALUES ('old-feature', 99)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert pre-existing row");
+    }
 
-    // First run — applies v13→v14 migration (and v14→v15 since CURRENT_SCHEMA_VERSION is now 15).
+    // Act: open triggers migration.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open after migration");
+
+    // Assert: phase IS NULL — no backfill (C-05, FR-06.4).
+    let phase: Option<String> =
+        sqlx::query_scalar("SELECT phase FROM feature_entries WHERE entry_id = 99")
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("fetch phase for pre-existing row");
+
+    assert!(
+        phase.is_none(),
+        "pre-existing feature_entries rows must have phase = NULL (C-05, no backfill)"
+    );
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// T-MIG-03: Migration is idempotent (AC-10, R-05, NFR-05)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_v14_to_v15_migration_idempotent() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    create_v14_database(&db_path).await;
+
+    // Run 1: applies v14→v15 migration.
     {
         let store = SqlxStore::open(&db_path, PoolConfig::default())
             .await
             .expect("first open");
-        assert!(read_schema_version(&store).await >= 14);
-        assert!(domain_metrics_json_column_exists(&store).await);
+        assert_eq!(read_schema_version(&store).await, 15);
+        assert!(cycle_events_table_exists(&store).await);
+        assert!(phase_column_exists_on_feature_entries(&store).await);
         store.close().await.unwrap();
     }
 
-    // Second run — must be a no-op; no error from duplicate ALTER TABLE.
+    // Run 2: must be a no-op — no errors.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("second open must succeed (FM-05: idempotent migration)");
+        .expect("second open must succeed (NFR-05: idempotent)");
 
-    assert!(read_schema_version(&store).await >= 14);
-    assert!(domain_metrics_json_column_exists(&store).await);
+    assert_eq!(read_schema_version(&store).await, 15);
+    assert!(cycle_events_table_exists(&store).await);
+    assert!(phase_column_exists_on_feature_entries(&store).await);
 
-    // Only one domain_metrics_json column must exist.
+    // Exactly one phase column must exist.
     let col_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM pragma_table_info('observation_metrics') WHERE name = 'domain_metrics_json'",
+        "SELECT COUNT(*) FROM pragma_table_info('feature_entries') WHERE name = 'phase'",
     )
     .fetch_one(store.read_pool_test())
     .await
-    .expect("count domain_metrics_json columns");
+    .expect("count phase columns");
     assert_eq!(
         col_count, 1,
-        "exactly one domain_metrics_json column must exist after idempotent run"
+        "exactly one phase column after idempotent run"
+    );
+
+    // Exactly one cycle_events table must exist.
+    let tbl_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='cycle_events'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("count cycle_events tables");
+    assert_eq!(
+        tbl_count, 1,
+        "exactly one cycle_events table after idempotent run"
     );
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-07: Rollback safety — v14 schema read by reduced struct (R-12)
-//
-// R-12: a downgraded binary using named-column queries must not be affected by
-// the extra column. SQLite named-column queries are NOT affected by additional
-// columns; only positional indexing would be broken.
+// T-MIG-03b: pragma_table_info guard prevents duplicate column (NFR-05, C-08)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v14_schema_named_column_readback_with_reduced_struct() {
-    // R-12 rollback documentation:
-    // When a v14 database is opened by a v13 binary, the v13 binary's SELECT
-    // queries use named columns (e.g., SELECT total_tool_calls, ... FROM
-    // observation_metrics WHERE ...). SQLite returns only the requested columns.
-    // The extra domain_metrics_json column is invisible to the v13 binary.
-    // Downgrade risk: only positional indexing (SELECT * then row.get(N)) would
-    // be affected — named-column queries are unaffected. All reads in this
-    // codebase use named columns, so downgrade is safe for existing rows.
-
+async fn test_pragma_table_info_guard_prevents_duplicate_column() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    create_v13_database(&db_path).await;
+    // Arrange: v14 database, then manually add the phase column before opening.
+    create_v14_database(&db_path).await;
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+        sqlx::query("ALTER TABLE feature_entries ADD COLUMN phase TEXT")
+            .execute(&mut conn)
+            .await
+            .expect("manually add phase column");
+    }
+
+    // Act: open store — migration sees column already exists and skips ALTER TABLE.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open must succeed — pragma guard skips duplicate ALTER TABLE (C-08)");
+
+    // Assert: no error, schema_version = 15, column exists exactly once.
+    assert_eq!(read_schema_version(&store).await, 15);
+    let col_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM pragma_table_info('feature_entries') WHERE name = 'phase'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("count phase columns");
+    assert_eq!(
+        col_count, 1,
+        "exactly one phase column after pragma guard (C-08)"
+    );
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// T-MIG-04: Schema version is 15 after migration (AC-10)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_schema_version_is_15_after_migration() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    create_v14_database(&db_path).await;
 
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
         .expect("open migrated store");
 
-    // Insert a row that includes domain_metrics_json (v14 binary writing).
+    // Assert: counters table carries schema_version = 15.
+    assert_eq!(read_schema_version(&store).await, 15);
+
+    // Assert: Rust const agrees.
+    assert_eq!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION, 15);
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// T-MIG-05: Data round-trip — feature_entries with phase column (R-05)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_v15_feature_entries_round_trip_with_phase() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    create_v14_database(&db_path).await;
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open migrated store");
+
+    // Insert a row with the new phase column.
     sqlx::query(
-        "INSERT INTO observation_metrics (
-            feature_cycle, computed_at, total_tool_calls, total_duration_secs,
-            scope_hotspot_count, domain_metrics_json
-         ) VALUES ('rollback-test', 1700000001, 99, 7200, 3, '{\"k\":1.0}')",
+        "INSERT INTO feature_entries (feature_id, entry_id, phase) VALUES ('crt-025', 1, 'scope')",
     )
     .execute(store.write_pool_test())
     .await
-    .expect("insert v14 row with domain_metrics_json");
+    .expect("insert feature_entries row with phase");
 
-    // Simulate a v13 binary: SELECT using only the 21 original named columns.
-    // Assert: correct values, no error, no panic (R-12).
-    let (total_tool_calls, total_duration_secs, scope_hotspot_count): (i64, i64, i64) =
-        sqlx::query_as(
-            "SELECT total_tool_calls, total_duration_secs, scope_hotspot_count
-             FROM observation_metrics WHERE feature_cycle = 'rollback-test'",
-        )
-        .fetch_one(store.read_pool_test())
+    // Select back by named columns — R-05: no positional offset regression.
+    use sqlx::Row as _;
+    let row =
+        sqlx::query("SELECT feature_id, entry_id, phase FROM feature_entries WHERE entry_id = 1")
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("fetch feature_entries row");
+
+    let feature_id: String = row.try_get("feature_id").unwrap();
+    let entry_id: i64 = row.try_get("entry_id").unwrap();
+    let phase: Option<String> = row.try_get("phase").unwrap();
+
+    assert_eq!(feature_id, "crt-025");
+    assert_eq!(entry_id, 1);
+    assert_eq!(phase.as_deref(), Some("scope"));
+
+    store.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_v15_feature_entries_null_phase_row() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    create_v14_database(&db_path).await;
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("named-column read must succeed on v14 schema (R-12)");
+        .expect("open migrated store");
 
-    assert_eq!(
-        total_tool_calls, 99,
-        "total_tool_calls must be correct (R-12)"
-    );
-    assert_eq!(
-        total_duration_secs, 7200,
-        "total_duration_secs must be correct (R-12)"
-    );
-    assert_eq!(
-        scope_hotspot_count, 3,
-        "scope_hotspot_count must be correct (R-12)"
-    );
+    // Insert a row with NULL phase — backward compatible path.
+    sqlx::query(
+        "INSERT INTO feature_entries (feature_id, entry_id, phase) VALUES ('crt-025', 2, NULL)",
+    )
+    .execute(store.write_pool_test())
+    .await
+    .expect("insert feature_entries row with null phase");
+
+    let phase: Option<String> =
+        sqlx::query_scalar("SELECT phase FROM feature_entries WHERE entry_id = 2")
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("fetch phase");
+
+    assert!(phase.is_none(), "NULL phase must round-trip correctly");
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// T-MIG-05b: Data round-trip — cycle_events via insert_cycle_event (R-05)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_v15_cycle_events_round_trip() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    create_v14_database(&db_path).await;
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open migrated store");
+
+    // Insert via SqlxStore::insert_cycle_event.
+    store
+        .insert_cycle_event(
+            "crt-025", // cycle_id
+            0,         // seq
+            "cycle_start",
+            Some("scope"),
+            None,
+            Some("design"),
+            1700000000, // timestamp
+        )
+        .await
+        .expect("insert_cycle_event must succeed");
+
+    // Query back by cycle_id.
+    use sqlx::Row as _;
+    let row = sqlx::query(
+        "SELECT cycle_id, seq, event_type, phase, outcome, next_phase, timestamp
+           FROM cycle_events WHERE cycle_id = 'crt-025'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("fetch cycle_events row");
+
+    let cycle_id: String = row.try_get("cycle_id").unwrap();
+    let seq: i64 = row.try_get("seq").unwrap();
+    let event_type: String = row.try_get("event_type").unwrap();
+    let phase: Option<String> = row.try_get("phase").unwrap();
+    let outcome: Option<String> = row.try_get("outcome").unwrap();
+    let next_phase: Option<String> = row.try_get("next_phase").unwrap();
+    let timestamp: i64 = row.try_get("timestamp").unwrap();
+
+    assert_eq!(cycle_id, "crt-025");
+    assert_eq!(seq, 0);
+    assert_eq!(event_type, "cycle_start");
+    assert_eq!(phase.as_deref(), Some("scope"));
+    assert!(outcome.is_none());
+    assert_eq!(next_phase.as_deref(), Some("design"));
+    assert_eq!(timestamp, 1700000000);
+
+    store.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_v15_cycle_events_all_nullable_columns_null() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    create_v14_database(&db_path).await;
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open migrated store");
+
+    // Insert with all nullable fields as None.
+    store
+        .insert_cycle_event("test-cycle", 1, "cycle_stop", None, None, None, 1700000001)
+        .await
+        .expect("insert_cycle_event with nulls must succeed");
+
+    use sqlx::Row as _;
+    let row = sqlx::query(
+        "SELECT phase, outcome, next_phase FROM cycle_events WHERE cycle_id = 'test-cycle'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("fetch row");
+
+    let phase: Option<String> = row.try_get("phase").unwrap();
+    let outcome: Option<String> = row.try_get("outcome").unwrap();
+    let next_phase: Option<String> = row.try_get("next_phase").unwrap();
+
+    assert!(phase.is_none(), "phase must be NULL");
+    assert!(outcome.is_none(), "outcome must be NULL");
+    assert!(next_phase.is_none(), "next_phase must be NULL");
 
     store.close().await.unwrap();
 }

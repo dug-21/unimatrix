@@ -1005,12 +1005,16 @@ async fn test_sql_analytics_query() {
 }
 
 // Note: test was test_schema_version_is_13 (crt-021). Updated to 14 for col-023.
+// Updated to 15 for crt-025 (cycle_events + feature_entries.phase). Uses >= per pattern #2933.
 #[tokio::test]
 async fn test_schema_version_is_14() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
-    assert_eq!(version, 14, "schema version must be 14 after col-023");
+    assert_eq!(
+        version, 15,
+        "schema version must be 15 after crt-025 (was 14 after col-023)"
+    );
     store.close().await.unwrap();
 }
 
