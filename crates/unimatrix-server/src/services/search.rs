@@ -52,7 +52,10 @@ const PROVENANCE_BOOST: f64 = unimatrix_engine::confidence::PROVENANCE_BOOST;
 /// This struct is the feature vector interface for W3-1 (GNN training). Each field
 /// is a named, learnable dimension. Do not add signals outside this struct.
 ///
-/// WA-2 extension: add `phase_boost_norm: f64` here when WA-2 is implemented.
+/// crt-026 (WA-2): Two phase fields added. phase_explicit_norm is always 0.0
+/// in crt-026 (W3-1 reserved placeholder, ADR-003). Do not remove these fields —
+/// W3-1 depends on them as named, stable, learnable dimensions (NFR-06).
+#[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct FusedScoreInputs {
     /// HNSW cosine similarity (bi-encoder recall). Already in [0, 1].
     pub similarity: f64,
@@ -75,6 +78,17 @@ pub(crate) struct FusedScoreInputs {
     /// Formula: prov_boost / PROVENANCE_BOOST, guarded for PROVENANCE_BOOST == 0.0.
     /// Binary in practice: 1.0 for boosted categories, 0.0 for all others.
     pub prov_norm: f64,
+    /// crt-026: Category histogram affinity (WA-2).
+    /// p(entry.category) from the session's category_counts histogram, normalized to [0.0, 1.0].
+    /// 0.0 when session has no prior stores (cold start), entry.category not in histogram,
+    /// or ServiceSearchParams.category_histogram is None.
+    /// Computed in the scoring loop as: count[entry.category] / total_count.
+    pub phase_histogram_norm: f64,
+    /// crt-026: Explicit phase term (WA-2, ADR-003 placeholder).
+    /// Always 0.0 in crt-026. Reserved for W3-1 (GNN training).
+    /// W3-1 will populate this from a learned phase-to-category relevance model.
+    /// DO NOT remove: W3-1 depends on this named field. Comment cites ADR-003 as guard.
+    pub phase_explicit_norm: f64,
 }
 
 /// Config-driven fusion weights for the six-term ranking formula (crt-024, ADR-003).
@@ -83,18 +97,24 @@ pub(crate) struct FusedScoreInputs {
 /// Not derived from InferenceConfig at every search call — built once.
 ///
 /// Invariant (enforced by InferenceConfig::validate at startup):
-///   w_sim + w_nli + w_conf + w_coac + w_util + w_prov <= 1.0
-///   Each field individually in [0.0, 1.0].
+///   w_sim + w_nli + w_conf + w_coac + w_util + w_prov <= 1.0  (sum of six core terms)
+///   Each core field individually in [0.0, 1.0].
 ///
-/// WA-2 extension: add `w_phase: f64` here when WA-2 is implemented.
-#[derive(Debug, Clone, Copy)]
+/// w_phase_histogram and w_phase_explicit are additive terms excluded from this
+/// constraint. Their sum does not enter the six-term sum check. With defaults,
+/// total sum = 0.95 + 0.02 + 0.0 = 0.97, within <= 1.0.
+///
+/// Per-field range [0.0, 1.0] is enforced by InferenceConfig::validate for all eight fields.
+#[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct FusionWeights {
-    pub w_sim: f64,  // default 0.25 — bi-encoder similarity
-    pub w_nli: f64,  // default 0.35 — NLI entailment (dominant precision signal)
-    pub w_conf: f64, // default 0.15 — confidence tiebreaker
-    pub w_coac: f64, // default 0.10 — co-access affinity (lagging signal)
-    pub w_util: f64, // default 0.05 — effectiveness classification
-    pub w_prov: f64, // default 0.05 — category provenance hint
+    pub w_sim: f64,             // default 0.25 — bi-encoder similarity
+    pub w_nli: f64,             // default 0.35 — NLI entailment (dominant precision signal)
+    pub w_conf: f64,            // default 0.15 — confidence tiebreaker
+    pub w_coac: f64,            // default 0.10 — co-access affinity (lagging signal)
+    pub w_util: f64,            // default 0.05 — effectiveness classification
+    pub w_prov: f64,            // default 0.05 — category provenance hint
+    pub w_phase_histogram: f64, // crt-026: default 0.02 — histogram affinity (ADR-004, ASS-028 calibrated)
+    pub w_phase_explicit: f64,  // crt-026: default 0.0  — W3-1 placeholder (ADR-003)
 }
 
 impl FusionWeights {
@@ -107,6 +127,8 @@ impl FusionWeights {
             w_coac: cfg.w_coac,
             w_util: cfg.w_util,
             w_prov: cfg.w_prov,
+            w_phase_histogram: cfg.w_phase_histogram, // crt-026: NEW
+            w_phase_explicit: cfg.w_phase_explicit,   // crt-026: NEW
         }
     }
 
@@ -130,11 +152,15 @@ impl FusionWeights {
                 w_coac: self.w_coac,
                 w_util: self.w_util,
                 w_prov: self.w_prov,
+                w_phase_histogram: self.w_phase_histogram, // crt-026: pass through unchanged
+                w_phase_explicit: self.w_phase_explicit,   // crt-026: pass through unchanged
             };
         }
 
-        // NLI absent — zero out w_nli, re-normalize remaining five.
+        // NLI absent — zero out w_nli, re-normalize the five core terms only.
+        // w_phase_histogram and w_phase_explicit are passed through unchanged (ADR-004, R-06).
         let denom = self.w_sim + self.w_conf + self.w_coac + self.w_util + self.w_prov;
+        // NOTE: w_phase_histogram and w_phase_explicit are NOT in the denominator.
 
         if denom == 0.0 {
             tracing::warn!(
@@ -148,6 +174,8 @@ impl FusionWeights {
                 w_coac: 0.0,
                 w_util: 0.0,
                 w_prov: 0.0,
+                w_phase_histogram: self.w_phase_histogram, // crt-026: pass through unchanged
+                w_phase_explicit: self.w_phase_explicit,   // crt-026: pass through unchanged
             };
         }
 
@@ -158,6 +186,8 @@ impl FusionWeights {
             w_coac: self.w_coac / denom,
             w_util: self.w_util / denom,
             w_prov: self.w_prov / denom,
+            w_phase_histogram: self.w_phase_histogram, // crt-026: pass through unchanged (not re-normalized)
+            w_phase_explicit: self.w_phase_explicit, // crt-026: pass through unchanged (not re-normalized)
         }
     }
 }
@@ -169,14 +199,16 @@ impl FusionWeights {
 /// Preconditions (caller's responsibility, enforced by construction):
 ///   - All inputs in [0.0, 1.0]
 ///   - weights.w_* fields individually in [0.0, 1.0]
-///   - sum of weights <= 1.0 (after effective() is applied for NLI absence)
+///   - sum of six core weights <= 1.0 (after effective() is applied for NLI absence)
 ///
 /// Returns a value in [0.0, 1.0] by construction under the above preconditions.
 ///
 /// `status_penalty` is NOT applied here. Apply it at the call site:
 ///   final_score = compute_fused_score(&inputs, &weights) * status_penalty
 ///
-/// WA-2 extension: add `w_phase * inputs.phase_boost_norm` term when WA-2 is implemented.
+/// crt-026: Two phase terms added. phase_explicit_norm is always 0.0 in crt-026
+/// (ADR-003 placeholder). The histogram term contributes at most 0.02 with defaults.
+/// status_penalty is still applied at the call site: final_score = compute_fused_score(...) * penalty.
 pub(crate) fn compute_fused_score(inputs: &FusedScoreInputs, weights: &FusionWeights) -> f64 {
     weights.w_sim * inputs.similarity
         + weights.w_nli * inputs.nli_entailment
@@ -184,6 +216,9 @@ pub(crate) fn compute_fused_score(inputs: &FusedScoreInputs, weights: &FusionWei
         + weights.w_coac * inputs.coac_norm
         + weights.w_util * inputs.util_norm
         + weights.w_prov * inputs.prov_norm
+        + weights.w_phase_histogram * inputs.phase_histogram_norm
+        // crt-026: ADR-003 placeholder — always 0.0 in crt-026; W3-1 will populate phase_explicit_norm
+        + weights.w_phase_explicit * inputs.phase_explicit_norm
 }
 
 /// Retrieval mode controlling status-aware filtering behavior (crt-010, ADR-001).
@@ -214,6 +249,24 @@ pub(crate) struct ServiceSearchParams {
     pub caller_agent_id: Option<String>,
     /// Retrieval mode: Strict (UDS) or Flexible (MCP). Default: Flexible (crt-010).
     pub retrieval_mode: RetrievalMode,
+    /// crt-026: Session identifier for logging and tracing (WA-2).
+    /// Populated from ctx.audit_ctx.session_id (MCP path) or
+    /// HookRequest::ContextSearch.session_id (UDS path).
+    /// Not used in scoring logic; carried for observability.
+    pub session_id: Option<String>,
+    /// crt-026: Pre-resolved category histogram clone (WA-2, ADR-002).
+    ///
+    /// Set to None when:
+    ///   - session_id is None
+    ///   - session is not registered in SessionRegistry
+    ///   - get_category_histogram() returned an empty map (is_empty() → None)
+    ///
+    /// When Some, the histogram is used in the scoring loop to compute
+    /// phase_histogram_norm = p(entry.category) per candidate.
+    ///
+    /// Cold-start invariant: None → phase_histogram_norm = 0.0 for all candidates
+    /// → compute_fused_score output bit-for-bit identical to pre-crt-026 (NFR-02).
+    pub category_histogram: Option<HashMap<String, u32>>,
 }
 
 /// Search results including query embedding for reuse.
@@ -747,6 +800,14 @@ impl SearchService {
         // per-candidate. If NLI absent, re-normalize the five remaining weights.
         let effective_weights = self.fusion_weights.effective(nli_available);
 
+        // crt-026: Pre-compute histogram total once before the scoring loop (WA-2, ADR-002).
+        // All per-candidate phase_histogram_norm values derive from this single read.
+        // If category_histogram is None (cold start), total = 0 and all norms will be 0.0.
+        let category_histogram = params.category_histogram.as_ref();
+        let histogram_total: u32 = category_histogram
+            .map(|h| h.values().copied().sum())
+            .unwrap_or(0);
+
         // Single fused scoring pass: one iteration over all candidates.
         // Vec element: (entry, sim, final_score)
         let mut scored: Vec<(EntryRecord, f64, f64)> =
@@ -784,6 +845,19 @@ impl SearchService {
                 raw_prov / PROVENANCE_BOOST
             };
 
+            // -- crt-026: phase_histogram_norm = p(entry.category) from session histogram (WA-2).
+            // Division is safe: guarded by histogram_total > 0 check.
+            // 0.0 when: cold start (histogram_total == 0), or entry.category not in histogram.
+            let phase_histogram_norm: f64 = if histogram_total > 0 {
+                category_histogram
+                    .and_then(|h| h.get(&entry.category))
+                    .copied()
+                    .unwrap_or(0) as f64
+                    / histogram_total as f64
+            } else {
+                0.0
+            };
+
             // -- Construct FusedScoreInputs --
             let inputs = FusedScoreInputs {
                 similarity: *sim,
@@ -792,6 +866,9 @@ impl SearchService {
                 coac_norm,
                 util_norm,
                 prov_norm,
+                phase_histogram_norm, // crt-026: histogram affinity
+                // crt-026: ADR-003 placeholder — always 0.0; W3-1 will populate this field
+                phase_explicit_norm: 0.0,
             };
 
             // -- Fused score + status penalty (ADR-004: penalty at call site) --
@@ -1651,6 +1728,8 @@ mod tests {
             w_coac: 0.10,
             w_util: 0.05,
             w_prov: 0.05,
+            w_phase_histogram: 0.0,
+            w_phase_explicit: 0.0,
         };
         let eff = weights.effective(true);
         assert!(
@@ -1678,6 +1757,8 @@ mod tests {
             w_coac: 0.10,
             w_util: 0.05,
             w_prov: 0.05,
+            w_phase_histogram: 0.0,
+            w_phase_explicit: 0.0,
         }; // sum = 0.90
         let eff = weights.effective(true);
         let sum = eff.w_sim + eff.w_nli + eff.w_conf + eff.w_coac + eff.w_util + eff.w_prov;
@@ -1697,6 +1778,8 @@ mod tests {
             w_coac: 0.10,
             w_util: 0.05,
             w_prov: 0.05,
+            w_phase_histogram: 0.0,
+            w_phase_explicit: 0.0,
         };
         let eff = weights.effective(false);
         assert!(
@@ -1732,6 +1815,8 @@ mod tests {
             w_coac: 0.10,
             w_util: 0.05,
             w_prov: 0.05,
+            w_phase_histogram: 0.0,
+            w_phase_explicit: 0.0,
         };
         let eff = weights.effective(false);
         let sum = eff.w_sim + eff.w_conf + eff.w_coac + eff.w_util + eff.w_prov;
@@ -1751,6 +1836,8 @@ mod tests {
             w_coac: 0.0,
             w_util: 0.0,
             w_prov: 0.0,
+            w_phase_histogram: 0.0,
+            w_phase_explicit: 0.0,
         };
         let eff = weights.effective(false);
         assert_eq!(
@@ -1774,6 +1861,8 @@ mod tests {
             w_coac: 0.0,
             w_util: 0.0,
             w_prov: 0.0,
+            w_phase_histogram: 0.0,
+            w_phase_explicit: 0.0,
         };
         let eff = weights.effective(false);
         assert_eq!(eff.w_nli, 0.0);
@@ -1795,6 +1884,8 @@ mod tests {
             w_coac: 0.10,
             w_util: 0.05,
             w_prov: 0.05,
+            w_phase_histogram: 0.0,
+            w_phase_explicit: 0.0,
         };
         let _eff = weights.effective(false);
         assert!(
@@ -1835,6 +1926,8 @@ mod tests {
             w_coac: 0.10,
             w_util: 0.05,
             w_prov: 0.05,
+            w_phase_histogram: 0.0,
+            w_phase_explicit: 0.0,
         }
     }
 
@@ -1848,6 +1941,8 @@ mod tests {
             coac_norm: 0.5,
             util_norm: 0.5,
             prov_norm: 1.0,
+            phase_histogram_norm: 0.0,
+            phase_explicit_norm: 0.0,
         };
         let weights = FusionWeights {
             w_sim: 0.30,
@@ -1856,6 +1951,8 @@ mod tests {
             w_coac: 0.10,
             w_util: 0.05,
             w_prov: 0.05,
+            w_phase_histogram: 0.0,
+            w_phase_explicit: 0.0,
         };
         let score = compute_fused_score(&inputs, &weights);
         // 0.30*0.8 + 0.30*0.7 + 0.15*0.6 + 0.10*0.5 + 0.05*0.5 + 0.05*1.0
@@ -1885,6 +1982,8 @@ mod tests {
             w_coac: 0.10,
             w_util: 0.05,
             w_prov: 0.05,
+            w_phase_histogram: 0.0,
+            w_phase_explicit: 0.0,
         };
         // Entry A: high NLI, no co-access
         let entry_a = FusedScoreInputs {
@@ -1894,6 +1993,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0,
+            phase_explicit_norm: 0.0,
         };
         // Entry B: low NLI, max co-access
         let entry_b = FusedScoreInputs {
@@ -1903,6 +2004,8 @@ mod tests {
             coac_norm: 1.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0,
+            phase_explicit_norm: 0.0,
         };
         let score_a = compute_fused_score(&entry_a, &default_weights);
         let score_b = compute_fused_score(&entry_b, &default_weights);
@@ -1938,6 +2041,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0,
+            phase_explicit_norm: 0.0,
         };
         let entry_b = FusedScoreInputs {
             similarity: 0.5,
@@ -1946,6 +2051,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0,
+            phase_explicit_norm: 0.0,
         };
         let score_a = compute_fused_score(&entry_a, &eff);
         let score_b = compute_fused_score(&entry_b, &eff);
@@ -1971,6 +2078,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let entry_b = FusedScoreInputs {
             similarity: 0.5,
@@ -1979,6 +2088,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         // A: 0.25*0.9 + 0.15*0.3 + 0.05*0.5 = 0.225 + 0.045 + 0.025 = 0.295
         // B: 0.25*0.5 + 0.15*0.9 + 0.05*0.5 = 0.125 + 0.135 + 0.025 = 0.285
@@ -2001,6 +2112,8 @@ mod tests {
             coac_norm: 0.5,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         // Verify penalty is applied externally:
         use unimatrix_engine::graph::ORPHAN_PENALTY;
@@ -2020,6 +2133,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let weights = FusionWeights {
             w_sim: 1.0,
@@ -2028,6 +2143,8 @@ mod tests {
             w_coac: 0.0,
             w_util: 0.0,
             w_prov: 0.0,
+            w_phase_histogram: 0.0, // crt-026 test: phase fields default to 0.0
+            w_phase_explicit: 0.0,  // crt-026 test: W3-1 placeholder
         };
         let fused = compute_fused_score(&inputs, &weights); // = 1.0
         let deprecated_penalty = 0.7_f64;
@@ -2048,6 +2165,8 @@ mod tests {
             w_coac: 0.10,
             w_util: 0.05,
             w_prov: 0.05,
+            w_phase_histogram: 0.0, // crt-026 test: phase fields default to 0.0
+            w_phase_explicit: 0.0,  // crt-026 test: W3-1 placeholder
         };
         let base = FusedScoreInputs {
             similarity: 0.5,
@@ -2056,6 +2175,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let with_util = FusedScoreInputs {
             util_norm: 1.0,
@@ -2079,6 +2200,8 @@ mod tests {
             coac_norm: 1.0,
             util_norm: 1.0,
             prov_norm: 1.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let score = compute_fused_score(&inputs, &default_weights());
         assert!(
@@ -2099,6 +2222,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let score = compute_fused_score(&inputs, &default_weights());
         assert_eq!(score, 0.0, "zero inputs must produce 0.0");
@@ -2114,6 +2239,8 @@ mod tests {
             coac_norm: 0.3,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let inputs_with_nli = FusedScoreInputs {
             nli_entailment: 0.9,
@@ -2143,6 +2270,8 @@ mod tests {
             w_coac: 0.0,
             w_util: 0.0,
             w_prov: 0.0,
+            w_phase_histogram: 0.0, // crt-026 test: phase fields default to 0.0
+            w_phase_explicit: 0.0,  // crt-026 test: W3-1 placeholder
         };
         let inputs = FusedScoreInputs {
             similarity: 0.75,
@@ -2151,6 +2280,8 @@ mod tests {
             coac_norm: 0.99,
             util_norm: 0.99,
             prov_norm: 0.99,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let score = compute_fused_score(&inputs, &weights);
         assert!(
@@ -2169,6 +2300,8 @@ mod tests {
             w_coac: 0.0,
             w_util: 0.0,
             w_prov: 0.0,
+            w_phase_histogram: 0.0, // crt-026 test: phase fields default to 0.0
+            w_phase_explicit: 0.0,  // crt-026 test: W3-1 placeholder
         };
         let inputs_high_nli = FusedScoreInputs {
             similarity: 0.5,
@@ -2177,6 +2310,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let inputs_zero_nli = FusedScoreInputs {
             nli_entailment: 0.0,
@@ -2204,6 +2339,8 @@ mod tests {
                         coac_norm: 0.5,
                         util_norm: 0.5,
                         prov_norm: 0.0,
+                        phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+                        phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
                     };
                     let score = compute_fused_score(&inputs, &default_weights());
                     assert!(
@@ -2258,6 +2395,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let score = compute_fused_score(&inputs, &default_weights());
         assert!(
@@ -2322,6 +2461,8 @@ mod tests {
             coac_norm: 0.5,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         assert!((inputs.similarity - 0.8).abs() < 1e-9);
     }
@@ -2342,6 +2483,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let low_nli = FusedScoreInputs {
             similarity: 0.5,
@@ -2350,6 +2493,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let score_high = compute_fused_score(&high_nli, &weights);
         let score_low = compute_fused_score(&low_nli, &weights);
@@ -2372,6 +2517,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let score = compute_fused_score(&inputs, &weights);
         // All five entries have identical score.
@@ -2420,6 +2567,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let score = compute_fused_score(&inputs, &default_weights());
         assert!(
@@ -2440,6 +2589,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let fused = compute_fused_score(&inputs, &weights);
         let penalty_active = 1.0_f64;
@@ -2475,6 +2626,8 @@ mod tests {
             w_coac: 0.0,
             w_util: 0.0,
             w_prov: 0.0,
+            w_phase_histogram: 0.0, // crt-026 test: phase fields default to 0.0
+            w_phase_explicit: 0.0,  // crt-026 test: W3-1 placeholder
         };
         let inputs = FusedScoreInputs {
             similarity: 0.6,
@@ -2483,6 +2636,8 @@ mod tests {
             coac_norm: 0.667,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let fused = compute_fused_score(&inputs, &sim_only_weights);
         let status_penalty = 1.0_f64;
@@ -2503,6 +2658,8 @@ mod tests {
             w_coac: 0.0,
             w_util: 0.0,
             w_prov: 0.0,
+            w_phase_histogram: 0.0, // crt-026 test: phase fields default to 0.0
+            w_phase_explicit: 0.0,  // crt-026 test: W3-1 placeholder
         };
         let inputs = FusedScoreInputs {
             similarity: 0.6,
@@ -2511,6 +2668,8 @@ mod tests {
             coac_norm: 0.667,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let score_sim_only = compute_fused_score(&inputs, &sim_only_weights);
         let score_default = compute_fused_score(&inputs, &default_weights());
@@ -2532,6 +2691,8 @@ mod tests {
             w_coac: 0.0,
             w_util: 0.0,
             w_prov: 0.0,
+            w_phase_histogram: 0.0, // crt-026 test: phase fields default to 0.0
+            w_phase_explicit: 0.0,  // crt-026 test: W3-1 placeholder
         };
         // Profile 2: crt024-weights.toml (w_nli=0.35, w_sim=0.25)
         let profile2 = FusionWeights {
@@ -2541,6 +2702,8 @@ mod tests {
             w_coac: 0.10,
             w_util: 0.05,
             w_prov: 0.05,
+            w_phase_histogram: 0.0, // crt-026 test: phase fields default to 0.0
+            w_phase_explicit: 0.0,  // crt-026 test: W3-1 placeholder
         };
         // Use an entry where NLI is very high (0.9) and sim is low (0.1).
         // Profile1 will heavily reward sim (0.85*0.1=0.085), profile2 rewards NLI (0.35*0.9=0.315).
@@ -2551,6 +2714,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let score1 = compute_fused_score(&inputs, &profile1);
         let score2 = compute_fused_score(&inputs, &profile2);
@@ -2578,6 +2743,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let entry_b = FusedScoreInputs {
             similarity: 0.9,
@@ -2586,6 +2753,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.5,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let score_a = compute_fused_score(&entry_a, &weights);
         let score_b = compute_fused_score(&entry_b, &weights);
@@ -2608,6 +2777,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let entry_b = FusedScoreInputs {
             similarity: 0.5,
@@ -2616,6 +2787,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let score_a = compute_fused_score(&entry_a, &eff);
         let score_b = compute_fused_score(&entry_b, &eff);
@@ -2637,6 +2810,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         let entry_b = FusedScoreInputs {
             similarity: 0.5,
@@ -2645,6 +2820,8 @@ mod tests {
             coac_norm: 0.0,
             util_norm: 0.0,
             prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // crt-026 test: cold-start / no histogram
+            phase_explicit_norm: 0.0,  // crt-026 test: ADR-003 placeholder
         };
         // A: 0.25*0.9 + 0.15*0.3 = 0.270; B: 0.25*0.5 + 0.15*0.9 = 0.260
         let score_a = compute_fused_score(&entry_a, &weights);
@@ -2778,5 +2955,418 @@ mod tests {
             hnsw_k, 10,
             "hnsw_k must be at least params.k even when nli_top_k < params.k"
         );
+    }
+
+    // =========================================================================
+    // crt-026 (WA-2): ServiceSearchParams new fields tests
+    // =========================================================================
+
+    // -- T-SP-NEW-01: test_service_search_params_has_session_fields (AC-04, R-12) --
+    #[test]
+    fn test_service_search_params_has_session_fields() {
+        // AC-04: ServiceSearchParams must have session_id and category_histogram fields.
+        // Compilation failure IS the test failure for AC-04.
+        let params = ServiceSearchParams {
+            query: "test".to_string(),
+            k: 5,
+            filters: None,
+            similarity_floor: None,
+            confidence_floor: None,
+            feature_tag: None,
+            co_access_anchors: None,
+            caller_agent_id: None,
+            retrieval_mode: RetrievalMode::Flexible,
+            session_id: None,         // NEW crt-026 field
+            category_histogram: None, // NEW crt-026 field
+        };
+
+        assert!(
+            params.session_id.is_none(),
+            "session_id field must exist and be Option<String>"
+        );
+        assert!(
+            params.category_histogram.is_none(),
+            "category_histogram field must exist and be Option<HashMap<String, u32>>"
+        );
+    }
+
+    // -- T-SP-NEW-02: test_service_search_params_with_session_data (AC-05 partial, R-12) --
+    #[test]
+    fn test_service_search_params_with_session_data() {
+        let mut hist: HashMap<String, u32> = HashMap::new();
+        hist.insert("decision".to_string(), 3);
+        hist.insert("pattern".to_string(), 2);
+
+        let params = ServiceSearchParams {
+            query: "how to handle session state".to_string(),
+            k: 10,
+            filters: None,
+            similarity_floor: None,
+            confidence_floor: None,
+            feature_tag: None,
+            co_access_anchors: None,
+            caller_agent_id: None,
+            retrieval_mode: RetrievalMode::Flexible,
+            session_id: Some("sid-abc".to_string()),
+            category_histogram: Some(hist),
+        };
+
+        assert_eq!(params.session_id.as_deref(), Some("sid-abc"));
+        let h = params.category_histogram.as_ref().unwrap();
+        assert_eq!(h.get("decision"), Some(&3));
+        assert_eq!(h.get("pattern"), Some(&2));
+    }
+
+    // -- T-SP-NEW-03: test_service_search_params_empty_histogram_maps_to_none (AC-08 partial, R-02, R-09) --
+    #[test]
+    fn test_service_search_params_empty_histogram_maps_to_none() {
+        // Documents the handler invariant: empty histogram must be mapped to None.
+        let empty: HashMap<String, u32> = HashMap::new();
+        let category_histogram: Option<HashMap<String, u32>> =
+            if empty.is_empty() { None } else { Some(empty) };
+
+        assert!(
+            category_histogram.is_none(),
+            "an empty histogram must be mapped to None before ServiceSearchParams construction"
+        );
+    }
+
+    // =========================================================================
+    // crt-026 (WA-2): FusedScoreInputs / FusionWeights / compute_fused_score tests
+    // =========================================================================
+
+    fn make_baseline_inputs(sim: f64, category_matches: bool) -> FusedScoreInputs {
+        FusedScoreInputs {
+            similarity: sim,
+            nli_entailment: 0.0,
+            confidence: 0.5,
+            coac_norm: 0.0,
+            util_norm: 0.5, // neutral
+            prov_norm: 0.0,
+            phase_histogram_norm: if category_matches { 1.0 } else { 0.0 },
+            phase_explicit_norm: 0.0, // ADR-003: always 0.0 in crt-026
+        }
+    }
+
+    fn make_baseline_weights() -> FusionWeights {
+        FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+            w_phase_histogram: 0.02,
+            w_phase_explicit: 0.0, // ADR-003
+        }
+    }
+
+    // -- T-FS-01: test_histogram_boost_score_delta_at_p1_equals_weight (GATE BLOCKER, AC-12, R-01) --
+    #[test]
+    fn test_histogram_boost_score_delta_at_p1_equals_weight() {
+        // histogram = {"decision": 5}, total = 5, p("decision") = 1.0
+        // Entry A: phase_histogram_norm = 1.0; Entry B: phase_histogram_norm = 0.0
+        // All other inputs identical.
+        let weights = make_baseline_weights(); // w_phase_histogram = 0.02
+        let inputs_a = make_baseline_inputs(0.70, true); // phase_histogram_norm = 1.0
+        let inputs_b = make_baseline_inputs(0.70, false); // phase_histogram_norm = 0.0
+
+        let score_a = compute_fused_score(&inputs_a, &weights);
+        let score_b = compute_fused_score(&inputs_b, &weights);
+        let delta = score_a - score_b;
+
+        assert!(
+            delta >= 0.02,
+            "score delta at p=1.0 must be >= 0.02 (w_phase_histogram * 1.0); \
+             got delta={delta:.6}"
+        );
+        assert!(
+            (delta - 0.02).abs() < 1e-10,
+            "score delta at p=1.0 must be exactly 0.02 with default weights; \
+             got delta={delta:.6}"
+        );
+    }
+
+    // -- T-FS-02: test_60_percent_concentration_score_delta (AC-12 partial, R-01 scenario 2) --
+    #[test]
+    fn test_60_percent_concentration_score_delta() {
+        // histogram = {"decision": 3, "pattern": 2}, total = 5, p("decision") = 0.6
+        let weights = make_baseline_weights();
+        let mut inputs_decision = make_baseline_inputs(0.70, false);
+        inputs_decision.phase_histogram_norm = 0.6;
+
+        let inputs_other = make_baseline_inputs(0.70, false); // phase_histogram_norm = 0.0
+
+        let score_decision = compute_fused_score(&inputs_decision, &weights);
+        let score_other = compute_fused_score(&inputs_other, &weights);
+        let delta = score_decision - score_other;
+
+        assert!(
+            (delta - 0.012).abs() < 1e-10,
+            "60% concentration must produce delta = 0.02 * 0.6 = 0.012; \
+             got delta={delta:.6}"
+        );
+    }
+
+    // -- T-FS-03: test_absent_category_phase_histogram_norm_is_zero (GATE BLOCKER, AC-13, R-01 scenario 3, R-13) --
+    #[test]
+    fn test_absent_category_phase_histogram_norm_is_zero() {
+        // histogram = {"decision": 5}, total = 5
+        // Entry has category = "lesson-learned" (not in histogram)
+        let mut histogram: HashMap<String, u32> = HashMap::new();
+        histogram.insert("decision".to_string(), 5);
+        let total: u32 = histogram.values().sum(); // 5
+
+        let entry_category = "lesson-learned";
+
+        // Simulating the scoring loop's phase_histogram_norm computation.
+        let phase_histogram_norm = if total > 0 {
+            histogram.get(entry_category).copied().unwrap_or(0) as f64 / total as f64
+        } else {
+            0.0
+        };
+
+        assert_eq!(
+            phase_histogram_norm, 0.0,
+            "absent category must produce phase_histogram_norm = 0.0; \
+             got {phase_histogram_norm}"
+        );
+    }
+
+    // -- T-FS-04: test_cold_start_search_produces_identical_scores (GATE BLOCKER, AC-08, R-02) --
+    #[test]
+    fn test_cold_start_search_produces_identical_scores() {
+        // Pre-crt-026 baseline: six-term fused score only.
+        // crt-026 cold start: same six terms + phase_histogram_norm = 0.0 + phase_explicit_norm = 0.0.
+        let weights = make_baseline_weights(); // includes w_phase_histogram = 0.02
+
+        let pre_crt026_inputs = FusedScoreInputs {
+            similarity: 0.75,
+            nli_entailment: 0.40,
+            confidence: 0.60,
+            coac_norm: 0.20,
+            util_norm: 0.50,
+            prov_norm: 0.0,
+            phase_histogram_norm: 0.0, // cold start
+            phase_explicit_norm: 0.0,  // always 0.0 (ADR-003)
+        };
+
+        // Expected: identical to six-term-only formula (phase terms contribute 0.0).
+        // 0.25*0.75 + 0.35*0.40 + 0.15*0.60 + 0.10*0.20 + 0.05*0.50 + 0.05*0.0
+        // = 0.1875 + 0.14 + 0.09 + 0.02 + 0.025 + 0.0 = 0.4625
+        let expected =
+            0.25 * 0.75 + 0.35 * 0.40 + 0.15 * 0.60 + 0.10 * 0.20 + 0.05 * 0.50 + 0.05 * 0.0;
+
+        let actual = compute_fused_score(&pre_crt026_inputs, &weights);
+
+        assert!(
+            (actual - expected).abs() < f64::EPSILON,
+            "cold-start score must be bit-for-bit identical to pre-crt-026 six-term formula; \
+             expected={expected:.10}, actual={actual:.10}"
+        );
+    }
+
+    // -- T-FS-05: test_status_penalty_applied_after_histogram_boost (AC-10, R-08) --
+    #[test]
+    fn test_status_penalty_applied_after_histogram_boost() {
+        // Entry: category="decision" matches histogram (p=1.0), status=Deprecated (penalty=0.5).
+        let weights = make_baseline_weights();
+        let inputs = FusedScoreInputs {
+            similarity: 0.70,
+            nli_entailment: 0.0,
+            confidence: 0.5,
+            coac_norm: 0.0,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+            phase_histogram_norm: 1.0, // p=1.0: histogram matches
+            phase_explicit_norm: 0.0,
+        };
+        let status_penalty = 0.5_f64;
+
+        // Correct order: (fused + boost) * penalty — boost is INSIDE compute_fused_score.
+        let fused = compute_fused_score(&inputs, &weights);
+        let final_score = fused * status_penalty;
+
+        // Wrong order (must be different): base_without_boost * penalty + boost.
+        let base_inputs_no_boost = FusedScoreInputs {
+            phase_histogram_norm: 0.0,
+            ..inputs
+        };
+        let fused_no_boost = compute_fused_score(&base_inputs_no_boost, &weights);
+        let wrong_score = fused_no_boost * status_penalty + weights.w_phase_histogram * 1.0;
+
+        // Correct: (base + 0.02) * 0.5  vs  Wrong: base * 0.5 + 0.02
+        // Differ by: 0.02 * (1.0 - 0.5) = 0.01
+        assert!(
+            (final_score - wrong_score).abs() > 1e-6,
+            "correct and wrong penalty-ordering formulas must produce different results; \
+             correct={final_score:.6}, wrong={wrong_score:.6}"
+        );
+        assert!(
+            final_score < wrong_score,
+            "correct ordering ((base+boost)*penalty) must be less than \
+             wrong ordering (base*penalty+boost) for penalty < 1.0; \
+             correct={final_score:.6}, wrong={wrong_score:.6}"
+        );
+        let expected2 = (fused_no_boost + 0.02) * status_penalty;
+        assert!(
+            (final_score - expected2).abs() < f64::EPSILON,
+            "final_score must equal (fused_without_boost + w_phase_histogram) * status_penalty; \
+             got final_score={final_score:.10}, expected={expected2:.10}"
+        );
+    }
+
+    // -- T-FS-06: test_phase_histogram_norm_zero_when_total_is_zero (R-09, division by zero guard) --
+    #[test]
+    fn test_phase_histogram_norm_zero_when_total_is_zero() {
+        // Primary guard is in handler (is_empty() → None). This tests the secondary in-function guard.
+        let histogram: Option<HashMap<String, u32>> = Some(HashMap::new());
+        let total: u32 = histogram.as_ref().map(|h| h.values().sum()).unwrap_or(0);
+
+        let phase_histogram_norm = if total > 0 {
+            histogram
+                .as_ref()
+                .and_then(|h| h.get("decision"))
+                .copied()
+                .unwrap_or(0) as f64
+                / total as f64
+        } else {
+            0.0
+        };
+
+        assert_eq!(total, 0);
+        assert_eq!(
+            phase_histogram_norm, 0.0,
+            "total=0 must produce phase_histogram_norm=0.0, not NaN or panic"
+        );
+        assert!(
+            !phase_histogram_norm.is_nan(),
+            "phase_histogram_norm must not be NaN"
+        );
+    }
+
+    // -- T-FS-07: test_phase_explicit_norm_placeholder_fields_present (AC-09, R-07) --
+    #[test]
+    fn test_phase_explicit_norm_placeholder_fields_present() {
+        // ADR-003: phase_explicit_norm is always 0.0 in crt-026; W3-1 will populate it.
+        let inputs = FusedScoreInputs {
+            similarity: 0.5,
+            nli_entailment: 0.0,
+            confidence: 0.5,
+            coac_norm: 0.0,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+            phase_histogram_norm: 0.3,
+            phase_explicit_norm: 0.0, // ADR-003: always 0.0 in crt-026
+        };
+        let weights = FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+            w_phase_histogram: 0.02,
+            w_phase_explicit: 0.0, // ADR-003: always 0.0 in crt-026
+        };
+
+        assert_eq!(
+            inputs.phase_explicit_norm, 0.0,
+            "phase_explicit_norm must be 0.0 in crt-026 (ADR-003 placeholder)"
+        );
+        assert_eq!(
+            weights.w_phase_explicit, 0.0,
+            "w_phase_explicit must be 0.0 in crt-026 (ADR-003 placeholder)"
+        );
+        assert_eq!(
+            weights.w_phase_histogram, 0.02,
+            "w_phase_histogram default must be 0.02"
+        );
+
+        // ADR-003: phase_explicit_norm=0.0 means w_phase_explicit * 0.0 = 0.0 regardless.
+        let score_with_explicit = compute_fused_score(
+            &inputs,
+            &FusionWeights {
+                w_phase_explicit: 0.99,
+                ..weights
+            },
+        );
+        let score_without_explicit = compute_fused_score(&inputs, &weights);
+        assert!(
+            (score_with_explicit - score_without_explicit).abs() < f64::EPSILON,
+            "phase_explicit_norm=0.0 must contribute 0.0 regardless of w_phase_explicit; \
+             score_with={score_with_explicit:.10}, score_without={score_without_explicit:.10}"
+        );
+    }
+
+    // -- T-FS-08: test_fusion_weights_effective_nli_absent_excludes_phase_from_denominator (GATE BLOCKER, R-06) --
+    #[test]
+    fn test_fusion_weights_effective_nli_absent_excludes_phase_from_denominator() {
+        // R-06 invariant: w_phase_histogram NOT in re-normalization denominator.
+        // Five-term denominator: w_sim + w_conf + w_coac + w_util + w_prov = 0.60.
+        let weights = FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+            w_phase_histogram: 0.02,
+            w_phase_explicit: 0.0,
+        };
+
+        let effective_nli_absent = weights.effective(false);
+
+        // w_nli must be zeroed out.
+        assert_eq!(
+            effective_nli_absent.w_nli, 0.0,
+            "w_nli must be 0.0 in NLI-absent mode"
+        );
+
+        // denominator = 0.25 + 0.15 + 0.10 + 0.05 + 0.05 = 0.60 (five terms only, NOT phase fields)
+        let expected_denom = 0.25 + 0.15 + 0.10 + 0.05 + 0.05; // 0.60
+
+        assert!(
+            (effective_nli_absent.w_sim - 0.25 / expected_denom).abs() < f64::EPSILON,
+            "w_sim must be re-normalized by five-term denominator; \
+             expected={}, got={}",
+            0.25 / expected_denom,
+            effective_nli_absent.w_sim
+        );
+
+        // w_phase_histogram must be passed through UNCHANGED (not re-normalized).
+        assert_eq!(
+            effective_nli_absent.w_phase_histogram, 0.02,
+            "w_phase_histogram must be 0.02 unchanged in NLI-absent mode (not in denominator); \
+             got={}",
+            effective_nli_absent.w_phase_histogram
+        );
+
+        // w_phase_explicit must be passed through unchanged.
+        assert_eq!(
+            effective_nli_absent.w_phase_explicit, 0.0,
+            "w_phase_explicit must be 0.0 unchanged in NLI-absent mode"
+        );
+    }
+
+    // -- T-FS-09: test_fusion_weights_effective_nli_active_phase_fields_pass_through (R-06 NLI-active path) --
+    #[test]
+    fn test_fusion_weights_effective_nli_active_phase_fields_pass_through() {
+        let weights = FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+            w_phase_histogram: 0.02,
+            w_phase_explicit: 0.0,
+        };
+        let effective_nli_active = weights.effective(true);
+
+        // NLI-active: all fields returned unchanged.
+        assert_eq!(effective_nli_active.w_phase_histogram, 0.02);
+        assert_eq!(effective_nli_active.w_phase_explicit, 0.0);
+        assert_eq!(effective_nli_active.w_nli, 0.35);
     }
 }

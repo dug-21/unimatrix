@@ -1274,3 +1274,148 @@ def test_phase_tag_store_cycle_review_flow(server):
         assert "scope" in text.lower() or "design" in text.lower() or "phase" in text.lower(), (
             "L-CRT025-01: cycle_review rendered text must contain phase narrative data (AC-12)"
         )
+
+
+def test_session_histogram_boosts_category_match(server):
+    """L-CRT026-01: Session histogram affinity boost — store→histogram→search pipeline (AC-06, R-03).
+
+    Stores entries in a session under a known category. A subsequent search in that session
+    must return scores that are finite and non-negative (no NaN from histogram computation).
+    When only one category is present, all matching entries receive the same boost, so ordering
+    within the category may be unchanged; the important assertion is no crash, no NaN.
+
+    Note: session_id is passed as a tool argument (MCP parameter), which flows into the
+    audit_ctx and triggers histogram recording/lookup in the server.
+    """
+    topic = "crt026-histogram-boost-unique-zeta"
+
+    # Store 3 entries with category="decision" in session "hist-boost-s1"
+    for i in range(3):
+        resp = server.call_tool("context_store", {
+            "content": f"crt026 session histogram boost test entry {i} decision unique zeta",
+            "topic": topic,
+            "category": "decision",
+            "agent_id": "human",
+            "format": "json",
+            "session_id": "hist-boost-s1",
+        })
+        assert_tool_success(resp)
+
+    # Search in the same session — histogram has decision:3, total=3, p=1.0
+    search_resp = server.call_tool("context_search", {
+        "query": "crt026 session histogram boost test decision unique zeta",
+        "format": "json",
+        "session_id": "hist-boost-s1",
+    })
+    assert_tool_success(search_resp)
+    entries = parse_entries(search_resp)
+
+    # All returned scores must be finite and non-negative (no NaN from histogram computation)
+    for e in entries:
+        score = e.get("final_score")
+        if score is not None:
+            assert score >= 0.0, (
+                f"L-CRT026-01: final_score must be >= 0.0; got {score}. "
+                "NaN from histogram division guard failure."
+            )
+            assert score <= 1.5, (
+                f"L-CRT026-01: final_score must be bounded; got {score}. "
+                "Histogram boost overflow."
+            )
+
+
+def test_cold_start_session_search_no_regression(populated_server):
+    """L-CRT026-02: Cold-start session parity — no histogram stores before search (AC-08, R-02).
+
+    A search in a freshly registered session (no prior stores) must return results in the same
+    order as a search without any session_id. Both must succeed without error or NaN scores.
+    """
+    query = "knowledge management decision architecture"
+
+    # Search without session_id (baseline)
+    resp_no_session = populated_server.context_search(query, format="json")
+    assert_tool_success(resp_no_session)
+    entries_no_session = parse_entries(resp_no_session)
+
+    # Search with a session_id that has no prior stores (cold start)
+    resp_cold = populated_server.call_tool("context_search", {
+        "query": query,
+        "format": "json",
+        "session_id": "cold-start-session-crt026",
+    })
+    assert_tool_success(resp_cold)
+    entries_cold = parse_entries(resp_cold)
+
+    # Both must return results without NaN
+    for e in entries_no_session + entries_cold:
+        score = e.get("final_score")
+        if score is not None:
+            assert score >= 0.0, (
+                f"L-CRT026-02: final_score must be >= 0.0; got {score}. Cold-start regression."
+            )
+
+    # Result counts must be equal (same entries visible in both cases)
+    assert len(entries_no_session) == len(entries_cold), (
+        f"L-CRT026-02: cold-start session must return same number of results as no-session search; "
+        f"no_session={len(entries_no_session)}, cold={len(entries_cold)}"
+    )
+
+    # Entry IDs must be identical (same ordering — histogram is all zeros for cold start)
+    ids_no_session = [e.get("id") for e in entries_no_session]
+    ids_cold = [e.get("id") for e in entries_cold]
+    assert ids_no_session == ids_cold, (
+        f"L-CRT026-02: cold-start session must produce identical result order to no-session search "
+        f"(AC-08: empty histogram → no boost → bit-for-bit identical scores); "
+        f"no_session={ids_no_session}, cold={ids_cold}"
+    )
+
+
+def test_duplicate_store_histogram_no_inflation(server):
+    """L-CRT026-03: Duplicate store must not inflate histogram (AC-02, R-03).
+
+    Storing the same entry twice in a session must not crash and must return normal responses.
+    Internally, the histogram stays at count=1 (not 2). The search call verifies the pipeline
+    handles this state without error or NaN scores.
+    """
+    topic = "crt026-duplicate-histogram-unique-eta"
+    content = "crt026 duplicate histogram test unique content eta session guard"
+
+    # First store — non-duplicate, histogram incremented to decision:1
+    resp1 = server.call_tool("context_store", {
+        "content": content,
+        "topic": topic,
+        "category": "decision",
+        "agent_id": "human",
+        "format": "json",
+        "session_id": "dedup-session-crt026",
+    })
+    assert_tool_success(resp1)
+    entry_id = extract_entry_id(resp1)
+
+    # Second store — same content → duplicate detection; histogram must NOT increment
+    resp2 = server.call_tool("context_store", {
+        "content": content,
+        "topic": topic,
+        "category": "decision",
+        "agent_id": "human",
+        "format": "json",
+        "session_id": "dedup-session-crt026",
+    })
+    assert_tool_success(resp2)
+
+    # Search in the session — must not crash even with internal histogram count=1
+    search_resp = server.call_tool("context_search", {
+        "query": "crt026 duplicate histogram test unique content eta",
+        "format": "json",
+        "session_id": "dedup-session-crt026",
+    })
+    assert_tool_success(search_resp)
+    entries = parse_entries(search_resp)
+
+    # All scores must be finite and non-negative
+    for e in entries:
+        score = e.get("final_score")
+        if score is not None:
+            assert score >= 0.0, (
+                f"L-CRT026-03: final_score must be >= 0.0 after duplicate store; got {score}."
+            )

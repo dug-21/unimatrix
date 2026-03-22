@@ -38,7 +38,7 @@ Natural language queries return entries ranked by NLI (Natural Language Inferenc
 
 ### Hook-Driven Invisible Delivery (Cortical Implant)
 
-Automatic context injection on every prompt via the `UserPromptSubmit` hook. Five hook events drive the integration: `UserPromptSubmit`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC.
+Automatic context injection on every prompt via the `UserPromptSubmit` hook. Five hook events drive the integration: `UserPromptSubmit`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction; when the session has a non-empty category histogram, the compaction payload includes a "Recent session activity: decision × 3, pattern × 2" summary of what the session has been storing. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC.
 
 ### Retrospective Analysis
 
@@ -282,6 +282,15 @@ max_contradicts_per_tick = 10
 # nli_auto_quarantine_threshold: NLI-origin Contradicts edges trigger auto-quarantine only
 # when all edge scores exceed this value. Must be > nli_contradiction_threshold (default: 0.85).
 nli_auto_quarantine_threshold = 0.85
+
+# Session context affinity weights (WA-2).
+# w_phase_histogram: boost weight for implicit category histogram signal. Applied inside
+# compute_fused_score. Max boost = w_phase_histogram * 1.0 = 0.02 per entry (default: 0.02).
+w_phase_histogram = 0.02
+# w_phase_explicit: boost weight for explicit phase signal (WA-1 current_phase). Reserved
+# for W3-1 (GNN). Default 0.0 — always inactive in the current release. Configurable
+# but no phase-category mapping is implemented; setting this above 0.0 has no effect.
+w_phase_explicit = 0.0
 ```
 
 ```toml
@@ -306,10 +315,10 @@ Unimatrix exposes 12 MCP tools. All tools accept `format: "summary" | "markdown"
 
 | Tool | Purpose | When to Use |
 |------|---------|-------------|
-| `context_search` | Search for relevant context using natural language. Returns semantically similar entries ranked by relevance. | When you need to find patterns, conventions, or decisions related to a concept. Use when you do NOT know exactly what you are looking for. Key params: `query` (required), `category`, `topic`, `tags`, `k` (default 5), `helpful`. |
+| `context_search` | Search for relevant context using natural language. Returns semantically similar entries ranked by relevance. When a `session_id` is provided and the session has prior stores, results whose category matches recent session activity receive a small affinity boost (`w_phase_histogram = 0.02`). Cold-start sessions (no prior stores) produce identical results to sessions without a session ID. | When you need to find patterns, conventions, or decisions related to a concept. Use when you do NOT know exactly what you are looking for. Key params: `query` (required), `category`, `topic`, `tags`, `k` (default 5), `helpful`, `session_id`. |
 | `context_lookup` | Look up context entries by exact filters. Returns entries matching topic, category, tags, status, or ID. | When you KNOW what you are looking for — a specific feature's entries, a category listing, or a known ID. Key params: `topic`, `category`, `tags`, `id`, `status`, `limit` (default 10). |
 | `context_get` | Get a specific context entry by its ID. | When you have an entry ID from a previous search or lookup result and need the full content. Key params: `id` (required), `helpful`. |
-| `context_store` | Store a new context entry with duplicate detection and content scanning. | When you discover a pattern, convention, decision, or lesson worth preserving. Key params: `content` (required), `topic` (required), `category` (required), `tags`, `title`, `feature_cycle`. |
+| `context_store` | Store a new context entry with duplicate detection and content scanning. Each successful non-duplicate store increments the per-session category histogram used by `context_search` for implicit session affinity ranking. | When you discover a pattern, convention, decision, or lesson worth preserving. Key params: `content` (required), `topic` (required), `category` (required), `tags`, `title`, `feature_cycle`. |
 | `context_correct` | Correct an existing entry. Deprecates the original and creates a new entry with a hash-chain link. | When an entry contains wrong or outdated information that should be superseded (not just hidden). Key params: `original_id` (required), `content` (required), `reason`. |
 | `context_deprecate` | Mark an entry as outdated. Entry remains accessible but excluded from default search/lookup. | When knowledge is no longer relevant but should not be deleted (historical record). Key params: `id` (required), `reason`. |
 | `context_quarantine` | Quarantine or restore an entry. Quarantined entries are excluded from search and lookup. **Admin only.** | When an entry is suspicious, invalid, or harmful and should be isolated. Use `action: "restore"` to undo. Key params: `id` (required), `action` ("quarantine" or "restore"), `reason`. |

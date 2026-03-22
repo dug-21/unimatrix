@@ -351,6 +351,18 @@ pub struct InferenceConfig {
     /// Defaults sum to 0.95; the remaining 0.05 is headroom for WA-2's phase boost term.
     #[serde(default = "default_w_prov")]
     pub w_prov: f64,
+
+    /// Fusion weight for session histogram affinity signal (crt-026, WA-2, ADR-004).
+    /// Additive term outside the six-weight sum constraint; sum goes 0.95 → 0.97 with defaults.
+    /// W3-1 cold-start seed value: 0.02 (ASS-028 calibrated value, full session signal budget).
+    #[serde(default = "default_w_phase_histogram")]
+    pub w_phase_histogram: f64,
+
+    /// Fusion weight for explicit phase signal (crt-026, WA-2, ADR-003).
+    /// Reserved at 0.0 in crt-026; W3-1 placeholder. Will carry explicit phase signal once
+    /// W3-1 is trained. Not part of the six-weight sum constraint.
+    #[serde(default = "default_w_phase_explicit")]
+    pub w_phase_explicit: f64,
 }
 
 impl Default for InferenceConfig {
@@ -384,6 +396,8 @@ impl Default for InferenceConfig {
             w_coac: 0.10,
             w_util: 0.05,
             w_prov: 0.05,
+            w_phase_histogram: 0.02, // crt-026: full session signal budget (ADR-004)
+            w_phase_explicit: 0.0,   // crt-026: W3-1 placeholder (ADR-003)
         }
     }
 }
@@ -446,6 +460,16 @@ fn default_w_util() -> f64 {
 
 fn default_w_prov() -> f64 {
     0.05
+}
+
+// crt-026: default_w_phase_histogram — 0.02 (ASS-028 calibrated, full session signal budget)
+fn default_w_phase_histogram() -> f64 {
+    0.02
+}
+
+// crt-026: default_w_phase_explicit — 0.0 (W3-1 placeholder, ADR-003)
+fn default_w_phase_explicit() -> f64 {
+    0.0
 }
 
 /// Returns `true` if `name` is a recognized NLI model variant (case-insensitive).
@@ -583,6 +607,24 @@ impl InferenceConfig {
         ];
 
         for (field, value) in fusion_weight_checks {
+            if *value < 0.0 || *value > 1.0 {
+                return Err(ConfigError::NliFieldOutOfRange {
+                    path: path.to_path_buf(),
+                    field,
+                    value: value.to_string(),
+                    reason: "fusion weight must be in range [0.0, 1.0]",
+                });
+            }
+        }
+
+        // -- crt-026: Per-field range checks for phase weight fields [0.0, 1.0] (ADR-004, R-11). --
+        // These fields are NOT included in the six-weight sum constraint check below.
+        let phase_weight_checks: &[(&'static str, f64)] = &[
+            ("w_phase_histogram", self.w_phase_histogram),
+            ("w_phase_explicit", self.w_phase_explicit),
+        ];
+
+        for (field, value) in phase_weight_checks {
             if *value < 0.0 || *value > 1.0 {
                 return Err(ConfigError::NliFieldOutOfRange {
                     path: path.to_path_buf(),
@@ -1570,6 +1612,24 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.w_prov
             } else {
                 global.inference.w_prov
+            },
+            w_phase_histogram: if (project.inference.w_phase_histogram
+                - default.inference.w_phase_histogram)
+                .abs()
+                > f64::EPSILON
+            {
+                project.inference.w_phase_histogram
+            } else {
+                global.inference.w_phase_histogram
+            },
+            w_phase_explicit: if (project.inference.w_phase_explicit
+                - default.inference.w_phase_explicit)
+                .abs()
+                > f64::EPSILON
+            {
+                project.inference.w_phase_explicit
+            } else {
+                global.inference.w_phase_explicit
             },
         },
     }
@@ -4212,6 +4272,157 @@ categories = ["some-cat"]
         assert!(
             matches!(err, ConfigError::NliThresholdInvariantViolated { .. }),
             "must be NliThresholdInvariantViolated variant"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-026: InferenceConfig phase weight field tests (config.md test plan)
+    // -----------------------------------------------------------------------
+
+    // T-CFG-01: default values for new phase weight fields (AC-09, R-07, R-11)
+    #[test]
+    fn test_inference_config_default_phase_weights() {
+        let cfg = InferenceConfig::default();
+        assert_eq!(
+            cfg.w_phase_histogram, 0.02,
+            "w_phase_histogram default must be 0.02 (ASS-028 calibrated value, ADR-004)"
+        );
+        assert_eq!(
+            cfg.w_phase_explicit, 0.0,
+            "w_phase_explicit default must be 0.0 (W3-1 placeholder, ADR-003)"
+        );
+    }
+
+    // T-CFG-02: validate() rejects out-of-range phase weights (R-11)
+    #[test]
+    fn test_config_validation_rejects_out_of_range_phase_weights() {
+        // w_phase_histogram too high
+        let mut cfg = InferenceConfig::default();
+        cfg.w_phase_histogram = 1.5;
+        let result = cfg.validate(Path::new("/tmp/c.toml"));
+        assert!(
+            result.is_err(),
+            "w_phase_histogram = 1.5 must fail validate() (above [0.0, 1.0] range)"
+        );
+
+        // w_phase_explicit negative
+        cfg = InferenceConfig::default();
+        cfg.w_phase_explicit = -0.1;
+        let result = cfg.validate(Path::new("/tmp/c.toml"));
+        assert!(
+            result.is_err(),
+            "w_phase_explicit = -0.1 must fail validate() (below 0.0)"
+        );
+
+        // valid boundary: 0.0 passes
+        cfg = InferenceConfig::default();
+        cfg.w_phase_histogram = 0.0;
+        cfg.w_phase_explicit = 0.0;
+        assert!(
+            cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
+            "w_phase_histogram=0.0, w_phase_explicit=0.0 must pass validate()"
+        );
+
+        // valid boundary: 1.0 passes
+        cfg.w_phase_histogram = 1.0;
+        cfg.w_phase_explicit = 1.0;
+        assert!(
+            cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
+            "w_phase_histogram=1.0, w_phase_explicit=1.0 must pass validate()"
+        );
+
+        // default values pass
+        let default_cfg = InferenceConfig::default();
+        assert!(
+            default_cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
+            "default InferenceConfig (w_phase_histogram=0.02, w_phase_explicit=0.0) must pass validate()"
+        );
+    }
+
+    // T-CFG-03: six-weight sum is unchanged; phase fields are additive outside the constraint (ADR-004)
+    #[test]
+    fn test_inference_config_six_weight_sum_unchanged_by_phase_fields() {
+        let cfg = InferenceConfig::default();
+        let six_weight_sum =
+            cfg.w_sim + cfg.w_nli + cfg.w_conf + cfg.w_coac + cfg.w_util + cfg.w_prov;
+        let total_with_phase = six_weight_sum + cfg.w_phase_histogram + cfg.w_phase_explicit;
+        assert!(
+            (six_weight_sum - 0.95).abs() < f64::EPSILON,
+            "sum of six original weights must still be 0.95; got {six_weight_sum}"
+        );
+        assert!(
+            (total_with_phase - 0.97).abs() < f64::EPSILON,
+            "total including phase weights must be 0.97; got {total_with_phase}"
+        );
+        // Verify the six-weight sum check in validate() does NOT include phase fields
+        // (ADR-004: phase fields are additive, outside the <= 1.0 constraint)
+        assert!(
+            cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
+            "default config with sum=0.97 must pass validate() (six-weight check uses only original six)"
+        );
+    }
+
+    // T-CFG-04: serde round-trip for phase fields (AC-09)
+    #[test]
+    fn test_inference_config_serde_round_trip_phase_fields() {
+        #[derive(serde::Deserialize)]
+        struct TestConfig {
+            #[serde(default)]
+            inference: InferenceConfig,
+        }
+        let toml_str = r#"
+[inference]
+w_phase_histogram = 0.03
+w_phase_explicit = 0.0
+"#;
+        let config: TestConfig = toml::from_str(toml_str).expect("valid TOML");
+        assert!(
+            (config.inference.w_phase_histogram - 0.03).abs() < f64::EPSILON,
+            "w_phase_histogram must deserialize from TOML; got {}",
+            config.inference.w_phase_histogram
+        );
+        assert_eq!(
+            config.inference.w_phase_explicit, 0.0,
+            "w_phase_explicit must deserialize from TOML"
+        );
+    }
+
+    // T-CFG-05: missing phase fields in TOML use serde defaults (AC-09, FM-04 backward compat)
+    #[test]
+    fn test_inference_config_missing_phase_fields_use_defaults() {
+        #[derive(serde::Deserialize)]
+        struct TestConfig {
+            #[serde(default)]
+            inference: InferenceConfig,
+        }
+        let toml_str = r#"
+[inference]
+w_sim = 0.25
+"#;
+        let config: TestConfig =
+            toml::from_str(toml_str).expect("should not fail with missing fields");
+        assert_eq!(
+            config.inference.w_phase_histogram, 0.02,
+            "missing w_phase_histogram must default to 0.02"
+        );
+        assert_eq!(
+            config.inference.w_phase_explicit, 0.0,
+            "missing w_phase_explicit must default to 0.0"
+        );
+    }
+
+    // T-CFG-06: AC-09 — placeholder fields present on InferenceConfig (R-07)
+    #[test]
+    fn test_phase_explicit_norm_placeholder_fields_present() {
+        let cfg = InferenceConfig::default();
+        // w_phase_explicit is the ADR-003 placeholder; w_phase_histogram is the WA-2 signal
+        assert_eq!(
+            cfg.w_phase_explicit, 0.0,
+            "w_phase_explicit must be present and default to 0.0"
+        );
+        assert_eq!(
+            cfg.w_phase_histogram, 0.02,
+            "w_phase_histogram must be present and default to 0.02"
         );
     }
 

@@ -332,6 +332,8 @@ impl BriefingService {
                     },
                     caller_agent_id: None,
                     retrieval_mode: crate::services::RetrievalMode::Flexible, // crt-010: briefing uses Flexible
+                    session_id: None, // crt-026: briefing has no session context
+                    category_histogram: None, // crt-026: no histogram boost for internal briefing searches
                 };
 
                 // Use a synthetic UDS caller_id for rate limiting when no caller is provided

@@ -66,7 +66,7 @@ Before the roadmap, a clear-eyed list of where Unimatrix has strayed from its do
 | Intelligence pipeline is additive boosts, not a learned function | High | **Roadmapped** — Wave 1A + W3-1 |
 | No session-conditioned relevance — every query treated identically | High | **Roadmapped** — Wave 1A + W3-1 |
 | No proactive delivery — all surfaces are reactive | High | **Roadmapped** — Wave 1A (WA-4) |
-| GNN training loop has no closed feedback signal | High | **Roadmapped** — Wave 1A (WA-3) |
+| GNN training loop has no closed feedback signal | High | **Deferred** — WA-3 deferred; W1-5 behavioral signals cover initial W3-1 training |
 
 ---
 
@@ -259,35 +259,10 @@ The explicit phase signal is 3× the implicit histogram signal. Both are additiv
 
 ---
 
-### WA-3: MissedRetrieval Signal
-**Business outcome**: The training loop closes. When an agent has to store new knowledge to fill a gap that existing entries could have addressed, the system knows — automatically, without any explicit feedback from the agent.
+### WA-3: MissedRetrieval Signal — DEFERRED
+**Status**: Deferred. Revisit after W3-1 has trained on W1-5 behavioral signals and explicit helpfulness votes, and label coverage is assessed via the W1-3 eval harness.
 
-**What**: After each successful `context_store`, query the HNSW index for the new entry's nearest neighbors above a similarity threshold (0.75). For any neighbor that was Active but not in `session.injection_history`, log a `MissedRetrieval` event:
-
-```rust
-// Post-store, fire-and-forget (analytics path)
-let neighbors = hnsw.query(new_entry.embedding, k=10);
-for neighbor in neighbors.filter(|n| n.similarity > 0.75) {
-    if !session.injection_history.contains(neighbor.id) {
-        analytics.send(AnalyticsWrite::MissedRetrieval {
-            session_id,
-            missed_entry_id: neighbor.id,
-            trigger_entry_id: new_entry.id,
-            similarity: neighbor.similarity,
-        });
-    }
-}
-```
-
-**Why this is a strong signal**: This is not a helpfulness vote. It is a structural observation: "this entry existed, was semantically close to what the agent needed, and was never served." The agent had to fill the gap themselves. This is the most actionable negative training label in the system — it names the specific entry that should have been surfaced earlier, and the session context in which it was missed.
-
-**Schema**: New `MISSED_RETRIEVALS` table in `analytics.db` (or new `AnalyticsWrite` variant routed to existing analytics drain). Fields: `session_id`, `missed_entry_id`, `trigger_entry_id`, `similarity`, `ts`.
-
-**Training label interpretation for W3-1**:
-- `missed_entry_id` in context `session_ctx_at_store_time` → strong negative (should have been surfaced)
-- `trigger_entry_id` → provides context for what the agent actually needed
-
-**Effort**: ~1 day (post-store hook, analytics write variant, table schema, consumption in W3-1 training data preparation).
+**Why deferred**: The similarity-threshold predicate (`sim > 0.75`) is insufficient — a high-similarity entry may have been correctly excluded by confidence, co-access affinity, NLI score, or phase-category mismatch. Using the full fused score as the predicate instead is circular: it generates training labels derived from the formula W3-1 is replacing. W1-5 behavioral signals (re-search, rework, successful phase completion) already provide entry-specific negative labels grounded in actual agent behavior, without counterfactual inference. Additionally, W3-1 operates on the HNSW candidate set — entries that never enter top-20 are an embedding problem, not a ranking problem, and W3-1 cannot fix them regardless. Revisit only if W1-3 eval demonstrates a demonstrated coverage gap in training labels that behavioral signals cannot fill.
 
 ---
 
@@ -398,7 +373,7 @@ Full research scope: `product/research/ass-029/SCOPE.md`.
 ## Wave 2 — Deployment
 *Estimated: 3 weeks. Can run in parallel with Wave 1 and 1A after Wave 0.*
 
-Wave 2 delivers containerization, HTTP transport, multi-project routing, and OAuth. These are independent of the intelligence pipeline — they are the delivery infrastructure that makes Unimatrix accessible beyond a single developer workspace. Wave 1A should reach WA-3 (training signal closure) before Wave 2 deployment, so that the daemon accumulating usage data in production is already generating meaningful GNN training labels.
+Wave 2 delivers containerization, HTTP transport, multi-project routing, and OAuth. These are independent of the intelligence pipeline — they are the delivery infrastructure that makes Unimatrix accessible beyond a single developer workspace. Wave 1A should reach WA-4 (proactive delivery) before Wave 2 deployment. WA-3 is deferred — W1-5 behavioral signals are sufficient for initial W3-1 training.
 
 ### W2-1: Container Packaging
 **Business outcome**: Knowledge survives infrastructure changes — production-grade deployment with clean backup, recovery, and standard container lifecycle.
