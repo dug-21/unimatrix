@@ -477,6 +477,7 @@ mod tests {
             rework_session_count: None,
             context_reload_pct: None,
             attribution: None,
+            phase_narrative: None,
         }
     }
 
