@@ -369,21 +369,24 @@ DESIGN LEADER (you):
   Phase 2b:   Task(uni-vision-guardian) — alignment check
   Phase 2c:   Task(uni-synthesizer) — brief + maps + GH Issue (fresh context)
   Phase 2d:   git commit + push + gh pr create --draft
-              context_cycle(type: "phase-end", phase: "design-review", outcome: "...", next_phase: "spec", ...)
-              context_cycle(type: "stop", topic: "{feature-id}", outcome: "Session 1 complete. ...", agent_id: "{feature-id}-design-leader") — SESSION 1 ENDS
+              context_cycle(type: "phase-end", phase: "design-review", outcome: "...", next_phase: "spec", ...) — SESSION 1 ENDS
 ```
 
 ---
 
 ## Outcome Recording
 
-After returning artifacts to the human, close the feature cycle:
+After Phase 2d, record the phase transition (do NOT call `stop` — the cycle remains open for the delivery session):
 
 ```
 context_cycle(
-  type: "stop",
+  type: "phase-end",
   topic: "{feature-id}",
-  outcome: "Session 1 complete. Artifacts: {list artifact paths}",
+  phase: "design-review",
+  outcome: "Vision aligned. Synthesis complete. Draft PR: {url}.",
+  next_phase: "spec",
   agent_id: "{feature-id}-design-leader"
 )
 ```
+
+The cycle is closed by `context_cycle(type: "stop")` at the end of Session 2 (delivery). If delivery never occurs, the cycle will be drained by GC or `context_status(maintain: true)`.
