@@ -647,6 +647,9 @@ class UnimatrixClient:
         topic: str,
         *,
         keywords: list[str] | None = None,
+        phase: str | None = None,
+        outcome: str | None = None,
+        next_phase: str | None = None,
         agent_id: str | None = None,
         format: str | None = None,
         timeout: float | None = None,
@@ -654,6 +657,12 @@ class UnimatrixClient:
         args: dict[str, Any] = {"type": cycle_type, "topic": topic}
         if keywords is not None:
             args["keywords"] = keywords
+        if phase is not None:
+            args["phase"] = phase
+        if outcome is not None:
+            args["outcome"] = outcome
+        if next_phase is not None:
+            args["next_phase"] = next_phase
         if agent_id is not None:
             args["agent_id"] = agent_id
         if format is not None:

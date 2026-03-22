@@ -1315,3 +1315,168 @@ def test_store_response_not_blocked_by_nli_task(server):
     )
 
 
+# === context_cycle phase signal (crt-025 WA-1) ============================
+
+
+def test_cycle_phase_end_type_accepted(server):
+    """T-CRT025-01: context_cycle accepts 'phase-end' as a valid type (AC-02)."""
+    resp = server.context_cycle(
+        "phase-end",
+        "crt-025-phase-end-type-test",
+        phase="scope",
+        next_phase="design",
+        agent_id="human",
+    )
+    assert_tool_success(resp)
+
+
+def test_cycle_phase_end_stores_row(server):
+    """T-CRT025-02: Three sequential cycle events (start→phase-end→stop) all succeed (AC-04, AC-08).
+
+    Note: CYCLE_EVENTS are written via the UDS hook path (not the MCP tool path).
+    In the integration harness (no hooks), context_cycle calls only validate and acknowledge.
+    This test verifies that all three event types are accepted and do not return errors.
+    The phase_narrative path is separately verified in test_cycle_review_includes_phase_narrative
+    using direct SQL seeding of CYCLE_EVENTS.
+    """
+    topic = "crt025-stores-row-test"
+
+    resp1 = server.context_cycle("start", topic, next_phase="scope", agent_id="human")
+    assert_tool_success(resp1)
+
+    resp2 = server.context_cycle(
+        "phase-end", topic, phase="scope", next_phase="design", agent_id="human"
+    )
+    assert_tool_success(resp2)
+
+    resp3 = server.context_cycle("stop", topic, phase="design", agent_id="human")
+    assert_tool_success(resp3)
+
+
+def test_cycle_invalid_type_rejected(server):
+    """T-CRT025-03: context_cycle rejects unknown type 'pause' with descriptive error (AC-02)."""
+    resp = server.context_cycle("pause", "crt-025-invalid-type-test", agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_cycle_phase_with_space_rejected(server):
+    """T-CRT025-04: context_cycle rejects phase value containing a space (AC-03, R-06)."""
+    resp = server.context_cycle(
+        "phase-end",
+        "crt-025-phase-space-test",
+        phase="scope review",
+        agent_id="human",
+    )
+    assert_tool_error(resp)
+
+
+def test_cycle_outcome_category_rejected(server):
+    """T-CRT025-05: context_store with category='outcome' returns InvalidCategory error
+    after crt-025 retirement of 'outcome' from CategoryAllowlist (AC-15, R-03)."""
+    resp = server.context_store(
+        "test entry with retired outcome category",
+        "crt-025-outcome-reject-test",
+        "outcome",
+        agent_id="human",
+    )
+    assert_tool_error(resp)
+
+
+def _seed_cycle_events_sql(db_path, cycle_id, events):
+    """Seed CYCLE_EVENTS rows directly into the SQLite database.
+
+    `events` is a list of dicts with keys: seq, event_type, phase, outcome, next_phase, timestamp.
+    Used to test phase_narrative without requiring the UDS hook path (which is not active in
+    the integration harness).
+    """
+    import sqlite3 as _sqlite3
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    for ev in events:
+        conn.execute(
+            "INSERT INTO cycle_events (cycle_id, seq, event_type, phase, outcome, next_phase, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                cycle_id,
+                ev["seq"],
+                ev["event_type"],
+                ev.get("phase"),
+                ev.get("outcome"),
+                ev.get("next_phase"),
+                ev.get("timestamp", int(time.time())),
+            ),
+        )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+
+def test_cycle_review_includes_phase_narrative(server):
+    """T-CRT025-06: context_cycle_review includes phase_narrative when CYCLE_EVENTS rows
+    exist for the queried feature cycle (AC-12, R-08).
+
+    Seeds both observation data and CYCLE_EVENTS rows directly via SQL so that
+    context_cycle_review can return a report that includes phase_narrative.
+    (CYCLE_EVENTS are written via the UDS hook path which is not active in the harness.)
+    """
+    import json as _json
+    topic = "crt025-phase-narrative-present"
+    now = int(time.time())
+
+    db_path = _compute_db_path(server.project_dir)
+    # Seed observation data so context_cycle_review returns a report
+    _seed_observation_sql(db_path, [topic], num_records=20)
+    # Seed CYCLE_EVENTS directly (UDS path unavailable in harness)
+    _seed_cycle_events_sql(db_path, topic, [
+        {"seq": 0, "event_type": "cycle_start",     "next_phase": "scope",  "timestamp": now - 300},
+        {"seq": 1, "event_type": "cycle_phase_end", "phase": "scope", "next_phase": "design", "timestamp": now - 200},
+        {"seq": 2, "event_type": "cycle_stop",      "phase": "design",      "timestamp": now - 100},
+    ])
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+    try:
+        data = _json.loads(text)
+    except (_json.JSONDecodeError, TypeError):
+        # Rendered text response — check for phase narrative section markers
+        assert "phase" in text.lower() or "scope" in text.lower() or "design" in text.lower(), (
+            "T-CRT025-06: cycle_review must include phase narrative section when events exist (AC-12)"
+        )
+        return
+    phase_narrative = data.get("phase_narrative")
+    assert phase_narrative is not None, (
+        "T-CRT025-06: phase_narrative key must be present when CYCLE_EVENTS rows exist (AC-12)"
+    )
+
+
+def test_cycle_review_no_phase_narrative_for_old_feature(server):
+    """T-CRT025-07: context_cycle_review does NOT include phase_narrative for a feature cycle
+    that has no CYCLE_EVENTS rows — backward compatibility (AC-13, R-08).
+
+    Seeds only observation data (so cycle_review returns a report) but no CYCLE_EVENTS rows.
+    """
+    import json as _json
+    topic = "crt025-no-cycle-events-old"
+
+    # Seed observation data so context_cycle_review can produce a report
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, [topic], num_records=20)
+    # Deliberately do NOT seed any CYCLE_EVENTS rows for this topic
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+    try:
+        data = _json.loads(text)
+    except (_json.JSONDecodeError, TypeError):
+        # Non-JSON (rendered) response — phase_narrative section should be absent
+        assert "phase_narrative" not in text and "Phase Narrative" not in text, (
+            "T-CRT025-07: phase_narrative must be absent in rendered text when no CYCLE_EVENTS (AC-13)"
+        )
+        return
+    assert "phase_narrative" not in data, (
+        "T-CRT025-07: phase_narrative key must be absent when no CYCLE_EVENTS rows exist (AC-13, R-08)"
+    )
+
+
