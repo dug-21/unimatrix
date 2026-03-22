@@ -5,8 +5,7 @@ use std::sync::RwLock;
 
 use crate::error::ServerError;
 
-const INITIAL_CATEGORIES: [&str; 8] = [
-    "outcome",
+const INITIAL_CATEGORIES: [&str; 7] = [
     "lesson-learned",
     "decision",
     "convention",
@@ -39,7 +38,7 @@ impl CategoryAllowlist {
         }
     }
 
-    /// Create a new allowlist with the initial 8 categories.
+    /// Create a new allowlist with the initial 7 categories.
     ///
     /// Unchanged signature — all existing call sites remain valid.
     /// Delegates to `from_categories` to keep a single implementation path.
@@ -85,8 +84,9 @@ mod tests {
 
     #[test]
     fn test_validate_outcome() {
+        // ADR-005: "outcome" retired from allowlist — new ingest is blocked.
         let al = CategoryAllowlist::new();
-        assert!(al.validate("outcome").is_ok());
+        assert!(al.validate("outcome").is_err());
     }
 
     #[test]
@@ -141,7 +141,7 @@ mod tests {
                 valid_categories,
             } => {
                 assert_eq!(category, "unknown");
-                assert_eq!(valid_categories.len(), 8);
+                assert_eq!(valid_categories.len(), 7);
             }
             _ => panic!("expected InvalidCategory"),
         }
@@ -171,7 +171,7 @@ mod tests {
     fn test_list_categories_sorted() {
         let al = CategoryAllowlist::new();
         let list = al.list_categories();
-        assert_eq!(list.len(), 8);
+        assert_eq!(list.len(), 7);
         // Verify sorted
         for i in 1..list.len() {
             assert!(list[i] >= list[i - 1]);
@@ -190,7 +190,8 @@ mod tests {
                 assert!(valid_categories.contains(&"decision".to_string()));
                 assert!(valid_categories.contains(&"duties".to_string()));
                 assert!(valid_categories.contains(&"lesson-learned".to_string()));
-                assert!(valid_categories.contains(&"outcome".to_string()));
+                // ADR-005: "outcome" retired — must not appear in the valid-categories list.
+                assert!(!valid_categories.contains(&"outcome".to_string()));
                 assert!(valid_categories.contains(&"pattern".to_string()));
                 assert!(valid_categories.contains(&"procedure".to_string()));
                 assert!(valid_categories.contains(&"reference".to_string()));
@@ -217,7 +218,9 @@ mod tests {
         let al = std::sync::Arc::new(CategoryAllowlist::new());
         poison_allowlist(&al);
         // validate() should recover from the poisoned lock.
-        assert!(al.validate("outcome").is_ok());
+        // ADR-005: "outcome" is no longer in the default allowlist.
+        assert!(al.validate("outcome").is_err());
+        assert!(al.validate("decision").is_ok());
         assert!(al.validate("bogus").is_err());
     }
 
@@ -236,10 +239,11 @@ mod tests {
         poison_allowlist(&al);
         // list_categories() should recover and return valid data.
         let list = al.list_categories();
-        // Should have initial 8 + "pre-panic-insert" from the poisoning thread.
-        assert!(list.contains(&"outcome".to_string()));
+        // Should have initial 7 + "pre-panic-insert" from the poisoning thread.
+        // ADR-005: "outcome" is no longer a default category.
+        assert!(!list.contains(&"outcome".to_string()));
         assert!(list.contains(&"convention".to_string()));
-        assert!(list.len() >= 8);
+        assert!(list.len() >= 7);
     }
 
     #[test]
@@ -252,7 +256,8 @@ mod tests {
         assert!(list.contains(&"custom-before".to_string()));
         // The insert from the panicking thread may or may not be present
         // (depends on timing), but the initial categories must survive.
-        assert!(list.contains(&"outcome".to_string()));
+        // ADR-005: "outcome" is no longer a default category.
+        assert!(!list.contains(&"outcome".to_string()));
         assert!(list.contains(&"decision".to_string()));
     }
 
@@ -277,9 +282,10 @@ mod tests {
     #[test]
     fn test_new_allows_outcome_and_decision() {
         let al = CategoryAllowlist::new();
+        // ADR-005: "outcome" retired — must not be in default allowlist.
         assert!(
-            al.validate("outcome").is_ok(),
-            "outcome must be in default allowlist"
+            al.validate("outcome").is_err(),
+            "outcome must not be in default allowlist"
         );
         assert!(
             al.validate("decision").is_ok(),
@@ -360,5 +366,91 @@ mod tests {
         assert!(al.validate("decision").is_err());
         assert!(al.validate("custom-cat").is_err());
         // Must not panic.
+    }
+
+    // --- crt-025 ADR-005: outcome category retirement tests ---
+
+    /// AC-15, FR-08.2: CategoryAllowlist::new() must have exactly 7 categories.
+    #[test]
+    fn test_category_allowlist_has_seven_categories() {
+        let al = CategoryAllowlist::new();
+        assert_eq!(
+            al.list_categories().len(),
+            7,
+            "INITIAL_CATEGORIES must contain exactly 7 entries after outcome retirement"
+        );
+    }
+
+    /// AC-15: "outcome" must not be in the allowlist after retirement.
+    #[test]
+    fn test_outcome_category_is_not_in_allowlist() {
+        let al = CategoryAllowlist::new();
+        assert!(
+            al.validate("outcome").is_err(),
+            "outcome must be rejected after ADR-005 retirement"
+        );
+    }
+
+    /// AC-15: validate("outcome") must return Err with a meaningful message.
+    #[test]
+    fn test_outcome_category_validate_err() {
+        let al = CategoryAllowlist::new();
+        let err = al.validate("outcome").unwrap_err();
+        match err {
+            ServerError::InvalidCategory {
+                category,
+                valid_categories,
+            } => {
+                assert_eq!(category, "outcome");
+                assert_eq!(valid_categories.len(), 7);
+                assert!(!valid_categories.contains(&"outcome".to_string()));
+            }
+            _ => panic!("expected InvalidCategory error for retired category"),
+        }
+    }
+
+    /// R-03: All 7 remaining categories validate successfully (regression guard).
+    #[test]
+    fn test_all_remaining_seven_categories_valid() {
+        let al = CategoryAllowlist::new();
+        for cat in &[
+            "lesson-learned",
+            "decision",
+            "convention",
+            "pattern",
+            "procedure",
+            "duties",
+            "reference",
+        ] {
+            assert!(
+                al.validate(cat).is_ok(),
+                "category '{}' must still be valid after outcome retirement",
+                cat
+            );
+        }
+    }
+
+    /// R-03: Removal of "outcome" is surgical — other categories are not affected.
+    #[test]
+    fn test_only_outcome_removed_not_others() {
+        let al = CategoryAllowlist::new();
+        assert!(al.validate("decision").is_ok());
+        assert!(al.validate("convention").is_ok());
+        assert!(al.validate("outcome").is_err());
+    }
+
+    /// Poison recovery path must also reflect the updated INITIAL_CATEGORIES (no outcome).
+    #[test]
+    fn test_category_allowlist_poison_recovery() {
+        let al = std::sync::Arc::new(CategoryAllowlist::new());
+        poison_allowlist(&al);
+        // After recovery, outcome must still be absent.
+        assert!(
+            al.validate("outcome").is_err(),
+            "poison recovery must not restore outcome to the allowlist"
+        );
+        // Other standard categories must survive.
+        assert!(al.validate("decision").is_ok());
+        assert!(al.validate("convention").is_ok());
     }
 }
