@@ -99,12 +99,14 @@ From the primary agent's spawn prompt:
 
 | When | Call | Parameters |
 |------|------|------------|
-| After branch creation / initialization, before first agent spawn | `context_cycle(type: "start")` | `topic: "{feature-id}"`, `keywords: [...]` (3-5 semantic terms) |
-| After outcome recording, at session end | `context_cycle(type: "stop")` | `topic: "{feature-id}"` |
+| After branch creation / initialization, before first agent spawn | `context_cycle(type: "start")` | `topic: "{feature-id}"`, `next_phase: "{first-phase-for-session}"` |
+| At each phase boundary (end of phase, before next begins) | `context_cycle(type: "phase-end")` | `phase: "{completed-phase}"`, `next_phase: "{next-phase}"` |
+| At session end, after presenting artifacts to human | `context_cycle(type: "stop")` | `topic: "{feature-id}"`, `outcome: "{brief summary}"` |
 
 - `topic` = the feature ID from your spawn prompt (e.g., `col-022`, `nxs-005`, `142-null-crash`)
-- `keywords` = 3-5 terms describing the feature work (e.g., `["lifecycle", "attribution", "cycle-management"]`)
-- Each protocol specifies the exact insertion point — follow it
+- `next_phase` on `start` = the first active phase for this session (e.g., `scope` for design, `spec` for delivery, `discovery` for bugfix)
+- `phase` values must be single words or hyphenated (no spaces) — use the canonical phase names from the protocol
+- Each protocol specifies the exact insertion points — follow it
 
 ---
 

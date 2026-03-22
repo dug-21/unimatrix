@@ -57,7 +57,7 @@ After creating the branch — before spawning any agents — call `context_cycle
 context_cycle(
   type: "start",
   topic: "{feature-id}",
-  keywords: ["{keyword-1}", "{keyword-2}", ...],  // 3-5 semantic terms for the feature
+  next_phase: "scope",
   agent_id: "{feature-id}-design-leader"
 )
 ```
@@ -118,6 +118,17 @@ Task(
 ```
 
 Wait for the scope risk assessment to complete before proceeding to Phase 2.
+
+```
+context_cycle(
+  type: "phase-end",
+  topic: "{feature-id}",
+  phase: "scope",
+  outcome: "SCOPE.md approved. Scope risk assessment complete.",
+  next_phase: "design",
+  agent_id: "{feature-id}-design-leader"
+)
+```
 
 ### Phase 2: Design (Three Source Documents + Vision + Synthesis)
 
@@ -211,6 +222,17 @@ Task(
 
 Wait for the risk strategist to complete before proceeding to Phase 2b.
 
+```
+context_cycle(
+  type: "phase-end",
+  topic: "{feature-id}",
+  phase: "design",
+  outcome: "Architecture, specification, and risk strategy complete.",
+  next_phase: "design-review",
+  agent_id: "{feature-id}-design-leader"
+)
+```
+
 #### Phase 2b: Vision Alignment Check
 
 Spawn `uni-vision-guardian`:
@@ -279,6 +301,17 @@ Open a **draft PR** as a review surface (NOT for merge — implementation will a
 gh pr create --draft --title "[{feature-id}] {short description}" --body "..."
 ```
 
+```
+context_cycle(
+  type: "phase-end",
+  topic: "{feature-id}",
+  phase: "design-review",
+  outcome: "Vision aligned. Synthesis complete. Draft PR: {url}.",
+  next_phase: "spec",
+  agent_id: "{feature-id}-design-leader"
+)
+```
+
 Then returns to the human:
 
 ```
@@ -322,38 +355,35 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 ```
 DESIGN LEADER (you):
   Init:       git checkout -b feature/{feature-id}
-              context_cycle(type: "start", topic: "{feature-id}", keywords: [...], agent_id: "{feature-id}-design-leader")
+              context_cycle(type: "start", topic: "{feature-id}", next_phase: "scope", agent_id: "{feature-id}-design-leader")
   Phase 1:    Task(uni-researcher) — scope exploration with human
               ...human approves SCOPE.md...
   Phase 1b:   Task(uni-risk-strategist, MODE: scope-risk) — scope risk assessment
               ...wait...
+              context_cycle(type: "phase-end", phase: "scope", outcome: "...", next_phase: "design", ...)
   Phase 2a:   Task(uni-architect) + Task(uni-specification) — parallel, ONE message
               ...wait for both...
   Phase 2a+:  Task(uni-risk-strategist, MODE: architecture-risk) — receives arch + spec + scope risks
               ...wait...
+              context_cycle(type: "phase-end", phase: "design", outcome: "...", next_phase: "design-review", ...)
   Phase 2b:   Task(uni-vision-guardian) — alignment check
   Phase 2c:   Task(uni-synthesizer) — brief + maps + GH Issue (fresh context)
   Phase 2d:   git commit + push + gh pr create --draft
-              context_cycle(type: "stop", topic: "{feature-id}", agent_id: "{feature-id}-design-leader") — SESSION 1 ENDS
+              context_cycle(type: "phase-end", phase: "design-review", outcome: "...", next_phase: "spec", ...)
+              context_cycle(type: "stop", topic: "{feature-id}", outcome: "Session 1 complete. ...", agent_id: "{feature-id}-design-leader") — SESSION 1 ENDS
 ```
 
 ---
 
 ## Outcome Recording
 
-After returning artifacts to the human, close the feature cycle and record the session outcome:
+After returning artifacts to the human, close the feature cycle:
 
 ```
 context_cycle(
   type: "stop",
   topic: "{feature-id}",
+  outcome: "Session 1 complete. Artifacts: {list artifact paths}",
   agent_id: "{feature-id}-design-leader"
-)
-
-context_store(
-  category: "outcome",
-  feature_cycle: "{feature-id}",
-  tags: ["type:feature", "phase:design", "result:pass"],
-  content: "Session 1 complete. Artifacts: {list artifact paths}"
 )
 ```
