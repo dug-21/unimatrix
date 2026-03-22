@@ -1512,6 +1512,139 @@ impl UnimatrixServer {
             report.session_summaries = Some(summaries);
         }
 
+        // 10g. crt-025: Phase narrative assembly
+        // Query 1: cycle event log for this feature cycle
+        let event_rows = sqlx::query(
+            "SELECT seq, event_type, phase, outcome, next_phase, timestamp \
+               FROM cycle_events \
+              WHERE cycle_id = ?1 \
+              ORDER BY timestamp ASC, seq ASC",
+        )
+        .bind(&feature_cycle)
+        .fetch_all(store.write_pool_server())
+        .await
+        .map_err(|e| {
+            tracing::warn!(
+                "crt-025: cycle_events query failed for {}: {}",
+                feature_cycle,
+                e
+            );
+        });
+
+        if let Ok(event_rows) = event_rows {
+            if !event_rows.is_empty() {
+                use unimatrix_observe::{CycleEventRecord, PhaseCategoryDist};
+
+                // Map rows to CycleEventRecord
+                let events: Vec<CycleEventRecord> = event_rows
+                    .iter()
+                    .map(|row| {
+                        use sqlx::Row;
+                        CycleEventRecord {
+                            seq: row.try_get::<i64, _>("seq").unwrap_or(0),
+                            event_type: row.try_get::<String, _>("event_type").unwrap_or_default(),
+                            phase: row.try_get::<Option<String>, _>("phase").unwrap_or(None),
+                            outcome: row.try_get::<Option<String>, _>("outcome").unwrap_or(None),
+                            next_phase: row
+                                .try_get::<Option<String>, _>("next_phase")
+                                .unwrap_or(None),
+                            timestamp: row.try_get::<i64, _>("timestamp").unwrap_or(0),
+                        }
+                    })
+                    .collect();
+
+                // Query 2: current feature phase/category distribution
+                let current_dist: PhaseCategoryDist = match sqlx::query(
+                    "SELECT fe.phase, e.category, COUNT(*) AS cnt \
+                       FROM feature_entries fe \
+                       JOIN entries e ON e.id = fe.entry_id \
+                      WHERE fe.feature_id = ?1 \
+                        AND fe.phase IS NOT NULL \
+                      GROUP BY fe.phase, e.category",
+                )
+                .bind(&feature_cycle)
+                .fetch_all(store.write_pool_server())
+                .await
+                {
+                    Ok(rows) => {
+                        use sqlx::Row;
+                        let mut dist: PhaseCategoryDist = std::collections::HashMap::new();
+                        for row in &rows {
+                            let phase: String = row.try_get("phase").unwrap_or_default();
+                            let category: String = row.try_get("category").unwrap_or_default();
+                            let cnt: i64 = row.try_get("cnt").unwrap_or(0);
+                            dist.entry(phase).or_default().insert(category, cnt as u64);
+                        }
+                        dist
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "crt-025: phase/category dist query failed for {}: {}",
+                            feature_cycle,
+                            e
+                        );
+                        std::collections::HashMap::new()
+                    }
+                };
+
+                // Query 3: cross-feature baseline (excludes current feature)
+                let cross_dist: std::collections::HashMap<String, PhaseCategoryDist> =
+                    match sqlx::query(
+                        "SELECT fe.feature_id, fe.phase, e.category, COUNT(*) AS cnt \
+                           FROM feature_entries fe \
+                           JOIN entries e ON e.id = fe.entry_id \
+                          WHERE fe.feature_id IN ( \
+                                SELECT DISTINCT feature_id FROM feature_entries WHERE phase IS NOT NULL \
+                            ) \
+                            AND fe.feature_id != ?1 \
+                            AND fe.phase IS NOT NULL \
+                          GROUP BY fe.feature_id, fe.phase, e.category",
+                    )
+                    .bind(&feature_cycle)
+                    .fetch_all(store.write_pool_server())
+                    .await
+                    {
+                        Ok(rows) => {
+                            use sqlx::Row;
+                            let mut by_feature: std::collections::HashMap<
+                                String,
+                                PhaseCategoryDist,
+                            > = std::collections::HashMap::new();
+                            for row in &rows {
+                                let feature_id: String =
+                                    row.try_get("feature_id").unwrap_or_default();
+                                let phase: String =
+                                    row.try_get("phase").unwrap_or_default();
+                                let category: String =
+                                    row.try_get("category").unwrap_or_default();
+                                let cnt: i64 = row.try_get("cnt").unwrap_or(0);
+                                by_feature
+                                    .entry(feature_id)
+                                    .or_default()
+                                    .entry(phase)
+                                    .or_default()
+                                    .insert(category, cnt as u64);
+                            }
+                            by_feature
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "crt-025: cross-feature dist query failed for {}: {}",
+                                feature_cycle,
+                                e
+                            );
+                            std::collections::HashMap::new()
+                        }
+                    };
+
+                // Build phase narrative (pure function)
+                let narrative =
+                    unimatrix_observe::build_phase_narrative(&events, &current_dist, &cross_dist);
+                report.phase_narrative = Some(narrative);
+            }
+            // If event_rows is empty, phase_narrative remains None (AC-12/13)
+        }
+
         // 11. Audit
         self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
