@@ -972,6 +972,8 @@ async fn handle_context_search(
         co_access_anchors: None,
         caller_agent_id: None,
         retrieval_mode: crate::services::RetrievalMode::Strict, // crt-010: UDS uses strict mode
+        session_id: None, // crt-026: no histogram in UDS search (non-hook path)
+        category_histogram: None, // crt-026: placeholder; hook path wires this separately
     };
 
     // 3. Delegate to SearchService (UDS sessions are rate-exempt via CallerId::UdsSession)

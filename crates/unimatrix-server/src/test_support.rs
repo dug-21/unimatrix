@@ -159,6 +159,8 @@ impl TestHarness {
             co_access_anchors: None,
             caller_agent_id: None,
             retrieval_mode: RetrievalMode::Flexible,
+            session_id: None,         // crt-026: no session context in test harness
+            category_histogram: None, // crt-026: no histogram in test harness
         };
 
         let audit_ctx = AuditContext {
@@ -207,6 +209,8 @@ impl TestHarness {
             co_access_anchors: None,
             caller_agent_id: None,
             retrieval_mode: RetrievalMode::Flexible,
+            session_id: None,         // crt-026: no session context in test harness
+            category_histogram: None, // crt-026: no histogram in test harness
         };
 
         let audit_ctx = AuditContext {

@@ -127,6 +127,12 @@ pub struct SessionState {
     pub topic_signals: HashMap<String, TopicTally>, // accumulated topic signals for majority vote
     // crt-025 fields
     pub current_phase: Option<String>, // active workflow phase; None until first phase signal
+    // crt-026 fields
+    /// Per-session category histogram for WA-2 histogram affinity boost.
+    /// Incremented by record_category_store on each successful non-duplicate context_store.
+    /// Read by get_category_histogram before context_search scoring.
+    /// In-memory only: never persisted, reset on register_session (reconnection).
+    pub category_counts: HashMap<String, u32>,
 }
 
 /// Thread-safe registry for per-session state.
@@ -169,6 +175,7 @@ impl SessionRegistry {
                 last_activity_at: now,
                 topic_signals: HashMap::new(),
                 current_phase: None,
+                category_counts: HashMap::new(), // crt-026: empty histogram on session start
             },
         );
     }
@@ -221,6 +228,40 @@ impl SessionRegistry {
         let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(state) = sessions.get_mut(session_id) {
             state.compaction_count += 1;
+        }
+    }
+
+    /// Increment the category histogram counter for a session (crt-026, WA-2).
+    ///
+    /// Increments `category_counts[category]` by 1. Silent no-op for unregistered
+    /// sessions. Lock held for one HashMap entry + integer increment (microseconds).
+    /// No I/O, no spawn_blocking, no await — same lock contract as `record_injection`.
+    ///
+    /// Callers MUST only invoke this after a non-duplicate store succeeds
+    /// (`duplicate_of.is_none()`). The duplicate guard lives in `context_store` handler.
+    pub fn record_category_store(&self, session_id: &str, category: &str) {
+        let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(state) = sessions.get_mut(session_id) {
+            let count = state
+                .category_counts
+                .entry(category.to_string())
+                .or_insert(0);
+            *count += 1;
+        }
+        // Unregistered session: silent no-op (matches record_injection contract)
+    }
+
+    /// Return a clone of the session's category histogram (crt-026, WA-2).
+    ///
+    /// Returns `HashMap::new()` when the session is not registered. The caller is
+    /// responsible for mapping an empty return to `None` before storing in
+    /// `ServiceSearchParams.category_histogram`. Lock held for one lookup + clone
+    /// (microseconds); no I/O, no spawn_blocking, no await (NFR-01).
+    pub fn get_category_histogram(&self, session_id: &str) -> HashMap<String, u32> {
+        let sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        match sessions.get(session_id) {
+            Some(state) => state.category_counts.clone(),
+            None => HashMap::new(),
         }
     }
 
@@ -1021,6 +1062,7 @@ mod tests {
             last_activity_at: 0,
             topic_signals: HashMap::new(),
             current_phase: None,
+            category_counts: HashMap::new(),
         }
     }
 
@@ -1608,6 +1650,111 @@ mod tests {
         assert_eq!(
             majority_vote_internal(&signals),
             Some("col-020".to_string())
+        );
+    }
+
+    // -- crt-026: Category histogram tests --
+
+    // T-SS-01: register_session initializes category_counts to empty (AC-01, R-04 baseline)
+    #[test]
+    fn test_register_session_category_counts_empty() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+
+        let state = reg.get_state("s1").unwrap();
+        assert!(state.category_counts.is_empty());
+        assert_eq!(state.category_counts.len(), 0);
+    }
+
+    // T-SS-02: record_category_store increments count for registered session (AC-02, R-03)
+    #[test]
+    fn test_record_category_store_increments_count() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+
+        reg.record_category_store("s1", "decision");
+
+        let histogram = reg.get_category_histogram("s1");
+        assert_eq!(histogram.get("decision"), Some(&1));
+        assert_eq!(histogram.len(), 1);
+    }
+
+    // T-SS-03: multiple categories and repeated calls accumulate correctly (AC-02, R-01 fixture)
+    #[test]
+    fn test_record_category_store_multiple_categories() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+
+        reg.record_category_store("s1", "decision");
+        reg.record_category_store("s1", "decision");
+        reg.record_category_store("s1", "decision");
+        reg.record_category_store("s1", "pattern");
+        reg.record_category_store("s1", "pattern");
+
+        let histogram = reg.get_category_histogram("s1");
+        assert_eq!(histogram.get("decision"), Some(&3));
+        assert_eq!(histogram.get("pattern"), Some(&2));
+        assert_eq!(histogram.len(), 2);
+        let total: u32 = histogram.values().sum();
+        assert_eq!(total, 5);
+    }
+
+    // T-SS-04: unregistered session is silent no-op — GATE BLOCKER (AC-03, R-04)
+    #[test]
+    fn test_record_category_store_unregistered_session_is_noop() {
+        let reg = make_registry(); // no register_session called
+
+        // Must not panic
+        reg.record_category_store("nonexistent-session", "decision");
+
+        // State unchanged — session still absent
+        assert!(reg.get_state("nonexistent-session").is_none());
+
+        // get_category_histogram returns empty for unregistered session
+        let empty_map = reg.get_category_histogram("nonexistent-session");
+        assert!(empty_map.is_empty());
+    }
+
+    // T-SS-05: get_category_histogram on unregistered session returns empty (AC-03, R-04)
+    #[test]
+    fn test_get_category_histogram_unregistered_returns_empty() {
+        let reg = make_registry();
+
+        let h = reg.get_category_histogram("no-such-session");
+        assert!(h.is_empty());
+    }
+
+    // T-SS-06: histogram is isolated between sessions (AC-02, R-04)
+    #[test]
+    fn test_record_category_store_isolated_between_sessions() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.register_session("s2", None, None);
+
+        reg.record_category_store("s1", "decision");
+        reg.record_category_store("s1", "pattern");
+
+        let h1 = reg.get_category_histogram("s1");
+        assert_eq!(h1.get("decision"), Some(&1));
+        assert_eq!(h1.get("pattern"), Some(&1));
+
+        let h2 = reg.get_category_histogram("s2");
+        assert!(h2.is_empty(), "stores for s1 must not leak into s2");
+    }
+
+    // T-SS-07: re-registration resets category_counts (AC-01, R-03 re-registration)
+    #[test]
+    fn test_register_session_resets_category_counts() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.record_category_store("s1", "decision");
+
+        // Re-register the same session_id
+        reg.register_session("s1", None, None);
+
+        assert!(
+            reg.get_category_histogram("s1").is_empty(),
+            "re-registration must discard accumulated histogram"
         );
     }
 }
