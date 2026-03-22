@@ -30,7 +30,7 @@ signal that surfaces more relevant results without any ML or agent-declared phas
 | **FusionWeights** | The weight vector read from `InferenceConfig` and passed to `compute_fused_score`. Extended in crt-026 with `w_phase_histogram: f64` and `w_phase_explicit: f64`. |
 | **ServiceSearchParams** | The internal service-layer search parameters struct. Extended in crt-026 with `session_id: Option<String>` and `category_histogram: Option<HashMap<String, u32>>`. |
 | **PreCompact** | The UDS hook event that fires before context compaction. The category histogram summary is injected into `format_compaction_payload` output at this point. |
-| **W3-1 initialization value** | `w_phase_histogram=0.005` is the seed weight for this dimension in the W3-1 GNN cold-start. It is not a production-calibrated signal weight. Ranking effect at 0.005 is small by design; W3-1 refines from there. |
+| **W3-1 initialization value** | `w_phase_histogram=0.02` is the ASS-028 calibrated seed weight for this dimension in the W3-1 GNN cold-start. Carries the full session signal budget while `w_phase_explicit` is deferred; W3-1 refines and rebalances from there. |
 
 ### Entities and Relationships
 
@@ -132,7 +132,7 @@ When the histogram is absent or empty, this field is `0.0`. The WA-2 extension s
 
 **FR-09: `FusionWeights` gains `w_phase_histogram` and `w_phase_explicit` fields**
 `FusionWeights` must gain:
-- `w_phase_histogram: f64` — weight for the histogram affinity term, default `0.005`
+- `w_phase_histogram: f64` — weight for the histogram affinity term, default `0.02` (full session signal budget, ADR-004)
 - `w_phase_explicit: f64` — weight for the explicit phase term, default `0.0` (reserved for W3-1; always zero in crt-026)
 
 `FusionWeights::from_config()` must read both from `InferenceConfig`. The WA-2 extension stub at
@@ -147,18 +147,17 @@ score += weights.w_phase_histogram * inputs.phase_histogram_norm
 The WA-2 extension stub at line 179 of `search.rs` is the integration contract. The existing
 sum-invariant documented on `FusionWeights` (`w_sim + w_nli + w_conf + w_coac + w_util + w_prov <= 1.0`)
 must be updated in the doc-comment to include the phase terms. With defaults, the new sum is
-`0.95 + 0.005 + 0.0 = 0.955`, within the `<= 1.0` invariant; no existing weight defaults need adjustment.
+`0.95 + 0.02 + 0.0 = 0.97`, within the `<= 1.0` invariant; no existing weight defaults need adjustment.
 
 **FR-11: `InferenceConfig` gains `w_phase_explicit` and `w_phase_histogram` config fields**
 `InferenceConfig` (in `infra/config.rs`) must gain:
 - `#[serde(default = "default_w_phase_explicit")] pub w_phase_explicit: f64` — default `0.0`
-- `#[serde(default = "default_w_phase_histogram")] pub w_phase_histogram: f64` — default `0.005`
+- `#[serde(default = "default_w_phase_histogram")] pub w_phase_histogram: f64` — default `0.02`
 
 Both follow the `default_w_*` pattern of the six existing fusion weight fields. `InferenceConfig::validate()`
-must accept `sum = 0.955` cleanly. Existing tests asserting the pre-WA-2 sum of `0.95` (see
-`test_fusion_weights_effective_nli_active_headroom_weight_preserved`) must be confirmed not to
-break; those tests check that `effective(true)` does not re-normalize a sub-1.0 sum, so they remain
-valid. Any test that asserts `sum == 0.95` exactly will need updating to `0.955`.
+must accept `sum = 0.97` cleanly (original six fields still sum to 0.95; phase fields excluded from
+that check). Existing tests asserting the pre-WA-2 sum of `0.95` remain valid — `validate()` only
+checks the original six-field sum.
 
 **FR-12: Category histogram summary in `format_compaction_payload`**
 `handle_compact_payload` must call `session_registry.get_category_histogram(session_id)` and pass
@@ -194,11 +193,11 @@ the pre-crt-026 result. No behavioral regression for sessions without histogram 
 version bump. Sessions that pre-date crt-026 (or reconnect after a server restart) start with an
 empty histogram; cold-start safety (NFR-02) covers this case.
 
-**NFR-04: Boost bounded by 0.02 max**
-The maximum combined affinity boost per entry is `w_phase_histogram * 1.0 + w_phase_explicit * 1.0 = 0.005 + 0.0 = 0.005` with defaults. Even with `w_phase_explicit` enabled at its
-product-vision value of `0.015`, the max is `0.02`. This ceiling prevents a weak-similarity
-entry from overriding a high-NLI-score entry. The 0.02 ceiling is within the 0.05 headroom
-explicitly reserved in WA-0 (`sum=0.95`).
+**NFR-04: Boost bounded**
+The maximum histogram boost per entry with defaults is `w_phase_histogram * 1.0 = 0.02` (at p=1.0
+concentration). This prevents a weak-similarity entry from overriding a high-NLI-score entry. When
+W3-1 eventually enables `w_phase_explicit`, W3-1 will learn the appropriate split — the combined
+max will depend on W3-1's learned values. The 0.05 headroom from WA-0 provides clearance.
 
 **NFR-05: UDS hook timeout budget**
 The PreCompact histogram summary is a string-formatting operation on pre-resolved in-memory data.
@@ -207,10 +206,9 @@ No I/O, no embedding, no SQL. The operation adds negligible latency and must not
 
 **NFR-06: W3-1 dimension compatibility**
 `FusedScoreInputs.phase_histogram_norm` and `FusionWeights.w_phase_histogram` must be named,
-stable, learnable dimensions. W3-1 (GNN) initializes from `w_phase_histogram=0.005` and refines
-from there. The 0.005 value is a deliberate cold-start seed — not a calibrated production weight.
-Its real-world ranking effect is small; test fixtures must manufacture concentrated histogram
-conditions (one category at ≥ 60% of stores) to observe a detectable score delta of ≥ 0.005.
+stable, learnable dimensions. W3-1 (GNN) initializes from `w_phase_histogram=0.02` (the
+ASS-028 calibrated value) and refines from there. At 0.02, the boost is detectable in realistic
+sessions; test fixtures using p=1.0 concentration observe a score delta of exactly 0.02.
 
 **NFR-07: No new crates**
 All changes are within `crates/unimatrix-server`. No new workspace members.
@@ -261,7 +259,7 @@ entries. `SearchService` output is identical to the pre-crt-026 pipeline.
 *Verification*: unit test: search with no prior stores; assert final scores equal to scores produced
 without `session_id` / with empty histogram.
 
-**AC-09** Both `w_phase_explicit` (default `0.0`) and `w_phase_histogram` (default `0.005`) are
+**AC-09** Both `w_phase_explicit` (default `0.0`) and `w_phase_histogram` (default `0.02`) are
 configurable in `[inference]` config section, using the `default_w_*` serde pattern.
 *Verification*: config round-trip test; `InferenceConfig::default()` returns correct values.
 
@@ -278,9 +276,9 @@ block present; call with empty histogram → assert block absent.
 **AC-12** A result whose category appears in the session histogram at `p=1.0` (e.g., all stores
 are category `decision`) ranks higher than an otherwise equal result (same similarity, NLI score,
 confidence, co-access, util, prov) whose category is absent from the histogram. The score delta
-must be ≥ `w_phase_histogram * 1.0 = 0.005` (the maximum histogram boost at default weight).
+must be ≥ `w_phase_histogram * 1.0 = 0.02` (the maximum histogram boost at default weight).
 *Verification*: unit test with two synthetic `ScoredEntry` values equal on all dimensions except category;
-assert `score(decision) - score(other) ≥ 0.005`.
+assert `score(decision) - score(other) ≥ 0.02`.
 
 **AC-13** A result whose category is NOT in the session histogram receives `phase_histogram_norm = 0.0`
 and boost `= 0.0` from the histogram term.
@@ -305,7 +303,7 @@ declarations and doc-comments.
 5. Agent calls `context_search(query: "how to handle session registry access", session_id: "sid-abc")`.
 6. Handler pre-resolves histogram: `{ "decision": 0.60, "pattern": 0.40 }`.
 7. For each search result: `phase_histogram_norm = histogram_fraction[entry.category]` (0.0 if absent).
-8. `compute_fused_score` includes `0.005 * phase_histogram_norm` for each candidate.
+8. `compute_fused_score` includes `0.02 * phase_histogram_norm` for each candidate.
 9. Decision and pattern entries receive a small positive boost; other categories receive no boost.
 10. Top-k returned; decision/pattern entries rank slightly higher than otherwise equal entries in other categories.
 
@@ -396,15 +394,14 @@ All changes are in `crates/unimatrix-server`. Specifically: `infra/session.rs`, 
 
 **C-04: `FusionWeights` sum-invariant.**
 The phase boost terms are integrated INTO `compute_fused_score` (OQ-01 resolved). The sum-invariant
-in `FusionWeights` doc-comment (`<= 1.0`) must be updated to include the phase fields. With defaults
-`w_phase_histogram=0.005, w_phase_explicit=0.0`, the total is `0.955` — valid, within `<= 1.0`.
-`InferenceConfig::validate()` must accept this cleanly without adjusting existing weight defaults.
+in `FusionWeights` doc-comment (`<= 1.0`) must be updated to clarify phase terms are excluded.
+With defaults `w_phase_histogram=0.02, w_phase_explicit=0.0`, the total sum is `0.97` — valid,
+within `<= 1.0`. The original six-field sum check in `InferenceConfig::validate()` is unchanged.
 
 **C-05: Boost bounded.**
-`p(category)` is in `[0.0, 1.0]`; max histogram boost = `0.005 * 1.0 = 0.005` with defaults.
-Even at product-vision W3-1 initialization (`w_phase_explicit=0.015`), combined max = `0.02`.
-The 0.02 ceiling is within WA-0's 0.05 headroom. This prevents a weak-similarity entry from
-overriding a high-NLI entry.
+`p(category)` is in `[0.0, 1.0]`; max histogram boost = `0.02 * 1.0 = 0.02` with defaults.
+Within WA-0's 0.05 headroom. This prevents a weak-similarity entry from overriding a
+high-NLI entry given current weight calibrations (NLI dominant at 0.35).
 
 **C-06: Application order — boost inside `compute_fused_score`, before `status_penalty`.**
 `final_score = compute_fused_score(&inputs, &weights) * status_penalty`. The histogram boost
@@ -466,9 +463,9 @@ zero given lock granularity.
 These questions do not block specification delivery. The architect must resolve them in the
 IMPLEMENTATION-BRIEF before coding begins.
 
-**OQ-A (from SR-02):** Confirm `InferenceConfig::validate()` permits `sum = 0.955` without
-failing any startup check. Identify and update any existing test that asserts the exact pre-WA-2
-sum of `0.95`.
+**OQ-A (from SR-02):** Confirm `InferenceConfig::validate()` permits `sum = 0.97` without
+failing any startup check (six-field sum check unchanged at 0.95; phase fields excluded). Resolved
+in ARCHITECTURE.md OQ-A: no existing test asserts the exact 0.95 default sum.
 
 **OQ-B (from SR-08):** The UDS search path (`handle_context_search`) receives `session_id` from
 `HookRequest::ContextSearch` — the payload field, not `audit_ctx`. Confirm the current field name

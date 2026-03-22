@@ -251,13 +251,13 @@ Add two fields to `InferenceConfig`:
 ```toml
 # [inference]
 w_phase_explicit = 0.015   # boost weight for explicit phase signal (WA-1 current_phase)
-w_phase_histogram = 0.005  # boost weight for implicit histogram signal
+w_phase_histogram = 0.02   # boost weight for implicit histogram signal (full session signal budget, ADR-004)
 ```
 
-Defaults: `w_phase_explicit = 0.015`, `w_phase_histogram = 0.005` per product vision WA-2.
-These are outside the `compute_fused_score` sum-invariant (`<= 1.0`) and therefore do not
-require changing the existing validation. Max combined boost per entry: `0.015 + 0.005 = 0.02`.
-This falls within the 0.05 headroom.
+Defaults: `w_phase_explicit = 0.0` (deferred, ADR-003), `w_phase_histogram = 0.02` (full
+session signal budget, ADR-004). Outside the `compute_fused_score` sum-invariant — no
+existing validation change. Max boost with defaults: `0.02 * 1.0 = 0.02`. Within the
+0.05 headroom. Sum: `0.95 + 0.02 = 0.97`.
 
 The `FusionWeights` struct receives corresponding `w_phase_explicit: f64` and
 `w_phase_histogram: f64` fields, constructed in `FusionWeights::from_config()`.
@@ -276,27 +276,18 @@ Format: emit only categories with count > 0, sorted by count descending, capped 
 categories. If histogram is empty, omit the block entirely. Apply to the `MAX_INJECTION_BYTES`
 budget — the block is small (< 100 bytes for typical sessions).
 
-### Affinity Boost Formula: Discrepancy Between ASS-028 and Product Vision
+### Affinity Boost Formula: Resolved
 
-**ASS-028 specifies:** a single flat `AFFINITY_WEIGHT = 0.02`, applied as
-`p(entry.category) * 0.02` from the histogram only. No explicit phase signal term.
+**ASS-028 specified:** a single flat `AFFINITY_WEIGHT = 0.02` from the histogram only.
 
-**Product vision WA-2 specifies:** two separate terms:
-- Explicit phase signal: `phase_category_weight(entry.category, current_phase) * 0.015`
-- Implicit histogram fallback: `p(entry.category) * 0.005`
+**Product vision WA-2 specified:** two terms: `0.015` explicit phase + `0.005` histogram = `0.02` total.
 
-Both apply when both signals are present. The explicit signal is 3× the histogram signal.
-Product vision Decision 1 (p.780) confirms: `phase_boost * 0.015 + histogram_boost * 0.005`.
+**Resolution (OQ-03 + ADR-004):** The explicit phase term is deferred to W3-1 (`w_phase_explicit=0.0`).
+Since only the histogram term ships in crt-026 and the original product vision budget was `0.02` total,
+the histogram term carries the full `0.02` budget — matching ASS-028's calibrated flat weight.
 
-**Interpretation:** The product vision is authoritative — it was written after ASS-028 and
-explicitly supersedes the flat formula with a two-term design. The ASS-028 single-term
-formula is the simplification the spike used before the final design was settled.
-
-**Flag for architect review:** The two-term formula requires defining
-`phase_category_weight(category, phase)` — a mapping from phase strings to expected category
-sets. Since phase strings are opaque to Unimatrix (product vision WA-1: "the phase string is
-opaque, stored as metadata, not interpreted"), a static mapping in the codebase would couple
-the ranking to the SM's phase vocabulary. See OQ-03.
+`w_phase_histogram = 0.02`, `w_phase_explicit = 0.0`. Sum: `0.95 + 0.02 = 0.97`.
+W3-1 will learn the appropriate split between the two terms once it has training data.
 
 ## Acceptance Criteria
 
@@ -318,8 +309,8 @@ the ranking to the SM's phase vocabulary. See OQ-03.
   entry's final score.
 - AC-08: When the session histogram is empty (cold start), the affinity boost is 0.0 for all
   entries — `SearchService` output is identical to current behavior.
-- AC-09: Both `w_phase_explicit` and `w_phase_histogram` are configurable in `[inference]`
-  config with defaults `0.015` and `0.005` respectively.
+- AC-09: Both `w_phase_explicit` (default `0.0`) and `w_phase_histogram` (default `0.02`) are
+  configurable in `[inference]` config.
 - AC-10: The boost terms are applied AFTER the existing fused score + co-access pipeline,
   not inside `compute_fused_score`.
 - AC-11: The `CompactPayload` synthesis output includes a `Recent session activity: ...`
@@ -377,7 +368,7 @@ as a plain struct field — it does not receive `Arc<SessionRegistry>`. This kee
 `SearchService` dependency-free of session infrastructure and matches the crt-025 SR-07
 snapshot pattern.
 
-**OQ-03 → RESOLVED: Ship histogram term only; defer explicit phase term to W3-1.**
+**OQ-03 → RESOLVED: Ship histogram term only (w_phase_histogram=0.02, full session signal budget per ADR-004); defer explicit phase term to W3-1 (w_phase_explicit=0.0).**
 crt-026 ships `w_phase_histogram * p(entry.category)` only. The explicit phase term
 (`w_phase_explicit * phase_category_weight(category, phase)`) is deferred: `current_phase`
 is opaque to Unimatrix and a static mapping would couple ranking to SM vocabulary.

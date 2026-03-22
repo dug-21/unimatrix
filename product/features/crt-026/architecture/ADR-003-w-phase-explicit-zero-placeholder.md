@@ -9,7 +9,7 @@ The product vision WA-2 specifies two separate affinity boost terms:
    Uses `SessionState.current_phase` (set by WA-1/crt-025) and a static mapping from phase
    string to expected category sets (e.g., phase "design" → expected categories
    `["decision", "pattern"]`).
-2. **Implicit histogram signal**: `p(entry.category) * 0.005`
+2. **Implicit histogram signal**: `p(entry.category) * 0.02`
    Uses the session category histogram accumulated during the session.
 
 ASS-028 shipped a single flat term (`p(category) * 0.02`) before the two-term design was

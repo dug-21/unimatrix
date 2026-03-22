@@ -4,7 +4,7 @@
 
 | Risk ID | Risk Description | Severity | Likelihood | Priority |
 |---------|-----------------|----------|------------|----------|
-| R-01 | Histogram boost invisible in tests — 0.005 max delta undetectable without manufactured concentration | High | High | Critical |
+| R-01 | Test must assert numerical floor on score delta — "ranks higher" alone is not sufficient | Med | Low | Medium |
 | R-02 | Cold-start regression — empty histogram path produces different scores than pre-crt-026 | High | Med | High |
 | R-03 | Duplicate store increments histogram — non-duplicate guard bypassed or placed incorrectly | High | Med | High |
 | R-04 | Unregistered session causes panic or side effect in `record_category_store` | Med | Low | Medium |
@@ -23,17 +23,21 @@
 
 ## Risk-to-Scenario Mapping
 
-### R-01: Histogram boost invisible in tests at 0.005 weight
-**Severity**: High
-**Likelihood**: High
+### R-01: Test must assert numerical floor on score delta
+**Severity**: Med
+**Likelihood**: Low
 **Impact**: AC-12 passes vacuously or uses imprecise assertions. Regression in boost computation goes undetected. W3-1 receives an unvalidated cold-start seed.
 
+Note: at `w_phase_histogram=0.02` (ADR-004), the boost is clearly detectable at realistic
+histogram concentrations. A 50% concentration produces a boost of `0.01`, a p=1.0 test
+produces exactly `0.02`. Extreme concentration is NOT required for detectability.
+
 **Test Scenarios**:
-1. Manufacture a session histogram where one category (e.g., `"decision"`) is the only stored category: histogram = `{"decision": 5}`, total = 5, `p("decision") = 1.0`. Construct two `ScoredEntry` values with all fused inputs equal except category. Assert `score(decision) - score(other) == 0.005` (exactly `w_phase_histogram * 1.0`).
-2. Verify that a histogram with 60% concentration: `{"decision": 3, "pattern": 2}` (total = 5) produces `phase_histogram_norm("decision") = 0.6` and a score delta of exactly `0.005 * 0.6 = 0.003`.
+1. Manufacture a session histogram where one category (e.g., `"decision"`) is the only stored category: histogram = `{"decision": 5}`, total = 5, `p("decision") = 1.0`. Construct two `ScoredEntry` values with all fused inputs equal except category. Assert `score(decision) - score(other) == 0.02` (exactly `w_phase_histogram * 1.0`).
+2. Verify that a histogram with 60% concentration: `{"decision": 3, "pattern": 2}` (total = 5) produces `phase_histogram_norm("decision") = 0.6` and a score delta of exactly `0.02 * 0.6 = 0.012`.
 3. Verify that a category absent from the histogram produces `phase_histogram_norm = 0.0` and zero boost (AC-13).
 
-**Coverage Requirement**: AC-12 must assert a score delta floor of `≥ 0.005` with `p=1.0` concentration. No "ranks higher" assertion without a numerical floor. Histogram must be ≥ 60% concentrated in one category to produce a delta detectable above floating-point noise.
+**Coverage Requirement**: AC-12 must assert a score delta of `≥ 0.02` with `p=1.0` concentration. No "ranks higher" assertion without a numerical floor.
 
 ---
 
@@ -103,9 +107,9 @@ Historical context: Entry #1611 documents the pattern where real-time and backgr
 Historical context: Entry #2964 documents the risk of sequential sort passes causing NLI override; the `effective()` NLI-absent re-normalization is the same class of pipeline ordering bug.
 
 **Test Scenarios**:
-1. Construct a `FusionWeights` with `w_phase_histogram = 0.005` and call `effective(false)` (NLI absent). Assert returned `w_phase_histogram` equals `0.005` unchanged (pass-through, not re-normalized).
+1. Construct a `FusionWeights` with `w_phase_histogram = 0.02` and call `effective(false)` (NLI absent). Assert returned `w_phase_histogram` equals `0.02` unchanged (pass-through, not re-normalized).
 2. Assert the re-normalization denominator used in `effective(false)` equals `w_sim + w_conf + w_coac + w_util + w_prov` (five terms, not seven).
-3. Verify the existing test `test_fusion_weights_effective_nli_active_headroom_weight_preserved` still passes — it must not assert a specific default sum value; if it does, update it to `0.955`.
+3. Verify the existing test `test_fusion_weights_effective_nli_active_headroom_weight_preserved` still passes — it constructs a manual FusionWeights at 0.90 and does not assert the struct defaults.
 
 **Coverage Requirement**: ADR-004 NLI-absent invariant. Must test `effective(false)` explicitly with new fields. Existing tests for `effective(true)` must also be confirmed green.
 
@@ -119,7 +123,7 @@ Historical context: Entry #2964 documents the risk of sequential sort passes cau
 **Test Scenarios**:
 1. Assert `FusedScoreInputs` has a `phase_explicit_norm: f64` field (compilation test, struct layout).
 2. Assert `FusionWeights` has a `w_phase_explicit: f64` field (compilation test).
-3. Assert `InferenceConfig::default()` returns `w_phase_explicit = 0.0` and `w_phase_histogram = 0.005`.
+3. Assert `InferenceConfig::default()` returns `w_phase_explicit = 0.0` and `w_phase_histogram = 0.02`.
 4. Assert `compute_fused_score` with `phase_explicit_norm = 0.0` and any `w_phase_explicit` value produces identical output to a call with the field absent (the zero term contributes nothing).
 
 **Coverage Requirement**: AC-09, ADR-003. The placeholder fields must have tests that confirm their presence and zero-contribution, with a comment in the test citing ADR-003 to prevent future removal.
@@ -175,7 +179,7 @@ Historical context: Entry #2964 documents the risk of sequential sort passes cau
 **Test Scenarios**:
 1. Construct an `InferenceConfig` with `w_phase_histogram = 1.5` — assert `validate()` returns an error or panics at startup.
 2. Construct with `w_phase_explicit = -0.1` — assert `validate()` rejects it (value below 0.0).
-3. Confirm `w_phase_histogram = 0.005` and `w_phase_explicit = 0.0` pass `validate()` cleanly.
+3. Confirm `w_phase_histogram = 0.02` and `w_phase_explicit = 0.0` pass `validate()` cleanly.
 
 **Coverage Requirement**: ADR-004 per-field range checks. `InferenceConfig::validate()` must have dedicated test cases for both new fields at boundary values (0.0, 1.0, just above 1.0, below 0.0).
 
@@ -241,7 +245,7 @@ The UDS path has no `audit_ctx`. The `session_id` originates from `HookRequest::
 
 ## Edge Cases
 
-**EC-01: Session with exactly one store** — `p(category) = 1.0` for that category. Max boost of `0.005` applied to all entries in that category. Must not panic (total = 1 is valid).
+**EC-01: Session with exactly one store** — `p(category) = 1.0` for that category. Max boost of `0.02` applied to all entries in that category. Must not panic (total = 1 is valid).
 
 **EC-02: Session with 1000+ stores** — large histogram is cloned by `get_category_histogram`. Clone is O(categories), not O(stores), since counts are aggregated. For the typical category vocabulary (< 20 categories), this is negligible.
 
@@ -249,7 +253,7 @@ The UDS path has no `audit_ctx`. The `session_id` originates from `HookRequest::
 
 **EC-04: Two categories with equal counts** — sort order in `format_compaction_payload` is by count descending. Equal-count categories may be ordered non-deterministically. The spec does not require a stable tie-breaking order; test should accept either ordering for equal-count categories.
 
-**EC-05: `w_phase_histogram` set to `0.0` via config** — boost is zero for all entries. Behavior identical to cold-start. Must not produce division by zero or NaN. This is a valid config state for operators disabling the feature.
+**EC-05: `w_phase_histogram` set to `0.0` via config** — boost is zero for all entries regardless of histogram contents. Behavior identical to cold-start. Must not produce division by zero or NaN. Valid config state for operators disabling the feature.
 
 **EC-06: Session registered, then server restarts** — histogram is in-memory; after restart, histogram is empty. Cold-start path kicks in. NFR-03 covers this. No session persistence across server restarts.
 
@@ -280,7 +284,7 @@ The histogram summary block is formatted as a string and appended to the `format
 
 **FM-03: `format_compaction_payload` called with very large category string** — the top-5 cap limits the output block size. Even with long category names, the block is bounded. No truncation within the block is required; the `MAX_INJECTION_BYTES` budget applies to the entire payload, not just this block.
 
-**FM-04: `InferenceConfig` deserialization from TOML with missing new fields** — both new fields use `#[serde(default)]`, so existing `config.toml` files without these fields will deserialize with defaults (`w_phase_explicit = 0.0`, `w_phase_histogram = 0.005`). No startup failure for operators not yet upgrading their config.
+**FM-04: `InferenceConfig` deserialization from TOML with missing new fields** — both new fields use `#[serde(default)]`, so existing `config.toml` files without these fields will deserialize with defaults (`w_phase_explicit = 0.0`, `w_phase_histogram = 0.02`). No startup failure for operators not yet upgrading their config.
 
 **FM-05: `compute_fused_score` called with `phase_histogram_norm = NaN`** — if division-by-zero guard is absent and a `Some(empty_map)` reaches the scoring loop, `total = 0` → `NaN` in `phase_histogram_norm` → `NaN` propagates to `final_score` → all entries score NaN → sort produces undefined order → top-k is garbage. This is the failure mode R-09 guards against. The handler's `is_empty() → None` mapping is the primary defense.
 
@@ -290,9 +294,9 @@ The histogram summary block is formatted as a string and appended to the `format
 
 | Scope Risk | Architecture Risk | Resolution |
 |-----------|------------------|------------|
-| SR-01: `w_phase_histogram=0.005` too small to detect without synthetic fixtures | R-01 | Architecture confirms `compute_fused_score` integration (ADR-001). NFR-06 mandates ≥60% concentration for test fixtures. AC-12 specifies score delta floor of `≥ 0.005`. Fully mitigated by test design. |
-| SR-02: `InferenceConfig::validate()` sum-invariant with 0.955 | — | Resolved at architecture level (ADR-004, OQ-A). The six-weight sum check does not include new phase fields; 0.955 passes the `<= 1.0` guard. No architecture risk; confirmed by code-level analysis. |
-| SR-03: `w_phase_histogram=0.005` as W3-1 cold-start initialization | — | Accepted in specification (NFR-06, domain model). W3-1 refines from this seed. No testable risk in crt-026; forward-compatibility documented in ARCHITECTURE.md downstream section. |
+| SR-01: `w_phase_histogram` signal strength and test detectability | R-01 | ADR-004 raises default to `0.02` (ASS-028 calibrated value, full session signal budget). Signal is detectable at realistic concentrations. AC-12 specifies score delta floor of `≥ 0.02`. Risk mitigated. |
+| SR-02: `InferenceConfig::validate()` sum-invariant with 0.97 | — | Resolved at architecture level (ADR-004, OQ-A). The six-weight sum check does not include new phase fields; 0.97 total passes the `<= 1.0` guard. No architecture risk; confirmed by code-level analysis. |
+| SR-03: `w_phase_histogram=0.02` as W3-1 cold-start initialization | — | 0.02 is the ASS-028 calibrated value — a meaningful cold-start seed that provides useful gradient signal. Risk substantially reduced vs. 0.005. W3-1 refines from this seed. |
 | SR-04: AC-07 ambiguity — explicit phase term in or out of scope | — | Resolved in specification: AC-07 explicitly dropped. `w_phase_explicit = 0.0` is a placeholder. R-07 tests that the placeholder fields are present and contribute zero. Fully resolved. |
 | SR-05: `context_briefing` scope boundary — WA-4b coupling | — | Non-goal confirmed in specification. No architecture risk in crt-026. WA-4b is a separate feature. Accepted. |
 | SR-06: Concurrent duplicate-store race on histogram | R-03 | Architecture confirms the lock hold is synchronous and fire-and-commit; the window is effectively zero. R-03 tests the guard placement by asserting count = 1 after two stores of the same entry. |
@@ -313,7 +317,7 @@ The histogram summary block is formatted as a string and appended to the `format
 | **Total** | **14** | **≥ 40 scenarios** |
 
 **Non-negotiable tests** (gate blockers):
-- AC-12: score delta ≥ 0.005 with p=1.0 concentration (R-01)
+- AC-12: score delta ≥ 0.02 with p=1.0 concentration (R-01)
 - AC-02: duplicate store does not increment histogram (R-03)
 - AC-08: cold-start parity — empty histogram produces identical scores (R-02)
 - AC-03: unregistered session is silent no-op (R-04)

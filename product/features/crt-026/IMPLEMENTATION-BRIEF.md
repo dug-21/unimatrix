@@ -63,9 +63,9 @@ in the UDS `CompactPayload` synthesis output to inform agents at compaction time
 | Boost integration point: inside `compute_fused_score` vs. post-pipeline additive | Integrate as first-class dimension inside `compute_fused_score` so `status_penalty` applies uniformly and W3-1 sees a named, learnable field | ADR-001, OQ-01 | architecture/ADR-001-fused-score-inputs-integration.md |
 | Session registry access in `SearchService`: `Arc<SessionRegistry>` on service vs. pre-resolve in handler | Pre-resolve histogram in tool handler before `await`; pass via `ServiceSearchParams.category_histogram`; `SearchService` holds no session registry reference | ADR-002, OQ-02 | architecture/ADR-002-pre-resolve-histogram-in-handler.md |
 | Explicit phase term (`w_phase_explicit`): ship behavior or defer | Ship as `w_phase_explicit=0.0` placeholder in `InferenceConfig` + `FusionWeights` + `FusedScoreInputs.phase_explicit_norm=0.0`; no `phase_category_weight` mapping; deferred to W3-1 | ADR-003, OQ-03 | architecture/ADR-003-w-phase-explicit-zero-placeholder.md |
-| Weight sum rebalancing: reduce existing defaults vs. accept 0.955 sum | No rebalancing; existing six-weight defaults unchanged; `w_phase_histogram=0.005` adds to sum; `InferenceConfig::validate()` six-field sum check not modified; doc-comment updated | ADR-004, OQ-04 | architecture/ADR-004-no-weight-rebalancing.md |
+| Weight sum: `w_phase_histogram=0.02` carries full session signal budget | No rebalancing; existing six-weight defaults unchanged; `w_phase_histogram=0.02` (ASS-028 calibrated value) is additive; sum goes 0.95→0.97; `InferenceConfig::validate()` six-field sum check not modified | ADR-004, OQ-04 | architecture/ADR-004-no-weight-rebalancing.md |
 | `status_penalty` application order | Confirmed: `final_score = compute_fused_score(...) * status_penalty` — boost is inside fused score before penalty | ARCHITECTURE.md OQ-D | — |
-| `InferenceConfig::validate()` with sum=0.955 | Confirmed: existing check tests only the six original fields; 0.955 passes cleanly; no existing test asserts `sum==0.95` against defaults | ARCHITECTURE.md OQ-A | — |
+| `InferenceConfig::validate()` with sum=0.97 | Confirmed: existing check tests only the six original fields (sum stays 0.95); 0.97 total passes; no existing test asserts `sum==0.95` against defaults | ARCHITECTURE.md OQ-A | — |
 | UDS `handle_context_search` session_id source | `HookRequest::ContextSearch.session_id` field; `sanitize_session_id` already called at lines 796-803; histogram pre-resolution placed after sanitize check | ARCHITECTURE.md OQ-B | — |
 | WA-4a forward-compatibility with pre-resolution pattern | Pre-resolution is correct for crt-026; WA-4a will likely need `Arc<SessionRegistry>` on `SearchService` and must supersede ADR-002 at that time | ARCHITECTURE.md OQ-C | — |
 
@@ -78,7 +78,7 @@ in the UDS `CompactPayload` synthesis output to inform agents at compaction time
 | `crates/unimatrix-server/src/infra/session.rs` | Modify | Add `category_counts: HashMap<String, u32>` to `SessionState`; add `record_category_store` and `get_category_histogram` methods to `SessionRegistry` |
 | `crates/unimatrix-server/src/mcp/tools.rs` | Modify | Call `record_category_store` after non-duplicate store success (Component 2); pre-resolve histogram + thread `session_id` and `category_histogram` into `ServiceSearchParams` in `context_search` handler (Component 4) |
 | `crates/unimatrix-server/src/services/search.rs` | Modify | Add `session_id` and `category_histogram` fields to `ServiceSearchParams`; add `phase_histogram_norm` and `phase_explicit_norm` to `FusedScoreInputs`; add `w_phase_histogram` and `w_phase_explicit` to `FusionWeights`; extend `compute_fused_score` with both new terms; update `FusionWeights::effective()` NLI-absent pass-through; remove WA-2 extension stub comments |
-| `crates/unimatrix-server/src/infra/config.rs` | Modify | Add `w_phase_explicit: f64` (default `0.0`) and `w_phase_histogram: f64` (default `0.005`) to `InferenceConfig`; add per-field `[0.0, 1.0]` range checks in `validate()`; update `Default::default()` struct literal |
+| `crates/unimatrix-server/src/infra/config.rs` | Modify | Add `w_phase_explicit: f64` (default `0.0`) and `w_phase_histogram: f64` (default `0.02`) to `InferenceConfig`; add per-field `[0.0, 1.0]` range checks in `validate()`; update `Default::default()` struct literal |
 | `crates/unimatrix-server/src/uds/listener.rs` | Modify | Add histogram pre-resolution block after `sanitize_session_id` in `handle_context_search`; pass `session_id` and `category_histogram` into `ServiceSearchParams`; add `get_category_histogram` call in `handle_compact_payload` and append histogram summary block to `format_compaction_payload` when non-empty |
 
 ---
@@ -124,7 +124,7 @@ pub struct FusedScoreInputs {
 ```rust
 pub struct FusionWeights {
     // ... existing six weight fields unchanged ...
-    pub w_phase_histogram: f64, // NEW: default 0.005 (W3-1 cold-start seed)
+    pub w_phase_histogram: f64, // NEW: default 0.02 (ASS-028 calibrated value, full session signal budget)
     pub w_phase_explicit: f64,  // NEW: default 0.0 (W3-1 placeholder, ADR-003)
 }
 ```
@@ -144,7 +144,7 @@ unchanged in both NLI-active and NLI-absent paths.
 pub w_phase_explicit: f64,   // default 0.0
 
 #[serde(default = "default_w_phase_histogram")]
-pub w_phase_histogram: f64,  // default 0.005
+pub w_phase_histogram: f64,  // default 0.02
 ```
 
 ---
@@ -180,9 +180,9 @@ score = w_nli * nli
 final_score = score * status_penalty               // penalty applied after fused score
 ```
 
-Max combined boost with defaults: `0.005 * 1.0 + 0.0 * 0.0 = 0.005`. Within the 0.05 WA-0
-headroom. When W3-1 enables `w_phase_explicit` at its product-vision value of `0.015`, combined
-max = `0.02` — still within the 0.05 headroom.
+Max histogram boost with defaults: `0.02 * 1.0 = 0.02` (at p=1.0 concentration). Within the
+0.05 WA-0 headroom. When W3-1 enables `w_phase_explicit`, W3-1 will learn the appropriate
+split between the two terms.
 
 ### Scoring loop histogram resolution (`services/search.rs`)
 
@@ -221,9 +221,9 @@ for typical sessions with a vocabulary of < 20 categories).
 2. **No new crates.** All changes in `crates/unimatrix-server`. Specifically:
    `infra/session.rs`, `infra/config.rs`, `services/search.rs`, `mcp/tools.rs`, `uds/listener.rs`.
 3. **No weight rebalancing.** The six existing `InferenceConfig` weight defaults are unchanged.
-   `w_phase_histogram=0.005` is additive. `InferenceConfig::validate()` six-field sum check is NOT
-   modified to include the new fields. Per-field `[0.0, 1.0]` range checks ARE added for both new
-   fields.
+   `w_phase_histogram=0.02` is additive (full session signal budget, ADR-004). Sum goes 0.95→0.97.
+   `InferenceConfig::validate()` six-field sum check is NOT modified. Per-field `[0.0, 1.0]` range
+   checks ARE added for both new fields.
 4. **`FusionWeights::effective()` NLI-absent path** must NOT include `w_phase_histogram` or
    `w_phase_explicit` in the re-normalization denominator. Both are passed through unchanged.
 5. **Cold-start safety.** Empty histogram → `category_histogram = None` → all
@@ -243,8 +243,8 @@ for typical sessions with a vocabulary of < 20 categories).
 10. **WA-2 extension stubs resolved.** All `// WA-2 extension:` comments at lines 55, 89, 179 of
     `search.rs` are replaced with the implemented field declarations and doc-comments. No stub
     comment may remain after implementation.
-11. **Boost bounded.** Max boost = `0.005` with defaults. Never pushes a weak-similarity entry
-    above a high-NLI entry given current calibrations (NLI dominant at 0.35).
+11. **Boost bounded.** Max histogram boost = `0.02` with defaults (p=1.0 concentration). Never
+    pushes a weak-similarity entry above a high-NLI entry given current calibrations (NLI dominant at 0.35).
 12. **Hook timeout budget.** UDS histogram summary is string formatting on pre-resolved in-memory
     data. No I/O, no SQL. Negligible latency; must not approach the 40ms `HOOK_TIMEOUT` budget.
 
@@ -263,7 +263,7 @@ for typical sessions with a vocabulary of < 20 categories).
 | `FusedScoreInputs`, `FusionWeights`, `compute_fused_score` | `services/search.rs` | Extended by this feature | WA-2 stubs at lines 55, 89, 179 are the integration contract |
 | `InferenceConfig` | `infra/config.rs` | Extended by this feature | |
 | `format_compaction_payload` / `handle_compact_payload` | `uds/listener.rs` | Extended by this feature | |
-| W3-1 (GNN relevance function) | Downstream consumer | Not yet scheduled | Uses `w_phase_histogram=0.005` as cold-start seed; uses `phase_explicit_norm` field once ready |
+| W3-1 (GNN relevance function) | Downstream consumer | Not yet scheduled | Uses `w_phase_histogram=0.02` as cold-start seed (ASS-028 calibrated); uses `phase_explicit_norm` field once ready |
 | WA-4a (proactive injection) | Downstream feature | Not yet scheduled | Will likely need to supersede ADR-002 (`Arc<SessionRegistry>` on `SearchService`) |
 
 ---
@@ -290,7 +290,7 @@ Seven tests must pass to clear Gate 3c. All map to acceptance criteria and risk 
 
 | # | Test Name | Covers | Risk |
 |---|-----------|--------|------|
-| 1 | `test_histogram_boost_score_delta_at_p1_equals_weight` | AC-12: score delta ≥ 0.005 with p=1.0 concentration; must assert a numerical floor, not just "ranks higher" | R-01 |
+| 1 | `test_histogram_boost_score_delta_at_p1_equals_weight` | AC-12: score delta ≥ 0.02 with p=1.0 concentration; must assert a numerical floor, not just "ranks higher" | R-01 |
 | 2 | `test_duplicate_store_does_not_increment_histogram` | AC-02: store same entry twice; assert histogram count = 1 after second store | R-03 |
 | 3 | `test_cold_start_search_produces_identical_scores` | AC-08: empty histogram → all `phase_histogram_norm = 0.0` → scores bit-for-bit identical to pre-crt-026 | R-02 |
 | 4 | `test_record_category_store_unregistered_session_is_noop` | AC-03: call with unknown session_id; no panic, no state change | R-04 |
@@ -300,11 +300,11 @@ Seven tests must pass to clear Gate 3c. All map to acceptance criteria and risk 
 
 Additional high-priority tests (not gate blockers but required for full coverage):
 
-- `test_60_percent_concentration_score_delta` — p=0.6 produces delta of exactly `0.005 * 0.6 = 0.003` (R-01 scenario 2)
+- `test_60_percent_concentration_score_delta` — p=0.6 produces delta of exactly `0.02 * 0.6 = 0.012` (R-01 scenario 2)
 - `test_status_penalty_applied_after_histogram_boost` — `(fused + boost) * penalty` ordering confirmed (R-08, AC-10)
 - `test_uds_search_path_histogram_pre_resolution` — UDS `handle_context_search` populates `category_histogram` from session (R-05, FR-07)
 - `test_config_validation_rejects_out_of_range_phase_weights` — `w_phase_histogram > 1.0` fails validation (R-11)
-- `test_phase_explicit_norm_placeholder_fields_present` — `FusedScoreInputs` and `FusionWeights` have the placeholder fields; `InferenceConfig::default()` returns `w_phase_explicit=0.0, w_phase_histogram=0.005` (R-07, AC-09)
+- `test_phase_explicit_norm_placeholder_fields_present` — `FusedScoreInputs` and `FusionWeights` have the placeholder fields; `InferenceConfig::default()` returns `w_phase_explicit=0.0, w_phase_histogram=0.02` (R-07, AC-09)
 
 ---
 

@@ -102,7 +102,7 @@ Three targeted extensions to the WA-2 extension stubs:
 - `phase_explicit_norm: f64` — always `0.0` in crt-026 (W3-1 reserved placeholder)
 
 **`FusionWeights`** gains two new fields (replacing the stub comment at line 89):
-- `w_phase_histogram: f64` — default `0.005`
+- `w_phase_histogram: f64` — default `0.02`
 - `w_phase_explicit: f64` — default `0.0`
 
 `FusionWeights::from_config()` reads both from `InferenceConfig`. The `effective()` method
@@ -145,7 +145,7 @@ pattern:
 pub w_phase_explicit: f64,  // default 0.0
 
 #[serde(default = "default_w_phase_histogram")]
-pub w_phase_histogram: f64, // default 0.005
+pub w_phase_histogram: f64, // default 0.02
 ```
 
 `InferenceConfig::validate()` receives per-field range checks for both new fields
@@ -154,7 +154,7 @@ w_coac + w_util + w_prov <= 1.0`) is NOT modified — the phase fields are addit
 outside the sum-constraint (see ADR-004 and OQ-A resolution below).
 
 The `InferenceConfig::default()` struct literal must be extended with `..Default::default()`
-or explicit `w_phase_explicit: 0.0, w_phase_histogram: 0.005` (see #2730 pattern).
+or explicit `w_phase_explicit: 0.0, w_phase_histogram: 0.02` (see #2730 pattern).
 
 ### Component 7: UDS `handle_context_search` — session_id threading
 **File**: `crates/unimatrix-server/src/uds/listener.rs`
@@ -229,7 +229,7 @@ handle_compact_payload (uds/listener.rs)
 
 InferenceConfig (infra/config.rs)
   └── w_phase_explicit: f64 = 0.0   (new, serde(default))
-  └── w_phase_histogram: f64 = 0.005 (new, serde(default))
+  └── w_phase_histogram: f64 = 0.02 (new, serde(default)) ← full session signal budget (ADR-004)
   └── validate() — per-field range check [0.0, 1.0] for both new fields
                  — existing six-weight sum check NOT modified
 
@@ -248,7 +248,7 @@ See individual ADR files for full rationale.
 | Boost integration point | Inside `compute_fused_score` as first-class dimension | ADR-001 |
 | Session registry access in search | Pre-resolve in handler, pass via `ServiceSearchParams` | ADR-002 |
 | `w_phase_explicit` in crt-026 | Ship at `0.0` as W3-1 placeholder; no mapping function | ADR-003 |
-| Weight sum invariant | No rebalancing; sum goes 0.95 → 0.955, within `<= 1.0` | ADR-004 |
+| Weight sum invariant | No rebalancing; w_phase_histogram=0.02 carries full session signal budget; sum goes 0.95 → 0.97, within `<= 1.0` | ADR-004 |
 
 ---
 
@@ -264,7 +264,7 @@ See individual ADR files for full rationale.
 ### Downstream (consumers of new capabilities)
 
 - **W3-1 (GNN)**: `phase_histogram_norm` and `w_phase_histogram` are stable, named,
-  learnable dimensions. W3-1 initializes from `w_phase_histogram=0.005` and refines from
+  learnable dimensions. W3-1 initializes from `w_phase_histogram=0.02` (ASS-028 calibrated value) and refines from
   there. The field names must not be renamed or removed without a W3-1 migration plan.
 - **WA-4a (proactive injection)**: the pre-resolution pattern (OQ-C, see below) is
   sufficient for crt-026 but may not be reusable for WA-4a, which resolves candidates
@@ -284,10 +284,10 @@ See individual ADR files for full rationale.
 | `ServiceSearchParams.category_histogram` | `Option<HashMap<String, u32>>` | `services/search.rs` — NEW field |
 | `FusedScoreInputs.phase_histogram_norm` | `f64` in `[0.0, 1.0]` | `services/search.rs` — NEW field (replaces WA-2 stub) |
 | `FusedScoreInputs.phase_explicit_norm` | `f64`, always `0.0` in crt-026 | `services/search.rs` — NEW field (W3-1 reserved) |
-| `FusionWeights.w_phase_histogram` | `f64`, default `0.005` | `services/search.rs` — NEW field (replaces WA-2 stub) |
+| `FusionWeights.w_phase_histogram` | `f64`, default `0.02` | `services/search.rs` — NEW field (replaces WA-2 stub) |
 | `FusionWeights.w_phase_explicit` | `f64`, default `0.0` | `services/search.rs` — NEW field |
 | `InferenceConfig.w_phase_explicit` | `f64`, serde default `0.0` | `infra/config.rs` — NEW field |
-| `InferenceConfig.w_phase_histogram` | `f64`, serde default `0.005` | `infra/config.rs` — NEW field |
+| `InferenceConfig.w_phase_histogram` | `f64`, serde default `0.02` | `infra/config.rs` — NEW field |
 | `HookRequest::ContextSearch.session_id` | `Option<String>`, `#[serde(default)]` | `unimatrix-engine/src/wire.rs` — existing, no change |
 | `compute_fused_score` final formula | `w_phase_histogram * phase_histogram_norm + w_phase_explicit * phase_explicit_norm` | `services/search.rs` — extends existing function |
 | `format_compaction_payload` histogram block | `"Recent session activity: {cat} × {n}, ..."` appended when non-empty | `uds/listener.rs` — conditional append |
@@ -296,16 +296,17 @@ See individual ADR files for full rationale.
 
 ## Open Questions Resolution
 
-### OQ-A: Does `InferenceConfig::validate()` accept `sum = 0.955`?
+### OQ-A: Does `InferenceConfig::validate()` accept `sum = 0.97`?
 
 **Confirmed: Yes.** The existing sum check at `config.rs` line 597-600 computes
 `w_sim + w_nli + w_conf + w_coac + w_util + w_prov` — the six original fields only — and
-tests `> 1.0`. Adding `w_phase_histogram=0.005` does NOT enter this sum; the new fields
+tests `> 1.0`. Adding `w_phase_histogram=0.02` does NOT enter this sum; the new fields
 are outside the six-weight constraint. The sum of the original six remains `0.95`, which
-passes the `> 1.0` guard.
+passes the `> 1.0` guard. Total sum including phase fields: `0.97`.
 
-However: the doc-comment on `FusionWeights` must be updated to reflect the new total
-(`0.955` with defaults). There is no test asserting `sum == 0.95` exactly against the
+The doc-comment on `FusionWeights` must be updated to clarify: `sum of six core terms <= 1.0;
+w_phase_histogram and w_phase_explicit are additive terms excluded from this constraint`.
+There is no test asserting `sum == 0.95` exactly against the
 constant. The test `test_fusion_weights_effective_nli_active_headroom_weight_preserved`
 uses a manually constructed `FusionWeights` that sums to `0.90` and asserts that
 `effective(true)` does NOT re-normalize — that test remains valid because it does not
@@ -391,8 +392,10 @@ ordering: `(fused_score_including_histogram) * status_penalty`.
 - **No new crates**: all changes in `crates/unimatrix-server`.
 - **Cold-start safe**: empty histogram → `category_histogram = None` → all
   `phase_histogram_norm = 0.0` → `compute_fused_score` identical to pre-crt-026.
-- **Boost bounded**: max boost = `0.005 * 1.0 = 0.005` with defaults. Combined max
-  when W3-1 enables `w_phase_explicit` at `0.015`: `0.02`. Within `0.05` WA-0 headroom.
+- **Boost bounded**: max histogram boost = `0.02 * 1.0 = 0.02` with defaults (p=1.0 concentration).
+  Within `0.05` WA-0 headroom. When W3-1 enables `w_phase_explicit`, W3-1 will learn the
+  appropriate split between the two terms — expected to reduce `w_phase_histogram` as
+  `w_phase_explicit` gains weight from training data.
 - **Hook timeout budget**: histogram summary is string formatting on pre-resolved in-memory
   data. Negligible latency; no I/O path within `HOOK_TIMEOUT = 40ms`.
 - **`FusionWeights::effective()` NLI-absent path**: the re-normalization denominator

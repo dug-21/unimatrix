@@ -4,9 +4,9 @@
 
 | Risk ID | Risk | Severity | Likelihood | Recommendation |
 |---------|------|----------|------------|----------------|
-| SR-01 | `w_phase_histogram=0.005` is so small it may produce imperceptible ranking changes in production — signal too weak to validate correctness or detect regressions without synthetic test fixtures that manufacture ideal conditions | High | High | Architect must specify minimum histogram concentration (e.g., one category at ≥60% of stores) required before boost is detectable; AC-12 must define the exact score gap, not just "ranks higher" |
-| SR-02 | OQ-01 RESOLVED to integrate inside `compute_fused_score`, but the shipped `FusionWeights` sum-invariant enforces `sum <= 1.0`; adding `w_phase_histogram=0.005` brings the sum to 0.955 — valid, but `InferenceConfig::validate()` must be confirmed to permit this without any default weight adjustment | Med | Med | Architect must confirm `validate()` accepts 0.955 cleanly; if existing tests assert `sum == 0.95` exactly, they will break |
-| SR-03 | `w_phase_histogram=0.005` becomes W3-1's cold-start initialization weight for this dimension; if the value is too small to produce a useful gradient signal during GNN training, W3-1 will under-weight this dimension from the outset | Med | Med | Product vision names this as W3-1 initialization — spec writer should note W3-1 dependency and document minimum detectable effect |
+| SR-01 | ~~`w_phase_histogram=0.005` signal too weak~~ **RESOLVED** — ADR-004 raises default to `0.02` (ASS-028 calibrated value, full session signal budget). Signal is detectable at realistic concentrations; AC-12 asserts score delta `≥ 0.02` at p=1.0. | ~~High~~ Low | ~~High~~ Low | No further action required. |
+| SR-02 | `InferenceConfig::validate()` sum-invariant: adding `w_phase_histogram=0.02` brings total to 0.97. `validate()` must confirm this is within `<= 1.0`. | Low | Low | **RESOLVED** — architect confirmed `validate()` checks only the six original fields (sum remains 0.95); 0.97 total is not included in the sum check. No test asserts `sum == 0.95` against defaults. |
+| SR-03 | ~~`w_phase_histogram=0.005` too small for W3-1 gradient signal~~ **RESOLVED** — `0.02` is the ASS-028 calibrated value, a meaningful cold-start seed. W3-1 has sufficient gradient signal from day one. | ~~Med~~ Low | ~~Med~~ Low | No further action required. |
 
 ## Scope Boundary Risks
 
@@ -32,7 +32,7 @@
 
 ## Design Recommendations
 
-- **SR-01, SR-03**: Spec writer should define AC-12 with a concrete score delta (e.g., "boost delta ≥ `w_phase_histogram * 1.0 = 0.005`") and note that this weight is W3-1's initialization value for this dimension.
-- **SR-02**: Architect must confirm `InferenceConfig::validate()` permits `sum=0.955`; if any existing test asserts the exact pre-WA-2 sum, it will need updating.
+- **SR-01, SR-03**: ~~Resolved via ADR-004~~ — `w_phase_histogram=0.02`. AC-12 asserts delta `≥ 0.02` at p=1.0. W3-1 cold-start seed is meaningful.
+- **SR-02**: ~~Resolved~~ — `InferenceConfig::validate()` checks only original six fields; 0.97 total passes without touching existing defaults.
 - **SR-04**: Spec writer must resolve the AC-07 ambiguity before the spec is finalized — either drop AC-07 (explicit phase term deferred) or scope it explicitly with a no-op implementation.
 - **SR-07, SR-08**: Architect should document the UDS `session_id` origin and assess whether the pre-resolution pattern is forward-compatible with WA-4a proactive injection.

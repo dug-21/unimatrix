@@ -74,7 +74,7 @@ The SCOPE.md constraint (OQ-03 resolved) explicitly defers the explicit phase te
 
 ### Vision Alignment
 
-**"Intelligence pipeline is a learned function"** (PRODUCT-VISION.md §Story, line 17): The architecture integrates `phase_histogram_norm` as a first-class `FusedScoreInputs` dimension with a named weight in `FusionWeights`. This directly advances the vision: W3-1 initializes from `w_phase_histogram=0.005` and refines from real usage. The field is stable, named, and learnable. This is a strong alignment with the vision's statement that `compute_fused_score` is W3-1's feature vector interface.
+**"Intelligence pipeline is a learned function"** (PRODUCT-VISION.md §Story, line 17): The architecture integrates `phase_histogram_norm` as a first-class `FusedScoreInputs` dimension with a named weight in `FusionWeights`. This directly advances the vision: W3-1 initializes from `w_phase_histogram=0.02` and refines from real usage. The field is stable, named, and learnable. This is a strong alignment with the vision's statement that `compute_fused_score` is W3-1's feature vector interface.
 
 **"Session-conditioned, self-improving relevance function"** (PRODUCT-VISION.md §Story, line 17): crt-026 adds the first implicit session-context signal to the ranking pipeline. The histogram accumulates without agent cooperation — it is a behavioral signal, not a declared one. This is precisely what the vision describes as the step toward session-conditioned relevance without requiring WA-4's proactive machinery.
 
@@ -82,7 +82,7 @@ The SCOPE.md constraint (OQ-03 resolved) explicitly defers the explicit phase te
 
 **Pipeline positioning divergence** (V-1 above): The vision's WA-2 section shows the boost as a post-pipeline step. The architecture places it inside `compute_fused_score`. As noted in V-1, the architectural decision is sound, but the vision document description is now inaccurate.
 
-**WA-2 two-term formula**: Product vision specifies two separate terms (explicit phase 0.015, histogram 0.005) both applying when both signals are present. crt-026 ships only the histogram term at 0.005; the explicit phase term is deferred at 0.0. SCOPE.md OQ-03 documents this resolution with clear rationale (phase vocabulary is opaque; static mapping would couple to SM vocabulary; W3-1 will learn the relationship). The deferral is justified and internally consistent. The `w_phase_explicit=0.0` default means the vision's explicit-phase behavior is not delivered by crt-026 — this is a known, accepted scope boundary.
+**WA-2 two-term formula**: Product vision specifies two separate terms (explicit phase 0.015, histogram 0.005) both applying when both signals are present. crt-026 ships only the histogram term at 0.02 (full session signal budget, since the explicit phase term is deferred); the explicit phase term is deferred at 0.0. SCOPE.md OQ-03 documents this resolution with clear rationale (phase vocabulary is opaque; static mapping would couple to SM vocabulary; W3-1 will learn the relationship). The deferral is justified and internally consistent. The `w_phase_explicit=0.0` default means the vision's explicit-phase behavior is not delivered by crt-026 — this is a known, accepted scope boundary.
 
 **UDS injection summary** (PRODUCT-VISION.md WA-2, line 256): Vision states `"Recent session activity: decision × 3, pattern × 2 (design phase signal)"` — note the trailing `(design phase signal)` qualifier in the vision text. The specification's FR-12 and architecture Component 8 specify the format as `"Recent session activity: decision × 3, pattern × 2"` — omitting the `(design phase signal)` suffix. This is a minor format deviation. Since `current_phase` is opaque and the phase term is deferred, omitting the phase qualifier from the CompactPayload block is consistent and sensible. No action required.
 
@@ -116,7 +116,7 @@ The architecture's OQ-C note (WA-4a will likely need `Arc<SessionRegistry>` on `
 
 **Component 7 (UDS handle_context_search)**: OQ-B resolved: `sanitize_session_id` is confirmed applied before histogram pre-resolution (lines 796-803). The UDS path carries `session_id` from `HookRequest::ContextSearch.session_id` — not from `audit_ctx`. This source difference is correctly documented and the pre-resolution block is placed after the sanitize check.
 
-**ADR-004 (no weight rebalancing)**: The six-weight sum (`0.95`) is NOT modified. `w_phase_histogram=0.005` is added outside the six-term sum constraint, bringing the effective default total to `0.955`. `InferenceConfig::validate()` is confirmed to check only the six-term sum (`w_sim + w_nli + w_conf + w_coac + w_util + w_prov <= 1.0`), so `0.955` passes cleanly. The doc-comment on `FusionWeights` must be updated — this is captured as a required action in the architecture (OQ-A).
+**ADR-004 (w_phase_histogram=0.02, full session budget, sum 0.95 → 0.97)**: The six-weight sum (`0.95`) is NOT modified. `w_phase_histogram=0.02` is added outside the six-term sum constraint, bringing the effective default total to `0.97`. `InferenceConfig::validate()` is confirmed to check only the six-term sum (`w_sim + w_nli + w_conf + w_coac + w_util + w_prov <= 1.0`), so `0.97` passes cleanly. The doc-comment on `FusionWeights` must be updated — this is captured as a required action in the architecture (OQ-A).
 
 **WA-4a forward-compatibility (OQ-C)**: Flagged correctly as a forward-compatibility risk in ADR-002 and the downstream integration section. No code change needed in crt-026; WA-4a must re-evaluate and supersede ADR-002. This is appropriate milestone discipline.
 
@@ -126,9 +126,9 @@ The architecture's OQ-C note (WA-4a will likely need `Arc<SessionRegistry>` on `
 
 **AC-07 dropped**: Specification explicitly drops AC-07 (explicit phase affinity boost) with full rationale. The acceptance criteria section opens with "All AC-IDs flow from SCOPE.md. AC-07 is explicitly dropped." The SCOPE.md SR-04 risk item identified the ambiguity; the spec writer resolved it. The resolution is complete and documented.
 
-**AC-12 concreteness**: The scope risk assessment SR-01 flagged the risk that AC-12 would be vague ("ranks higher" without a numerical floor). The specification defines AC-12 with a concrete score delta floor: `≥ w_phase_histogram * 1.0 = 0.005` with `p=1.0` concentration. NFR-06 mandates ≥60% histogram concentration for test fixtures. SR-01 is fully resolved.
+**AC-12 concreteness**: The scope risk assessment SR-01 flagged the risk that AC-12 would be vague ("ranks higher" without a numerical floor). The specification defines AC-12 with a concrete score delta floor: `≥ w_phase_histogram * 1.0 = 0.02` with `p=1.0` concentration. NFR-06 mandates ≥60% histogram concentration for test fixtures. SR-01 is fully resolved.
 
-**OQ-A resolved in architecture**: Specification FR-11 notes that `InferenceConfig::validate()` must accept `sum=0.955` cleanly, and the architecture OQ-A confirms this via code-level analysis. The open question in the spec is correctly delegated to the architect and has a confirmed answer.
+**OQ-A resolved in architecture**: Specification FR-11 notes that `InferenceConfig::validate()` must accept `sum=0.97` cleanly, and the architecture OQ-A confirms this via code-level analysis. The open question in the spec is correctly delegated to the architect and has a confirmed answer.
 
 **UDS histogram summary format**: Spec FR-12 omits the `(design phase signal)` suffix present in the vision's example. As noted under Vision Alignment, this is consistent with the deferral of the explicit phase term and is acceptable.
 
@@ -146,7 +146,7 @@ The architecture's OQ-C note (WA-4a will likely need `Arc<SessionRegistry>` on `
 
 **R-06 (FusionWeights::effective() denominator)**: This is the highest architectural regression risk. The risk strategy correctly identifies it (historical entry #2964 cited), requires an explicit `effective(false)` test with the new fields, and asserts the re-normalization denominator must enumerate exactly the five core terms. This is adequate coverage.
 
-**R-01 (0.005 weight too small to detect)**: Correctly identified as Critical/High priority. The resolution — manufactured histogram concentration (p=1.0 for exact delta; ≥60% for detectable delta) with a numerical floor assertion — is sound. Three specific test scenarios are defined.
+**R-01 (weight signal detectability)**: Originally identified as Critical/High; downgraded to Med/Low after ADR-004 raised `w_phase_histogram` to `0.02` (ASS-028 calibrated value). The resolution — manufactured histogram concentration (p=1.0 for exact delta `≥0.02`; ≥60% for detectable delta `≥0.012`) with a numerical floor assertion — is sound. Three specific test scenarios are defined.
 
 **Security section**: Appropriately scoped. `session_id` sanitization is confirmed pre-existing. Histogram key injection blast radius is correctly assessed as limited to a HashMap key under an unexpected name — no SQL, no path traversal, no cross-session effect. CompactPayload injection risk is bounded by top-5 cap and `MAX_INJECTION_BYTES` budget.
 
