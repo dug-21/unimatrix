@@ -321,6 +321,12 @@ impl UnimatrixServer {
             co_access_anchors: None,
             caller_agent_id: Some(ctx.agent_id.clone()),
             retrieval_mode: crate::services::RetrievalMode::Flexible, // crt-010: MCP always Flexible
+            session_id: ctx.audit_ctx.session_id.clone(), // crt-026: for observability (WA-2)
+            // crt-026: pre-resolve session histogram (WA-2, SR-07 snapshot pattern)
+            category_histogram: ctx.audit_ctx.session_id.as_deref().and_then(|sid| {
+                let h = self.session_registry.get_category_histogram(sid);
+                if h.is_empty() { None } else { Some(h) }
+            }),
         };
 
         let search_results = self
