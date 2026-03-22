@@ -171,6 +171,12 @@ pub(crate) struct StatusService {
     /// Read once before each confidence refresh batch (IR-02) to snapshot
     /// alpha0/beta0 without acquiring the lock inside the hot loop.
     confidence_state: ConfidenceStateHandle,
+    /// Operator-configured confidence weights (dsn-001, GH #311).
+    ///
+    /// Resolved once at startup via `resolve_confidence_params()` and threaded
+    /// here through `ServiceLayer`. The `run_maintenance` confidence refresh loop
+    /// uses these params — never `ConfidenceParams::default()` inline (ADR-006).
+    confidence_params: Arc<unimatrix_engine::confidence::ConfidenceParams>,
     /// GH #278: last contradiction scan result, written by background tick, read here.
     ///
     /// `compute_report()` reads the cached result instead of running O(N) ONNX
@@ -215,6 +221,7 @@ impl StatusService {
         embed_service: Arc<EmbedServiceHandle>,
         adapt_service: Arc<AdaptationService>,
         confidence_state: ConfidenceStateHandle,
+        confidence_params: Arc<unimatrix_engine::confidence::ConfidenceParams>,
         contradiction_cache: ContradictionScanCacheHandle,
         rayon_pool: Arc<RayonPool>,
         observation_registry: Arc<DomainPackRegistry>,
@@ -225,6 +232,7 @@ impl StatusService {
             embed_service,
             adapt_service,
             confidence_state,
+            confidence_params,
             contradiction_cache,
             rayon_pool,
             observation_registry,
@@ -884,16 +892,14 @@ impl StatusService {
             stale_entries.truncate(batch_cap);
 
             if !stale_entries.is_empty() {
+                // GH #311: use operator-configured params, not ConfidenceParams::default().
+                let params = &self.confidence_params;
                 let ids_and_confs: Vec<(u64, f64)> = stale_entries
                     .iter()
                     .map(|e| {
                         (
                             e.id,
-                            crate::confidence::compute_confidence(
-                                e,
-                                now_ts,
-                                &unimatrix_engine::confidence::ConfidenceParams::default(),
-                            ),
+                            crate::confidence::compute_confidence(e, now_ts, params),
                         )
                     })
                     .collect();
@@ -1627,12 +1633,14 @@ mod maintenance_snapshot_tests {
         );
         let observation_registry =
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code());
+        let confidence_params = Arc::new(unimatrix_engine::confidence::ConfidenceParams::default());
         StatusService::new(
             Arc::clone(store),
             vector_index,
             embed_service,
             adapt_service,
             confidence_state,
+            confidence_params,
             contradiction_cache,
             test_rayon_pool,
             observation_registry,

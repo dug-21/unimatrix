@@ -2604,7 +2604,6 @@ mod tests {
             Arc::clone(adapt),
             audit,
             usage_dedup,
-            // dsn-001: default; test helper preserves pre-dsn-001 behavior.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
             test_pool,
             // crt-023: disabled NLI for test (no model in test env)
@@ -2614,6 +2613,8 @@ mod tests {
             Arc::new(crate::infra::config::InferenceConfig::default()),
             // col-023: built-in default registry for test helper
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
+            // GH #311: default params for test helper.
+            Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
         )
     }
 

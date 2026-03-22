@@ -647,6 +647,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         config.inference.nli_enabled,
         Arc::clone(&inference_config), // crt-023: NLI store config snapshot
         Arc::clone(&observation_registry), // col-023: thread registry into StatusService
+        Arc::clone(&confidence_params), // GH #311: propagate operator-configured weights
     );
 
     // Start UDS listener for hook IPC.
@@ -1029,6 +1030,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         config.inference.nli_enabled,
         Arc::clone(&inference_config), // crt-023: NLI store config snapshot
         Arc::clone(&observation_registry), // col-023: thread registry into StatusService
+        Arc::clone(&confidence_params), // GH #311: propagate operator-configured weights
     );
 
     // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009).

@@ -465,7 +465,10 @@ fn validate_phase_field(field_name: &str, value: Option<&str>) -> Result<Option<
             if normalized.contains(' ') {
                 return Err(format!("{field_name} must not contain spaces"));
             }
-            if !normalized.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+            if !normalized
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+            {
                 return Err(format!(
                     "{field_name} must contain only ASCII letters, digits, hyphens, and underscores"
                 ));
@@ -1749,7 +1752,10 @@ mod tests {
         let phase: String = "🟩".repeat(MAX_PHASE_LEN);
         assert_eq!(phase.chars().count(), MAX_PHASE_LEN);
         let result = validate_cycle_params("phase-end", "crt-025", Some(&phase), None, None);
-        assert!(result.is_err(), "emoji phase should be rejected by allowlist");
+        assert!(
+            result.is_err(),
+            "emoji phase should be rejected by allowlist"
+        );
     }
 
     /// validate_phase_field: MAX_PHASE_LEN + 1 multibyte chars — must be rejected.
@@ -1769,7 +1775,10 @@ mod tests {
         let phase: String = "🟩".repeat(MAX_PHASE_LEN);
         assert_eq!(phase.chars().count(), MAX_PHASE_LEN);
         let result = validate_cycle_params("phase-end", "crt-025", None, None, Some(&phase));
-        assert!(result.is_err(), "emoji next_phase should be rejected by allowlist");
+        assert!(
+            result.is_err(),
+            "emoji next_phase should be rejected by allowlist"
+        );
     }
 
     /// validate_phase_field (next_phase): MAX_PHASE_LEN + 1 multibyte chars — must be rejected.
@@ -1820,8 +1829,7 @@ mod tests {
 
     #[test]
     fn test_validate_phase_emoji_prefix_rejected() {
-        let result =
-            validate_cycle_params("phase-end", "crt-025", Some("🟩test"), None, None);
+        let result = validate_cycle_params("phase-end", "crt-025", Some("🟩test"), None, None);
         let err = result.unwrap_err();
         assert!(
             err.contains("ASCII") || err.contains("ascii"),
@@ -1831,22 +1839,19 @@ mod tests {
 
     #[test]
     fn test_validate_phase_discovery_slug_passes() {
-        let result =
-            validate_cycle_params("phase-end", "crt-025", Some("discovery"), None, None);
+        let result = validate_cycle_params("phase-end", "crt-025", Some("discovery"), None, None);
         assert!(result.is_ok(), "valid slug 'discovery' should pass");
     }
 
     #[test]
     fn test_validate_phase_hyphen_slug_passes() {
-        let result =
-            validate_cycle_params("phase-end", "crt-025", Some("phase-end"), None, None);
+        let result = validate_cycle_params("phase-end", "crt-025", Some("phase-end"), None, None);
         assert!(result.is_ok(), "hyphenated slug 'phase-end' should pass");
     }
 
     #[test]
     fn test_validate_next_phase_emoji_rejected() {
-        let result =
-            validate_cycle_params("phase-end", "crt-025", None, None, Some("🟩test"));
+        let result = validate_cycle_params("phase-end", "crt-025", None, None, Some("🟩test"));
         let err = result.unwrap_err();
         assert!(
             err.contains("ASCII") || err.contains("ascii"),
