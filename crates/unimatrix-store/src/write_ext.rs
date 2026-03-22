@@ -228,17 +228,24 @@ impl SqlxStore {
     /// Writes directly (not via analytics drain) to ensure immediate read
     /// visibility. Callers (e.g. usage recording, tests) query feature_entries
     /// immediately after recording, so eventual-consistency is not acceptable.
+    ///
+    /// `phase` is the workflow phase active at the moment of the `context_store`
+    /// call (ADR-001 crt-025). Pass `None` when no phase signal has been emitted
+    /// yet for the session, or when the call site does not have phase context.
+    /// Pre-existing rows written before crt-025 have `phase = NULL` (C-05).
     pub async fn record_feature_entries(
         &self,
         feature_cycle: &str,
         entry_ids: &[u64],
+        phase: Option<&str>,
     ) -> Result<()> {
         for &entry_id in entry_ids {
             sqlx::query(
-                "INSERT OR IGNORE INTO feature_entries (feature_id, entry_id) VALUES (?1, ?2)",
+                "INSERT OR IGNORE INTO feature_entries (feature_id, entry_id, phase) VALUES (?1, ?2, ?3)",
             )
             .bind(feature_cycle)
             .bind(entry_id as i64)
+            .bind(phase)  // Option<&str> — sqlx encodes None as NULL
             .execute(&self.write_pool)
             .await
             .map_err(|e| StoreError::Database(e.into()))?;
@@ -661,5 +668,136 @@ impl SqlxStore {
                 tool_call_count: phase.tool_call_count as i64,
             });
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// crt-025 store-layer tests: record_feature_entries phase parameter (R-14, AC-09)
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_helpers::{TestEntry, open_test_store};
+    use sqlx::Row as _;
+
+    /// Compile-time structural test: verify `record_feature_entries` accepts
+    /// three arguments (R-14). This compiles only if the new signature is in place.
+    #[allow(dead_code)]
+    fn _assert_record_feature_entries_three_arg_signature(store: &SqlxStore) {
+        // This function is never called; it exists only to enforce the compile-time
+        // signature check. If record_feature_entries still has the old two-arg
+        // signature, this will not compile.
+        let _ = store.record_feature_entries("f", &[], None);
+        let _ = store.record_feature_entries("f", &[], Some("scope"));
+    }
+
+    /// Integration test: `record_feature_entries` with `phase = Some("scope")` stores
+    /// the phase value (AC-09 non-NULL case).
+    #[tokio::test]
+    async fn test_record_feature_entries_with_phase_some() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = open_test_store(&dir).await;
+
+        let entry_id = store
+            .insert(TestEntry::new("crt-025", "decision").build())
+            .await
+            .unwrap();
+
+        store
+            .record_feature_entries("crt-025", &[entry_id], Some("scope"))
+            .await
+            .expect("record_feature_entries must succeed");
+
+        let row = sqlx::query(
+            "SELECT phase FROM feature_entries WHERE feature_id = 'crt-025' AND entry_id = ?1",
+        )
+        .bind(entry_id as i64)
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("feature_entries row must exist");
+
+        let phase: Option<String> = row.try_get(0).unwrap();
+        assert_eq!(
+            phase.as_deref(),
+            Some("scope"),
+            "phase='scope' must be written when Some('scope') is passed (AC-09)"
+        );
+
+        store.close().await.unwrap();
+    }
+
+    /// Integration test: `record_feature_entries` with `phase = None` stores SQL NULL
+    /// (AC-09 NULL case).
+    #[tokio::test]
+    async fn test_record_feature_entries_with_phase_none() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = open_test_store(&dir).await;
+
+        let entry_id = store
+            .insert(TestEntry::new("crt-025", "decision").build())
+            .await
+            .unwrap();
+
+        store
+            .record_feature_entries("crt-025", &[entry_id], None)
+            .await
+            .expect("record_feature_entries must succeed");
+
+        let row = sqlx::query(
+            "SELECT phase FROM feature_entries WHERE feature_id = 'crt-025' AND entry_id = ?1",
+        )
+        .bind(entry_id as i64)
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("feature_entries row must exist");
+
+        let phase: Option<String> = row.try_get(0).unwrap();
+        assert!(
+            phase.is_none(),
+            "phase must be SQL NULL when None is passed (AC-09)"
+        );
+
+        store.close().await.unwrap();
+    }
+
+    /// Integration test: two entries recorded in one call both get the same phase.
+    #[tokio::test]
+    async fn test_record_feature_entries_multiple_entries_same_phase() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = open_test_store(&dir).await;
+
+        let id1 = store
+            .insert(TestEntry::new("crt-025", "decision").build())
+            .await
+            .unwrap();
+        let id2 = store
+            .insert(TestEntry::new("crt-025", "pattern").build())
+            .await
+            .unwrap();
+
+        store
+            .record_feature_entries("crt-025", &[id1, id2], Some("implementation"))
+            .await
+            .expect("record_feature_entries must succeed");
+
+        for &entry_id in &[id1, id2] {
+            let row = sqlx::query(
+                "SELECT phase FROM feature_entries WHERE feature_id = 'crt-025' AND entry_id = ?1",
+            )
+            .bind(entry_id as i64)
+            .fetch_one(&store.write_pool)
+            .await
+            .expect("feature_entries row must exist");
+
+            let phase: Option<String> = row.try_get(0).unwrap();
+            assert_eq!(
+                phase.as_deref(),
+                Some("implementation"),
+                "entry {entry_id} must have phase='implementation'"
+            );
+        }
+
+        store.close().await.unwrap();
     }
 }

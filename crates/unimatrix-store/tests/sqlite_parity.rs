@@ -529,7 +529,7 @@ async fn test_record_feature_entries() {
         .await
         .unwrap();
     store
-        .record_feature_entries("col-001", &[id1, id2])
+        .record_feature_entries("col-001", &[id1, id2], None)
         .await
         .unwrap();
     store.close().await.unwrap();
