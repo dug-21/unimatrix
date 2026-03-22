@@ -431,6 +431,9 @@ pub fn validate_cycle_params(
             if s.chars().count() > MAX_OUTCOME_LEN {
                 return Err("outcome exceeds 512 characters".to_string());
             }
+            if s.chars().any(|c| (c as u32) <= 0x1F) {
+                return Err("outcome contains control characters".to_string());
+            }
             Some(s.to_string())
         }
     };
@@ -461,6 +464,11 @@ fn validate_phase_field(field_name: &str, value: Option<&str>) -> Result<Option<
             }
             if normalized.contains(' ') {
                 return Err(format!("{field_name} must not contain spaces"));
+            }
+            if !normalized.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+                return Err(format!(
+                    "{field_name} must contain only ASCII letters, digits, hyphens, and underscores"
+                ));
             }
             Ok(Some(normalized))
         }
@@ -1734,14 +1742,14 @@ mod tests {
     /// chars — must pass.
     ///
     /// Note: validate_phase_field calls .to_lowercase() before the length check, which for
-    /// multibyte chars (e.g. emoji) returns the same char, so char count is preserved.
+    /// validate_phase_field: emoji chars now rejected by ASCII-only allowlist (gap-2 fix).
     #[test]
     fn test_validate_phase_multibyte_at_max_passes() {
-        // Use chars that survive to_lowercase unchanged (emoji).
+        // Emoji at MAX_PHASE_LEN is within length limit but now rejected by allowlist.
         let phase: String = "🟩".repeat(MAX_PHASE_LEN);
         assert_eq!(phase.chars().count(), MAX_PHASE_LEN);
         let result = validate_cycle_params("phase-end", "crt-025", Some(&phase), None, None);
-        assert!(result.is_ok());
+        assert!(result.is_err(), "emoji phase should be rejected by allowlist");
     }
 
     /// validate_phase_field: MAX_PHASE_LEN + 1 multibyte chars — must be rejected.
@@ -1750,17 +1758,18 @@ mod tests {
         let phase: String = "🟩".repeat(MAX_PHASE_LEN + 1);
         assert_eq!(phase.chars().count(), MAX_PHASE_LEN + 1);
         let result = validate_cycle_params("phase-end", "crt-025", Some(&phase), None, None);
-        let err = result.unwrap_err();
-        assert!(err.contains("phase") || err.contains("64"));
+        // Rejected either by length or allowlist check — both are valid errors.
+        assert!(result.is_err());
     }
 
-    /// validate_phase_field (next_phase): exactly MAX_PHASE_LEN multibyte chars — must pass.
+    /// validate_phase_field (next_phase): emoji now rejected by ASCII-only allowlist (gap-2 fix).
     #[test]
     fn test_validate_next_phase_multibyte_at_max_passes() {
+        // Emoji at MAX_PHASE_LEN is within length limit but now rejected by allowlist.
         let phase: String = "🟩".repeat(MAX_PHASE_LEN);
         assert_eq!(phase.chars().count(), MAX_PHASE_LEN);
         let result = validate_cycle_params("phase-end", "crt-025", None, None, Some(&phase));
-        assert!(result.is_ok());
+        assert!(result.is_err(), "emoji next_phase should be rejected by allowlist");
     }
 
     /// validate_phase_field (next_phase): MAX_PHASE_LEN + 1 multibyte chars — must be rejected.
@@ -1769,7 +1778,79 @@ mod tests {
         let phase: String = "🟩".repeat(MAX_PHASE_LEN + 1);
         assert_eq!(phase.chars().count(), MAX_PHASE_LEN + 1);
         let result = validate_cycle_params("phase-end", "crt-025", None, None, Some(&phase));
+        // Rejected either by length or allowlist check — both are valid errors.
+        assert!(result.is_err());
+    }
+
+    // -- Gap 1 fix: outcome control-character rejection --
+
+    #[test]
+    fn test_validate_cycle_outcome_control_char_x01_rejected() {
+        let result = validate_cycle_params(
+            "phase-end",
+            "crt-025",
+            Some("fix"),
+            Some("done\x01here"),
+            None,
+        );
         let err = result.unwrap_err();
-        assert!(err.contains("next_phase") || err.contains("64"));
+        assert!(
+            err.contains("control"),
+            "expected control-char error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn test_validate_cycle_outcome_newline_rejected() {
+        let result = validate_cycle_params(
+            "phase-end",
+            "crt-025",
+            Some("fix"),
+            Some("line1\nline2"),
+            None,
+        );
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("control"),
+            "expected control-char error, got: {err}"
+        );
+    }
+
+    // -- Gap 2 fix: phase ASCII-only allowlist --
+
+    #[test]
+    fn test_validate_phase_emoji_prefix_rejected() {
+        let result =
+            validate_cycle_params("phase-end", "crt-025", Some("🟩test"), None, None);
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("ASCII") || err.contains("ascii"),
+            "expected ASCII allowlist error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn test_validate_phase_discovery_slug_passes() {
+        let result =
+            validate_cycle_params("phase-end", "crt-025", Some("discovery"), None, None);
+        assert!(result.is_ok(), "valid slug 'discovery' should pass");
+    }
+
+    #[test]
+    fn test_validate_phase_hyphen_slug_passes() {
+        let result =
+            validate_cycle_params("phase-end", "crt-025", Some("phase-end"), None, None);
+        assert!(result.is_ok(), "hyphenated slug 'phase-end' should pass");
+    }
+
+    #[test]
+    fn test_validate_next_phase_emoji_rejected() {
+        let result =
+            validate_cycle_params("phase-end", "crt-025", None, None, Some("🟩test"));
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("ASCII") || err.contains("ascii"),
+            "expected ASCII allowlist error on next_phase, got: {err}"
+        );
     }
 }
