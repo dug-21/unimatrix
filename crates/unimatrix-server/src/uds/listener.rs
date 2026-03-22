@@ -41,7 +41,7 @@ use crate::infra::session::{
     ReworkEvent, SessionOutcome, SessionRegistry, SetFeatureResult, SignalOutput,
 };
 use crate::infra::timeout::MCP_HANDLER_TIMEOUT;
-use crate::infra::validation::{CYCLE_START_EVENT, CYCLE_STOP_EVENT};
+use crate::infra::validation::{CYCLE_PHASE_END_EVENT, CYCLE_START_EVENT, CYCLE_STOP_EVENT};
 use crate::server::PendingEntriesAnalysis;
 use crate::uds::uds_has_capability;
 
@@ -598,11 +598,15 @@ async fn dispatch_request(
                 "UDS: event recorded"
             );
 
-            // col-022: cycle_start gets force-set attribution + keywords persistence.
+            // col-022 + crt-025: Lifecycle event routing.
             // Must run BEFORE the generic #198 path so set_feature_if_absent becomes a no-op.
-            // cycle_stop has no special handling -- falls through to generic observation persistence.
+            // set_current_phase is called synchronously inside handle_cycle_event (ADR-001 / SR-01).
             if event.event_type == CYCLE_START_EVENT {
-                handle_cycle_start(&event, session_registry, store);
+                handle_cycle_event(&event, CycleLifecycle::Start, session_registry, store);
+            } else if event.event_type == CYCLE_PHASE_END_EVENT {
+                handle_cycle_event(&event, CycleLifecycle::PhaseEnd, session_registry, store);
+            } else if event.event_type == CYCLE_STOP_EVENT {
+                handle_cycle_event(&event, CycleLifecycle::Stop, session_registry, store);
             }
 
             // #198 Part 1: Extract explicit feature_cycle from event payload
@@ -2078,6 +2082,10 @@ pub(crate) async fn update_session_feature_cycle_pub(
 /// Uses a direct targeted UPDATE rather than read-modify-write to avoid
 /// SQLITE_BUSY_SNAPSHOT races with the concurrent feature_cycle persist task.
 /// Validation happens upstream; this function stores the string as-is.
+///
+/// Note: no longer called from production code paths as of crt-025 (keywords removed
+/// from lifecycle events). Retained for existing unit tests.
+#[allow(dead_code)]
 async fn update_session_keywords(
     store: &Store,
     session_id: &str,
@@ -2088,92 +2096,189 @@ async fn update_session_keywords(
         .await
 }
 
-/// Handle a `cycle_start` event: force-set attribution + keywords persistence (col-022, ADR-002).
+/// Lifecycle discriminant for `handle_cycle_event`. File-private.
+#[derive(Debug, PartialEq)]
+enum CycleLifecycle {
+    Start,
+    PhaseEnd,
+    Stop,
+}
+
+/// Handle a cycle lifecycle event: force-set attribution (Start only), synchronous phase
+/// mutation, and fire-and-forget `CYCLE_EVENTS` INSERT (crt-025, col-022).
 ///
-/// Called before the generic #198 feature extraction path. After `set_feature_force`,
-/// the subsequent `set_feature_if_absent` in the generic path will be a no-op.
-fn handle_cycle_start(
+/// **Critical ordering invariant (ADR-001 / SR-01 / NFR-02)**:
+/// `set_current_phase` MUST be called before any `tokio::spawn` / `spawn_blocking`.
+/// Any `context_store` call arriving after this function returns will observe the
+/// updated phase. The DB INSERT is fire-and-forget and may lag.
+///
+/// Keywords persistence is removed (crt-025): `sessions.keywords` column is no longer
+/// populated from event payloads.
+fn handle_cycle_event(
     event: &unimatrix_engine::wire::ImplantEvent,
+    lifecycle: CycleLifecycle,
     session_registry: &SessionRegistry,
     store: &Arc<Store>,
 ) {
-    // Step 1: Extract feature_cycle from payload
-    let feature_cycle = match event.payload.get("feature_cycle").and_then(|v| v.as_str()) {
-        Some(fc) => sanitize_metadata_field(fc),
+    // === SYNCHRONOUS SECTION ===
+    // All mutations to in-memory state happen here, before any spawn.
+
+    // Step 1: Extract and sanitize feature_cycle from payload.
+    let feature_cycle_opt = event
+        .payload
+        .get("feature_cycle")
+        .and_then(|v| v.as_str())
+        .map(sanitize_metadata_field);
+
+    let feature_cycle = match &feature_cycle_opt {
+        Some(fc) if !fc.is_empty() => fc.clone(),
+        Some(_) => {
+            tracing::warn!(
+                session_id = %event.session_id,
+                event_type = %event.event_type,
+                "cycle event feature_cycle is empty after sanitize"
+            );
+            String::new()
+        }
         None => {
             tracing::warn!(
                 session_id = %event.session_id,
-                "cycle_start missing feature_cycle in payload"
+                event_type = %event.event_type,
+                "cycle event missing feature_cycle in payload"
             );
-            return;
+            String::new()
         }
     };
 
-    if feature_cycle.is_empty() {
-        tracing::warn!(
-            session_id = %event.session_id,
-            "cycle_start feature_cycle is empty after sanitize"
-        );
-        return;
+    // Step 2: Force-set attribution (Start only, col-022 ADR-002).
+    let attribution_result = if lifecycle == CycleLifecycle::Start && !feature_cycle.is_empty() {
+        let result = session_registry.set_feature_force(&event.session_id, &feature_cycle);
+        match &result {
+            SetFeatureResult::Set => {
+                tracing::info!(
+                    session_id = %event.session_id,
+                    feature_cycle = %feature_cycle,
+                    "col-022: feature_cycle set via explicit cycle_start"
+                );
+            }
+            SetFeatureResult::AlreadyMatches => {
+                tracing::info!(
+                    session_id = %event.session_id,
+                    feature_cycle = %feature_cycle,
+                    "col-022: feature_cycle already matches (no-op)"
+                );
+            }
+            SetFeatureResult::Overridden { previous } => {
+                tracing::warn!(
+                    session_id = %event.session_id,
+                    feature_cycle = %feature_cycle,
+                    previous = %previous,
+                    "col-022: feature_cycle overridden by explicit cycle_start"
+                );
+            }
+        }
+        Some(result)
+    } else {
+        None
+    };
+
+    // Step 3: SYNCHRONOUS current_phase mutation (crt-025, CRITICAL ORDER — must precede spawn).
+    // Any context_store arriving after this point sees the updated phase.
+    if !feature_cycle.is_empty() {
+        let next_phase_val = event
+            .payload
+            .get("next_phase")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        match lifecycle {
+            CycleLifecycle::Start | CycleLifecycle::PhaseEnd => {
+                if let Some(np) = next_phase_val {
+                    tracing::debug!(
+                        session_id = %event.session_id,
+                        phase = %np,
+                        event_type = %event.event_type,
+                        "crt-025: set_current_phase synchronously"
+                    );
+                    session_registry.set_current_phase(&event.session_id, Some(np));
+                }
+                // else: no next_phase → current_phase unchanged
+            }
+            CycleLifecycle::Stop => {
+                tracing::debug!(
+                    session_id = %event.session_id,
+                    "crt-025: clearing current_phase on cycle_stop"
+                );
+                session_registry.set_current_phase(&event.session_id, None);
+            }
+        }
     }
 
-    // Step 2: Force-set attribution (ADR-002)
-    let result = session_registry.set_feature_force(&event.session_id, &feature_cycle);
+    // === END OF SYNCHRONOUS SECTION ===
+    // All spawns below are fire-and-forget; they do not affect session state reads.
 
-    match &result {
-        SetFeatureResult::Set => {
-            tracing::info!(
-                session_id = %event.session_id,
-                feature_cycle = %feature_cycle,
-                "col-022: feature_cycle set via explicit cycle_start"
-            );
-        }
-        SetFeatureResult::AlreadyMatches => {
-            tracing::info!(
-                session_id = %event.session_id,
-                feature_cycle = %feature_cycle,
-                "col-022: feature_cycle already matches (no-op)"
-            );
-        }
-        SetFeatureResult::Overridden { previous } => {
-            tracing::warn!(
-                session_id = %event.session_id,
-                feature_cycle = %feature_cycle,
-                previous = %previous,
-                "col-022: feature_cycle overridden by explicit cycle_start"
-            );
+    // Step 4: Persist feature_cycle to SQLite for Start events (col-022, fire-and-forget).
+    if lifecycle == CycleLifecycle::Start && !feature_cycle.is_empty() {
+        if let Some(result) = attribution_result {
+            if matches!(
+                result,
+                SetFeatureResult::Set | SetFeatureResult::Overridden { .. }
+            ) {
+                let store_fc = Arc::clone(store);
+                let sid = event.session_id.clone();
+                let fc = feature_cycle.clone();
+                let _ = tokio::spawn(async move {
+                    if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc).await {
+                        tracing::warn!(error = %e, "col-022: feature_cycle persist failed");
+                    }
+                });
+            }
         }
     }
 
-    // Step 3: Persist feature_cycle to SQLite (fire-and-forget)
-    // Only persist if the value changed (Set or Overridden)
-    if matches!(
-        result,
-        SetFeatureResult::Set | SetFeatureResult::Overridden { .. }
-    ) {
-        let store_fc = Arc::clone(store);
-        let sid = event.session_id.clone();
-        let fc = feature_cycle.clone();
+    // Step 5: Fire-and-forget CYCLE_EVENTS INSERT (crt-025).
+    // seq is advisory (ADR-002); computed inside the spawn via COALESCE(MAX(seq),-1)+1.
+    // Latency budget: 40ms total transport timeout (C-10, NFR-01).
+    if !feature_cycle.is_empty() {
+        let phase_val = event
+            .payload
+            .get("phase")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let outcome_val = event
+            .payload
+            .get("outcome")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let next_phase_for_db = event
+            .payload
+            .get("next_phase")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let event_type_str = event.event_type.clone();
+        let cycle_id = feature_cycle.clone();
+        let timestamp = unix_now_secs() as i64;
+        let store_clone = Arc::clone(store);
+
         let _ = tokio::spawn(async move {
-            if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc).await {
-                tracing::warn!(error = %e, "col-022: feature_cycle persist failed");
+            let seq = store_clone.get_next_cycle_seq(&cycle_id).await;
+            if let Err(e) = store_clone
+                .insert_cycle_event(
+                    &cycle_id,
+                    seq,
+                    &event_type_str,
+                    phase_val.as_deref(),
+                    outcome_val.as_deref(),
+                    next_phase_for_db.as_deref(),
+                    timestamp,
+                )
+                .await
+            {
+                tracing::warn!(error = %e, cycle_id = %cycle_id, "crt-025: insert_cycle_event failed");
             }
         });
     }
-
-    // Step 4: Extract and persist keywords (fire-and-forget, independent of attribution)
-    if let Some(keywords_val) = event.payload.get("keywords") {
-        let keywords_json = keywords_val.to_string();
-        if !keywords_json.is_empty() {
-            let store_kw = Arc::clone(store);
-            let sid = event.session_id.clone();
-            let _ = tokio::spawn(async move {
-                if let Err(e) = update_session_keywords(&store_kw, &sid, &keywords_json).await {
-                    tracing::warn!(error = %e, "col-022: keywords persist failed");
-                }
-            });
-        }
-    }
+    // Keywords persistence removed (crt-025): sessions.keywords column no longer populated.
 }
 
 // -- col-012: Observation persistence helpers --
@@ -4459,7 +4564,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_dispatch_cycle_start_persists_keywords() {
+    async fn test_dispatch_cycle_start_keywords_not_persisted() {
+        // crt-025: keywords are no longer extracted from cycle_start payloads.
+        // Even if the payload contains a "keywords" field, sessions.keywords stays NULL.
         let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -4513,7 +4620,11 @@ mod tests {
             .await
             .unwrap()
             .expect("session row should exist");
-        assert_eq!(session.keywords.as_deref(), Some(r#"["attr","lifecycle"]"#));
+        // crt-025: keywords must NOT be extracted — column stays NULL
+        assert_eq!(
+            session.keywords, None,
+            "keywords must not be populated from cycle_start payload (crt-025)"
+        );
     }
 
     #[tokio::test]
@@ -4800,7 +4911,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_dispatch_cycle_start_empty_keywords_stored() {
+    async fn test_dispatch_cycle_start_empty_keywords_not_stored() {
+        // crt-025: even an empty keywords array is not persisted — keywords removed.
         let store = make_store().await;
         let embed = make_embed_service();
         let (vs, es, adapt) = make_dispatch_deps(&store);
@@ -4854,6 +4966,442 @@ mod tests {
             .await
             .unwrap()
             .expect("session row should exist");
-        assert_eq!(session.keywords.as_deref(), Some("[]"));
+        // crt-025: keywords must not be populated
+        assert_eq!(
+            session.keywords, None,
+            "empty keywords array must not be persisted (crt-025)"
+        );
+    }
+
+    // -- crt-025: UDS listener phase transition tests --
+
+    #[test]
+    fn test_listener_phase_constants() {
+        assert_eq!(CYCLE_PHASE_END_EVENT, "cycle_phase_end");
+    }
+
+    #[tokio::test]
+    async fn test_listener_cycle_start_with_next_phase_sets_session_phase() {
+        // FR-05.2, R-01: cycle_start with next_phase sets current_phase synchronously.
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "crt-025", "next_phase": "scope"}),
+            None,
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // Phase must be set synchronously (before DB spawn completes)
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(state.current_phase.as_deref(), Some("scope"));
+    }
+
+    #[tokio::test]
+    async fn test_listener_cycle_start_without_next_phase_no_phase_change() {
+        // FR-05.2 edge: cycle_start without next_phase leaves current_phase unchanged.
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "crt-025"}),
+            None,
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(state.current_phase, None);
+    }
+
+    #[tokio::test]
+    async fn test_listener_cycle_phase_end_with_next_phase_updates_phase() {
+        // FR-05.3, R-01: cycle_phase_end with next_phase updates current_phase synchronously.
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+        // Pre-set phase to "scope"
+        registry.set_current_phase("s1", Some("scope".to_string()));
+
+        let event = make_cycle_event(
+            CYCLE_PHASE_END_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "crt-025", "phase": "scope", "next_phase": "design"}),
+            None,
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // Synchronous mutation: phase must be "design" immediately after dispatch returns
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(state.current_phase.as_deref(), Some("design"));
+    }
+
+    #[tokio::test]
+    async fn test_listener_cycle_phase_end_without_next_phase_no_change() {
+        // FR-05.3 edge: cycle_phase_end without next_phase leaves current_phase unchanged.
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+        registry.set_current_phase("s1", Some("scope".to_string()));
+
+        let event = make_cycle_event(
+            CYCLE_PHASE_END_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "crt-025", "phase": "scope"}),
+            None,
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(state.current_phase.as_deref(), Some("scope"));
+    }
+
+    #[tokio::test]
+    async fn test_listener_cycle_stop_clears_phase() {
+        // FR-05.4: cycle_stop clears current_phase to None synchronously.
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+        registry.set_current_phase("s1", Some("testing".to_string()));
+
+        let event = make_cycle_event(
+            CYCLE_STOP_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "crt-025"}),
+            None,
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(state.current_phase, None);
+    }
+
+    #[tokio::test]
+    async fn test_listener_phase_mutation_before_db_spawn() {
+        // R-01 Critical: set_current_phase executes synchronously before any spawn.
+        // After dispatch returns (no yield), the phase is already updated.
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+        registry.set_current_phase("s1", Some("scope".to_string()));
+
+        let event = make_cycle_event(
+            CYCLE_PHASE_END_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "crt-025", "phase": "scope", "next_phase": "implementation"}),
+            None,
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // The spawn for DB write has not necessarily run yet, but phase MUST already be updated.
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(
+            state.current_phase.as_deref(),
+            Some("implementation"),
+            "current_phase must be updated synchronously, before the DB spawn executes"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_listener_seq_three_events_all_inserted() {
+        // AC-08: Three sequential lifecycle events each produce a CYCLE_EVENTS row.
+        // seq is advisory per ADR-002 — fire-and-forget spawns may race on seq computation.
+        // The true ordering at query time uses (timestamp ASC, seq ASC), not strict seq
+        // monotonicity. This test verifies: 3 rows are inserted with correct event_types.
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+
+        let start_event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "crt-025-seq", "next_phase": "scope"}),
+            None,
+        );
+        let phase_end_event = make_cycle_event(
+            CYCLE_PHASE_END_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "crt-025-seq", "phase": "scope", "next_phase": "design"}),
+            None,
+        );
+        let stop_event = make_cycle_event(
+            CYCLE_STOP_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "crt-025-seq"}),
+            None,
+        );
+
+        let services = make_services(&store, &embed, &vs, &es, &adapt);
+
+        let _r1 = dispatch_request(
+            HookRequest::RecordEvent { event: start_event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &services,
+        )
+        .await;
+        let _r2 = dispatch_request(
+            HookRequest::RecordEvent {
+                event: phase_end_event,
+            },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &services,
+        )
+        .await;
+        let _r3 = dispatch_request(
+            HookRequest::RecordEvent { event: stop_event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &services,
+        )
+        .await;
+
+        // Allow spawned DB writes to complete
+        tokio::time::sleep(Duration::from_millis(150)).await;
+
+        let rows: Vec<(i64, String)> = sqlx::query_as(
+            "SELECT seq, event_type FROM cycle_events WHERE cycle_id = ? ORDER BY timestamp ASC, seq ASC"
+        )
+        .bind("crt-025-seq")
+        .fetch_all(store.read_pool_test())
+        .await
+        .unwrap();
+
+        assert_eq!(rows.len(), 3, "expected 3 cycle_events rows");
+        let event_types: Vec<&str> = rows.iter().map(|(_, et)| et.as_str()).collect();
+        assert!(
+            event_types.contains(&"cycle_start"),
+            "cycle_start row must be present"
+        );
+        assert!(
+            event_types.contains(&"cycle_phase_end"),
+            "cycle_phase_end row must be present"
+        );
+        assert!(
+            event_types.contains(&"cycle_stop"),
+            "cycle_stop row must be present"
+        );
+        // seq is advisory (ADR-002): only assert non-negative
+        for (seq, _) in &rows {
+            assert!(*seq >= 0, "seq must be non-negative");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_listener_cycle_stop_keywords_not_extracted() {
+        // crt-025: keywords no longer extracted from payload on cycle_stop (or any event).
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+
+        store
+            .insert_session(&SessionRecord {
+                session_id: "s1".to_string(),
+                feature_cycle: None,
+                agent_role: None,
+                started_at: unix_now_secs(),
+                ended_at: None,
+                status: SessionLifecycleStatus::Active,
+                compaction_count: 0,
+                outcome: None,
+                total_injections: 0,
+                keywords: None,
+            })
+            .await
+            .unwrap();
+
+        let event = make_cycle_event(
+            CYCLE_STOP_EVENT,
+            "s1",
+            serde_json::json!({"feature_cycle": "crt-025", "keywords": ["should", "be", "ignored"]}),
+            None,
+        );
+
+        let _resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        let session = store
+            .get_session("s1")
+            .await
+            .unwrap()
+            .expect("session row should exist");
+        // Keywords must NOT have been populated (removed from all lifecycle events in crt-025)
+        assert_eq!(
+            session.keywords, None,
+            "keywords must not be extracted from cycle_stop payload"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_listener_cycle_phase_end_missing_feature_cycle_no_phase_change() {
+        // Error path: if feature_cycle is missing, set_current_phase is NOT called.
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+        registry.set_current_phase("s1", Some("scope".to_string()));
+
+        let event = make_cycle_event(
+            CYCLE_PHASE_END_EVENT,
+            "s1",
+            // No feature_cycle key
+            serde_json::json!({"phase": "scope", "next_phase": "design"}),
+            None,
+        );
+
+        let resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        assert!(matches!(resp, HookResponse::Ack));
+        // Phase must be unchanged (no feature_cycle → skip session_registry ops)
+        let state = registry.get_state("s1").expect("session should exist");
+        assert_eq!(
+            state.current_phase.as_deref(),
+            Some("scope"),
+            "current_phase should not change when feature_cycle is missing"
+        );
     }
 }

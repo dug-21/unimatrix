@@ -339,6 +339,25 @@ impl SqlxStore {
         Ok(())
     }
 
+    /// Compute the advisory next `seq` for a `cycle_id` in `CYCLE_EVENTS`.
+    ///
+    /// Uses `SELECT COALESCE(MAX(seq), -1) + 1 FROM cycle_events WHERE cycle_id = ?`.
+    /// `seq` is advisory per ADR-002: the true ordering at query time uses
+    /// `ORDER BY timestamp ASC, seq ASC`. On any error, returns `0` — safe because
+    /// the AUTOINCREMENT `id` column preserves row identity regardless of seq value.
+    ///
+    /// Called inside the fire-and-forget spawn in the UDS listener, not on the hot path.
+    pub async fn get_next_cycle_seq(&self, cycle_id: &str) -> i64 {
+        let result: std::result::Result<Option<i64>, sqlx::Error> = sqlx::query_scalar(
+            "SELECT COALESCE(MAX(seq), -1) + 1 FROM cycle_events WHERE cycle_id = ?1",
+        )
+        .bind(cycle_id)
+        .fetch_one(&self.write_pool)
+        .await;
+
+        result.ok().flatten().unwrap_or(0)
+    }
+
     /// WAL checkpoint + VACUUM compaction. Run during graceful shutdown when
     /// `Arc::try_unwrap(store)` succeeds. Safe to call from async context.
     pub async fn compact(&self) -> Result<()> {
