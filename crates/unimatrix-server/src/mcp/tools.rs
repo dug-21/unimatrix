@@ -1166,6 +1166,7 @@ impl UnimatrixServer {
                         rework_session_count: None,
                         context_reload_pct: None,
                         attribution: None,
+                        phase_narrative: None,
                     };
 
                     // Cached path also respects format (vnc-011)
@@ -2323,6 +2324,7 @@ mod tests {
             rework_session_count: None,
             context_reload_pct: None,
             attribution: None,
+            phase_narrative: None,
         };
 
         // Clone and truncate
@@ -2369,6 +2371,7 @@ mod tests {
             rework_session_count: None,
             context_reload_pct: None,
             attribution: None,
+            phase_narrative: None,
         };
 
         let content = build_lesson_learned_content(&report);
@@ -2413,6 +2416,7 @@ mod tests {
             rework_session_count: None,
             context_reload_pct: None,
             attribution: None,
+            phase_narrative: None,
         };
 
         let content = build_lesson_learned_content(&report);
@@ -2441,6 +2445,7 @@ mod tests {
             rework_session_count: None,
             context_reload_pct: None,
             attribution: None,
+            phase_narrative: None,
         };
 
         let content = build_lesson_learned_content(&report);

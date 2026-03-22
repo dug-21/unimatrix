@@ -219,6 +219,50 @@ pub struct AttributionMetadata {
     pub total_session_count: usize,
 }
 
+/// Type alias for a two-level category distribution keyed by (phase, category) (crt-025).
+/// Outer key: phase token. Inner key: category name. Value: entry count.
+pub type PhaseCategoryDist = HashMap<String, HashMap<String, u64>>;
+
+/// A single raw row from the `cycle_events` table (crt-025).
+///
+/// Mapped row-by-row from the SQL query result ordered by `(timestamp ASC, seq ASC)`.
+/// `event_type` is one of `"cycle_start"`, `"cycle_phase_end"`, `"cycle_stop"`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CycleEventRecord {
+    pub seq: i64,
+    pub event_type: String,
+    pub phase: Option<String>,
+    pub outcome: Option<String>,
+    pub next_phase: Option<String>,
+    pub timestamp: i64,
+}
+
+/// One (phase, category) pair compared against cross-cycle baselines (crt-025).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhaseCategoryComparison {
+    pub phase: String,
+    pub category: String,
+    pub this_feature_count: u64,
+    pub cross_cycle_mean: f64,
+    /// Number of distinct prior features contributing to the mean for this (phase, category) pair.
+    pub sample_features: usize,
+}
+
+/// Phase lifecycle narrative derived from `CYCLE_EVENTS` and `FEATURE_ENTRIES` (crt-025).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhaseNarrative {
+    /// Ordered sequence of active phases (may repeat if phase was re-entered).
+    pub phase_sequence: Vec<String>,
+    /// Phases that appear more than once in `phase_sequence` (rework signal).
+    pub rework_phases: Vec<String>,
+    /// Count of `feature_entries` by (phase, category) for this feature.
+    /// Outer key: phase token. Inner key: category. Value: count.
+    pub per_phase_categories: PhaseCategoryDist,
+    /// Cross-cycle comparison; `None` when fewer than 2 prior features have phase data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cross_cycle_comparison: Option<Vec<PhaseCategoryComparison>>,
+}
+
 /// Complete analysis output returned by context_cycle_review.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RetrospectiveReport {
@@ -267,6 +311,10 @@ pub struct RetrospectiveReport {
     /// Attribution quality metadata (col-020, ADR-003).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attribution: Option<AttributionMetadata>,
+    /// Phase lifecycle narrative derived from CYCLE_EVENTS and FEATURE_ENTRIES (crt-025).
+    /// Absent from JSON (not null) when no cycle_events exist for the feature.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase_narrative: Option<PhaseNarrative>,
 }
 
 #[cfg(test)]
@@ -480,6 +528,7 @@ mod tests {
             rework_session_count: None,
             context_reload_pct: None,
             attribution: None,
+            phase_narrative: None,
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
@@ -545,6 +594,7 @@ mod tests {
                 attributed_session_count: 3,
                 total_session_count: 4,
             }),
+            phase_narrative: None,
         };
 
         let json = serde_json::to_string(&report).expect("serialize");

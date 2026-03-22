@@ -42,6 +42,7 @@ pub fn build_report(
         rework_session_count: None,
         context_reload_pct: None,
         attribution: None,
+        phase_narrative: None,
     }
 }
 
