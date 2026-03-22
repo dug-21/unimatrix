@@ -9,8 +9,8 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write;
 use unimatrix_observe::{
     AttributionMetadata, BaselineComparison, BaselineStatus, EvidenceRecord, FeatureKnowledgeReuse,
-    HotspotFinding, HotspotNarrative, Recommendation, RetrospectiveReport, SessionSummary,
-    Severity,
+    HotspotFinding, HotspotNarrative, PhaseCategoryComparison, PhaseNarrative, Recommendation,
+    RetrospectiveReport, SessionSummary, Severity,
 };
 use unimatrix_store::PhaseMetrics;
 
@@ -113,6 +113,11 @@ pub fn format_retrospective_markdown(report: &RetrospectiveReport) -> CallToolRe
     // 9. Recommendations (deduplicated by hotspot_type)
     if !report.recommendations.is_empty() {
         output.push_str(&render_recommendations(&report.recommendations));
+    }
+
+    // 10. Phase narrative (crt-025: only when Some)
+    if let Some(narrative) = &report.phase_narrative {
+        output.push_str(&render_phase_narrative(narrative));
     }
 
     CallToolResult::success(vec![Content::text(output)])
@@ -417,6 +422,86 @@ fn render_recommendations(recs: &[Recommendation]) -> String {
 
     out.push('\n');
     out
+}
+
+/// Render the phase lifecycle narrative section (crt-025).
+///
+/// Emits nothing when `phase_narrative` is `None`; this function is only
+/// called when `Some` (guarded in `format_retrospective_markdown`).
+fn render_phase_narrative(narrative: &PhaseNarrative) -> String {
+    let mut out = String::new();
+    out.push_str("## Phase Narrative\n");
+
+    // Phase sequence (may be empty for features with only cycle_stop events)
+    if narrative.phase_sequence.is_empty() {
+        out.push_str("No phase transitions recorded.\n\n");
+        return out;
+    }
+
+    // Phase sequence list
+    out.push_str("**Phase sequence:** ");
+    out.push_str(&narrative.phase_sequence.join(" → "));
+    out.push('\n');
+
+    // Rework flags
+    if !narrative.rework_phases.is_empty() {
+        let _ = writeln!(
+            out,
+            "**Rework detected:** {}",
+            narrative.rework_phases.join(", ")
+        );
+    }
+
+    out.push('\n');
+
+    // Per-phase category counts (sorted by phase for determinism)
+    if !narrative.per_phase_categories.is_empty() {
+        out.push_str("### Per-Phase Category Distribution\n");
+        let mut phases: Vec<&String> = narrative.per_phase_categories.keys().collect();
+        phases.sort();
+
+        for phase in phases {
+            let cat_map = &narrative.per_phase_categories[phase];
+            out.push_str(&format!("**{}**:", phase));
+            let mut cats: Vec<(&String, &u64)> = cat_map.iter().collect();
+            cats.sort_by_key(|(k, _)| *k);
+            let entries: Vec<String> = cats
+                .iter()
+                .map(|(cat, cnt)| format!(" {}={}", cat, cnt))
+                .collect();
+            out.push_str(&entries.join(","));
+            out.push('\n');
+        }
+        out.push('\n');
+    }
+
+    // Cross-cycle comparison table (AC-14: omit when None)
+    if let Some(comparisons) = &narrative.cross_cycle_comparison {
+        render_cross_cycle_table(&mut out, comparisons);
+    }
+
+    out
+}
+
+/// Render the cross-cycle comparison as a markdown table.
+fn render_cross_cycle_table(out: &mut String, comparisons: &[PhaseCategoryComparison]) {
+    if comparisons.is_empty() {
+        return;
+    }
+
+    out.push_str("### Cross-Cycle Comparison\n");
+    out.push_str("| Phase | Category | This Feature | Cross-cycle Mean | Samples |\n");
+    out.push_str("|-------|----------|-------------|-----------------|--------|\n");
+
+    for c in comparisons {
+        let _ = writeln!(
+            out,
+            "| {} | {} | {} | {:.1} | {} |",
+            c.phase, c.category, c.this_feature_count, c.cross_cycle_mean, c.sample_features
+        );
+    }
+
+    out.push('\n');
 }
 
 fn format_duration(secs: u64) -> String {
@@ -1712,5 +1797,190 @@ mod tests {
         let result = crate::mcp::response::format_retrospective_markdown(&report);
         let text = extract_text(&result);
         assert!(text.contains("# Retrospective:"));
+    }
+
+    // ── Phase Narrative Rendering (crt-025) ─────────────────────────────
+
+    fn make_phase_narrative_simple() -> PhaseNarrative {
+        PhaseNarrative {
+            phase_sequence: vec!["scope".to_string(), "design".to_string()],
+            rework_phases: vec![],
+            per_phase_categories: {
+                let mut m = std::collections::HashMap::new();
+                let mut scope_cats = std::collections::HashMap::new();
+                scope_cats.insert("decision".to_string(), 3u64);
+                m.insert("scope".to_string(), scope_cats);
+                m
+            },
+            cross_cycle_comparison: None,
+        }
+    }
+
+    #[test]
+    fn test_render_phase_narrative_none_omits_section() {
+        // When phase_narrative is None, the section must not appear (AC-13)
+        let report = make_report();
+        let result = format_retrospective_markdown(&report);
+        let text = extract_text(&result);
+        assert!(
+            !text.contains("Phase Narrative"),
+            "Phase Narrative section must be absent when phase_narrative is None; got: {}",
+            &text[..text.len().min(500)]
+        );
+    }
+
+    #[test]
+    fn test_render_phase_narrative_some_emits_section() {
+        // When phase_narrative is Some, the section must appear
+        let mut report = make_report();
+        report.phase_narrative = Some(make_phase_narrative_simple());
+        let result = format_retrospective_markdown(&report);
+        let text = extract_text(&result);
+        assert!(
+            text.contains("## Phase Narrative"),
+            "Phase Narrative section must be present when Some"
+        );
+    }
+
+    #[test]
+    fn test_render_phase_narrative_phase_sequence_rendered() {
+        let mut report = make_report();
+        report.phase_narrative = Some(make_phase_narrative_simple());
+        let result = format_retrospective_markdown(&report);
+        let text = extract_text(&result);
+        assert!(
+            text.contains("scope → design"),
+            "phase sequence must be rendered as arrow-joined list; got: {}",
+            &text[..text.len().min(800)]
+        );
+    }
+
+    #[test]
+    fn test_render_phase_narrative_rework_phases_rendered() {
+        let mut report = make_report();
+        report.phase_narrative = Some(PhaseNarrative {
+            phase_sequence: vec![
+                "scope".to_string(),
+                "design".to_string(),
+                "scope".to_string(),
+            ],
+            rework_phases: vec!["scope".to_string()],
+            per_phase_categories: std::collections::HashMap::new(),
+            cross_cycle_comparison: None,
+        });
+        let result = format_retrospective_markdown(&report);
+        let text = extract_text(&result);
+        assert!(
+            text.contains("Rework detected"),
+            "rework flag must be rendered when rework_phases is non-empty"
+        );
+        assert!(
+            text.contains("scope"),
+            "rework phase name must appear in output"
+        );
+    }
+
+    #[test]
+    fn test_render_phase_narrative_no_rework_omits_rework_line() {
+        let mut report = make_report();
+        report.phase_narrative = Some(make_phase_narrative_simple());
+        let result = format_retrospective_markdown(&report);
+        let text = extract_text(&result);
+        assert!(
+            !text.contains("Rework detected"),
+            "rework line must not appear when rework_phases is empty"
+        );
+    }
+
+    #[test]
+    fn test_render_phase_narrative_per_phase_categories() {
+        let mut report = make_report();
+        report.phase_narrative = Some(make_phase_narrative_simple());
+        let result = format_retrospective_markdown(&report);
+        let text = extract_text(&result);
+        assert!(
+            text.contains("Per-Phase Category Distribution"),
+            "per-phase section must be present"
+        );
+        // scope phase with decision=3 must appear
+        assert!(
+            text.contains("scope"),
+            "phase name must appear in distribution"
+        );
+        assert!(
+            text.contains("decision=3"),
+            "category count must appear in distribution"
+        );
+    }
+
+    #[test]
+    fn test_render_phase_narrative_cross_cycle_absent_when_none() {
+        // cross_cycle_comparison = None → table must not appear (AC-14)
+        let mut report = make_report();
+        report.phase_narrative = Some(make_phase_narrative_simple());
+        let result = format_retrospective_markdown(&report);
+        let text = extract_text(&result);
+        assert!(
+            !text.contains("Cross-Cycle Comparison"),
+            "cross-cycle table must be absent when cross_cycle_comparison is None"
+        );
+    }
+
+    #[test]
+    fn test_render_phase_narrative_cross_cycle_table_rendered() {
+        let mut report = make_report();
+        report.phase_narrative = Some(PhaseNarrative {
+            phase_sequence: vec!["design".to_string()],
+            rework_phases: vec![],
+            per_phase_categories: std::collections::HashMap::new(),
+            cross_cycle_comparison: Some(vec![PhaseCategoryComparison {
+                phase: "design".to_string(),
+                category: "decision".to_string(),
+                this_feature_count: 5,
+                cross_cycle_mean: 2.5,
+                sample_features: 3,
+            }]),
+        });
+        let result = format_retrospective_markdown(&report);
+        let text = extract_text(&result);
+        assert!(
+            text.contains("### Cross-Cycle Comparison"),
+            "cross-cycle table header must appear"
+        );
+        assert!(text.contains("design"), "phase column must appear in table");
+        assert!(
+            text.contains("decision"),
+            "category column must appear in table"
+        );
+        assert!(
+            text.contains("2.5"),
+            "cross-cycle mean must appear in table"
+        );
+        assert!(
+            text.contains("| 3 |"),
+            "sample_features count must appear in table"
+        );
+    }
+
+    #[test]
+    fn test_render_phase_narrative_empty_sequence_no_crash() {
+        // Empty phase_sequence: should render gracefully
+        let mut report = make_report();
+        report.phase_narrative = Some(PhaseNarrative {
+            phase_sequence: vec![],
+            rework_phases: vec![],
+            per_phase_categories: std::collections::HashMap::new(),
+            cross_cycle_comparison: None,
+        });
+        let result = format_retrospective_markdown(&report);
+        let text = extract_text(&result);
+        assert!(
+            text.contains("## Phase Narrative"),
+            "section header must appear even with empty sequence"
+        );
+        assert!(
+            text.contains("No phase transitions recorded"),
+            "empty sequence message must appear"
+        );
     }
 }
