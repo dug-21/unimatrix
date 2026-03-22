@@ -113,6 +113,9 @@ pub struct StoreParams {
     pub format: Option<String>,
     /// Feature cycle or workflow identifier (e.g., "col-001", "bug-42").
     pub feature_cycle: Option<String>,
+    /// Optional session ID (provided by hooks, not agent-reported).
+    #[serde(default)]
+    pub session_id: Option<String>,
 }
 
 /// Parameters for getting an entry by ID.
@@ -351,6 +354,7 @@ impl UnimatrixServer {
                 feature_cycle: params.feature.clone(),
                 trust_level: Some(ctx.trust_level),
                 access_weight: 1,
+                current_phase: None,
             },
         );
 
@@ -466,6 +470,7 @@ impl UnimatrixServer {
                 feature_cycle: params.feature.clone(),
                 trust_level: Some(ctx.trust_level),
                 access_weight: 2,
+                current_phase: None,
             },
         );
 
@@ -482,7 +487,7 @@ impl UnimatrixServer {
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         // 1. Identity + format + audit context (vnc-008: ToolContext)
         let ctx = self
-            .build_context(&params.agent_id, &params.format, &None)
+            .build_context(&params.agent_id, &params.format, &params.session_id)
             .await?;
         self.require_cap(&ctx.agent_id, Capability::Write).await?;
 
@@ -501,6 +506,21 @@ impl UnimatrixServer {
                 .map_err(rmcp::ErrorData::from)?;
         }
 
+        // 3b. Snapshot current_phase from SessionState at call time (ADR-001 crt-025 SR-07).
+        //
+        // Must happen synchronously here — before any await that could interleave with a
+        // concurrent `phase-end` event advancing `current_phase`. `get_state` returns a
+        // clone so this snapshot is isolated from subsequent SessionState mutations.
+        let session_state = ctx
+            .audit_ctx
+            .session_id
+            .as_deref()
+            .and_then(|sid| self.session_registry.get_state(sid));
+        let current_phase: Option<String> =
+            session_state.as_ref().and_then(|s| s.current_phase.clone());
+        let feature_cycle_from_session: Option<String> =
+            session_state.and_then(|s| s.feature.clone());
+
         // 4. Build title (transport-specific default)
         let title = params
             .title
@@ -508,7 +528,16 @@ impl UnimatrixServer {
         let is_outcome = params.category == "outcome";
 
         // 5. Build NewEntry
-        let feature_cycle = params.feature_cycle.clone().unwrap_or_default();
+        // `new_entry.feature_cycle` uses the caller-supplied value (original behavior).
+        // `UsageContext.feature_cycle` falls back to the session's feature when the
+        // caller omits the field, enabling session-based auto-attribution for
+        // feature_entries tagging without modifying the stored entry metadata.
+        let entry_feature_cycle = params.feature_cycle.clone().unwrap_or_default();
+        let usage_feature_cycle: Option<String> = params
+            .feature_cycle
+            .clone()
+            .or(feature_cycle_from_session)
+            .filter(|s| !s.is_empty());
         let new_entry = NewEntry {
             title,
             content: params.content,
@@ -517,8 +546,8 @@ impl UnimatrixServer {
             tags: params.tags.unwrap_or_default(),
             source: params.source.unwrap_or_default(),
             status: Status::Active,
-            created_by: ctx.agent_id,
-            feature_cycle,
+            created_by: ctx.agent_id.clone(),
+            feature_cycle: entry_feature_cycle.clone(),
             trust_source: "agent".to_string(),
         };
 
@@ -545,8 +574,29 @@ impl UnimatrixServer {
             .confidence
             .recompute(&[insert_result.entry.id]);
 
-        // 9. Format response
-        if is_outcome && insert_result.entry.feature_cycle.is_empty() {
+        // 9. Usage recording with phase snapshot (crt-025 SR-07, ADR-001).
+        //
+        // `current_phase` was captured synchronously above — it reflects the phase
+        // at call time and will not change even if a concurrent `phase-end` fires
+        // before the async `record_feature_entries` write completes.
+        if let Some(fc) = usage_feature_cycle {
+            self.services.usage.record_access(
+                &[insert_result.entry.id],
+                AccessSource::McpTool,
+                UsageContext {
+                    session_id: ctx.audit_ctx.session_id.clone(),
+                    agent_id: Some(ctx.agent_id.clone()),
+                    helpful: None,
+                    feature_cycle: Some(fc),
+                    trust_level: Some(ctx.trust_level),
+                    access_weight: 1,
+                    current_phase: current_phase.clone(),
+                },
+            );
+        }
+
+        // 10. Format response
+        if is_outcome && entry_feature_cycle.is_empty() {
             // Append orphan outcome warning to the formatted response
             let warning = "\nNote: outcome not linked to a workflow (no feature_cycle provided)";
             Ok(format_store_success_with_note(
@@ -616,6 +666,7 @@ impl UnimatrixServer {
                 feature_cycle: params.feature.clone(),
                 trust_level: Some(ctx.trust_level),
                 access_weight: 1,
+                current_phase: None,
             },
         );
 
@@ -911,6 +962,7 @@ impl UnimatrixServer {
                     feature_cycle: params.feature.clone(),
                     trust_level: Some(ctx.trust_level),
                     access_weight: 1,
+                    current_phase: None,
                 },
             );
 
