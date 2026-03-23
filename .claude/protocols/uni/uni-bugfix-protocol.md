@@ -16,9 +16,11 @@ Bugfix Leader (you)                                  Specialist Agents
 read protocol + bug report
 spawn investigator (Phase 1) ───────────────────────► diagnosis + proposed fix
 ◄────────────────────────────────────────────────────
-present diagnosis to human
+spawn architect (Phase 1b) ─────────────────────────► design review of proposed fix
+◄────────────────────────────────────────────────────
+present diagnosis + design review to human
 ★ HUMAN CHECKPOINT ★
-human approves diagnosis
+human approves diagnosis + design
 create branch (Phase 2)
 spawn rust-dev ─────────────────────────────────────► implement fix + tests
 ◄────────────────────────────────────────────────────
@@ -33,7 +35,7 @@ spawn security-reviewer ──────────────────�
 human reviews and merges
 ```
 
-**The Bugfix Manager runs the session autonomously after human approves diagnosis.** Human re-enters only on scope/feasibility failures, rework exhaustion, or final PR review.
+**The Bugfix Manager runs the session autonomously after human approves diagnosis and design.** Human re-enters only on scope/feasibility failures, rework exhaustion, or final PR review.
 
 ### Concurrency Rules
 
@@ -101,24 +103,64 @@ Task(subagent_type: "uni-bug-investigator",
 
 Wait for the investigator to complete.
 
-### Human Checkpoint (MANDATORY — do NOT proceed without human approval)
+---
 
-After the investigator returns, the Bugfix Manager presents the diagnosis to the human:
+## Phase 1b: Design Review
+
+**Agent**: uni-architect
+
+After the investigator returns, the Bugfix Manager spawns `uni-architect` to review the proposed fix design **before any human checkpoint or code changes**:
 
 ```
-DIAGNOSIS COMPLETE — Awaiting approval.
+Task(subagent_type: "uni-architect",
+  prompt: "Your agent ID: {issue-number}-design-reviewer
+
+    DESIGN REVIEW — proposed bug fix approach only. Do NOT implement.
+
+    Bug report: {bug description}
+    Investigator's proposed fix: {proposed fix approach from investigator}
+    Affected files: {from investigator}
+
+    Review the proposed fix for:
+    1. Hot-path risks — does the fix introduce DB reads, locks, or I/O on a
+       background tick, request handler, or other hot path? If so, flag and
+       propose a safer alternative (cache, pagination, SQL filter pushed down).
+    2. Blast radius — what is the worst case if the fix has a subtle bug?
+    3. Architectural fit — does the approach follow established patterns for
+       this subsystem? Query Unimatrix for relevant ADRs and conventions.
+    4. Missing constraints — are there caps, idempotency guards, or error
+       recovery steps missing from the proposed approach?
+    5. Security surface — any new trust boundaries, input validation gaps, or
+       privilege changes introduced by the approach?
+
+    Return:
+    - Design assessment: APPROVED / APPROVED WITH NOTES / REWORK NEEDED
+    - Findings: list of concerns with severity (blocking / non-blocking)
+    - Revised fix approach (if REWORK NEEDED): concrete amendments to the
+      investigator's proposal that address the findings
+    - ## Knowledge Stewardship block with Queried: and Stored:/Declined: entries")
+```
+
+Wait for the architect to complete.
+
+**If REWORK NEEDED**: The Bugfix Manager incorporates the architect's revised approach into the fix plan presented to the human. The investigator is NOT re-spawned — the architect's revised approach supersedes the investigator's proposal for the affected parts.
+
+### Human Checkpoint (MANDATORY — do NOT proceed without human approval)
+
+After both investigator and architect return, the Bugfix Manager presents the combined diagnosis and design review to the human:
+
+```
+DIAGNOSIS + DESIGN REVIEW COMPLETE — Awaiting approval.
 
 Root Cause: {summary from investigator}
 Affected Files: {list from investigator}
-Proposed Fix: {approach from investigator}
-Risk Assessment: {from investigator}
+Proposed Fix: {approach — investigator's if APPROVED, architect's revised approach if REWORK NEEDED}
+Design Review: {APPROVED | APPROVED WITH NOTES | REWORK NEEDED} — {architect findings summary}
+Risk Assessment: {from investigator + architect}
 Missing Test: {what test should have caught this}
 
-Report: write back to the GH issue
-(or inline if no feature-id applies)
-
-Human action required: Review diagnosis and approve to proceed with fix.
-If the diagnosis is wrong, provide feedback and I will re-investigate.
+Human action required: Review diagnosis and design, then approve to proceed with fix.
+If either the diagnosis or design is wrong, provide feedback and I will re-investigate.
 ```
 
 On human approval:
@@ -394,8 +436,10 @@ BUGFIX LEADER (you):
   Init:       /uni-query-patterns + /uni-knowledge-search — prior knowledge
               context_cycle(type: "start", topic: "bugfix-{issue-number}", next_phase: "discovery", agent_id: "{issue-number}-bugfix-leader")
   Phase 1:    Task(uni-bug-investigator) — diagnose root cause → GH Issue comment
-              ...present diagnosis to human...
-              ★ HUMAN CHECKPOINT — human approves diagnosis ★
+              ...wait...
+  Phase 1b:   Task(uni-architect) — design review of proposed fix
+              ...present diagnosis + design review to human...
+              ★ HUMAN CHECKPOINT — human approves diagnosis + design ★
               context_cycle(type: "phase-end", phase: "discovery", next_phase: "fix", ...)
   Phase 2:    git checkout -b bugfix/{issue}-{desc}
               Task(uni-rust-dev) — implement fix + tests → GH Issue comment

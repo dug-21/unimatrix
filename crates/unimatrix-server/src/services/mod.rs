@@ -24,9 +24,6 @@ use crate::infra::registry::TrustLevel;
 use crate::infra::usage_dedup::UsageDedup;
 use crate::services::store_ops::NliStoreConfig;
 
-// briefing.rs kept for listener.rs callers (crate::services::briefing::BriefingParams/InjectionEntry).
-// Will be deleted when listener-dispatch Wave 4 agent completes its migration (crt-027).
-pub(crate) mod briefing;
 pub(crate) mod confidence;
 pub(crate) mod contradiction_cache;
 pub(crate) mod effectiveness;
