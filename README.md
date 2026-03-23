@@ -38,7 +38,7 @@ Natural language queries return entries ranked by NLI (Natural Language Inferenc
 
 ### Hook-Driven Invisible Delivery (Cortical Implant)
 
-Automatic context injection on every prompt via the `UserPromptSubmit` hook. Five hook events drive the integration: `UserPromptSubmit`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction; when the session has a non-empty category histogram, the compaction payload includes a "Recent session activity: decision × 3, pattern × 2" summary of what the session has been storing. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC.
+Automatic context injection on every prompt via the `UserPromptSubmit` hook. Six hook events drive the integration: `UserPromptSubmit`, `SubagentStart`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Subagent injection: when the SM spawns a subagent, the `SubagentStart` hook fires synchronously and injects relevant knowledge into the subagent context before its first token — the subagent does not need to call `context_briefing` manually. `UserPromptSubmit` injection requires at least 5 words in the prompt; shorter inputs (e.g., "yes", "ok continue") are recorded but produce no injection. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction; the compaction payload is a flat indexed table of active entries (up to k=20) plus a session histogram summary. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC.
 
 ### Retrospective Analysis
 
@@ -143,6 +143,7 @@ Add to `.claude/settings.json`:
 {
   "hooks": {
     "UserPromptSubmit": [{ "command": "npx unimatrix hook UserPromptSubmit" }],
+    "SubagentStart": [{ "command": "npx unimatrix hook SubagentStart" }],
     "PreCompact": [{ "command": "npx unimatrix hook PreCompact" }],
     "PreToolUse": [{ "command": "npx unimatrix hook PreToolUse" }],
     "PostToolUse": [{ "command": "npx unimatrix hook PostToolUse" }],
@@ -172,9 +173,9 @@ context_store(
 )
 ```
 
-**Get an orientation briefing:**
+**Get a knowledge briefing for a feature phase:**
 ```
-context_briefing(role: "developer", task: "implement new MCP tool", feature: "vnc-012")
+context_briefing(topic: "crt-027", max_tokens: 1000)
 ```
 
 ---
@@ -323,7 +324,7 @@ Unimatrix exposes 12 MCP tools. All tools accept `format: "summary" | "markdown"
 | `context_deprecate` | Mark an entry as outdated. Entry remains accessible but excluded from default search/lookup. | When knowledge is no longer relevant but should not be deleted (historical record). Key params: `id` (required), `reason`. |
 | `context_quarantine` | Quarantine or restore an entry. Quarantined entries are excluded from search and lookup. **Admin only.** | When an entry is suspicious, invalid, or harmful and should be isolated. Use `action: "restore"` to undo. Key params: `id` (required), `action` ("quarantine" or "restore"), `reason`. |
 | `context_status` | Get knowledge base health metrics. Shows entry counts, distributions, correction chains, coherence score, security metrics. **Admin only.** | When you need to assess knowledge base health. The `maintain` parameter is accepted but silently ignored — a background tick handles maintenance automatically. Key params: `topic`, `category`, `check_embeddings`. |
-| `context_briefing` | Get an orientation briefing for a role and task. Includes role conventions and task-relevant context. | At the start of any task to get oriented. Gated on `mcp-briefing` feature flag. Key params: `role` (required), `task` (required), `feature`, `max_tokens` (default 3000, range 500-10000). |
+| `context_briefing` | Get a knowledge index for a topic or task. Returns up to 20 active entries as a flat indexed table (columns: row, id, topic, category, confidence, snippet). Deprecated entries are suppressed. Query derived from: (1) explicit `task` param, (2) synthesized from session `feature_cycle` + top topic signals when `session_id` provided, (3) `topic` param fallback. `role` param accepted for backward compatibility but ignored. `UNIMATRIX_BRIEFING_K` env var is deprecated on this path — default k=20 cannot be reduced via env var. | At the start of a phase or task to get oriented. Call after each `context_cycle(type: "phase-end", ...)` to load the knowledge package for the next phase. Gated on `mcp-briefing` feature flag. Key params: `topic` (required fallback), `task`, `session_id`, `k` (default 20), `max_tokens` (default 3000, range 500-10000). |
 | `context_enroll` | Enroll or update an agent's trust level and capabilities. **Admin only.** | When managing agent permissions. Protected agents (`system`, `human`) cannot be modified. Self-lockout prevention active. Key params: `target_agent_id` (required), `trust_level` (required), `capabilities` (required). |
 | `context_cycle` | Signal feature cycle lifecycle events: start, phase transitions, and stop. Records one append-only event row per call in `CYCLE_EVENTS`; tags subsequent `context_store` entries with the active phase. | At cycle start/stop and at each phase boundary. Key params: `type` (required: `"start"` \| `"phase-end"` \| `"stop"`), `topic` (required), `phase`, `outcome`, `next_phase`, `agent_id`. Phase tokens must be lowercase with no spaces (canonical set: `scope`, `design`, `implementation`, `testing`, `gate-review`). |
 | `context_cycle_review` | Analyze observation data for a work cycle. Parses session telemetry, detects hotspots, computes metrics, and renders a phase narrative when phase-signal data is present. | After a work cycle completes, to extract patterns and lessons. Key params: `feature_cycle` (required), `evidence_limit`, `format` ("markdown" default, "json"). Phase narrative (ordered phase sequence, rework detection, per-phase category counts, cross-cycle comparison) is included when `CYCLE_EVENTS` data exists for the cycle; silently omitted for pre-WA-1 cycles. |

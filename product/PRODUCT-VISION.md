@@ -196,7 +196,7 @@ Eval: 1,761 scenarios, P@5 0.3060, MRR 0.4222, zero true regressions. Follow-up:
 
 ---
 
-### WA-1: Phase Signal + FEATURE_ENTRIES Tagging (GH #330)
+### WA-1: Phase Signal + FEATURE_ENTRIES Tagging — COMPLETE (`crt-025`, PR #338)
 **Business outcome**: The engine knows where each agent session is in its workflow — not because agents declare it, but because the workflow coordinator signals it as part of normal orchestration. Every piece of knowledge stored is annotated with the phase that produced it.
 
 **What**: Add `type: "phase"` event to `context_cycle`, alongside existing `start` and `stop`.

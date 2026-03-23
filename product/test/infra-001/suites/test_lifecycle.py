@@ -1419,3 +1419,77 @@ def test_duplicate_store_histogram_no_inflation(server):
             assert score >= 0.0, (
                 f"L-CRT026-03: final_score must be >= 0.0 after duplicate store; got {score}."
             )
+
+
+# === crt-027 WA-4b: Briefing flat index format lifecycle tests (2 tests) ===
+
+def test_briefing_flat_index_format_no_section_headers(server):
+    """L-CRT027-01: context_briefing uses flat indexed table, no section headers (AC-08, R-03).
+
+    After migration from BriefingService to IndexBriefingService, the output must be a
+    flat indexed table with columns (#, id, topic, cat, conf, snippet). The old
+    section-header format ('## Decisions', '## Injections', '## Conventions') must be absent.
+    """
+    server.context_store(
+        "crt-027 flat index format test content unique zeta",
+        "crt027-flat-test-unique-zeta",
+        "decision",
+        agent_id="human",
+    )
+    resp = server.context_briefing(
+        "architect", "crt027-flat-test-unique-zeta", agent_id="human"
+    )
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+    assert "## Decisions" not in text, (
+        "L-CRT027-01: '## Decisions' section header must not appear in flat index output"
+    )
+    assert "## Injections" not in text, (
+        "L-CRT027-01: '## Injections' section header must not appear in flat index output"
+    )
+    assert "## Conventions" not in text, (
+        "L-CRT027-01: '## Conventions' section header must not appear in flat index output"
+    )
+
+
+def test_briefing_session_id_applies_wa2_boost(server):
+    """L-CRT027-02: context_briefing with session_id applies WA-2 histogram boost (AC-11, IR-01).
+
+    When a session has built up a category histogram via searches, context_briefing
+    with that session_id should trigger the histogram boost path (WA-2). This test
+    verifies the path does not error and returns a valid response.
+
+    Note: Exact ranking order cannot be verified without a known-stable entry set, so
+    this test verifies the histogram-boost path is exercised without error, consistent
+    with the lifecycle-level coverage of AC-11.
+    """
+    session_id = "crt027-wa2-boost-session-unique-theta"
+
+    # Store several entries in "decision" category to build histogram signal
+    for i in range(3):
+        server.call_tool("context_store", {
+            "content": f"crt027 wa2 boost test decision entry {i} unique theta content",
+            "topic": f"crt027-wa2-boost-topic-{i}",
+            "category": "decision",
+            "agent_id": "human",
+            "format": "json",
+            "session_id": session_id,
+        })
+
+    # Trigger search with session_id to accumulate "decision" histogram
+    server.call_tool("context_search", {
+        "query": "crt027 wa2 boost test decision",
+        "format": "json",
+        "session_id": session_id,
+    })
+
+    # Call context_briefing with session_id — must not error; histogram boost applies
+    resp = server.call_tool("context_briefing", {
+        "role": "architect",
+        "task": "crt027 wa2 boost test",
+        "agent_id": "human",
+        "session_id": session_id,
+    })
+    assert_tool_success(resp), (
+        "L-CRT027-02: context_briefing with session_id must succeed (WA-2 histogram boost path)"
+    )

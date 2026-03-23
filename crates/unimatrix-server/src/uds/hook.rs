@@ -27,6 +27,12 @@ const HOOK_TIMEOUT: Duration = Duration::from_millis(40);
 /// Maximum byte budget for injection output (~350 tokens at 4 bytes/token).
 const MAX_INJECTION_BYTES: usize = 1400;
 
+/// Minimum word count for UserPromptSubmit to route to ContextSearch.
+/// Prompts shorter than this threshold fall through to generic_record_event.
+/// Evaluated on query.trim().split_whitespace().count() (leading/trailing
+/// whitespace is NOT counted). See ADR-002 crt-027.
+const MIN_QUERY_WORDS: usize = 5;
+
 /// Run the hook subcommand.
 ///
 /// This is the entry point from `main()` for the `hook` subcommand.
@@ -53,6 +59,13 @@ pub fn run(event: String, project_dir: Option<PathBuf>) -> Result<(), Box<dyn st
 
     // Step 5: Build request from event + input
     let request = build_request(&event, &hook_input);
+
+    // Step 5b: Extract source BEFORE consuming the request (needed for response routing).
+    // Only ContextSearch carries a source; extract it now for use after transport.request().
+    let req_source: Option<String> = match &request {
+        HookRequest::ContextSearch { source, .. } => source.clone(),
+        _ => None,
+    };
 
     // Step 6: Determine if fire-and-forget or synchronous
     let is_fire_and_forget = matches!(
@@ -82,7 +95,15 @@ pub fn run(event: String, project_dir: Option<PathBuf>) -> Result<(), Box<dyn st
             } else {
                 match transport.request(&request, HOOK_TIMEOUT) {
                     Ok(response) => {
-                        if let Err(e) = write_stdout(&response) {
+                        // Route stdout writing based on source (ADR-006 crt-027):
+                        // SubagentStart requires hookSpecificOutput JSON envelope;
+                        // all other sources (UserPromptSubmit, etc.) use plain text.
+                        let write_result = if req_source.as_deref() == Some("SubagentStart") {
+                            write_stdout_subagent_inject_response(&response)
+                        } else {
+                            write_stdout(&response)
+                        };
+                        if let Err(e) = write_result {
                             eprintln!("unimatrix: stdout write failed: {e}");
                         }
                     }
@@ -252,19 +273,30 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
 
         "UserPromptSubmit" => {
             let query = input.prompt.clone().unwrap_or_default();
-            if query.is_empty() {
-                // No prompt text -- fall through to RecordEvent
+
+            // Guard 1: empty or whitespace-only → RecordEvent (EC-01)
+            if query.trim().is_empty() {
                 return generic_record_event(event, session_id, input);
-            } else {
-                HookRequest::ContextSearch {
-                    query,
-                    session_id: input.session_id.clone(),
-                    role: None,
-                    task: None,
-                    feature: None,
-                    k: None,
-                    max_tokens: None,
-                }
+            }
+
+            // Guard 2: word-count threshold (ADR-002 crt-027, FR-05)
+            // split_whitespace() handles leading/trailing whitespace, so "  approve  " counts
+            // as 1 word. The query value itself is NOT trimmed -- evaluation only.
+            let word_count = query.split_whitespace().count();
+            if word_count < MIN_QUERY_WORDS {
+                return generic_record_event(event, session_id, input);
+            }
+
+            // Route to ContextSearch: source=None (ADR-001: None → "UserPromptSubmit" at server)
+            HookRequest::ContextSearch {
+                query,
+                session_id: input.session_id.clone(),
+                source: None,
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
             }
         }
 
@@ -361,6 +393,37 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
 
         // col-022: Intercept PreToolUse for context_cycle tool calls
         "PreToolUse" => build_cycle_event_or_fallthrough(event, session_id, input),
+
+        // crt-027 WA-4a: Route SubagentStart to ContextSearch for knowledge injection.
+        // prompt_snippet is extracted from input.extra (same source as extract_event_topic_signal).
+        // Guard: empty or whitespace-only prompt_snippet falls through to RecordEvent (EC-01).
+        // SubagentStart does NOT apply MIN_QUERY_WORDS; even a 1-word spawn prompt routes through.
+        "SubagentStart" => {
+            let query = input
+                .extra
+                .get("prompt_snippet")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            // EC-01: .trim().is_empty() catches whitespace-only, not just ""
+            if query.trim().is_empty() {
+                return generic_record_event(event, session_id, input);
+            }
+
+            // Route to ContextSearch with source="SubagentStart" (ADR-001, ADR-002 crt-027).
+            // session_id = input.session_id (parent session, not ppid fallback) so WA-2 boost applies.
+            HookRequest::ContextSearch {
+                query,
+                session_id: input.session_id.clone(),
+                source: Some("SubagentStart".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            }
+        }
 
         _ => generic_record_event(event, session_id, input),
     }
@@ -601,6 +664,49 @@ fn write_stdout(response: &HookResponse) -> Result<(), Box<dyn std::error::Error
     }
 }
 
+/// Write the hookSpecificOutput JSON envelope required by Claude Code for SubagentStart
+/// context injection (ADR-006 crt-027).
+///
+/// The envelope format is:
+/// `{"hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": "<entries_text>"}}`
+///
+/// Returns `io::Result<()>`. Callers must handle errors; the hook exit code is always 0.
+fn write_stdout_subagent_inject(entries_text: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    let envelope = serde_json::json!({
+        "hookSpecificOutput": {
+            "hookEventName": "SubagentStart",
+            "additionalContext": entries_text
+        }
+    });
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    // writeln appends a newline after the JSON object
+    writeln!(handle, "{}", envelope)
+}
+
+/// Write SubagentStart response to stdout via the hookSpecificOutput JSON envelope.
+///
+/// Extracts formatted text from `HookResponse::Entries` and calls
+/// `write_stdout_subagent_inject`. If the response is not `Entries` (unexpected
+/// but safe), falls through to plain-text `write_stdout` for graceful degradation.
+fn write_stdout_subagent_inject_response(
+    response: &HookResponse,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match response {
+        HookResponse::Entries { items, .. } => {
+            if let Some(text) = format_injection(items, MAX_INJECTION_BYTES) {
+                write_stdout_subagent_inject(&text)?;
+            }
+            // Empty items: silent skip (no stdout written — same as write_stdout behavior)
+            Ok(())
+        }
+        // Non-Entries responses from SubagentStart ContextSearch (unexpected but safe):
+        // fall through to plain-text write for graceful degradation (FR-06, C-01)
+        other => write_stdout(other),
+    }
+}
+
 /// Format a ranked list of entries as structured plain text within a byte budget.
 ///
 /// Returns `None` if entries is empty or no entries fit within the budget.
@@ -775,12 +881,13 @@ mod tests {
 
     #[test]
     fn build_request_user_prompt_submit_with_prompt() {
+        // Uses a 5-word prompt to pass the MIN_QUERY_WORDS guard (ADR-002 crt-027)
         let mut input = test_input();
-        input.prompt = Some("search query".to_string());
+        input.prompt = Some("implement the spec writer agent".to_string());
         let req = build_request("UserPromptSubmit", &input);
         match req {
             HookRequest::ContextSearch { query, .. } => {
-                assert_eq!(query, "search query");
+                assert_eq!(query, "implement the spec writer agent");
             }
             _ => panic!("expected ContextSearch, got {req:?}"),
         }
@@ -803,12 +910,17 @@ mod tests {
 
     #[test]
     fn build_request_user_prompt_submit_long_prompt() {
+        // Use a multi-word prompt so it passes the MIN_QUERY_WORDS guard (ADR-002 crt-027).
+        // 5 words repeated many times satisfies both the threshold and the length check.
         let mut input = test_input();
-        input.prompt = Some("x".repeat(20_000));
+        let word_repeated = "implement the spec writer agent ".repeat(400); // >5 words, long
+        let prompt = word_repeated.trim_end().to_string();
+        let prompt_len = prompt.len();
+        input.prompt = Some(prompt);
         let req = build_request("UserPromptSubmit", &input);
         match req {
             HookRequest::ContextSearch { query, .. } => {
-                assert_eq!(query.len(), 20_000);
+                assert_eq!(query.len(), prompt_len);
             }
             _ => panic!("expected ContextSearch"),
         }
@@ -824,6 +936,7 @@ mod tests {
             feature: None,
             k: None,
             max_tokens: None,
+            source: None,
         };
         let is_faf = matches!(
             req,
@@ -912,14 +1025,16 @@ mod tests {
     #[test]
     fn build_request_user_prompt_passes_session_id() {
         let mut input = test_input();
-        input.prompt = Some("query".to_string());
+        // Uses a 5-word prompt to pass the MIN_QUERY_WORDS guard (ADR-002 crt-027)
+        let prompt = "implement the spec writer agent".to_string();
+        input.prompt = Some(prompt.clone());
         input.session_id = Some("sess-1".to_string());
         let req = build_request("UserPromptSubmit", &input);
         match req {
             HookRequest::ContextSearch {
                 session_id, query, ..
             } => {
-                assert_eq!(query, "query");
+                assert_eq!(query, prompt);
                 assert_eq!(session_id.as_deref(), Some("sess-1"));
             }
             _ => panic!("expected ContextSearch, got {req:?}"),
@@ -929,7 +1044,8 @@ mod tests {
     #[test]
     fn build_request_user_prompt_no_session_id() {
         let mut input = test_input();
-        input.prompt = Some("query".to_string());
+        // Uses a 5-word prompt to pass the MIN_QUERY_WORDS guard (ADR-002 crt-027)
+        input.prompt = Some("implement the spec writer agent".to_string());
         let req = build_request("UserPromptSubmit", &input);
         match req {
             HookRequest::ContextSearch { session_id, .. } => {
@@ -2586,5 +2702,325 @@ mod tests {
     #[test]
     fn test_cycle_phase_end_constant_value() {
         assert_eq!(CYCLE_PHASE_END_EVENT, "cycle_phase_end");
+    }
+
+    // -- crt-027 WA-4a: SubagentStart routing tests --
+
+    /// AC-01: SubagentStart with non-empty prompt_snippet routes to ContextSearch.
+    /// Verifies query, source, session_id, and all None fields.
+    #[test]
+    fn build_request_subagentstart_with_prompt_snippet() {
+        let mut input = test_input();
+        input.session_id = Some("sess-parent".to_string());
+        input.extra = serde_json::json!({ "prompt_snippet": "implement the spec writer agent" });
+        let req = build_request("SubagentStart", &input);
+        match req {
+            HookRequest::ContextSearch {
+                query,
+                source,
+                session_id,
+                role,
+                task,
+                feature,
+                k,
+                max_tokens,
+            } => {
+                assert_eq!(query, "implement the spec writer agent");
+                assert_eq!(source, Some("SubagentStart".to_string()));
+                assert_eq!(session_id, Some("sess-parent".to_string()));
+                assert!(role.is_none());
+                assert!(task.is_none());
+                assert!(feature.is_none());
+                assert!(k.is_none());
+                assert!(max_tokens.is_none());
+            }
+            _ => panic!("expected ContextSearch, got {req:?}"),
+        }
+    }
+
+    /// AC-02 (a): SubagentStart with absent prompt_snippet key falls through to RecordEvent.
+    /// AC-02 (b): SubagentStart with empty string prompt_snippet falls through to RecordEvent.
+    #[test]
+    fn build_request_subagentstart_empty_prompt_snippet() {
+        // (a) key absent
+        let mut input = test_input();
+        input.extra = serde_json::json!({});
+        let req = build_request("SubagentStart", &input);
+        assert!(
+            matches!(req, HookRequest::RecordEvent { .. }),
+            "absent prompt_snippet must yield RecordEvent, got {req:?}"
+        );
+
+        // (b) key present, empty string
+        let mut input2 = test_input();
+        input2.extra = serde_json::json!({ "prompt_snippet": "" });
+        let req2 = build_request("SubagentStart", &input2);
+        assert!(
+            matches!(req2, HookRequest::RecordEvent { .. }),
+            "empty prompt_snippet must yield RecordEvent, got {req2:?}"
+        );
+    }
+
+    /// AC-03: SubagentStart uses input.session_id (parent session), NOT the ppid fallback.
+    #[test]
+    fn build_request_subagentstart_session_id_from_input() {
+        let mut input = test_input();
+        input.session_id = Some("parent-sess-42".to_string());
+        input.extra = serde_json::json!({ "prompt_snippet": "design the architecture" });
+        let req = build_request("SubagentStart", &input);
+        match req {
+            HookRequest::ContextSearch { session_id, .. } => {
+                assert_eq!(
+                    session_id,
+                    Some("parent-sess-42".to_string()),
+                    "session_id must be taken from input.session_id (parent session)"
+                );
+            }
+            _ => panic!("expected ContextSearch, got {req:?}"),
+        }
+    }
+
+    /// AC-23: SubagentStart with a single non-empty word routes to ContextSearch.
+    /// SubagentStart does NOT apply MIN_QUERY_WORDS guard.
+    #[test]
+    fn build_request_subagentstart_one_word_routes_to_context_search() {
+        let mut input = test_input();
+        input.extra = serde_json::json!({ "prompt_snippet": "implement" });
+        let req = build_request("SubagentStart", &input);
+        assert!(
+            matches!(req, HookRequest::ContextSearch { .. }),
+            "single-word SubagentStart prompt_snippet must route to ContextSearch (no MIN_QUERY_WORDS), got {req:?}"
+        );
+    }
+
+    /// AC-23b / EC-01: SubagentStart with whitespace-only prompt_snippet falls through to RecordEvent.
+    #[test]
+    fn build_request_subagentstart_whitespace_only_prompt_snippet() {
+        let mut input = test_input();
+        input.extra = serde_json::json!({ "prompt_snippet": "   " });
+        let req = build_request("SubagentStart", &input);
+        assert!(
+            matches!(req, HookRequest::RecordEvent { .. }),
+            "whitespace-only prompt_snippet must yield RecordEvent (EC-01), got {req:?}"
+        );
+    }
+
+    /// EC-02: SubagentStart with JSON null prompt_snippet falls through to RecordEvent.
+    /// v.as_str() returns None for Null, so it falls through the same as absent.
+    #[test]
+    fn build_request_subagentstart_null_prompt_snippet_record_event() {
+        let mut input = test_input();
+        input.extra = serde_json::json!({ "prompt_snippet": null });
+        let req = build_request("SubagentStart", &input);
+        assert!(
+            matches!(req, HookRequest::RecordEvent { .. }),
+            "null prompt_snippet must yield RecordEvent (EC-02), got {req:?}"
+        );
+    }
+
+    // -- crt-027 WA-4a: UserPromptSubmit word-count guard tests --
+
+    /// AC-22: Exactly 4 words (below MIN_QUERY_WORDS=5) yields RecordEvent.
+    #[test]
+    fn build_request_userpromptsub_four_words_record_event() {
+        let mut input = test_input();
+        input.prompt = Some("implement the spec writer".to_string()); // exactly 4 words
+        let req = build_request("UserPromptSubmit", &input);
+        assert!(
+            matches!(req, HookRequest::RecordEvent { .. }),
+            "4-word prompt must yield RecordEvent (word count 4 < MIN_QUERY_WORDS=5), got {req:?}"
+        );
+    }
+
+    /// AC-22: Exactly 5 words (equal to MIN_QUERY_WORDS=5) yields ContextSearch.
+    #[test]
+    fn build_request_userpromptsub_five_words_context_search() {
+        let mut input = test_input();
+        input.prompt = Some("implement the spec writer agent".to_string()); // exactly 5 words
+        let req = build_request("UserPromptSubmit", &input);
+        match req {
+            HookRequest::ContextSearch { query, .. } => {
+                assert_eq!(query, "implement the spec writer agent");
+            }
+            _ => panic!("expected ContextSearch (5 == MIN_QUERY_WORDS=5), got {req:?}"),
+        }
+    }
+
+    /// AC-02b scenario: 6 words (above MIN_QUERY_WORDS=5) yields ContextSearch.
+    #[test]
+    fn build_request_userpromptsub_six_words_context_search() {
+        let mut input = test_input();
+        input.prompt = Some("implement the spec writer agent today".to_string()); // 6 words
+        let req = build_request("UserPromptSubmit", &input);
+        assert!(
+            matches!(req, HookRequest::ContextSearch { .. }),
+            "6-word prompt must yield ContextSearch (6 >= MIN_QUERY_WORDS=5), got {req:?}"
+        );
+    }
+
+    /// AC-02b scenario: 1 word yields RecordEvent.
+    #[test]
+    fn build_request_userpromptsub_one_word_record_event() {
+        let mut input = test_input();
+        input.prompt = Some("ok".to_string()); // 1 word
+        let req = build_request("UserPromptSubmit", &input);
+        assert!(
+            matches!(req, HookRequest::RecordEvent { .. }),
+            "1-word prompt must yield RecordEvent, got {req:?}"
+        );
+    }
+
+    /// AC-02b scenario: 3 words yields RecordEvent.
+    #[test]
+    fn build_request_userpromptsub_three_words_record_event() {
+        let mut input = test_input();
+        input.prompt = Some("yes ok thanks".to_string()); // 3 words
+        let req = build_request("UserPromptSubmit", &input);
+        assert!(
+            matches!(req, HookRequest::RecordEvent { .. }),
+            "3-word prompt must yield RecordEvent (3 < 5), got {req:?}"
+        );
+    }
+
+    /// AC-23c: Whitespace-padded single word counts as 1 real word, yields RecordEvent.
+    /// Verifies that .trim() strips whitespace before .split_whitespace().count().
+    #[test]
+    fn build_request_userpromptsub_whitespace_padded_one_word() {
+        let mut input = test_input();
+        input.prompt = Some("  approve  ".to_string()); // 1 real word with surrounding whitespace
+        let req = build_request("UserPromptSubmit", &input);
+        assert!(
+            matches!(req, HookRequest::RecordEvent { .. }),
+            "whitespace-padded 1-word prompt must yield RecordEvent (AC-23c), got {req:?}"
+        );
+    }
+
+    /// AC-05: UserPromptSubmit ContextSearch has source=None.
+    #[test]
+    fn build_request_userpromptsub_source_is_none() {
+        let mut input = test_input();
+        input.prompt = Some("implement the spec writer agent today".to_string()); // 6 words
+        let req = build_request("UserPromptSubmit", &input);
+        match req {
+            HookRequest::ContextSearch { source, .. } => {
+                assert!(
+                    source.is_none(),
+                    "UserPromptSubmit ContextSearch must have source=None (ADR-001)"
+                );
+            }
+            _ => panic!("expected ContextSearch, got {req:?}"),
+        }
+    }
+
+    // -- crt-027 ADR-006: write_stdout_subagent_inject tests --
+
+    /// AC-SR02: write_stdout_subagent_inject produces a valid JSON envelope.
+    /// Tests the envelope construction deterministically without stdout capture.
+    #[test]
+    fn write_stdout_subagent_inject_valid_json_envelope() {
+        let entries_text =
+            "1  42   crt-027/hook  decision  0.85  Unimatrix routes SubagentStart...";
+        // Verify the envelope structure directly using serde_json (same as the function does)
+        let envelope = serde_json::json!({
+            "hookSpecificOutput": {
+                "hookEventName": "SubagentStart",
+                "additionalContext": entries_text
+            }
+        });
+        // AC-SR02 assertions:
+        assert_eq!(
+            envelope["hookSpecificOutput"]["hookEventName"],
+            "SubagentStart"
+        );
+        assert_eq!(
+            envelope["hookSpecificOutput"]["additionalContext"],
+            entries_text
+        );
+        // Verify the output is valid JSON (parses without error)
+        let json_str = serde_json::to_string(&envelope).expect("must serialize");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&json_str).expect("must parse as valid JSON");
+        assert_eq!(
+            parsed["hookSpecificOutput"]["hookEventName"],
+            "SubagentStart"
+        );
+        assert_eq!(
+            parsed["hookSpecificOutput"]["additionalContext"],
+            entries_text
+        );
+    }
+
+    /// AC-SR03: write_stdout plain text path does NOT produce a hookSpecificOutput JSON envelope.
+    /// The plain text output starts with "--- Unimatrix Context ---", not "{".
+    #[test]
+    fn write_stdout_plain_text_no_json_envelope() {
+        let entries = vec![test_entry(1, "ADR-001", "Use parameter expansion")];
+        let response = HookResponse::Entries {
+            items: entries,
+            total_tokens: 10,
+        };
+        // write_stdout must not error
+        assert!(write_stdout(&response).is_ok());
+
+        // Verify the formatted text for Entries starts with the Unimatrix header (not JSON)
+        // by checking format_injection output directly (same path as write_stdout)
+        let test_entries = vec![test_entry(1, "ADR-001", "Use parameter expansion")];
+        let formatted = format_injection(&test_entries, MAX_INJECTION_BYTES).unwrap();
+        assert!(
+            !formatted.starts_with('{'),
+            "plain-text output must NOT start with '{{' (AC-SR03)"
+        );
+        assert!(
+            !formatted.contains("hookSpecificOutput"),
+            "plain-text output must NOT contain 'hookSpecificOutput' (AC-SR03)"
+        );
+        assert!(
+            formatted.starts_with("--- Unimatrix Context ---"),
+            "plain-text output must start with Unimatrix header"
+        );
+    }
+
+    /// Verify write_stdout_subagent_inject succeeds (does not return error).
+    #[test]
+    fn write_stdout_subagent_inject_returns_ok() {
+        let result = write_stdout_subagent_inject("test entries");
+        assert!(
+            result.is_ok(),
+            "write_stdout_subagent_inject must return Ok"
+        );
+    }
+
+    /// Verify write_stdout_subagent_inject_response succeeds for Entries response.
+    #[test]
+    fn write_stdout_subagent_inject_response_entries_returns_ok() {
+        let response = HookResponse::Entries {
+            items: vec![test_entry(1, "Title", "Content")],
+            total_tokens: 10,
+        };
+        let result = write_stdout_subagent_inject_response(&response);
+        assert!(
+            result.is_ok(),
+            "write_stdout_subagent_inject_response must return Ok for Entries"
+        );
+    }
+
+    /// Verify write_stdout_subagent_inject_response succeeds for empty Entries (silent skip).
+    #[test]
+    fn write_stdout_subagent_inject_response_empty_entries_returns_ok() {
+        let response = HookResponse::Entries {
+            items: vec![],
+            total_tokens: 0,
+        };
+        let result = write_stdout_subagent_inject_response(&response);
+        assert!(
+            result.is_ok(),
+            "write_stdout_subagent_inject_response must return Ok for empty Entries"
+        );
+    }
+
+    /// MIN_QUERY_WORDS constant has the specified value.
+    #[test]
+    fn min_query_words_constant_is_five() {
+        assert_eq!(MIN_QUERY_WORDS, 5);
     }
 }

@@ -114,6 +114,11 @@ pub enum HookRequest {
         feature: Option<String>,
         k: Option<u32>,
         max_tokens: Option<u32>,
+        /// Originating hook event type; `None` is treated as `"UserPromptSubmit"` by
+        /// `dispatch_request`. Set to `Some("SubagentStart")` by the SubagentStart arm
+        /// in `hook.rs`. See ADR-001 crt-027.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        source: Option<String>,
     },
 
     /// Request a role briefing (future).
@@ -921,6 +926,7 @@ mod tests {
             feature: None,
             k: Some(5),
             max_tokens: None,
+            source: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
@@ -953,6 +959,7 @@ mod tests {
             feature: None,
             k: None,
             max_tokens: None,
+            source: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
@@ -1155,5 +1162,123 @@ mod tests {
             "Some should include the field: {json}"
         );
         assert!(json.contains("col-017"));
+    }
+
+    // -- crt-027: ContextSearch source field tests (ADR-001) --
+
+    #[test]
+    fn wire_context_search_source_absent_deserializes_to_none() {
+        // R-01 scenario 1, AC-05a: JSON without `source` key deserializes to None (backward compat)
+        let json = br#"{"type":"ContextSearch","query":"design the hook","session_id":null,"role":null,"task":null,"feature":null,"k":null,"max_tokens":null}"#;
+        let decoded = deserialize_request(json).unwrap();
+        match decoded {
+            HookRequest::ContextSearch { source, .. } => {
+                assert!(source.is_none(), "source should be None when key is absent");
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+    }
+
+    #[test]
+    fn wire_context_search_source_present_deserializes_to_value() {
+        // R-01 scenario 2: JSON with `"source": "SubagentStart"` deserializes correctly
+        let json = br#"{"type":"ContextSearch","query":"subagent query","source":"SubagentStart"}"#;
+        let decoded = deserialize_request(json).unwrap();
+        match decoded {
+            HookRequest::ContextSearch { source, .. } => {
+                assert_eq!(
+                    source.as_deref(),
+                    Some("SubagentStart"),
+                    "source should be Some(\"SubagentStart\")"
+                );
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+    }
+
+    #[test]
+    fn wire_context_search_source_none_serializes_without_field() {
+        // R-01 scenario 3: source: None must not emit the `source` key in serialized JSON
+        let req = HookRequest::ContextSearch {
+            query: "test".to_string(),
+            session_id: None,
+            role: None,
+            task: None,
+            feature: None,
+            k: None,
+            max_tokens: None,
+            source: None,
+        };
+        let bytes = serialize_request(&req).unwrap();
+        let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert!(
+            !value.as_object().unwrap().contains_key("source"),
+            "source: None should omit the key from serialized JSON; got: {value}"
+        );
+    }
+
+    #[test]
+    fn context_search_source_none_round_trip() {
+        // R-01 scenario 3 (round-trip): None survives serialize → deserialize
+        let req = HookRequest::ContextSearch {
+            query: "test".to_string(),
+            session_id: None,
+            role: None,
+            task: None,
+            feature: None,
+            k: None,
+            max_tokens: None,
+            source: None,
+        };
+        let bytes = serialize_request(&req).unwrap();
+        let decoded = deserialize_request(&bytes).unwrap();
+        match decoded {
+            HookRequest::ContextSearch { source, .. } => {
+                assert!(source.is_none(), "source should round-trip as None");
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+    }
+
+    #[test]
+    fn context_search_source_subagentstart_round_trip() {
+        // R-01 scenario 2 (round-trip): Some("SubagentStart") survives serialize → deserialize
+        let req = HookRequest::ContextSearch {
+            query: "subagent task".to_string(),
+            session_id: Some("sess-sa".to_string()),
+            role: None,
+            task: None,
+            feature: None,
+            k: None,
+            max_tokens: None,
+            source: Some("SubagentStart".to_string()),
+        };
+        let bytes = serialize_request(&req).unwrap();
+        let decoded = deserialize_request(&bytes).unwrap();
+        match decoded {
+            HookRequest::ContextSearch { source, .. } => {
+                assert_eq!(
+                    source.as_deref(),
+                    Some("SubagentStart"),
+                    "source should round-trip as Some(\"SubagentStart\")"
+                );
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+    }
+
+    #[test]
+    fn hook_request_briefing_variant_still_present() {
+        // R-13, C-04: HookRequest::Briefing variant must not be removed by crt-027
+        let req = HookRequest::Briefing {
+            role: "developer".to_string(),
+            task: "implement feature".to_string(),
+            feature: None,
+            max_tokens: None,
+        };
+        assert!(
+            matches!(req, HookRequest::Briefing { .. }),
+            "HookRequest::Briefing variant must still be present"
+        );
     }
 }

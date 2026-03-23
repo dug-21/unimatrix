@@ -24,11 +24,11 @@ use crate::infra::registry::TrustLevel;
 use crate::infra::usage_dedup::UsageDedup;
 use crate::services::store_ops::NliStoreConfig;
 
-pub(crate) mod briefing;
 pub(crate) mod confidence;
 pub(crate) mod contradiction_cache;
 pub(crate) mod effectiveness;
 pub(crate) mod gateway;
+pub(crate) mod index_briefing;
 pub(crate) mod nli_detection;
 pub(crate) mod observation;
 pub(crate) mod search;
@@ -38,7 +38,6 @@ pub(crate) mod store_ops;
 pub(crate) mod typed_graph;
 pub(crate) mod usage;
 
-pub(crate) use briefing::BriefingService;
 pub(crate) use confidence::ConfidenceService;
 pub use confidence::{ConfidenceState, ConfidenceStateHandle};
 pub use contradiction_cache::{
@@ -46,6 +45,9 @@ pub use contradiction_cache::{
 };
 pub use effectiveness::{EffectivenessState, EffectivenessStateHandle};
 pub(crate) use gateway::{RateLimitConfig, SecurityGateway};
+// DEPRECATED (crt-027): UNIMATRIX_BRIEFING_K env var is no longer read.
+// IndexBriefingService uses k=20 hardcoded. Use max_tokens parameter to control budget.
+pub(crate) use index_briefing::{IndexBriefingParams, IndexBriefingService, derive_briefing_query};
 pub(crate) use search::{FusionWeights, RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
 pub(crate) use store_ops::StoreService;
@@ -235,11 +237,11 @@ pub struct ServiceLayer {
     pub(crate) search: SearchService,
     pub(crate) store_ops: StoreService,
     pub(crate) confidence: ConfidenceService,
-    pub(crate) briefing: BriefingService,
+    pub(crate) briefing: IndexBriefingService, // crt-027: replaces BriefingService
     pub(crate) status: StatusService,
     pub(crate) usage: UsageService,
     /// crt-018b: effectiveness classification cache shared with SearchService,
-    /// BriefingService, and the background tick. Held here for external access
+    /// IndexBriefingService, and the background tick. Held here for external access
     /// via `effectiveness_state_handle()` (mirrors `confidence_state_handle()`).
     effectiveness_state: EffectivenessStateHandle,
     /// crt-021: typed graph state cache shared with SearchService and the background
@@ -271,7 +273,7 @@ impl ServiceLayer {
     ///
     /// Used by the binary crate (`main.rs`) to pass the shared handle to
     /// `spawn_background_tick` so the background tick shares the same
-    /// `Arc<RwLock<EffectivenessState>>` as the search and briefing paths.
+    /// `Arc<RwLock<EffectivenessState>>` as the search and index briefing paths.
     /// Mirrors `confidence_state_handle()` (crt-018b).
     pub fn effectiveness_state_handle(&self) -> EffectivenessStateHandle {
         Arc::clone(&self.effectiveness_state)
@@ -366,7 +368,7 @@ impl ServiceLayer {
         let confidence_state_handle = confidence.state_handle();
 
         // crt-018b (ADR-001): create effectiveness state handle once; clone into
-        // SearchService, BriefingService, and the background tick so all components
+        // SearchService, IndexBriefingService, and the background tick so all components
         // share the same Arc<RwLock<EffectivenessState>> (mirrors confidence pattern).
         let effectiveness_state = EffectivenessState::new_handle();
 
@@ -419,13 +421,13 @@ impl ServiceLayer {
             nli_store_cfg,
         );
 
-        let semantic_k = briefing::parse_semantic_k();
-        let briefing = BriefingService::new(
+        // crt-027: UNIMATRIX_BRIEFING_K deprecated — IndexBriefingService uses k=20 hardcoded.
+        // parse_semantic_k() removed. See ADR-003 crt-027.
+        let briefing = IndexBriefingService::new(
             Arc::clone(&entry_store),
             search.clone(),
             Arc::clone(&gateway),
-            semantic_k,
-            Arc::clone(&effectiveness_state), // crt-018b (ADR-004): required, non-optional
+            Arc::clone(&effectiveness_state), // required, non-optional (ADR-004 crt-018b pattern)
         );
 
         let status = StatusService::new(
@@ -454,7 +456,7 @@ impl ServiceLayer {
             briefing,
             status,
             usage,
-            effectiveness_state, // crt-018b: held for external access via effectiveness_state_handle()
+            effectiveness_state, // crt-018b: shared with SearchService, IndexBriefingService, background tick
             typed_graph_state,   // crt-021: held for external access via typed_graph_handle()
             contradiction_cache, // GH #278: held for external access via contradiction_cache_handle()
             ml_inference_pool,   // crt-022 (ADR-004): shared ML inference pool

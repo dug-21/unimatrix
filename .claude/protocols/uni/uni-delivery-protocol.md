@@ -49,6 +49,8 @@ Phase 4: Delivery
 
 The human starts Session 2 by providing the IMPLEMENTATION-BRIEF.md path (or GH Issue number).
 
+**Precondition**: If `product/features/{feature-id}/IMPLEMENTATION-BRIEF.md` does not exist → **STOP**. Return to human: "Design session has not run for {feature-id}. Run the design session first."
+
 The Delivery Leader:
 1. Reads `product/features/{feature-id}/IMPLEMENTATION-BRIEF.md` — Component Map, ADR references, constraints
 2. Reads `product/features/{feature-id}/ACCEPTANCE-MAP.md` — AC verification methods
@@ -62,7 +64,13 @@ The Delivery Leader:
      next_phase: "spec",
      agent_id: "{feature-id}-delivery-leader"
    )
+   context_briefing(
+     topic: "{feature-id}",
+     session_id: "{session-id}",
+     max_tokens: 1000
+   )
    ```
+   Include the briefing result as a knowledge package in each spawned agent's context for Stage 3a.
 6. Plans Stage 3b waves from the IMPLEMENTATION-BRIEF before spawning any implementation agents
 
 ---
@@ -129,7 +137,10 @@ Wait for both agents to complete.
 
 ```
 context_cycle(type: "phase-end", phase: "spec", next_phase: "spec-review", agent_id: "{feature-id}-delivery-leader")
+context_briefing(topic: "{feature-id}", session_id: "{session-id}", max_tokens: 1000)
 ```
+
+Include briefing result in uni-validator agent context for Gate 3a.
 
 ### Component Map Update (MANDATORY — between Stage 3a and Gate 3a)
 
@@ -187,7 +198,9 @@ Task(subagent_type: "uni-validator",
 **Gate results:**
 - **PASS** →
   1. `context_cycle(type: "phase-end", phase: "spec-review", next_phase: "develop", agent_id: "{feature-id}-delivery-leader")`
-  2. Commit pseudocode + test plans + updated brief (`pseudocode: component design + test plans (#{issue})`), then proceed to Stage 3b
+  2. `context_briefing(topic: "{feature-id}", session_id: "{session-id}", max_tokens: 1000)`
+     Include briefing result in each uni-rust-dev agent context for Stage 3b.
+  3. Commit pseudocode + test plans + updated brief (`pseudocode: component design + test plans (#{issue})`), then proceed to Stage 3b
 - **REWORKABLE FAIL** → Loop back to Stage 3a agents (max 2 iterations). Include failure details in re-spawn prompt.
 - **SCOPE FAIL** → Session stops. Return to human with recommendation.
 
@@ -288,7 +301,9 @@ Task(subagent_type: "uni-validator",
 **Gate results:**
 - **PASS** →
   1. `context_cycle(type: "phase-end", phase: "develop", next_phase: "test", agent_id: "{feature-id}-delivery-leader")`
-  2. Commit all implementation code (`impl: Stage 3b complete (#{issue})`), then proceed to Stage 3c
+  2. `context_briefing(topic: "{feature-id}", session_id: "{session-id}", max_tokens: 1000)`
+     Include briefing result in uni-tester agent context for Stage 3c.
+  3. Commit all implementation code (`impl: Stage 3b complete (#{issue})`), then proceed to Stage 3c
 - **REWORKABLE FAIL** / **SCOPE FAIL** → Same as Gate 3a
 
 ---
@@ -368,7 +383,9 @@ Task(subagent_type: "uni-validator",
 **Gate results:**
 - **PASS** →
   1. `context_cycle(type: "phase-end", phase: "test", next_phase: "pr-review", agent_id: "{feature-id}-delivery-leader")`
-  2. Proceed to Phase 4
+  2. `context_briefing(topic: "{feature-id}", session_id: "{session-id}", max_tokens: 1000)`
+     Include briefing result in uni-review-pr and uni-docs context for Phase 4.
+  3. Proceed to Phase 4
 - **REWORKABLE FAIL** / **SCOPE FAIL** → Same as Gates 3a/3b.
 
 ---
@@ -469,6 +486,7 @@ After returning to the human, close the pr-review phase and stop the cycle:
 
 ```
 context_cycle(type: "phase-end", phase: "pr-review", agent_id: "{feature-id}-delivery-leader")
+context_briefing(topic: "{feature-id}", session_id: "{session-id}", max_tokens: 1000)
 context_cycle(type: "stop", topic: "{feature-id}", outcome: "Session 2 complete. All gates passed. PR: {url}", agent_id: "{feature-id}-delivery-leader")
 ```
 
@@ -533,12 +551,16 @@ NEVER pipe full cargo output into context.
 DELIVERY LEADER (you):
   Init:       Read IMPLEMENTATION-BRIEF.md + ACCEPTANCE-MAP.md
               context_cycle(type: "start", topic: "{feature-id}", next_phase: "spec", agent_id: "{feature-id}-delivery-leader")
+              context_briefing(topic: "{feature-id}", session_id: "{session-id}", max_tokens: 1000)
   Stage 3a:   Task(uni-pseudocode) + Task(uni-tester) — parallel, ONE message
               ...wait for both to complete...
               context_cycle(type: "phase-end", phase: "spec", next_phase: "spec-review", ...)
+              context_briefing(topic: "{feature-id}", session_id: "{session-id}", max_tokens: 1000)
               UPDATE Component Map in IMPLEMENTATION-BRIEF.md with actual file paths
               Task(uni-validator, Gate 3a) — MANDATORY BLOCK
-              ...PASS → context_cycle(phase-end, spec-review → develop) → commit → Stage 3b
+              ...PASS → context_cycle(phase-end, spec-review → develop)
+                        context_briefing(topic: "{feature-id}", session_id: "{session-id}", max_tokens: 1000)
+                        → commit → Stage 3b
               ...FAIL → rework or stop...
   Stage 3b:   PLAN waves from IMPLEMENTATION-BRIEF (1 wave = all parallel, N waves = sequential)
               FOR EACH WAVE: Task(uni-rust-dev × components-in-wave) — ONE message, no worktree isolation
@@ -546,18 +568,23 @@ DELIVERY LEADER (you):
               ...wait for wave... commit wave... spawn next wave...
               ...wait...
               Task(uni-validator, Gate 3b)
-              ...PASS → context_cycle(phase-end, develop → test) → commit → Stage 3c
+              ...PASS → context_cycle(phase-end, develop → test)
+                        context_briefing(topic: "{feature-id}", session_id: "{session-id}", max_tokens: 1000)
+                        → commit → Stage 3c
               ...FAIL → rework or stop...
   Stage 3c:   Task(uni-tester, execution mode)
               ...wait...
               Task(uni-validator, Gate 3c)
-              ...PASS → context_cycle(phase-end, test → pr-review) → Phase 4
+              ...PASS → context_cycle(phase-end, test → pr-review)
+                        context_briefing(topic: "{feature-id}", session_id: "{session-id}", max_tokens: 1000)
+                        → Phase 4
               ...FAIL → rework or stop...
   Phase 4:    git commit + push + gh pr create
               [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
               /uni-review-pr — security review + merge readiness
               Combined return — SESSION 2 ENDS
               context_cycle(type: "phase-end", phase: "pr-review", ...)
+              context_briefing(topic: "{feature-id}", session_id: "{session-id}", max_tokens: 1000)
               context_cycle(type: "stop", topic: "{feature-id}", outcome: "...", agent_id: "{feature-id}-delivery-leader")
 ```
 
@@ -585,6 +612,12 @@ context_cycle(
   type: "phase-end",
   phase: "pr-review",
   agent_id: "{feature-id}-delivery-leader"
+)
+
+context_briefing(
+  topic: "{feature-id}",
+  session_id: "{session-id}",
+  max_tokens: 1000
 )
 
 context_cycle(

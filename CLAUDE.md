@@ -7,6 +7,8 @@
    | Implement, build, code | delivery | `.claude/protocols/uni/uni-delivery-protocol.md` |
    | Bug fix | bugfix | `.claude/protocols/uni/uni-bugfix-protocol.md` |
 
+   **Session type selection rule**: If `product/features/{feature-id}/IMPLEMENTATION-BRIEF.md` does not exist, use **design** regardless of stated intent — delivery cannot proceed without it.
+
    Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries and behavioral rules. The protocol defines what to do and when; the SM definition defines how you behave.
 
    For PR review: `/uni-review-pr`. For retrospective: `/uni-retro`.
