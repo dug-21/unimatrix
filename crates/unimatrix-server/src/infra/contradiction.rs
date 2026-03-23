@@ -9,7 +9,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
 use regex::Regex;
-use unimatrix_core::Store;
 use unimatrix_core::{EmbedService, VectorStore};
 use unimatrix_store::{EntryRecord, Status};
 
@@ -84,14 +83,22 @@ impl Default for ContradictionConfig {
 /// Embeds the given title+content, searches HNSW for neighbors, and applies
 /// the conflict heuristic. Returns the highest-scoring contradiction pair,
 /// or None if no contradiction detected (col-013 ADR-006).
+///
+/// `entries` must be pre-fetched in a Tokio context before dispatching to a
+/// rayon worker — GH #360: rayon threads have no Tokio runtime, so any
+/// `Handle::current()` call inside a rayon closure panics.
 pub fn check_entry_contradiction(
     content: &str,
     title: &str,
-    store: &Store,
+    entries: &[EntryRecord],
     vector_store: &dyn VectorStore,
     embed_adapter: &dyn EmbedService,
     config: &ContradictionConfig,
 ) -> Result<Option<ContradictionPair>, ServerError> {
+    // Build O(1) lookup map from pre-fetched entries (fetched in Tokio context before
+    // this closure was dispatched to the rayon pool — GH #360).
+    let entry_map: HashMap<u64, &EntryRecord> = entries.iter().map(|e| (e.id, e)).collect();
+
     let embedding = embed_adapter
         .embed_entry(title, content)
         .map_err(ServerError::Core)?;
@@ -107,11 +114,11 @@ pub fn check_entry_contradiction(
             continue;
         }
 
-        let neighbor_entry =
-            match tokio::runtime::Handle::current().block_on(store.get(neighbor.entry_id)) {
-                Ok(e) => e,
-                Err(_) => continue,
-            };
+        // Look up neighbor from pre-fetched map (no I/O — GH #360)
+        let neighbor_entry = match entry_map.get(&neighbor.entry_id) {
+            Some(e) => *e,
+            None => continue,
+        };
 
         if neighbor_entry.status != Status::Active {
             continue;
