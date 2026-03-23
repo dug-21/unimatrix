@@ -24,10 +24,8 @@ use crate::infra::validation::{
     validate_lookup_params, validate_quarantine_params, validate_search_params,
     validate_status_params, validate_store_params, validated_id, validated_k, validated_limit,
 };
-#[cfg(feature = "mcp-briefing")]
-use crate::infra::validation::{validate_briefing_params, validated_max_tokens};
-#[cfg(feature = "mcp-briefing")]
-use crate::mcp::response::{Briefing, format_briefing};
+// crt-027: validate_briefing_params/validated_max_tokens/Briefing/format_briefing imports
+// removed; handler rewritten by context_briefing agent
 use crate::mcp::response::{
     format_correct_success, format_deprecate_success, format_duplicate_found,
     format_enroll_success, format_lookup_results, format_quarantine_success,
@@ -912,76 +910,14 @@ impl UnimatrixServer {
 
         #[cfg(feature = "mcp-briefing")]
         {
-            // 1. Identity + format + audit context (vnc-008: ToolContext)
-            let ctx = self
-                .build_context(&params.agent_id, &params.format, &params.session_id)
-                .await?;
-            self.require_cap(&ctx.agent_id, Capability::Read).await?;
-
-            // 2. Validation
-            validate_briefing_params(&params).map_err(rmcp::ErrorData::from)?;
-            validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
-
-            // 3. Validate max_tokens
-            let max_tokens =
-                validated_max_tokens(params.max_tokens).map_err(rmcp::ErrorData::from)?;
-
-            // 4. Delegate to BriefingService (vnc-007)
-            let briefing_params = crate::services::briefing::BriefingParams {
-                role: Some(params.role.clone()),
-                task: Some(params.task.clone()),
-                feature: params.feature.clone(),
-                max_tokens,
-                include_conventions: true,
-                include_semantic: true,
-                injection_history: None,
-            };
-
-            let result = self
-                .services
-                .briefing
-                .assemble(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
-                .await
-                .map_err(rmcp::ErrorData::from)?;
-
-            // 5. Convert BriefingResult -> Briefing for format_briefing
-            let briefing = Briefing {
-                role: params.role.clone(),
-                task: params.task.clone(),
-                conventions: result.conventions,
-                relevant_context: result.relevant_context,
-                search_available: result.search_available,
-            };
-
-            // 6. Audit (transport-specific, best-effort)
-            self.audit_fire_and_forget(AuditEvent {
-                event_id: 0,
-                timestamp: 0,
-                session_id: String::new(),
-                agent_id: ctx.agent_id.clone(),
-                operation: "context_briefing".to_string(),
-                target_ids: result.entry_ids.clone(),
-                outcome: Outcome::Success,
-                detail: format!("briefing for role={}, task={}", params.role, params.task),
-            });
-
-            // 7. Usage recording (fire-and-forget via UsageService)
-            self.services.usage.record_access(
-                &result.entry_ids,
-                AccessSource::Briefing,
-                UsageContext {
-                    session_id: ctx.audit_ctx.session_id.clone(),
-                    agent_id: Some(ctx.agent_id.clone()),
-                    helpful: params.helpful,
-                    feature_cycle: params.feature.clone(),
-                    trust_level: Some(ctx.trust_level),
-                    access_weight: 1,
-                    current_phase: None,
-                },
-            );
-
-            // 8. Format response (transport-specific)
-            Ok(format_briefing(&briefing, ctx.format))
+            // crt-027: Handler body rewritten by context_briefing agent.
+            // BriefingService replaced by IndexBriefingService; Briefing/format_briefing
+            // replaced by IndexEntry/format_index_table. This stub preserves compilation
+            // until the context_briefing handler agent completes its changes.
+            let _ = &params;
+            Ok(CallToolResult::error(vec![rmcp::model::Content::text(
+                "context_briefing handler migration in progress (crt-027)",
+            )]))
         }
     }
 

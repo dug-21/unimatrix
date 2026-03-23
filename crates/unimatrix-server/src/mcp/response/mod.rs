@@ -40,9 +40,9 @@ pub use mutations::{
 // Re-export status formatting
 pub use status::{CoAccessClusterEntry, StatusReport, format_status_report};
 
-// Re-export briefing formatting
+// Re-export briefing formatting (crt-027: Briefing/format_briefing replaced by IndexEntry/format_index_table)
 #[cfg(feature = "mcp-briefing")]
-pub use briefing::{Briefing, format_briefing, format_retrospective_report};
+pub use briefing::{IndexEntry, SNIPPET_CHARS, format_index_table, format_retrospective_report};
 
 // Re-export retrospective markdown formatting (vnc-011)
 #[cfg(feature = "mcp-briefing")]
@@ -892,85 +892,22 @@ mod tests {
         assert_eq!(json["action"], "updated");
     }
 
-    // -- Briefing tests --
-
-    #[cfg(feature = "mcp-briefing")]
-    fn make_briefing(search_available: bool) -> Briefing {
-        Briefing {
-            role: "architect".to_string(),
-            task: "design auth module".to_string(),
-            conventions: vec![make_entry(1, "Convention 1", "Always use trait objects")],
-            relevant_context: vec![(make_entry(3, "Context 1", "Auth patterns"), 0.85)],
-            search_available,
-        }
-    }
+    // -- Briefing index table smoke tests (crt-027: replaces old Briefing/format_briefing) --
 
     #[cfg(feature = "mcp-briefing")]
     #[test]
-    fn test_format_briefing_summary() {
-        let briefing = make_briefing(true);
-        let result = format_briefing(&briefing, ResponseFormat::Summary);
-        let text = result_text(&result);
-        assert!(text.contains("Briefing for architect"));
-        assert!(text.contains("Conventions: 1"));
-        assert!(text.contains("Context: 1"));
-        assert!(!text.contains("Duties"));
-    }
-
-    #[cfg(feature = "mcp-briefing")]
-    #[test]
-    fn test_format_briefing_markdown_all_sections() {
-        let briefing = make_briefing(true);
-        let result = format_briefing(&briefing, ResponseFormat::Markdown);
-        let text = result_text(&result);
-        assert!(text.contains("### Conventions"));
-        assert!(text.contains("### Relevant Context"));
-        assert!(text.contains("Convention 1"));
-        assert!(text.contains("Context 1"));
-        assert!(!text.contains("Duties"));
-        assert!(!text.contains("duties"));
-    }
-
-    #[cfg(feature = "mcp-briefing")]
-    #[test]
-    fn test_format_briefing_markdown_search_unavailable() {
-        let briefing = make_briefing(false);
-        let result = format_briefing(&briefing, ResponseFormat::Markdown);
-        let text = result_text(&result);
-        assert!(text.contains("search unavailable"));
-    }
-
-    #[cfg(feature = "mcp-briefing")]
-    #[test]
-    fn test_format_briefing_json() {
-        let briefing = make_briefing(true);
-        let result = format_briefing(&briefing, ResponseFormat::Json);
-        let text = result_text(&result);
-        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
-        assert_eq!(parsed["role"], "architect");
-        assert_eq!(parsed["task"], "design auth module");
-        assert_eq!(parsed["search_available"], true);
-        assert!(parsed["conventions"].is_array());
-        assert!(parsed["relevant_context"].is_array());
-        assert!(parsed.get("duties").is_none());
-    }
-
-    #[cfg(feature = "mcp-briefing")]
-    #[test]
-    fn test_format_briefing_empty_sections() {
-        let briefing = Briefing {
-            role: "dev".to_string(),
-            task: "code".to_string(),
-            conventions: vec![],
-            relevant_context: vec![],
-            search_available: true,
+    fn test_format_index_table_smoke() {
+        let entry = IndexEntry {
+            id: 42,
+            topic: "product-vision".to_string(),
+            category: "decision".to_string(),
+            confidence: 0.85,
+            snippet: "Unimatrix is a self-learning knowledge engine.".to_string(),
         };
-        let result = format_briefing(&briefing, ResponseFormat::Markdown);
-        let text = result_text(&result);
-        assert!(text.contains("No conventions found"));
-        assert!(text.contains("No relevant context found"));
-        assert!(!text.contains("duties"));
-        assert!(!text.contains("Duties"));
+        let result = format_index_table(&[entry]);
+        assert!(result.contains("42"), "must contain entry id");
+        assert!(result.contains("product-vision"), "must contain topic");
+        assert!(result.contains("0.85"), "must contain confidence");
     }
 
     // -- crt-003: Contradiction status report tests --
