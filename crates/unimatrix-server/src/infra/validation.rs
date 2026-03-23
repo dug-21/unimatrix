@@ -278,7 +278,9 @@ pub fn validate_status_params(params: &StatusParams) -> Result<(), ServerError> 
 
 /// Validate context_briefing parameters.
 pub fn validate_briefing_params(params: &BriefingParams) -> Result<(), ServerError> {
-    validate_string_field("role", &params.role, MAX_ROLE_LEN, false)?;
+    if let Some(role) = &params.role {
+        validate_string_field("role", role, MAX_ROLE_LEN, false)?;
+    }
     validate_string_field("task", &params.task, MAX_TASK_LEN, true)?;
     if let Some(feature) = &params.feature {
         validate_string_field("feature", feature, MAX_FEATURE_LEN, false)?;
@@ -1062,7 +1064,7 @@ mod tests {
     #[test]
     fn test_validate_briefing_params_minimal() {
         let params = BriefingParams {
-            role: "architect".to_string(),
+            role: Some("architect".to_string()),
             task: "design auth module".to_string(),
             feature: None,
             max_tokens: None,
@@ -1077,7 +1079,7 @@ mod tests {
     #[test]
     fn test_validate_briefing_params_role_too_long() {
         let params = BriefingParams {
-            role: "a".repeat(MAX_ROLE_LEN + 1),
+            role: Some("a".repeat(MAX_ROLE_LEN + 1)),
             task: "ok".to_string(),
             feature: None,
             max_tokens: None,
@@ -1092,7 +1094,7 @@ mod tests {
     #[test]
     fn test_validate_briefing_params_task_too_long() {
         let params = BriefingParams {
-            role: "ok".to_string(),
+            role: Some("ok".to_string()),
             task: "a".repeat(MAX_TASK_LEN + 1),
             feature: None,
             max_tokens: None,
@@ -1107,7 +1109,7 @@ mod tests {
     #[test]
     fn test_validate_briefing_params_feature_valid() {
         let params = BriefingParams {
-            role: "dev".to_string(),
+            role: Some("dev".to_string()),
             task: "impl".to_string(),
             feature: Some("vnc-003".to_string()),
             max_tokens: None,
@@ -1122,7 +1124,7 @@ mod tests {
     #[test]
     fn test_validate_briefing_params_feature_too_long() {
         let params = BriefingParams {
-            role: "dev".to_string(),
+            role: Some("dev".to_string()),
             task: "impl".to_string(),
             feature: Some("a".repeat(MAX_FEATURE_LEN + 1)),
             max_tokens: None,

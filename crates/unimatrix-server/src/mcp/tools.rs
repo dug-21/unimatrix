@@ -202,8 +202,8 @@ pub struct StatusParams {
 /// Parameters for getting an orientation briefing.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BriefingParams {
-    /// Your role (e.g., "architect", "developer"). Used as a last-resort query fallback only — prefer a descriptive `task`.
-    pub role: String,
+    /// Your role (e.g., "architect", "developer"). Optional — used as a last-resort query fallback only when `task` is empty and `feature` is absent. Prefer a descriptive `task`.
+    pub role: Option<String>,
     /// What you are about to do, as a focused 1-2 sentence natural language description. This is the primary search query — be specific. Example: "design the query derivation pipeline for context_briefing". Avoid vague phrases like "start task" or bare keyword lists; the ranking uses NLI entailment scoring which works best with coherent sentences.
     pub task: String,
     /// Feature cycle identifier (e.g., "crt-027"). Used as query fallback when `task` is empty; does not apply a scoring boost.
@@ -941,8 +941,11 @@ impl UnimatrixServer {
             // 6. Three-step query derivation (FR-11, AC-09)
             // Step 1: task param if non-empty
             // Step 2: synthesized from feature_cycle + top 3 topic_signals (from session_state)
-            // Step 3: feature/topic fallback (params.feature else params.role)
-            let topic = params.feature.as_deref().unwrap_or(&params.role);
+            // Step 3: feature/topic fallback (params.feature else params.role else "unknown")
+            let topic = params
+                .feature
+                .as_deref()
+                .unwrap_or_else(|| params.role.as_deref().unwrap_or("unknown"));
 
             let query = crate::services::derive_briefing_query(
                 Some(&params.task),
@@ -2287,10 +2290,10 @@ mod tests {
 
     #[test]
     fn test_briefing_params_required_fields() {
-        let json = r#"{"role": "architect", "task": "design auth module"}"#;
+        let json = r#"{"task": "design auth module"}"#;
         let params: BriefingParams = serde_json::from_str(json).unwrap();
-        assert_eq!(params.role, "architect");
         assert_eq!(params.task, "design auth module");
+        assert!(params.role.is_none());
         assert!(params.feature.is_none());
         assert!(params.max_tokens.is_none());
     }
@@ -2306,6 +2309,7 @@ mod tests {
             "format": "markdown"
         }"#;
         let params: BriefingParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.role, Some("developer".to_string()));
         assert_eq!(params.feature.unwrap(), "vnc-003");
         assert_eq!(params.max_tokens.unwrap(), 5000);
         assert_eq!(params.format.unwrap(), "markdown");
@@ -2313,8 +2317,9 @@ mod tests {
 
     #[test]
     fn test_briefing_params_missing_role() {
+        // role is now optional — absent role must succeed
         let json = r#"{"task": "design"}"#;
-        assert!(serde_json::from_str::<BriefingParams>(json).is_err());
+        assert!(serde_json::from_str::<BriefingParams>(json).is_ok());
     }
 
     #[test]
