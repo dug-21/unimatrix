@@ -202,13 +202,13 @@ pub struct StatusParams {
 /// Parameters for getting an orientation briefing.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct BriefingParams {
-    /// Role to get briefed on (e.g., "architect", "developer").
+    /// Your role (e.g., "architect", "developer"). Used as a last-resort query fallback only — prefer a descriptive `task`.
     pub role: String,
-    /// Task description for context retrieval.
+    /// What you are about to do, as a focused 1-2 sentence natural language description. This is the primary search query — be specific. Example: "design the query derivation pipeline for context_briefing". Avoid vague phrases like "start task" or bare keyword lists; the ranking uses NLI entailment scoring which works best with coherent sentences.
     pub task: String,
-    /// Feature tag to boost relevant entries.
+    /// Feature cycle identifier (e.g., "crt-027"). Used as query fallback when `task` is empty; does not apply a scoring boost.
     pub feature: Option<String>,
-    /// Max output tokens (default: 3000, range: 500-10000).
+    /// Reserved for future output truncation. Accepted and validated (500–10000, default 3000) but not currently enforced on results.
     pub max_tokens: Option<i64>,
     /// Agent making the request.
     pub agent_id: Option<String>,
@@ -894,7 +894,7 @@ impl UnimatrixServer {
 
     #[tool(
         name = "context_briefing",
-        description = "Get an orientation briefing for a role and task. Includes role conventions and task-relevant context from the knowledge base. Use at the start of any task."
+        description = "Get a ranked index of knowledge entries relevant to your current task. Returns up to 20 active entries scored by semantic similarity and NLI entailment. Use at the start of any task to orient yourself before designing or implementing."
     )]
     async fn context_briefing(
         &self,
