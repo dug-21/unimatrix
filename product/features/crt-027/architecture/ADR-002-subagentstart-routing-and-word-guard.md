@@ -51,7 +51,7 @@ specific role descriptions.
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
-    if query.is_empty() {
+    if query.trim().is_empty() {
         generic_record_event(event, session_id, input)
     } else {
         HookRequest::ContextSearch {
@@ -75,10 +75,10 @@ const MIN_QUERY_WORDS: usize = 5;
 
 "UserPromptSubmit" => {
     let query = input.prompt.clone().unwrap_or_default();
-    if query.is_empty() {
+    if query.trim().is_empty() {
         return generic_record_event(event, session_id, input);
     }
-    let word_count = query.split_whitespace().count();
+    let word_count = query.trim().split_whitespace().count();
     if word_count < MIN_QUERY_WORDS {
         return generic_record_event(event, session_id, input);
     }
@@ -94,6 +94,12 @@ const MIN_QUERY_WORDS: usize = 5;
 `MIN_QUERY_WORDS = 5` chosen as the minimum meaningful query. A 5-word prompt provides
 enough tokens for embedding retrieval to return relevant results. The constant is public
 within the crate so tests can reference it without hardcoding the magic number.
+
+Both guards use `.trim()` before evaluation: `query.trim().is_empty()` for the empty
+check, and `query.trim().split_whitespace().count()` for word counting. This ensures
+a prompt consisting entirely of whitespace is treated as empty by both guards, and that
+leading/trailing whitespace does not inflate the word count. The implementation value
+held in `query` is the original (untrimmed) string — trimming is evaluation-only.
 
 ### Consequences
 

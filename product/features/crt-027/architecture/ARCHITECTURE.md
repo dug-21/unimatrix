@@ -56,7 +56,7 @@ Two changes:
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
-    if query.is_empty() {
+    if query.trim().is_empty() {
         generic_record_event(event, session_id, input)
     } else {
         HookRequest::ContextSearch {
@@ -80,10 +80,10 @@ const MIN_QUERY_WORDS: usize = 5;
 
 "UserPromptSubmit" => {
     let query = input.prompt.clone().unwrap_or_default();
-    if query.is_empty() {
+    if query.trim().is_empty() {
         return generic_record_event(event, session_id, input);
     }
-    let word_count = query.split_whitespace().count();
+    let word_count = query.trim().split_whitespace().count();
     if word_count < MIN_QUERY_WORDS {
         return generic_record_event(event, session_id, input);
     }
@@ -91,9 +91,14 @@ const MIN_QUERY_WORDS: usize = 5;
 }
 ```
 
+Both guards use `.trim()` before evaluation: `query.trim().is_empty()` for the empty
+check, and `query.trim().split_whitespace().count()` for word counting. A prompt
+consisting entirely of whitespace is treated as empty; leading/trailing whitespace does
+not inflate the word count.
+
 `MIN_QUERY_WORDS` is a named compile-time constant (not a magic number) so future config
-exposure is straightforward. SubagentStart is unaffected — it retains only the empty-string
-guard. See ADR-002.
+exposure is straightforward. SubagentStart is unaffected — it retains only the
+`query.trim().is_empty()` guard. See ADR-002.
 
 ### 3. `unimatrix-server/src/uds/listener.rs` — Observation Tagging + CompactPayload Migration
 
@@ -228,15 +233,19 @@ SubagentStart hook
       → dispatch_request extracts source from struct
       → ObservationRow { hook: source.unwrap_or("UserPromptSubmit") }
   → handle_context_search() [unchanged]
-  → HookResponse::Entries written to stdout
-  → Claude Code reads stdout → injects into subagent context (SR-01 design contract)
+  → HookResponse::Entries returned to hook process
+  → hook.rs: write_stdout_subagent_inject() wraps formatted entries in JSON envelope:
+      { "hookSpecificOutput": { "hookEventName": "SubagentStart",
+                                "additionalContext": "<formatted entries text>" } }
+  → Claude Code reads JSON stdout → injects additionalContext into subagent context
 
-UserPromptSubmit hook (>= 5 words)
-  → hook.rs: word_count >= MIN_QUERY_WORDS guard passes
+UserPromptSubmit hook (>= 5 trimmed words)
+  → hook.rs: query.trim().split_whitespace().count() >= MIN_QUERY_WORDS guard passes
   → HookRequest::ContextSearch { source: None } (backward compat)
-  → [same path as above, observation tagged "UserPromptSubmit"]
+  → [same dispatch path as above, observation tagged "UserPromptSubmit"]
+  → hook.rs: write_stdout() writes formatted entries as plain text (no JSON envelope)
 
-UserPromptSubmit hook (< 5 words)
+UserPromptSubmit hook (< 5 trimmed words, or all-whitespace)
   → falls through to generic_record_event → RecordEvent (fire-and-forget)
   → no injection, no observation
 
@@ -289,10 +298,12 @@ See ADR files for full rationale. Summary:
 |----------|--------|-----|
 | Wire protocol source field | `#[serde(default)]` optional `source` on ContextSearch | ADR-001 |
 | SubagentStart routing | Route to ContextSearch, graceful fallback to RecordEvent when empty | ADR-002 |
+| `.trim()` on empty/word-count guards | Both SubagentStart empty guard and UserPromptSubmit word-count guard use `.trim()` | ADR-002 |
 | UNIMATRIX_BRIEFING_K fate | Deprecated, not read by IndexBriefingService; k=20 hardcoded | ADR-003 |
 | IndexBriefingService dependencies | EffectivenessStateHandle required, non-optional (ADR-004 crt-018b pattern) | ADR-003 |
 | format_compaction_payload migration | Flat indexed table replacing section structure; 10 test invariants rewritten | ADR-004 |
 | IndexEntry as typed WA-5 contract | Typed struct rather than inline string format | ADR-005 |
+| SubagentStart stdout JSON envelope | SubagentStart response uses `hookSpecificOutput` JSON wrapper; UserPromptSubmit uses plain text | ADR-006 (#3251) |
 
 ---
 
@@ -328,18 +339,36 @@ See ADR files for full rationale. Summary:
 | `IndexEntry` | `{ id: u64, topic: String, category: String, confidence: f64, snippet: String }` | `mcp/response/briefing.rs` |
 | `format_index_table` | `(entries: &[IndexEntry]) -> String` | `mcp/response/briefing.rs` |
 | `derive_briefing_query` | `(task: Option<&str>, session_state: Option<&SessionState>, topic: &str) -> String` | shared (location TBD: `services/briefing.rs` or new `services/query_derive.rs`) |
-| `MIN_QUERY_WORDS` | `usize = 5`, compile-time constant | `uds/hook.rs` |
+| `MIN_QUERY_WORDS` | `const usize = 5`, compile-time constant; word count evaluated on `query.trim().split_whitespace()` | `uds/hook.rs` |
+| `write_stdout_subagent_inject` | `(entries_text: &str) -> io::Result<()>`; wraps text in `hookSpecificOutput` JSON envelope and writes to stdout | `uds/hook.rs` |
 | `format_compaction_payload` (updated) | signature gains `entries: &[IndexEntry]`; drops `categories: &CompactionCategories` | `uds/listener.rs` |
 
 ---
 
-## SR-01: SubagentStart stdout injection — Graceful Fallback Design
+## SR-01: SubagentStart stdout injection — Confirmed with JSON Envelope Requirement
 
-**Status: Unconfirmed at architecture time. Graceful fallback designed.**
+**Status: Confirmed. SubagentStart stdout injection is supported by Claude Code, but requires
+a specific JSON envelope format. See ADR-006.**
 
-The SCOPE.md asserts Claude Code reads SubagentStart hook stdout and injects into the subagent
-context. No ASS spike confirms this. The architecture is designed so WA-4a degrades safely
-if this assumption is false:
+Claude Code documentation confirms SubagentStart supports context injection via stdout.
+However, SubagentStart does NOT use plain text stdout like UserPromptSubmit — it requires
+a specific JSON envelope:
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SubagentStart",
+    "additionalContext": "injected text here"
+  }
+}
+```
+
+The `additionalContext` field contains the same formatted index/entries text that
+`UserPromptSubmit` would write as plain text. The server returns `HookResponse::Entries`
+unchanged — wrapping is a hook-process-only formatting concern. See ADR-006 for the
+full decision and `write_stdout_subagent_inject` helper specification.
+
+The architecture is designed so WA-4a degrades safely if writing the JSON envelope fails:
 
 - If Claude Code ignores SubagentStart stdout: the hook still routes to `ContextSearch`,
   the server still records the `ObservationRow` with `hook: "SubagentStart"`, and the
@@ -418,8 +447,9 @@ The spec writer must enumerate these 10 replacements as explicit ACs, not delete
 ## Open Questions
 
 None. All open questions from scoping (OQ-1 through OQ-4) are resolved in the SCOPE.md.
-SR-01 (SubagentStart stdout behavior) is unconfirmed but the architecture degrades gracefully
-as documented above. SR-05 (UNIMATRIX_BRIEFING_K fate) is resolved by ADR-003 (deprecated).
+SR-01 (SubagentStart stdout behavior) is resolved: confirmed that SubagentStart stdout
+injection is supported when the `hookSpecificOutput` JSON envelope is used (ADR-006, #3251).
+SR-05 (UNIMATRIX_BRIEFING_K fate) is resolved by ADR-003 (deprecated).
 SR-06 (WA-5 format contract) is resolved by the typed `IndexEntry` struct (ADR-005).
 SR-08 (cold-state fallback) is handled by step 3 of `derive_briefing_query` — the `topic`
 param string is always available as a minimum fallback. SR-09 (SM context budget) is resolved

@@ -25,10 +25,11 @@ the `_` fallthrough. When `prompt_snippet` is non-empty, the arm returns
 - `source` = `Some("SubagentStart".to_string())`
 - `role`, `task`, `feature`, `k`, `max_tokens` = `None`
 
-**FR-02** — When `prompt_snippet` is absent or empty in a SubagentStart event,
-`build_request` MUST fall through to `generic_record_event` (fire-and-forget
-`RecordEvent`). No `ContextSearch` is emitted and no content is written to stdout.
-The hook exits 0.
+**FR-02** — When `prompt_snippet` is absent or empty (including whitespace-only values)
+in a SubagentStart event, `build_request` MUST fall through to `generic_record_event`
+(fire-and-forget `RecordEvent`). The empty check MUST use `.trim().is_empty()` so that
+a `prompt_snippet` of `"   "` is treated as absent. No `ContextSearch` is emitted and
+no content is written to stdout. The hook exits 0.
 
 **FR-03** — `HookRequest::ContextSearch` MUST gain an optional `source: Option<String>`
 field with `#[serde(default)]`. When absent, the field deserializes to `None` and is
@@ -40,12 +41,29 @@ fire-and-forget). The response is written to stdout by the hook process. The exi
 `is_fire_and_forget` match in `hook.rs` does not include `ContextSearch` and requires
 no change.
 
+**FR-04b** — When a SubagentStart `ContextSearch` request receives a non-empty response,
+`hook.rs` MUST write the `hookSpecificOutput` JSON envelope to stdout instead of plain
+text. The required format is:
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SubagentStart",
+    "additionalContext": "<formatted entries>"
+  }
+}
+```
+The `additionalContext` value MUST be the formatted entry string (the same content
+previously written as plain text on the `UserPromptSubmit` path). The two paths produce
+structurally different stdout output: SubagentStart uses the `hookSpecificOutput` JSON
+envelope; `UserPromptSubmit` writes plain text. This divergence is intentional — it
+follows the Claude Code hooks documentation specification for SubagentStart injection.
+
 **FR-05** — `hook.rs` MUST define a compile-time constant `MIN_QUERY_WORDS: usize = 5`.
-The `UserPromptSubmit` arm in `build_request` MUST count whitespace-delimited words in
-the query string. If `word_count < MIN_QUERY_WORDS`, the arm MUST fall through to
-`generic_record_event` (no `ContextSearch` emitted, no injection). This guard applies
-ONLY to `UserPromptSubmit`. The SubagentStart arm uses the existing empty-string guard
-(FR-02) and is unaffected by `MIN_QUERY_WORDS`.
+The `UserPromptSubmit` arm in `build_request` MUST compute word count via
+`query.trim().split_whitespace().count()`. If `word_count < MIN_QUERY_WORDS`, the arm
+MUST fall through to `generic_record_event` (no `ContextSearch` emitted, no injection).
+This guard applies ONLY to `UserPromptSubmit`. The SubagentStart arm uses the
+`.trim().is_empty()` guard (FR-02) and is unaffected by `MIN_QUERY_WORDS`.
 
 **FR-06** — The hook exit code MUST remain 0 for all SubagentStart outcomes: empty
 `prompt_snippet`, server unavailable, search error, and successful injection. This
@@ -238,12 +256,33 @@ Existing `UserPromptSubmit` callers that omit `source` deserialize to `None`.
 observation `hook` column.
 Verification: (a) `hook.rs` unit test: SubagentStart builds `source = Some("SubagentStart")`; (b) `listener.rs` integration test: `handle_context_search` with `source = Some("SubagentStart")` writes `hook = "SubagentStart"` to the observations table; (c) existing `UserPromptSubmit` test still writes `hook = "UserPromptSubmit"`.
 
-**AC-SR01** — SubagentStart stdout injection is confirmed to work in Claude Code:
-the hook process writes `HookResponse::Entries` to stdout and Claude Code injects the
-content into the subagent before its first token.
-Verification: integration smoke test or architect-confirmed documentation reference.
-If unconfirmed at architecture time, this AC remains OPEN and the architect must add a
-spike task or pivot the design to session-state-only recording before delivery begins.
+**AC-SR01** — CONFIRMED: SubagentStart stdout injection works in Claude Code via the
+`hookSpecificOutput` JSON envelope. The hook process writes:
+```json
+{"hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": "<content>"}}
+```
+to stdout; Claude Code injects `additionalContext` into the subagent before its first token.
+Confirmed via Claude Code hooks documentation — SubagentStart supports additionalContext
+injection via hookSpecificOutput JSON envelope.
+Verification: unit test on `write_stdout` with SubagentStart source produces valid JSON
+with `hookSpecificOutput.additionalContext` containing the formatted entries (see AC-SR02).
+
+**AC-SR02** — When SubagentStart routes to `ContextSearch` and receives a non-empty
+response, `hook.rs` writes the `hookSpecificOutput` JSON envelope to stdout. The written
+bytes MUST parse as valid JSON with the structure:
+`hookSpecificOutput.hookEventName == "SubagentStart"` and
+`hookSpecificOutput.additionalContext` containing the non-empty formatted entry string.
+Verification: unit test on the stdout-writing path with `source = SubagentStart` input;
+assert output parses as JSON and `hookSpecificOutput.additionalContext` is non-empty.
+
+**AC-SR03** — When `UserPromptSubmit` routes to `ContextSearch` and receives a response,
+`hook.rs` writes plain text to stdout (not the `hookSpecificOutput` JSON envelope). The
+stdout content from a `UserPromptSubmit` response MUST NOT contain the string
+`"hookSpecificOutput"`. SubagentStart and UserPromptSubmit produce structurally different
+stdout formats.
+Verification: unit test with `source = UserPromptSubmit` (or `source = None`) asserts
+stdout does not start with `{` / does not contain `"hookSpecificOutput"`; paired with
+AC-SR02 which asserts SubagentStart does use the envelope.
 
 ### WA-4b: IndexBriefingService
 
@@ -367,6 +406,20 @@ inputs.
 Verification: `hook.rs` unit test with `event = "SubagentStart"` and `prompt_snippet =
 "implement"` (one word) asserting `ContextSearch` is returned.
 
+**AC-23b** — SubagentStart with a whitespace-only `prompt_snippet` (e.g., `"   "`) falls
+through to `generic_record_event` and returns `HookRequest::RecordEvent`. The guard is
+`.trim().is_empty()`, NOT `.is_empty()`, so `"   "` is treated as absent.
+Verification: `hook.rs` unit test with `event = "SubagentStart"` and
+`prompt_snippet = "   "` asserting `RecordEvent` (not `ContextSearch`) is returned.
+
+**AC-23c** — `UserPromptSubmit` word count uses `.trim().split_whitespace().count()`.
+A prompt of `"  approve  "` produces word count 1, which is `< MIN_QUERY_WORDS`, so
+the arm falls through to `generic_record_event` (no injection). Leading and trailing
+whitespace MUST NOT inflate the word count.
+Verification: `hook.rs` unit test with `event = "UserPromptSubmit"` and
+`query = "  approve  "` (1 real word with surrounding whitespace) asserting `RecordEvent`
+is returned, not `ContextSearch`.
+
 ### Feature Flag and Wire Protocol (SR-02, SR-07)
 
 **AC-24** — `IndexBriefingService` compiles and is exercised by `handle_compact_payload`
@@ -431,10 +484,12 @@ Priority: task → synthesized session signal → topic fallback (FR-11).
 
 ### MIN_QUERY_WORDS Guard
 
-The constant `MIN_QUERY_WORDS: usize = 5` in `hook.rs` is the minimum whitespace-delimited
-word count for a `UserPromptSubmit` query to route to `ContextSearch`. Below this
-threshold the event falls through to `generic_record_event` (fire-and-forget, no
-injection). This guard does not apply to SubagentStart.
+The constant `MIN_QUERY_WORDS: usize = 5` in `hook.rs` is the minimum word count
+(computed via `query.trim().split_whitespace().count()`) for a `UserPromptSubmit` query
+to route to `ContextSearch`. Below this threshold the event falls through to
+`generic_record_event` (fire-and-forget, no injection). Leading and trailing whitespace
+are stripped before counting — `"  approve  "` counts as 1 word. This guard does not
+apply to SubagentStart; SubagentStart uses `.trim().is_empty()` only.
 
 ---
 
@@ -449,8 +504,10 @@ injection). This guard does not apply to SubagentStart.
 4. Hook connects to server via UDS, sends request synchronously.
 5. Server `dispatch_request` routes to `handle_context_search`.
 6. Server returns `HookResponse::Entries` with up to k injected entries.
-7. Hook writes entries to stdout (FR-04).
-8. Claude Code injects stdout content into subagent context before first token.
+7. Hook writes the `hookSpecificOutput` JSON envelope to stdout (FR-04, FR-04b):
+   `{"hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": "<entries>"}}`.
+8. Claude Code reads `additionalContext` from the envelope and injects it into the
+   subagent context before the first token.
 9. Observation is recorded with `hook = "SubagentStart"` (FR-03, AC-05).
 
 ### SM calls context_briefing at phase boundary
@@ -558,12 +615,11 @@ New file:
 
 ## Open Questions
 
-**OQ-SR01 (BLOCKING for architecture)** — SR-01: SubagentStart stdout injection is
-unverified. The SCOPE asserts Claude Code reads SubagentStart hook stdout and injects it
-into the subagent context, but no ASS spike or documentation reference is cited. The
-architect MUST resolve this before delivery begins — either confirm with a 30-minute
-spike or documentation reference, or pivot WA-4a to session-state-only recording with
-no stdout response content. AC-SR01 tracks this verification.
+**OQ-SR01 (RESOLVED)** — SubagentStart stdout injection is confirmed. Claude Code reads
+SubagentStart hook stdout via the `hookSpecificOutput` JSON envelope (`hookEventName` +
+`additionalContext`). Confirmed via Claude Code hooks documentation. The hook MUST write
+this envelope format (not plain text) for SubagentStart responses. AC-SR01 is now CONFIRMED;
+AC-SR02 and AC-SR03 track the divergent stdout format requirement. No spike or pivot needed.
 
 **OQ-SR08 (Low risk)** — Step 3 fallback quality when `topic` is a feature ID with no
 knowledge base entries (e.g., `"crt-027"` returns zero semantic matches). The architect

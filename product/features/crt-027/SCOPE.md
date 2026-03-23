@@ -36,6 +36,8 @@ index format for the upcoming WA-5 transcript prepend.
    surface for transcript prepend.
 4. Update the SM delivery protocol to call `context_briefing(topic)` immediately after
    each `context_cycle(type: "phase-end", ...)` call.
+5. Add `MIN_QUERY_WORDS: usize = 5` compile-time constant in `hook.rs`. UserPromptSubmit
+   with fewer than 5 trimmed words produces no injection.
 
 ## Non-Goals
 
