@@ -82,6 +82,30 @@ fn sanitize_metadata_field(value: &str) -> String {
         .collect()
 }
 
+/// Allowlist-validate the `source` field before writing to the observations hook column.
+///
+/// Valid values (compile-time exhaustive set, ADR-004 crt-028):
+///   "UserPromptSubmit" — default; UserPromptSubmit hook arm (source: None)
+///   "SubagentStart"    — SubagentStart hook arm
+///
+/// Any other value (including None, empty string, and arbitrarily long strings)
+/// falls back to "UserPromptSubmit".
+///
+/// SOLE WRITE GATE: This function is the only place that validates the `source`
+/// field before it is written to the observations `hook` column. Future code
+/// that constructs ObservationRow for ContextSearch-derived observations MUST
+/// call this function. Do not add a second write site that bypasses this helper
+/// (GH #354, SR-05 — guards against schema pollution and future injection risk).
+///
+/// To add a new source type: add a new arm to the match below.
+fn sanitize_observation_source(source: Option<&str>) -> String {
+    match source {
+        Some("UserPromptSubmit") => "UserPromptSubmit".to_string(),
+        Some("SubagentStart")    => "SubagentStart".to_string(),
+        _                        => "UserPromptSubmit".to_string(),
+    }
+}
+
 /// Fire-and-forget `spawn_blocking`. The returned JoinHandle is dropped.
 fn spawn_blocking_fire_and_forget<F>(f: F)
 where
@@ -809,8 +833,8 @@ async fn dispatch_request(
                     let obs = ObservationRow {
                         session_id: sid.clone(),
                         ts_millis: (unix_now_secs() as i64).saturating_mul(1000),
-                        // ADR-001 crt-027: use source field, default to "UserPromptSubmit"
-                        hook: source.as_deref().unwrap_or("UserPromptSubmit").to_string(),
+                        // GH #354: allowlist-validated; see sanitize_observation_source (ADR-004 crt-028)
+                        hook: sanitize_observation_source(source.as_deref()),
                         tool: None,
                         input: Some(truncated_input),
                         response_size: None,
@@ -3375,6 +3399,53 @@ mod tests {
     #[test]
     fn sanitize_metadata_field_strips_newline() {
         assert_eq!(sanitize_metadata_field("line1\nline2"), "line1line2");
+    }
+
+    // -- crt-028: sanitize_observation_source tests (AC-11, R-07) --
+
+    #[test]
+    fn sanitize_observation_source_known_user_prompt_submit() {
+        assert_eq!(
+            sanitize_observation_source(Some("UserPromptSubmit")),
+            "UserPromptSubmit"
+        );
+    }
+
+    #[test]
+    fn sanitize_observation_source_known_subagent_start() {
+        assert_eq!(
+            sanitize_observation_source(Some("SubagentStart")),
+            "SubagentStart"
+        );
+    }
+
+    #[test]
+    fn sanitize_observation_source_none_defaults_to_user_prompt_submit() {
+        assert_eq!(sanitize_observation_source(None), "UserPromptSubmit");
+    }
+
+    #[test]
+    fn sanitize_observation_source_unknown_value_defaults_to_user_prompt_submit() {
+        assert_eq!(
+            sanitize_observation_source(Some("unknown")),
+            "UserPromptSubmit"
+        );
+    }
+
+    #[test]
+    fn sanitize_observation_source_empty_string_defaults_to_user_prompt_submit() {
+        assert_eq!(
+            sanitize_observation_source(Some("")),
+            "UserPromptSubmit"
+        );
+    }
+
+    #[test]
+    fn sanitize_observation_source_long_known_prefix_defaults_to_user_prompt_submit() {
+        assert_eq!(
+            sanitize_observation_source(Some("UserPromptSubmitXXXXX")),
+            "UserPromptSubmit"
+        );
     }
 
     // -- crt-011: Consumer dedup tests --
