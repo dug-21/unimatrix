@@ -132,12 +132,12 @@ via the tail-bytes read cap.
 ### Output format when both blocks are present
 
 ```
---- Recent Context ---
-[Turn N] User: <text>
-[Turn N] Assistant: <text>
-[Turn N] Tool: ReadTool(file_path=/foo/bar.rs) → <300-byte snippet>
+=== Recent conversation (last N exchanges) ===
+[User] <text>
+[Assistant] <text>
+[tool: ReadTool(file_path=/foo/bar.rs) → <300-byte snippet>]
 ...
---- Unimatrix Knowledge ---
+=== End recent conversation ===
 <flat indexed table from handle_compact_payload>
 ```
 
@@ -224,8 +224,8 @@ enum ExchangeTurn {
 /// Combine optional transcript block with briefing content.
 ///
 /// Prepend rules (D-5, SR-04):
-/// - Both present: transcript + "\n--- Unimatrix Knowledge ---\n" + briefing
-/// - Transcript only (briefing empty): "--- Recent Context ---\n" + transcript
+/// - Both present: transcript block + "\n" + briefing
+/// - Transcript only (briefing empty): transcript block verbatim (includes own === headers)
 /// - Briefing only (transcript None/empty): briefing verbatim
 /// - Both empty: ""
 ///
@@ -527,9 +527,9 @@ surfaces immediately.
 When `BriefingContent.content` is empty (e.g., no Unimatrix entries matched the query) but
 a transcript block was extracted:
 
-- Output: `"--- Recent Context ---\n{transcript_block}"` — transcript block emitted with its
-  own section header, no merged/ambiguous block.
-- The `"--- Unimatrix Knowledge ---"` separator is omitted when briefing is empty.
+- Output: transcript block verbatim — already includes `=== Recent conversation ===` header
+  and `=== End recent conversation ===` footer. No additional section separator needed.
+- Briefing separator is omitted when briefing is empty.
 - When transcript block is also empty (or None): nothing written to stdout (FR-01.4).
 
 This is handled entirely in `prepend_transcript()` with explicit case analysis — no

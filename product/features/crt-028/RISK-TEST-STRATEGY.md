@@ -169,11 +169,13 @@
 **Recommendation**: Emit the pair with tool-use pairs when at least one `ToolPair` is present, even if assistant text is empty. Suppress only if both assistant text AND tool pairs are empty. This preserves maximum context.
 
 **Test Scenarios**:
-1. Construct a JSONL assistant turn with `tool_use` blocks and a `thinking` block but no `type: "text"` blocks; assert the pair is emitted with the tool pair line(s) and `[Assistant]` is either omitted or blank (spec must clarify which).
+1. Construct a JSONL assistant turn with `tool_use` blocks and a `thinking` block but no `type: "text"` blocks; assert the pair is emitted with the tool pair line(s) and `[Assistant]` text is empty (FR-02.4: concatenation of zero text blocks = empty string).
 2. Construct a JSONL assistant turn with only a `thinking` block (no text, no tool_use); assert no pair is emitted for this turn.
 3. Construct a session consisting entirely of tool-call-only assistant turns; assert at least one pair is emitted if any tool_use is present.
 
-**Coverage Requirement**: Spec must resolve OQ-SPEC-1 before tester implements scenarios 1 and 3. Risk rating remains Medium until resolved.
+**Resolution** (risk strategist + spec writer): Emit the pair when at least one `ToolPair` is present. Suppress only when both `asst_text` and `tool_pairs` are empty (pure-`thinking` turn). Spec FR-02.4 is authoritative. Scenarios 1 and 3 are unblocked.
+
+**Coverage Requirement**: All three scenarios are implementable. Non-negotiable gate test.
 
 ---
 
@@ -256,7 +258,7 @@ Total PreCompact wall time = local file I/O + server round-trip. The 40ms `HOOK_
 | Zero-byte transcript file | `extract_transcript_block` returns `None`; briefing written | R-03 |
 | File exactly equals TAIL_WINDOW_BYTES | Read from start (no seek), all lines parsed | R-03 |
 | All JSONL lines are `type: "system"` | Zero pairs; returns `None` | R-04 |
-| Assistant turn: only `thinking` blocks | No `AssistantText` or `ToolPair` emitted; pair suppressed or emitted with empty assistant section (OQ-SPEC-1) | R-10 |
+| Assistant turn: only `thinking` blocks | No `ToolPair` present; pair suppressed entirely (FR-02.4, OQ-SPEC-1 resolved) | R-10 |
 | Multiple `tool_use` in one assistant turn, all results present | All tool pairs emitted on separate lines | R-04 |
 | `tool_result` content is a 10 KB grep output | Snippet truncated to 300 bytes at UTF-8 boundary | R-06 |
 | `tool_result` content array has multiple text blocks | Only the first `type: "text"` block is used (spec FR-03.4) — verify implementation does not concatenate all blocks | R-04 |
@@ -381,7 +383,7 @@ This handles `file_len = 0` (seek_back = 0, no seek), `file_len < window` (seek_
 - R-03: zero-byte file and window-boundary seek behavior (OQ-SPEC-2)
 - R-07: `sanitize_observation_source` unit test, all 6 cases (AC-11 / GH #354)
 - R-08: quarantine exclusion in `IndexBriefingService::index()` (AC-12 / GH #355)
-- R-10: OQ-SPEC-1 resolution test — tool-only assistant turn (blocked on spec clarification)
+- R-10: tool-only assistant turn emitted, pure-thinking turn suppressed (OQ-SPEC-1 resolved, FR-02.4)
 
 ---
 
