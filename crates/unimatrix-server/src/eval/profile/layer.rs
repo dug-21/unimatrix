@@ -317,6 +317,8 @@ impl EvalServiceLayer {
             Arc::new(profile.config_overrides.inference.clone()),
             // col-023: built-in default registry for eval profiles
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
+            // GH #311: default params for eval profiles (no operator config in eval context).
+            Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
         );
 
         Ok(EvalServiceLayer {

@@ -305,7 +305,6 @@ mod tests {
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
             Arc::clone(&usage_dedup),
-            // dsn-001: default; startup wiring will supply config value.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
             test_pool,
             // crt-023: disabled NLI for test (no model in test env)
@@ -315,6 +314,8 @@ mod tests {
             Arc::new(crate::infra::config::InferenceConfig::default()),
             // col-023: built-in default registry for test
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
+            // GH #311: default params for tests.
+            Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
         );
 
         // Build LifecycleHandles with ServiceLayer included (#92 fix).
@@ -404,7 +405,6 @@ mod tests {
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
             Arc::clone(&usage_dedup),
-            // dsn-001: default; startup wiring will supply config value.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
             test_pool2,
             // crt-023: disabled NLI for test (no model in test env)
@@ -414,6 +414,8 @@ mod tests {
             Arc::new(crate::infra::config::InferenceConfig::default()),
             // col-023: built-in default registry for test
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
+            // GH #311: default params for tests.
+            Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
         );
 
         // Drop locals except ServiceLayer

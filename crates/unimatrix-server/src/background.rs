@@ -300,12 +300,12 @@ async fn background_tick_loop(
     contradiction_cache: ContradictionScanCacheHandle, // GH #278: threaded to run_single_tick
     audit_log: Arc<AuditLog>,
     auto_quarantine_cycles: u32,
-    _confidence_params: Arc<ConfidenceParams>, // dsn-001: operator-configured weights (for future use in run_single_tick)
-    ml_inference_pool: Arc<RayonPool>,         // crt-022 (ADR-004): ML inference pool
-    nli_enabled: bool,                         // crt-023 (ADR-007): NLI auto-quarantine guard
-    nli_auto_quarantine_threshold: f32,        // crt-023 (ADR-007): threshold for NLI-only edges
-    nli_handle: Arc<NliServiceHandle>,         // crt-023: bootstrap promotion on each tick
-    inference_config: Arc<InferenceConfig>,    // crt-023: bootstrap promotion config
+    confidence_params: Arc<ConfidenceParams>, // dsn-001: operator-configured weights, passed to run_single_tick → StatusService (GH #311)
+    ml_inference_pool: Arc<RayonPool>,        // crt-022 (ADR-004): ML inference pool
+    nli_enabled: bool,                        // crt-023 (ADR-007): NLI auto-quarantine guard
+    nli_auto_quarantine_threshold: f32,       // crt-023 (ADR-007): threshold for NLI-only edges
+    nli_handle: Arc<NliServiceHandle>,        // crt-023: bootstrap promotion on each tick
+    inference_config: Arc<InferenceConfig>,   // crt-023: bootstrap promotion config
 ) {
     let tick_interval_secs = read_tick_interval();
     let mut interval = tokio::time::interval(Duration::from_secs(tick_interval_secs));
@@ -365,6 +365,7 @@ async fn background_tick_loop(
             nli_auto_quarantine_threshold,
             &nli_handle,
             &inference_config,
+            &confidence_params, // GH #311: operator-configured weights for StatusService
         )
         .await;
 
@@ -413,6 +414,7 @@ async fn run_single_tick(
     nli_auto_quarantine_threshold: f32, // crt-023 (ADR-007): threshold for NLI-only edges
     nli_handle: &Arc<NliServiceHandle>, // crt-023: bootstrap promotion on each tick
     inference_config: &Arc<InferenceConfig>, // crt-023: bootstrap promotion config
+    confidence_params: &Arc<ConfidenceParams>, // GH #311: operator-configured weights for StatusService
 ) -> Result<(), String> {
     let tick_start = now_secs();
     tracing::info!("background tick starting");
@@ -428,6 +430,7 @@ async fn run_single_tick(
         Arc::clone(embed_service),
         Arc::clone(adapt_service),
         Arc::clone(confidence_state),
+        Arc::clone(confidence_params),
         Arc::clone(contradiction_cache),
         Arc::clone(ml_inference_pool),
         tick_observation_registry,

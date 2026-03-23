@@ -26,6 +26,12 @@ pub(crate) struct UsageService {
     /// the capturing closure uses the latest tick values, not cold-start defaults.
     /// All lock acquisitions use `unwrap_or_else(|e| e.into_inner())` (FM-03).
     confidence_state: ConfidenceStateHandle,
+    /// Operator-configured confidence weights (dsn-001, GH #311).
+    ///
+    /// Resolved once at startup via `resolve_confidence_params()` and threaded
+    /// here through `ServiceLayer`. All `compute_confidence` calls in this
+    /// service use these params — never `ConfidenceParams::default()` inline.
+    confidence_params: Arc<unimatrix_engine::confidence::ConfidenceParams>,
 }
 
 /// Discriminates the origin of a usage event.
@@ -66,16 +72,18 @@ pub(crate) struct UsageContext {
 }
 
 impl UsageService {
-    /// Create a new UsageService with shared store, dedup state, and confidence handle.
+    /// Create a new UsageService with shared store, dedup state, confidence handle, and params.
     pub(crate) fn new(
         store: Arc<Store>,
         usage_dedup: Arc<UsageDedup>,
         confidence_state: ConfidenceStateHandle,
+        confidence_params: Arc<unimatrix_engine::confidence::ConfidenceParams>,
     ) -> Self {
         UsageService {
             store,
             usage_dedup,
             confidence_state,
+            confidence_params,
         }
     }
 
@@ -205,14 +213,10 @@ impl UsageService {
             }
         });
 
+        // GH #311: use operator-configured params, not ConfidenceParams::default().
+        let params = Arc::clone(&self.confidence_params);
         let confidence_fn: Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync> =
-            Box::new(move |entry, now| {
-                crate::confidence::compute_confidence(
-                    entry,
-                    now,
-                    &unimatrix_engine::confidence::ConfidenceParams::default(),
-                )
-            });
+            Box::new(move |entry, now| crate::confidence::compute_confidence(entry, now, &params));
 
         let _ = tokio::spawn(async move {
             // Async usage recording (nxs-011: record_usage_with_confidence is now async)
@@ -318,6 +322,8 @@ impl UsageService {
         }
 
         let store = Arc::clone(&self.store);
+        // GH #311: use operator-configured params, not ConfidenceParams::default().
+        let params = Arc::clone(&self.confidence_params);
         let _ = tokio::spawn(async move {
             // Async usage recording (nxs-011)
             if let Err(e) = store
@@ -330,11 +336,7 @@ impl UsageService {
                     &[],
                     Some(
                         Box::new(move |entry: &unimatrix_store::EntryRecord, now: u64| {
-                            crate::confidence::compute_confidence(
-                                entry,
-                                now,
-                                &unimatrix_engine::confidence::ConfidenceParams::default(),
-                            )
+                            crate::confidence::compute_confidence(entry, now, &params)
                         })
                             as Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync>,
                     ),
@@ -358,7 +360,13 @@ mod usage_tests {
         let store = Arc::new(open_test_store(&dir).await);
         let usage_dedup = Arc::new(UsageDedup::new());
         let confidence_state = crate::services::confidence::ConfidenceState::new_handle();
-        let service = UsageService::new(Arc::clone(&store), usage_dedup, confidence_state);
+        let confidence_params = Arc::new(unimatrix_engine::confidence::ConfidenceParams::default());
+        let service = UsageService::new(
+            Arc::clone(&store),
+            usage_dedup,
+            confidence_state,
+            confidence_params,
+        );
         (service, store, dir)
     }
 

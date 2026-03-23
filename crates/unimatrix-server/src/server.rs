@@ -284,7 +284,6 @@ impl UnimatrixServer {
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
             Arc::clone(&usage_dedup),
-            // dsn-001: default; startup wiring will supply config value in follow-up.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
             test_pool,
             // crt-023: disabled NLI for test server (no model in test env)
@@ -294,6 +293,8 @@ impl UnimatrixServer {
             Arc::new(crate::infra::config::InferenceConfig::default()),
             // col-023: built-in default registry for test server
             Arc::new(DomainPackRegistry::with_builtin_claude_code()),
+            // GH #311: default params for tests; production paths supply resolved params.
+            Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
         );
 
         // crt-018b: extract handle after ServiceLayer is fully constructed so

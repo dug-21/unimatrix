@@ -1978,6 +1978,7 @@ async fn write_lesson_learned(
     }
 
     // 8. Seed confidence on new entry (best-effort)
+    // GH #311: use operator-configured params from ServiceLayer, not ConfidenceParams::default().
     if let Ok(entry) = server.store.get(new_id).await {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -1986,7 +1987,7 @@ async fn write_lesson_learned(
         let conf = unimatrix_engine::confidence::compute_confidence(
             &entry,
             now,
-            &unimatrix_engine::confidence::ConfidenceParams::default(),
+            &server.services.confidence.confidence_params,
         );
         let _ = server.store.update_confidence(new_id, conf).await;
     }

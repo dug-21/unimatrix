@@ -313,6 +313,7 @@ impl ServiceLayer {
         nli_enabled: bool,
         inference_config: Arc<InferenceConfig>,
         observation_registry: Arc<DomainPackRegistry>,
+        confidence_params: Arc<unimatrix_engine::confidence::ConfidenceParams>,
     ) -> Self {
         Self::with_rate_config(
             store,
@@ -331,6 +332,7 @@ impl ServiceLayer {
             nli_enabled,
             inference_config,
             observation_registry,
+            confidence_params,
         )
     }
 
@@ -351,13 +353,14 @@ impl ServiceLayer {
         nli_enabled: bool,
         inference_config: Arc<InferenceConfig>,
         observation_registry: Arc<DomainPackRegistry>,
+        confidence_params: Arc<unimatrix_engine::confidence::ConfidenceParams>,
     ) -> Self {
         let gateway = Arc::new(SecurityGateway::with_rate_config(
             Arc::clone(&audit),
             rate_config,
         ));
 
-        let confidence = ConfidenceService::new(Arc::clone(&store));
+        let confidence = ConfidenceService::new(Arc::clone(&store), Arc::clone(&confidence_params));
         // crt-019 (ADR-001): obtain handle before constructing search/status
         // so both services share the same Arc<RwLock<ConfidenceState>>.
         let confidence_state_handle = confidence.state_handle();
@@ -431,6 +434,7 @@ impl ServiceLayer {
             Arc::clone(&embed_service),
             Arc::clone(&adapt_service),
             Arc::clone(&confidence_state_handle),
+            Arc::clone(&confidence_params),
             Arc::clone(&contradiction_cache),
             Arc::clone(&ml_inference_pool),
             Arc::clone(&observation_registry),
@@ -440,6 +444,7 @@ impl ServiceLayer {
             Arc::clone(&store),
             usage_dedup,
             Arc::clone(&confidence_state_handle),
+            Arc::clone(&confidence_params),
         );
 
         ServiceLayer {

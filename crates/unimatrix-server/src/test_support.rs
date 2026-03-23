@@ -126,7 +126,6 @@ impl TestHarness {
             audit,
             usage_dedup,
             rate_config,
-            // dsn-001: default; test harness preserves pre-dsn-001 behavior.
             std::collections::HashSet::from(["lesson-learned".to_string()]),
             test_pool,
             // crt-023: disabled NLI for test harness (no model in test env)
@@ -137,6 +136,8 @@ impl TestHarness {
             Arc::new(crate::infra::config::InferenceConfig::default()),
             // col-023: built-in default registry for test harness
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
+            // GH #311: default params for test harness.
+            Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
         );
 
         Some(TestHarness { layer, store })
