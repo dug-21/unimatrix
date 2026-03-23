@@ -168,12 +168,13 @@ fn test_neural_enhancer_shadow_mode() {
 fn test_cross_rule_feature_minimums() {
     // Verify documented minimum feature counts by testing quality gate rejections
     let base_entry = make_valid_entry();
+    // Note: "dead-knowledge" was removed from the extraction pipeline (GH #351).
+    // It now falls through to the default minimum (3) in min_features_for_rule.
     let test_cases = vec![
         ("knowledge-gap", 2),
         ("implicit-convention", 3),
         ("recurring-friction", 3),
         ("file-dependency", 3),
-        ("dead-knowledge", 5),
     ];
 
     for (rule_name, min_features) in test_cases {

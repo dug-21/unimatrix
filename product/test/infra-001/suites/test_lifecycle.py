@@ -1493,3 +1493,32 @@ def test_briefing_session_id_applies_wa2_boost(server):
     assert_tool_success(resp), (
         "L-CRT027-02: context_briefing with session_id must succeed (WA-2 histogram boost path)"
     )
+
+
+@pytest.mark.xfail(
+    reason=(
+        "Pre-existing: GH#291 — tick interval not overridable at integration level. "
+        "Dead-knowledge deprecation pass runs in background tick (15-min interval). "
+        "Unit tests in background.rs cover trigger logic end-to-end."
+    )
+)
+def test_dead_knowledge_entries_deprecated_by_tick(server):
+    """L-E06: Dead-knowledge entries are deprecated by background tick, not stored as lessons.
+
+    Stores an entry, accesses it to build access_count, then verifies that after
+    a background tick the entry is deprecated (not that a new lesson-learned is created).
+    Requires GH#291 (drivable tick interval) to run end-to-end.
+    """
+    # Store entry and access it
+    store_resp = server.context_store(
+        "dead knowledge deprecation tick test entry unique xk9z",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_get(entry_id, format="json")  # simulate access
+
+    # Without a drivable tick this assertion cannot be reached
+    assert False, "Background tick cannot be driven externally (GH#291)"
