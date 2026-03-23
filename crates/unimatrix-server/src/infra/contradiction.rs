@@ -5,7 +5,7 @@
 //! Also provides embedding consistency verification for relevance hijacking defense.
 
 use std::cmp::Ordering;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
 use regex::Regex;
@@ -152,17 +152,19 @@ pub fn check_entry_contradiction(
 /// heuristic (ADR-003) to each high-similarity pair. Results are sorted
 /// by conflict score descending.
 pub fn scan_contradictions(
-    store: &Store,
+    entries: Vec<EntryRecord>,
     vector_store: &dyn VectorStore,
     embed_adapter: &dyn EmbedService,
     config: &ContradictionConfig,
 ) -> Result<Vec<ContradictionPair>, ServerError> {
-    let active_entries = read_active_entries(store)?;
+    // Build O(1) lookup map from pre-fetched entries (fetched in Tokio context before
+    // this closure was dispatched to the rayon pool — GH #358).
+    let entry_map: HashMap<u64, &EntryRecord> = entries.iter().map(|e| (e.id, e)).collect();
 
     let mut seen_pairs: HashSet<(u64, u64)> = HashSet::new();
     let mut results: Vec<ContradictionPair> = Vec::new();
 
-    for entry in &active_entries {
+    for entry in &entries {
         // Re-embed from title + content (ADR-002: re-embed from text)
         let embedding = match embed_adapter.embed_entry(&entry.title, &entry.content) {
             Ok(v) => v,
@@ -197,14 +199,13 @@ pub fn scan_contradictions(
             }
             seen_pairs.insert(pair_key);
 
-            // Fetch neighbor entry
-            let neighbor_entry =
-                match tokio::runtime::Handle::current().block_on(store.get(neighbor.entry_id)) {
-                    Ok(e) => e,
-                    Err(_) => continue,
-                };
+            // Look up neighbor from pre-fetched map (no I/O — GH #358)
+            let neighbor_entry = match entry_map.get(&neighbor.entry_id) {
+                Some(e) => *e,
+                None => continue,
+            };
 
-            // Skip non-active neighbors
+            // All pre-fetched entries are Active; this guard is a belt-and-suspenders check.
             if neighbor_entry.status != Status::Active {
                 continue;
             }
@@ -246,28 +247,21 @@ pub fn scan_contradictions(
     Ok(results)
 }
 
-/// Read all active entries from the store.
-///
-/// Bridges async sqlx queries to sync context via `block_on` (nxs-011).
-/// Called from `spawn_blocking` closures where the tokio handle is available.
-fn read_active_entries(store: &Store) -> Result<Vec<EntryRecord>, ServerError> {
-    tokio::runtime::Handle::current()
-        .block_on(store.query_by_status(Status::Active))
-        .map_err(|e| ServerError::Core(unimatrix_core::CoreError::Store(e)))
-}
-
 /// Check embedding consistency for all active entries.
 ///
 /// Re-embeds each entry's content and verifies that the entry appears as
 /// its own top-1 nearest neighbor with similarity above the threshold.
 /// Entries that fail this check may have been subject to relevance hijacking.
+///
+/// `entries` must be pre-fetched in Tokio context before dispatching this
+/// function to a rayon worker (GH #358).
 pub fn check_embedding_consistency(
-    store: &Store,
+    entries: Vec<EntryRecord>,
     vector_store: &dyn VectorStore,
     embed_adapter: &dyn EmbedService,
     config: &ContradictionConfig,
 ) -> Result<Vec<EmbeddingInconsistency>, ServerError> {
-    let active_entries = read_active_entries(store)?;
+    let active_entries = entries;
 
     let mut inconsistencies = Vec::new();
 
