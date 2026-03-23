@@ -863,34 +863,77 @@ async fn maintenance_tick(
 /// Maximum number of entries deprecated per tick to avoid write-pool saturation.
 const DEAD_KNOWLEDGE_DEPRECATION_CAP: usize = 50;
 
+/// Number of most-recent distinct sessions fetched for dead-knowledge analysis.
+///
+/// Two-step approach: first fetch the N most-recent session IDs, then fetch all
+/// observations for those sessions only. Replaces the unbounded 5 000-row LIMIT scan.
+const DEAD_KNOWLEDGE_SESSION_THRESHOLD: usize = 20;
+
 /// COUNTERS key used to gate the one-shot legacy noise migration.
 const DEAD_KNOWLEDGE_MIGRATION_V1_KEY: &str = "dead_knowledge_migration_v1";
 
 /// Maximum number of legacy noise entries cleaned up in the one-shot migration.
 const DEAD_KNOWLEDGE_MIGRATION_CAP: usize = 200;
 
-/// Fetch the most recent observations from the observations table for dead-knowledge analysis.
+/// Fetch observations for dead-knowledge analysis using a session-based two-step query.
 ///
-/// Returns up to `limit` rows ordered by id DESC (most recent first), then reverses
-/// them so the caller receives oldest-first ordering (session timestamp sort works
-/// correctly when iterating forward).
+/// Step A: fetch the `DEAD_KNOWLEDGE_SESSION_THRESHOLD` most-recent distinct session IDs
+/// (ordered by MAX(id) DESC so we get the true most-recent sessions).
+///
+/// Step B: fetch all observations whose session_id is in that set, using the same
+/// placeholder pattern as `load_observations_for_sessions` in observations.rs (lines 131–136).
 ///
 /// Uses the write pool directly — reads are safe on the write pool, and this avoids
 /// an additional pool acquisition on the critical maintenance path.
-async fn fetch_recent_observations_for_dead_knowledge(
-    store: &Store,
-    limit: i64,
-) -> Vec<ObservationRecord> {
+async fn fetch_recent_observations_for_dead_knowledge(store: &Store) -> Vec<ObservationRecord> {
     use sqlx::Row;
     let pool = store.write_pool_server();
-    let rows = match sqlx::query(
-        "SELECT ts_millis, hook, session_id, tool, input, response_size, response_snippet
-         FROM observations ORDER BY id DESC LIMIT ?1",
+
+    // Step A: fetch the N most-recent distinct session IDs.
+    let limit = DEAD_KNOWLEDGE_SESSION_THRESHOLD as i64;
+    let session_rows = match sqlx::query(
+        "SELECT session_id FROM observations
+         GROUP BY session_id ORDER BY MAX(id) DESC LIMIT ?1",
     )
     .bind(limit)
     .fetch_all(pool)
     .await
     {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!(error = %e, "dead-knowledge pass: failed to fetch session IDs");
+            return vec![];
+        }
+    };
+
+    let session_ids: Vec<String> = session_rows
+        .iter()
+        .map(|row| row.get::<String, _>(0))
+        .collect();
+
+    if session_ids.is_empty() {
+        return vec![];
+    }
+
+    // Step B: fetch observations for those sessions only.
+    // Placeholder pattern matches load_observations_for_sessions in observations.rs.
+    let placeholders = session_ids
+        .iter()
+        .enumerate()
+        .map(|(i, _)| format!("?{}", i + 1))
+        .collect::<Vec<_>>()
+        .join(",");
+    let sql = format!(
+        "SELECT ts_millis, hook, session_id, tool, input, response_size, response_snippet
+         FROM observations WHERE session_id IN ({})
+         ORDER BY id DESC",
+        placeholders
+    );
+    let mut q = sqlx::query(&sql);
+    for sid in &session_ids {
+        q = q.bind(sid);
+    }
+    let rows = match q.fetch_all(pool).await {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!(error = %e, "dead-knowledge pass: failed to fetch observations");
@@ -934,9 +977,9 @@ async fn fetch_recent_observations_for_dead_knowledge(
 ///
 /// Non-fatal: failures on individual entries are logged and skipped.
 async fn dead_knowledge_deprecation_pass(store: &Arc<Store>) -> usize {
-    // Fetch enough observations to cover at least 5 distinct sessions.
-    // 5000 observations is a generous upper bound for normal usage patterns.
-    let observations = fetch_recent_observations_for_dead_knowledge(store, 5000).await;
+    // Fetch observations for the most recent DEAD_KNOWLEDGE_SESSION_THRESHOLD sessions.
+    // Two-step query: session IDs first, then observations — avoids full-table LIMIT scan.
+    let observations = fetch_recent_observations_for_dead_knowledge(store).await;
     if observations.is_empty() {
         return 0;
     }
@@ -3443,6 +3486,124 @@ mod tests {
             noisy.is_empty(),
             "must not insert any lesson-learned entries with dead-knowledge tag"
         );
+    }
+
+    /// GH #351 Fix 2: Entries accessed only in sessions older than DEAD_KNOWLEDGE_SESSION_THRESHOLD
+    /// are still detected as dead-knowledge candidates. Entries accessed in recent sessions
+    /// (within the 5-session inner window) are protected.
+    ///
+    /// Inserts DEAD_KNOWLEDGE_SESSION_THRESHOLD + 5 sessions total.
+    /// One entry is accessed only in the oldest 5 sessions (beyond the threshold window)
+    /// — it must be deprecated. One entry is accessed in the most-recent session
+    /// (within the inner 5-session window) — it must be protected.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_dead_knowledge_pass_session_threshold_boundary() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().unwrap();
+        let raw_store = open_test_store(&tmp).await;
+        let store: Arc<Store> = Arc::new(raw_store);
+
+        // Entry that will only appear in observations outside the session threshold window.
+        let old_entry_id = insert_accessed_entry(&store, "Old entry beyond threshold").await;
+        // Entry that will appear in the most-recent session (protected by inner window).
+        let recent_entry_id = insert_accessed_entry(&store, "Recent entry inside window").await;
+
+        let pool = store.write_pool_server();
+        let total_sessions = DEAD_KNOWLEDGE_SESSION_THRESHOLD + 5;
+
+        // Insert sessions from oldest (index 0) to newest (index total_sessions-1).
+        // old_entry_id appears only in the oldest 5 sessions (indices 0..5).
+        // recent_entry_id appears in the newest session (index total_sessions-1).
+        for i in 0..total_sessions {
+            let session_id = format!("threshold-test-session-{:04}", i);
+            sqlx::query(
+                "INSERT OR IGNORE INTO sessions (session_id, feature_cycle, started_at, status)
+                 VALUES (?1, NULL, ?2, 0)",
+            )
+            .bind(&session_id)
+            .bind(1_700_000_000_i64 + i as i64)
+            .execute(pool)
+            .await
+            .expect("insert session");
+
+            // Background noise observation so session is non-empty.
+            sqlx::query(
+                "INSERT INTO observations
+                 (session_id, ts_millis, hook, tool, input, response_size, response_snippet)
+                 VALUES (?1, ?2, 'PostToolUse', 'mcp__unimatrix__context_search',
+                         NULL, NULL, 'No results')",
+            )
+            .bind(&session_id)
+            .bind(1_700_000_000_000_i64 + i as i64 * 1000)
+            .execute(pool)
+            .await
+            .expect("insert observation");
+
+            // old_entry_id referenced only in the 5 oldest sessions.
+            // Snippet uses the "id": N pattern recognised by extract_entry_ids.
+            if i < 5 {
+                sqlx::query(
+                    "INSERT INTO observations
+                     (session_id, ts_millis, hook, tool, input, response_size, response_snippet)
+                     VALUES (?1, ?2, 'PostToolUse', 'mcp__unimatrix__context_get',
+                             NULL, NULL, ?3)",
+                )
+                .bind(&session_id)
+                .bind(1_700_000_001_000_i64 + i as i64 * 1000)
+                .bind(format!("\"id\": {}", old_entry_id))
+                .execute(pool)
+                .await
+                .expect("insert old_entry observation");
+            }
+
+            // recent_entry_id referenced only in the newest session.
+            // Snippet uses the "id": N pattern recognised by extract_entry_ids.
+            if i == total_sessions - 1 {
+                sqlx::query(
+                    "INSERT INTO observations
+                     (session_id, ts_millis, hook, tool, input, response_size, response_snippet)
+                     VALUES (?1, ?2, 'PostToolUse', 'mcp__unimatrix__context_get',
+                             NULL, NULL, ?3)",
+                )
+                .bind(&session_id)
+                .bind(1_700_000_002_000_i64 + i as i64 * 1000)
+                .bind(format!("\"id\": {}", recent_entry_id))
+                .execute(pool)
+                .await
+                .expect("insert recent_entry observation");
+            }
+        }
+
+        // The two-step fetch should include only the most-recent DEAD_KNOWLEDGE_SESSION_THRESHOLD
+        // sessions. old_entry_id's sessions are outside that window, so detect_dead_knowledge_candidates
+        // will see it as "never accessed in recent sessions" → candidate for deprecation.
+        // recent_entry_id appears in the newest session → protected by the 5-session inner window.
+        let deprecated = dead_knowledge_deprecation_pass(&store).await;
+
+        // old_entry_id must be deprecated (accessed only in sessions beyond threshold).
+        let old_status = store.get(old_entry_id).await.expect("get old_entry").status;
+        assert_eq!(
+            old_status,
+            unimatrix_store::Status::Deprecated,
+            "old_entry accessed only beyond session threshold must be deprecated"
+        );
+
+        // recent_entry_id must remain Active (accessed in the inner window).
+        let recent_status = store
+            .get(recent_entry_id)
+            .await
+            .expect("get recent_entry")
+            .status;
+        assert_eq!(
+            recent_status,
+            unimatrix_store::Status::Active,
+            "recent_entry accessed in most-recent session must stay Active"
+        );
+
+        // At least the old entry must have been deprecated.
+        assert!(deprecated >= 1, "at least old_entry must be deprecated");
     }
 
     /// GH #351: Migration v1 must deprecate legacy noise entries gated by COUNTERS marker.
