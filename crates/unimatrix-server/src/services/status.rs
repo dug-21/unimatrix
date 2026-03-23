@@ -554,7 +554,17 @@ impl StatusService {
         // Phase 3: Embedding consistency (opt-in)
         if check_embeddings {
             if let Ok(adapter) = self.embed_service.get_adapter().await {
-                let store_for_embed = Arc::clone(&self.store);
+                // GH #358: fetch entries in Tokio context before dispatching to rayon.
+                // Rayon workers have no Tokio runtime; Handle::current() inside the
+                // closure panics and silently breaks embedding consistency checks.
+                let active_entries = match self.store.query_by_status(unimatrix_store::Status::Active).await {
+                    Ok(v) => v,
+                    Err(_) => {
+                        // Graceful degradation: skip consistency check if entries cannot be read.
+                        vec![]
+                    }
+                };
+
                 let vi_for_embed = Arc::clone(&self.vector_index);
                 let adapter_for_embed = Arc::clone(&adapter);
                 let config_for_embed = contradiction::ContradictionConfig::default();
@@ -564,7 +574,7 @@ impl StatusService {
                     .spawn_with_timeout(MCP_HANDLER_TIMEOUT, move || {
                         let vs = VectorAdapter::new(vi_for_embed);
                         contradiction::check_embedding_consistency(
-                            &store_for_embed,
+                            active_entries,
                             &vs,
                             &*adapter_for_embed,
                             &config_for_embed,
