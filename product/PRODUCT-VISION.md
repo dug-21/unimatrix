@@ -266,7 +266,7 @@ The explicit phase signal is 3× the implicit histogram signal. Both are additiv
 
 ---
 
-### WA-4: Proactive Delivery
+### WA-4: Proactive Delivery — COMPLETE (`crt-027`, PR #349)
 **Business outcome**: Agents receive relevant knowledge before they search for it. UDS injection is phase-conditioned, not generic. `context_briefing` becomes the targeted handoff at each phase transition. The system is no longer purely reactive.
 
 **What**: Two related features that implement proactive and comprehensive delivery modes using the session context built in WA-1 and WA-2.
@@ -314,7 +314,7 @@ SM: context_cycle(type: "phase", phase: "implementation", topic: "crt-024")
 
 ---
 
-### WA-5: PreCompact Transcript Restoration (ASS-028 Recommendation 2)
+### WA-5: PreCompact Transcript Restoration (ASS-028 Recommendation 2) — COMPLETE (`crt-028`, PR #357)
 **Business outcome**: Context window compaction no longer erases the recent conversation. The last few user prompts and assistant responses are restored alongside the Unimatrix briefing synthesis, giving the model continuity through the compaction boundary.
 
 **What**: The `PreCompact` hook already receives `transcript_path` in stdin JSON. This field is parsed but never used. Read the transcript file locally (no server round-trip) before sending the `CompactPayload` request:

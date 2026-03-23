@@ -26,7 +26,7 @@ Gather all evidence about the shipped feature:
 
 1. **Run retrospective analysis** (if observation data exists):
    ```
-   mcp__unimatrix__context_cycle_review(feature_cycle: "{feature-id}")
+   mcp__unimatrix__context_cycle_review(feature_cycle: "{feature-id}", format: "markdown")
    ```
    This returns structured data: metrics, hotspots, baseline comparisons, narratives, and recommendations.
 
