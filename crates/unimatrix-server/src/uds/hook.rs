@@ -264,6 +264,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                     feature: None,
                     k: None,
                     max_tokens: None,
+                    source: None,
                 }
             }
         }
@@ -824,6 +825,7 @@ mod tests {
             feature: None,
             k: None,
             max_tokens: None,
+            source: None,
         };
         let is_faf = matches!(
             req,
