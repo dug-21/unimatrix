@@ -74,14 +74,46 @@ pub fn run(event: String, project_dir: Option<PathBuf>) -> Result<(), Box<dyn st
     // Step 5: Build request from event + input
     let request = build_request(&event, &hook_input);
 
-    // Step 5b: Extract source BEFORE consuming the request (needed for response routing).
+    // Step 5b: SubagentStart fallback — Claude Code does not send prompt_snippet in the
+    // SubagentStart payload, so build_request always returns RecordEvent for this event.
+    // Derive a query from the transcript tail (which contains the Task spawn description
+    // as the most recent ToolPair entry) with agent_type as role.
+    let request = if event == "SubagentStart" && matches!(request, HookRequest::RecordEvent { .. }) {
+        let role = hook_input
+            .extra
+            .get("agent_type")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let query = hook_input
+            .transcript_path
+            .as_deref()
+            .filter(|p| !p.is_empty())
+            .and_then(|p| extract_transcript_block(p));
+        match query {
+            Some(q) => HookRequest::ContextSearch {
+                query: q,
+                session_id: hook_input.session_id.clone(),
+                source: Some("SubagentStart".to_string()),
+                role,
+                task: None,
+                feature: None,
+                k: None,
+                max_tokens: None,
+            },
+            None => request,
+        }
+    } else {
+        request
+    };
+
+    // Step 5c: Extract source BEFORE consuming the request (needed for response routing).
     // Only ContextSearch carries a source; extract it now for use after transport.request().
     let req_source: Option<String> = match &request {
         HookRequest::ContextSearch { source, .. } => source.clone(),
         _ => None,
     };
 
-    // Step 5c: (NEW) Extract transcript block before server round-trip (OQ-2 resolved)
+    // Step 5d: Extract transcript block for PreCompact before server round-trip (OQ-2 resolved)
     let transcript_block: Option<String> = if matches!(request, HookRequest::CompactPayload { .. }) {
         hook_input
             .transcript_path
@@ -216,7 +248,7 @@ fn resolve_cwd(input: &HookInput, project_dir: Option<&Path>) -> PathBuf {
 ///
 /// Each event type has a specific text source for topic extraction:
 /// - PreToolUse / PostToolUse (non-rework): `input.extra["tool_input"]` stringified
-/// - SubagentStart: `input.extra["prompt_snippet"]` stringified
+/// - SubagentStart: `input.extra["agent_type"]` stringified
 /// - UserPromptSubmit (record path): `input.prompt`
 /// - Other (generic_record_event): `serde_json::to_string(&input.extra)`
 ///
@@ -246,9 +278,10 @@ fn extract_event_topic_signal(event: &str, input: &HookInput) -> Option<String> 
             extract_topic_signal(&text)
         }
         "SubagentStart" => {
+            // agent_type is the actual field Claude Code sends; prompt_snippet does not exist.
             let text = input
                 .extra
-                .get("prompt_snippet")
+                .get("agent_type")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             extract_topic_signal(text)
@@ -429,10 +462,10 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
         // col-022: Intercept PreToolUse for context_cycle tool calls
         "PreToolUse" => build_cycle_event_or_fallthrough(event, session_id, input),
 
-        // crt-027 WA-4a: Route SubagentStart to ContextSearch for knowledge injection.
-        // prompt_snippet is extracted from input.extra (same source as extract_event_topic_signal).
+        // crt-027 WA-4a: Route SubagentStart to ContextSearch when prompt_snippet is present
+        // (forward-compat only — Claude Code does not currently send this field).
+        // The real query is derived in run() step 5b from the transcript tail.
         // Guard: empty or whitespace-only prompt_snippet falls through to RecordEvent (EC-01).
-        // SubagentStart does NOT apply MIN_QUERY_WORDS; even a 1-word spawn prompt routes through.
         "SubagentStart" => {
             let query = input
                 .extra
@@ -2230,15 +2263,39 @@ mod tests {
 
     #[test]
     fn test_extract_event_topic_signal_subagent() {
-        // AC-09: SubagentStart with feature ID in prompt_snippet
+        // AC-09: SubagentStart reads from agent_type, not prompt_snippet.
+        // extract_topic_signal treats hyphenated identifiers as valid feature IDs.
         let input = make_hook_input(
             "SubagentStart",
             serde_json::json!({
-                "prompt_snippet": "implement col-017 feature"
+                "agent_type": "uni-rust-dev"
             }),
         );
         let signal = extract_event_topic_signal("SubagentStart", &input);
-        assert_eq!(signal, Some("col-017".to_string()));
+        assert_eq!(signal, Some("uni-rust-dev".to_string()));
+    }
+
+    #[test]
+    fn test_extract_event_topic_signal_subagent_prompt_snippet_ignored() {
+        // AC-09b: prompt_snippet is NOT read for SubagentStart; agent_type is used instead.
+        let input = make_hook_input(
+            "SubagentStart",
+            serde_json::json!({
+                "prompt_snippet": "implement col-017 feature",
+                "agent_type": "uni-spec"
+            }),
+        );
+        // Signal comes from agent_type "uni-spec", not prompt_snippet "col-017"
+        let signal = extract_event_topic_signal("SubagentStart", &input);
+        assert_eq!(signal, Some("uni-spec".to_string()));
+    }
+
+    #[test]
+    fn test_extract_event_topic_signal_subagent_absent_agent_type() {
+        // AC-09c: SubagentStart with no agent_type key → None (no topic signal)
+        let input = make_hook_input("SubagentStart", serde_json::json!({}));
+        let signal = extract_event_topic_signal("SubagentStart", &input);
+        assert_eq!(signal, None);
     }
 
     #[test]

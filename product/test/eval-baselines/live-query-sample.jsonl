@@ -1,0 +1,69 @@
+{"type": "context_search", "query": "tail bytes seek from end file read budget window"}
+{"type": "context_search", "query": "fusion score fused score inputs weights patterns"}
+{"type": "context_search", "query": "bugfix-311 311 confidence params serving path"}
+{"type": "context_search", "query": "session scoring integration test patterns edge cases"}
+{"type": "context_search", "query": "test plan names diverged from implementation test names gate 3b"}
+{"type": "context_search", "query": "rayon tokio Handle::current block_on contradiction background worker"}
+{"type": "context_search", "query": "extraction pipeline noise lesson-learned entries background tick"}
+{"type": "context_search", "query": "gate verification testing procedures integration test triage"}
+{"type": "context_search", "query": "confidence params default serving path inline scoring dsn-001"}
+{"type": "context_search", "query": "response formatting table output patterns"}
+{"type": "context_search", "query": "WA-2 affinity boost compute_fused_score integration inside post-pipeline w_phase_histogram w_phase_explicit"}
+{"type": "context_search", "query": "contradiction scan active entries store pre-fetch async sync boundary"}
+{"type": "context_search", "query": "service layer wiring construction patterns"}
+{"type": "context_search", "query": "unexpected failure regression bug"}
+{"type": "context_search", "query": "hook.rs testing patterns graceful degradation"}
+{"type": "context_search", "query": "crt-026 WA-2 session context enrichment patterns procedures"}
+{"type": "context_search", "query": "hook injection SubagentStart ContextSearch knowledge delivery specification pattern"}
+{"type": "context_search", "query": "JSONL parsing fail-open unknown record types skipped"}
+{"type": "context_search", "query": "SubagentStart hook injection knowledge delivery briefing proactive"}
+{"type": "context_search", "query": "Handle::current not available rayon thread contradiction detection fix"}
+{"type": "context_briefing", "query": "briefing for role=architect, task=Design a new feature for Unimatrix"}
+{"type": "context_briefing", "query": "briefing for role=synthesizer, task=Compile Phase 2 design artifacts for col-006 Hook Transport Layer into IMPLEMENTATION-BRIEF.md, ACCEPTANCE-MAP.md, and GitHub Issue"}
+{"type": "context_briefing", "query": "briefing for role=scrum-master, task=Session 1 Design for col-002b: Detection Library + Baseline Comparison. Scope review, then full design protocol through implementation brief."}
+{"type": "context_briefing", "query": "briefing for role=security-reviewer, task=Security review of PR #64 for col-006 (Hook Transport Layer / Cortical Implant). UDS IPC between hook processes and MCP server. New unimatrix-engine crate with auth, wire protocol, transport, event queue. Modified unimatrix-server with hook subcommand, UDS listener, socket cleanup."}
+{"type": "context_briefing", "query": "briefing for role=design-scrum-master, task=Design session for vnc-007, a new Vinculum-phase feature. Need to understand current MCP server capabilities, product vision, and any existing context for vnc-007."}
+{"type": "context_briefing", "query": "briefing for role=researcher, task=testing hook interaction order"}
+{"type": "context_briefing", "query": "briefing for role=researcher, task=col-009 scoping \u2014 Collective phase hook-driven delivery system, understanding where we are and what comes next"}
+{"type": "context_briefing", "query": "briefing for role=architect, task=crt-005 coherence gate f64 scoring upgrade lambda metric graph compaction schema migration maintenance"}
+{"type": "context_briefing", "query": "briefing for role=vision-guardian, task=crt-005 coherence gate vision alignment"}
+{"type": "context_briefing", "query": "briefing for role=design-scrum-master, task=Design session for nxs-005, a new Nexus-phase feature covering storage, vectors, embedding, or schema. Need to discover scope with human."}
+{"type": "context_briefing", "query": "briefing for role=design-scrum-master, task=nxs-006 SQLite Cutover design session - migrate from redb to SQLite sole backend, data migration export/import, remove redb"}
+{"type": "context_briefing", "query": "briefing for role=scrum-master, task=Starting col-011 feature work - design and delivery coordination"}
+{"type": "context_briefing", "query": "briefing for role=rust-dev, task=Implement a new MCP tool for Unimatrix"}
+{"type": "context_briefing", "query": "briefing for role=implementation-scrum-master, task=Session 2 delivery for vnc-007 feature implementation"}
+{"type": "context_briefing", "query": "briefing for role=architect, task=design the next feature for Unimatrix after the MCP server"}
+{"type": "context_briefing", "query": "briefing for role=scrum-master, task=Session 2 Delivery for crt-005 Coherence Gate - managing pseudocode, implementation, and testing stages with gate validation"}
+{"type": "context_briefing", "query": "briefing for role=validator, task=validate code implementation against architecture"}
+{"type": "context_briefing", "query": "briefing for role=scrum-master, task=Session 1 Design for crt-006 Adaptive Embedding feature - novel ML adaptation pipeline with MicroLoRA, InfoNCE contrastive loss, EWC++ regularization in pure Rust"}
+{"type": "context_briefing", "query": "briefing for role=uni-researcher, task=col-017 Hook-Side Topic Attribution \u2014 Hook extracts topic signals from tool inputs, server accumulates per session, resolves dominant topic on SessionClose"}
+{"type": "context_briefing", "query": "briefing for role=validator, task=Validate code implementation against architecture and specification"}
+{"type": "UserPromptSubmit", "query": "should we use our @docs/testing/eval-harness.md to evaluate the impact of this change?  Is it possible to do so?"}
+{"type": "UserPromptSubmit", "query": "<task-notification>\n<task-id>bfhsey2qz</task-id>\n<tool-use-id>toolu_01Wu2GQiQ4R2qFptCJj5dXn4</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/d44a584e-8b86-4526-a6af-93f8c6c91529/tasks/bfhsey2qz.output</output-file>\n<status>completed</status>\n<summary>Background command \"Run tools suite (foreground, no -v to reduce noise)\" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/d44a584e-8b86-4526-a6af-93f8c6c91529/tasks/bfhsey2qz.output"}
+{"type": "UserPromptSubmit", "query": "role is no longer used as fallback"}
+{"type": "UserPromptSubmit", "query": "so explain the variance again?  it seems this report was run.. so confused as to why there is any variance to report"}
+{"type": "UserPromptSubmit", "query": "<task-notification>\n<task-id>bfuaj4ia1</task-id>\n<tool-use-id>toolu_01QVrgKKZPMBfzWBFAxPJaz8</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/af1f3351-a1dc-4a3e-bdd0-f7e02abc4184/tasks/bfuaj4ia1.output</output-file>\n<status>completed</status>\n<summary>Background command \"Run mandatory smoke tests\" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/af1f3351-a1dc-4a3e-bdd0-f7e02abc4184/tasks/bfuaj4ia1.output"}
+{"type": "UserPromptSubmit", "query": "would our redesign address that?"}
+{"type": "UserPromptSubmit", "query": "hmm.. I don't like these 2: Outcome field has no control-char check \u2014 validate_cycle_params outcome arm checks length only, unlike general fields which also call check_control_chars. This asymmetry is pre-existing, not introduced by this fix. Track separately if needed.\n\nEmoji accepted as phase names \u2014 validate_phase_field permits any non-space, non-control character, so emoji phase values (e.g., \"\ud83d\udfe9\" x 64) are valid after the fix. This is intentional per the pre-existing allowlist policy; the fix does not change which characters are accepted, only how many are counted."}
+{"type": "UserPromptSubmit", "query": "<task-notification>\n<task-id>bu2knojr7</task-id>\n<tool-use-id>toolu_01AQHrZMPu45eNr4wpGK2Nax</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/3d9b719e-0590-406c-a136-e53885fd29db/tasks/bu2knojr7.output</output-file>\n<status>killed</status>\n<summary>Background command \"Check xfail/fail status across suites\" was stopped</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/3d9b719e-0590-406c-a136-e53885fd29db/tasks/bu2knojr7.output"}
+{"type": "UserPromptSubmit", "query": "I'm going to defer WA-3. . please mark this as such in @product/PRODUCT-VISION.md"}
+{"type": "UserPromptSubmit", "query": "so #1 I'm wondering if we can blend 1 and 2.  context_cycle becomes a consolidated cycle tool.  1st of all, 'phase' should be a word (statically used for whatever the workflow is)  So in my workflow, phases I might use: scope, design, risk-analysis, specification, development, test.  These phase words will allow the future GNN to learn what categories work best in each phase. Forgot to mention this before, but there's a keywords field on this (thats not used anywhere).. We can discuss how this may be used, or we can also eliminate it.  So... I'm wondering, if we allow a comment on a phase transition (or outcome)"}
+{"type": "UserPromptSubmit", "query": "now, install the new binary in our local prod environment and kill all existing unimatrix server processes"}
+{"type": "UserPromptSubmit", "query": "we will take #340 in that issue... no need to do it in this one.  Please update the issue, and close it.  Seems completed"}
+{"type": "UserPromptSubmit", "query": "<task-notification>\n<task-id>bwvemfg6d</task-id>\n<tool-use-id>toolu_01Rkir2Zonba929Vb7VooWTq</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/e89cc44d-73e5-4f6a-84e9-836c423f81d3/tasks/bwvemfg6d.output</output-file>\n<status>completed</status>\n<summary>Background command \"Run mandatory smoke test gate\" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/e89cc44d-73e5-4f6a-84e9-836c423f81d3/tasks/bwvemfg6d.output"}
+{"type": "UserPromptSubmit", "query": "So... I spent a little time in another session designing WA-5.. this is what we came up with for requirements.  #1 - is this small enough addition that we could consolidate into 1 feature, or should it still be 2.  If stays 2 features... what do you think this implies for existing BriefingService?"}
+{"type": "UserPromptSubmit", "query": "yes.  but lets talk about scope.  The business goal is the same, but I want to talk about the best way to achieve it"}
+{"type": "UserPromptSubmit", "query": "OK... now, we are going to begin design of WA-1 from @product-vision.  One requirement not discussed, is that phase: should be scanned, and 1 contiguous block.  Since this will be a label for GNN W3-1, this needs to be an easy label.  Select the proper prefix and next number for the feature, and retain the GH issue #."}
+{"type": "UserPromptSubmit", "query": "approve, as well as adding the check_entry_contradiction test referenced if its not already included in scope.  continue in a worktree"}
+{"type": "UserPromptSubmit", "query": "now run retro"}
+{"type": "UserPromptSubmit", "query": "<task-notification>\n<task-id>bbko9w2gx</task-id>\n<tool-use-id>toolu_015uNB4FU1VYeuPzWM4CWhfe</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/1790a921-19ca-42c4-b27a-96449a428abf/tasks/bbko9w2gx.output</output-file>\n<status>completed</status>\n<summary>Background command \"Run workspace tests to verify current state (summary only)\" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/1790a921-19ca-42c4-b27a-96449a428abf/tasks/bbko9w2gx.output"}
+{"type": "UserPromptSubmit", "query": "this would only come up within context_cycle_review... the review does look across features for outliers... its kind of what it does.. how big of an addition is this?"}
+{"type": "PreCompact", "query": "bugfix-286 [ \" t"}
+{"type": "PreCompact", "query": "bugfix-236 [ \" s"}
+{"type": "PreCompact", "query": "nan-007 [ \" e"}
+{"type": "PreCompact", "query": "get-url [ \" c"}
+{"type": "PreCompact", "query": "bugfix-276 [ \" b"}
+{"type": "PreCompact", "query": "nxs-011 [ \" c"}
+{"type": "PreCompact", "query": "bugfix-308 [ \" a"}
+{"type": "PreCompact", "query": "323-investigator [ \" e"}
+{"type": "PreCompact", "query": "277-investigator [ \" s"}

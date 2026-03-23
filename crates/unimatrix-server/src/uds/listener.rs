@@ -115,7 +115,7 @@ where
 }
 
 /// Minimum cosine similarity for injection candidates.
-const SIMILARITY_FLOOR: f64 = 0.5;
+const SIMILARITY_FLOOR: f64 = 0.4;
 
 /// Minimum confidence score for injection candidates.
 const CONFIDENCE_FLOOR: f64 = 0.3;
