@@ -14,6 +14,7 @@ unimatrix-core = { path = "../unimatrix-core" }
 unimatrix-store = { path = "../unimatrix-store" }
 tokio = { version = "1", features = ["rt"] }
 unimatrix-learn = { path = "../unimatrix-learn" }
+sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
 
 [dev-dependencies]
 tempfile = "3"

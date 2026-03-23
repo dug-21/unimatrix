@@ -145,15 +145,29 @@ fn remediation_for_rule(rule_name: &str) -> &'static str {
     }
 }
 
-/// Check whether an entry with the given title already exists in the store.
+/// Check whether an active entry with the given title already exists in the store.
 ///
-/// Searches active entries by topic "process-improvement" then filters by title.
-/// Returns true if a match is found (skip proposal). Returns false on store error
-/// (safe-default: allow proposal to proceed).
+/// Uses a targeted EXISTS query against the entries table (topic + title + status = 0)
+/// rather than loading all entries for the topic and filtering in Rust.
+/// Returns true if a matching active entry exists (skip proposal).
+/// Returns false on store error (safe-default: allow proposal to proceed).
 fn existing_entry_with_title(store: &SqlxStore, title: &str) -> bool {
-    let entries = match tokio::runtime::Handle::try_current() {
-        Ok(handle) => tokio::task::block_in_place(|| {
-            handle.block_on(store.query_by_topic("process-improvement"))
+    let pool = store.write_pool_server();
+    let title = title.to_string();
+    let fut = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM entries
+            WHERE topic = ?1 AND title = ?2 AND status = 0
+        )",
+    )
+    .bind("process-improvement")
+    .bind(&title)
+    .fetch_one(pool);
+
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => tokio::task::block_in_place(|| match handle.block_on(fut) {
+            Ok(exists) => exists,
+            Err(_) => false,
         }),
         Err(_) => {
             // No async runtime context; build a transient one for the check.
@@ -164,12 +178,21 @@ fn existing_entry_with_title(store: &SqlxStore, title: &str) -> bool {
                 Ok(rt) => rt,
                 Err(_) => return false,
             };
-            rt.block_on(store.query_by_topic("process-improvement"))
+            match rt.block_on(
+                sqlx::query_scalar::<_, bool>(
+                    "SELECT EXISTS(
+                        SELECT 1 FROM entries
+                        WHERE topic = ?1 AND title = ?2 AND status = 0
+                    )",
+                )
+                .bind("process-improvement")
+                .bind(&title)
+                .fetch_one(pool),
+            ) {
+                Ok(exists) => exists,
+                Err(_) => false,
+            }
         }
-    };
-    match entries {
-        Ok(entries) => entries.iter().any(|e| e.title == title),
-        Err(_) => false, // store error → allow (safe default)
     }
 }
 
@@ -324,7 +347,55 @@ mod tests {
             .collect();
         assert!(
             permission_proposals.is_empty(),
-            "dedup guard must suppress proposal when entry with same title already exists"
+            "dedup guard must suppress proposal when entry with same title already exists (status=0 active)"
+        );
+    }
+
+    /// GH #351 Fix 3: Dedup check must NOT skip when the existing entry is deprecated.
+    ///
+    /// The EXISTS query uses `status = 0` (Active only). A deprecated entry with the same title
+    /// should not block proposal generation — the knowledge was retired and should be re-proposed.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_recurring_friction_does_not_skip_for_deprecated_entry() {
+        let store = make_store().await;
+
+        // Pre-insert an entry with the matching title but with Deprecated status.
+        let deprecated_entry = unimatrix_store::NewEntry {
+            title: "Recurring friction: permission_retries".to_string(),
+            content: "old deprecated content".to_string(),
+            topic: "process-improvement".to_string(),
+            category: "lesson-learned".to_string(),
+            tags: vec!["auto-extracted".to_string()],
+            source: "auto".to_string(),
+            status: unimatrix_store::Status::Active, // insert as Active first, then deprecate
+            created_by: "background-tick".to_string(),
+            feature_cycle: String::new(),
+            trust_source: "auto".to_string(),
+        };
+        let dep_id = store
+            .insert(deprecated_entry)
+            .await
+            .expect("insert deprecated entry");
+        store
+            .update_status(dep_id, unimatrix_store::Status::Deprecated)
+            .await
+            .expect("deprecate entry");
+
+        // Evaluate — the deprecated entry must NOT block proposal generation.
+        let mut observations = Vec::new();
+        for i in 0..3 {
+            observations.extend(make_permission_friction_obs(&format!("s{}", i)));
+        }
+        let rule = RecurringFrictionRule;
+        let proposals = rule.evaluate(&observations, &store);
+
+        let permission_proposals: Vec<_> = proposals
+            .iter()
+            .filter(|p| p.title.contains("permission_retries"))
+            .collect();
+        assert!(
+            !permission_proposals.is_empty(),
+            "dedup guard must NOT suppress proposal when existing entry is deprecated (status != 0)"
         );
     }
 
