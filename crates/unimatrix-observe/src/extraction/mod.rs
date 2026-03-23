@@ -124,7 +124,7 @@ fn min_features_for_rule(rule_name: &str) -> usize {
     match rule_name {
         "knowledge-gap" => 2,
         "implicit-convention" | "recurring-friction" | "file-dependency" => 3,
-        "dead-knowledge" => 5,
+        // "dead-knowledge" removed from extraction pipeline (GH #351)
         _ => 3,
     }
 }
@@ -190,12 +190,17 @@ pub fn quality_gate(entry: &ProposedEntry, ctx: &mut ExtractionContext) -> Quali
     QualityGateResult::Accept
 }
 
-/// Return the default set of extraction rules (5 total).
+/// Return the default set of extraction rules (4 total).
+///
+/// `DeadKnowledgeRule` was removed: it used an additive `ExtractionRule` to signal
+/// a maintenance action (inserting `lesson-learned` entries), which created an
+/// idempotency-free replication loop. Dead-knowledge detection now runs as a
+/// direct deprecation pass in `background::dead_knowledge_deprecation_pass()`
+/// and is no longer part of the extraction pipeline. (GH #351)
 pub fn default_extraction_rules() -> Vec<Box<dyn ExtractionRule>> {
     vec![
         Box::new(knowledge_gap::KnowledgeGapRule),
         Box::new(implicit_convention::ImplicitConventionRule),
-        Box::new(dead_knowledge::DeadKnowledgeRule),
         Box::new(recurring_friction::RecurringFrictionRule),
         Box::new(file_dependency::FileDependencyRule),
     ]
@@ -262,9 +267,11 @@ mod tests {
     }
 
     #[test]
-    fn default_extraction_rules_returns_five() {
+    fn default_extraction_rules_returns_four() {
+        // DeadKnowledgeRule was removed from the extraction pipeline (GH #351).
+        // Dead-knowledge detection now runs as a deprecation pass in background.rs.
         let rules = default_extraction_rules();
-        assert_eq!(rules.len(), 5);
+        assert_eq!(rules.len(), 4);
     }
 
     #[test]
@@ -273,9 +280,23 @@ mod tests {
         let names: Vec<&str> = rules.iter().map(|r| r.name()).collect();
         assert!(names.contains(&"knowledge-gap"));
         assert!(names.contains(&"implicit-convention"));
-        assert!(names.contains(&"dead-knowledge"));
         assert!(names.contains(&"recurring-friction"));
         assert!(names.contains(&"file-dependency"));
+        // DeadKnowledgeRule must NOT be in the extraction pipeline (GH #351)
+        assert!(!names.contains(&"dead-knowledge"));
+    }
+
+    #[test]
+    fn test_dead_knowledge_rule_removed_from_defaults() {
+        // GH #351: DeadKnowledgeRule must not appear in default_extraction_rules().
+        // It caused a self-replicating noise loop by inserting lesson-learned entries
+        // instead of deprecating stale knowledge directly.
+        let rules = default_extraction_rules();
+        let names: Vec<&str> = rules.iter().map(|r| r.name()).collect();
+        assert!(
+            !names.contains(&"dead-knowledge"),
+            "DeadKnowledgeRule must not be in default_extraction_rules (GH #351)"
+        );
     }
 
     #[test]
@@ -384,7 +405,8 @@ mod tests {
         assert_eq!(min_features_for_rule("implicit-convention"), 3);
         assert_eq!(min_features_for_rule("recurring-friction"), 3);
         assert_eq!(min_features_for_rule("file-dependency"), 3);
-        assert_eq!(min_features_for_rule("dead-knowledge"), 5);
+        // "dead-knowledge" removed from extraction pipeline (GH #351); falls through to default
+        assert_eq!(min_features_for_rule("dead-knowledge"), 3);
         assert_eq!(min_features_for_rule("unknown-rule"), 3);
     }
 

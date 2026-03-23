@@ -17,6 +17,7 @@ use unimatrix_core::{
 };
 use unimatrix_learn::TrainingService;
 use unimatrix_learn::models::{ConventionScorer, SignalClassifier};
+use unimatrix_observe::extraction::dead_knowledge::detect_dead_knowledge_candidates;
 use unimatrix_observe::extraction::neural::{EnhancerMode, NeuralEnhancer};
 use unimatrix_observe::extraction::shadow::{ShadowEvaluator, ShadowLogEntry};
 use unimatrix_observe::extraction::{
@@ -24,7 +25,7 @@ use unimatrix_observe::extraction::{
     quality_gate, run_extraction_rules,
 };
 use unimatrix_observe::types::ObservationRecord;
-use unimatrix_store::{ShadowEvalRow, Status};
+use unimatrix_store::{ShadowEvalRow, Status, counters};
 
 use unimatrix_adapt::AdaptationService;
 
@@ -836,7 +837,225 @@ async fn maintenance_tick(
         )
         .await?;
 
+    // Step 11: One-shot migration — bulk-deprecate existing noisy lesson-learned entries
+    // that were created by the old DeadKnowledgeRule extraction loop (GH #351).
+    // Gated by a COUNTERS marker so it runs exactly once per database.
+    run_dead_knowledge_migration_v1(store).await;
+
+    // Step 12: Dead-knowledge deprecation pass — directly deprecates stale entries
+    // instead of inserting new lesson-learned entries (GH #351 fix).
+    // Fetches recent observations from the observations table.
+    let deprecated_count = dead_knowledge_deprecation_pass(store).await;
+    if deprecated_count > 0 {
+        tracing::info!(
+            count = deprecated_count,
+            "maintenance tick: dead-knowledge deprecation pass complete"
+        );
+    }
+
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Dead-knowledge deprecation pass (GH #351)
+// ---------------------------------------------------------------------------
+
+/// Maximum number of entries deprecated per tick to avoid write-pool saturation.
+const DEAD_KNOWLEDGE_DEPRECATION_CAP: usize = 50;
+
+/// COUNTERS key used to gate the one-shot legacy noise migration.
+const DEAD_KNOWLEDGE_MIGRATION_V1_KEY: &str = "dead_knowledge_migration_v1";
+
+/// Maximum number of legacy noise entries cleaned up in the one-shot migration.
+const DEAD_KNOWLEDGE_MIGRATION_CAP: usize = 200;
+
+/// Fetch the most recent observations from the observations table for dead-knowledge analysis.
+///
+/// Returns up to `limit` rows ordered by id DESC (most recent first), then reverses
+/// them so the caller receives oldest-first ordering (session timestamp sort works
+/// correctly when iterating forward).
+///
+/// Uses the write pool directly — reads are safe on the write pool, and this avoids
+/// an additional pool acquisition on the critical maintenance path.
+async fn fetch_recent_observations_for_dead_knowledge(
+    store: &Store,
+    limit: i64,
+) -> Vec<ObservationRecord> {
+    use sqlx::Row;
+    let pool = store.write_pool_server();
+    let rows = match sqlx::query(
+        "SELECT ts_millis, hook, session_id, tool, input, response_size, response_snippet
+         FROM observations ORDER BY id DESC LIMIT ?1",
+    )
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!(error = %e, "dead-knowledge pass: failed to fetch observations");
+            return vec![];
+        }
+    };
+
+    rows.into_iter()
+        .map(|row| {
+            let ts: i64 = row.get::<i64, _>(0);
+            let hook_str: String = row.get::<String, _>(1);
+            let session_id: String = row.get::<String, _>(2);
+            let tool: Option<String> = row.get::<Option<String>, _>(3);
+            let input_str: Option<String> = row.get::<Option<String>, _>(4);
+            let response_size: Option<i64> = row.get::<Option<i64>, _>(5);
+            let snippet: Option<String> = row.get::<Option<String>, _>(6);
+            let event_type = hook_str;
+            let input = input_str.and_then(|s| serde_json::from_str(&s).ok());
+            ObservationRecord {
+                ts: ts as u64,
+                event_type,
+                source_domain: "claude-code".to_string(),
+                session_id,
+                tool,
+                input,
+                response_size: response_size.map(|s| s as u64),
+                response_snippet: snippet,
+            }
+        })
+        .collect()
+}
+
+/// Run the dead-knowledge deprecation pass.
+///
+/// Fetches recent observations, identifies entries that have been accessed at some
+/// point but were not used in the last 5 sessions, and directly calls
+/// `store.update_status(id, Status::Deprecated)` for each one.
+///
+/// Capped at `DEAD_KNOWLEDGE_DEPRECATION_CAP` (50) deprecations per tick to avoid
+/// write-pool saturation. Returns the count of entries successfully deprecated.
+///
+/// Non-fatal: failures on individual entries are logged and skipped.
+async fn dead_knowledge_deprecation_pass(store: &Arc<Store>) -> usize {
+    // Fetch enough observations to cover at least 5 distinct sessions.
+    // 5000 observations is a generous upper bound for normal usage patterns.
+    let observations = fetch_recent_observations_for_dead_knowledge(store, 5000).await;
+    if observations.is_empty() {
+        return 0;
+    }
+
+    // Run the detection logic in spawn_blocking (synchronous store query inside).
+    let store_for_detection = Arc::clone(store);
+    let candidates_opt = tokio::task::spawn_blocking(move || {
+        detect_dead_knowledge_candidates(&observations, &store_for_detection, 5)
+    })
+    .await;
+
+    let candidates = match candidates_opt {
+        Ok(Some(ids)) => ids,
+        Ok(None) => return 0, // insufficient sessions
+        Err(e) => {
+            tracing::warn!(error = %e, "dead-knowledge pass: detection task panicked");
+            return 0;
+        }
+    };
+
+    if candidates.is_empty() {
+        return 0;
+    }
+
+    // Cap at DEAD_KNOWLEDGE_DEPRECATION_CAP per tick.
+    let to_deprecate = &candidates[..candidates.len().min(DEAD_KNOWLEDGE_DEPRECATION_CAP)];
+    let mut deprecated = 0usize;
+
+    for &entry_id in to_deprecate {
+        match store.update_status(entry_id, Status::Deprecated).await {
+            Ok(()) => {
+                tracing::debug!(entry_id, "dead-knowledge pass: deprecated entry");
+                deprecated += 1;
+            }
+            Err(e) => {
+                tracing::warn!(
+                    entry_id,
+                    error = %e,
+                    "dead-knowledge pass: update_status failed; skipping"
+                );
+            }
+        }
+    }
+
+    deprecated
+}
+
+/// One-shot migration: bulk-deprecate existing noisy lesson-learned entries that were
+/// created by the old `DeadKnowledgeRule` extraction loop before GH #351 was fixed.
+///
+/// Gated by COUNTERS key `dead_knowledge_migration_v1`. Runs exactly once per database.
+/// Capped at `DEAD_KNOWLEDGE_MIGRATION_CAP` (200) entries. Non-fatal.
+async fn run_dead_knowledge_migration_v1(store: &Arc<Store>) {
+    let pool = store.write_pool_server();
+
+    // Fast path: check marker (O(1) DB read).
+    let done = counters::read_counter(pool, DEAD_KNOWLEDGE_MIGRATION_V1_KEY)
+        .await
+        .unwrap_or(0);
+    if done != 0 {
+        return; // already ran
+    }
+
+    tracing::info!("dead-knowledge migration v1: starting one-shot cleanup of noisy entries");
+
+    // Query active entries in the "knowledge-management" topic to find legacy noise entries.
+    // The old rule stored them with topic="knowledge-management" and tag="dead-knowledge".
+    let active_entries = match store.query_by_topic("knowledge-management").await {
+        Ok(entries) => entries,
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                "dead-knowledge migration v1: failed to query knowledge-management entries; skipping"
+            );
+            return;
+        }
+    };
+
+    // Filter to Active entries that have the "dead-knowledge" tag.
+    let noise_entries: Vec<u64> = active_entries
+        .into_iter()
+        .filter(|e| {
+            e.status == unimatrix_store::Status::Active
+                && e.tags.iter().any(|t| t == "dead-knowledge")
+        })
+        .map(|e| e.id)
+        .take(DEAD_KNOWLEDGE_MIGRATION_CAP)
+        .collect();
+
+    let count = noise_entries.len();
+    let mut deprecated = 0usize;
+
+    for entry_id in noise_entries {
+        match store.update_status(entry_id, Status::Deprecated).await {
+            Ok(()) => deprecated += 1,
+            Err(e) => {
+                tracing::warn!(
+                    entry_id,
+                    error = %e,
+                    "dead-knowledge migration v1: update_status failed; continuing"
+                );
+            }
+        }
+    }
+
+    // Set the marker regardless of partial failures (idempotent, non-repeating).
+    if let Err(e) = counters::set_counter(pool, DEAD_KNOWLEDGE_MIGRATION_V1_KEY, 1).await {
+        tracing::warn!(
+            error = %e,
+            "dead-knowledge migration v1: failed to set completion marker; will retry next tick"
+        );
+        return;
+    }
+
+    tracing::info!(
+        found = count,
+        deprecated,
+        "dead-knowledge migration v1: complete"
+    );
 }
 
 /// Process the auto-quarantine candidates collected during the tick write.
@@ -3119,6 +3338,209 @@ mod tests {
         assert!(
             matches!(result, NliQuarantineCheck::Allowed),
             "no Contradicts edges must return Allowed"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // GH #351: dead_knowledge_deprecation_pass unit tests
+    // ---------------------------------------------------------------------------
+
+    /// Insert an entry with access_count > 0 via record_usage.
+    async fn insert_accessed_entry(store: &unimatrix_store::SqlxStore, title: &str) -> u64 {
+        let entry = unimatrix_core::NewEntry {
+            title: title.to_string(),
+            content: format!("Content for {}", title),
+            topic: "test".to_string(),
+            category: "convention".to_string(),
+            tags: vec![],
+            source: "human".to_string(),
+            status: unimatrix_core::Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: "test".to_string(),
+            trust_source: "human".to_string(),
+        };
+        let id = store.insert(entry).await.expect("insert");
+        store
+            .record_usage(&[id], &[id], &[], &[], &[], &[])
+            .await
+            .expect("record_usage");
+        id
+    }
+
+    /// Insert `count` synthetic observations into the store (PreToolUse events across
+    /// distinct sessions so that detect_dead_knowledge_candidates has enough session data).
+    async fn insert_synthetic_sessions(store: &unimatrix_store::SqlxStore, count: usize) {
+        let pool = store.write_pool_server();
+        for i in 0..count {
+            let session_id = format!("dead-knowledge-test-session-{}", i);
+            sqlx::query(
+                "INSERT OR IGNORE INTO sessions (session_id, feature_cycle, started_at, status)
+                 VALUES (?1, NULL, ?2, 0)",
+            )
+            .bind(&session_id)
+            .bind(1_700_000_000_i64 + i as i64)
+            .execute(pool)
+            .await
+            .expect("insert session");
+            sqlx::query(
+                "INSERT INTO observations
+                 (session_id, ts_millis, hook, tool, input, response_size, response_snippet)
+                 VALUES (?1, ?2, 'PostToolUse', 'mcp__unimatrix__context_search',
+                         NULL, NULL, 'No results')",
+            )
+            .bind(&session_id)
+            .bind(1_700_000_000_000_i64 + i as i64 * 1000)
+            .execute(pool)
+            .await
+            .expect("insert observation");
+        }
+    }
+
+    /// GH #351: dead_knowledge_deprecation_pass must deprecate stale entries directly
+    /// instead of inserting new lesson-learned entries.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_dead_knowledge_deprecation_pass_unit() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().unwrap();
+        let raw_store = open_test_store(&tmp).await;
+        let store: Arc<Store> = Arc::new(raw_store);
+
+        // Insert 3 entries with access_count > 0 (potential dead-knowledge candidates).
+        let id1 = insert_accessed_entry(&store, "Stale knowledge alpha").await;
+        let id2 = insert_accessed_entry(&store, "Stale knowledge beta").await;
+        let id3 = insert_accessed_entry(&store, "Stale knowledge gamma").await;
+
+        // Insert 6 sessions that do NOT reference any of the three entries.
+        insert_synthetic_sessions(&store, 6).await;
+
+        // Run the deprecation pass.
+        let deprecated = dead_knowledge_deprecation_pass(&store).await;
+        assert_eq!(deprecated, 3, "all 3 stale entries should be deprecated");
+
+        // Verify each entry is now Deprecated in the store.
+        for &id in &[id1, id2, id3] {
+            let entry = store.get(id).await.expect("get entry");
+            assert_eq!(
+                entry.status,
+                unimatrix_store::Status::Deprecated,
+                "entry {} must be Deprecated after deprecation pass",
+                id
+            );
+        }
+
+        // Verify no new lesson-learned entries were inserted (the old broken behavior).
+        let all_active = store
+            .query_by_status(unimatrix_store::Status::Active)
+            .await
+            .expect("query active");
+        let noisy: Vec<_> = all_active
+            .iter()
+            .filter(|e| e.tags.iter().any(|t| t == "dead-knowledge"))
+            .collect();
+        assert!(
+            noisy.is_empty(),
+            "must not insert any lesson-learned entries with dead-knowledge tag"
+        );
+    }
+
+    /// GH #351: Migration v1 must deprecate legacy noise entries gated by COUNTERS marker.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_dead_knowledge_migration_v1_deprecates_legacy_entries() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().unwrap();
+        let raw_store = open_test_store(&tmp).await;
+        let store: Arc<Store> = Arc::new(raw_store);
+
+        // Insert a legacy noise entry (topic=knowledge-management, tag=dead-knowledge, Active).
+        let legacy_entry = unimatrix_core::NewEntry {
+            title: "Possible dead knowledge: Some entry".to_string(),
+            content: "Entry 'Some entry' (ID: 42) has 3 accesses but was not used in \
+                      the last 5 sessions. Consider deprecating."
+                .to_string(),
+            topic: "knowledge-management".to_string(),
+            category: "lesson-learned".to_string(),
+            tags: vec![
+                "auto-extracted".to_string(),
+                "dead-knowledge".to_string(),
+                "deprecation-signal".to_string(),
+            ],
+            source: "auto".to_string(),
+            status: unimatrix_core::Status::Active,
+            created_by: "background-tick".to_string(),
+            feature_cycle: String::new(),
+            trust_source: "auto".to_string(),
+        };
+        let legacy_id = store
+            .insert(legacy_entry)
+            .await
+            .expect("insert legacy entry");
+
+        // Run the migration.
+        run_dead_knowledge_migration_v1(&store).await;
+
+        // Verify the legacy entry is now Deprecated.
+        let entry = store.get(legacy_id).await.expect("get legacy entry");
+        assert_eq!(
+            entry.status,
+            unimatrix_store::Status::Deprecated,
+            "legacy noise entry must be deprecated by migration"
+        );
+
+        // Verify the COUNTERS marker is set (idempotency gate).
+        let pool = store.write_pool_server();
+        let marker = counters::read_counter(pool, DEAD_KNOWLEDGE_MIGRATION_V1_KEY)
+            .await
+            .expect("read counter");
+        assert_eq!(marker, 1, "migration marker must be set after completion");
+    }
+
+    /// GH #351: Migration must be idempotent — running twice does not re-deprecate entries.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_dead_knowledge_migration_v1_is_idempotent() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().unwrap();
+        let raw_store = open_test_store(&tmp).await;
+        let store: Arc<Store> = Arc::new(raw_store);
+
+        // Set the marker directly (simulates "migration already ran").
+        let pool = store.write_pool_server();
+        counters::set_counter(pool, DEAD_KNOWLEDGE_MIGRATION_V1_KEY, 1)
+            .await
+            .expect("set counter");
+
+        // Insert a legacy entry — migration should NOT touch it because marker is set.
+        let legacy_entry = unimatrix_core::NewEntry {
+            title: "Possible dead knowledge: Entry X".to_string(),
+            content: "Entry X has accesses but was not used recently.".to_string(),
+            topic: "knowledge-management".to_string(),
+            category: "lesson-learned".to_string(),
+            tags: vec!["dead-knowledge".to_string()],
+            source: "auto".to_string(),
+            status: unimatrix_core::Status::Active,
+            created_by: "background-tick".to_string(),
+            feature_cycle: String::new(),
+            trust_source: "auto".to_string(),
+        };
+        let legacy_id = store
+            .insert(legacy_entry)
+            .await
+            .expect("insert legacy entry");
+
+        // Run migration — should be a no-op.
+        run_dead_knowledge_migration_v1(&store).await;
+
+        // Entry must still be Active (migration skipped it).
+        let entry = store.get(legacy_id).await.expect("get entry");
+        assert_eq!(
+            entry.status,
+            unimatrix_store::Status::Active,
+            "migration must be idempotent — entry not touched when marker is set"
         );
     }
 }
