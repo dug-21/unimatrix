@@ -29,6 +29,7 @@ pub(crate) mod confidence;
 pub(crate) mod contradiction_cache;
 pub(crate) mod effectiveness;
 pub(crate) mod gateway;
+pub(crate) mod index_briefing;
 pub(crate) mod nli_detection;
 pub(crate) mod observation;
 pub(crate) mod search;
@@ -46,6 +47,7 @@ pub use contradiction_cache::{
 };
 pub use effectiveness::{EffectivenessState, EffectivenessStateHandle};
 pub(crate) use gateway::{RateLimitConfig, SecurityGateway};
+pub(crate) use index_briefing::{IndexBriefingParams, IndexBriefingService, derive_briefing_query};
 pub(crate) use search::{FusionWeights, RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
 pub(crate) use store_ops::StoreService;

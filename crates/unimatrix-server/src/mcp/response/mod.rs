@@ -15,7 +15,10 @@ use crate::error::ServerError;
 #[cfg(test)]
 use crate::infra::registry::{Capability, EnrollResult, TrustLevel};
 
-#[cfg(feature = "mcp-briefing")]
+// crt-027 (ADR-005, NFR-05, C-07): briefing module compiles unconditionally.
+// IndexEntry, format_index_table, and SNIPPET_CHARS are the WA-5 contract surface
+// and must be available to the UDS CompactPayload path regardless of feature flags.
+// Only the MCP tool handler registration is gated by #[cfg(feature = "mcp-briefing")].
 mod briefing;
 mod entries;
 mod mutations;
@@ -40,8 +43,8 @@ pub use mutations::{
 // Re-export status formatting
 pub use status::{CoAccessClusterEntry, StatusReport, format_status_report};
 
-// Re-export briefing formatting (crt-027: Briefing/format_briefing replaced by IndexEntry/format_index_table)
-#[cfg(feature = "mcp-briefing")]
+// Re-export briefing WA-5 contract surface unconditionally (crt-027 ADR-005, NFR-05, C-07).
+// IndexEntry, format_index_table, SNIPPET_CHARS compile regardless of mcp-briefing feature.
 pub use briefing::{IndexEntry, SNIPPET_CHARS, format_index_table, format_retrospective_report};
 
 // Re-export retrospective markdown formatting (vnc-011)
