@@ -575,9 +575,7 @@ async fn run_single_tick(
             // GH #358: fetch entries here in Tokio context before dispatching to rayon.
             // Rayon workers have no Tokio runtime; calling Handle::current() inside the
             // closure panics and silently disables contradiction detection every tick.
-            let active_entries: Vec<EntryRecord> = match store
-                .query_by_status(Status::Active)
-                .await
+            let active_entries: Vec<EntryRecord> = match store.query_by_status(Status::Active).await
             {
                 Ok(v) => v,
                 Err(e) => {
@@ -1591,8 +1589,19 @@ async fn extraction_tick(
     #[allow(clippy::collapsible_if)]
     if !accepted.is_empty() {
         if let Ok(adapter) = embed_service.get_adapter().await {
-            let store_for_gate = Arc::clone(store);
             let vi_for_gate = Arc::clone(vector_index);
+
+            // GH #360: fetch in Tokio context before rayon dispatch; rayon threads have no Tokio runtime.
+            let active_entries_for_gate: Vec<EntryRecord> = match store
+                .query_by_status(Status::Active)
+                .await
+            {
+                Ok(v) => v,
+                Err(e) => {
+                    tracing::warn!(error = %e, "quality-gate contradiction check skipped: could not fetch entries");
+                    vec![]
+                }
+            };
 
             // crt-022 (Site 5, Pattern B): background task — no timeout, error! on Cancelled.
             let gate_result = ml_inference_pool
@@ -1626,7 +1635,7 @@ async fn extraction_tick(
                         if let Ok(Some(_)) = contradiction::check_entry_contradiction(
                             &entry.content,
                             &entry.title,
-                            &store_for_gate,
+                            &active_entries_for_gate,
                             &vs,
                             &*adapter,
                             &config,
@@ -3736,21 +3745,68 @@ mod tests {
 
     struct NoopVectorStore;
     impl unimatrix_core::VectorStore for NoopVectorStore {
-        fn insert(&self, _entry_id: u64, _embedding: &[f32]) -> Result<(), unimatrix_core::CoreError> { Ok(()) }
-        fn search(&self, _query: &[f32], _top_k: usize, _ef_search: usize) -> Result<Vec<unimatrix_vector::SearchResult>, unimatrix_core::CoreError> { Ok(vec![]) }
-        fn search_filtered(&self, _query: &[f32], _top_k: usize, _ef_search: usize, _allowed: &[u64]) -> Result<Vec<unimatrix_vector::SearchResult>, unimatrix_core::CoreError> { Ok(vec![]) }
-        fn point_count(&self) -> usize { 0 }
-        fn contains(&self, _entry_id: u64) -> bool { false }
-        fn stale_count(&self) -> usize { 0 }
-        fn get_embedding(&self, _entry_id: u64) -> Option<Vec<f32>> { None }
-        fn compact(&self, _embeddings: Vec<(u64, Vec<f32>)>) -> Result<(), unimatrix_core::CoreError> { Ok(()) }
+        fn insert(
+            &self,
+            _entry_id: u64,
+            _embedding: &[f32],
+        ) -> Result<(), unimatrix_core::CoreError> {
+            Ok(())
+        }
+        fn search(
+            &self,
+            _query: &[f32],
+            _top_k: usize,
+            _ef_search: usize,
+        ) -> Result<Vec<unimatrix_vector::SearchResult>, unimatrix_core::CoreError> {
+            Ok(vec![])
+        }
+        fn search_filtered(
+            &self,
+            _query: &[f32],
+            _top_k: usize,
+            _ef_search: usize,
+            _allowed: &[u64],
+        ) -> Result<Vec<unimatrix_vector::SearchResult>, unimatrix_core::CoreError> {
+            Ok(vec![])
+        }
+        fn point_count(&self) -> usize {
+            0
+        }
+        fn contains(&self, _entry_id: u64) -> bool {
+            false
+        }
+        fn stale_count(&self) -> usize {
+            0
+        }
+        fn get_embedding(&self, _entry_id: u64) -> Option<Vec<f32>> {
+            None
+        }
+        fn compact(
+            &self,
+            _embeddings: Vec<(u64, Vec<f32>)>,
+        ) -> Result<(), unimatrix_core::CoreError> {
+            Ok(())
+        }
     }
 
     struct NoopEmbedService;
     impl unimatrix_core::EmbedService for NoopEmbedService {
-        fn embed_entry(&self, _title: &str, _content: &str) -> Result<Vec<f32>, unimatrix_core::CoreError> { Ok(vec![]) }
-        fn embed_entries(&self, _entries: &[(String, String)]) -> Result<Vec<Vec<f32>>, unimatrix_core::CoreError> { Ok(vec![]) }
-        fn dimension(&self) -> usize { 384 }
+        fn embed_entry(
+            &self,
+            _title: &str,
+            _content: &str,
+        ) -> Result<Vec<f32>, unimatrix_core::CoreError> {
+            Ok(vec![])
+        }
+        fn embed_entries(
+            &self,
+            _entries: &[(String, String)],
+        ) -> Result<Vec<Vec<f32>>, unimatrix_core::CoreError> {
+            Ok(vec![])
+        }
+        fn dimension(&self) -> usize {
+            384
+        }
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -3790,6 +3846,63 @@ mod tests {
         assert!(
             result.unwrap().unwrap().is_empty(),
             "empty entry list must yield no contradiction pairs"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // GH #360 regression: check_entry_contradiction must not panic inside RayonPool
+    // -----------------------------------------------------------------------
+    //
+    // check_entry_contradiction previously called Handle::current().block_on(store.get(…))
+    // inside the quality-gate rayon closure. Rayon worker threads have no Tokio runtime
+    // context, so Handle::current() panicked. The panic was silently discarded by the
+    // rayon pool's panic handler, mapping to RayonError::Cancelled — silently discarding
+    // all accepted entries for that tick.
+    //
+    // After the fix, active entries are pre-fetched in Tokio context before rayon dispatch;
+    // check_entry_contradiction accepts &[EntryRecord] and never calls Handle::current().
+    // This test verifies that calling check_entry_contradiction from inside RayonPool::spawn
+    // does NOT return RayonError::Cancelled (which would be the signal of a panic).
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_check_entry_contradiction_does_not_panic_in_rayon_pool() {
+        // GH #360: calling check_entry_contradiction from a rayon worker thread must not panic.
+        // Before the fix, Handle::current() inside the closure panicked because
+        // rayon threads have no Tokio runtime. The panic was swallowed by the pool and
+        // mapped to RayonError::Cancelled.
+        let pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "test-check-entry-contradiction-pool")
+                .expect("pool creation must succeed"),
+        );
+
+        let vs = Arc::new(NoopVectorStore);
+        let embed = Arc::new(NoopEmbedService);
+        let config = crate::infra::contradiction::ContradictionConfig::default();
+
+        // Pre-fetch entries (empty — no store needed; neighbor lookup returns None and continues).
+        let entries: Vec<unimatrix_store::EntryRecord> = vec![];
+
+        let result = pool
+            .spawn(move || {
+                crate::infra::contradiction::check_entry_contradiction(
+                    "Always use bincode for serialization.",
+                    "Serialization policy",
+                    &entries,
+                    vs.as_ref(),
+                    embed.as_ref(),
+                    &config,
+                )
+            })
+            .await;
+
+        // Must not be Cancelled (which would indicate a panic in the rayon worker).
+        assert!(
+            result.is_ok(),
+            "check_entry_contradiction panicked inside rayon pool (GH #360): {result:?}"
+        );
+        assert!(
+            result.unwrap().unwrap().is_none(),
+            "empty entry list must yield no contradiction pair"
         );
     }
 }
