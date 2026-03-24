@@ -274,11 +274,11 @@
 
 **Parameterized SQL binding** (R-08 above): The bind is positional. A transposition error corrupts the wrong column, not enables injection. The architecture uses rusqlite positional binds throughout; safe as long as bind positions are audited at code review.
 
-**Embedding pipeline influence via goal text**: A crafted goal string (adversarial text targeting the embedding model) could skew retrieval ranking for all agents in the feature cycle. The blast radius is limited to retrieval quality within that cycle — no external data exfiltration path exists. Mitigation: `MAX_GOAL_BYTES = 4096` constrains the input surface on both MCP and UDS paths.
+**Embedding pipeline influence via goal text**: A crafted goal string (adversarial text targeting the embedding model) could skew retrieval ranking for all agents in the feature cycle. The blast radius is limited to retrieval quality within that cycle — no external data exfiltration path exists. Mitigation: `MAX_GOAL_BYTES = 1024` constrains the input surface on both MCP and UDS paths.
 
 **UDS truncation cannot be prevented by callers**: The hook path is fire-and-forget; if a UDS-originated goal exceeds `MAX_GOAL_BYTES`, it is truncated with a warn log but the session proceeds. A malicious hook payload cannot exceed `MAX_GOAL_BYTES` in the stored value; the truncation is a bound. However, the truncated value could be semantically misleading (mid-sentence). This is an accepted limitation per ADR-005.
 
-**Memory amplification resolved (ADR-005)**: With `MAX_GOAL_BYTES = 4096`, the worst-case per-session in-memory clone is 4 KB. The multi-megabyte scenario is fully mitigated. No further security concern on this surface.
+**Memory amplification resolved (ADR-005)**: With `MAX_GOAL_BYTES = 1024`, the worst-case per-session in-memory clone is 1 KB. The multi-megabyte scenario is fully mitigated. No further security concern on this surface.
 
 ---
 
@@ -304,7 +304,7 @@
 | Scope Risk | Architecture Risk | Resolution |
 |-----------|------------------|------------|
 | SR-01: Schema migration test cascade | R-02 | ARCHITECTURE.md §Migration Test Cascade identifies three files to audit. NFR-06 and AC-16 mandate updates. |
-| SR-02: Unbounded goal text | R-07, R-13 | ADR-005 settles `MAX_GOAL_BYTES = 4096` (single constant, same limit for MCP and UDS). MCP hard-rejects; UDS truncates at char boundary. R-13 covers the retry-overwrite correctness of the UDS truncation path. |
+| SR-02: Unbounded goal text | R-07, R-13 | ADR-005 settles `MAX_GOAL_BYTES = 1024` (single constant, same limit for MCP and UDS). MCP hard-rejects; UDS truncates at char boundary. R-13 covers the retry-overwrite correctness of the UDS truncation path. |
 | SR-03: SubagentStart precedence not tested in isolation | R-04, R-12 | ADR-003 mandates explicit goal-present branch routing to `IndexBriefingService`. R-04 covers branch-point correctness (all five precedence cases). R-12 covers the new IndexBriefingService wiring on this path. |
 | SR-04: sessions.keywords column boundary | — | Accepted. ARCHITECTURE.md §Columns explicitly out of scope names the column. No architecture-level risk materialized. |
 | SR-05: Session resume DB failure contract | R-03 | ADR-004 specifies `unwrap_or_else` degradation to `None` with `tracing::warn!`. AC-14 and AC-15 cover the failure sub-cases. |

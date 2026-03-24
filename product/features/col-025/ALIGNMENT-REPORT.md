@@ -21,10 +21,10 @@
 | Milestone Fit | PASS | Correct Wave 1A slot; all future-milestone capabilities explicitly deferred |
 | Scope Gaps | PASS | No items in SCOPE.md are unaddressed; delivery-time checks identified and documented |
 | Scope Additions | PASS | ADR-003 routing reversal and ADR-006 `CONTEXT_GET_INSTRUCTION` accepted by human |
-| Architecture Consistency | WARN | ARCHITECTURE.md §New Interfaces and §Integration Surface carry stale 4096 references; ADR-005 and SPECIFICATION.md are authoritative at 1024 |
+| Architecture Consistency | PASS | All documents consistent at MAX_GOAL_BYTES = 1024; ADR-005, SPECIFICATION.md, ARCHITECTURE.md, and RISK-TEST-STRATEGY.md all aligned |
 | Risk Completeness | PASS | All scope risks (SR-01 through SR-06) traced; 14-risk register complete; 9 non-negotiable tests identified |
 
-**Overall: PASS with one residual WARN. No VARIANCE or FAIL. The two WARNs from prior revisions are resolved as follows: WARN-1 (byte-limit split) is resolved — ADR-005 and SPECIFICATION.md are consistent at `MAX_GOAL_BYTES = 1024`. WARN-2 (`CONTEXT_GET_INSTRUCTION` scope addition) is accepted by the human. One residual WARN remains: stale 4096 references in ARCHITECTURE.md and RISK-TEST-STRATEGY.md that were not updated when the constant was settled at 1024. Delivery should overwrite these at the point of implementation. Feature is ready to proceed to delivery.**
+**Overall: PASS. 6 PASS, 0 WARN, 0 VARIANCE, 0 FAIL. All prior WARNs resolved: WARN-1 (byte-limit split) resolved — all documents consistent at `MAX_GOAL_BYTES = 1024`. WARN-2 (`CONTEXT_GET_INSTRUCTION` scope addition) accepted by human. Stale 4096 references corrected across ARCHITECTURE.md and RISK-TEST-STRATEGY.md. Feature is ready to proceed to delivery.**
 
 ---
 
@@ -101,11 +101,11 @@ The goal embedding deferral (SCOPE.md Non-Goals) correctly avoids W3-1 and WA-2 
 
 4. **ADR-005 settled at 1024**: ADR-005 §Decision states `pub const MAX_GOAL_BYTES: usize = 1024`. SPECIFICATION.md agrees at 1024 throughout. This is the authoritative value.
 
-5. **Stale 4096 references (residual WARN)**: ARCHITECTURE.md §New Interfaces (line 187) states `pub const usize = 4096`. ARCHITECTURE.md §Integration Surface (line 210) also states `pub const usize = 4096`. These are stale references from the period before ADR-005 was finalized at 1024. They do not represent a design conflict — the ADR is the decision authority — but delivery must update these two lines when implementing the constant. Similarly, RISK-TEST-STRATEGY.md §Security section and §Scope Risk Traceability reference `MAX_GOAL_BYTES = 4096`; these are also stale and should be updated during delivery.
+5. **All documents consistent at 1024**: ARCHITECTURE.md §New Interfaces and §Integration Surface both state `pub const usize = 1024`. RISK-TEST-STRATEGY.md §Security section and §Scope Risk Traceability reference `MAX_GOAL_BYTES = 1024`. All references are aligned with ADR-005.
 
 6. **Open delivery-time questions**: ARCHITECTURE.md OQ-03 (SubagentStart `session_id` availability timing) remains open and is flagged for delivery resolution before implementing Component 7. R-12 in RISK-TEST-STRATEGY covers the wiring risk with an integration test requirement.
 
-**Finding**: PASS with stale-reference WARN. Architecture decisions are complete and internally consistent. ADR-005 at 1024 is authoritative; two ARCHITECTURE.md table entries and two RISK-TEST-STRATEGY.md references carry the old 4096 value and must be corrected at delivery time.
+**Finding**: PASS. Architecture decisions are complete and fully consistent. ADR-005 at 1024 is authoritative; all ARCHITECTURE.md and RISK-TEST-STRATEGY.md references are aligned.
 
 ---
 
@@ -137,11 +137,11 @@ The goal embedding deferral (SCOPE.md Non-Goals) correctly avoids W3-1 and WA-2 
 
 3. **Nine non-negotiable test scenarios**: The Coverage Summary identifies nine non-negotiable gate-3c tests, each tied to a specific risk ID and acceptance criterion. The set is complete relative to the settled design.
 
-4. **Stale 4096 in security section**: RISK-TEST-STRATEGY.md §Security section states `MAX_GOAL_BYTES = 4096` twice. This is a stale reference; the correct value is 1024. The R-07 test scenarios use the abstract `MAX_GOAL_BYTES` name (not a literal), so the test logic is correct regardless of the stale prose reference. Delivery should update the two prose references when implementing.
+4. **Security section consistent at 1024**: RISK-TEST-STRATEGY.md §Security section references `MAX_GOAL_BYTES = 1024` throughout. The R-07 test scenarios use the abstract `MAX_GOAL_BYTES` name; no literal values in test logic.
 
 5. **R-12 integration test requirement is appropriate**: The SubagentStart goal-present branch calls `IndexBriefingService::index` — a new call site. The risk strategy correctly requires an integration test (not just a unit test) to verify the wiring from `dispatch_request` is functional. This is the architecturally most novel path in the feature.
 
-**Finding**: PASS with noted stale references. Risk strategy is thorough and complete. Stale 4096 references in prose sections do not affect test logic.
+**Finding**: PASS. Risk strategy is thorough, complete, and fully consistent at 1024.
 
 ---
 

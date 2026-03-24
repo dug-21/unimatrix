@@ -60,7 +60,7 @@ retrieval when no explicit `task` was provided.
 | How `synthesize_from_session` returns goal | Replace entire body to return `state.current_goal.clone()`. Old topic-signal concatenation synthesis (`"{feature_cycle} {signals}"`) is removed. When `None`, step 3 topic-ID fallback runs unchanged. Pure sync function contract preserved. Shared between MCP briefing and UDS CompactPayload paths — both benefit with no additional wiring. | ADR-002, SCOPE.md §Resolved-2 | architecture/ADR-002-synthesize-from-session-returns-current-goal.md |
 | SubagentStart routing when goal is present | Explicit branch: when `current_goal` is `Some(g)` and non-empty, immediately route to `IndexBriefingService::index(query: &g, k: 20)`. Goal wins unconditionally over `prompt_snippet` (prompt_snippet is spawn boilerplate, not semantic intent). Do NOT fall through to transcript/RecordEvent path. When goal is absent, existing transcript / prompt_snippet / RecordEvent path runs unchanged. | ADR-003, SR-03 | architecture/ADR-003-subagent-start-injection-explicit-branch.md |
 | Session resume DB failure contract | Any DB error on `get_cycle_start_goal` degrades to `current_goal = None` via `unwrap_or_else` + `tracing::warn!`. Session registration always completes with `HookResponse::Ack`. Never blocks session usability. | ADR-004, SR-05 | architecture/ADR-004-session-resume-goal-degrade-to-none.md |
-| Goal byte-length enforcement | One constant: `MAX_GOAL_BYTES = 1024`. MCP path: hard-reject with descriptive `CallToolResult::error` when `goal.len() > MAX_GOAL_BYTES`; no DB write; agent corrects and retries. UDS path: truncate at nearest valid UTF-8 char boundary at or below 1024 bytes + `tracing::warn!`; write truncated value (last-writer-wins). Empty/whitespace goal normalized to `None` at MCP handler (trim + empty check). Authoritative value: ADR-005 and SPECIFICATION.md (both 1024). Note: ARCHITECTURE.md §New Interfaces and §Integration Surface tables carry stale `4096` — delivery-time cleanup. | ADR-005, SR-02 | architecture/ADR-005-goal-byte-length-guard-at-tool-layer.md |
+| Goal byte-length enforcement | One constant: `MAX_GOAL_BYTES = 1024`. MCP path: hard-reject with descriptive `CallToolResult::error` when `goal.len() > MAX_GOAL_BYTES`; no DB write; agent corrects and retries. UDS path: truncate at nearest valid UTF-8 char boundary at or below 1024 bytes + `tracing::warn!`; write truncated value (last-writer-wins). Empty/whitespace goal normalized to `None` at MCP handler (trim + empty check). Authoritative value: ADR-005, SPECIFICATION.md, ARCHITECTURE.md, and RISK-TEST-STRATEGY.md — all consistent at 1024. | ADR-005, SR-02 | architecture/ADR-005-goal-byte-length-guard-at-tool-layer.md |
 | `CONTEXT_GET_INSTRUCTION` header on all `format_index_table` output | Static constant defined in `src/services/index_briefing.rs`. Prepended once as a single header line before the table in every `format_index_table` output, on both MCP briefing responses and UDS injection payloads. Never inlined at call sites — constant name only. All existing `format_index_table` tests must be audited and updated (R-11). | ADR-006 | architecture/ADR-006-context-get-instruction-constant.md |
 
 ---
@@ -145,9 +145,7 @@ pub const CONTEXT_GET_INSTRUCTION: &str =
 pub const MAX_GOAL_BYTES: usize = 1024;
 ```
 
-`MAX_GOAL_BYTES = 1024` is the single shared limit for both MCP (hard-reject) and UDS
-(truncate) paths. The stale `4096` values in ARCHITECTURE.md §New Interfaces (line 187)
-and §Integration Surface (line 210) are delivery-time cleanup items; ADR-005 is authoritative.
+`MAX_GOAL_BYTES = 1024` is the single shared limit for both MCP (hard-reject) and UDS (truncate) paths. All documents are consistent at this value.
 
 ---
 
@@ -239,7 +237,7 @@ if let Some(g) = session_registry
 
 1. `cycle_events.goal` is written **only** on `cycle_start` event rows. Phase-end and stop events always have `goal = NULL`.
 2. `synthesize_from_session` **must remain a pure synchronous function** — no DB reads, no async, no lock acquisition. O(1) clone of `Option<String>`. Called on the MCP and UDS hot paths.
-3. `MAX_GOAL_BYTES = 1024` is the **authoritative value** (ADR-005, SPECIFICATION.md). The stale `4096` in ARCHITECTURE.md §New Interfaces and §Integration Surface and in RISK-TEST-STRATEGY.md §Security section are delivery-time cleanup items — overwrite when implementing the constant.
+3. `MAX_GOAL_BYTES = 1024` is the **authoritative value** (ADR-005, SPECIFICATION.md, ARCHITECTURE.md, RISK-TEST-STRATEGY.md — all aligned).
 4. Empty or whitespace-only goal must be normalized to `None` **at the MCP handler only** (trim → if empty → `None`). The UDS path does not perform whitespace normalization; it applies UTF-8-boundary truncation only.
 5. `sessions.keywords TEXT` (dead since crt-025 WA-1) **must not be touched** by this feature. Tracked separately (SCOPE.md §Non-Goals, SR-04).
 6. Goal is **not** embedded as a vector. `FusedScoreInputs`, scoring weights, and the embedding pipeline are entirely unchanged.
@@ -311,7 +309,7 @@ if let Some(g) = session_registry
 | Milestone Fit | PASS | Wave 1A / WA-4b layer. Schema migration follows established ALTER TABLE pattern. |
 | Scope Gaps | PASS | No items in SCOPE.md are unaddressed. One delivery-time check: verify schema is at exactly v15 before starting. |
 | Scope Additions | PASS (accepted by human) | ADR-003 routing reversal (goal wins over prompt_snippet; routes to IndexBriefingService instead of ContextSearch) and ADR-006 (`CONTEXT_GET_INSTRUCTION` header) are both explicitly accepted. AC-18 and R-11 cover delivery requirements for ADR-006. |
-| Architecture Consistency | WARN | ARCHITECTURE.md §New Interfaces (line 187) and §Integration Surface (line 210) state `pub const usize = 4096` — stale from pre-ADR-005 revision. RISK-TEST-STRATEGY.md §Security section and §Scope Risk Traceability also reference `4096` in prose. ADR-005 and SPECIFICATION.md are authoritative at `MAX_GOAL_BYTES = 1024`. R-07 test scenarios use the constant name (not a literal), so test logic is correct. Delivery must overwrite the four stale references. |
+| Architecture Consistency | PASS | All documents consistent at `MAX_GOAL_BYTES = 1024` — ADR-005, SPECIFICATION.md, ARCHITECTURE.md, and RISK-TEST-STRATEGY.md all aligned. |
 | Risk Completeness | PASS | All SR-01–SR-06 traced; 14-risk register complete; 9 non-negotiable gate-3c tests identified. |
 
 ### Prior WARNs resolved
@@ -321,8 +319,7 @@ if let Some(g) = session_registry
 
 ### Delivery checklist from alignment
 
-1. Overwrite the four stale `4096` references (two in ARCHITECTURE.md, two in RISK-TEST-STRATEGY.md) with `1024` when implementing `MAX_GOAL_BYTES`.
-2. Verify schema is at exactly v15 before writing the v16 migration.
+1. Verify schema is at exactly v15 before writing the v16 migration.
 3. Resolve ARCHITECTURE.md OQ-03 (SubagentStart `session_id` timing) before implementing Component 7.
 4. Audit all `SessionState { .. }` struct literals and test helpers for the new `current_goal` field (pattern #3180 / R-06).
 5. Audit all `format_index_table` test assertions; introduce `strip_briefing_header(s: &str) -> &str` test helper (R-11).

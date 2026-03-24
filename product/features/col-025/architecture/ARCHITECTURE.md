@@ -184,7 +184,7 @@ See individual ADR files:
 | `Store::get_cycle_start_goal` | `async fn get_cycle_start_goal(&self, cycle_id: &str) -> Result<Option<String>>` | `unimatrix-store/src/db.rs` |
 | `SessionRegistry::set_current_goal` | `fn set_current_goal(&self, session_id: &str, goal: Option<String>)` | `unimatrix-server/src/infra/session.rs` |
 | `CONTEXT_GET_INSTRUCTION` | `pub const &str = "Use context_get with the entry ID for full content when relevant."` | `unimatrix-server/src/services/index_briefing.rs` |
-| `MAX_GOAL_BYTES` | `pub const usize = 4096` | constants location (adjacent to `MAX_INJECTION_BYTES`) |
+| `MAX_GOAL_BYTES` | `pub const usize = 1024` | constants location (adjacent to `MAX_INJECTION_BYTES`) |
 
 ### Schema change
 
@@ -207,7 +207,7 @@ ALTER TABLE cycle_events ADD COLUMN goal TEXT;
 | Integration Point | Type/Signature | Source |
 |-------------------|---------------|--------|
 | `CycleParams::goal` | `Option<String>`; trimmed + empty-normalized at handler | `src/mcp/tools.rs` |
-| `MAX_GOAL_BYTES` | `pub const usize = 4096`; single constant for MCP (reject) and UDS (truncate) | constants location |
+| `MAX_GOAL_BYTES` | `pub const usize = 1024`; single constant for MCP (reject) and UDS (truncate) | constants location |
 | `CONTEXT_GET_INSTRUCTION` | `pub const &str`; prepended once as header in `format_index_table` | `src/services/index_briefing.rs` |
 | `SessionState::current_goal` | `Option<String>` | `src/infra/session.rs` |
 | `SessionRegistry::set_current_goal` | `fn(&self, &str, Option<String>)` | `src/infra/session.rs` |
