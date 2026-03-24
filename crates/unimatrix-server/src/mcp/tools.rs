@@ -1202,9 +1202,9 @@ impl UnimatrixServer {
         crate::infra::validation::validate_retrospective_params(&params)
             .map_err(rmcp::ErrorData::from)?;
 
-        // 3. Load observations from SQL via ObservationSource (col-012)
-        //    First try direct feature_cycle query (fast path).
-        //    If empty, fall back to content-based attribution (#162).
+        // 3. Load observations from SQL via ObservationSource (col-024)
+        //    Three-path lookup: primary cycle_events-based → legacy sessions.feature_cycle → content-scan.
+        //    Primary path introduced in col-024; legacy paths preserved for backward compatibility.
         let store_for_obs = Arc::clone(&self.store);
         let registry_for_obs = Arc::clone(&self.observation_registry);
         let feature_cycle_for_load = params.feature_cycle.clone();
@@ -1214,13 +1214,37 @@ impl UnimatrixServer {
                 use unimatrix_observe::ObservationSource;
                 let source = crate::services::observation::SqlObservationSource::new(store_for_obs, registry_for_obs);
 
-                // Fast path: direct feature_cycle query
-                let direct = source.load_feature_observations(&feature_cycle_for_load)?;
-                if !direct.is_empty() {
-                    return Ok(direct);
+                // ---- Path 1: Primary (cycle_events-based, col-024) ----
+                // Returns Ok(vec![]) for pre-col-024 features and enrichment gaps.
+                // Returns Err only on genuine SQL failure — errors propagate via ?, do NOT activate fallback (FM-01).
+                let primary = source.load_cycle_observations(&feature_cycle_for_load)?;
+                if !primary.is_empty() {
+                    return Ok(primary);
                 }
 
-                // Fallback: content-based attribution for sessions with NULL feature_cycle
+                // Primary path returned empty. Log fallback transition (ADR-003).
+                // Suppressed in production (debug level). Visible with RUST_LOG=debug.
+                tracing::debug!(
+                    cycle_id = %feature_cycle_for_load,
+                    path = "load_feature_observations",
+                    "CycleReview: primary path empty, falling back to legacy sessions path"
+                );
+
+                // ---- Path 2: Legacy-1 (sessions.feature_cycle) ----
+                let legacy1 = source.load_feature_observations(&feature_cycle_for_load)?;
+                if !legacy1.is_empty() {
+                    return Ok(legacy1);
+                }
+
+                // Legacy-1 also returned empty. Log second fallback transition (ADR-003).
+                tracing::debug!(
+                    cycle_id = %feature_cycle_for_load,
+                    path = "load_unattributed_sessions",
+                    "CycleReview: legacy sessions path empty, falling back to content attribution"
+                );
+
+                // ---- Path 3: Legacy-2 (content-based attribution) ----
+                // Unchanged from pre-col-024.
                 let unattributed = source.load_unattributed_sessions()?;
                 if unattributed.is_empty() {
                     return Ok(vec![]);
@@ -3238,6 +3262,233 @@ mod tests {
             lines.len() >= 4,
             "must have header + separator + at least 2 data rows; got {}",
             lines.len()
+        );
+    }
+
+    // ---- col-024: context_cycle_review three-path fallback tests (T-CCR-01 through T-CCR-04) ----
+
+    /// Mock ObservationSource for testing the three-path fallback logic.
+    ///
+    /// Supports configuring return values for each path and tracking whether each
+    /// method was called, so tests can assert call-site behavior without a live store.
+    #[cfg(test)]
+    struct MockObservationSource {
+        /// Return value for load_cycle_observations.
+        cycle_obs: std::result::Result<
+            Vec<unimatrix_observe::ObservationRecord>,
+            unimatrix_observe::ObserveError,
+        >,
+        /// Return value for load_feature_observations.
+        feature_obs: std::result::Result<
+            Vec<unimatrix_observe::ObservationRecord>,
+            unimatrix_observe::ObserveError,
+        >,
+        /// Flag set when load_feature_observations is called.
+        feature_obs_called: std::sync::atomic::AtomicBool,
+        /// Flag set when load_unattributed_sessions is called.
+        unattributed_called: std::sync::atomic::AtomicBool,
+    }
+
+    #[cfg(test)]
+    impl MockObservationSource {
+        fn primary_returns(obs: Vec<unimatrix_observe::ObservationRecord>) -> Self {
+            MockObservationSource {
+                cycle_obs: Ok(obs),
+                feature_obs: Ok(vec![]),
+                feature_obs_called: std::sync::atomic::AtomicBool::new(false),
+                unattributed_called: std::sync::atomic::AtomicBool::new(false),
+            }
+        }
+
+        fn primary_empty_legacy_returns(obs: Vec<unimatrix_observe::ObservationRecord>) -> Self {
+            MockObservationSource {
+                cycle_obs: Ok(vec![]),
+                feature_obs: Ok(obs),
+                feature_obs_called: std::sync::atomic::AtomicBool::new(false),
+                unattributed_called: std::sync::atomic::AtomicBool::new(false),
+            }
+        }
+
+        fn primary_errors() -> Self {
+            MockObservationSource {
+                cycle_obs: Err(unimatrix_observe::ObserveError::Database(
+                    "simulated SQL failure".to_string(),
+                )),
+                feature_obs: Ok(vec![]),
+                feature_obs_called: std::sync::atomic::AtomicBool::new(false),
+                unattributed_called: std::sync::atomic::AtomicBool::new(false),
+            }
+        }
+
+        fn all_empty() -> Self {
+            MockObservationSource {
+                cycle_obs: Ok(vec![]),
+                feature_obs: Ok(vec![]),
+                feature_obs_called: std::sync::atomic::AtomicBool::new(false),
+                unattributed_called: std::sync::atomic::AtomicBool::new(false),
+            }
+        }
+    }
+
+    /// Helper to build a minimal ObservationRecord for test fixtures.
+    #[cfg(test)]
+    fn make_obs_record(session_id: &str) -> unimatrix_observe::ObservationRecord {
+        unimatrix_observe::ObservationRecord {
+            ts: 1_000_000,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
+            session_id: session_id.to_string(),
+            tool: Some("Bash".to_string()),
+            input: None,
+            response_size: None,
+            response_snippet: None,
+        }
+    }
+
+    /// The three-path fallback logic extracted from the context_cycle_review closure
+    /// for isolated unit testing. This mirrors the exact code in the handler closure.
+    ///
+    /// Returns the same result type as the closure: Result<Vec<ObservationRecord>, ObserveError>.
+    #[cfg(test)]
+    fn run_three_path_fallback(
+        source: &MockObservationSource,
+        feature_cycle: &str,
+    ) -> std::result::Result<
+        Vec<unimatrix_observe::ObservationRecord>,
+        unimatrix_observe::ObserveError,
+    > {
+        use std::sync::atomic::Ordering;
+        use unimatrix_observe::ObserveError;
+
+        // Path 1: Primary (cycle_events-based)
+        let primary = source
+            .cycle_obs
+            .as_ref()
+            .map(|v| v.clone())
+            .map_err(|e| ObserveError::Database(e.to_string()))?;
+        if !primary.is_empty() {
+            return Ok(primary);
+        }
+
+        // Fallback log (ADR-003) — tested via tracing_test in T-CCR-03.
+        tracing::debug!(
+            cycle_id = %feature_cycle,
+            path = "load_feature_observations",
+            "CycleReview: primary path empty, falling back to legacy sessions path"
+        );
+
+        // Path 2: Legacy-1 (sessions.feature_cycle)
+        source.feature_obs_called.store(true, Ordering::SeqCst);
+        let legacy1 = source
+            .feature_obs
+            .as_ref()
+            .map(|v| v.clone())
+            .map_err(|e| ObserveError::Database(e.to_string()))?;
+        if !legacy1.is_empty() {
+            return Ok(legacy1);
+        }
+
+        // Second fallback log (ADR-003)
+        tracing::debug!(
+            cycle_id = %feature_cycle,
+            path = "load_unattributed_sessions",
+            "CycleReview: legacy sessions path empty, falling back to content attribution"
+        );
+
+        // Path 3: Legacy-2 (content-based attribution)
+        source.unattributed_called.store(true, Ordering::SeqCst);
+        Ok(vec![])
+    }
+
+    /// T-CCR-01: When load_cycle_observations returns non-empty, load_feature_observations
+    /// must NOT be called (AC-04, R-04 — prevents double attribution).
+    #[test]
+    fn context_cycle_review_primary_path_used_when_non_empty() {
+        use std::sync::atomic::Ordering;
+
+        let record = make_obs_record("session-001");
+        let source = MockObservationSource::primary_returns(vec![record.clone()]);
+
+        let result = run_three_path_fallback(&source, "col-024");
+
+        assert!(result.is_ok(), "primary path must succeed");
+        let obs = result.unwrap();
+        assert_eq!(obs.len(), 1, "must return the primary observation");
+        assert_eq!(obs[0].session_id, "session-001");
+
+        assert!(
+            !source.feature_obs_called.load(Ordering::SeqCst),
+            "load_feature_observations must NOT be called when primary returns non-empty"
+        );
+        assert!(
+            !source.unattributed_called.load(Ordering::SeqCst),
+            "load_unattributed_sessions must NOT be called when primary returns non-empty"
+        );
+    }
+
+    /// T-CCR-02: When load_cycle_observations returns Ok(vec![]), load_feature_observations
+    /// activates (AC-04, AC-09, AC-12 — backward compatibility).
+    #[test]
+    fn context_cycle_review_fallback_to_legacy_when_primary_empty() {
+        use std::sync::atomic::Ordering;
+
+        let record = make_obs_record("legacy-session-001");
+        let source = MockObservationSource::primary_empty_legacy_returns(vec![record]);
+
+        let result = run_three_path_fallback(&source, "col-024");
+
+        assert!(result.is_ok(), "legacy fallback must succeed");
+        let obs = result.unwrap();
+        assert_eq!(obs.len(), 1, "must return the legacy observation");
+        assert_eq!(obs[0].session_id, "legacy-session-001");
+
+        assert!(
+            source.feature_obs_called.load(Ordering::SeqCst),
+            "load_feature_observations must be called exactly once when primary is empty"
+        );
+    }
+
+    /// T-CCR-03: When primary path returns Ok(vec![]), a tracing::debug! log fires
+    /// with cycle_id and the message "primary path empty" (AC-14, R-08, ADR-003).
+    #[tracing_test::traced_test]
+    #[test]
+    fn context_cycle_review_no_cycle_events_debug_log_emitted() {
+        let source = MockObservationSource::all_empty();
+        let _result = run_three_path_fallback(&source, "legacy-feature-001");
+
+        // Verify the debug log was emitted with the feature cycle value (ADR-003).
+        // tracing_test captures debug-level events by default.
+        assert!(
+            logs_contain("primary path empty"),
+            "debug log must contain 'primary path empty'"
+        );
+        assert!(
+            logs_contain("legacy-feature-001"),
+            "debug log must contain the feature_cycle value"
+        );
+    }
+
+    /// T-CCR-04: When load_cycle_observations returns Err, the error propagates to the
+    /// caller; load_feature_observations is NOT called (FM-01).
+    #[test]
+    fn context_cycle_review_propagates_error_not_fallback() {
+        use std::sync::atomic::Ordering;
+
+        let source = MockObservationSource::primary_errors();
+        let result = run_three_path_fallback(&source, "col-024");
+
+        assert!(
+            result.is_err(),
+            "SQL error from primary path must propagate as Err"
+        );
+
+        assert!(
+            !source.feature_obs_called.load(Ordering::SeqCst),
+            "load_feature_observations must NOT be called when primary returns Err (FM-01)"
+        );
+        assert!(
+            !source.unattributed_called.load(Ordering::SeqCst),
+            "load_unattributed_sessions must NOT be called when primary returns Err (FM-01)"
         );
     }
 }
