@@ -32,3 +32,11 @@ Complete.
 
 1. Whether to add a `tracing::debug!` on the AC-08 signal-mismatch case (extracted signal differs from registry feature). Low cost, aids post-deploy investigation.
 2. Whether to distinguish "no cycle_events rows" from "rows exist but no matching topic_signal" in the fallback log. Requires an extra COUNT query; defer unless operational evidence warrants it.
+
+## Knowledge Stewardship
+
+- Stored: ADR-001 (single block_sync entry) → Unimatrix entry #3371, topic: col-024, category: decision
+- Stored: ADR-002 (named timestamp conversion helper cycle_ts_to_obs_millis) → Unimatrix entry #3372, topic: col-024, category: decision
+- Stored: ADR-003 (structured debug log on primary-path fallback) → Unimatrix entry #3373, topic: col-024, category: decision
+- Stored: ADR-004 (shared enrich_topic_signal helper for all write sites) → Unimatrix entry #3374, topic: col-024, category: decision
+- Stored: ADR-005 (open-ended window cap at unix_now_secs()) → Unimatrix entry #3375, topic: col-024, category: decision
