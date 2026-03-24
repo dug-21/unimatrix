@@ -1,4 +1,4 @@
-## ADR-003: SubagentStart Injection Uses an Explicit Goal Branch
+## ADR-003: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present
 
 ### Context
 
@@ -16,72 +16,86 @@ This path is architecturally separate from the `CompactPayload` path, which is
 why ADR-002 (making `derive_briefing_query` step 2 return `current_goal`) does
 NOT automatically cover SubagentStart injection.
 
-Three options for introducing goal on the SubagentStart path:
+**Background on prompt_snippet**: On SubagentStart, `prompt_snippet` carries the
+spawning prompt — typically spawn boilerplate (protocol role assignments, agent
+identity text). It is noisy and not semantically representative of the feature's
+intent. Col-024 confirmed that UDS `topic_signal` enrichment (`enrich_topic_signal`
+in `listener.rs`) shipped for retrospective attribution; that is a separate concern
+from injection quality. Goal is a deliberate, concise statement of feature intent
+and is the stronger signal.
 
-**Option A**: Route SubagentStart through `handle_compact_payload` instead of
-`handle_context_search`. This would unify the two paths but changes response format
-(BriefingContent vs SearchResult), alters the observed injection structure, and
-risks breaking AC-10 (existing tests must pass unmodified).
-
-**Option B**: Call `derive_briefing_query` from the SubagentStart arm with
-`task = transcript_query, session_state = ...`. This would work but requires
-materializing `session_state` in the SubagentStart arm and changing the query
-construction logic significantly. It also conflates a transcript-derived query with
-a task-style query, which has different semantics.
-
-**Option C**: Add an explicit fallback step inside the existing SubagentStart
-transcript-query path: when `transcript_query` is empty or `None`, check
-`session_registry.get_state(session_id)?.current_goal` before falling back to
-`RecordEvent`. This preserves the existing path, changes only the fallback
-behavior, and is directly testable in isolation.
-
-Option C was chosen. It matches the precedence specified in SCOPE.md:
+**Revised precedence** (settled design decision, superseding original SCOPE.md §Goals-5):
 
 ```
 SubagentStart injection precedence:
-  prompt_snippet / transcript query (non-empty)  →  current_goal  →  RecordEvent/topic
+  goal (Some, non-empty)  →  prompt_snippet / transcript (non-empty)  →  RecordEvent/topic
 ```
 
-The explicit branch makes the precedence rule visible in code and directly
-testable with a unit test that verifies goal is NOT used when transcript is
-non-empty (SR-03 requirement: missed or inverted precedence degrades quality
-silently).
+Goal wins over prompt_snippet. When goal is present, the SubagentStart path routes
+to `IndexBriefingService` (not `ContextSearch`), returning the full k=20 ranked
+index injected before the subagent's first token. Agents receive relevant context
+without needing to call `context_briefing` explicitly.
+
+When goal is absent, the path falls through to the existing prompt_snippet →
+transcript → RecordEvent logic unchanged.
+
+Three options for implementing the goal-present branch:
+
+**Option A**: Route SubagentStart through `handle_compact_payload` (CompactPayload
+path). This would unify the two paths but changes response format in all cases
+including when goal is absent, alters observed injection structure, and risks
+breaking AC-10 (existing tests must pass unmodified).
+
+**Option B**: Add an explicit fallback step after transcript extraction: when
+transcript is empty or None, check `current_goal` before RecordEvent. This was
+the original design but inverts the goal/prompt_snippet priority relative to the
+settled decision — prompt_snippet is spawn boilerplate, not semantic intent.
+
+**Option C (chosen)**: When goal is `Some(g)` and non-empty, immediately route to
+`IndexBriefingService::index(query: g, session_state, k: 20)`. This produces a full
+ranked-index injection (the same payload as `handle_compact_payload`) anchored to
+the feature goal. Only when goal is absent does the path fall through to the
+existing transcript → RecordEvent logic.
+
+Option C was chosen because goal is a deliberate statement of intent whereas
+prompt_snippet is boilerplate. Routing to `IndexBriefingService` rather than
+`ContextSearch` gives the injected content the same quality as a full briefing call.
 
 ### Decision
 
-In the SubagentStart arm of `dispatch_request` in `src/uds/listener.rs`, after
-the existing `extract_transcript_block` call:
+In the SubagentStart arm of `dispatch_request` in `src/uds/listener.rs`:
 
-1. If transcript query is `Some(q)` and non-empty → use as `ContextSearch` query
-   (unchanged behavior).
-2. If transcript query is `None` or empty → look up `session_id` in
-   `session_registry`; if the session has `current_goal = Some(g)` → use `g` as
-   the `ContextSearch` query.
-3. Otherwise → fall through to `RecordEvent` (unchanged behavior).
+1. Check `session_registry.get_state(session_id)?.current_goal`.
+2. If `current_goal` is `Some(g)` and `g` is non-empty:
+   - Call `IndexBriefingService::index(query: &g, session_state, k: 20)`.
+   - Inject the resulting ranked index payload (same format as `handle_compact_payload`).
+   - **Do not fall through to transcript extraction or RecordEvent.**
+3. If `current_goal` is `None` or empty:
+   - Proceed with the existing `extract_transcript_block` path (prompt_snippet / transcript → RecordEvent/topic), unchanged.
 
 The `session_id` is already available in the SubagentStart arm (`hook_input.session_id`).
 The `session_registry` is passed to `dispatch_request`. No additional parameters
-are needed.
+are needed to implement step 1.
 
-The new branch generates a `HookRequest::ContextSearch` with:
-- `query = current_goal`
-- `session_id = hook_input.session_id`
-- `source = Some("SubagentStart".to_string())`
-- `role = agent_type` (same as existing path)
-
-This is structurally identical to what the existing transcript-derived path
-produces, just with a different query string source.
+This is structurally parallel to `handle_compact_payload` for the goal-present branch
+but remains an explicit branch so existing SubagentStart behavior is not disturbed
+when goal is absent.
 
 ### Consequences
 
-- SubagentStart injection now produces semantically anchored content for sessions
-  that have a feature goal and no transcript content available.
-- Precedence is explicit and testable. Spec writer must add:
-  - Test: goal used when transcript empty + goal set (AC-08).
-  - Test: goal NOT used when transcript non-empty + goal set (SR-03 guard).
-  - Test: RecordEvent fallback when both transcript and goal are absent.
-- The path remains separate from `derive_briefing_query`. If future features want
-  to unify the SubagentStart path with the CompactPayload path, ADR-002 and
-  ADR-003 together define the current contract boundary.
-- `handle_context_search` is unchanged. The goal-derived query goes through
-  the same SearchService pipeline as any other ContextSearch query.
+- SubagentStart injection for goal-present sessions is now as rich as a full
+  `context_briefing` call — k=20 ranked index injected before the agent's first
+  token, anchored to the feature goal.
+- Agents starting work on a feature cycle do not need to call `context_briefing`
+  explicitly; relevant context arrives via injection.
+- Precedence is goal → prompt_snippet (not prompt_snippet → goal). Spec writer
+  must add:
+  - Test: goal present → IndexBriefingService called, transcript path skipped (AC-08 revised).
+  - Test: goal absent → existing transcript/RecordEvent path runs unchanged (SR-03 guard).
+  - Test: RecordEvent fallback when both goal and transcript are absent.
+- The existing `ContextSearch` path for SubagentStart (when goal is absent) is
+  not modified. If future features want to further unify injection paths, ADR-002
+  and ADR-003 together define the current contract boundary.
+- AC-08 must be revised by the spec writer: "SubagentStart uses goal as the
+  IndexBriefingService query when goal is set, regardless of prompt_snippet."
+- SR-03 guard test must verify goal wins over prompt_snippet (not the reverse).

@@ -18,6 +18,19 @@ The change spans four layers:
 
 All other scoring, ranking, and embedding pipeline behaviour is unchanged.
 
+Four settled design decisions from the architecture revision (col-025-rev) are
+incorporated here:
+
+- **ADR-003 revised**: goal wins over prompt_snippet on SubagentStart; routes to
+  `IndexBriefingService` (not `ContextSearch`) when goal is present.
+- **ADR-005 revised**: one constant `MAX_GOAL_BYTES`; MCP path hard-rejects with
+  actionable error; UDS path truncates at UTF-8 char boundary; empty/whitespace
+  goal normalized to `None` at MCP handler.
+- **Whitespace normalization**: empty or whitespace-only goal is normalized to
+  `None` at the MCP handler (no separate ADR; part of ADR-005 validation pass).
+- **ADR-006 new**: `CONTEXT_GET_INSTRUCTION` constant prepended to all
+  `format_index_table` output on both MCP briefing and UDS injection paths.
+
 ---
 
 ## Component Breakdown
@@ -85,16 +98,18 @@ Responsibilities:
 - When `None` (no goal, legacy cycle), step 3 topic-ID fallback runs unchanged.
 - Shared by both `handle_compact_payload` (UDS) and `context_briefing` (MCP) — both benefit from the change with no additional wiring.
 
-### Component 7: SubagentStart Injection Precedence
+### Component 7: SubagentStart Injection — Goal-First Route to IndexBriefingService
 
 **Crate**: `unimatrix-server`
-**Files**: `src/uds/listener.rs` (SubagentStart hook arm, steps 5b)
+**Files**: `src/uds/listener.rs` (SubagentStart hook arm, `dispatch_request`)
 
 Responsibilities:
-- After extracting transcript query (existing step 5b), if transcript query is `None` OR empty:
-  check `session_registry.get_state(session_id)?.current_goal` as fallback before topic-ID.
-- Precedence: `transcript_query (non-empty)` → `current_goal` → topic.
-- This is the only injection path not served automatically by `derive_briefing_query`; requires explicit branching (SR-03).
+- First, check `session_registry.get_state(session_id)?.current_goal`.
+- If `current_goal` is `Some(g)` and non-empty: call `IndexBriefingService::index(query: &g, session_state, k: 20)` and inject the resulting ranked-index payload. Do NOT fall through to transcript extraction.
+- If `current_goal` is absent: fall through to the existing transcript-block extraction path (`prompt_snippet / transcript → RecordEvent/topic`) unchanged.
+- Settled precedence: `goal (present)` → `prompt_snippet / transcript (non-empty)` → `RecordEvent/topic`.
+- Rationale: prompt_snippet on SubagentStart is spawn boilerplate (protocol role text), not semantic intent. Goal is a deliberate, concise statement of feature intent. Goal routes to `IndexBriefingService` for a full k=20 ranked-index injection rather than a `ContextSearch` call.
+- This is the only injection path not served automatically by `derive_briefing_query`; requires explicit branching (SR-03). The goal-present branch routes to `IndexBriefingService`, not `ContextSearch`.
 
 ---
 
@@ -103,24 +118,31 @@ Responsibilities:
 ```
 context_cycle(start, goal: "...") [MCP]
          │
+         ├─[validation]─ trim + empty-normalize → None if blank
+         │               byte check: > MAX_GOAL_BYTES → CallToolResult::error
          ▼
     CycleParams.goal  ──► ImplantEvent payload (hook path)
                                    │
                                    ▼
                          handle_cycle_event [UDS listener]
+                           │   [UDS byte guard: > MAX_GOAL_BYTES → truncate at UTF-8 boundary]
                            │                       │
                     [sync] set_current_goal     [async spawn]
                            │                   insert_cycle_event
                            ▼                   (goal bound)
                     SessionState.current_goal
                            │
-              ┌────────────┴────────────────────┐
-              ▼                                 ▼
-   derive_briefing_query                 SubagentStart arm
-   step 2: returns current_goal          explicit branch:
-              │                          transcript → goal → topic
-              ▼
-   IndexBriefingService.index(query)
+              ┌────────────┴────────────────────────────────────┐
+              ▼                                                  ▼
+   derive_briefing_query                              SubagentStart arm
+   step 2: returns current_goal                       explicit branch:
+              │                                       goal present?
+              ▼                                         │yes: IndexBriefingService.index(goal, k=20)
+   IndexBriefingService.index(query)                    │no:  transcript → RecordEvent/topic
+              │
+   format_index_table
+              │
+   prepend CONTEXT_GET_INSTRUCTION header
 
 Session resume (server restart):
    SessionRegister ──► get_cycle_start_goal(feature_cycle) [async DB]
@@ -137,9 +159,10 @@ Session resume (server restart):
 See individual ADR files:
 - **ADR-001**: Goal stored on `cycle_events`, not `sessions` (durability tier decision)
 - **ADR-002**: `synthesize_from_session` returns `current_goal` directly, replacing topic-signal synthesis
-- **ADR-003**: SubagentStart injection uses explicit goal branch (not routed through `derive_briefing_query`)
+- **ADR-003**: SubagentStart injection routes to `IndexBriefingService` when goal is present; goal wins over prompt_snippet
 - **ADR-004**: Session resume DB failure degrades to `None`, not error
-- **ADR-005**: Goal byte-length guard at the tool handler layer (4096 bytes)
+- **ADR-005**: One constant `MAX_GOAL_BYTES`; MCP hard-rejects with actionable error; UDS truncates at UTF-8 boundary; empty/whitespace normalized to `None` at MCP handler
+- **ADR-006**: `CONTEXT_GET_INSTRUCTION` static constant prepended to all `format_index_table` output
 
 ---
 
@@ -160,6 +183,8 @@ See individual ADR files:
 |-----------|-----------|--------|
 | `Store::get_cycle_start_goal` | `async fn get_cycle_start_goal(&self, cycle_id: &str) -> Result<Option<String>>` | `unimatrix-store/src/db.rs` |
 | `SessionRegistry::set_current_goal` | `fn set_current_goal(&self, session_id: &str, goal: Option<String>)` | `unimatrix-server/src/infra/session.rs` |
+| `CONTEXT_GET_INSTRUCTION` | `pub const &str = "Use context_get with the entry ID for full content when relevant."` | `unimatrix-server/src/services/index_briefing.rs` |
+| `MAX_GOAL_BYTES` | `pub const usize = 4096` | constants location (adjacent to `MAX_INJECTION_BYTES`) |
 
 ### Schema change
 
@@ -181,13 +206,16 @@ ALTER TABLE cycle_events ADD COLUMN goal TEXT;
 
 | Integration Point | Type/Signature | Source |
 |-------------------|---------------|--------|
-| `CycleParams::goal` | `Option<String>` | `src/mcp/tools.rs` |
+| `CycleParams::goal` | `Option<String>`; trimmed + empty-normalized at handler | `src/mcp/tools.rs` |
+| `MAX_GOAL_BYTES` | `pub const usize = 4096`; single constant for MCP (reject) and UDS (truncate) | constants location |
+| `CONTEXT_GET_INSTRUCTION` | `pub const &str`; prepended once as header in `format_index_table` | `src/services/index_briefing.rs` |
 | `SessionState::current_goal` | `Option<String>` | `src/infra/session.rs` |
 | `SessionRegistry::set_current_goal` | `fn(&self, &str, Option<String>)` | `src/infra/session.rs` |
 | `Store::insert_cycle_event` (updated) | `+goal: Option<&str>` at param position 8 | `unimatrix-store/src/db.rs` |
 | `Store::get_cycle_start_goal` | `async fn(&self, &str) -> Result<Option<String>>` | `unimatrix-store/src/db.rs` |
 | `derive_briefing_query` | signature unchanged; step 2 semantics changed | `src/services/index_briefing.rs` |
-| SubagentStart fallback branch | `Option<String>` from `session_registry.get_state(sid)?.current_goal` | `src/uds/listener.rs` |
+| SubagentStart goal-present branch | calls `IndexBriefingService::index(query: &goal, k: 20)`; does not fall through to transcript path | `src/uds/listener.rs` |
+| SubagentStart goal-absent branch | existing transcript → RecordEvent/topic path; unchanged | `src/uds/listener.rs` |
 | DB query (resume) | `SELECT goal FROM cycle_events WHERE cycle_id = ?1 AND event_type = 'cycle_start' LIMIT 1` | `unimatrix-store/src/db.rs` |
 
 ---
@@ -212,4 +240,6 @@ Delivery must audit these files and add `migration_v15_to_v16.rs` as a new test.
 
 2. **`make_session_state` in tests**: `src/services/index_briefing.rs` has a `make_session_state` test helper that constructs `SessionState` directly. Adding `current_goal` field will require updating this helper. Delivery should check all `SessionState { .. }` struct literals in tests.
 
-3. **SubagentStart session lookup**: The SubagentStart arm in hook.rs (process side) constructs a `HookRequest::ContextSearch` with `session_id` from `hook_input.session_id`. The server-side listener already holds the `SessionRegistry`; the goal lookup at `handle_context_search` time requires passing session state through or resolving it inside the handler. Delivery must confirm the session_id is reliably available in the SubagentStart arm of `dispatch_request`.
+3. **SubagentStart session lookup**: The SubagentStart arm routes to `IndexBriefingService::index` when goal is present. This requires `session_registry.get_state(session_id)` to be available in `dispatch_request` at SubagentStart hook time. The `session_id` comes from `hook_input.session_id`; the `session_registry` is passed to `dispatch_request`. Delivery must confirm that `session_id` is reliably populated in the SubagentStart hook payload before a cycle start event has been processed for that session (i.e., timing of hook fire relative to session registration).
+
+4. **format_index_table test helpers**: Existing tests that assert `format_index_table` output will need updating to account for the prepended `CONTEXT_GET_INSTRUCTION` line. Delivery should introduce a test helper that strips the instruction header before asserting row-count or table-content, rather than hard-coding the prefix in every test assertion.
