@@ -650,6 +650,7 @@ class UnimatrixClient:
         phase: str | None = None,
         outcome: str | None = None,
         next_phase: str | None = None,
+        goal: str | None = None,
         agent_id: str | None = None,
         format: str | None = None,
         timeout: float | None = None,
@@ -663,6 +664,8 @@ class UnimatrixClient:
             args["outcome"] = outcome
         if next_phase is not None:
             args["next_phase"] = next_phase
+        if goal is not None:
+            args["goal"] = goal
         if agent_id is not None:
             args["agent_id"] = agent_id
         if format is not None:
