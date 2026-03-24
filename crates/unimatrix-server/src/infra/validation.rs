@@ -511,6 +511,7 @@ pub fn validate_retrospective_params(params: &RetrospectiveParams) -> Result<(),
             reason: "must not be empty".to_string(),
         });
     }
+    validate_string_field("feature_cycle", &params.feature_cycle, MAX_FEATURE_CYCLE_LEN, false)?;
     Ok(())
 }
 
