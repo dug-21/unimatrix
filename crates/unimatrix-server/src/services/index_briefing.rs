@@ -19,7 +19,7 @@ use std::sync::{Arc, Mutex};
 
 use unimatrix_core::{Status, Store};
 
-use crate::infra::session::{SessionState, TopicTally};
+use crate::infra::session::SessionState;
 use crate::mcp::response::{IndexEntry, SNIPPET_CHARS};
 use crate::services::effectiveness::{EffectivenessSnapshot, EffectivenessStateHandle};
 use crate::services::gateway::SecurityGateway;
@@ -249,9 +249,8 @@ impl IndexBriefingService {
 /// Derive the search query for `IndexBriefingService` using three-step priority.
 ///
 /// **Step 1**: If `task` is `Some(t)` and `!t.trim().is_empty()`, return `t.to_string()`.
-/// **Step 2**: If `session_state` is `Some(s)` and has non-empty `topic_signals` AND
-///             a non-empty `feature` (feature_cycle), synthesize:
-///             `"{feature_cycle} {top_3_signals_by_vote_count}"`
+/// **Step 2**: If `session_state` is `Some(s)` and `current_goal` is `Some(g)` and
+///             non-empty, return `g` (col-025, ADR-002).
 /// **Step 3**: Fall back to `topic.to_string()` (always available; e.g., `"crt-027"`).
 ///
 /// This function is the single shared implementation for both the MCP
@@ -273,40 +272,36 @@ pub(crate) fn derive_briefing_query(
         // Empty/whitespace task: fall through to step 2 or 3
     }
 
-    // Step 2: synthesize from session state when both feature_cycle and signals are present
+    // Step 2: goal from session state (col-025, ADR-002).
+    // Returns current_goal when Some — most semantically precise signal available.
+    // Falls through to step 3 when None (no goal, legacy cycle, or pre-v16 cycle).
     if let Some(state) = session_state {
-        let feature_cycle = state.feature.as_deref().unwrap_or("");
-        if !feature_cycle.is_empty() {
-            let signals = extract_top_topic_signals(&state.topic_signals, 3);
-            if !signals.is_empty() {
-                // "crt-027 briefing hook compaction"
-                return format!("{} {}", feature_cycle, signals.join(" "));
+        if let Some(goal) = synthesize_from_session(state) {
+            if !goal.trim().is_empty() {
+                return goal;
             }
+            // Empty-goal guard: if current_goal is Some("") (edge case), fall through.
+            // Normal path: goal is already non-empty (normalized at MCP handler).
         }
-        // If feature_cycle is absent, fall through to step 3.
-        // A query of bare topic_signals without feature context is less reliable
-        // than the topic fallback (per FR-11 decision in pseudocode).
     }
 
     // Step 3: topic fallback (always available)
     topic.to_string()
 }
 
-/// Extract the top `n` topic signals sorted by vote count descending.
+/// Return the step-2 briefing query from session state (col-025, ADR-002).
 ///
-/// Returns signal strings only (not tallies). If fewer than `n` signals exist,
-/// returns all available. EC-06: handles fewer than 3 signals gracefully.
-fn extract_top_topic_signals(topic_signals: &HashMap<String, TopicTally>, n: usize) -> Vec<String> {
-    if topic_signals.is_empty() {
-        return vec![];
-    }
-
-    let mut pairs: Vec<(&String, u32)> = topic_signals.iter().map(|(k, v)| (k, v.count)).collect();
-
-    // Sort by count descending, then by key ascending for determinism when counts tie
-    pairs.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
-
-    pairs.into_iter().take(n).map(|(k, _)| k.clone()).collect()
+/// Returns `state.current_goal.clone()` — the feature goal set at cycle start
+/// or reconstructed on session resume.
+///
+/// When `None` (no goal, legacy cycle, or pre-v16 cycle), `derive_briefing_query`
+/// falls through to step 3 (topic-ID) unchanged.
+///
+/// Contract (NFR-04): pure sync, O(1), no I/O, no locks, no async.
+/// Called on both the MCP `context_briefing` hot path and the UDS
+/// `handle_compact_payload` path.
+fn synthesize_from_session(state: &SessionState) -> Option<String> {
+    state.current_goal.clone()
 }
 
 // ---------------------------------------------------------------------------
@@ -388,17 +383,22 @@ mod tests {
     /// Step 1: empty string task falls through.
     #[test]
     fn derive_briefing_query_empty_task_falls_through() {
+        // current_goal=None: empty task falls to step 2 (None), then step 3 (topic).
         let state = make_session_state(Some("crt-027"), vec![("briefing", 5)], None);
         let result = derive_briefing_query(Some(""), Some(&state), "crt-027");
-        // Should NOT return "" — falls to step 2 (feature + signals present)
+        // Should NOT return "" — falls to step 2 (current_goal=None), then step 3 (topic)
         assert_ne!(result, "", "empty task must not return empty string");
         assert!(
             result.contains("crt-027"),
-            "result should contain feature_cycle or topic, got: {result}"
+            "result should contain topic (step 3), got: {result}"
         );
     }
 
-    /// Step 2: synthesized from session signals + feature_cycle, top 3 by vote count.
+    /// Step 2: current_goal=None with signals present — signals no longer used; falls to step 3.
+    ///
+    /// col-025 (ADR-002): old topic-signal synthesis removed. Step 2 now reads
+    /// current_goal only. When current_goal=None, step 3 (topic) runs regardless
+    /// of how many topic_signals are present.
     #[test]
     fn derive_briefing_query_session_signals_step_2() {
         let state = make_session_state(
@@ -409,27 +409,26 @@ mod tests {
                 ("compaction", 2),
                 ("extra", 1),
             ],
-            None,
+            None, // no goal → step 2 returns None → step 3 (topic)
         );
         let result = derive_briefing_query(None, Some(&state), "crt-027");
         assert_eq!(
-            result, "crt-027/spec briefing hook compaction",
-            "must use feature_cycle + top 3 signals by vote"
+            result, "crt-027",
+            "current_goal=None must fall to topic (step 3), not synthesize signals"
         );
     }
 
-    /// Step 2: fewer than 3 signals — use what is available, no trailing spaces.
+    /// Step 2: current_goal=None with fewer than 3 signals — falls to step 3 (topic).
+    ///
+    /// col-025 (ADR-002): topic-signal synthesis is removed. With current_goal=None,
+    /// step 2 returns None and step 3 (topic) runs regardless of signal count.
     #[test]
     fn derive_briefing_query_fewer_than_three_signals() {
         let state = make_session_state(Some("crt-027/spec"), vec![("briefing", 5)], None);
         let result = derive_briefing_query(None, Some(&state), "crt-027");
         assert_eq!(
-            result, "crt-027/spec briefing",
-            "fewer-than-3 signals must not produce trailing spaces"
-        );
-        assert!(
-            !result.ends_with(' '),
-            "result must not end with trailing space"
+            result, "crt-027",
+            "current_goal=None must fall to topic (step 3) even with signals present"
         );
     }
 
@@ -466,61 +465,118 @@ mod tests {
         assert_eq!(result, "crt-027");
     }
 
-    /// extract_top_topic_signals returns empty vec for empty input.
+    // -----------------------------------------------------------------------
+    // synthesize_from_session tests (col-025, ADR-002, R-05)
+    // -----------------------------------------------------------------------
+
+    /// synthesize_from_session returns the current_goal when Some (R-05).
     #[test]
-    fn extract_top_topic_signals_empty_input() {
-        let empty: HashMap<String, TopicTally> = HashMap::new();
-        let result = extract_top_topic_signals(&empty, 3);
-        assert!(result.is_empty());
+    fn test_synthesize_from_session_returns_current_goal() {
+        let state = make_session_state(None, vec![], Some("feature goal text"));
+        let result = synthesize_from_session(&state);
+        assert_eq!(result, Some("feature goal text".to_string()));
     }
 
-    /// extract_top_topic_signals returns top n by count descending.
+    /// synthesize_from_session returns None when current_goal is None (R-05).
     #[test]
-    fn extract_top_topic_signals_ordered_by_count() {
-        let mut signals = HashMap::new();
-        signals.insert(
-            "low".to_string(),
-            TopicTally {
-                count: 1,
-                last_seen: 0,
-            },
-        );
-        signals.insert(
-            "high".to_string(),
-            TopicTally {
-                count: 10,
-                last_seen: 0,
-            },
-        );
-        signals.insert(
-            "mid".to_string(),
-            TopicTally {
-                count: 5,
-                last_seen: 0,
-            },
-        );
-
-        let result = extract_top_topic_signals(&signals, 2);
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0], "high", "highest count must be first");
-        assert_eq!(result[1], "mid", "second highest must be second");
+    fn test_synthesize_from_session_returns_none_when_goal_absent() {
+        let state = make_session_state(None, vec![], None);
+        let result = synthesize_from_session(&state);
+        assert_eq!(result, None);
     }
 
-    /// extract_top_topic_signals with fewer entries than n returns all.
+    /// synthesize_from_session returns None regardless of topic_signals (R-05).
+    ///
+    /// Confirms the old topic-signal synthesis code is fully removed.
     #[test]
-    fn extract_top_topic_signals_fewer_than_n() {
-        let mut signals = HashMap::new();
-        signals.insert(
-            "only".to_string(),
-            TopicTally {
-                count: 3,
-                last_seen: 0,
-            },
+    fn test_synthesize_from_session_ignores_topic_signals() {
+        let state = make_session_state(
+            Some("crt-027"),
+            vec![("briefing", 5), ("hook", 3), ("compaction", 2)],
+            None, // current_goal is None — signals must not influence step 2
         );
+        let result = synthesize_from_session(&state);
+        assert_eq!(
+            result, None,
+            "topic_signals must not affect synthesize_from_session"
+        );
+    }
 
-        let result = extract_top_topic_signals(&signals, 5);
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0], "only");
+    // -----------------------------------------------------------------------
+    // derive_briefing_query new tests (col-025, AC-04–AC-07, R-05)
+    // -----------------------------------------------------------------------
+
+    /// Step 2 returns current_goal when Some (AC-04).
+    #[test]
+    fn test_derive_briefing_query_step2_returns_current_goal() {
+        let state = make_session_state(Some("col-025"), vec![], Some("goal text"));
+        let result = derive_briefing_query(None, Some(&state), "col-025");
+        assert_eq!(result, "goal text");
+    }
+
+    /// Step 1 wins over current_goal (AC-05).
+    #[test]
+    fn test_derive_briefing_query_step1_wins_over_goal() {
+        let state = make_session_state(Some("col-025"), vec![], Some("goal text"));
+        let result = derive_briefing_query(Some("explicit task"), Some(&state), "col-025");
+        assert_eq!(result, "explicit task");
+    }
+
+    /// Step 3 fallback when current_goal is None (AC-06).
+    #[test]
+    fn test_derive_briefing_query_step3_fallback_when_no_goal() {
+        let state = make_session_state(Some("col-025"), vec![("signal", 5)], None);
+        let result = derive_briefing_query(None, Some(&state), "col-025");
+        assert_eq!(
+            result, "col-025",
+            "topic-ID fallback must run when current_goal is None"
+        );
+    }
+
+    /// Step 3 fallback when no session state (AC-06).
+    #[test]
+    fn test_derive_briefing_query_step3_no_session_state() {
+        let result = derive_briefing_query(None, None, "col-025");
+        assert_eq!(result, "col-025");
+    }
+
+    /// Whitespace task falls through to goal at step 2 (AC-04 / AC-05).
+    #[test]
+    fn test_derive_briefing_query_whitespace_task_falls_to_goal() {
+        let state = make_session_state(None, vec![], Some("feature goal"));
+        let result = derive_briefing_query(Some("   "), Some(&state), "col-025");
+        assert_eq!(
+            result, "feature goal",
+            "whitespace task must fall through to step 2 (goal)"
+        );
+    }
+
+    /// Goal wins over populated topic_signals (R-05).
+    ///
+    /// Explicitly confirms the old synthesis code is gone — goal, not signals, determines step 2.
+    #[test]
+    fn test_derive_briefing_query_goal_with_populated_signals_returns_goal() {
+        let state = make_session_state(
+            Some("col-025"),
+            vec![("briefing", 5), ("hook", 3), ("compaction", 2)],
+            Some("goal text"),
+        );
+        let result = derive_briefing_query(None, Some(&state), "col-025");
+        assert_eq!(
+            result, "goal text",
+            "goal must win over topic_signals; old synthesis must not produce 'col-025 briefing hook compaction'"
+        );
+    }
+
+    /// No-goal path is identical to pre-col-025 behavior (R-09 / AC-10).
+    #[test]
+    fn test_no_goal_briefing_behavior_unchanged() {
+        let state = make_session_state(None, vec![], None);
+        let result = derive_briefing_query(None, Some(&state), "legacy-feature");
+        assert_eq!(
+            result, "legacy-feature",
+            "zero-goal path must be identical to pre-col-025 behavior"
+        );
     }
 
     // -----------------------------------------------------------------------
