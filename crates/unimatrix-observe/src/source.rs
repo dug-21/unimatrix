@@ -37,4 +37,23 @@ pub trait ObservationSource {
     /// Returns record count, distinct session count, oldest record age,
     /// and sessions approaching the 60-day cleanup threshold.
     fn observation_stats(&self) -> Result<ObservationStats>;
+
+    /// Load observation records attributed to a named feature cycle via cycle_events timestamps.
+    ///
+    /// This is the primary attribution path introduced in col-024. It uses the
+    /// cycle_events table (which records cycle_start / cycle_stop events synchronously)
+    /// to derive time windows, then discovers sessions by matching the topic_signal column
+    /// against the cycle_id within those windows.
+    ///
+    /// Returns Ok(vec![]) in two cases:
+    ///   1. No cycle_events rows exist for cycle_id (pre-col-024 features).
+    ///   2. cycle_events rows exist but no observations match topic_signal within windows.
+    /// The caller must not treat Ok(vec![]) as an error -- the legacy fallback activates
+    /// on this return value (FM-01).
+    ///
+    /// Returns Err(ObserveError) only on a genuine SQL or database failure.
+    ///
+    /// Sync contract: implementations must not use async fn. All async work must be
+    /// bridged via block_sync inside the implementation body (NFR-01, ADR-001).
+    fn load_cycle_observations(&self, cycle_id: &str) -> Result<Vec<ObservationRecord>>;
 }

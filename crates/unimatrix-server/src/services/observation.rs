@@ -290,6 +290,12 @@ impl ObservationSource for SqlObservationSource {
             })
         })
     }
+
+    // col-024: Implementation placeholder — full implementation added by load-cycle-observations agent.
+    // This stub satisfies the trait contract while parallel implementation work completes.
+    fn load_cycle_observations(&self, _cycle_id: &str) -> Result<Vec<ObservationRecord>> {
+        Ok(vec![])
+    }
 }
 
 /// Bridge an async future to sync context (works inside or outside a tokio runtime).
