@@ -1685,4 +1685,121 @@ mod tests {
             "rows exist but no topic_signal match → Ok(vec![])"
         );
     }
+
+    /// T-LCO-06: Open-ended window (ADR-005) — cycle_start with no cycle_stop uses unix_now_secs()
+    /// as the stop boundary. Observations after cycle_start must be returned (R-06).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn load_cycle_observations_open_ended_window() {
+        // Use a recent timestamp: 5 minutes ago in seconds, so the observation falls inside
+        // the open-ended window [cycle_start_secs, unix_now_secs()].
+        let now_secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+        let cycle_start_secs = now_secs - 300; // 5 minutes ago
+        // Observation 60 seconds after cycle_start, expressed in milliseconds.
+        let obs_ts_ms = (cycle_start_secs + 60).saturating_mul(1000);
+
+        let store = setup_test_store().await;
+
+        // Insert only cycle_start — no cycle_stop (open-ended window).
+        store
+            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, cycle_start_secs)
+            .await
+            .expect("insert cycle_start");
+
+        insert_observation_with_signal(&store, "sess-1", obs_ts_ms, "PostToolUse", Some("col-024"))
+            .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let records = source.load_cycle_observations("col-024").unwrap();
+
+        assert!(
+            !records.is_empty(),
+            "observation after cycle_start must be in open-ended window"
+        );
+        assert_eq!(records[0].session_id, "sess-1");
+    }
+
+    /// T-LCO-08: cycle_phase_end events must not create window boundaries (E-02).
+    /// A cycle with cycle_start + cycle_phase_end + cycle_stop produces exactly ONE window,
+    /// not two. Observations inside the single window are returned.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn load_cycle_observations_phase_end_events_ignored() {
+        const T: i64 = 1_700_000_000_i64;
+        const T_MS: i64 = T * 1000;
+
+        let store = setup_test_store().await;
+
+        store
+            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T)
+            .await
+            .expect("insert cycle_start");
+        // cycle_phase_end between start and stop — must be ignored for windowing
+        store
+            .insert_cycle_event(
+                "col-024",
+                1,
+                "cycle_phase_end",
+                Some("design"),
+                None,
+                Some("delivery"),
+                T + 1800,
+            )
+            .await
+            .expect("insert cycle_phase_end");
+        store
+            .insert_cycle_event("col-024", 2, "cycle_stop", None, None, None, T + 3600)
+            .await
+            .expect("insert cycle_stop");
+
+        // Observation at T + 900s (inside the single window T to T+3600)
+        insert_observation_with_signal(
+            &store,
+            "sess-1",
+            T_MS + 900_000,
+            "PostToolUse",
+            Some("col-024"),
+        )
+        .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let records = source.load_cycle_observations("col-024").unwrap();
+
+        assert_eq!(
+            records.len(),
+            1,
+            "cycle_phase_end must not split the window; exactly one observation expected"
+        );
+        assert_eq!(records[0].session_id, "sess-1");
+    }
+
+    /// T-LCO-09: saturating_mul overflow guard — i64::MAX timestamp must not panic (E-05).
+    /// cycle_ts_to_obs_millis uses saturating_mul(1000) which clamps to i64::MAX rather than
+    /// overflowing. load_cycle_observations must return Ok(_) even on adversarial timestamps.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn load_cycle_observations_saturating_mul_overflow_guard() {
+        let store = setup_test_store().await;
+
+        // Insert cycle_start and cycle_stop both at i64::MAX seconds (adversarial).
+        store
+            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, i64::MAX)
+            .await
+            .expect("insert cycle_start at i64::MAX");
+        store
+            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, i64::MAX)
+            .await
+            .expect("insert cycle_stop at i64::MAX");
+
+        // No observations — we only care that the call does not panic.
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let result = source.load_cycle_observations("col-024");
+
+        assert!(
+            result.is_ok(),
+            "must not panic on i64::MAX timestamp: {:?}",
+            result.err()
+        );
+        assert!(result.unwrap().is_empty());
+    }
 }
