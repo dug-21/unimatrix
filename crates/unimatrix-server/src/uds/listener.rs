@@ -933,7 +933,7 @@ async fn dispatch_request(
                 if let Some(ref goal_text) = maybe_goal {
                     tracing::debug!(
                         session_id = ?session_id,
-                        goal_preview = %&goal_text[..goal_text.len().min(50)],
+                        goal_preview = %truncate_at_utf8_boundary(goal_text, 50),
                         "col-025: SubagentStart goal-present branch — routing to IndexBriefingService"
                     );
 
