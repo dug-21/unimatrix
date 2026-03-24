@@ -6389,7 +6389,128 @@ mod tests {
         );
     }
 
-    /// T-SAI-02: goal wins over non-empty transcript query (ADR-003 / AC-12 / Gate 3c #3)
+    /// T-SAI-02 (AC-12 / Gate 3c scenario 3): goal present wins over a non-empty
+    /// prompt_snippet — IndexBriefingService branch is entered regardless of query content.
+    ///
+    /// Arrange: session with current_goal="my goal" set; dispatch SubagentStart with
+    /// a non-empty query (simulating a non-empty prompt_snippet value).
+    /// Assert: the goal-present branch fires (confirmed via tracing log), NOT the
+    /// transcript/RecordEvent path.
+    #[tracing_test::traced_test]
+    #[tokio::test]
+    async fn test_subagent_start_goal_wins_over_nonempty_prompt_snippet() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+
+        registry.register_session(
+            "sai-02-wins",
+            Some("dev".to_string()),
+            Some("col-025".to_string()),
+        );
+        registry.set_current_goal("sai-02-wins", Some("my goal".to_string()));
+
+        // Non-empty query simulates a non-empty prompt_snippet in the hook payload.
+        // The goal branch must win over this content.
+        let _resp = dispatch_request(
+            HookRequest::ContextSearch {
+                query: "non-empty spawn boilerplate content".to_string(),
+                session_id: Some("sai-02-wins".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: Some(5),
+                max_tokens: None,
+                source: Some("SubagentStart".to_string()),
+            },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // The goal-present branch must have fired: log must confirm routing to
+        // IndexBriefingService with the goal text, not the prompt_snippet query.
+        assert!(
+            logs_contain("col-025: SubagentStart goal-present branch"),
+            "goal must win over non-empty prompt_snippet: goal-present log must appear"
+        );
+        assert!(
+            logs_contain("my goal"),
+            "log must include the goal preview, not the prompt_snippet content"
+        );
+    }
+
+    /// T-RES-03 (R-03 / AC-15 / Gate 3c scenario 7): DB error on get_cycle_start_goal
+    /// degrades to None + emits warn + registration still returns Ack.
+    ///
+    /// Arrange: close the store's write pool before dispatch so the pool rejects
+    /// any new queries. This forces get_cycle_start_goal to return Err, exercising
+    /// the unwrap_or_else degradation closure.
+    /// Assert: HookResponse::Ack (registration succeeds), current_goal = None,
+    /// and the warn log contains "col-025: goal resume lookup failed".
+    #[tracing_test::traced_test]
+    #[tokio::test]
+    async fn test_resume_db_error_degrades_to_none_with_warn() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+
+        // Close the underlying write pool to force any subsequent query to return an error.
+        // get_cycle_start_goal uses write_pool, so it will fail after this point.
+        store.write_pool_server().close().await;
+
+        let resp = dispatch_request(
+            HookRequest::SessionRegister {
+                session_id: "sr-04-err".to_string(),
+                cwd: "/work".to_string(),
+                agent_role: None,
+                // non-empty feature_cycle triggers the goal resume lookup path
+                feature: Some("col-025-db-error".to_string()),
+            },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // Registration must succeed (Ack) even when the DB lookup fails.
+        assert!(
+            matches!(resp, HookResponse::Ack),
+            "SessionRegister must return Ack even when DB lookup fails"
+        );
+
+        // current_goal must degrade to None (not propagate the error).
+        let state = registry
+            .get_state("sr-04-err")
+            .expect("session must be registered");
+        assert_eq!(
+            state.current_goal, None,
+            "current_goal must degrade to None on DB error"
+        );
+
+        // The warn log must have been emitted with the degradation message.
+        assert!(
+            logs_contain("col-025: goal resume lookup failed"),
+            "warn log must contain degradation message when DB lookup errors"
+        );
+    }
+
+    /// T-SAI-02b: goal wins over non-empty transcript query (ADR-003 / AC-12 / Gate 3c #3)
     /// (Same as T-SAI-01 but explicitly verifies goal wins over transcript query by inspecting
     /// that even with a non-empty non-SubagentStart source, the source guard correctly fires)
     #[tokio::test]
