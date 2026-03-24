@@ -3134,8 +3134,9 @@ mod tests {
         );
 
         let table_text = format_index_table(&entries);
-        // Count data rows (lines after header + separator)
-        let data_rows = table_text.lines().skip(2).count();
+        // Count data rows: skip instruction line + blank line + header + separator = 4 lines
+        // col-025 ADR-006: format_index_table now prepends CONTEXT_GET_INSTRUCTION + blank line
+        let data_rows = table_text.lines().skip(4).count();
         assert_eq!(data_rows, 20, "table must have exactly 20 data rows");
     }
 
@@ -3183,7 +3184,8 @@ mod tests {
         );
 
         let table_text = format_index_table(&entries);
-        let data_rows = table_text.lines().skip(2).count();
+        // skip instruction line + blank line + header + separator = 4 lines (col-025 ADR-006)
+        let data_rows = table_text.lines().skip(4).count();
         assert!(
             data_rows <= 5,
             "table must have at most 5 data rows; got {data_rows}"
@@ -3256,11 +3258,12 @@ mod tests {
             "output must not contain '## Key Context'"
         );
 
-        // Must have at least 2 data rows (header + separator + 2 entries)
+        // Must have at least 2 data rows:
+        // instruction + blank + header + separator + 2 entries = 6 lines (col-025 ADR-006)
         let lines: Vec<&str> = table_text.lines().collect();
         assert!(
-            lines.len() >= 4,
-            "must have header + separator + at least 2 data rows; got {}",
+            lines.len() >= 6,
+            "must have instruction + blank + header + separator + at least 2 data rows; got {}",
             lines.len()
         );
     }

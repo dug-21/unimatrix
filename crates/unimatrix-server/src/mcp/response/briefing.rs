@@ -5,6 +5,8 @@
 
 use rmcp::model::{CallToolResult, Content};
 
+use crate::services::index_briefing::CONTEXT_GET_INSTRUCTION;
+
 /// Number of Unicode characters (not bytes) to include in an index entry snippet.
 ///
 /// UTF-8 safe: computed via `.chars().take(SNIPPET_CHARS)`.
@@ -53,6 +55,13 @@ pub fn format_index_table(entries: &[IndexEntry]) -> String {
     }
 
     let mut output = String::new();
+
+    // col-025 ADR-006: Prepend instruction header before the table.
+    // Appears once as a single header line — never per row.
+    // A blank line separates the instruction from the table header.
+    output.push_str(CONTEXT_GET_INSTRUCTION);
+    output.push('\n');
+    output.push('\n');
 
     // Header line — columns: "#" (2), "id" (6), "topic" (20), "cat" (14), "conf" (6), "snippet"
     output.push_str(&format!(
@@ -103,6 +112,7 @@ pub fn format_retrospective_report(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::index_briefing::CONTEXT_GET_INSTRUCTION;
 
     fn make_entry(
         id: u64,
@@ -118,6 +128,102 @@ mod tests {
             confidence,
             snippet: snippet.to_string(),
         }
+    }
+
+    /// Remove the CONTEXT_GET_INSTRUCTION header (and following blank line) from
+    /// `format_index_table` output for raw-table assertions.
+    ///
+    /// Usage in tests:
+    ///   let table = strip_briefing_header(&format_index_table(&entries));
+    ///   assert!(table.starts_with(" #"));
+    ///
+    /// col-025 ADR-006, R-11.
+    fn strip_briefing_header(s: &str) -> &str {
+        if s.starts_with(CONTEXT_GET_INSTRUCTION) {
+            // Skip: instruction line ('\n') + blank line ('\n') = len + 2
+            let skip = CONTEXT_GET_INSTRUCTION.len() + 2;
+            if s.len() > skip {
+                return &s[skip..];
+            }
+        }
+        s
+    }
+
+    // --- col-025 ADR-006: CONTEXT_GET_INSTRUCTION header tests (AC-18) ---
+
+    /// Gate 3c scenario 8 (non-negotiable): output starts with instruction, appears exactly once.
+    #[test]
+    fn test_format_index_table_starts_with_instruction_header_exactly_once() {
+        let entry = make_entry(1, "col-025", "decision", 0.9, "Test snippet.");
+        let result = format_index_table(&[entry]);
+
+        assert!(
+            result.starts_with(CONTEXT_GET_INSTRUCTION),
+            "output must start with CONTEXT_GET_INSTRUCTION"
+        );
+
+        let count = result.matches(CONTEXT_GET_INSTRUCTION).count();
+        assert_eq!(count, 1, "CONTEXT_GET_INSTRUCTION must appear exactly once");
+    }
+
+    /// Instruction must not be repeated in table rows (only once as header).
+    #[test]
+    fn test_format_index_table_instruction_not_in_table_rows() {
+        let entries = vec![
+            make_entry(1, "col-025", "decision", 0.9, "snippet one"),
+            make_entry(2, "col-025", "pattern", 0.8, "snippet two"),
+            make_entry(3, "col-025", "convention", 0.7, "snippet three"),
+        ];
+        let result = format_index_table(&entries);
+
+        // Strip the header; the remaining table body must not contain the instruction
+        let table = strip_briefing_header(&result);
+        assert!(
+            !table.contains(CONTEXT_GET_INSTRUCTION),
+            "CONTEXT_GET_INSTRUCTION must not appear in table rows, only as header"
+        );
+    }
+
+    /// Empty slice must still return empty string — no header prepended.
+    #[test]
+    fn test_format_index_table_empty_still_returns_empty_string() {
+        let result = format_index_table(&[]);
+        assert!(result.is_empty(), "empty slice must return empty string");
+        assert!(
+            !result.contains(CONTEXT_GET_INSTRUCTION),
+            "CONTEXT_GET_INSTRUCTION must NOT be prepended to empty output"
+        );
+    }
+
+    /// CONTEXT_GET_INSTRUCTION constant must be non-empty and single-line.
+    #[test]
+    fn test_context_get_instruction_constant_is_defined() {
+        assert!(
+            !CONTEXT_GET_INSTRUCTION.is_empty(),
+            "CONTEXT_GET_INSTRUCTION must be non-empty"
+        );
+        assert!(
+            !CONTEXT_GET_INSTRUCTION.contains('\n'),
+            "CONTEXT_GET_INSTRUCTION must not contain newlines (single-line header)"
+        );
+    }
+
+    /// strip_briefing_header correctly removes the instruction and blank line.
+    #[test]
+    fn test_strip_briefing_header_removes_instruction_prefix() {
+        let entry = make_entry(1, "col-025", "decision", 0.9, "snippet");
+        let full = format_index_table(&[entry]);
+        let table = strip_briefing_header(&full);
+
+        assert!(
+            !table.starts_with(CONTEXT_GET_INSTRUCTION),
+            "stripped output must not start with CONTEXT_GET_INSTRUCTION"
+        );
+        // The table starts with the column header line (contains "#", "id", "topic")
+        assert!(
+            table.contains(" id ") || table.trim_start().starts_with('#'),
+            "stripped output must start at the column header row"
+        );
     }
 
     // --- R-05 Non-Negotiable Contract Tests ---
@@ -144,7 +250,13 @@ mod tests {
         )];
         let result = format_index_table(&entries);
 
-        // Header must contain column names
+        // Output starts with the instruction header (col-025 ADR-006)
+        assert!(
+            result.starts_with(CONTEXT_GET_INSTRUCTION),
+            "output must start with CONTEXT_GET_INSTRUCTION"
+        );
+
+        // Header must contain column names (present somewhere in the output)
         assert!(result.contains('#'), "header must contain '#'");
         assert!(result.contains("id"), "header must contain 'id'");
         assert!(result.contains("topic"), "header must contain 'topic'");
@@ -223,9 +335,9 @@ mod tests {
         ];
         let result = format_index_table(&entries);
 
-        // Row 1 must be the first entry (low-conf), row 2 the second (high-conf)
-        let lines: Vec<&str> = result.lines().collect();
-        // lines[0] = header, lines[1] = separator, lines[2] = row 1, lines[3] = row 2
+        // Use strip_briefing_header: lines[0]=header, lines[1]=separator, lines[2]=row1, lines[3]=row2
+        let table = strip_briefing_header(&result);
+        let lines: Vec<&str> = table.lines().collect();
         assert!(
             lines.len() >= 4,
             "must have header + separator + 2 data rows"
@@ -346,7 +458,9 @@ mod tests {
         assert!(result.contains(" 2"), "must contain row number 2");
         assert!(result.contains(" 3"), "must contain row number 3");
 
-        let lines: Vec<&str> = result.lines().collect();
+        // Use strip_briefing_header: lines[0]=header, lines[1]=sep, lines[2..4]=rows
+        let table = strip_briefing_header(&result);
+        let lines: Vec<&str> = table.lines().collect();
         assert!(
             lines.len() >= 5,
             "must have header + separator + 3 data rows"
@@ -389,8 +503,9 @@ mod tests {
         let entry = make_entry(5, &long_topic, "decision", 0.5, "short snippet");
         let result = format_index_table(&[entry]);
 
-        // The rendered row must not contain the full 100-char topic
-        for line in result.lines().skip(2) {
+        // Use strip_briefing_header then skip(2) to reach data rows only
+        let table = strip_briefing_header(&result);
+        for line in table.lines().skip(2) {
             // Data rows only — the topic column is 20 chars wide
             assert!(
                 !line.contains(&long_topic),
@@ -403,19 +518,27 @@ mod tests {
     fn format_index_table_header_and_separator_present() {
         let entries = vec![make_entry(1, "test", "decision", 0.5, "snippet")];
         let result = format_index_table(&entries);
-        let lines: Vec<&str> = result.lines().collect();
 
+        // Output must start with the instruction header (col-025 ADR-006)
+        assert!(
+            result.starts_with(CONTEXT_GET_INSTRUCTION),
+            "output must start with CONTEXT_GET_INSTRUCTION"
+        );
+
+        // Use strip_briefing_header: lines[0]=header, lines[1]=separator, lines[2]=data
+        let table = strip_briefing_header(&result);
+        let lines: Vec<&str> = table.lines().collect();
         assert!(
             lines.len() >= 3,
             "must have at least header + separator + data row"
         );
-        // Header line (first line) must contain column names
+        // Header line (first table line) must contain column names
         let header = lines[0];
         assert!(header.contains('#'), "header must contain '#'");
         assert!(header.contains("topic"), "header must contain 'topic'");
         assert!(header.contains("snippet"), "header must contain 'snippet'");
 
-        // Separator (second line) must contain dashes
+        // Separator (second table line) must contain dashes
         let separator = lines[1];
         assert!(separator.contains('-'), "separator must contain dashes");
     }
