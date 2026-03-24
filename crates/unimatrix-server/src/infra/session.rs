@@ -133,6 +133,13 @@ pub struct SessionState {
     /// Read by get_category_histogram before context_search scoring.
     /// In-memory only: never persisted, reset on register_session (reconnection).
     pub category_counts: HashMap<String, u32>,
+    // col-025 fields
+    /// Goal of the active feature cycle, cached in-memory.
+    ///
+    /// None  — no goal provided, or pre-v16 cycle, or DB error on resume.
+    /// Some  — set from context_cycle(start) payload via handle_cycle_event,
+    ///         or reconstructed from cycle_events on session resume.
+    pub current_goal: Option<String>,
 }
 
 /// Thread-safe registry for per-session state.
@@ -176,6 +183,7 @@ impl SessionRegistry {
                 topic_signals: HashMap::new(),
                 current_phase: None,
                 category_counts: HashMap::new(), // crt-026: empty histogram on session start
+                current_goal: None, // col-025: initialized None; populated by handle_cycle_event or resume
             },
         );
     }
@@ -328,6 +336,26 @@ impl SessionRegistry {
             state.current_phase = phase;
         }
         // Unregistered session: silent no-op
+    }
+
+    /// Set the active feature goal for a session (col-025).
+    ///
+    /// Called synchronously from:
+    ///   - handle_cycle_event (CYCLE_START_EVENT arm) — set from payload goal
+    ///   - SessionRegister arm in dispatch_request — reconstructed from DB on resume
+    ///
+    /// Idempotent: subsequent calls with the same value are safe.
+    /// Thread-safe: lock acquired and released per call (microseconds).
+    /// Silent no-op if the session is not registered (consistent with set_current_phase).
+    /// Mutex lock poisoning recovered via unwrap_or_else(|e| e.into_inner()).
+    ///
+    /// Passing `None` resets to "no goal" (equivalent to pre-col-025 state).
+    pub fn set_current_goal(&self, session_id: &str, goal: Option<String>) {
+        let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(state) = sessions.get_mut(session_id) {
+            state.current_goal = goal;
+        }
+        // Unregistered session: silent no-op (consistent with set_current_phase pattern)
     }
 
     /// Check if a session's leading topic signal meets the eager attribution threshold (#198, Part 2).
@@ -1063,6 +1091,7 @@ mod tests {
             topic_signals: HashMap::new(),
             current_phase: None,
             category_counts: HashMap::new(),
+            current_goal: None,
         }
     }
 
@@ -1755,6 +1784,81 @@ mod tests {
         assert!(
             reg.get_category_histogram("s1").is_empty(),
             "re-registration must discard accumulated histogram"
+        );
+    }
+
+    // -- col-025: current_goal tests --
+
+    /// T-SSE-01 / AC-11: register_session initializes current_goal to None.
+    #[test]
+    fn test_register_session_initializes_current_goal_to_none() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        let state = reg.get_state("s1").expect("session must be registered");
+        assert_eq!(state.current_goal, None);
+    }
+
+    /// T-SSE-02 (R-06 coverage): SessionState struct with current_goal: Some(...) compiles and round-trips.
+    #[test]
+    fn test_session_state_current_goal_field_exists() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.set_current_goal("s1", Some("implement feature goal signal".to_string()));
+        let state = reg.get_state("s1").expect("session must be registered");
+        assert_eq!(
+            state.current_goal,
+            Some("implement feature goal signal".to_string())
+        );
+    }
+
+    /// T-SSE-03 / test_set_current_goal_sets_and_overwrites: set, overwrite, clear.
+    #[test]
+    fn test_set_current_goal_sets_and_overwrites() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+
+        // Initial state: None
+        assert_eq!(reg.get_state("s1").unwrap().current_goal, None);
+
+        // Set to Some
+        reg.set_current_goal("s1", Some("goal A".to_string()));
+        assert_eq!(
+            reg.get_state("s1").unwrap().current_goal,
+            Some("goal A".to_string())
+        );
+
+        // Overwrite with different value
+        reg.set_current_goal("s1", Some("goal B".to_string()));
+        assert_eq!(
+            reg.get_state("s1").unwrap().current_goal,
+            Some("goal B".to_string())
+        );
+
+        // Clear back to None
+        reg.set_current_goal("s1", None);
+        assert_eq!(reg.get_state("s1").unwrap().current_goal, None);
+    }
+
+    /// T-SSE-04: set_current_goal on unregistered session is a silent no-op.
+    #[test]
+    fn test_set_current_goal_unknown_session_is_noop() {
+        let reg = make_registry();
+        // Must not panic
+        reg.set_current_goal("nonexistent-session", Some("goal".to_string()));
+        // Session was never registered — get_state returns None
+        assert!(reg.get_state("nonexistent-session").is_none());
+    }
+
+    /// T-SSE-05: set_current_goal is idempotent when called twice with the same value.
+    #[test]
+    fn test_set_current_goal_idempotent_same_value() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.set_current_goal("s1", Some("my goal".to_string()));
+        reg.set_current_goal("s1", Some("my goal".to_string()));
+        assert_eq!(
+            reg.get_state("s1").unwrap().current_goal,
+            Some("my goal".to_string())
         );
     }
 }

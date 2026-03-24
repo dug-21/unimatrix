@@ -27,6 +27,21 @@ use crate::services::search::{RetrievalMode, SearchService, ServiceSearchParams}
 use crate::services::{AuditContext, CallerId, ServiceError};
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/// Agent instruction prepended once before every `format_index_table` output.
+///
+/// Tells agents that `context_get` with an entry ID retrieves full content.
+/// Applied to both MCP context_briefing responses and UDS CompactPayload
+/// injection content. Appears once as a header line — never per row.
+///
+/// col-025, ADR-006. Do not inline this value at call sites.
+/// Update this constant to change the instruction globally.
+pub const CONTEXT_GET_INSTRUCTION: &str =
+    "Use context_get with the entry ID for full content when relevant.";
+
+// ---------------------------------------------------------------------------
 // IndexBriefingParams
 // ---------------------------------------------------------------------------
 
@@ -301,22 +316,26 @@ fn extract_top_topic_signals(topic_signals: &HashMap<String, TopicTally>, n: usi
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::infra::embed_handle::EmbedServiceHandle;
     use crate::infra::session::TopicTally;
     use crate::services::{AuditContext, AuditSource};
-    use unimatrix_core::{Store, Status};
-    use unimatrix_core::async_wrappers::AsyncVectorStore;
+    use std::sync::Arc;
+    use unimatrix_adapt::AdaptationService;
     use unimatrix_core::VectorAdapter;
+    use unimatrix_core::async_wrappers::AsyncVectorStore;
+    use unimatrix_core::{Status, Store};
     use unimatrix_store::NewEntry;
     use unimatrix_store::test_helpers::open_test_store;
-    use unimatrix_adapt::AdaptationService;
-    use crate::infra::embed_handle::EmbedServiceHandle;
 
     // -----------------------------------------------------------------------
     // derive_briefing_query tests
     // -----------------------------------------------------------------------
 
-    fn make_session_state(feature: Option<&str>, signals: Vec<(&str, u32)>) -> SessionState {
+    fn make_session_state(
+        feature: Option<&str>,
+        signals: Vec<(&str, u32)>,
+        current_goal: Option<&str>, // col-025: pass None for existing call sites
+    ) -> SessionState {
         use std::collections::{HashMap, HashSet};
         let topic_signals: HashMap<String, TopicTally> = signals
             .into_iter()
@@ -344,13 +363,14 @@ mod tests {
             topic_signals,
             current_phase: None,
             category_counts: HashMap::new(),
+            current_goal: current_goal.map(str::to_string), // col-025
         }
     }
 
     /// Step 1: explicit task takes priority over session state and topic.
     #[test]
     fn derive_briefing_query_task_param_takes_priority() {
-        let state = make_session_state(Some("crt-027"), vec![("briefing", 5), ("hook", 3)]);
+        let state = make_session_state(Some("crt-027"), vec![("briefing", 5), ("hook", 3)], None);
         let result = derive_briefing_query(Some("implement spec writer"), Some(&state), "crt-027");
         assert_eq!(result, "implement spec writer");
     }
@@ -368,7 +388,7 @@ mod tests {
     /// Step 1: empty string task falls through.
     #[test]
     fn derive_briefing_query_empty_task_falls_through() {
-        let state = make_session_state(Some("crt-027"), vec![("briefing", 5)]);
+        let state = make_session_state(Some("crt-027"), vec![("briefing", 5)], None);
         let result = derive_briefing_query(Some(""), Some(&state), "crt-027");
         // Should NOT return "" — falls to step 2 (feature + signals present)
         assert_ne!(result, "", "empty task must not return empty string");
@@ -389,6 +409,7 @@ mod tests {
                 ("compaction", 2),
                 ("extra", 1),
             ],
+            None,
         );
         let result = derive_briefing_query(None, Some(&state), "crt-027");
         assert_eq!(
@@ -400,7 +421,7 @@ mod tests {
     /// Step 2: fewer than 3 signals — use what is available, no trailing spaces.
     #[test]
     fn derive_briefing_query_fewer_than_three_signals() {
-        let state = make_session_state(Some("crt-027/spec"), vec![("briefing", 5)]);
+        let state = make_session_state(Some("crt-027/spec"), vec![("briefing", 5)], None);
         let result = derive_briefing_query(None, Some(&state), "crt-027");
         assert_eq!(
             result, "crt-027/spec briefing",
@@ -418,6 +439,7 @@ mod tests {
         let state = make_session_state(
             None, // no feature_cycle
             vec![("briefing", 5), ("hook", 3)],
+            None,
         );
         let result = derive_briefing_query(None, Some(&state), "crt-027");
         assert_eq!(
@@ -429,7 +451,7 @@ mod tests {
     /// Step 2: empty topic_signals with feature_cycle → falls to step 3.
     #[test]
     fn derive_briefing_query_empty_signals_fallback_to_topic() {
-        let state = make_session_state(Some("crt-027"), vec![]);
+        let state = make_session_state(Some("crt-027"), vec![], None);
         let result = derive_briefing_query(None, Some(&state), "crt-027");
         assert_eq!(
             result, "crt-027",
