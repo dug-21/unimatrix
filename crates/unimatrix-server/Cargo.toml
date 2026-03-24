@@ -54,3 +54,4 @@ test-support = ["unimatrix-store/test-support", "unimatrix-engine/test-support"]
 tempfile = "3"
 tokio = { version = "1", features = ["full", "test-util"] }
 unimatrix-server = { path = ".", features = ["test-support"] }
+tracing-test = "0.2"

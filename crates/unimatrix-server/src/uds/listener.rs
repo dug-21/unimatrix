@@ -101,9 +101,57 @@ fn sanitize_metadata_field(value: &str) -> String {
 fn sanitize_observation_source(source: Option<&str>) -> String {
     match source {
         Some("UserPromptSubmit") => "UserPromptSubmit".to_string(),
-        Some("SubagentStart")    => "SubagentStart".to_string(),
-        _                        => "UserPromptSubmit".to_string(),
+        Some("SubagentStart") => "SubagentStart".to_string(),
+        _ => "UserPromptSubmit".to_string(),
     }
+}
+
+/// Enrich an observation topic_signal using the session registry fallback.
+///
+/// Returns `extracted` unchanged when it is `Some(_)`.
+/// The explicit hook-side signal always wins over the registry value (AC-08, FR-14).
+///
+/// When `extracted` is `None`, reads session_registry.get_state(session_id)
+/// and returns state.feature.clone() if the session has a registered feature.
+/// Returns None if the session is not registered or has no feature set (FR-13).
+///
+/// When `extracted` is `Some(x)` and the session registry has a different feature,
+/// emits tracing::debug! with both values for attribution forensics (AC-08).
+/// The extracted signal is still returned unchanged; the debug log is informational only.
+///
+/// This is a synchronous Mutex read (~microseconds); no await, no spawn_blocking.
+/// The registry lock is held for the duration of the read only.
+fn enrich_topic_signal(
+    extracted: Option<String>,
+    session_id: &str,
+    session_registry: &SessionRegistry,
+) -> Option<String> {
+    // Read the registry feature for this session, if any.
+    // get_state acquires a Mutex lock briefly and uses unwrap_or_else internally (FM-04).
+    let registry_feature: Option<String> = session_registry
+        .get_state(session_id)
+        .and_then(|state| state.feature);
+
+    // Case 1: explicit extracted signal present — explicit wins unconditionally (AC-08).
+    if let Some(ref explicit) = extracted {
+        // Diagnostic: log if the explicit signal differs from the registry feature.
+        if let Some(ref reg_feat) = registry_feature {
+            if explicit != reg_feat {
+                tracing::debug!(
+                    session_id = session_id,
+                    extracted_signal = %explicit,
+                    registry_feature = %reg_feat,
+                    "enrich_topic_signal: explicit signal differs from registry feature; \
+                     explicit wins (AC-08)"
+                );
+            }
+        }
+        return extracted;
+    }
+
+    // Case 2: no explicit signal — use registry feature as fallback.
+    // Returns None if session not registered or feature not set (FR-13, I-03).
+    registry_feature
 }
 
 /// Fire-and-forget `spawn_blocking`. The returned JoinHandle is dropped.
@@ -588,8 +636,11 @@ async fn dispatch_request(
             }
 
             // col-019: Persist rework PostToolUse as observation (fire-and-forget)
+            // col-024: Enrich topic_signal from session registry when not set by extract.
             let store_for_obs = Arc::clone(store);
-            let obs = extract_observation_fields(&event);
+            let mut obs = extract_observation_fields(&event);
+            obs.topic_signal =
+                enrich_topic_signal(obs.topic_signal, &event.session_id, session_registry);
             tokio::task::spawn_blocking(move || {
                 if let Err(e) = insert_observation(&store_for_obs, &obs) {
                     tracing::error!(error = %e, "rework observation write failed");
@@ -680,8 +731,11 @@ async fn dispatch_request(
             }
 
             // col-012: Persist observation to SQLite (fire-and-forget)
+            // col-024: Enrich topic_signal from session registry when not set by extract.
             let store_for_obs = Arc::clone(store);
-            let obs = extract_observation_fields(&event);
+            let mut obs = extract_observation_fields(&event);
+            obs.topic_signal =
+                enrich_topic_signal(obs.topic_signal, &event.session_id, session_registry);
             spawn_blocking_fire_and_forget(move || {
                 if let Err(e) = insert_observation(&store_for_obs, &obs) {
                     tracing::error!(error = %e, "observation write failed");
@@ -780,9 +834,17 @@ async fn dispatch_request(
             }
 
             // col-012: Batch persist observations in single transaction (fire-and-forget)
+            // col-024: Enrich topic_signal per-event from session registry fallback.
             let store_for_obs = Arc::clone(store);
-            let obs_batch: Vec<ObservationRow> =
-                events.iter().map(extract_observation_fields).collect();
+            let obs_batch: Vec<ObservationRow> = events
+                .iter()
+                .map(|event| {
+                    let mut obs = extract_observation_fields(event);
+                    obs.topic_signal =
+                        enrich_topic_signal(obs.topic_signal, &event.session_id, session_registry);
+                    obs
+                })
+                .collect();
             spawn_blocking_fire_and_forget(move || {
                 if let Err(e) = insert_observations_batch(&store_for_obs, &obs_batch) {
                     tracing::error!(error = %e, "batch observation write failed");
@@ -821,11 +883,15 @@ async fn dispatch_request(
             // col-018: Record observation as a side effect.
             // ADR-001 crt-027: use source field to tag the observation hook column;
             // None (UserPromptSubmit path) defaults to "UserPromptSubmit".
+            // col-024: Enrich topic_signal from session registry when extract returns None.
             let topic_signal = unimatrix_observe::extract_topic_signal(&query);
 
             if let Some(ref sid) = session_id {
                 if !query.is_empty() {
-                    if let Some(ref signal) = topic_signal {
+                    // col-024: enrich before recording; registry-enriched signals also accumulate.
+                    let enriched_signal = enrich_topic_signal(topic_signal, sid, session_registry);
+
+                    if let Some(ref signal) = enriched_signal {
                         session_registry.record_topic_signal(sid, signal.clone(), unix_now_secs());
                     }
 
@@ -839,7 +905,7 @@ async fn dispatch_request(
                         input: Some(truncated_input),
                         response_size: None,
                         response_snippet: None,
-                        topic_signal: topic_signal.clone(),
+                        topic_signal: enriched_signal,
                     };
 
                     let store_for_obs = Arc::clone(store);
@@ -3434,10 +3500,7 @@ mod tests {
 
     #[test]
     fn sanitize_observation_source_empty_string_defaults_to_user_prompt_submit() {
-        assert_eq!(
-            sanitize_observation_source(Some("")),
-            "UserPromptSubmit"
-        );
+        assert_eq!(sanitize_observation_source(Some("")), "UserPromptSubmit");
     }
 
     #[test]
@@ -5464,5 +5527,67 @@ mod tests {
             Some("scope"),
             "current_phase should not change when feature_cycle is missing"
         );
+    }
+
+    // -- col-024: enrich_topic_signal unit tests --
+
+    /// T-ENR-01: extracted = None, registry has feature → returns registry feature (AC-05/06/07)
+    #[test]
+    fn test_enrich_returns_extracted_when_some() {
+        let registry = make_registry();
+        registry.register_session("sess-1", None, Some("col-024".to_string()));
+
+        let result = enrich_topic_signal(Some("col-024".to_string()), "sess-1", &registry);
+        assert_eq!(result, Some("col-024".to_string()));
+    }
+
+    /// T-ENR-01: extracted = None, registry has feature → returns Some(feature) (AC-05/06/07)
+    #[test]
+    fn test_enrich_fallback_from_registry() {
+        let registry = make_registry();
+        registry.register_session("sess-1", None, Some("col-024".to_string()));
+
+        let result = enrich_topic_signal(None, "sess-1", &registry);
+        assert_eq!(result, Some("col-024".to_string()));
+    }
+
+    /// T-ENR-04: extracted = None, session not in registry → returns None (FR-13)
+    #[test]
+    fn test_enrich_no_registry_entry() {
+        let registry = make_registry();
+        // No register_session call — session is unknown.
+
+        let result = enrich_topic_signal(None, "sess-unknown", &registry);
+        assert_eq!(result, None);
+    }
+
+    /// T-ENR-02 + T-ENR-03: extracted = Some("bugfix-342"), registry feature = "col-024"
+    /// → returns Some("bugfix-342") unchanged; debug log fires with both values (AC-08).
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_enrich_explicit_signal_unchanged() {
+        let registry = make_registry();
+        registry.register_session("sess-1", None, Some("col-024".to_string()));
+
+        let result = enrich_topic_signal(Some("bugfix-342".to_string()), "sess-1", &registry);
+
+        // Explicit signal wins — registry feature must not replace it.
+        assert_eq!(result, Some("bugfix-342".to_string()));
+        // AC-08: debug log must fire because extracted ≠ registry feature.
+        assert!(
+            logs_contain("bugfix-342"),
+            "log must contain extracted signal"
+        );
+        assert!(logs_contain("col-024"), "log must contain registry feature");
+    }
+
+    /// T-ENR-05: extracted = None, session registered but feature = None → returns None (FR-13)
+    #[test]
+    fn test_enrich_registry_no_feature() {
+        let registry = make_registry();
+        registry.register_session("sess-1", None, None);
+
+        let result = enrich_topic_signal(None, "sess-1", &registry);
+        assert_eq!(result, None);
     }
 }
