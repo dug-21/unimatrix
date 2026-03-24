@@ -15,8 +15,8 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 14 to 15 by crt-025 (cycle_events + feature_entries.phase).
-pub const CURRENT_SCHEMA_VERSION: u64 = 15;
+/// Current schema version. Incremented from 15 to 16 by col-025 (cycle_events.goal column).
+pub const CURRENT_SCHEMA_VERSION: u64 = 16;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -530,7 +530,32 @@ async fn run_main_migrations(
         // No backfill: pre-existing feature_entries rows get phase = NULL (C-05, FR-06.4).
     }
 
-    // Update schema_version counter to CURRENT_SCHEMA_VERSION (15).
+    // v15 → v16: cycle_events.goal column (col-025).
+    //
+    // Idempotency (pattern #1264): ALTER TABLE ADD COLUMN fails if the column already exists
+    // in SQLite (no IF NOT EXISTS for ADD COLUMN). We pre-check with pragma_table_info.
+    if current_version < 16 {
+        let has_goal_column: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM pragma_table_info('cycle_events') WHERE name = 'goal'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|count| count > 0)
+        .unwrap_or(false); // if query fails, treat as absent; ALTER will succeed
+
+        if !has_goal_column {
+            sqlx::query("ALTER TABLE cycle_events ADD COLUMN goal TEXT")
+                .execute(&mut **txn)
+                .await
+                .map_err(|e| StoreError::Migration {
+                    source: Box::new(e),
+                })?;
+        }
+        // No backfill: pre-existing cycle_events rows get goal = NULL.
+        // goal-absent sessions degrade gracefully to topic-ID fallback (ADR-001, col-025).
+    }
+
+    // Update schema_version counter to CURRENT_SCHEMA_VERSION (16).
     sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', ?1)")
         .bind(CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut **txn)

@@ -2307,6 +2307,7 @@ fn handle_cycle_event(
                     outcome_val.as_deref(),
                     next_phase_for_db.as_deref(),
                     timestamp,
+                    None, // goal: populated by wave 3 (cycle-event-handler component, col-025)
                 )
                 .await
             {

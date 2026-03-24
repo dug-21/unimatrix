@@ -1,10 +1,10 @@
-//! Integration tests for the v14→v15 schema migration (crt-025).
+//! Integration tests for the v15→v16 schema migration (col-025).
 //!
-//! Covers: AC-10 (cycle_events table created), AC-11 (feature_entries.phase column added),
-//! R-05 (no positional offset after migration), R-10 (fresh DB at v15), NFR-05 (idempotency),
-//! C-05 (no backfill), C-08 (pragma_table_info guard).
+//! Covers: AC-09 (cycle_events.goal column added), AC-16 (CURRENT_SCHEMA_VERSION = 16),
+//! R-02 (migration cascade), R-08 (no positional offset after migration), R-10
+//! (fresh DB at v16), R-14 (idempotency), pattern #1264 (pragma_table_info guard).
 //!
-//! Pattern: create a v14-shaped database, open with current SqlxStore to trigger
+//! Pattern: create a v15-shaped database, open with current SqlxStore to trigger
 //! migration, assert schema state and data round-trips.
 
 #![cfg(feature = "test-support")]
@@ -18,21 +18,20 @@ use unimatrix_store::SqlxStore;
 use unimatrix_store::pool_config::PoolConfig;
 
 // ---------------------------------------------------------------------------
-// V14 database builder
+// V15 database builder
 // ---------------------------------------------------------------------------
 
-/// Create a v14-shaped database at the given path.
+/// Create a v15-shaped database at the given path.
 ///
-/// Contains all tables present at v14 (with graph_edges and domain_metrics_json).
-/// schema_version = 14.
-/// `feature_entries` intentionally lacks a `phase` column.
-/// `cycle_events` table is absent — both are what v14→v15 adds.
-async fn create_v14_database(path: &Path) {
+/// Contains all tables present at v15: all v14 tables + `cycle_events` (WITHOUT
+/// the `goal` column) + `feature_entries.phase` column. schema_version = 15.
+/// The `goal` column is intentionally absent — that is what v15→v16 adds.
+async fn create_v15_database(path: &Path) {
     let opts = SqliteConnectOptions::new()
         .filename(path)
         .create_if_missing(true);
 
-    let mut conn = opts.connect().await.expect("open v14 setup conn");
+    let mut conn = opts.connect().await.expect("open v15 setup conn");
 
     sqlx::query("PRAGMA journal_mode = WAL")
         .execute(&mut conn)
@@ -94,13 +93,13 @@ async fn create_v14_database(path: &Path) {
             entry_id INTEGER PRIMARY KEY,
             hnsw_data_id INTEGER NOT NULL
         )",
-        // feature_entries WITHOUT a phase column — this is what v14→v15 adds.
+        // feature_entries WITH phase column — this is the v15 shape (v14→v15 added it).
         "CREATE TABLE feature_entries (
             feature_id TEXT NOT NULL,
             entry_id   INTEGER NOT NULL,
+            phase      TEXT,
             PRIMARY KEY (feature_id, entry_id)
         )",
-        // No cycle_events table — this is the other v14→v15 addition.
         "CREATE TABLE outcome_index (
             feature_cycle TEXT NOT NULL,
             entry_id INTEGER NOT NULL,
@@ -164,7 +163,6 @@ async fn create_v14_database(path: &Path) {
             response_snippet TEXT,
             topic_signal    TEXT
         )",
-        // observation_metrics WITH domain_metrics_json — this is v14 shape.
         "CREATE TABLE observation_metrics (
             feature_cycle                      TEXT    PRIMARY KEY,
             computed_at                        INTEGER NOT NULL DEFAULT 0,
@@ -245,6 +243,18 @@ async fn create_v14_database(path: &Path) {
             metadata       TEXT    DEFAULT NULL,
             UNIQUE(source_id, target_id, relation_type)
         )",
+        // cycle_events WITHOUT goal column — this is the v15 shape.
+        // v15→v16 adds the goal column.
+        "CREATE TABLE cycle_events (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            cycle_id   TEXT    NOT NULL,
+            seq        INTEGER NOT NULL,
+            event_type TEXT    NOT NULL,
+            phase      TEXT,
+            outcome    TEXT,
+            next_phase TEXT,
+            timestamp  INTEGER NOT NULL
+        )",
         "CREATE INDEX idx_entries_topic ON entries(topic)",
         "CREATE INDEX idx_entries_category ON entries(category)",
         "CREATE INDEX idx_entries_status ON entries(status)",
@@ -266,6 +276,7 @@ async fn create_v14_database(path: &Path) {
         "CREATE INDEX idx_graph_edges_source_id ON graph_edges(source_id)",
         "CREATE INDEX idx_graph_edges_target_id ON graph_edges(target_id)",
         "CREATE INDEX idx_graph_edges_relation_type ON graph_edges(relation_type)",
+        "CREATE INDEX idx_cycle_events_cycle_id ON cycle_events (cycle_id)",
     ] {
         sqlx::query(ddl)
             .execute(&mut conn)
@@ -273,9 +284,9 @@ async fn create_v14_database(path: &Path) {
             .expect("create table/index");
     }
 
-    // Seed counters at v14.
+    // Seed counters at v15.
     for seed in &[
-        "INSERT INTO counters (name, value) VALUES ('schema_version', 14)",
+        "INSERT INTO counters (name, value) VALUES ('schema_version', 15)",
         "INSERT INTO counters (name, value) VALUES ('next_entry_id', 1)",
         "INSERT INTO counters (name, value) VALUES ('next_signal_id', 0)",
         "INSERT INTO counters (name, value) VALUES ('next_log_id', 0)",
@@ -299,49 +310,36 @@ async fn read_schema_version(store: &SqlxStore) -> i64 {
         .expect("read schema_version")
 }
 
-async fn cycle_events_table_exists(store: &SqlxStore) -> bool {
+async fn goal_column_exists(store: &SqlxStore) -> bool {
     let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='cycle_events'",
+        "SELECT COUNT(*) FROM pragma_table_info('cycle_events') WHERE name = 'goal'",
     )
     .fetch_one(store.read_pool_test())
     .await
-    .expect("check cycle_events table");
-    count > 0
-}
-
-async fn phase_column_exists_on_feature_entries(store: &SqlxStore) -> bool {
-    let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM pragma_table_info('feature_entries') WHERE name = 'phase'",
-    )
-    .fetch_one(store.read_pool_test())
-    .await
-    .expect("check feature_entries.phase column");
+    .expect("check cycle_events.goal column");
     count > 0
 }
 
 // ---------------------------------------------------------------------------
-// Unit test: CURRENT_SCHEMA_VERSION constant >= 15 (cascaded from col-025)
+// Unit test: CURRENT_SCHEMA_VERSION constant = 16
 // ---------------------------------------------------------------------------
-//
-// Note: constant was 15 when this test was written; bumped to 16 by col-025.
-// The v14→v15 migration behaviour is verified by the functional tests below.
-// The exact value is tested in migration_v15_to_v16.rs::test_current_schema_version_is_16.
 
 #[test]
-fn test_current_schema_version_is_at_least_15() {
-    // Minimum bound: version must be >= 15. Exact value tested in migration_v15_to_v16.rs.
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 15,
-        "CURRENT_SCHEMA_VERSION must be >= 15"
+fn test_current_schema_version_is_16() {
+    // Simple constant check to catch accidental off-by-one in version bump.
+    assert_eq!(
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
+        16,
+        "CURRENT_SCHEMA_VERSION must be 16"
     );
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-01: Fresh database creates schema v15 directly (AC-11, R-10)
+// T-V16-01: Fresh database creates schema v16 directly (AC-09, R-10)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_fresh_db_creates_schema_v15() {
+async fn test_fresh_db_creates_schema_v16() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
@@ -351,146 +349,68 @@ async fn test_fresh_db_creates_schema_v15() {
         .await
         .expect("open fresh store");
 
-    // Assert: schema_version >= 15 (col-025 bumped the constant to 16; see pattern #2933)
-    assert!(
-        read_schema_version(&store).await >= 15,
-        "fresh database must be at schema >= v15"
+    // Assert: schema_version == 16
+    assert_eq!(
+        read_schema_version(&store).await,
+        16,
+        "fresh database must be at schema v16"
     );
 
-    // Assert: cycle_events table exists
+    // Assert: goal column present on cycle_events (fresh schema has the full DDL).
     assert!(
-        cycle_events_table_exists(&store).await,
-        "fresh database must have cycle_events table"
-    );
-
-    // Assert: feature_entries has phase column
-    assert!(
-        phase_column_exists_on_feature_entries(&store).await,
-        "fresh database must have feature_entries.phase column"
+        goal_column_exists(&store).await,
+        "fresh database must have cycle_events.goal column"
     );
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-01b: Fresh DB cycle_events table has correct schema (R-10, FR-07.2)
+// T-V16-02: v15→v16 migration adds goal column (AC-09, R-02)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_fresh_db_cycle_events_table_schema() {
+async fn test_v15_to_v16_migration_adds_goal_column() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
+    // Arrange: v15 database — cycle_events exists, goal column absent.
+    create_v15_database(&db_path).await;
+
+    // Act: open triggers v15→v16 migration.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("open fresh store");
+        .expect("open store after v15→v16 migration");
 
-    // Verify all expected columns are present via pragma_table_info.
-    let columns: Vec<String> =
-        sqlx::query_scalar("SELECT name FROM pragma_table_info('cycle_events') ORDER BY cid")
-            .fetch_all(store.read_pool_test())
-            .await
-            .expect("pragma_table_info cycle_events");
-
-    for expected in &[
-        "id",
-        "cycle_id",
-        "seq",
-        "event_type",
-        "phase",
-        "outcome",
-        "next_phase",
-        "timestamp",
-    ] {
-        assert!(
-            columns.iter().any(|c| c == expected),
-            "cycle_events must have column '{expected}'"
-        );
-    }
-
-    // Verify index exists.
-    let idx_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_cycle_events_cycle_id'",
-    )
-    .fetch_one(store.read_pool_test())
-    .await
-    .expect("check index");
-    assert_eq!(idx_count, 1, "idx_cycle_events_cycle_id must exist");
-
-    store.close().await.unwrap();
-}
-
-// ---------------------------------------------------------------------------
-// T-MIG-02: v14→v15 adds cycle_events table (AC-10, R-05)
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_v14_to_v15_migration_adds_cycle_events_table() {
-    let dir = TempDir::new().expect("temp dir");
-    let db_path = dir.path().join("test.db");
-
-    // Arrange: v14 database without cycle_events table.
-    create_v14_database(&db_path).await;
-
-    // Act: open triggers v14→v15 migration.
-    let store = SqlxStore::open(&db_path, PoolConfig::default())
-        .await
-        .expect("open store after v14→v15 migration");
-
-    // Assert: cycle_events table now exists.
+    // Assert: goal column now exists.
     assert!(
-        cycle_events_table_exists(&store).await,
-        "cycle_events table must exist after v14→v15 migration (AC-10)"
+        goal_column_exists(&store).await,
+        "cycle_events.goal column must exist after v15→v16 migration (AC-09)"
     );
 
-    // Assert: schema_version >= 15 (col-025 bumped to 16; see pattern #2933).
-    assert!(read_schema_version(&store).await >= 15);
+    // Assert: schema_version == 16.
+    assert_eq!(read_schema_version(&store).await, 16);
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-02b: v14→v15 adds phase column to feature_entries (AC-10, R-05)
+// T-V16-03: Pre-existing rows have NULL goal (AC-09 — no backfill)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v14_to_v15_migration_adds_phase_column_to_feature_entries() {
+async fn test_v15_pre_existing_rows_have_null_goal() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    // Arrange: v14 database — feature_entries has no phase column.
-    create_v14_database(&db_path).await;
-
-    // Act: open triggers migration.
-    let store = SqlxStore::open(&db_path, PoolConfig::default())
-        .await
-        .expect("open store after v14→v15 migration");
-
-    // Assert: phase column now exists on feature_entries.
-    assert!(
-        phase_column_exists_on_feature_entries(&store).await,
-        "feature_entries.phase column must exist after v14→v15 migration"
-    );
-
-    store.close().await.unwrap();
-}
-
-// ---------------------------------------------------------------------------
-// T-MIG-02c: Pre-existing feature_entries rows have NULL phase (C-05, FR-06.4)
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_v14_pre_existing_rows_have_null_phase() {
-    let dir = TempDir::new().expect("temp dir");
-    let db_path = dir.path().join("test.db");
-
-    // Arrange: v14 database with a pre-seeded feature_entries row.
-    create_v14_database(&db_path).await;
+    // Arrange: v15 database with a pre-seeded cycle_events row (v15 columns only).
+    create_v15_database(&db_path).await;
     {
         let opts = SqliteConnectOptions::new().filename(&db_path);
         let mut conn = opts.connect().await.expect("setup conn");
         sqlx::query(
-            "INSERT INTO feature_entries (feature_id, entry_id) VALUES ('old-feature', 99)",
+            "INSERT INTO cycle_events (cycle_id, seq, event_type, timestamp) \
+             VALUES ('pre-v16-cycle', 0, 'cycle_start', 1700000000)",
         )
         .execute(&mut conn)
         .await
@@ -502,251 +422,162 @@ async fn test_v14_pre_existing_rows_have_null_phase() {
         .await
         .expect("open after migration");
 
-    // Assert: phase IS NULL — no backfill (C-05, FR-06.4).
-    let phase: Option<String> =
-        sqlx::query_scalar("SELECT phase FROM feature_entries WHERE entry_id = 99")
+    // Assert: goal IS NULL — no backfill (ADR-001, col-025).
+    let goal: Option<String> =
+        sqlx::query_scalar("SELECT goal FROM cycle_events WHERE cycle_id = 'pre-v16-cycle'")
             .fetch_one(store.read_pool_test())
             .await
-            .expect("fetch phase for pre-existing row");
+            .expect("fetch goal for pre-existing row");
 
     assert!(
-        phase.is_none(),
-        "pre-existing feature_entries rows must have phase = NULL (C-05, no backfill)"
+        goal.is_none(),
+        "pre-existing cycle_events rows must have goal = NULL (no backfill, ADR-001)"
     );
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-03: Migration is idempotent (AC-10, R-05, NFR-05)
+// T-V16-04: Idempotency — migration is a no-op on second open (AC-09, Gate 3c #1)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v14_to_v15_migration_idempotent() {
+async fn test_v15_to_v16_migration_idempotent() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    create_v14_database(&db_path).await;
+    create_v15_database(&db_path).await;
 
-    // Run 1: applies v14→v15 migration (and v15→v16 since CURRENT_SCHEMA_VERSION is now 16).
+    // Run 1: applies v15→v16 migration.
     {
         let store = SqlxStore::open(&db_path, PoolConfig::default())
             .await
             .expect("first open");
-        assert!(read_schema_version(&store).await >= 15); // col-025: bumped to 16; keep >= 15 (pattern #2933)
-        assert!(cycle_events_table_exists(&store).await);
-        assert!(phase_column_exists_on_feature_entries(&store).await);
+        assert!(goal_column_exists(&store).await);
+        assert_eq!(read_schema_version(&store).await, 16);
         store.close().await.unwrap();
     }
 
     // Run 2: must be a no-op — no errors.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("second open must succeed (NFR-05: idempotent)");
+        .expect("second open must succeed (idempotency)");
 
-    assert!(read_schema_version(&store).await >= 15); // col-025: bumped to 16; keep >= 15 (pattern #2933)
-    assert!(cycle_events_table_exists(&store).await);
-    assert!(phase_column_exists_on_feature_entries(&store).await);
+    assert_eq!(read_schema_version(&store).await, 16);
+    assert!(goal_column_exists(&store).await);
 
-    // Exactly one phase column must exist.
+    // Exactly one goal column must exist (not duplicated).
     let col_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM pragma_table_info('feature_entries') WHERE name = 'phase'",
+        "SELECT COUNT(*) FROM pragma_table_info('cycle_events') WHERE name = 'goal'",
     )
     .fetch_one(store.read_pool_test())
     .await
-    .expect("count phase columns");
-    assert_eq!(
-        col_count, 1,
-        "exactly one phase column after idempotent run"
-    );
-
-    // Exactly one cycle_events table must exist.
-    let tbl_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='cycle_events'",
-    )
-    .fetch_one(store.read_pool_test())
-    .await
-    .expect("count cycle_events tables");
-    assert_eq!(
-        tbl_count, 1,
-        "exactly one cycle_events table after idempotent run"
-    );
+    .expect("count goal columns");
+    assert_eq!(col_count, 1, "exactly one goal column after idempotent run");
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-03b: pragma_table_info guard prevents duplicate column (NFR-05, C-08)
+// T-V16-05: pragma_table_info guard prevents duplicate goal column (pattern #1264)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_pragma_table_info_guard_prevents_duplicate_column() {
+async fn test_pragma_table_info_guard_prevents_duplicate_goal_column() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    // Arrange: v14 database, then manually add the phase column before opening.
-    create_v14_database(&db_path).await;
+    // Arrange: v15 database, then manually add goal column before opening store.
+    create_v15_database(&db_path).await;
     {
         let opts = SqliteConnectOptions::new().filename(&db_path);
         let mut conn = opts.connect().await.expect("setup conn");
-        sqlx::query("ALTER TABLE feature_entries ADD COLUMN phase TEXT")
+        sqlx::query("ALTER TABLE cycle_events ADD COLUMN goal TEXT")
             .execute(&mut conn)
             .await
-            .expect("manually add phase column");
+            .expect("manually add goal column");
     }
 
-    // Act: open store — migration sees column already exists and skips ALTER TABLE.
+    // Act: open store — pragma guard sees column already exists, skips ALTER TABLE.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("open must succeed — pragma guard skips duplicate ALTER TABLE (C-08)");
+        .expect("open must succeed — pragma guard skips duplicate ALTER TABLE");
 
-    // Assert: no error, schema_version >= 15, column exists exactly once (col-025: bumped to 16).
-    assert!(read_schema_version(&store).await >= 15);
+    // Assert: no error; schema_version == 16; exactly one goal column.
+    assert_eq!(read_schema_version(&store).await, 16);
     let col_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM pragma_table_info('feature_entries') WHERE name = 'phase'",
+        "SELECT COUNT(*) FROM pragma_table_info('cycle_events') WHERE name = 'goal'",
     )
     .fetch_one(store.read_pool_test())
     .await
-    .expect("count phase columns");
+    .expect("count goal columns");
     assert_eq!(
         col_count, 1,
-        "exactly one phase column after pragma guard (C-08)"
+        "exactly one goal column after pragma guard (pattern #1264)"
     );
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-04: Schema version is >= 15 after migration (AC-10) — cascaded from col-025
+// T-V16-06: schema_version counter = 16 after migration (AC-16)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_schema_version_is_15_after_migration() {
+async fn test_schema_version_is_16_after_migration() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    create_v14_database(&db_path).await;
+    create_v15_database(&db_path).await;
 
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
         .expect("open migrated store");
 
-    // Assert: counters table carries schema_version >= 15 (col-025 bumped to 16; see pattern #2933).
-    assert!(read_schema_version(&store).await >= 15);
+    // Assert: counters table carries schema_version = 16.
+    assert_eq!(read_schema_version(&store).await, 16);
 
-    // Assert: Rust const is >= 15 (exact value 16 tested in migration_v15_to_v16.rs).
-    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 15);
+    // Assert: Rust const agrees.
+    assert_eq!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION, 16);
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-05: Data round-trip — feature_entries with phase column (R-05)
+// T-V16-07: insert_cycle_event full column assertion (R-08 / Gate 3c #6)
+//
+// Writes a cycle_start event with a known goal; reads back by named column.
+// Detects binding transposition (R-08): any off-by-one in ?1..?8 would
+// produce wrong values for at least one column.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v15_feature_entries_round_trip_with_phase() {
+async fn test_insert_cycle_event_full_column_assertion() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    create_v14_database(&db_path).await;
-
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("open migrated store");
+        .expect("open fresh store");
 
-    // Insert a row with the new phase column.
-    sqlx::query(
-        "INSERT INTO feature_entries (feature_id, entry_id, phase) VALUES ('crt-025', 1, 'scope')",
-    )
-    .execute(store.write_pool_test())
-    .await
-    .expect("insert feature_entries row with phase");
-
-    // Select back by named columns — R-05: no positional offset regression.
-    use sqlx::Row as _;
-    let row =
-        sqlx::query("SELECT feature_id, entry_id, phase FROM feature_entries WHERE entry_id = 1")
-            .fetch_one(store.read_pool_test())
-            .await
-            .expect("fetch feature_entries row");
-
-    let feature_id: String = row.try_get("feature_id").unwrap();
-    let entry_id: i64 = row.try_get("entry_id").unwrap();
-    let phase: Option<String> = row.try_get("phase").unwrap();
-
-    assert_eq!(feature_id, "crt-025");
-    assert_eq!(entry_id, 1);
-    assert_eq!(phase.as_deref(), Some("scope"));
-
-    store.close().await.unwrap();
-}
-
-#[tokio::test]
-async fn test_v15_feature_entries_null_phase_row() {
-    let dir = TempDir::new().expect("temp dir");
-    let db_path = dir.path().join("test.db");
-
-    create_v14_database(&db_path).await;
-
-    let store = SqlxStore::open(&db_path, PoolConfig::default())
-        .await
-        .expect("open migrated store");
-
-    // Insert a row with NULL phase — backward compatible path.
-    sqlx::query(
-        "INSERT INTO feature_entries (feature_id, entry_id, phase) VALUES ('crt-025', 2, NULL)",
-    )
-    .execute(store.write_pool_test())
-    .await
-    .expect("insert feature_entries row with null phase");
-
-    let phase: Option<String> =
-        sqlx::query_scalar("SELECT phase FROM feature_entries WHERE entry_id = 2")
-            .fetch_one(store.read_pool_test())
-            .await
-            .expect("fetch phase");
-
-    assert!(phase.is_none(), "NULL phase must round-trip correctly");
-
-    store.close().await.unwrap();
-}
-
-// ---------------------------------------------------------------------------
-// T-MIG-05b: Data round-trip — cycle_events via insert_cycle_event (R-05)
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_v15_cycle_events_round_trip() {
-    let dir = TempDir::new().expect("temp dir");
-    let db_path = dir.path().join("test.db");
-
-    create_v14_database(&db_path).await;
-
-    let store = SqlxStore::open(&db_path, PoolConfig::default())
-        .await
-        .expect("open migrated store");
-
-    // Insert via SqlxStore::insert_cycle_event.
     store
         .insert_cycle_event(
-            "crt-025", // cycle_id
-            0,         // seq
-            "cycle_start",
-            Some("scope"),
-            None,
-            Some("design"),
-            1700000000, // timestamp
-            None,       // goal: col-025 addition; None for this pre-col-025 test
+            "col-025",                                          // cycle_id   ?1
+            0,                                                  // seq        ?2
+            "cycle_start",                                      // event_type ?3
+            Some("scope"),                                      // phase      ?4
+            None,                                               // outcome    ?5
+            Some("design"),                                     // next_phase ?6
+            1700000000_i64,                                     // timestamp  ?7
+            Some("Implement feature goal signal for col-025."), // goal ?8
         )
         .await
         .expect("insert_cycle_event must succeed");
 
-    // Query back by cycle_id.
     use sqlx::Row as _;
     let row = sqlx::query(
-        "SELECT cycle_id, seq, event_type, phase, outcome, next_phase, timestamp
-           FROM cycle_events WHERE cycle_id = 'crt-025'",
+        "SELECT cycle_id, seq, event_type, phase, outcome, next_phase, timestamp, goal
+           FROM cycle_events WHERE cycle_id = 'col-025'",
     )
     .fetch_one(store.read_pool_test())
     .await
@@ -759,30 +590,88 @@ async fn test_v15_cycle_events_round_trip() {
     let outcome: Option<String> = row.try_get("outcome").unwrap();
     let next_phase: Option<String> = row.try_get("next_phase").unwrap();
     let timestamp: i64 = row.try_get("timestamp").unwrap();
+    let goal: Option<String> = row.try_get("goal").unwrap();
 
-    assert_eq!(cycle_id, "crt-025");
+    assert_eq!(cycle_id, "col-025");
     assert_eq!(seq, 0);
     assert_eq!(event_type, "cycle_start");
     assert_eq!(phase.as_deref(), Some("scope"));
     assert!(outcome.is_none());
     assert_eq!(next_phase.as_deref(), Some("design"));
     assert_eq!(timestamp, 1700000000);
+    assert_eq!(
+        goal.as_deref(),
+        Some("Implement feature goal signal for col-025.")
+    );
 
     store.close().await.unwrap();
 }
 
+// ---------------------------------------------------------------------------
+// T-V16-08: insert_cycle_event with None goal writes NULL (FR-01)
+// ---------------------------------------------------------------------------
+
 #[tokio::test]
-async fn test_v15_cycle_events_all_nullable_columns_null() {
+async fn test_insert_cycle_event_goal_none_writes_null() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    create_v14_database(&db_path).await;
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open fresh store");
+
+    store
+        .insert_cycle_event(
+            "test-cycle",
+            0,
+            "cycle_start",
+            None,
+            None,
+            None,
+            1700000000,
+            None,
+        )
+        .await
+        .expect("insert cycle_start with goal=None must succeed");
+
+    let goal: Option<String> =
+        sqlx::query_scalar("SELECT goal FROM cycle_events WHERE cycle_id = 'test-cycle'")
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("fetch goal");
+
+    assert!(goal.is_none(), "goal=None must write NULL to DB");
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// T-V16-09: Non-start events always have NULL goal (FR-01 / ADR-001)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_insert_cycle_event_goal_null_for_non_start_events() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
 
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("open migrated store");
+        .expect("open fresh store");
 
-    // Insert with all nullable fields as None.
+    store
+        .insert_cycle_event(
+            "test-cycle",
+            0,
+            "cycle_phase_end",
+            Some("design"),
+            None,
+            Some("delivery"),
+            1700000001,
+            None,
+        )
+        .await
+        .expect("insert cycle_phase_end");
+
     store
         .insert_cycle_event(
             "test-cycle",
@@ -791,27 +680,189 @@ async fn test_v15_cycle_events_all_nullable_columns_null() {
             None,
             None,
             None,
-            1700000001,
+            1700000002,
             None,
         )
         .await
-        .expect("insert_cycle_event with nulls must succeed");
+        .expect("insert cycle_stop");
 
     use sqlx::Row as _;
-    let row = sqlx::query(
-        "SELECT phase, outcome, next_phase FROM cycle_events WHERE cycle_id = 'test-cycle'",
+    let rows = sqlx::query(
+        "SELECT event_type, goal FROM cycle_events WHERE cycle_id = 'test-cycle' ORDER BY seq ASC",
     )
-    .fetch_one(store.read_pool_test())
+    .fetch_all(store.read_pool_test())
     .await
-    .expect("fetch row");
+    .expect("fetch rows");
 
-    let phase: Option<String> = row.try_get("phase").unwrap();
-    let outcome: Option<String> = row.try_get("outcome").unwrap();
-    let next_phase: Option<String> = row.try_get("next_phase").unwrap();
+    assert_eq!(rows.len(), 2);
+    for row in &rows {
+        let event_type: String = row.try_get("event_type").unwrap();
+        let goal: Option<String> = row.try_get("goal").unwrap();
+        assert!(
+            goal.is_none(),
+            "event_type={event_type} must have goal=NULL"
+        );
+    }
 
-    assert!(phase.is_none(), "phase must be NULL");
-    assert!(outcome.is_none(), "outcome must be NULL");
-    assert!(next_phase.is_none(), "next_phase must be NULL");
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// T-V16-10: get_cycle_start_goal returns stored goal (R-03, AC-03)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_get_cycle_start_goal_returns_stored_goal() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open fresh store");
+
+    store
+        .insert_cycle_event(
+            "col-025-goal-test",
+            0,
+            "cycle_start",
+            None,
+            None,
+            None,
+            1700000000,
+            Some("test goal text"),
+        )
+        .await
+        .expect("insert cycle_start");
+
+    let result = store
+        .get_cycle_start_goal("col-025-goal-test")
+        .await
+        .expect("get_cycle_start_goal must not error");
+
+    assert_eq!(result.as_deref(), Some("test goal text"));
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// T-V16-11: get_cycle_start_goal returns None for unknown cycle_id (R-03, AC-14)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_get_cycle_start_goal_returns_none_for_unknown_cycle_id() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open fresh store");
+
+    let result = store
+        .get_cycle_start_goal("nonexistent-cycle-id")
+        .await
+        .expect("get_cycle_start_goal must not error for missing cycle_id");
+
+    assert!(result.is_none(), "absent cycle_id must return Ok(None)");
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// T-V16-12: get_cycle_start_goal returns None when goal IS NULL (R-03, AC-03)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_get_cycle_start_goal_returns_none_when_goal_is_null() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open fresh store");
+
+    // Insert cycle_start with goal = None (NULL in DB).
+    store
+        .insert_cycle_event(
+            "null-goal-cycle",
+            0,
+            "cycle_start",
+            None,
+            None,
+            None,
+            1700000000,
+            None,
+        )
+        .await
+        .expect("insert cycle_start with null goal");
+
+    let result = store
+        .get_cycle_start_goal("null-goal-cycle")
+        .await
+        .expect("get_cycle_start_goal must not error");
+
+    assert!(result.is_none(), "NULL goal in DB must flatten to Ok(None)");
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// T-V16-13: get_cycle_start_goal LIMIT 1 semantics — returns first row (R-10)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_get_cycle_start_goal_multiple_start_rows_returns_first() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open fresh store");
+
+    // Insert two cycle_start rows for the same cycle_id (simulated corrupted state).
+    store
+        .insert_cycle_event(
+            "dup-cycle",
+            0,
+            "cycle_start",
+            None,
+            None,
+            None,
+            1700000001,
+            Some("first goal"),
+        )
+        .await
+        .expect("insert first cycle_start");
+
+    store
+        .insert_cycle_event(
+            "dup-cycle",
+            1,
+            "cycle_start",
+            None,
+            None,
+            None,
+            1700000002,
+            Some("second goal"),
+        )
+        .await
+        .expect("insert second cycle_start");
+
+    // LIMIT 1 must return the first row by insertion order.
+    let result = store
+        .get_cycle_start_goal("dup-cycle")
+        .await
+        .expect("get_cycle_start_goal must not error");
+
+    assert!(
+        result.is_some(),
+        "must return Some goal when at least one cycle_start row exists"
+    );
+    // The result must be one of the two goals — LIMIT 1 guarantees only one is returned.
+    let goal = result.unwrap();
+    assert!(
+        goal == "first goal" || goal == "second goal",
+        "returned goal must be one of the two inserted values, got: {goal}"
+    );
 
     store.close().await.unwrap();
 }
