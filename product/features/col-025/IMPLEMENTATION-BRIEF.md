@@ -32,8 +32,26 @@
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map
-lists expected components from the architecture — actual file paths are filled during delivery.
+Stage 3a complete. All pseudocode and test-plan files produced and verified.
+
+### Stage 3b Wave Plan (from pseudocode OVERVIEW.md)
+
+| Wave | Components | Crate / File(s) | Rationale |
+|------|-----------|-----------------|-----------|
+| Wave 1 | schema-migration-v16, session-state-extension, format-index-table-header | unimatrix-store (migration.rs, db.rs), unimatrix-server (session.rs, index_briefing.rs) | Foundation: no inter-component dependencies; format-index-table-header is self-contained |
+| Wave 2 | mcp-cycle-wire-protocol, briefing-query-derivation | unimatrix-server (tools.rs, index_briefing.rs) | Requires SessionState.current_goal (Wave 1); each touches a distinct file |
+| Wave 3 | cycle-event-handler, session-resume, subagent-start-injection | unimatrix-server (listener.rs — all three sections) | Requires Wave 1 (store schema + session) and Wave 2 (briefing service); all touch listener.rs so must be one agent |
+
+**SubagentStart architectural finding (OQ-04 resolved):** The SubagentStart hook arm always produces `HookRequest::ContextSearch`. The goal-present branch must live at the TOP of `dispatch_request`'s `ContextSearch` arm, gated on `source.as_deref() == Some("SubagentStart")`. See `pseudocode/subagent-start-injection.md`.
+
+### Resolved Open Questions
+
+| OQ | Resolution |
+|----|-----------|
+| OQ-01 | Exactly one `insert_cycle_event` call site confirmed at listener.rs line ~2302 |
+| OQ-02 | `tracing::warn!` confirmed correct severity — matches existing patterns in listener.rs |
+| OQ-03 | `CONTEXT_GET_INSTRUCTION = "Use context_get with the entry ID for full content when relevant."` |
+| OQ-04 | `session_id` always available in SubagentStart via `hook_input.session_id`; goal branch in `dispatch_request` ContextSearch arm |
 
 ---
 
