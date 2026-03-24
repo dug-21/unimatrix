@@ -194,9 +194,8 @@ pub fn quality_gate(entry: &ProposedEntry, ctx: &mut ExtractionContext) -> Quali
 ///
 /// `DeadKnowledgeRule` was removed: it used an additive `ExtractionRule` to signal
 /// a maintenance action (inserting `lesson-learned` entries), which created an
-/// idempotency-free replication loop. Dead-knowledge detection now runs as a
-/// direct deprecation pass in `background::dead_knowledge_deprecation_pass()`
-/// and is no longer part of the extraction pipeline. (GH #351)
+/// idempotency-free replication loop. Detection helpers are preserved in
+/// `dead_knowledge` for future curation surfacing work (GH #369, #370).
 pub fn default_extraction_rules() -> Vec<Box<dyn ExtractionRule>> {
     vec![
         Box::new(knowledge_gap::KnowledgeGapRule),

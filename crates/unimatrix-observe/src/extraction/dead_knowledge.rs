@@ -5,9 +5,8 @@
 //! signal a maintenance action — inserting `lesson-learned` entries instead of
 //! directly deprecating stale entries. This created a self-replicating noise loop.
 //!
-//! The detection logic is preserved here as public free functions so that
-//! `background::dead_knowledge_deprecation_pass()` can reuse the same session-window
-//! and entry-access heuristics without duplicating them.
+//! The detection logic is preserved here as public free functions for future
+//! knowledge curation surfacing work (GH #370).
 
 use std::collections::{HashMap, HashSet};
 
