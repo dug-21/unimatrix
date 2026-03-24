@@ -78,6 +78,7 @@ impl SqlxStore {
     }
 
     /// Insert a single observation row. Used by hook IPC and tests.
+    #[allow(clippy::too_many_arguments)]
     pub async fn insert_observation(
         &self,
         session_id: &str,

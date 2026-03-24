@@ -861,7 +861,7 @@ async fn migrate_entries_v5_to_v6(txn: &mut sqlx::Transaction<'_, sqlx::Sqlite>)
             })?;
 
     for (id, data) in &rows {
-        let record = migration_compat::deserialize_entry_v5(&data)?;
+        let record = migration_compat::deserialize_entry_v5(data)?;
 
         sqlx::query(
             "INSERT INTO entries_v6 (id, title, content, topic, category, source,

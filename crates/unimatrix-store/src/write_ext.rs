@@ -344,13 +344,13 @@ impl SqlxStore {
 
         // Update counters
         crate::counters::decrement_counter(
-            &mut *txn,
+            &mut txn,
             crate::schema::status_counter_key(old_status),
             1,
         )
         .await?;
         crate::counters::increment_counter(
-            &mut *txn,
+            &mut txn,
             crate::schema::status_counter_key(new_status),
             1,
         )
@@ -425,7 +425,7 @@ impl SqlxStore {
         }
 
         // 2. Allocate new entry ID
-        let new_id = crate::counters::next_entry_id(&mut *txn).await?;
+        let new_id = crate::counters::next_entry_id(&mut txn).await?;
 
         // 3. Deprecate original
         let old_status = original.status;
@@ -443,13 +443,13 @@ impl SqlxStore {
         .map_err(|e| StoreError::Database(e.into()))?;
 
         crate::counters::decrement_counter(
-            &mut *txn,
+            &mut txn,
             crate::schema::status_counter_key(old_status),
             1,
         )
         .await?;
         crate::counters::increment_counter(
-            &mut *txn,
+            &mut txn,
             crate::schema::status_counter_key(crate::schema::Status::Deprecated),
             1,
         )
@@ -552,7 +552,7 @@ impl SqlxStore {
 
         // 8. Status counter for correction
         crate::counters::increment_counter(
-            &mut *txn,
+            &mut txn,
             crate::schema::status_counter_key(new_rec.status),
             1,
         )

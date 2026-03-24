@@ -295,15 +295,11 @@ async fn run_drain_task(
                 // for more events before committing the partial batch (NF-04).
                 if batch.len() < DRAIN_BATCH_SIZE {
                     let deadline = tokio::time::Instant::now() + DRAIN_FLUSH_INTERVAL;
-                    loop {
-                        match tokio::time::timeout_at(deadline, rx.recv()).await {
-                            Ok(Some(e)) => {
-                                batch.push(e);
-                                if batch.len() >= DRAIN_BATCH_SIZE {
-                                    break;
-                                }
-                            }
-                            Ok(None) | Err(_) => break, // Channel closed or timeout.
+                    // Loop exits when channel closes (Ok(None)) or deadline elapses (Err timeout).
+                    while let Ok(Some(e)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                        batch.push(e);
+                        if batch.len() >= DRAIN_BATCH_SIZE {
+                            break;
                         }
                     }
                 }

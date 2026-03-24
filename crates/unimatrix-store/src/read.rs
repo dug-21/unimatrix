@@ -390,45 +390,45 @@ impl SqlxStore {
             });
             param_idx += 1;
         }
-        if let Some(range) = filter.time_range {
-            if range.start <= range.end {
-                conditions.push(format!(
-                    "created_at >= ?{} AND created_at <= ?{}",
-                    param_idx,
-                    param_idx + 1
-                ));
-                params.push(Param {
-                    kind: ParamKind::Int(range.start as i64),
-                });
-                params.push(Param {
-                    kind: ParamKind::Int(range.end as i64),
-                });
-                param_idx += 2;
-            }
+        if let Some(range) = filter.time_range
+            && range.start <= range.end
+        {
+            conditions.push(format!(
+                "created_at >= ?{} AND created_at <= ?{}",
+                param_idx,
+                param_idx + 1
+            ));
+            params.push(Param {
+                kind: ParamKind::Int(range.start as i64),
+            });
+            params.push(Param {
+                kind: ParamKind::Int(range.end as i64),
+            });
+            param_idx += 2;
         }
-        if let Some(ref tags) = filter.tags {
-            if !tags.is_empty() {
-                let tag_placeholders: Vec<String> = tags
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| format!("?{}", param_idx + i))
-                    .collect();
-                conditions.push(format!(
-                    "id IN (SELECT entry_id FROM entry_tags WHERE tag IN ({}) \
-                     GROUP BY entry_id HAVING COUNT(DISTINCT tag) = ?{})",
-                    tag_placeholders.join(","),
-                    param_idx + tags.len()
-                ));
-                for tag in tags {
-                    params.push(Param {
-                        kind: ParamKind::Text(tag.clone()),
-                    });
-                }
+        if let Some(ref tags) = filter.tags
+            && !tags.is_empty()
+        {
+            let tag_placeholders: Vec<String> = tags
+                .iter()
+                .enumerate()
+                .map(|(i, _)| format!("?{}", param_idx + i))
+                .collect();
+            conditions.push(format!(
+                "id IN (SELECT entry_id FROM entry_tags WHERE tag IN ({}) \
+                 GROUP BY entry_id HAVING COUNT(DISTINCT tag) = ?{})",
+                tag_placeholders.join(","),
+                param_idx + tags.len()
+            ));
+            for tag in tags {
                 params.push(Param {
-                    kind: ParamKind::Int(tags.len() as i64),
+                    kind: ParamKind::Text(tag.clone()),
                 });
-                let _ = param_idx; // suppress unused warning
             }
+            params.push(Param {
+                kind: ParamKind::Int(tags.len() as i64),
+            });
+            let _ = param_idx; // suppress unused warning
         }
 
         let where_clause = if conditions.is_empty() {

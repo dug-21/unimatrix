@@ -304,6 +304,7 @@ impl SqlxStore {
     /// `seq` is advisory (ADR-002): computed by the caller as
     /// `COALESCE(MAX(seq), -1) + 1` scoped to `cycle_id`. True ordering at query
     /// time uses `ORDER BY timestamp ASC, seq ASC`.
+    #[allow(clippy::too_many_arguments)]
     pub async fn insert_cycle_event(
         &self,
         cycle_id: &str,

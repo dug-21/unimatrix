@@ -24,7 +24,7 @@ impl SqlxStore {
             .map_err(|e| map_pool_timeout(e, PoolKind::Write))?;
 
         // Step 1: Generate ID via counters module
-        let id = crate::counters::next_entry_id(&mut *txn).await?;
+        let id = crate::counters::next_entry_id(&mut txn).await?;
 
         // Step 2: Compute content hash
         let content_hash = crate::hash::compute_content_hash(&entry.title, &entry.content);
@@ -84,7 +84,7 @@ impl SqlxStore {
         }
 
         // Step 5: Update status counter
-        crate::counters::increment_counter(&mut *txn, status_counter_key(entry.status), 1).await?;
+        crate::counters::increment_counter(&mut txn, status_counter_key(entry.status), 1).await?;
 
         txn.commit()
             .await
@@ -177,8 +177,8 @@ impl SqlxStore {
         let new_status_val = entry.status as u8 as i64;
         if new_status_val != old_status_val {
             let old = Status::try_from(old_status_val as u8).unwrap_or(Status::Active);
-            crate::counters::decrement_counter(&mut *txn, status_counter_key(old), 1).await?;
-            crate::counters::increment_counter(&mut *txn, status_counter_key(entry.status), 1)
+            crate::counters::decrement_counter(&mut txn, status_counter_key(old), 1).await?;
+            crate::counters::increment_counter(&mut txn, status_counter_key(entry.status), 1)
                 .await?;
         }
 
@@ -215,8 +215,8 @@ impl SqlxStore {
             .map_err(|e| StoreError::Database(e.into()))?;
 
         let old = Status::try_from(old_status_val as u8).unwrap_or(Status::Active);
-        crate::counters::decrement_counter(&mut *txn, status_counter_key(old), 1).await?;
-        crate::counters::increment_counter(&mut *txn, status_counter_key(new_status), 1).await?;
+        crate::counters::decrement_counter(&mut txn, status_counter_key(old), 1).await?;
+        crate::counters::increment_counter(&mut txn, status_counter_key(new_status), 1).await?;
 
         txn.commit()
             .await
@@ -256,7 +256,7 @@ impl SqlxStore {
             .map_err(|e| StoreError::Database(e.into()))?;
 
         let old = Status::try_from(old_status_val as u8).unwrap_or(Status::Active);
-        crate::counters::decrement_counter(&mut *txn, status_counter_key(old), 1).await?;
+        crate::counters::decrement_counter(&mut txn, status_counter_key(old), 1).await?;
 
         txn.commit()
             .await
