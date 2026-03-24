@@ -37,6 +37,13 @@ const MIN_QUERY_WORDS: usize = 5;
 /// Separate from MAX_INJECTION_BYTES (1400) per D-4 and AC-10.
 const MAX_PRECOMPACT_BYTES: usize = 3000;
 
+/// Maximum byte length for a feature cycle goal string (ADR-005, col-025).
+///
+/// One constant shared by both paths:
+/// - MCP path (tools.rs): hard-reject with CallToolResult::error when exceeded.
+/// - UDS path (listener.rs): truncate at nearest UTF-8 char boundary + tracing::warn!.
+pub(crate) const MAX_GOAL_BYTES: usize = 1024;
+
 /// Tail-bytes window multiplier. Raw JSONL is ~4x larger than extracted text.
 /// TAIL_WINDOW_BYTES = MAX_PRECOMPACT_BYTES * TAIL_MULTIPLIER = 12,000 bytes (ADR-001).
 const TAIL_MULTIPLIER: usize = 4;
