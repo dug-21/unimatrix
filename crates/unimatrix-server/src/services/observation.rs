@@ -291,11 +291,217 @@ impl ObservationSource for SqlObservationSource {
         })
     }
 
-    // col-024: Implementation placeholder — full implementation added by load-cycle-observations agent.
-    // This stub satisfies the trait contract while parallel implementation work completes.
-    fn load_cycle_observations(&self, _cycle_id: &str) -> Result<Vec<ObservationRecord>> {
-        Ok(vec![])
+    /// Load observations attributed to a named feature cycle via cycle_events timestamps.
+    ///
+    /// Primary attribution path (col-024). Three-step algorithm inside a single block_sync
+    /// (ADR-001):
+    ///
+    /// Step 0: COUNT pre-check — returns Ok(vec![]) immediately when no cycle_events rows
+    ///         exist for this cycle_id. Distinguishes "no rows" from "rows exist, no match".
+    /// Step 1: Fetch cycle_events rows and pair into (start_ms, stop_ms) windows.
+    ///         A cycle_start with no matching cycle_stop uses unix_now_secs() as stop (ADR-005).
+    ///         KNOWN LIMITATION (ADR-005): abandoned cycles over-include observations up to now.
+    /// Step 2: Per-window DISTINCT session_id discovery via topic_signal match.
+    /// Step 3: Load observations for discovered sessions; Rust-filter to windows.
+    ///
+    /// Returns Ok(vec![]) (not Err) when no observations match — legacy fallback activates (FM-01).
+    fn load_cycle_observations(&self, cycle_id: &str) -> Result<Vec<ObservationRecord>> {
+        let pool = self.store.write_pool_server();
+        let cycle_id = cycle_id.to_string();
+        let registry = Arc::clone(&self.registry);
+
+        block_sync(async move {
+            // ---- Step 0: Count-only pre-check (AC-15) ----
+            // Distinguishes "no cycle_events rows" from "rows exist but no match".
+            // Both return Ok(vec![]) to caller; the fallback log at the call site differentiates.
+            let count_row = sqlx::query("SELECT COUNT(*) FROM cycle_events WHERE cycle_id = ?1")
+                .bind(&cycle_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| ObserveError::Database(e.to_string()))?;
+
+            let row_count: i64 = count_row.get::<i64, _>(0);
+            if row_count == 0 {
+                return Ok(vec![]);
+            }
+
+            // ---- Step 1: Fetch event rows and build time windows ----
+            let event_rows = sqlx::query(
+                "SELECT event_type, timestamp \
+                 FROM cycle_events \
+                 WHERE cycle_id = ?1 \
+                 ORDER BY timestamp ASC, seq ASC",
+            )
+            .bind(&cycle_id)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| ObserveError::Database(e.to_string()))?;
+
+            let mut windows: Vec<(i64, i64)> = Vec::new();
+            let mut pending_start: Option<i64> = None;
+
+            for row in &event_rows {
+                let event_type: String = row.get::<String, _>(0);
+                let ts_secs: i64 = row.get::<i64, _>(1);
+
+                match event_type.as_str() {
+                    "cycle_start" => {
+                        if let Some(prev_start) = pending_start {
+                            // Malformed: second cycle_start without intervening cycle_stop (E-03).
+                            // Close the previous pending window at this start's timestamp.
+                            windows.push((
+                                cycle_ts_to_obs_millis(prev_start),
+                                cycle_ts_to_obs_millis(ts_secs),
+                            ));
+                        }
+                        pending_start = Some(ts_secs);
+                    }
+                    "cycle_stop" => {
+                        if let Some(start) = pending_start.take() {
+                            windows.push((
+                                cycle_ts_to_obs_millis(start),
+                                cycle_ts_to_obs_millis(ts_secs),
+                            ));
+                        }
+                        // cycle_stop with no pending start: ignore defensively.
+                    }
+                    _ => {
+                        // cycle_phase_end or unknown event_type: ignored for windowing (E-02).
+                    }
+                }
+            }
+
+            // Close any open-ended window (ADR-005).
+            // KNOWN LIMITATION: abandoned cycle (cycle_start with no cycle_stop) will include
+            // all observations with matching topic_signal up to the present. No max-age cap.
+            if let Some(start) = pending_start {
+                let now_ms = cycle_ts_to_obs_millis(unix_now_secs() as i64);
+                windows.push((cycle_ts_to_obs_millis(start), now_ms));
+            }
+
+            if windows.is_empty() {
+                // cycle_events rows exist but no parseable windows (e.g., only cycle_phase_end rows).
+                return Ok(vec![]);
+            }
+
+            // ---- Step 2: Per-window session discovery ----
+            // For each window, SELECT DISTINCT session_id WHERE topic_signal = cycle_id
+            // AND ts_millis BETWEEN start_ms AND stop_ms.
+            // Union into HashSet to deduplicate across overlapping windows (R-11).
+            let mut session_ids: std::collections::HashSet<String> =
+                std::collections::HashSet::new();
+
+            for (start_ms, stop_ms) in &windows {
+                let sid_rows = sqlx::query(
+                    "SELECT DISTINCT session_id \
+                     FROM observations \
+                     WHERE topic_signal = ?1 \
+                       AND ts_millis >= ?2 \
+                       AND ts_millis <= ?3",
+                )
+                .bind(&cycle_id)
+                .bind(start_ms)
+                .bind(stop_ms)
+                .fetch_all(pool)
+                .await
+                .map_err(|e| ObserveError::Database(e.to_string()))?;
+
+                for row in sid_rows {
+                    session_ids.insert(row.get::<String, _>(0));
+                }
+            }
+
+            if session_ids.is_empty() {
+                // cycle_events rows exist and windows are valid, but no observations carry
+                // topic_signal = cycle_id within any window (AC-15 case B).
+                return Ok(vec![]);
+            }
+
+            // ---- Step 3: Load observations for discovered sessions ----
+            // Bound SQL scan to [min_window_start, max_window_stop] for index efficiency.
+            // Rust post-filter retains only records inside at least one (start_ms, stop_ms) pair.
+            let min_ms: i64 = windows
+                .iter()
+                .map(|(s, _)| *s)
+                .min()
+                .expect("windows non-empty");
+            let max_ms: i64 = windows
+                .iter()
+                .map(|(_, e)| *e)
+                .max()
+                .expect("windows non-empty");
+
+            let sid_vec: Vec<String> = session_ids.into_iter().collect();
+            // Bind: ?1=min_ms, ?2=max_ms, ?3..?N=session_ids
+            let placeholders: String = sid_vec
+                .iter()
+                .enumerate()
+                .map(|(i, _)| format!("?{}", i + 3))
+                .collect::<Vec<_>>()
+                .join(",");
+
+            let sql = format!(
+                "SELECT session_id, ts_millis, hook, tool, input, response_size, response_snippet \
+                 FROM observations \
+                 WHERE session_id IN ({placeholders}) \
+                   AND ts_millis >= ?1 \
+                   AND ts_millis <= ?2 \
+                 ORDER BY ts_millis ASC",
+                placeholders = placeholders
+            );
+
+            let mut q = sqlx::query(&sql).bind(min_ms).bind(max_ms);
+            for sid in &sid_vec {
+                q = q.bind(sid);
+            }
+
+            let rows = q
+                .fetch_all(pool)
+                .await
+                .map_err(|e| ObserveError::Database(e.to_string()))?;
+
+            // parse_observation_rows applies ingest security bounds (NFR-05): 64 KB limit,
+            // JSON depth check. Rejected records are skipped with WARN; remaining are returned.
+            let all_records = parse_observation_rows(rows, &registry)?;
+
+            // Rust post-filter: retain records inside at least one window (R-09).
+            // The SQL [min_ms, max_ms] bound may include gap-period observations from
+            // multi-window cycles; this filter removes them.
+            let filtered: Vec<ObservationRecord> = all_records
+                .into_iter()
+                .filter(|rec| {
+                    let ts = rec.ts as i64;
+                    windows
+                        .iter()
+                        .any(|(start, stop)| ts >= *start && ts <= *stop)
+                })
+                .collect();
+
+            Ok(filtered)
+        })
     }
+}
+
+/// Convert a cycle_events.timestamp (Unix epoch seconds) to the millisecond
+/// unit used by observations.ts_millis.
+///
+/// cycle_events.timestamp is written by unix_now_secs() (i64, seconds).
+/// observations.ts_millis is stored as (unix_now_secs() as i64).saturating_mul(1000) (i64, ms).
+/// Both tables use the same epoch; this bridges the unit difference.
+///
+/// saturating_mul guards against i64 overflow on adversarially large timestamps
+/// (E-05 edge case: i64::MAX as input saturates to i64::MAX, not panic).
+#[inline]
+fn cycle_ts_to_obs_millis(ts_secs: i64) -> i64 {
+    ts_secs.saturating_mul(1000)
+}
+
+/// Returns the current Unix timestamp in seconds.
+fn unix_now_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
 }
 
 /// Bridge an async future to sync context (works inside or outside a tokio runtime).
@@ -1281,6 +1487,202 @@ mod tests {
             Some(serde_json::Value::String(
                 "Design the payment service".to_string()
             ))
+        );
+    }
+
+    // ── col-024: load_cycle_observations tests ──────────────────────────────
+
+    /// Insert an observation row with a topic_signal value.
+    /// Used exclusively for col-024 tests (AC-11: raw SQL only for observations, not cycle_events).
+    async fn insert_observation_with_signal(
+        store: &SqlxStore,
+        session_id: &str,
+        ts_millis: i64,
+        hook: &str,
+        topic_signal: Option<&str>,
+    ) {
+        sqlx::query(
+            "INSERT INTO observations \
+             (session_id, ts_millis, hook, topic_signal) \
+             VALUES (?1, ?2, ?3, ?4)",
+        )
+        .bind(session_id)
+        .bind(ts_millis)
+        .bind(hook)
+        .bind(topic_signal)
+        .execute(store.write_pool_server())
+        .await
+        .expect("insert observation with signal");
+    }
+
+    /// T-LCO-01: Single window — in-window observation returned, out-of-window excluded (AC-01).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn load_cycle_observations_single_window() {
+        const T: i64 = 1_700_000_000_i64; // seconds
+        const T_MS: i64 = T * 1000; // milliseconds
+
+        let store = setup_test_store().await;
+
+        store
+            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T)
+            .await
+            .expect("insert cycle_start");
+        store
+            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, T + 3600)
+            .await
+            .expect("insert cycle_stop");
+
+        // In-window: T_MS + 60_000 ms = T + 60 seconds into the window
+        insert_observation_with_signal(
+            &store,
+            "sess-1",
+            T_MS + 60_000,
+            "PostToolUse",
+            Some("col-024"),
+        )
+        .await;
+        // Before window: 1 ms before start — must be excluded
+        insert_observation_with_signal(
+            &store,
+            "sess-1",
+            T_MS - 1_000,
+            "PostToolUse",
+            Some("col-024"),
+        )
+        .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let records = source.load_cycle_observations("col-024").unwrap();
+
+        assert_eq!(
+            records.len(),
+            1,
+            "only the in-window observation must be returned"
+        );
+        assert_eq!(records[0].session_id, "sess-1");
+        assert_eq!(records[0].ts, (T_MS + 60_000) as u64);
+    }
+
+    /// T-LCO-02: Multiple disjoint windows — gap observations excluded (AC-02).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn load_cycle_observations_multiple_windows() {
+        const T: i64 = 1_700_000_000_i64;
+        const T_MS: i64 = T * 1000;
+
+        let store = setup_test_store().await;
+
+        // Window 1: T to T+3600
+        store
+            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T)
+            .await
+            .expect("insert cycle_start w1");
+        store
+            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, T + 3600)
+            .await
+            .expect("insert cycle_stop w1");
+        // Window 2: T+7200 to T+10800
+        store
+            .insert_cycle_event("col-024", 2, "cycle_start", None, None, None, T + 7200)
+            .await
+            .expect("insert cycle_start w2");
+        store
+            .insert_cycle_event("col-024", 3, "cycle_stop", None, None, None, T + 10800)
+            .await
+            .expect("insert cycle_stop w2");
+
+        // In window 1: T + 1800s = T_MS + 1_800_000 ms
+        insert_observation_with_signal(
+            &store,
+            "sess-1",
+            T_MS + 1_800_000,
+            "PostToolUse",
+            Some("col-024"),
+        )
+        .await;
+        // In gap (T+4500s): T_MS + 4_500_000 ms — must be excluded
+        insert_observation_with_signal(
+            &store,
+            "sess-1",
+            T_MS + 4_500_000,
+            "PostToolUse",
+            Some("col-024"),
+        )
+        .await;
+        // In window 2: T + 9000s = T_MS + 9_000_000 ms
+        insert_observation_with_signal(
+            &store,
+            "sess-2",
+            T_MS + 9_000_000,
+            "PostToolUse",
+            Some("col-024"),
+        )
+        .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let records = source.load_cycle_observations("col-024").unwrap();
+
+        assert_eq!(records.len(), 2, "gap observation must be excluded");
+        let ts_values: Vec<u64> = records.iter().map(|r| r.ts).collect();
+        assert!(ts_values.contains(&((T_MS + 1_800_000) as u64)));
+        assert!(ts_values.contains(&((T_MS + 9_000_000) as u64)));
+        assert!(!ts_values.contains(&((T_MS + 4_500_000) as u64)));
+    }
+
+    /// T-LCO-03: No cycle_events rows — Ok(vec![]) returned, not Err (AC-03).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn load_cycle_observations_no_cycle_events() {
+        let store = setup_test_store().await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let result = source.load_cycle_observations("col-024");
+
+        assert!(
+            result.is_ok(),
+            "must not return Err for missing cycle_events rows"
+        );
+        assert!(result.unwrap().is_empty(), "must return Ok(vec![])");
+    }
+
+    /// T-LCO-04: Count pre-check (AC-15 case A) — zero cycle_events rows → Ok(vec![]) (AC-15).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn load_cycle_observations_no_cycle_events_count_check() {
+        let store = setup_test_store().await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let result = source.load_cycle_observations("col-024");
+
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    /// T-LCO-05: cycle_events rows exist but observations have different topic_signal → Ok(vec![]) (AC-15 case B).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn load_cycle_observations_rows_exist_no_signal_match() {
+        const T: i64 = 1_700_000_000_i64;
+        const T_MS: i64 = T * 1000;
+
+        let store = setup_test_store().await;
+
+        store
+            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T)
+            .await
+            .expect("insert cycle_start");
+        store
+            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, T + 3600)
+            .await
+            .expect("insert cycle_stop");
+
+        // Observation inside the window but with no topic_signal — no match
+        insert_observation_with_signal(&store, "sess-1", T_MS + 1_800_000, "PostToolUse", None)
+            .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let result = source.load_cycle_observations("col-024");
+
+        assert!(result.is_ok());
+        assert!(
+            result.unwrap().is_empty(),
+            "rows exist but no topic_signal match → Ok(vec![])"
         );
     }
 }
