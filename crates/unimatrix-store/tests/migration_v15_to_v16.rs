@@ -866,3 +866,82 @@ async fn test_get_cycle_start_goal_multiple_start_rows_returns_first() {
 
     store.close().await.unwrap();
 }
+
+// ---------------------------------------------------------------------------
+// T-V16-14: last-writer-wins semantics — second insert_cycle_event overwrites
+//           the first goal for the same (cycle_id, event_type='cycle_start').
+//           R-13 / Gate 3c scenario 9.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_uds_truncate_then_overwrite_last_writer_wins() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open fresh store");
+
+    // First write: simulates a truncated oversized goal arriving via the UDS path.
+    store
+        .insert_cycle_event(
+            "test-cycle-1", // cycle_id
+            0,              // seq
+            "cycle_start",  // event_type
+            None,           // phase
+            None,           // outcome
+            None,           // next_phase
+            1700000001_i64, // timestamp (earlier)
+            Some("first goal"),
+        )
+        .await
+        .expect("first insert_cycle_event must succeed");
+
+    // Confirm the first goal is visible before the second write.
+    let after_first = store
+        .get_cycle_start_goal("test-cycle-1")
+        .await
+        .expect("get_cycle_start_goal after first insert must not error");
+    assert_eq!(
+        after_first.as_deref(),
+        Some("first goal"),
+        "first insert: get_cycle_start_goal must return the first goal"
+    );
+
+    // Second write: simulates the corrected goal from a UDS cycle_start retry
+    // (same cycle_id, same event_type, later timestamp, different goal).
+    store
+        .insert_cycle_event(
+            "test-cycle-1", // cycle_id — same as first
+            1,              // seq — incremented
+            "cycle_start",  // event_type — same as first
+            None,
+            None,
+            None,
+            1700000002_i64, // timestamp (later — this is the last writer)
+            Some("second goal"),
+        )
+        .await
+        .expect("second insert_cycle_event must succeed");
+
+    // Assert: last-writer-wins — the second goal (higher timestamp) is returned.
+    let result = store
+        .get_cycle_start_goal("test-cycle-1")
+        .await
+        .expect("get_cycle_start_goal after second insert must not error");
+
+    assert_eq!(
+        result.as_deref(),
+        Some("second goal"),
+        "last-writer-wins: get_cycle_start_goal must return the second (later) goal, not the first"
+    );
+
+    // Explicitly confirm the returned value is NOT the first (truncated) goal.
+    assert_ne!(
+        result.as_deref(),
+        Some("first goal"),
+        "last-writer-wins: first goal must NOT be returned after the second write"
+    );
+
+    store.close().await.unwrap();
+}

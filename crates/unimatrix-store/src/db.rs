@@ -355,6 +355,7 @@ impl SqlxStore {
         let result: Option<Option<String>> = sqlx::query_scalar::<_, Option<String>>(
             "SELECT goal FROM cycle_events
              WHERE cycle_id = ?1 AND event_type = 'cycle_start'
+             ORDER BY timestamp DESC, seq DESC
              LIMIT 1",
         )
         .bind(cycle_id)
