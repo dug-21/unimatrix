@@ -1589,3 +1589,104 @@ def test_cycle_review_no_phase_narrative_for_old_feature(server):
     )
 
 
+# === context_cycle goal parameter (col-025) ============================
+
+
+def test_cycle_start_goal_accepted(server):
+    """T-COL025-01: context_cycle(start) with goal parameter succeeds (AC-01)."""
+    resp = server.context_cycle(
+        "start",
+        "col-025-goal-accepted-test",
+        goal="Implement feature goal signal for col-025.",
+        agent_id="human",
+    )
+    assert_tool_success(resp)
+
+
+def test_cycle_start_goal_exceeds_max_bytes_rejected(server):
+    """T-COL025-02: context_cycle(start) rejects goal > 1024 bytes with descriptive error (AC-13a).
+
+    MAX_GOAL_BYTES = 1024. A 1025-byte goal must be rejected; no DB write occurs.
+    The error message must reference the byte limit.
+    """
+    oversized_goal = "a" * 1025
+    resp = server.context_cycle(
+        "start",
+        "col-025-goal-rejected-test",
+        goal=oversized_goal,
+        agent_id="human",
+    )
+    result = assert_tool_error(resp)
+    # Error text must reference goal/bytes so agent knows what to fix
+    assert "goal" in result.text.lower() or "1024" in result.text or "byte" in result.text.lower(), (
+        f"T-COL025-02: error must mention goal byte limit, got: {result.text[:200]}"
+    )
+
+
+def test_cycle_start_goal_at_exact_max_bytes_accepted(server):
+    """T-COL025-03: context_cycle(start) accepts goal of exactly 1024 bytes (AC-13a boundary).
+
+    1024 bytes is the inclusive upper bound — must be accepted without error.
+    """
+    boundary_goal = "a" * 1024
+    resp = server.context_cycle(
+        "start",
+        "col-025-goal-boundary-test",
+        goal=boundary_goal,
+        agent_id="human",
+    )
+    assert_tool_success(resp)
+
+
+def test_cycle_start_empty_goal_treated_as_no_goal(server):
+    """T-COL025-04: context_cycle(start) with empty goal normalizes to None (AC-17).
+
+    An empty string goal must not produce an error and must be treated as if no
+    goal was supplied. The cycle start succeeds.
+    """
+    resp = server.context_cycle(
+        "start",
+        "col-025-empty-goal-test",
+        goal="",
+        agent_id="human",
+    )
+    assert_tool_success(resp)
+
+
+def test_cycle_start_whitespace_goal_normalized_to_none(server):
+    """T-COL025-05: context_cycle(start) with whitespace-only goal normalizes to None (AC-17)."""
+    resp = server.context_cycle(
+        "start",
+        "col-025-whitespace-goal-test",
+        goal="   ",
+        agent_id="human",
+    )
+    assert_tool_success(resp)
+
+
+def test_briefing_response_starts_with_context_get_instruction(server):
+    """T-COL025-06: context_briefing response starts with CONTEXT_GET_INSTRUCTION header (AC-18).
+
+    After col-025, all format_index_table output is prefixed with the
+    CONTEXT_GET_INSTRUCTION header. Verify this through the MCP tool interface.
+    """
+    # Pre-load an entry so briefing has something to return
+    server.context_store(
+        "Feature goal signal for col-025 improves briefing query precision.",
+        "col-025",
+        "decision",
+        agent_id="human",
+    )
+
+    resp = server.context_briefing("architect", "feature goal signal", agent_id="human")
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+    instruction = "Use context_get with the entry ID for full content when relevant."
+    # Either the instruction is present at the start, or the response is empty (no entries matched)
+    if text.strip():
+        assert text.strip().startswith(instruction), (
+            f"T-COL025-06: briefing output must start with CONTEXT_GET_INSTRUCTION, "
+            f"got first 200 chars: {text[:200]}"
+        )
+
+

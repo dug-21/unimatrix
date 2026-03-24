@@ -852,7 +852,6 @@ async fn maintenance_tick(
     // Gated by a COUNTERS marker so it runs exactly once per database.
     run_dead_knowledge_migration_v1(store).await;
 
-
     Ok(())
 }
 
@@ -3233,7 +3232,6 @@ mod tests {
             "no Contradicts edges must return Allowed"
         );
     }
-
 
     /// GH #351: Migration v1 must deprecate legacy noise entries gated by COUNTERS marker.
     #[tokio::test(flavor = "multi_thread")]

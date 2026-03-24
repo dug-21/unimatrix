@@ -34,6 +34,7 @@ use crate::mcp::response::{
 use crate::server::UnimatrixServer;
 use crate::services::ServiceSearchParams;
 use crate::services::usage::{AccessSource, UsageContext};
+use crate::uds::hook::MAX_GOAL_BYTES;
 
 /// Parameters for semantic search.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -266,6 +267,12 @@ pub struct CycleParams {
     pub outcome: Option<String>,
     /// The next phase beginning after this event (for type="start" or "phase-end").
     pub next_phase: Option<String>,
+    /// Optional goal statement for the feature cycle (col-025).
+    ///
+    /// Only meaningful for type="start". Silently ignored for "phase-end" and "stop".
+    /// Max 1024 bytes (MAX_GOAL_BYTES). Empty/whitespace normalized to None at the
+    /// handler layer (FR-11, ADR-005). Old callers omitting this field receive None.
+    pub goal: Option<String>,
     /// Agent making the request.
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
@@ -1797,6 +1804,37 @@ impl UnimatrixServer {
             Ok(v) => v,
         };
 
+        // 3b. Goal validation (col-025, ADR-005): Start events only.
+        // For PhaseEnd and Stop, goal is silently ignored.
+        let validated_goal: Option<String> = if validated.cycle_type == CycleType::Start {
+            match params.goal {
+                None => None,
+                Some(g) => {
+                    // Step 1: Trim whitespace
+                    let trimmed = g.trim().to_owned();
+
+                    // Step 2: Normalize empty / whitespace-only to None (FR-11, ADR-005)
+                    if trimmed.is_empty() {
+                        None
+                    } else {
+                        // Step 3: Byte length check (ADR-005, MAX_GOAL_BYTES = 1024)
+                        if trimmed.len() > MAX_GOAL_BYTES {
+                            return Ok(CallToolResult::error(vec![rmcp::model::Content::text(
+                                format!(
+                                    "goal exceeds {MAX_GOAL_BYTES} bytes ({} bytes provided); \
+                                     shorten the goal and retry",
+                                    trimmed.len()
+                                ),
+                            )]));
+                        }
+                        Some(trimmed)
+                    }
+                }
+            }
+        } else {
+            None // PhaseEnd and Stop: goal silently ignored
+        };
+
         // 4. Build response (no business logic -- MCP server is session-unaware)
         let action = match validated.cycle_type {
             CycleType::Start => "cycle_started",
@@ -1823,12 +1861,21 @@ impl UnimatrixServer {
             }
         }
 
-        let response_text = format!(
-            "Acknowledged: {} for topic '{}'. \
-             Attribution is applied via the hook path (fire-and-forget). \
-             Use context_cycle_review to confirm session attribution.",
-            action, validated.topic
-        );
+        let response_text = if let Some(ref g) = validated_goal {
+            format!(
+                "Acknowledged: {} for topic '{}' with goal: '{}'. \
+                 Attribution is applied via the hook path (fire-and-forget). \
+                 Use context_cycle_review to confirm session attribution.",
+                action, validated.topic, g
+            )
+        } else {
+            format!(
+                "Acknowledged: {} for topic '{}'. \
+                 Attribution is applied via the hook path (fire-and-forget). \
+                 Use context_cycle_review to confirm session attribution.",
+                action, validated.topic
+            )
+        };
 
         // 5. Audit log (fire-and-forget)
         self.audit_fire_and_forget(AuditEvent {
@@ -1839,7 +1886,16 @@ impl UnimatrixServer {
             operation: "context_cycle".to_string(),
             target_ids: vec![],
             outcome: Outcome::Success,
-            detail: format!("{} topic={}", action, validated.topic),
+            detail: format!(
+                "{} topic={}{}",
+                action,
+                validated.topic,
+                if validated_goal.is_some() {
+                    " goal=present"
+                } else {
+                    ""
+                }
+            ),
         });
 
         // 6. Return acknowledgment
@@ -2829,6 +2885,147 @@ mod tests {
         assert_ne!("context_cycle", "context_correct");
     }
 
+    // -- col-025: CycleParams goal field deserialization (T-MCP-01, T-MCP-02) --
+
+    #[test]
+    fn test_cycle_params_goal_field_present() {
+        // T-MCP-01: goal field deserializes correctly when present
+        let json = r#"{"type": "start", "topic": "col-025", "goal": "Test the goal field."}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.goal, Some("Test the goal field.".to_string()));
+    }
+
+    #[test]
+    fn test_cycle_params_goal_field_absent() {
+        // T-MCP-02: goal absent → None (backward compat, AC-02)
+        // Old clients omitting goal receive None.
+        let json = r#"{"type": "start", "topic": "col-025"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.goal, None);
+    }
+
+    #[test]
+    fn test_cycle_params_goal_null() {
+        // Explicit null deserializes as None
+        let json = r#"{"type": "start", "topic": "col-025", "goal": null}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.goal, None);
+    }
+
+    // -- col-025: Goal validation logic (AC-13a, AC-17) --
+    //
+    // These tests exercise the normalization + byte-check logic inline.
+    // The exact logic mirrors the handler block in context_cycle.
+
+    /// Shared validation helper that mirrors the handler's validation block.
+    /// Returns Ok(None) for normalized-to-None, Ok(Some(s)) for accepted goal,
+    /// Err(msg) for rejected (over-limit) goal.
+    fn validate_goal_mcp(raw: Option<String>) -> Result<Option<String>, String> {
+        match raw {
+            None => Ok(None),
+            Some(g) => {
+                let trimmed = g.trim().to_owned();
+                if trimmed.is_empty() {
+                    Ok(None)
+                } else if trimmed.len() > MAX_GOAL_BYTES {
+                    Err(format!(
+                        "goal exceeds {MAX_GOAL_BYTES} bytes ({} bytes provided); \
+                         shorten the goal and retry",
+                        trimmed.len()
+                    ))
+                } else {
+                    Ok(Some(trimmed))
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_cycle_start_goal_exceeds_max_bytes_rejected() {
+        // AC-13a: goal > MAX_GOAL_BYTES → error with byte count
+        let oversized = "a".repeat(MAX_GOAL_BYTES + 1); // 1025 bytes
+        let result = validate_goal_mcp(Some(oversized));
+        assert!(result.is_err(), "expected Err for oversized goal");
+        let msg = result.unwrap_err();
+        assert!(
+            msg.contains("1024"),
+            "error message must mention limit (1024): {msg}"
+        );
+        assert!(
+            msg.contains("1025"),
+            "error message must mention actual byte count (1025): {msg}"
+        );
+    }
+
+    #[test]
+    fn test_cycle_start_goal_at_exact_max_bytes_accepted() {
+        // AC-13a / R-07 boundary: exactly 1024 bytes is accepted
+        let exact = "a".repeat(MAX_GOAL_BYTES); // exactly 1024 bytes
+        let result = validate_goal_mcp(Some(exact.clone()));
+        assert!(result.is_ok(), "expected Ok for goal at exact limit");
+        assert_eq!(result.unwrap(), Some(exact));
+    }
+
+    #[test]
+    fn test_cycle_start_empty_goal_normalized_to_none() {
+        // AC-17: empty string normalized to None before byte check
+        let result = validate_goal_mcp(Some(String::new()));
+        assert_eq!(result, Ok(None));
+    }
+
+    #[test]
+    fn test_cycle_start_whitespace_only_goal_normalized_to_none() {
+        // AC-17: whitespace-only normalized to None
+        let result = validate_goal_mcp(Some("   ".to_string()));
+        assert_eq!(result, Ok(None));
+    }
+
+    #[test]
+    fn test_cycle_start_whitespace_trimmed_goal_within_limit_accepted() {
+        // AC-17: leading/trailing whitespace trimmed; non-empty result accepted
+        let result = validate_goal_mcp(Some("  a short goal  ".to_string()));
+        assert_eq!(result, Ok(Some("a short goal".to_string())));
+    }
+
+    #[test]
+    fn test_cycle_phase_end_with_goal_ignores_goal() {
+        // FR-01: goal on phase-end is silently ignored
+        // The handler sets validated_goal = None when cycle_type != Start.
+        // Verify: CycleParams with type=phase-end and goal deserializes, but
+        // the handler would produce validated_goal = None (simulated here).
+        let json = r#"{"type": "phase-end", "topic": "col-025", "phase": "design", "goal": "should be ignored"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.r#type, "phase-end");
+        // goal field is present in the wire params
+        assert_eq!(params.goal, Some("should be ignored".to_string()));
+        // but the handler would use None for non-Start events (FR-01)
+        // simulate handler logic: only process goal on Start
+        let cycle_type_is_start = params.r#type == "start";
+        let validated_goal = if cycle_type_is_start {
+            validate_goal_mcp(params.goal).ok().flatten()
+        } else {
+            None
+        };
+        assert_eq!(validated_goal, None);
+    }
+
+    #[test]
+    fn test_cycle_stop_with_goal_ignores_goal() {
+        // FR-01: goal on stop is silently ignored
+        let json = r#"{"type": "stop", "topic": "col-025", "goal": "should be ignored"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.r#type, "stop");
+        assert_eq!(params.goal, Some("should be ignored".to_string()));
+        // simulate handler: only Start processes goal
+        let cycle_type_is_start = params.r#type == "start";
+        let validated_goal = if cycle_type_is_start {
+            validate_goal_mcp(params.goal).ok().flatten()
+        } else {
+            None
+        };
+        assert_eq!(validated_goal, None);
+    }
+
     // -- GH#313: compute_knowledge_reuse_for_sessions must not block_on within tokio --
 
     /// Regression test for GH#313.
@@ -3134,8 +3331,9 @@ mod tests {
         );
 
         let table_text = format_index_table(&entries);
-        // Count data rows (lines after header + separator)
-        let data_rows = table_text.lines().skip(2).count();
+        // Count data rows: skip instruction line + blank line + header + separator = 4 lines
+        // col-025 ADR-006: format_index_table now prepends CONTEXT_GET_INSTRUCTION + blank line
+        let data_rows = table_text.lines().skip(4).count();
         assert_eq!(data_rows, 20, "table must have exactly 20 data rows");
     }
 
@@ -3183,7 +3381,8 @@ mod tests {
         );
 
         let table_text = format_index_table(&entries);
-        let data_rows = table_text.lines().skip(2).count();
+        // skip instruction line + blank line + header + separator = 4 lines (col-025 ADR-006)
+        let data_rows = table_text.lines().skip(4).count();
         assert!(
             data_rows <= 5,
             "table must have at most 5 data rows; got {data_rows}"
@@ -3256,11 +3455,12 @@ mod tests {
             "output must not contain '## Key Context'"
         );
 
-        // Must have at least 2 data rows (header + separator + 2 entries)
+        // Must have at least 2 data rows:
+        // instruction + blank + header + separator + 2 entries = 6 lines (col-025 ADR-006)
         let lines: Vec<&str> = table_text.lines().collect();
         assert!(
-            lines.len() >= 4,
-            "must have header + separator + at least 2 data rows; got {}",
+            lines.len() >= 6,
+            "must have instruction + blank + header + separator + at least 2 data rows; got {}",
             lines.len()
         );
     }

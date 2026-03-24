@@ -1524,11 +1524,11 @@ mod tests {
         let store = setup_test_store().await;
 
         store
-            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T)
+            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T, None)
             .await
             .expect("insert cycle_start");
         store
-            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, T + 3600)
+            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, T + 3600, None)
             .await
             .expect("insert cycle_stop");
 
@@ -1573,20 +1573,38 @@ mod tests {
 
         // Window 1: T to T+3600
         store
-            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T)
+            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T, None)
             .await
             .expect("insert cycle_start w1");
         store
-            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, T + 3600)
+            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, T + 3600, None)
             .await
             .expect("insert cycle_stop w1");
         // Window 2: T+7200 to T+10800
         store
-            .insert_cycle_event("col-024", 2, "cycle_start", None, None, None, T + 7200)
+            .insert_cycle_event(
+                "col-024",
+                2,
+                "cycle_start",
+                None,
+                None,
+                None,
+                T + 7200,
+                None,
+            )
             .await
             .expect("insert cycle_start w2");
         store
-            .insert_cycle_event("col-024", 3, "cycle_stop", None, None, None, T + 10800)
+            .insert_cycle_event(
+                "col-024",
+                3,
+                "cycle_stop",
+                None,
+                None,
+                None,
+                T + 10800,
+                None,
+            )
             .await
             .expect("insert cycle_stop w2");
 
@@ -1664,11 +1682,11 @@ mod tests {
         let store = setup_test_store().await;
 
         store
-            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T)
+            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T, None)
             .await
             .expect("insert cycle_start");
         store
-            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, T + 3600)
+            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, T + 3600, None)
             .await
             .expect("insert cycle_stop");
 
@@ -1704,7 +1722,16 @@ mod tests {
 
         // Insert only cycle_start — no cycle_stop (open-ended window).
         store
-            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, cycle_start_secs)
+            .insert_cycle_event(
+                "col-024",
+                0,
+                "cycle_start",
+                None,
+                None,
+                None,
+                cycle_start_secs,
+                None,
+            )
             .await
             .expect("insert cycle_start");
 
@@ -1732,7 +1759,7 @@ mod tests {
         let store = setup_test_store().await;
 
         store
-            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T)
+            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, T, None)
             .await
             .expect("insert cycle_start");
         // cycle_phase_end between start and stop — must be ignored for windowing
@@ -1745,11 +1772,12 @@ mod tests {
                 None,
                 Some("delivery"),
                 T + 1800,
+                None,
             )
             .await
             .expect("insert cycle_phase_end");
         store
-            .insert_cycle_event("col-024", 2, "cycle_stop", None, None, None, T + 3600)
+            .insert_cycle_event("col-024", 2, "cycle_stop", None, None, None, T + 3600, None)
             .await
             .expect("insert cycle_stop");
 
@@ -1783,11 +1811,20 @@ mod tests {
 
         // Insert cycle_start and cycle_stop both at i64::MAX seconds (adversarial).
         store
-            .insert_cycle_event("col-024", 0, "cycle_start", None, None, None, i64::MAX)
+            .insert_cycle_event(
+                "col-024",
+                0,
+                "cycle_start",
+                None,
+                None,
+                None,
+                i64::MAX,
+                None,
+            )
             .await
             .expect("insert cycle_start at i64::MAX");
         store
-            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, i64::MAX)
+            .insert_cycle_event("col-024", 1, "cycle_stop", None, None, None, i64::MAX, None)
             .await
             .expect("insert cycle_stop at i64::MAX");
 

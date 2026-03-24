@@ -314,6 +314,7 @@ impl SqlxStore {
         outcome: Option<&str>,
         next_phase: Option<&str>,
         timestamp: i64,
+        goal: Option<&str>, // col-025: only Some for cycle_start events; None otherwise
     ) -> Result<()> {
         let mut conn = self
             .write_pool
@@ -323,8 +324,8 @@ impl SqlxStore {
 
         sqlx::query(
             "INSERT INTO cycle_events
-                (cycle_id, seq, event_type, phase, outcome, next_phase, timestamp)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                (cycle_id, seq, event_type, phase, outcome, next_phase, timestamp, goal)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         )
         .bind(cycle_id)
         .bind(seq)
@@ -333,11 +334,42 @@ impl SqlxStore {
         .bind(outcome)
         .bind(next_phase)
         .bind(timestamp)
+        .bind(goal)
         .execute(&mut *conn)
         .await
         .map_err(|e| crate::error::StoreError::Database(e.into()))?;
 
         Ok(())
+    }
+
+    /// Load the goal from the `cycle_start` event row for a given `cycle_id` (col-025).
+    ///
+    /// Returns:
+    ///   `Ok(Some(goal))` — cycle_start row exists with a non-NULL goal
+    ///   `Ok(None)`       — row absent, or goal IS NULL (caller omitted goal, or pre-v16 cycle)
+    ///   `Err(...)`       — DB infrastructure failure (caller should degrade to None)
+    ///
+    /// Uses `idx_cycle_events_cycle_id` for a single indexed point lookup (pattern #3383).
+    /// `LIMIT 1` guards against duplicate cycle_start rows (defensive, ADR-001).
+    pub async fn get_cycle_start_goal(&self, cycle_id: &str) -> Result<Option<String>> {
+        let result: Option<Option<String>> = sqlx::query_scalar::<_, Option<String>>(
+            "SELECT goal FROM cycle_events
+             WHERE cycle_id = ?1 AND event_type = 'cycle_start'
+             ORDER BY timestamp DESC, seq DESC
+             LIMIT 1",
+        )
+        .bind(cycle_id)
+        .fetch_optional(&self.write_pool)
+        .await
+        .map_err(|e| crate::error::StoreError::Database(e.into()))?;
+
+        // fetch_optional returns:
+        //   None           — no matching row
+        //   Some(None)     — row matched but goal IS NULL
+        //   Some(Some(s))  — row matched and goal is non-NULL
+        //
+        // Flatten: both absent-row and NULL-goal map to Ok(None).
+        Ok(result.flatten())
     }
 
     /// Compute the advisory next `seq` for a `cycle_id` in `CYCLE_EVENTS`.
@@ -507,7 +539,8 @@ pub(crate) async fn create_tables_if_needed(
             phase      TEXT,
             outcome    TEXT,
             next_phase TEXT,
-            timestamp  INTEGER NOT NULL
+            timestamp  INTEGER NOT NULL,
+            goal       TEXT
         )",
     )
     .execute(&mut *conn)

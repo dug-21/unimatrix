@@ -37,6 +37,13 @@ const MIN_QUERY_WORDS: usize = 5;
 /// Separate from MAX_INJECTION_BYTES (1400) per D-4 and AC-10.
 const MAX_PRECOMPACT_BYTES: usize = 3000;
 
+/// Maximum byte length for a feature cycle goal string (ADR-005, col-025).
+///
+/// One constant shared by both paths:
+/// - MCP path (tools.rs): hard-reject with CallToolResult::error when exceeded.
+/// - UDS path (listener.rs): truncate at nearest UTF-8 char boundary + tracing::warn!.
+pub(crate) const MAX_GOAL_BYTES: usize = 1024;
+
 /// Tail-bytes window multiplier. Raw JSONL is ~4x larger than extracted text.
 /// TAIL_WINDOW_BYTES = MAX_PRECOMPACT_BYTES * TAIL_MULTIPLIER = 12,000 bytes (ADR-001).
 const TAIL_MULTIPLIER: usize = 4;
@@ -78,7 +85,8 @@ pub fn run(event: String, project_dir: Option<PathBuf>) -> Result<(), Box<dyn st
     // SubagentStart payload, so build_request always returns RecordEvent for this event.
     // Derive a query from the transcript tail (which contains the Task spawn description
     // as the most recent ToolPair entry) with agent_type as role.
-    let request = if event == "SubagentStart" && matches!(request, HookRequest::RecordEvent { .. }) {
+    let request = if event == "SubagentStart" && matches!(request, HookRequest::RecordEvent { .. })
+    {
         let role = hook_input
             .extra
             .get("agent_type")
@@ -114,7 +122,8 @@ pub fn run(event: String, project_dir: Option<PathBuf>) -> Result<(), Box<dyn st
     };
 
     // Step 5d: Extract transcript block for PreCompact before server round-trip (OQ-2 resolved)
-    let transcript_block: Option<String> = if matches!(request, HookRequest::CompactPayload { .. }) {
+    let transcript_block: Option<String> = if matches!(request, HookRequest::CompactPayload { .. })
+    {
         hook_input
             .transcript_path
             .as_deref()
@@ -161,7 +170,8 @@ pub fn run(event: String, project_dir: Option<PathBuf>) -> Result<(), Box<dyn st
                             // Modified: for BriefingContent responses, prepend transcript block (D-5)
                             match &response {
                                 HookResponse::BriefingContent { content, .. } => {
-                                    let full_output = prepend_transcript(transcript_block.as_deref(), content);
+                                    let full_output =
+                                        prepend_transcript(transcript_block.as_deref(), content);
                                     if !full_output.is_empty() {
                                         println!("{full_output}");
                                     }
@@ -862,17 +872,17 @@ enum ExchangeTurn {
 /// Result truncated to TOOL_KEY_PARAM_BYTES via truncate_utf8.
 fn extract_key_param(tool_name: &str, input: &serde_json::Value) -> String {
     let field_name: &str = match tool_name {
-        "Bash"      => "command",
-        "Read"      => "file_path",
-        "Edit"      => "file_path",
-        "Write"     => "file_path",
-        "Glob"      => "pattern",
-        "Grep"      => "pattern",
+        "Bash" => "command",
+        "Read" => "file_path",
+        "Edit" => "file_path",
+        "Write" => "file_path",
+        "Glob" => "pattern",
+        "Grep" => "pattern",
         "MultiEdit" => "file_path",
-        "Task"      => "description",
-        "WebFetch"  => "url",
+        "Task" => "description",
+        "WebFetch" => "url",
         "WebSearch" => "query",
-        _           => "",
+        _ => "",
     };
 
     if !field_name.is_empty() {
@@ -950,13 +960,19 @@ fn build_exchange_pairs(lines: &[&str]) -> Vec<ExchangeTurn> {
         }
 
         let record: serde_json::Value = match serde_json::from_str(line) {
-            Ok(v)  => v,
-            Err(_) => { i += 1; continue; }
+            Ok(v) => v,
+            Err(_) => {
+                i += 1;
+                continue;
+            }
         };
 
         let record_type = match record.get("type").and_then(|v| v.as_str()) {
             Some(t) => t,
-            None    => { i += 1; continue; }
+            None => {
+                i += 1;
+                continue;
+            }
         };
 
         match record_type {
@@ -1004,15 +1020,22 @@ fn build_exchange_pairs(lines: &[&str]) -> Vec<ExchangeTurn> {
                         if block.get("type").and_then(|v| v.as_str()) != Some("tool_use") {
                             return None;
                         }
-                        let id   = block.get("id").and_then(|v| v.as_str())?.to_string();
+                        let id = block.get("id").and_then(|v| v.as_str())?.to_string();
                         let name = block.get("name").and_then(|v| v.as_str())?.to_string();
-                        let input = block.get("input").cloned().unwrap_or(serde_json::Value::Null);
+                        let input = block
+                            .get("input")
+                            .cloned()
+                            .unwrap_or(serde_json::Value::Null);
                         let key_param = extract_key_param(&name, &input);
-                        Some(ToolUseInfo { id, name, key_param })
+                        Some(ToolUseInfo {
+                            id,
+                            name,
+                            key_param,
+                        })
                     })
                     .collect();
 
-                let has_text     = !asst_texts.is_empty();
+                let has_text = !asst_texts.is_empty();
                 let has_tool_use = !tool_uses.is_empty();
 
                 // Pure thinking turn (no text, no tool_use): suppress entirely
@@ -1033,17 +1056,22 @@ fn build_exchange_pairs(lines: &[&str]) -> Vec<ExchangeTurn> {
                 if has_tool_use && i + 1 < lines.len() {
                     let next_line = lines[i + 1];
                     if !next_line.trim().is_empty() {
-                        if let Ok(next_record) = serde_json::from_str::<serde_json::Value>(next_line) {
+                        if let Ok(next_record) =
+                            serde_json::from_str::<serde_json::Value>(next_line)
+                        {
                             if next_record.get("type").and_then(|v| v.as_str()) == Some("user") {
                                 let next_content = get_content_array(&next_record);
                                 for block in next_content {
-                                    if block.get("type").and_then(|v| v.as_str()) != Some("tool_result") {
+                                    if block.get("type").and_then(|v| v.as_str())
+                                        != Some("tool_result")
+                                    {
                                         continue;
                                     }
-                                    let tool_use_id = match block.get("tool_use_id").and_then(|v| v.as_str()) {
-                                        Some(id) => id.to_string(),
-                                        None     => continue,
-                                    };
+                                    let tool_use_id =
+                                        match block.get("tool_use_id").and_then(|v| v.as_str()) {
+                                            Some(id) => id.to_string(),
+                                            None => continue,
+                                        };
                                     let snippet = extract_tool_result_snippet(block);
                                     result_map.insert(tool_use_id, snippet);
                                 }
@@ -1053,13 +1081,10 @@ fn build_exchange_pairs(lines: &[&str]) -> Vec<ExchangeTurn> {
                 }
 
                 for tu in &tool_uses {
-                    let result_snippet = result_map
-                        .get(&tu.id)
-                        .cloned()
-                        .unwrap_or_default();
+                    let result_snippet = result_map.get(&tu.id).cloned().unwrap_or_default();
                     turns.push(ExchangeTurn::ToolPair {
-                        name:           tu.name.clone(),
-                        key_param:      tu.key_param.clone(),
+                        name: tu.name.clone(),
+                        key_param: tu.key_param.clone(),
                         result_snippet,
                     });
                 }
@@ -1082,8 +1107,15 @@ fn format_turn(turn: &ExchangeTurn) -> String {
     match turn {
         ExchangeTurn::UserText(text) => format!("[User] {}", text),
         ExchangeTurn::AssistantText(text) => format!("[Assistant] {}", text),
-        ExchangeTurn::ToolPair { name, key_param, result_snippet } => {
-            format!("[tool: {}({}) \u{2192} {}]", name, key_param, result_snippet)
+        ExchangeTurn::ToolPair {
+            name,
+            key_param,
+            result_snippet,
+        } => {
+            format!(
+                "[tool: {}({}) \u{2192} {}]",
+                name, key_param, result_snippet
+            )
         }
     }
 }
@@ -1132,7 +1164,10 @@ fn extract_transcript_block(path: &str) -> Option<String> {
             return None;
         }
 
-        let header = format!("=== Recent conversation (last {} exchanges) ===", exchange_count);
+        let header = format!(
+            "=== Recent conversation (last {} exchanges) ===",
+            exchange_count
+        );
         let footer = "=== End recent conversation ===".to_string();
         let body = output_parts.join("\n");
 
@@ -1153,9 +1188,9 @@ fn prepend_transcript(transcript: Option<&str>, briefing: &str) -> String {
     let briefing_empty = briefing.is_empty();
     match (transcript, briefing_empty) {
         (Some(t), false) => format!("{}\n\n{}", t, briefing),
-        (Some(t), true)  => t.to_string(),
-        (None, false)    => briefing.to_string(),
-        (None, true)     => String::new(),
+        (Some(t), true) => t.to_string(),
+        (None, false) => briefing.to_string(),
+        (None, true) => String::new(),
     }
 }
 
@@ -3505,14 +3540,20 @@ mod tests {
             ExchangeTurn::UserText(t) => t.clone(),
             _ => panic!("unexpected"),
         };
-        assert!(first_text == "RC" || first_text == "C", "most recent first: got {first_text}");
+        assert!(
+            first_text == "RC" || first_text == "C",
+            "most recent first: got {first_text}"
+        );
     }
 
     #[test]
     fn build_exchange_pairs_user_tool_result_skipped() {
         let user = r#"{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","content":"result"}]}}"#;
         let turns = build_exchange_pairs(&[user]);
-        assert!(turns.is_empty(), "tool_result in user turn must not emit UserText");
+        assert!(
+            turns.is_empty(),
+            "tool_result in user turn must not emit UserText"
+        );
     }
 
     #[test]
@@ -3520,10 +3561,17 @@ mod tests {
         let asst = r#"{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu1","name":"Read","input":{"file_path":"/foo.rs"}},{"type":"thinking","thinking":"..."}]}}"#;
         let user = r#"{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu1","content":"file contents"}]}}"#;
         let turns = build_exchange_pairs(&[asst, user]);
-        let has_tool_pair = turns.iter().any(|t| matches!(t, ExchangeTurn::ToolPair { .. }));
-        let has_asst_text = turns.iter().any(|t| matches!(t, ExchangeTurn::AssistantText(_)));
+        let has_tool_pair = turns
+            .iter()
+            .any(|t| matches!(t, ExchangeTurn::ToolPair { .. }));
+        let has_asst_text = turns
+            .iter()
+            .any(|t| matches!(t, ExchangeTurn::AssistantText(_)));
         assert!(has_tool_pair, "tool-only assistant turn must emit ToolPair");
-        assert!(!has_asst_text, "tool-only assistant turn must NOT emit AssistantText");
+        assert!(
+            !has_asst_text,
+            "tool-only assistant turn must NOT emit AssistantText"
+        );
     }
 
     #[test]
@@ -3538,23 +3586,51 @@ mod tests {
         let user = r#"{"type":"user","message":{"content":[{"type":"text","text":"hello"}]}}"#;
         let lines = vec!["not json", user, "{broken", "also bad"];
         let turns = build_exchange_pairs(&lines);
-        assert!(!turns.is_empty(), "valid lines must produce turns despite malformed lines");
+        assert!(
+            !turns.is_empty(),
+            "valid lines must produce turns despite malformed lines"
+        );
         assert!(!std::panic::catch_unwind(|| build_exchange_pairs(&lines)).is_err());
     }
 
     #[test]
     fn extract_key_param_known_tools_correct_field() {
         let cases = vec![
-            ("Bash",      "command",     r#"{"command":"ls -la"}"#,            "ls -la"),
-            ("Read",      "file_path",   r#"{"file_path":"/foo.rs"}"#,         "/foo.rs"),
-            ("Edit",      "file_path",   r#"{"file_path":"/bar.rs"}"#,         "/bar.rs"),
-            ("Write",     "file_path",   r#"{"file_path":"/out.rs"}"#,         "/out.rs"),
-            ("Glob",      "pattern",     r#"{"pattern":"**/*.rs"}"#,           "**/*.rs"),
-            ("Grep",      "pattern",     r#"{"pattern":"fn main"}"#,           "fn main"),
-            ("MultiEdit", "file_path",   r#"{"file_path":"/multi.rs"}"#,       "/multi.rs"),
-            ("Task",      "description", r#"{"description":"implement X"}"#,   "implement X"),
-            ("WebFetch",  "url",         r#"{"url":"https://example.com"}"#,   "https://example.com"),
-            ("WebSearch", "query",       r#"{"query":"rust async"}"#,          "rust async"),
+            ("Bash", "command", r#"{"command":"ls -la"}"#, "ls -la"),
+            ("Read", "file_path", r#"{"file_path":"/foo.rs"}"#, "/foo.rs"),
+            ("Edit", "file_path", r#"{"file_path":"/bar.rs"}"#, "/bar.rs"),
+            (
+                "Write",
+                "file_path",
+                r#"{"file_path":"/out.rs"}"#,
+                "/out.rs",
+            ),
+            ("Glob", "pattern", r#"{"pattern":"**/*.rs"}"#, "**/*.rs"),
+            ("Grep", "pattern", r#"{"pattern":"fn main"}"#, "fn main"),
+            (
+                "MultiEdit",
+                "file_path",
+                r#"{"file_path":"/multi.rs"}"#,
+                "/multi.rs",
+            ),
+            (
+                "Task",
+                "description",
+                r#"{"description":"implement X"}"#,
+                "implement X",
+            ),
+            (
+                "WebFetch",
+                "url",
+                r#"{"url":"https://example.com"}"#,
+                "https://example.com",
+            ),
+            (
+                "WebSearch",
+                "query",
+                r#"{"query":"rust async"}"#,
+                "rust async",
+            ),
         ];
         for (tool, _field, input_json, expected) in cases {
             let input: serde_json::Value = serde_json::from_str(input_json).unwrap();
@@ -3565,7 +3641,8 @@ mod tests {
 
     #[test]
     fn extract_key_param_unknown_tool_first_string_field_fallback() {
-        let input: serde_json::Value = serde_json::from_str(r#"{"query":"foo","count":5}"#).unwrap();
+        let input: serde_json::Value =
+            serde_json::from_str(r#"{"query":"foo","count":5}"#).unwrap();
         let result = extract_key_param("UnknownTool", &input);
         // Should return first string field value
         assert_eq!(result, "foo");
@@ -3601,7 +3678,10 @@ mod tests {
         );
         assert!(result.starts_with("=== Recent conversation"));
         assert!(result.contains("briefing"));
-        assert!(result.find("=== End recent conversation ===").unwrap() < result.find("briefing").unwrap());
+        assert!(
+            result.find("=== End recent conversation ===").unwrap()
+                < result.find("briefing").unwrap()
+        );
     }
 
     #[test]
@@ -3650,8 +3730,14 @@ mod tests {
                 s.len(),
                 MAX_PRECOMPACT_BYTES
             );
-            assert!(s.starts_with("=== Recent conversation"), "must start with header");
-            assert!(s.ends_with("=== End recent conversation ==="), "must end with footer");
+            assert!(
+                s.starts_with("=== Recent conversation"),
+                "must start with header"
+            );
+            assert!(
+                s.ends_with("=== End recent conversation ==="),
+                "must end with footer"
+            );
         }
         // None is also acceptable if all exchanges are too large for the budget
     }

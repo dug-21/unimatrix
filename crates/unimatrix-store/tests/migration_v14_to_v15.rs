@@ -320,16 +320,19 @@ async fn phase_column_exists_on_feature_entries(store: &SqlxStore) -> bool {
 }
 
 // ---------------------------------------------------------------------------
-// Unit test: CURRENT_SCHEMA_VERSION constant = 15
+// Unit test: CURRENT_SCHEMA_VERSION constant >= 15 (cascaded from col-025)
 // ---------------------------------------------------------------------------
+//
+// Note: constant was 15 when this test was written; bumped to 16 by col-025.
+// The v14→v15 migration behaviour is verified by the functional tests below.
+// The exact value is tested in migration_v15_to_v16.rs::test_current_schema_version_is_16.
 
 #[test]
-fn test_current_schema_version_is_15() {
-    // Simple constant check to catch accidental off-by-one in version bump.
-    assert_eq!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
-        15,
-        "CURRENT_SCHEMA_VERSION must be 15"
+fn test_current_schema_version_is_at_least_15() {
+    // Minimum bound: version must be >= 15. Exact value tested in migration_v15_to_v16.rs.
+    assert!(
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 15,
+        "CURRENT_SCHEMA_VERSION must be >= 15"
     );
 }
 
@@ -348,11 +351,10 @@ async fn test_fresh_db_creates_schema_v15() {
         .await
         .expect("open fresh store");
 
-    // Assert: schema_version == 15
-    assert_eq!(
-        read_schema_version(&store).await,
-        15,
-        "fresh database must be at schema v15"
+    // Assert: schema_version >= 15 (col-025 bumped the constant to 16; see pattern #2933)
+    assert!(
+        read_schema_version(&store).await >= 15,
+        "fresh database must be at schema >= v15"
     );
 
     // Assert: cycle_events table exists
@@ -441,8 +443,8 @@ async fn test_v14_to_v15_migration_adds_cycle_events_table() {
         "cycle_events table must exist after v14→v15 migration (AC-10)"
     );
 
-    // Assert: schema_version == 15.
-    assert_eq!(read_schema_version(&store).await, 15);
+    // Assert: schema_version >= 15 (col-025 bumped to 16; see pattern #2933).
+    assert!(read_schema_version(&store).await >= 15);
 
     store.close().await.unwrap();
 }
@@ -526,12 +528,12 @@ async fn test_v14_to_v15_migration_idempotent() {
 
     create_v14_database(&db_path).await;
 
-    // Run 1: applies v14→v15 migration.
+    // Run 1: applies v14→v15 migration (and v15→v16 since CURRENT_SCHEMA_VERSION is now 16).
     {
         let store = SqlxStore::open(&db_path, PoolConfig::default())
             .await
             .expect("first open");
-        assert_eq!(read_schema_version(&store).await, 15);
+        assert!(read_schema_version(&store).await >= 15); // col-025: bumped to 16; keep >= 15 (pattern #2933)
         assert!(cycle_events_table_exists(&store).await);
         assert!(phase_column_exists_on_feature_entries(&store).await);
         store.close().await.unwrap();
@@ -542,7 +544,7 @@ async fn test_v14_to_v15_migration_idempotent() {
         .await
         .expect("second open must succeed (NFR-05: idempotent)");
 
-    assert_eq!(read_schema_version(&store).await, 15);
+    assert!(read_schema_version(&store).await >= 15); // col-025: bumped to 16; keep >= 15 (pattern #2933)
     assert!(cycle_events_table_exists(&store).await);
     assert!(phase_column_exists_on_feature_entries(&store).await);
 
@@ -598,8 +600,8 @@ async fn test_pragma_table_info_guard_prevents_duplicate_column() {
         .await
         .expect("open must succeed — pragma guard skips duplicate ALTER TABLE (C-08)");
 
-    // Assert: no error, schema_version = 15, column exists exactly once.
-    assert_eq!(read_schema_version(&store).await, 15);
+    // Assert: no error, schema_version >= 15, column exists exactly once (col-025: bumped to 16).
+    assert!(read_schema_version(&store).await >= 15);
     let col_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM pragma_table_info('feature_entries') WHERE name = 'phase'",
     )
@@ -615,7 +617,7 @@ async fn test_pragma_table_info_guard_prevents_duplicate_column() {
 }
 
 // ---------------------------------------------------------------------------
-// T-MIG-04: Schema version is 15 after migration (AC-10)
+// T-MIG-04: Schema version is >= 15 after migration (AC-10) — cascaded from col-025
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -629,11 +631,11 @@ async fn test_schema_version_is_15_after_migration() {
         .await
         .expect("open migrated store");
 
-    // Assert: counters table carries schema_version = 15.
-    assert_eq!(read_schema_version(&store).await, 15);
+    // Assert: counters table carries schema_version >= 15 (col-025 bumped to 16; see pattern #2933).
+    assert!(read_schema_version(&store).await >= 15);
 
-    // Assert: Rust const agrees.
-    assert_eq!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION, 15);
+    // Assert: Rust const is >= 15 (exact value 16 tested in migration_v15_to_v16.rs).
+    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 15);
 
     store.close().await.unwrap();
 }
@@ -735,6 +737,7 @@ async fn test_v15_cycle_events_round_trip() {
             None,
             Some("design"),
             1700000000, // timestamp
+            None,       // goal: col-025 addition; None for this pre-col-025 test
         )
         .await
         .expect("insert_cycle_event must succeed");
@@ -781,7 +784,16 @@ async fn test_v15_cycle_events_all_nullable_columns_null() {
 
     // Insert with all nullable fields as None.
     store
-        .insert_cycle_event("test-cycle", 1, "cycle_stop", None, None, None, 1700000001)
+        .insert_cycle_event(
+            "test-cycle",
+            1,
+            "cycle_stop",
+            None,
+            None,
+            None,
+            1700000001,
+            None,
+        )
         .await
         .expect("insert_cycle_event with nulls must succeed");
 
