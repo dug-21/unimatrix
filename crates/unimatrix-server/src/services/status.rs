@@ -557,7 +557,11 @@ impl StatusService {
                 // GH #358: fetch entries in Tokio context before dispatching to rayon.
                 // Rayon workers have no Tokio runtime; Handle::current() inside the
                 // closure panics and silently breaks embedding consistency checks.
-                let active_entries = match self.store.query_by_status(unimatrix_store::Status::Active).await {
+                let active_entries = match self
+                    .store
+                    .query_by_status(unimatrix_store::Status::Active)
+                    .await
+                {
                     Ok(v) => v,
                     Err(_) => {
                         // Graceful degradation: skip consistency check if entries cannot be read.
