@@ -878,7 +878,7 @@ const DEAD_KNOWLEDGE_DEPRECATION_CAP: usize = 50;
 ///
 /// Two-step approach: first fetch the N most-recent session IDs, then fetch all
 /// observations for those sessions only. Replaces the unbounded 5 000-row LIMIT scan.
-const DEAD_KNOWLEDGE_SESSION_THRESHOLD: usize = 20;
+const DEAD_KNOWLEDGE_SESSION_THRESHOLD: usize = 1000;
 
 /// COUNTERS key used to gate the one-shot legacy noise migration.
 const DEAD_KNOWLEDGE_MIGRATION_V1_KEY: &str = "dead_knowledge_migration_v1";
@@ -998,7 +998,11 @@ async fn dead_knowledge_deprecation_pass(store: &Arc<Store>) -> usize {
     // Run the detection logic in spawn_blocking (synchronous store query inside).
     let store_for_detection = Arc::clone(store);
     let candidates_opt = tokio::task::spawn_blocking(move || {
-        detect_dead_knowledge_candidates(&observations, &store_for_detection, 5)
+        detect_dead_knowledge_candidates(
+            &observations,
+            &store_for_detection,
+            DEAD_KNOWLEDGE_SESSION_THRESHOLD,
+        )
     })
     .await;
 
@@ -3477,8 +3481,8 @@ mod tests {
         let id2 = insert_accessed_entry(&store, "Stale knowledge beta").await;
         let id3 = insert_accessed_entry(&store, "Stale knowledge gamma").await;
 
-        // Insert 6 sessions that do NOT reference any of the three entries.
-        insert_synthetic_sessions(&store, 6).await;
+        // Insert enough sessions to exceed DEAD_KNOWLEDGE_SESSION_THRESHOLD.
+        insert_synthetic_sessions(&store, DEAD_KNOWLEDGE_SESSION_THRESHOLD + 1).await;
 
         // Run the deprecation pass.
         let deprecated = dead_knowledge_deprecation_pass(&store).await;
