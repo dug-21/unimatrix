@@ -491,8 +491,11 @@ impl ObservationSource for SqlObservationSource {
 ///
 /// saturating_mul guards against i64 overflow on adversarially large timestamps
 /// (E-05 edge case: i64::MAX as input saturates to i64::MAX, not panic).
+/// `pub(crate)` for use by `compute_phase_stats` in `mcp/tools.rs` (ADR-002, col-026).
+/// All timestamp conversions from cycle_events seconds to observation millis must call this
+/// function — inline `* 1000` multiplication is prohibited.
 #[inline]
-fn cycle_ts_to_obs_millis(ts_secs: i64) -> i64 {
+pub(crate) fn cycle_ts_to_obs_millis(ts_secs: i64) -> i64 {
     ts_secs.saturating_mul(1000)
 }
 

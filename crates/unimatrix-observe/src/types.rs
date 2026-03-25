@@ -239,6 +239,13 @@ pub struct PhaseStats {
     pub pass_count: u32,
     /// Duration of this phase window in seconds.
     pub duration_secs: u64,
+    /// Phase window start boundary in epoch milliseconds (GAP-1: required by formatter
+    /// to map finding evidence timestamps to phase windows for hotspot annotations).
+    pub start_ms: i64,
+    /// Phase window end boundary in epoch milliseconds, or None if the phase is open
+    /// (no cycle_stop event yet). GAP-1: required by formatter for hotspot annotations.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_ms: Option<i64>,
     /// Number of distinct sessions with observations in this phase window.
     pub session_count: usize,
     /// Total observation records in this phase window.
@@ -987,6 +994,8 @@ mod tests {
             pass_number: 1,
             pass_count: 2,
             duration_secs: 3600,
+            start_ms: 1_700_000_000_000,
+            end_ms: Some(1_700_003_600_000),
             session_count: 3,
             record_count: 150,
             agents: vec!["coder-1".to_string(), "coder-2".to_string()],
@@ -1008,6 +1017,8 @@ mod tests {
         assert_eq!(back.pass_number, 1);
         assert_eq!(back.pass_count, 2);
         assert_eq!(back.duration_secs, 3600);
+        assert_eq!(back.start_ms, 1_700_000_000_000);
+        assert_eq!(back.end_ms, Some(1_700_003_600_000));
         assert_eq!(back.session_count, 3);
         assert_eq!(back.record_count, 150);
         assert_eq!(back.agents, vec!["coder-1", "coder-2"]);
@@ -1033,6 +1044,7 @@ mod tests {
             "pass_number": 1,
             "pass_count": 1,
             "duration_secs": 600,
+            "start_ms": 1700000000000,
             "session_count": 1,
             "record_count": 10,
             "agents": [],
@@ -1125,6 +1137,8 @@ mod tests {
             pass_number: 1,
             pass_count: 1,
             duration_secs: 600,
+            start_ms: 1_700_000_000_000,
+            end_ms: Some(1_700_000_600_000),
             session_count: 1,
             record_count: 10,
             agents: vec![],
