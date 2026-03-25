@@ -14,14 +14,15 @@
 
 ## Component Map
 
-| Component | Pseudocode | Test Plan |
-|-----------|-----------|-----------|
-| hook-registration | pseudocode/hook-registration.md | test-plan/hook-registration.md |
-| hook-dispatcher | pseudocode/hook-dispatcher.md | test-plan/hook-dispatcher.md |
-| core-constants | pseudocode/core-constants.md | test-plan/core-constants.md |
-| observation-storage | pseudocode/observation-storage.md | test-plan/observation-storage.md |
-| pre-post-differential-fix | pseudocode/pre-post-differential-fix.md | test-plan/pre-post-differential-fix.md |
-| tool-failure-rule | pseudocode/tool-failure-rule.md | test-plan/tool-failure-rule.md |
+| Component | Pseudocode | Test Plan | Wave |
+|-----------|-----------|-----------|------|
+| core-constants | pseudocode/core-constants.md | test-plan/core-constants.md | 1 |
+| hook-registration | pseudocode/hook-registration.md | test-plan/hook-registration.md | 1 |
+| hook-dispatcher | pseudocode/hook-dispatcher.md | test-plan/hook-dispatcher.md | 2 |
+| observation-storage | pseudocode/observation-storage.md | test-plan/observation-storage.md | 2 |
+| friction-metrics | pseudocode/friction-metrics.md | test-plan/friction-metrics.md | 2 (atomic) |
+
+Note: `pre-post-differential-fix` and `tool-failure-rule` from the architecture are consolidated into `friction-metrics` — both modify `friction.rs` and must ship atomically per ADR-004.
 
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
