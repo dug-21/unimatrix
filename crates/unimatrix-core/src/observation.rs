@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 pub mod hook_type {
     pub const PRETOOLUSE: &str = "PreToolUse";
     pub const POSTTOOLUSE: &str = "PostToolUse";
+    pub const POSTTOOLUSEFAILURE: &str = "PostToolUseFailure"; // col-027
     pub const SUBAGENTSTART: &str = "SubagentStart";
     pub const SUBAGENTSTOPPED: &str = "SubagentStop";
 }
@@ -34,7 +35,8 @@ pub struct ObservationRecord {
     pub input: Option<serde_json::Value>,
     /// Response byte count (PostToolUse only).
     pub response_size: Option<u64>,
-    /// First 500 chars of response (PostToolUse only).
+    /// First 500 chars of response. Populated for PostToolUse (from tool_response object)
+    /// and PostToolUseFailure (from error string). None for all other event types.
     pub response_snippet: Option<String>,
 }
 
@@ -95,6 +97,15 @@ mod tests {
         let _: &str = hook_type::POSTTOOLUSE;
         let _: &str = hook_type::SUBAGENTSTART;
         let _: &str = hook_type::SUBAGENTSTOPPED;
+    }
+
+    /// T-CC-01: POSTTOOLUSEFAILURE constant has exact value "PostToolUseFailure" (AC-02, R-11).
+    /// A misspelling compiles silently but breaks all string comparisons in rules and listener.
+    #[test]
+    fn test_posttoolusefailure_constant_value() {
+        assert_eq!(hook_type::POSTTOOLUSEFAILURE, "PostToolUseFailure");
+        // Compile-time type assertion: must be &str, not an enum variant.
+        let _: &str = hook_type::POSTTOOLUSEFAILURE;
     }
 
     /// T-OR-03: Serialization round-trip — JSON has event_type and source_domain, not hook.
