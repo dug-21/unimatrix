@@ -931,10 +931,10 @@ async fn dispatch_request(
                     .filter(|g| !g.trim().is_empty());
 
                 if let Some(ref goal_text) = maybe_goal {
-                    tracing::info!(
+                    tracing::debug!(
                         session_id = ?session_id,
                         goal_preview = %truncate_at_utf8_boundary(goal_text, 50),
-                        "col-025: SubagentStart goal-present — routing to IndexBriefingService"
+                        "col-025: SubagentStart goal-present branch — routing to IndexBriefingService"
                     );
 
                     let session_state = session_id
@@ -992,12 +992,6 @@ async fn dispatch_request(
                     // entries empty → fall through to existing ContextSearch path (graceful degradation)
                 }
                 // goal absent or empty → fall through to existing ContextSearch dispatch
-                if maybe_goal.is_none() {
-                    tracing::info!(
-                        session_id = ?session_id,
-                        "col-025: SubagentStart goal-absent — falling through to ContextSearch"
-                    );
-                }
             }
 
             // col-018: Record observation as a side effect.
