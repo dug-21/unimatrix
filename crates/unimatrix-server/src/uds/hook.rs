@@ -8,6 +8,7 @@ use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use unimatrix_core::observation::hook_type;
 use unimatrix_engine::event_queue::EventQueue;
 use unimatrix_engine::project::compute_project_hash;
 use unimatrix_engine::transport::{LocalTransport, Transport};
@@ -257,7 +258,7 @@ fn resolve_cwd(input: &HookInput, project_dir: Option<&Path>) -> PathBuf {
 /// Extract topic signal text from a hook event based on event type (col-017, ADR-017-001).
 ///
 /// Each event type has a specific text source for topic extraction:
-/// - PreToolUse / PostToolUse (non-rework): `input.extra["tool_input"]` stringified
+/// - PreToolUse / PostToolUse / PostToolUseFailure: `input.extra["tool_input"]` stringified
 /// - SubagentStart: `input.extra["agent_type"]` stringified
 /// - UserPromptSubmit (record path): `input.prompt`
 /// - Other (generic_record_event): `serde_json::to_string(&input.extra)`
@@ -277,6 +278,21 @@ fn extract_event_topic_signal(event: &str, input: &HookInput) -> Option<String> 
             extract_topic_signal(&text)
         }
         "PostToolUse" => {
+            let text = input
+                .extra
+                .get("tool_input")
+                .map(|v| match v {
+                    serde_json::Value::String(s) => s.clone(),
+                    _ => serde_json::to_string(v).unwrap_or_default(),
+                })
+                .unwrap_or_default();
+            extract_topic_signal(&text)
+        }
+        // col-027: Explicit arm for PostToolUseFailure (ADR-001).
+        // Same source field as PostToolUse: tool_input contains the invocation parameters.
+        // PostToolUseFailure does NOT have a tool_response, but tool_input is present.
+        // Kept as a separate arm (not deduplicated with PostToolUse) to allow future divergence.
+        hook_type::POSTTOOLUSEFAILURE => {
             let text = input
                 .extra
                 .get("tool_input")
@@ -464,6 +480,39 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         "tool_input": input.extra.get("tool_input"),
                         "tool_response": input.extra.get("tool_response"),
                     }),
+                    topic_signal,
+                },
+            }
+        }
+
+        // col-027: Explicit arm for PostToolUseFailure (ADR-001, FR-03.1).
+        // Must NOT fall through to the wildcard — wildcard would store records with tool_name = None.
+        // Must NOT enter rework logic — failure events are never rework candidates.
+        // Must NOT call extract_response_fields() — error field handled in listener.rs.
+        // Hook always exits 0: all field accesses use defensive Option chaining (FR-03.7).
+        hook_type::POSTTOOLUSEFAILURE => {
+            // Extract tool_name defensively: absent or non-string yields empty string.
+            let tool_name = input
+                .extra
+                .get("tool_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            // Compute topic_signal from tool_input (same source as PostToolUse arm).
+            // Returns None if tool_input is absent or produces no signal.
+            let topic_signal = extract_event_topic_signal(event, input);
+
+            // Build fire-and-forget RecordEvent.
+            // payload = input.extra.clone() carries tool_name, error, tool_input, is_interrupt.
+            // listener.rs extract_observation_fields() reads from this payload.
+            // event_type is stored verbatim — NOT normalized to "PostToolUse" (ADR-003).
+            HookRequest::RecordEvent {
+                event: ImplantEvent {
+                    event_type: hook_type::POSTTOOLUSEFAILURE.to_string(),
+                    session_id,
+                    timestamp: now_secs(),
+                    payload: input.extra.clone(),
                     topic_signal,
                 },
             }
@@ -1657,6 +1706,127 @@ mod tests {
         };
         let req = build_request("PostToolUse", &input);
         // Null extra → no tool_name → generic RecordEvent
+        assert!(matches!(req, HookRequest::RecordEvent { .. }));
+    }
+
+    // -- PostToolUseFailure tests (col-027) --
+
+    fn posttoolusefailure_input(extra: serde_json::Value) -> HookInput {
+        HookInput {
+            hook_event_name: "PostToolUseFailure".to_string(),
+            session_id: Some("sess-1".to_string()),
+            cwd: None,
+            transcript_path: None,
+            prompt: None,
+            extra,
+        }
+    }
+
+    /// T-HD-01: explicit arm fires — event_type is "PostToolUseFailure" (AC-11, R-05).
+    #[test]
+    fn build_request_posttoolusefailure_explicit_arm() {
+        let input = posttoolusefailure_input(serde_json::json!({
+            "tool_name": "Bash",
+            "error": "permission denied",
+            "tool_input": { "command": "ls /root" }
+        }));
+        let req = build_request("PostToolUseFailure", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                // Explicit arm ran — event_type must be the verbatim hook name (ADR-001, ADR-003)
+                assert_eq!(event.event_type, "PostToolUseFailure");
+                // tool_name is carried in the payload, not as a top-level ImplantEvent field
+                assert_eq!(event.payload["tool_name"], "Bash");
+            }
+            _ => panic!("expected HookRequest::RecordEvent"),
+        }
+    }
+
+    /// T-HD-02: empty extra does not panic and returns RecordEvent (AC-12, R-08).
+    #[test]
+    fn build_request_posttoolusefailure_empty_extra() {
+        let input = posttoolusefailure_input(serde_json::json!({}));
+        let req = build_request("PostToolUseFailure", &input);
+        assert!(matches!(req, HookRequest::RecordEvent { .. }));
+    }
+
+    /// T-HD-03: missing tool_name does not panic (AC-12, R-08, FR-03.6).
+    #[test]
+    fn build_request_posttoolusefailure_missing_tool_name() {
+        let input = posttoolusefailure_input(serde_json::json!({
+            "error": "something went wrong",
+            "tool_input": {}
+        }));
+        let req = build_request("PostToolUseFailure", &input);
+        assert!(matches!(req, HookRequest::RecordEvent { .. }));
+    }
+
+    /// T-HD-04: null error field does not panic (AC-12, R-08).
+    #[test]
+    fn build_request_posttoolusefailure_null_error() {
+        let input = posttoolusefailure_input(serde_json::json!({
+            "tool_name": "Read",
+            "error": null,
+            "tool_input": {}
+        }));
+        let req = build_request("PostToolUseFailure", &input);
+        assert!(matches!(req, HookRequest::RecordEvent { .. }));
+    }
+
+    /// T-HD-05: does NOT enter rework logic — event_type must not be rework-candidate (AC-11, R-05).
+    #[test]
+    fn build_request_posttoolusefailure_does_not_enter_rework_logic() {
+        let input = posttoolusefailure_input(serde_json::json!({
+            "tool_name": "Write",
+            "error": "permission denied",
+            "tool_input": {}
+        }));
+        let req = build_request("PostToolUseFailure", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                // Must NOT produce a rework-candidate event_type
+                assert_eq!(event.event_type, "PostToolUseFailure");
+                assert_ne!(event.event_type, "post_tool_use_rework_candidate");
+            }
+            HookRequest::RecordEvents { .. } => {
+                panic!("must not produce multi-event rework response")
+            }
+            _ => panic!("expected HookRequest::RecordEvent"),
+        }
+    }
+
+    /// T-HD-06: extract_event_topic_signal reads from tool_input, not full extra blob (R-09).
+    #[test]
+    fn extract_event_topic_signal_posttoolusefailure() {
+        let input = posttoolusefailure_input(serde_json::json!({
+            "tool_name": "Bash",
+            "tool_input": { "command": "ls /tmp" },
+            "error": "no such file"
+        }));
+        let result = extract_event_topic_signal("PostToolUseFailure", &input);
+        // topic_signal is derived from tool_input, not from the full extra blob
+        if let Some(signal) = result {
+            // Must NOT contain the "error" key (would indicate full extra blob serialization)
+            assert!(
+                !signal.contains("\"error\""),
+                "topic signal must not include the error field: {signal}"
+            );
+        }
+        // None is also acceptable when tool_input produces no signal — no panic required
+    }
+
+    /// T-HD-extra: null extra on PostToolUseFailure does not panic (AC-12, R-08).
+    #[test]
+    fn build_request_posttoolusefailure_null_extra() {
+        let input = HookInput {
+            hook_event_name: "PostToolUseFailure".to_string(),
+            session_id: Some("sess-1".to_string()),
+            cwd: None,
+            transcript_path: None,
+            prompt: None,
+            extra: serde_json::Value::Null,
+        };
+        let req = build_request("PostToolUseFailure", &input);
         assert!(matches!(req, HookRequest::RecordEvent { .. }));
     }
 
