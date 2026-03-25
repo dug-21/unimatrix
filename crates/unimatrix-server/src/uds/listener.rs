@@ -423,7 +423,16 @@ async fn handle_connection(
 
     // Read 4-byte header
     let mut header = [0u8; 4];
-    reader.read_exact(&mut header).await?;
+    // Fire-and-forget connections (e.g. event queue replay on an empty queue) close
+    // immediately after connecting without sending any bytes.  `UnexpectedEof` on the
+    // header read is therefore an expected, non-error condition — silence it at DEBUG.
+    if let Err(e) = reader.read_exact(&mut header).await {
+        if e.kind() == io::ErrorKind::UnexpectedEof {
+            tracing::debug!("UDS: connection closed before header (fire-and-forget, empty queue)");
+            return Ok(());
+        }
+        return Err(e.into());
+    }
     let length = u32::from_be_bytes(header) as usize;
 
     // Validate length
@@ -478,7 +487,22 @@ async fn handle_connection(
     .await;
 
     // Write response frame
-    write_response(&mut writer, &response).await?;
+    // Fire-and-forget callers (LocalTransport::fire_and_forget) drop their stream
+    // immediately after sending.  When the server tries to write the Ack the pipe is
+    // already closed, producing EPIPE / BrokenPipe.  This is expected — log at DEBUG
+    // and treat as success so the WARN catch-all at the accept loop is not triggered.
+    if let Err(e) = write_response(&mut writer, &response).await {
+        // Downcast Box<dyn Error> → &io::Error to inspect the kind.
+        if let Some(io_err) = e.downcast_ref::<io::Error>() {
+            if io_err.kind() == io::ErrorKind::BrokenPipe {
+                tracing::debug!(
+                    "UDS: broken pipe writing response (fire-and-forget client disconnected)"
+                );
+                return Ok(());
+            }
+        }
+        return Err(e);
+    }
 
     Ok(())
 }
@@ -6551,6 +6575,132 @@ mod tests {
         assert!(
             !matches!(resp, HookResponse::BriefingContent { .. }),
             "UserPromptSubmit source must not trigger goal-present branch"
+        );
+    }
+
+    // -- bugfix-342: spurious WARN suppression tests --
+
+    /// Helper: build all args needed to call handle_connection in tests.
+    async fn make_handle_connection_args() -> (
+        Arc<Store>,
+        Arc<EmbedServiceHandle>,
+        Arc<AsyncVectorStore<VectorAdapter>>,
+        Arc<Store>,
+        Arc<AdaptationService>,
+        Arc<SessionRegistry>,
+        Arc<Mutex<PendingEntriesAnalysis>>,
+        u32,
+        String,
+        crate::services::ServiceLayer,
+        Arc<crate::infra::audit::AuditLog>,
+    ) {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = Arc::new(make_registry());
+        let pending = make_pending();
+        let uid = nix::unistd::getuid().as_raw();
+        let services = make_services(&store, &embed, &vs, &es, &adapt);
+        let audit = Arc::new(crate::infra::audit::AuditLog::new(Arc::clone(&store)));
+        (
+            store,
+            embed,
+            vs,
+            es,
+            adapt,
+            registry,
+            pending,
+            uid,
+            "test".to_string(),
+            services,
+            audit,
+        )
+    }
+
+    /// bugfix-342 / T-EOF-01: a connection that closes immediately (no bytes sent)
+    /// must NOT produce a WARN log — only DEBUG at most.
+    #[tracing_test::traced_test]
+    #[tokio::test]
+    async fn test_handle_connection_early_eof_no_warn() {
+        let (store, embed, vs, es, adapt, registry, pending, uid, ver, services, audit) =
+            make_handle_connection_args().await;
+
+        // Create a socket pair. Give the server half to handle_connection.
+        // Drop the client half immediately — simulates fire-and-forget with empty queue.
+        let (server_stream, _client_stream) = tokio::net::UnixStream::pair().unwrap();
+        // Drop client before server reads: EOF on the header read.
+        drop(_client_stream);
+
+        let result = handle_connection(
+            server_stream,
+            store,
+            embed,
+            vs,
+            es,
+            adapt,
+            registry,
+            pending,
+            uid,
+            ver,
+            services,
+            audit,
+        )
+        .await;
+
+        // handle_connection must return Ok(()) — not an error.
+        assert!(result.is_ok(), "expected Ok(()), got: {result:?}");
+        // No WARN must have been emitted.
+        assert!(
+            !logs_contain("WARN"),
+            "no WARN log expected for early-EOF fire-and-forget connection"
+        );
+    }
+
+    /// bugfix-342 / T-BP-01: a connection that writes a valid request then drops
+    /// before reading the response (fire-and-forget Ping) must NOT produce a WARN.
+    #[tracing_test::traced_test]
+    #[tokio::test]
+    async fn test_handle_connection_broken_pipe_no_warn() {
+        let (store, embed, vs, es, adapt, registry, pending, uid, ver, services, audit) =
+            make_handle_connection_args().await;
+
+        let (server_stream, client_stream) = tokio::net::UnixStream::pair().unwrap();
+
+        // Spawn handle_connection on the server half.
+        let handle = tokio::spawn(handle_connection(
+            server_stream,
+            store,
+            embed,
+            vs,
+            es,
+            adapt,
+            registry,
+            pending,
+            uid,
+            ver,
+            services,
+            audit,
+        ));
+
+        // Client: write a framed Ping request, then drop the stream without reading.
+        {
+            use tokio::io::AsyncWriteExt as _;
+            let payload = serde_json::to_vec(&HookRequest::Ping).unwrap();
+            let length = payload.len() as u32;
+            let mut w = client_stream;
+            w.write_all(&length.to_be_bytes()).await.unwrap();
+            w.write_all(&payload).await.unwrap();
+            // Drop without reading the response — causes BrokenPipe on the server side.
+        }
+
+        let result = handle.await.expect("task did not panic");
+
+        // handle_connection must return Ok(()).
+        assert!(result.is_ok(), "expected Ok(()), got: {result:?}");
+        // No WARN must have been emitted.
+        assert!(
+            !logs_contain("WARN"),
+            "no WARN log expected for broken-pipe fire-and-forget connection"
         );
     }
 }
