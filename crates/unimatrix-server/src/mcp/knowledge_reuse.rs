@@ -92,6 +92,11 @@ where
             cross_session_count: 0,
             by_category: HashMap::new(),
             category_gaps: compute_gaps(active_category_counts, &HashSet::new()),
+            total_served: 0,
+            total_stored: 0,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
         };
     }
 
@@ -132,6 +137,11 @@ where
             cross_session_count: 0,
             by_category: HashMap::new(),
             category_gaps: compute_gaps(active_category_counts, &HashSet::new()),
+            total_served: 0,
+            total_stored: 0,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
         };
     }
 
@@ -166,6 +176,11 @@ where
         cross_session_count,
         by_category,
         category_gaps,
+        total_served: delivery_count,
+        total_stored: 0,
+        cross_feature_reuse: 0,
+        intra_cycle_reuse: 0,
+        top_cross_feature_entries: vec![],
     }
 }
 

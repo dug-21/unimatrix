@@ -563,6 +563,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         }
     }
 
@@ -817,6 +822,11 @@ mod tests {
             cross_session_count: 3,
             by_category: HashMap::new(),
             category_gaps: vec![],
+            total_served: 0,
+            total_stored: 0,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
         });
         let text = extract_text(&format_retrospective_markdown(&report));
         assert!(text.contains("## Knowledge Reuse"));
@@ -891,6 +901,11 @@ mod tests {
             cross_session_count: 8,
             by_category: HashMap::new(),
             category_gaps: vec!["procedure".to_string()],
+            total_served: 0,
+            total_stored: 0,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
         });
         report.rework_session_count = Some(1);
         report.context_reload_pct = Some(0.25);
@@ -1478,6 +1493,11 @@ mod tests {
             cross_session_count: 8,
             by_category: HashMap::new(),
             category_gaps: vec!["procedure".to_string()],
+            total_served: 0,
+            total_stored: 0,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
         };
         let out = render_knowledge_reuse(&reuse);
         assert!(out.contains("15 entries delivered"));
@@ -1492,6 +1512,11 @@ mod tests {
             cross_session_count: 2,
             by_category: HashMap::new(),
             category_gaps: vec![],
+            total_served: 0,
+            total_stored: 0,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
         };
         let out = render_knowledge_reuse(&reuse);
         assert!(!out.contains("Gaps:"));
