@@ -948,6 +948,12 @@ async fn dispatch_request(
             // and return BriefingContent directly — do NOT fall through to ContextSearch.
             // When goal is absent, fall through to existing ContextSearch dispatch unchanged.
             if source.as_deref() == Some("SubagentStart") {
+                tracing::debug!(
+                    target: "unimatrix_server::obs",
+                    session_id = ?session_id,
+                    query_preview = %truncate_at_utf8_boundary(&query, 120),
+                    "UDS: SubagentStart received"
+                );
                 let maybe_goal: Option<String> = session_id
                     .as_deref()
                     .and_then(|sid| session_registry.get_state(sid))
@@ -956,6 +962,7 @@ async fn dispatch_request(
 
                 if let Some(ref goal_text) = maybe_goal {
                     tracing::debug!(
+                        target: "unimatrix_server::obs",
                         session_id = ?session_id,
                         goal_preview = %truncate_at_utf8_boundary(goal_text, 50),
                         "col-025: SubagentStart goal-present branch — routing to IndexBriefingService"
@@ -1055,7 +1062,16 @@ async fn dispatch_request(
                 }
             }
 
-            handle_context_search(query, session_id, k, store, session_registry, services).await
+            handle_context_search(
+                query,
+                session_id,
+                source,
+                k,
+                store,
+                session_registry,
+                services,
+            )
+            .await
         }
 
         HookRequest::CompactPayload {
@@ -1151,6 +1167,7 @@ async fn dispatch_request(
 async fn handle_context_search(
     query: String,
     session_id: Option<String>,
+    source: Option<String>,
     k: Option<u32>,
     store: &Arc<Store>,
     session_registry: &SessionRegistry,
@@ -1226,6 +1243,15 @@ async fn handle_context_search(
         .map(|se| (se.entry.clone(), se.similarity))
         .collect();
 
+    tracing::debug!(
+        target: "unimatrix_server::obs",
+        session_id = ?session_id,
+        source = ?source,
+        result_count = filtered.len(),
+        query_preview = %truncate_at_utf8_boundary(&query, 120),
+        "UDS: ContextSearch executed"
+    );
+
     // 10. Injection tracking (col-008)
     if let Some(ref sid) = session_id {
         if !sid.is_empty() && !filtered.is_empty() {
@@ -1234,6 +1260,14 @@ async fn handle_context_search(
                 .map(|(entry, _sim)| (entry.id, entry.confidence))
                 .collect();
             session_registry.record_injection(sid, &injection_entries);
+
+            tracing::debug!(
+                target: "unimatrix_server::obs",
+                session_id = %sid,
+                entry_count = filtered.len(),
+                entries = ?filtered.iter().map(|(e, _)| (e.id, truncate_at_utf8_boundary(&e.title, 60))).collect::<Vec<_>>(),
+                "UDS: injecting entries"
+            );
         }
     }
 

@@ -404,7 +404,11 @@ fn run_stop(project_dir: Option<PathBuf>) -> i32 {
 #[tokio::main]
 async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing (daemon: log to stderr, redirected to log file by launcher).
-    let filter = if cli.verbose { "debug" } else { "info" };
+    // RUST_LOG override: RUST_LOG=info,unimatrix_server::obs=debug enables UDS observation logs
+    // To silence obs logs (default): RUST_LOG unset or RUST_LOG=info
+    let default_level = if cli.verbose { "debug" } else { "info" };
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level));
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
@@ -788,7 +792,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::main]
 async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing (logs to stderr — stdout is for MCP protocol).
-    let filter = if cli.verbose { "debug" } else { "info" };
+    // RUST_LOG override: RUST_LOG=info,unimatrix_server::obs=debug enables UDS observation logs
+    // To silence obs logs (default): RUST_LOG unset or RUST_LOG=info
+    let default_level = if cli.verbose { "debug" } else { "info" };
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level));
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
@@ -1180,7 +1188,11 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::main]
 async fn tokio_main_bridge(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing. Bridge logs go to stderr (stdout is for MCP protocol).
-    let filter = if cli.verbose { "debug" } else { "info" };
+    // RUST_LOG override: RUST_LOG=info,unimatrix_server::obs=debug enables UDS observation logs
+    // To silence obs logs (default): RUST_LOG unset or RUST_LOG=info
+    let default_level = if cli.verbose { "debug" } else { "info" };
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level));
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
