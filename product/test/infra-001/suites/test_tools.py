@@ -1104,7 +1104,8 @@ def test_retrospective_markdown_default(server):
     """T-R07 (vnc-011): Default format (no format param) returns markdown output.
 
     Seeds observation data, runs retrospective with no format param, and verifies
-    response starts with the markdown header '# Retrospective:'.
+    response starts with the rebranded markdown header '# Unimatrix Cycle Review —'
+    (col-026 AC-01: header rebranded from '# Retrospective:').
     """
     features = ["col-831"]
     db_path = _compute_db_path(server.project_dir)
@@ -1112,8 +1113,8 @@ def test_retrospective_markdown_default(server):
 
     resp = server.context_cycle_review(features[0], agent_id="human", timeout=30.0)
     result = assert_tool_success(resp)
-    assert result.text.strip().startswith("# Retrospective:"), (
-        f"Expected markdown header, got: {result.text[:100]}"
+    assert result.text.strip().startswith("# Unimatrix Cycle Review —"), (
+        f"Expected rebranded markdown header (col-026 AC-01), got: {result.text[:100]}"
     )
 
 
@@ -1662,6 +1663,77 @@ def test_cycle_start_whitespace_goal_normalized_to_none(server):
         agent_id="human",
     )
     assert_tool_success(resp)
+
+
+# === context_cycle_review col-026 integration tests ====================
+
+
+def test_cycle_review_phase_timeline_present(server):
+    """T-COL026-01: context_cycle_review returns Phase Timeline section when cycle_events exist.
+
+    Seeds cycle_events (start, phase_end, stop) via SQL, then calls context_cycle_review
+    and asserts the markdown response contains a Phase Timeline section (AC-06).
+    """
+    import json as _json
+    topic = "col-026-phase-timeline-test"
+    now = int(time.time())
+
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, [topic], num_records=20)
+    _seed_cycle_events_sql(db_path, topic, [
+        {"seq": 0, "event_type": "cycle_start",     "next_phase": "scope",  "timestamp": now - 600},
+        {"seq": 1, "event_type": "cycle_phase_end", "phase": "scope", "next_phase": "design",
+         "outcome": "pass", "timestamp": now - 400},
+        {"seq": 2, "event_type": "cycle_phase_end", "phase": "design", "next_phase": "implementation",
+         "outcome": "pass", "timestamp": now - 200},
+        {"seq": 3, "event_type": "cycle_stop",      "phase": "implementation", "timestamp": now - 50},
+    ])
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="markdown", timeout=30.0)
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+
+    assert "Phase Timeline" in text, (
+        f"T-COL026-01: Phase Timeline section must be present when cycle_events exist (AC-06). "
+        f"Got first 500 chars: {text[:500]}"
+    )
+    # At least one phase name must appear
+    assert any(phase in text for phase in ["scope", "design", "implementation"]), (
+        f"T-COL026-01: At least one phase name must appear in Phase Timeline. Got: {text[:500]}"
+    )
+
+
+def test_cycle_review_is_in_progress_json(server):
+    """T-COL026-02: context_cycle_review returns is_in_progress=true in JSON when no cycle_stop.
+
+    Seeds a cycle_start event only (no cycle_stop). Calls context_cycle_review in JSON
+    format and asserts is_in_progress is true (AC-05, R-05).
+    """
+    import json as _json
+    topic = "col-026-in-progress-test"
+    now = int(time.time())
+
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, [topic], num_records=20)
+    _seed_cycle_events_sql(db_path, topic, [
+        {"seq": 0, "event_type": "cycle_start", "next_phase": "scope", "timestamp": now - 300},
+    ])
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+
+    try:
+        data = _json.loads(text)
+        assert data.get("is_in_progress") is True, (
+            f"T-COL026-02: is_in_progress must be true when cycle_stop is absent (AC-05, R-05). "
+            f"Got is_in_progress={data.get('is_in_progress')!r}"
+        )
+    except (_json.JSONDecodeError, TypeError):
+        # Non-JSON response — check markdown for IN PROGRESS
+        assert "IN PROGRESS" in text or "in progress" in text.lower(), (
+            f"T-COL026-02: markdown must show IN PROGRESS when cycle_stop absent. Got: {text[:300]}"
+        )
 
 
 def test_briefing_response_starts_with_context_get_instruction(server):

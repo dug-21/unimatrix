@@ -1621,3 +1621,110 @@ def test_cycle_goal_drives_briefing_query(server):
             f"L-COL025-02: non-empty briefing must start with CONTEXT_GET_INSTRUCTION, "
             f"got: {text[:200]}"
         )
+
+
+# === context_cycle_review col-026 knowledge reuse lifecycle tests ========
+
+
+def test_cycle_review_knowledge_reuse_cross_feature_split(server):
+    """L-COL026-01: context_cycle_review shows cross-feature and intra-cycle split
+    in Knowledge Reuse section when entries from a prior feature were served (AC-12, R-04).
+
+    1. Store two entries under 'col-026-prior-feat' cycle.
+    2. Store one entry under 'col-026-current-feat' cycle.
+    3. Seed observation data + query_log rows linking prior-feature entries to current sessions.
+    4. Run context_cycle_review for 'col-026-current-feat'.
+    5. Assert Knowledge Reuse section mentions cross-feature count > 0.
+    """
+    import json as _json
+    import sqlite3 as _sqlite3
+    import uuid as _uuid
+
+    prior = "col-026-prior-feat"
+    current = "col-026-cur-feat"
+
+    # Step 1: Store two entries attributed to the prior feature and get their IDs
+    store_resp1 = server.context_store(
+        "Architecture decision for cross-feature reuse verification prior cycle.",
+        prior,
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(store_resp1)
+    prior_id1 = extract_entry_id(store_resp1)
+
+    store_resp2 = server.context_store(
+        "Pattern for cross-feature knowledge reuse lifecycle test.",
+        prior,
+        "pattern",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(store_resp2)
+    prior_id2 = extract_entry_id(store_resp2)
+
+    # Step 2: Store one entry under the current feature cycle
+    store_resp3 = server.context_store(
+        "Current feature intra-cycle knowledge entry for col-026 test.",
+        current,
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(store_resp3)
+
+    # Step 3: Seed observation data + query_log rows so cycle_review sees served entries.
+    # Observation rows are needed for the handler to build a MetricVector.
+    # query_log rows tie the prior-feature entry IDs to the current-feature session.
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    _seed_observation_sql_lifecycle(db_path, [current], num_records=20)
+
+    now_ts = int(time.time())
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    session_id = f"test-{current}-{_uuid.uuid4().hex[:8]}"
+    # Ensure session is in the DB (may already exist from _seed_observation_sql_lifecycle)
+    # Use INSERT OR IGNORE to avoid conflicts
+    conn.execute(
+        "INSERT OR IGNORE INTO sessions (session_id, feature_cycle, started_at, status) VALUES (?, ?, ?, 0)",
+        (session_id, current, now_ts),
+    )
+    # Insert query_log rows referencing the prior-feature entry IDs
+    # Schema: query_id, session_id, query_text, ts, result_count, result_entry_ids,
+    #         similarity_scores, retrieval_mode, source
+    import json as _json_inner
+    conn.execute(
+        "INSERT INTO query_log (session_id, query_text, ts, result_count, result_entry_ids, source) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (session_id, "cross-feature reuse verification", now_ts,
+         2, _json_inner.dumps([prior_id1, prior_id2]), "test"),
+    )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+    # Step 4: Call context_cycle_review for the current feature
+    resp = server.context_cycle_review(current, agent_id="human", format="markdown", timeout=30.0)
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+
+    # Step 5: Knowledge Reuse section should appear (entries were served)
+    assert "Knowledge Reuse" in text, (
+        f"L-COL026-01: Knowledge Reuse section must appear when entries were served. "
+        f"Got: {text[:400]}"
+    )
+    # The cross-feature split should show cross-feature entries (prior feature entries were served)
+    # Acceptable signals: "Cross-feature", "cross_feature", or "cross" in the knowledge section
+    knowledge_section_start = text.find("Knowledge Reuse")
+    if knowledge_section_start != -1:
+        knowledge_section = text[knowledge_section_start:knowledge_section_start + 600]
+        has_cross = (
+            "Cross-feature" in knowledge_section
+            or "cross_feature" in knowledge_section
+            or "Cross-Feature" in knowledge_section
+        )
+        assert has_cross, (
+            f"L-COL026-01: Knowledge Reuse section must show cross-feature count. "
+            f"Got section: {knowledge_section}"
+        )

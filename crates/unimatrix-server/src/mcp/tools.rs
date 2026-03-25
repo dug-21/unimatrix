@@ -1212,12 +1212,15 @@ impl UnimatrixServer {
         // 3. Load observations from SQL via ObservationSource (col-024)
         //    Three-path lookup: primary cycle_events-based → legacy sessions.feature_cycle → content-scan.
         //    Primary path introduced in col-024; legacy paths preserved for backward compatibility.
+        //    col-026: attribution_path_label is set inside each path branch for step 10i.
+        let mut attribution_path_label: Option<&'static str> = None;
         let store_for_obs = Arc::clone(&self.store);
         let registry_for_obs = Arc::clone(&self.observation_registry);
         let feature_cycle_for_load = params.feature_cycle.clone();
-        let attributed = crate::infra::timeout::spawn_blocking_with_timeout(
+        // col-026: return (observations, path_label) so step 10i can record attribution_path.
+        let (attributed, obs_path_label) = crate::infra::timeout::spawn_blocking_with_timeout(
             crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-            move || -> std::result::Result<Vec<unimatrix_observe::ObservationRecord>, unimatrix_observe::ObserveError> {
+            move || -> std::result::Result<(Vec<unimatrix_observe::ObservationRecord>, &'static str), unimatrix_observe::ObserveError> {
                 use unimatrix_observe::ObservationSource;
                 let source = crate::services::observation::SqlObservationSource::new(store_for_obs, registry_for_obs);
 
@@ -1226,7 +1229,7 @@ impl UnimatrixServer {
                 // Returns Err only on genuine SQL failure — errors propagate via ?, do NOT activate fallback (FM-01).
                 let primary = source.load_cycle_observations(&feature_cycle_for_load)?;
                 if !primary.is_empty() {
-                    return Ok(primary);
+                    return Ok((primary, "cycle_events-first (primary)"));
                 }
 
                 // Primary path returned empty. Log fallback transition (ADR-003).
@@ -1240,7 +1243,7 @@ impl UnimatrixServer {
                 // ---- Path 2: Legacy-1 (sessions.feature_cycle) ----
                 let legacy1 = source.load_feature_observations(&feature_cycle_for_load)?;
                 if !legacy1.is_empty() {
-                    return Ok(legacy1);
+                    return Ok((legacy1, "sessions.feature_cycle (legacy)"));
                 }
 
                 // Legacy-1 also returned empty. Log second fallback transition (ADR-003).
@@ -1254,16 +1257,19 @@ impl UnimatrixServer {
                 // Unchanged from pre-col-024.
                 let unattributed = source.load_unattributed_sessions()?;
                 if unattributed.is_empty() {
-                    return Ok(vec![]);
+                    return Ok((vec![], "content-scan (fallback)"));
                 }
 
-                Ok(unimatrix_observe::attribute_sessions(&unattributed, &feature_cycle_for_load))
+                let obs = unimatrix_observe::attribute_sessions(&unattributed, &feature_cycle_for_load);
+                Ok((obs, "content-scan (fallback)"))
             },
         )
         .await
         .map_err(rmcp::ErrorData::from)?
         .map_err(|e| ServerError::ObservationError(e.to_string()))
         .map_err(rmcp::ErrorData::from)?;
+
+        attribution_path_label = Some(obs_path_label);
 
         // 6. Check for data availability
         let store = Arc::clone(&self.store);
@@ -1297,6 +1303,11 @@ impl UnimatrixServer {
                         context_reload_pct: None,
                         attribution: None,
                         phase_narrative: None,
+                        goal: None,
+                        cycle_type: None,
+                        attribution_path: None,
+                        is_in_progress: None,
+                        phase_stats: None,
                     };
 
                     // Cached path also respects format (vnc-011)
@@ -1468,9 +1479,30 @@ impl UnimatrixServer {
             let reload_pct = unimatrix_observe::compute_context_reload_pct(&summaries, &attributed);
             report.context_reload_pct = Some(reload_pct);
 
-            // Step 13-14: Knowledge reuse (C3/C4, best-effort)
-            match compute_knowledge_reuse_for_sessions(&store, &session_records).await {
-                Ok(reuse) => report.feature_knowledge_reuse = Some(reuse),
+            // Step 13-14: Knowledge reuse (C3/C4, best-effort; col-026: cross-feature split)
+            match compute_knowledge_reuse_for_sessions(&store, &session_records, &feature_cycle)
+                .await
+            {
+                Ok(mut reuse) => {
+                    // col-026: set total_stored from feature_entries count for this cycle.
+                    // compute_knowledge_reuse leaves total_stored=0; caller fills it here.
+                    match sqlx::query_scalar::<_, i64>(
+                        "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?",
+                    )
+                    .bind(&feature_cycle)
+                    .fetch_one(store.write_pool_server())
+                    .await
+                    {
+                        Ok(count) => reuse.total_stored = count as u64,
+                        Err(e) => {
+                            tracing::warn!(
+                                "col-026: total_stored count failed for {}: {e}",
+                                feature_cycle
+                            );
+                        }
+                    }
+                    report.feature_knowledge_reuse = Some(reuse);
+                }
                 Err(e) => tracing::warn!("col-020: knowledge reuse computation failed: {e}"),
             }
 
@@ -1586,6 +1618,9 @@ impl UnimatrixServer {
         }
 
         // 10g. crt-025: Phase narrative assembly
+        // col-026: events are hoisted to outer scope so steps 10h (PhaseStats) and
+        // 10i (is_in_progress) can borrow them after step 10g. Both build_phase_narrative
+        // (step 10g) and compute_phase_stats (step 10h) borrow &[CycleEventRecord].
         // Query 1: cycle event log for this feature cycle
         let event_rows = sqlx::query(
             "SELECT seq, event_type, phase, outcome, next_phase, timestamp \
@@ -1603,6 +1638,9 @@ impl UnimatrixServer {
                 e
             );
         });
+
+        // col-026: outer option to hold events for steps 10h and 10i
+        let mut cycle_events_vec: Option<Vec<unimatrix_observe::CycleEventRecord>> = None;
 
         if let Ok(event_rows) = event_rows {
             if !event_rows.is_empty() {
@@ -1710,13 +1748,55 @@ impl UnimatrixServer {
                         }
                     };
 
-                // Build phase narrative (pure function)
+                // Build phase narrative (pure function); borrows &events
                 let narrative =
                     unimatrix_observe::build_phase_narrative(&events, &current_dist, &cross_dist);
                 report.phase_narrative = Some(narrative);
+
+                // Stash events for steps 10h and 10i (both borrow from this vec)
+                cycle_events_vec = Some(events);
             }
             // If event_rows is empty, phase_narrative remains None (AC-12/13)
+            // and cycle_events_vec remains None → is_in_progress = None
         }
+
+        // 10h. col-026: PhaseStats computation (best-effort, pure — no DB)
+        {
+            let events_slice = cycle_events_vec.as_deref().unwrap_or(&[]);
+            let phase_stats = compute_phase_stats(events_slice, &attributed);
+            report.phase_stats = if phase_stats.is_empty() {
+                None
+            } else {
+                Some(phase_stats)
+            };
+        }
+
+        // 10i. col-026: goal, cycle_type, is_in_progress, attribution_path (best-effort)
+        match (|| async {
+            let goal = store
+                .get_cycle_start_goal(&feature_cycle)
+                .await
+                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
+            Ok::<_, Box<dyn std::error::Error + Send + Sync>>(goal)
+        })()
+        .await
+        {
+            Ok(goal_opt) => {
+                let cycle_type = infer_cycle_type(goal_opt.as_deref());
+                report.goal = goal_opt;
+                report.cycle_type = Some(cycle_type);
+            }
+            Err(e) => {
+                tracing::warn!("col-026: get_cycle_start_goal failed for {feature_cycle}: {e}");
+                // report.goal remains None, report.cycle_type remains None
+            }
+        }
+
+        // is_in_progress: derived in-memory from cycle_events (no DB call)
+        report.is_in_progress = derive_is_in_progress(cycle_events_vec.as_deref());
+
+        // attribution_path: label recorded at path-selection time in step 3
+        report.attribution_path = attribution_path_label.map(|s| s.to_string());
 
         // 11. Audit
         self.audit_fire_and_forget(AuditEvent {
@@ -2103,13 +2183,83 @@ async fn write_lesson_learned(
     Ok(())
 }
 
-/// Compute Tier 1 cross-session knowledge reuse (col-020 C3, ADR-001).
+/// Build a batch SQL IN-clause query for entry metadata (col-026 ADR-003, pattern #883).
+///
+/// Returns a SQL string with exactly `count` placeholder `?` parameters.
+fn build_batch_meta_query(count: usize) -> String {
+    let placeholders = (0..count).map(|_| "?").collect::<Vec<_>>().join(", ");
+    format!(
+        "SELECT id, title, category, feature_cycle \
+           FROM entries \
+          WHERE id IN ({}) AND status != 'quarantined'",
+        placeholders
+    )
+}
+
+/// Execute a chunked batch IN-clause query for entry metadata (col-026 ADR-003, pattern #883).
+///
+/// Chunks the ID slice at 100 IDs per query to stay well within SQLite's bind-parameter limit.
+/// Returns a HashMap of entry ID → EntryMeta. Chunk failures are logged and skipped; the
+/// result may contain fewer rows than requested (R-04: graceful degradation).
+async fn batch_entry_meta_lookup(
+    store: &Arc<unimatrix_store::SqlxStore>,
+    ids: &[u64],
+) -> std::collections::HashMap<u64, crate::mcp::knowledge_reuse::EntryMeta> {
+    use sqlx::Row as _;
+
+    if ids.is_empty() {
+        return std::collections::HashMap::new();
+    }
+
+    let mut result: std::collections::HashMap<u64, crate::mcp::knowledge_reuse::EntryMeta> =
+        std::collections::HashMap::new();
+
+    for chunk in ids.chunks(100) {
+        let sql = build_batch_meta_query(chunk.len());
+        let mut query = sqlx::query(&sql);
+        for &id in chunk {
+            query = query.bind(id as i64);
+        }
+
+        match query.fetch_all(store.write_pool_server()).await {
+            Ok(rows) => {
+                for row in rows {
+                    let id: i64 = row.try_get("id").unwrap_or(0);
+                    let title: String = row.try_get("title").unwrap_or_default();
+                    let category: String = row.try_get("category").unwrap_or_default();
+                    let feature_cycle: Option<String> = row.try_get("feature_cycle").ok().flatten();
+                    result.insert(
+                        id as u64,
+                        crate::mcp::knowledge_reuse::EntryMeta {
+                            title,
+                            feature_cycle,
+                            category,
+                        },
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::warn!("col-026: batch entry meta lookup chunk failed: {e}");
+                // Continue with partial results; missing entries silently excluded (R-04)
+            }
+        }
+    }
+
+    result
+}
+
+/// Compute Tier 1 cross-session knowledge reuse (col-020 C3, ADR-001, col-026 C3).
 ///
 /// Loads query_log + injection_log for the given sessions, then delegates to the
 /// knowledge_reuse module for the actual computation.
+///
+/// col-026: accepts `current_feature_cycle` for the cross-feature/intra-cycle split.
+/// Uses a single batch IN-clause query (ADR-003, pattern #883) instead of N individual
+/// store.get() calls to fetch entry metadata.
 async fn compute_knowledge_reuse_for_sessions(
     store: &Arc<unimatrix_store::SqlxStore>,
     session_records: &[unimatrix_store::SessionRecord],
+    current_feature_cycle: &str,
 ) -> std::result::Result<
     unimatrix_observe::FeatureKnowledgeReuse,
     Box<dyn std::error::Error + Send + Sync>,
@@ -2150,9 +2300,8 @@ async fn compute_knowledge_reuse_for_sessions(
         active_cats.len()
     );
 
-    // Collect all entry IDs referenced in both logs so we can pre-fetch
-    // categories asynchronously. compute_knowledge_reuse takes a sync closure,
-    // so all async work must be completed before calling it.
+    // Collect all distinct entry IDs from both log sources (col-026 ADR-003).
+    // The batch metadata lookup is executed once with this full set.
     let mut all_entry_ids: std::collections::HashSet<u64> = std::collections::HashSet::new();
 
     for record in &query_logs {
@@ -2163,29 +2312,407 @@ async fn compute_knowledge_reuse_for_sessions(
         all_entry_ids.insert(record.entry_id);
     }
 
-    let mut category_map: std::collections::HashMap<u64, String> = std::collections::HashMap::new();
-    for entry_id in &all_entry_ids {
-        if let Ok(entry) = store.get(*entry_id).await {
-            category_map.insert(*entry_id, entry.category);
-        }
-        // Entries that fail lookup (deleted/deprecated) are silently skipped
-    }
+    // col-026 ADR-003: single batch IN-clause query for all entry metadata.
+    // Chunked at 100 IDs per query (pattern #883). Replaces the N-individual store.get() loop.
+    let ids_vec: Vec<u64> = all_entry_ids.iter().copied().collect();
+    let meta_map_owned = batch_entry_meta_lookup(store, &ids_vec).await;
 
-    // Delegate to C3 knowledge_reuse module for computation
+    // Build category_map from meta_map for the existing entry_category_lookup closure.
+    let category_map: std::collections::HashMap<u64, String> = meta_map_owned
+        .iter()
+        .map(|(&id, meta)| (id, meta.category.clone()))
+        .collect();
+
+    // Delegate to C3 knowledge_reuse module for computation.
+    // entry_meta_lookup closure returns a filtered view of meta_map_owned for requested IDs.
     let reuse = crate::mcp::knowledge_reuse::compute_knowledge_reuse(
         &query_logs,
         &injection_logs,
         &active_cats,
+        current_feature_cycle,
         |entry_id| category_map.get(&entry_id).cloned(),
+        |ids| {
+            // The batch fetch was already done above; return the pre-fetched subset.
+            ids.iter()
+                .filter_map(|id| {
+                    meta_map_owned.get(id).map(|m| {
+                        (
+                            *id,
+                            crate::mcp::knowledge_reuse::EntryMeta {
+                                title: m.title.clone(),
+                                feature_cycle: m.feature_cycle.clone(),
+                                category: m.category.clone(),
+                            },
+                        )
+                    })
+                })
+                .collect()
+        },
     );
 
     tracing::debug!(
-        "col-020b: knowledge reuse result: delivery_count={}, cross_session_count={}",
+        "col-020b: knowledge reuse result: delivery_count={}, cross_session_count={}, cross_feature={}, intra_cycle={}",
         reuse.delivery_count,
-        reuse.cross_session_count
+        reuse.cross_session_count,
+        reuse.cross_feature_reuse,
+        reuse.intra_cycle_reuse,
     );
 
     Ok(reuse)
+}
+
+// ── col-026: Phase Stats Computation ──────────────────────────────────────────
+
+/// Infer GateResult from cycle_phase_end.outcome text (col-026, ADR R-03).
+///
+/// Priority order: Rework > Fail > Pass > Unknown (multi-keyword check fires first).
+/// Contains() substring matching is used per spec; see IMPLEMENTATION-BRIEF.md for
+/// the "compass" → false-positive edge case (documented accepted fragility).
+fn infer_gate_result(outcome: Option<&str>, pass_count: u32) -> unimatrix_observe::GateResult {
+    use unimatrix_observe::GateResult;
+
+    let outcome_lower = match outcome {
+        None => return GateResult::Unknown,
+        Some(s) if s.is_empty() => return GateResult::Unknown,
+        Some(s) => s.to_lowercase(),
+    };
+
+    // Check rework FIRST (multi-pass success case, R-03 priority order)
+    if pass_count > 1
+        && (outcome_lower.contains("pass")
+            || outcome_lower.contains("success")
+            || outcome_lower.contains("approved"))
+    {
+        return GateResult::Rework;
+    }
+
+    // Single-pass rework keyword
+    if outcome_lower.contains("rework") {
+        return GateResult::Rework;
+    }
+
+    if outcome_lower.contains("fail") || outcome_lower.contains("error") {
+        return GateResult::Fail;
+    }
+
+    if outcome_lower.contains("pass")
+        || outcome_lower.contains("success")
+        || outcome_lower.contains("approved")
+    {
+        return GateResult::Pass;
+    }
+
+    GateResult::Unknown
+}
+
+/// Derive is_in_progress from loaded cycle events (col-026, ADR-001).
+///
+/// Three states: None (no events), Some(true) (open cycle), Some(false) (confirmed stopped).
+/// Plain bool is prohibited — see ADR-001.
+fn derive_is_in_progress(events: Option<&[unimatrix_observe::CycleEventRecord]>) -> Option<bool> {
+    match events {
+        None => None,
+        Some(evts) if evts.is_empty() => None,
+        Some(evts) => {
+            if evts.iter().any(|e| e.event_type == "cycle_stop") {
+                Some(false) // confirmed complete
+            } else {
+                Some(true) // has cycle_start, no cycle_stop
+            }
+        }
+    }
+}
+
+/// Infer cycle type from goal text keywords (col-026, FR-03).
+///
+/// First match wins in priority order: Design > Delivery > Bugfix > Refactor > Unknown.
+fn infer_cycle_type(goal: Option<&str>) -> String {
+    let goal_lower = match goal {
+        None => return "Unknown".to_string(),
+        Some(s) if s.is_empty() => return "Unknown".to_string(),
+        Some(s) => s.to_lowercase(),
+    };
+
+    if goal_lower.contains("design")
+        || goal_lower.contains("research")
+        || goal_lower.contains("scope")
+        || goal_lower.contains("spec")
+    {
+        return "Design".to_string();
+    }
+
+    if goal_lower.contains("implement")
+        || goal_lower.contains("deliver")
+        || goal_lower.contains("build")
+    {
+        return "Delivery".to_string();
+    }
+
+    if goal_lower.contains("fix")
+        || goal_lower.contains("bug")
+        || goal_lower.contains("regression")
+        || goal_lower.contains("hotfix")
+    {
+        return "Bugfix".to_string();
+    }
+
+    if goal_lower.contains("refactor")
+        || goal_lower.contains("cleanup")
+        || goal_lower.contains("simplify")
+    {
+        return "Refactor".to_string();
+    }
+
+    "Unknown".to_string()
+}
+
+/// Extract agent name from a SubagentStart observation.
+///
+/// Prefers obs.input["tool_name"], falls back to obs.tool.
+fn extract_agent_name(obs: &unimatrix_observe::ObservationRecord) -> Option<String> {
+    if let Some(input) = &obs.input {
+        if let Some(name) = input.get("tool_name").and_then(|v| v.as_str()) {
+            return Some(name.to_string());
+        }
+    }
+    obs.tool.clone()
+}
+
+/// Map tool name to the ToolDistribution bucket category.
+///
+/// Replicates the classify_tool mapping from unimatrix-observe/session_metrics.rs
+/// for consistency across session summaries and phase stats.
+fn categorize_tool_for_phase(tool: Option<&str>) -> &'static str {
+    match tool {
+        Some("Read") | Some("Glob") | Some("Grep") => "read",
+        Some("Edit") | Some("Write") => "write",
+        Some("Bash") => "execute",
+        Some("context_search") | Some("context_lookup") | Some("context_get") => "search",
+        _ => "other",
+    }
+}
+
+/// Compute per-phase aggregate statistics from cycle events and observation records.
+///
+/// Phase windows are derived by walking `events` in timestamp-ascending order.
+/// Each `cycle_phase_end` event closes one window and opens the next.
+/// `cycle_ts_to_obs_millis` from `services/observation.rs` is the ONLY permitted
+/// conversion from cycle_events seconds to observation milliseconds (ADR-002).
+/// Inline `* 1000` multiplication is prohibited.
+fn compute_phase_stats(
+    events: &[unimatrix_observe::CycleEventRecord],
+    attributed: &[unimatrix_observe::ObservationRecord],
+) -> Vec<unimatrix_observe::PhaseStats> {
+    use std::collections::{HashMap, HashSet};
+    use unimatrix_observe::{GateResult, PhaseStats, ToolDistribution};
+
+    // Fast-path: no events → no phase windows
+    if events.is_empty() {
+        return vec![];
+    }
+
+    // Local struct for a phase window being built during the event walk.
+    struct PhaseWindow {
+        phase: String,
+        pass_number: u32,
+        start_ms: i64,
+        end_ms: Option<i64>,
+        end_event_outcome: Option<String>,
+    }
+
+    // Phase 1: Walk events in order to extract time windows.
+    // Events arrive sorted by (timestamp ASC, seq ASC) from the SQL query.
+    let mut windows: Vec<PhaseWindow> = Vec::new();
+    let mut window_start_ms: Option<i64> = None;
+    let mut current_phase: Option<String> = None;
+    let mut pass_counters: HashMap<String, u32> = HashMap::new();
+
+    for event in events {
+        match event.event_type.as_str() {
+            "cycle_start" => {
+                // Absolute start of the first window. Use the mandatory converter (ADR-002).
+                window_start_ms = Some(crate::services::observation::cycle_ts_to_obs_millis(
+                    event.timestamp,
+                ));
+                // phase from cycle_start may be in next_phase; leave current_phase unset
+                // until the first cycle_phase_end tells us what phase just ended.
+            }
+
+            "cycle_phase_end" => {
+                // This event ends the current phase window and transitions to next_phase.
+                let ending_phase = event.phase.clone().unwrap_or_default();
+                // ADR-002: use cycle_ts_to_obs_millis — no inline * 1000
+                let end_ms = crate::services::observation::cycle_ts_to_obs_millis(event.timestamp);
+
+                if let Some(start_ms) = window_start_ms {
+                    let pass_number = {
+                        let counter = pass_counters.entry(ending_phase.clone()).or_insert(0);
+                        *counter += 1;
+                        *counter
+                    };
+                    windows.push(PhaseWindow {
+                        phase: ending_phase.clone(),
+                        pass_number,
+                        start_ms,
+                        end_ms: Some(end_ms),
+                        end_event_outcome: event.outcome.clone(),
+                    });
+                }
+
+                // Next window starts at this event's timestamp
+                window_start_ms = Some(end_ms);
+                current_phase = event.next_phase.clone();
+            }
+
+            "cycle_stop" => {
+                // Ends the last open window (if any).
+                // ADR-002: use cycle_ts_to_obs_millis — no inline * 1000
+                let end_ms = crate::services::observation::cycle_ts_to_obs_millis(event.timestamp);
+
+                if let Some(start_ms) = window_start_ms {
+                    let last_phase = current_phase.clone().unwrap_or_default();
+                    let pass_number = {
+                        let counter = pass_counters.entry(last_phase.clone()).or_insert(0);
+                        *counter += 1;
+                        *counter
+                    };
+                    // cycle_stop has no gate outcome text
+                    windows.push(PhaseWindow {
+                        phase: last_phase,
+                        pass_number,
+                        start_ms,
+                        end_ms: Some(end_ms),
+                        end_event_outcome: None,
+                    });
+                }
+                window_start_ms = None;
+            }
+
+            _ => {
+                // Unknown event type — ignore
+            }
+        }
+    }
+
+    // Edge case: if there's no cycle_stop, the last window is still open.
+    // Add it with end_ms = None (open window; filtered observations use i64::MAX as sentinel).
+    if window_start_ms.is_some() {
+        let last_phase = current_phase.clone().unwrap_or_default();
+        let pass_number = {
+            let counter = pass_counters.entry(last_phase.clone()).or_insert(0);
+            *counter += 1;
+            *counter
+        };
+        if let Some(start_ms) = window_start_ms {
+            windows.push(PhaseWindow {
+                phase: last_phase,
+                pass_number,
+                start_ms,
+                end_ms: None,
+                end_event_outcome: None,
+            });
+        }
+    }
+
+    // After walking all events: compute pass_count for each window from the final counters.
+    // pass_count = total passes seen for this phase name (pass_counters has the final value).
+
+    // Phase 2 + 3 + 4: For each window, slice observations and compute aggregates.
+    let mut result: Vec<PhaseStats> = Vec::with_capacity(windows.len());
+
+    for window in &windows {
+        let pass_count = pass_counters.get(&window.phase).copied().unwrap_or(1);
+        let window_end = window.end_ms.unwrap_or(i64::MAX);
+
+        // Slice observations into this window [start_ms, end_ms)
+        let filtered: Vec<&unimatrix_observe::ObservationRecord> = attributed
+            .iter()
+            .filter(|obs| {
+                // obs.ts is u64 epoch millis; cast to i64 for comparison.
+                // If obs.ts > i64::MAX as u64, the cast wraps — still correct (saturates to MAX).
+                let ts = obs.ts as i64;
+                ts >= window.start_ms && ts < window_end
+            })
+            .collect();
+
+        let record_count = filtered.len();
+
+        // Distinct sessions
+        let session_ids: HashSet<&str> = filtered.iter().map(|o| o.session_id.as_str()).collect();
+        let session_count = session_ids.len();
+
+        // Agents: SubagentStart observations, deduplicated in first-seen order
+        let mut agents: Vec<String> = Vec::new();
+        let mut seen_agents: HashSet<String> = HashSet::new();
+        for obs in filtered.iter().filter(|o| o.event_type == "SubagentStart") {
+            if let Some(name) = extract_agent_name(obs) {
+                if seen_agents.insert(name.clone()) {
+                    agents.push(name);
+                }
+            }
+        }
+
+        // Tool distribution: PreToolUse observations only (matching session_metrics.rs)
+        let mut tool_distribution = ToolDistribution::default();
+        for obs in filtered.iter().filter(|o| o.event_type == "PreToolUse") {
+            match categorize_tool_for_phase(obs.tool.as_deref()) {
+                "read" => tool_distribution.read += 1,
+                "execute" => tool_distribution.execute += 1,
+                "write" => tool_distribution.write += 1,
+                "search" => tool_distribution.search += 1,
+                _ => {} // other/spawn/store not counted in ToolDistribution
+            }
+        }
+
+        // Knowledge served: PreToolUse where tool is context_search / context_lookup / context_get
+        let knowledge_served = filtered
+            .iter()
+            .filter(|o| o.event_type == "PreToolUse")
+            .filter(|o| {
+                matches!(
+                    o.tool.as_deref(),
+                    Some("context_search") | Some("context_lookup") | Some("context_get")
+                )
+            })
+            .count() as u64;
+
+        // Knowledge stored: PreToolUse where tool is context_store
+        let knowledge_stored = filtered
+            .iter()
+            .filter(|o| o.event_type == "PreToolUse")
+            .filter(|o| o.tool.as_deref() == Some("context_store"))
+            .count() as u64;
+
+        // Gate result from end_event_outcome
+        let gate_result = infer_gate_result(window.end_event_outcome.as_deref(), pass_count);
+        let gate_outcome_text = window.end_event_outcome.clone();
+
+        // Duration: (end_ms - start_ms) / 1000, floored to zero
+        let duration_secs = window
+            .end_ms
+            .map(|end| ((end - window.start_ms).max(0) as u64) / 1000)
+            .unwrap_or(0);
+
+        result.push(PhaseStats {
+            phase: window.phase.clone(),
+            pass_number: window.pass_number,
+            pass_count,
+            duration_secs,
+            start_ms: window.start_ms,
+            end_ms: window.end_ms,
+            session_count,
+            record_count,
+            agents,
+            tool_distribution,
+            knowledge_served,
+            knowledge_stored,
+            gate_result,
+            gate_outcome_text,
+            hotspot_ids: vec![], // populated by formatter only
+        });
+    }
+
+    result
 }
 
 #[cfg(test)]
@@ -2646,6 +3173,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         // Clone and truncate
@@ -2693,6 +3225,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         let content = build_lesson_learned_content(&report);
@@ -2738,6 +3275,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         let content = build_lesson_learned_content(&report);
@@ -2767,6 +3309,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         let content = build_lesson_learned_content(&report);
@@ -3048,7 +3595,7 @@ mod tests {
         // Empty sessions slice: all data flows will be empty, but the async
         // store lookups still exercise the pre-fetch path. Before the fix this
         // would panic; after the fix it returns Ok with zero counts.
-        let result = compute_knowledge_reuse_for_sessions(&store, &[]).await;
+        let result = compute_knowledge_reuse_for_sessions(&store, &[], "test-cycle").await;
 
         assert!(result.is_ok(), "expected Ok, got {:?}", result.err());
         let reuse = result.unwrap();
@@ -3548,13 +4095,13 @@ mod tests {
     /// The three-path fallback logic extracted from the context_cycle_review closure
     /// for isolated unit testing. This mirrors the exact code in the handler closure.
     ///
-    /// Returns the same result type as the closure: Result<Vec<ObservationRecord>, ObserveError>.
+    /// col-026: returns (Vec<ObservationRecord>, path_label) to match the updated closure.
     #[cfg(test)]
     fn run_three_path_fallback(
         source: &MockObservationSource,
         feature_cycle: &str,
     ) -> std::result::Result<
-        Vec<unimatrix_observe::ObservationRecord>,
+        (Vec<unimatrix_observe::ObservationRecord>, &'static str),
         unimatrix_observe::ObserveError,
     > {
         use std::sync::atomic::Ordering;
@@ -3567,7 +4114,7 @@ mod tests {
             .map(|v| v.clone())
             .map_err(|e| ObserveError::Database(e.to_string()))?;
         if !primary.is_empty() {
-            return Ok(primary);
+            return Ok((primary, "cycle_events-first (primary)"));
         }
 
         // Fallback log (ADR-003) — tested via tracing_test in T-CCR-03.
@@ -3585,7 +4132,7 @@ mod tests {
             .map(|v| v.clone())
             .map_err(|e| ObserveError::Database(e.to_string()))?;
         if !legacy1.is_empty() {
-            return Ok(legacy1);
+            return Ok((legacy1, "sessions.feature_cycle (legacy)"));
         }
 
         // Second fallback log (ADR-003)
@@ -3597,7 +4144,7 @@ mod tests {
 
         // Path 3: Legacy-2 (content-based attribution)
         source.unattributed_called.store(true, Ordering::SeqCst);
-        Ok(vec![])
+        Ok((vec![], "content-scan (fallback)"))
     }
 
     /// T-CCR-01: When load_cycle_observations returns non-empty, load_feature_observations
@@ -3612,9 +4159,14 @@ mod tests {
         let result = run_three_path_fallback(&source, "col-024");
 
         assert!(result.is_ok(), "primary path must succeed");
-        let obs = result.unwrap();
+        let (obs, path_label) = result.unwrap();
         assert_eq!(obs.len(), 1, "must return the primary observation");
         assert_eq!(obs[0].session_id, "session-001");
+        // col-026: verify attribution path label
+        assert_eq!(
+            path_label, "cycle_events-first (primary)",
+            "primary path must use cycle_events-first label"
+        );
 
         assert!(
             !source.feature_obs_called.load(Ordering::SeqCst),
@@ -3638,9 +4190,14 @@ mod tests {
         let result = run_three_path_fallback(&source, "col-024");
 
         assert!(result.is_ok(), "legacy fallback must succeed");
-        let obs = result.unwrap();
+        let (obs, path_label) = result.unwrap();
         assert_eq!(obs.len(), 1, "must return the legacy observation");
         assert_eq!(obs[0].session_id, "legacy-session-001");
+        // col-026: verify attribution path label
+        assert_eq!(
+            path_label, "sessions.feature_cycle (legacy)",
+            "legacy path must use sessions.feature_cycle label"
+        );
 
         assert!(
             source.feature_obs_called.load(Ordering::SeqCst),
@@ -3689,6 +4246,463 @@ mod tests {
         assert!(
             !source.unattributed_called.load(Ordering::SeqCst),
             "load_unattributed_sessions must NOT be called when primary returns Err (FM-01)"
+        );
+    }
+}
+
+// NOTE: The phase_stats tests are appended by col-026-agent-5-phase-stats below.
+// They are placed outside the existing tests module to avoid merge conflicts.
+// Rust allows multiple test modules per file.
+#[cfg(test)]
+mod phase_stats_tests {
+    use super::*;
+
+    /// Helper to build a CycleEventRecord for test fixtures.
+    fn make_cycle_event(
+        event_type: &str,
+        phase: Option<&str>,
+        outcome: Option<&str>,
+        next_phase: Option<&str>,
+        timestamp: i64,
+    ) -> unimatrix_observe::CycleEventRecord {
+        unimatrix_observe::CycleEventRecord {
+            seq: 0,
+            event_type: event_type.to_string(),
+            phase: phase.map(|s| s.to_string()),
+            outcome: outcome.map(|s| s.to_string()),
+            next_phase: next_phase.map(|s| s.to_string()),
+            timestamp,
+        }
+    }
+
+    /// Helper to build a PreToolUse ObservationRecord at a given ts (millis).
+    fn make_obs_at(
+        session_id: &str,
+        ts_ms: u64,
+        tool: &str,
+    ) -> unimatrix_observe::ObservationRecord {
+        unimatrix_observe::ObservationRecord {
+            ts: ts_ms,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
+            session_id: session_id.to_string(),
+            tool: Some(tool.to_string()),
+            input: None,
+            response_size: None,
+            response_snippet: None,
+        }
+    }
+
+    /// T-PS / R-12: Empty events → empty vec (handler sets phase_stats = None).
+    #[test]
+    fn test_phase_stats_empty_events_produces_empty_vec() {
+        let result = compute_phase_stats(&[], &[]);
+        assert!(
+            result.is_empty(),
+            "empty events must produce empty vec (handler converts to None)"
+        );
+    }
+
+    /// T-PS / AC-06: Basic single-phase window with known duration and record count.
+    #[test]
+    fn test_compute_phase_stats_basic_window() {
+        use crate::services::observation::cycle_ts_to_obs_millis;
+
+        let ts_start = 1_700_000_000i64;
+        let ts_phase_end = 1_700_000_100i64;
+        let ts_stop = 1_700_000_200i64;
+
+        let events = vec![
+            make_cycle_event("cycle_start", None, None, None, ts_start),
+            make_cycle_event(
+                "cycle_phase_end",
+                Some("design"),
+                Some("PASS"),
+                Some("implementation"),
+                ts_phase_end,
+            ),
+            make_cycle_event("cycle_stop", None, None, None, ts_stop),
+        ];
+
+        let start_ms = cycle_ts_to_obs_millis(ts_start);
+        let phase_end_ms = cycle_ts_to_obs_millis(ts_phase_end);
+
+        let obs = vec![
+            make_obs_at("sess-1", (start_ms + 10_000) as u64, "Read"),
+            make_obs_at("sess-1", phase_end_ms as u64, "Bash"), // boundary: in next window
+        ];
+
+        let result = compute_phase_stats(&events, &obs);
+        assert_eq!(result.len(), 2, "two phase windows");
+
+        let design = &result[0];
+        assert_eq!(design.phase, "design");
+        assert_eq!(design.pass_number, 1);
+        assert_eq!(design.pass_count, 1);
+        assert_eq!(design.duration_secs, 100);
+        assert_eq!(
+            design.record_count, 1,
+            "obs before boundary in first window"
+        );
+        assert_eq!(design.session_count, 1);
+        assert_eq!(
+            design.start_ms, start_ms,
+            "start_ms must use cycle_ts_to_obs_millis (ADR-002)"
+        );
+        assert_eq!(design.end_ms, Some(phase_end_ms));
+        assert_eq!(design.gate_result, unimatrix_observe::GateResult::Pass);
+
+        let impl_phase = &result[1];
+        assert_eq!(impl_phase.phase, "implementation");
+        assert_eq!(impl_phase.record_count, 1, "boundary obs in next window");
+        assert_eq!(
+            impl_phase.gate_result,
+            unimatrix_observe::GateResult::Unknown
+        );
+    }
+
+    /// T-PS-10 / R-02 / AC-07: Rework detection — same phase appearing twice.
+    #[test]
+    fn test_phase_stats_rework_detection() {
+        let events = vec![
+            make_cycle_event("cycle_start", None, None, None, 1_700_000_000),
+            make_cycle_event(
+                "cycle_phase_end",
+                Some("design"),
+                Some("fail"),
+                Some("design"),
+                1_700_000_100,
+            ),
+            make_cycle_event(
+                "cycle_phase_end",
+                Some("design"),
+                Some("PASS"),
+                Some("implementation"),
+                1_700_000_200,
+            ),
+            make_cycle_event("cycle_stop", None, None, None, 1_700_000_300),
+        ];
+
+        let result = compute_phase_stats(&events, &[]);
+        assert!(result.len() >= 2, "at least two design passes");
+
+        let design_pass1 = &result[0];
+        assert_eq!(design_pass1.phase, "design");
+        assert_eq!(design_pass1.pass_number, 1);
+        assert_eq!(design_pass1.pass_count, 2, "rework: 2 passes total");
+        assert_eq!(
+            design_pass1.gate_result,
+            unimatrix_observe::GateResult::Fail
+        );
+
+        let design_pass2 = &result[1];
+        assert_eq!(design_pass2.phase, "design");
+        assert_eq!(design_pass2.pass_number, 2);
+        assert_eq!(design_pass2.pass_count, 2, "rework: 2 passes total");
+        // pass_count=2 + outcome="PASS" → Rework (multi-pass success, R-03 priority order)
+        assert_eq!(
+            design_pass2.gate_result,
+            unimatrix_observe::GateResult::Rework
+        );
+    }
+
+    /// T-PS-07 / R-05: derive_is_in_progress — None/Some(true)/Some(false).
+    #[test]
+    fn test_derive_is_in_progress_three_states() {
+        assert_eq!(derive_is_in_progress(None), None, "None input → None");
+        assert_eq!(
+            derive_is_in_progress(Some(&[])),
+            None,
+            "empty events → None"
+        );
+
+        let open = vec![make_cycle_event(
+            "cycle_start",
+            None,
+            None,
+            None,
+            1_700_000_000,
+        )];
+        assert_eq!(
+            derive_is_in_progress(Some(&open)),
+            Some(true),
+            "no cycle_stop → Some(true)"
+        );
+
+        let complete = vec![
+            make_cycle_event("cycle_start", None, None, None, 1_700_000_000),
+            make_cycle_event("cycle_stop", None, None, None, 1_700_000_100),
+        ];
+        assert_eq!(
+            derive_is_in_progress(Some(&complete)),
+            Some(false),
+            "cycle_stop present → Some(false)"
+        );
+    }
+
+    /// T-PS-06 / R-03: GateResult inference — all cases including known fragility.
+    #[test]
+    fn test_gate_result_inference() {
+        use unimatrix_observe::GateResult;
+
+        assert_eq!(infer_gate_result(Some("PASS"), 1), GateResult::Pass);
+        assert_eq!(infer_gate_result(Some("pass"), 1), GateResult::Pass);
+        assert_eq!(infer_gate_result(Some("approved"), 1), GateResult::Pass);
+        assert_eq!(
+            infer_gate_result(Some("failed: type errors"), 1),
+            GateResult::Fail
+        );
+        assert_eq!(
+            infer_gate_result(Some("error in gate 2b"), 1),
+            GateResult::Fail
+        );
+        assert_eq!(
+            infer_gate_result(Some("rework required"), 1),
+            GateResult::Rework
+        );
+        assert_eq!(infer_gate_result(Some("REWORK"), 1), GateResult::Rework);
+        // Multi-pass + success keyword → Rework (priority check fires first)
+        assert_eq!(
+            infer_gate_result(Some("pass after rework"), 2),
+            GateResult::Rework,
+            "pass_count>1 + 'pass' → Rework (R-03 priority)"
+        );
+        assert_eq!(infer_gate_result(None, 1), GateResult::Unknown);
+        assert_eq!(infer_gate_result(Some(""), 1), GateResult::Unknown);
+        assert_eq!(
+            infer_gate_result(Some("something unrecognized"), 1),
+            GateResult::Unknown
+        );
+        // KNOWN: contains() matches embedded words — documented accepted fragility per spec
+        assert_eq!(
+            infer_gate_result(Some("compass"), 1),
+            GateResult::Pass,
+            "KNOWN: contains('pass') matches 'compass' — accepted fragility"
+        );
+    }
+
+    /// T-PS-11 / R-01: No actual `* 1000` Rust multiplication in compute_phase_stats.
+    ///
+    /// Filters out comment lines (// ...) and lines containing the pattern only inside
+    /// a string/backtick literal so only real Rust expressions are checked.
+    #[test]
+    fn test_phase_stats_no_inline_multiply() {
+        let source = include_str!("tools.rs");
+        let fn_marker = "fn compute_phase_stats(";
+        if let Some(start) = source.find(fn_marker) {
+            let scan_window = &source[start..][..source[start..].len().min(8000)];
+            // Check non-comment, non-string lines for actual multiplication by 1000.
+            // Violations look like: `ts_secs * 1000` or `n * 1000` (actual Rust code).
+            // Permitted: saturating_mul(1000), // comments, string literals.
+            let has_violation = scan_window.lines().any(|line| {
+                let trimmed = line.trim();
+                // Skip pure comment lines
+                if trimmed.starts_with("//") {
+                    return false;
+                }
+                // Skip lines where the pattern is inside a string/backtick (not real code)
+                if trimmed.contains(r#""`* 1000`""#)
+                    || trimmed.contains("saturating_mul")
+                    || trimmed.contains(r#""* 1000""#)
+                {
+                    return false;
+                }
+                // Detect actual multiplication: must not be a comment fragment
+                // Check for `* 1000` that isn't after `//` on the same line
+                if let Some(code_part) = trimmed.split("//").next() {
+                    code_part.contains("* 1000")
+                } else {
+                    false
+                }
+            });
+            assert!(
+                !has_violation,
+                "compute_phase_stats must not use inline multiplication by 1000 (ADR-002); \
+                 use cycle_ts_to_obs_millis() instead"
+            );
+        } else {
+            panic!("compute_phase_stats not found in source");
+        }
+    }
+
+    /// T-PS / R-01: Boundary obs falls in next window (end-exclusive semantics).
+    #[test]
+    fn test_phase_stats_obs_in_correct_window_millis_boundary() {
+        use crate::services::observation::cycle_ts_to_obs_millis;
+
+        let events = vec![
+            make_cycle_event("cycle_start", None, None, None, 1_700_000_000),
+            make_cycle_event(
+                "cycle_phase_end",
+                Some("scope"),
+                Some("PASS"),
+                Some("impl"),
+                1_700_000_100,
+            ),
+            make_cycle_event("cycle_stop", None, None, None, 1_700_000_200),
+        ];
+
+        let boundary_ms = cycle_ts_to_obs_millis(1_700_000_100);
+        let obs_at_boundary = make_obs_at("sess-1", boundary_ms as u64, "Read");
+        let obs_before = make_obs_at("sess-2", (boundary_ms - 1) as u64, "Read");
+
+        let result = compute_phase_stats(&events, &[obs_before, obs_at_boundary]);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].record_count, 1, "obs before boundary in scope");
+        assert_eq!(result[1].record_count, 1, "obs at boundary in next window");
+    }
+
+    /// T-PS / R-02: Only cycle_start + cycle_stop.
+    #[test]
+    fn test_phase_stats_no_phase_end_events() {
+        let events = vec![
+            make_cycle_event("cycle_start", None, None, None, 1_700_000_000),
+            make_cycle_event("cycle_stop", None, None, None, 1_700_000_100),
+        ];
+        let result = compute_phase_stats(&events, &[]);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].duration_secs, 100);
+        assert_eq!(result[0].phase, "");
+    }
+
+    /// T-PS / R-02: Zero-duration window.
+    #[test]
+    fn test_phase_stats_zero_duration_no_panic() {
+        let events = vec![
+            make_cycle_event("cycle_start", None, None, None, 1_700_000_000),
+            make_cycle_event("cycle_stop", None, None, None, 1_700_000_000),
+        ];
+        let result = compute_phase_stats(&events, &[]);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].duration_secs, 0);
+    }
+
+    /// T-PS / AC-06: Knowledge served/stored counts.
+    #[test]
+    fn test_phase_stats_knowledge_served_counted() {
+        use crate::services::observation::cycle_ts_to_obs_millis;
+        let events = vec![
+            make_cycle_event("cycle_start", None, None, None, 1_700_000_000),
+            make_cycle_event("cycle_stop", None, None, None, 1_700_001_000),
+        ];
+        let mid_ms = cycle_ts_to_obs_millis(1_700_000_000) + 500;
+        let obs = vec![
+            make_obs_at("sess-1", mid_ms as u64, "context_search"),
+            make_obs_at("sess-1", mid_ms as u64, "context_search"),
+            make_obs_at("sess-1", mid_ms as u64, "context_lookup"),
+            make_obs_at("sess-1", mid_ms as u64, "context_store"),
+            make_obs_at("sess-1", mid_ms as u64, "Read"),
+        ];
+        let result = compute_phase_stats(&events, &obs);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].knowledge_served, 3);
+        assert_eq!(result[0].knowledge_stored, 1);
+    }
+
+    /// T-PS / AC-06: Tool distribution by category.
+    #[test]
+    fn test_phase_stats_tool_distribution() {
+        use crate::services::observation::cycle_ts_to_obs_millis;
+        let events = vec![
+            make_cycle_event("cycle_start", None, None, None, 1_700_000_000),
+            make_cycle_event("cycle_stop", None, None, None, 1_700_001_000),
+        ];
+        let mid_ms = cycle_ts_to_obs_millis(1_700_000_000) + 500;
+        let obs = vec![
+            make_obs_at("sess-1", mid_ms as u64, "Read"),
+            make_obs_at("sess-1", mid_ms as u64, "Glob"),
+            make_obs_at("sess-1", mid_ms as u64, "Bash"),
+            make_obs_at("sess-1", mid_ms as u64, "Edit"),
+            make_obs_at("sess-1", mid_ms as u64, "context_search"),
+        ];
+        let result = compute_phase_stats(&events, &obs);
+        assert_eq!(result.len(), 1);
+        let dist = &result[0].tool_distribution;
+        assert_eq!(dist.read, 2);
+        assert_eq!(dist.execute, 1);
+        assert_eq!(dist.write, 1);
+        assert_eq!(dist.search, 1);
+    }
+
+    /// T-PS / AC-06: Session count from distinct session_ids.
+    #[test]
+    fn test_phase_stats_session_count() {
+        use crate::services::observation::cycle_ts_to_obs_millis;
+        let events = vec![
+            make_cycle_event("cycle_start", None, None, None, 1_700_000_000),
+            make_cycle_event("cycle_stop", None, None, None, 1_700_001_000),
+        ];
+        let mid_ms = cycle_ts_to_obs_millis(1_700_000_000) + 500;
+        let obs = vec![
+            make_obs_at("sess-A", mid_ms as u64, "Read"),
+            make_obs_at("sess-A", mid_ms as u64, "Bash"),
+            make_obs_at("sess-B", mid_ms as u64, "Edit"),
+            make_obs_at("sess-B", mid_ms as u64, "Read"),
+        ];
+        let result = compute_phase_stats(&events, &obs);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].session_count, 2);
+        assert_eq!(result[0].record_count, 4);
+    }
+
+    /// T-PS / AC-06: Agent deduplication in first-seen order.
+    #[test]
+    fn test_phase_stats_agent_deduplication() {
+        use crate::services::observation::cycle_ts_to_obs_millis;
+        let events = vec![
+            make_cycle_event("cycle_start", None, None, None, 1_700_000_000),
+            make_cycle_event("cycle_stop", None, None, None, 1_700_001_000),
+        ];
+        let mid_ms = cycle_ts_to_obs_millis(1_700_000_000) + 500;
+
+        let mut obs1 = make_obs_at("sess-1", mid_ms as u64, "agent-alpha");
+        obs1.event_type = "SubagentStart".to_string();
+        let mut obs2 = make_obs_at("sess-1", mid_ms as u64, "agent-alpha");
+        obs2.event_type = "SubagentStart".to_string();
+        let mut obs3 = make_obs_at("sess-1", mid_ms as u64, "agent-beta");
+        obs3.event_type = "SubagentStart".to_string();
+
+        let result = compute_phase_stats(&events, &[obs1, obs2, obs3]);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].agents.len(), 2, "deduplicated");
+        assert_eq!(result[0].agents[0], "agent-alpha");
+        assert_eq!(result[0].agents[1], "agent-beta");
+    }
+
+    /// T-PS / R-01: cycle_ts_to_obs_millis overflow guard.
+    #[test]
+    fn test_cycle_ts_to_obs_millis_overflow_guard() {
+        use crate::services::observation::cycle_ts_to_obs_millis;
+        let large_ts = i64::MAX / 1000 + 1;
+        let result = cycle_ts_to_obs_millis(large_ts);
+        assert_eq!(result, i64::MAX, "saturating_mul: overflow → i64::MAX");
+    }
+
+    /// T-PS / FR-03: infer_cycle_type keyword matching.
+    #[test]
+    fn test_infer_cycle_type_keywords() {
+        assert_eq!(infer_cycle_type(None), "Unknown");
+        assert_eq!(infer_cycle_type(Some("")), "Unknown");
+        assert_eq!(
+            infer_cycle_type(Some("implement new store layer")),
+            "Delivery"
+        );
+        assert_eq!(
+            infer_cycle_type(Some("design the embedding pipeline")),
+            "Design"
+        );
+        assert_eq!(
+            infer_cycle_type(Some("fix the regression in col-024")),
+            "Bugfix"
+        );
+        assert_eq!(
+            infer_cycle_type(Some("refactor the observation module")),
+            "Refactor"
+        );
+        assert_eq!(infer_cycle_type(Some("something unknown")), "Unknown");
+        assert_eq!(
+            infer_cycle_type(Some("research spike for col-026")),
+            "Design"
         );
     }
 }

@@ -499,6 +499,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
@@ -538,6 +543,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: Some(narrative),
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         let json = serde_json::to_string(&report).expect("serialize");

@@ -43,6 +43,11 @@ pub fn build_report(
         context_reload_pct: None,
         attribution: None,
         phase_narrative: None,
+        goal: None,
+        cycle_type: None,
+        attribution_path: None,
+        is_in_progress: None,
+        phase_stats: None,
     }
 }
 
@@ -83,9 +88,14 @@ fn recommendation_for(hotspot: &HotspotFinding) -> Option<Recommendation> {
         }),
         "compile_cycles" if hotspot.measured > 10.0 => Some(Recommendation {
             hotspot_type: "compile_cycles".into(),
-            action: "Consider incremental compilation or targeted cargo test invocations".into(),
+            action: "Batch field additions before compiling — high compile cycle counts typically \
+                     indicate iterative per-field struct changes or cascading type errors; \
+                     complete type definitions and resolve compiler errors in-memory before each build"
+                .into(),
             rationale: format!(
-                "{:.0} compile cycles detected (threshold: 10) -- consider narrowing test scope",
+                "{:.0} compile cycles detected — each compile-check-fix loop adds 2–6 compile events; \
+                 batch changes to logical units (complete struct definitions, full impl blocks) \
+                 before building to reduce total compile count",
                 hotspot.measured
             ),
         }),
@@ -388,7 +398,21 @@ mod tests {
         let recs = recommendations_for_hotspots(&[hotspot]);
         assert_eq!(recs.len(), 1);
         assert_eq!(recs[0].hotspot_type, "compile_cycles");
-        assert!(recs[0].action.contains("incremental"));
+        assert!(
+            recs[0].action.contains("batch") || recs[0].action.contains("iterative"),
+            "compile_cycles action must reference batching or iterative compilation, got: {}",
+            recs[0].action
+        );
+        assert!(
+            !recs[0].action.contains("allowlist"),
+            "compile_cycles action must not mention allowlist, got: {}",
+            recs[0].action
+        );
+        assert!(
+            !recs[0].action.contains("settings.json"),
+            "compile_cycles action must not reference settings.json, got: {}",
+            recs[0].action
+        );
     }
 
     #[test]
@@ -404,6 +428,127 @@ mod tests {
         };
         let recs = recommendations_for_hotspots(&[hotspot]);
         assert!(recs.is_empty());
+    }
+
+    #[test]
+    fn test_compile_cycles_action_no_allowlist() {
+        // T-CC-01 (AC-19): compile_cycles action must not reference allowlist or settings.json
+        let hotspot = HotspotFinding {
+            category: HotspotCategory::Session,
+            severity: Severity::Warning,
+            rule_name: "compile_cycles".to_string(),
+            claim: "compile".to_string(),
+            measured: 15.0,
+            threshold: 10.0,
+            evidence: vec![],
+        };
+        let recs = recommendations_for_hotspots(&[hotspot]);
+        assert_eq!(recs.len(), 1);
+        assert!(
+            !recs[0].action.contains("allowlist"),
+            "compile_cycles action must not contain 'allowlist'"
+        );
+        assert!(
+            !recs[0].action.contains("settings.json"),
+            "compile_cycles action must not contain 'settings.json'"
+        );
+    }
+
+    #[test]
+    fn test_permission_friction_recommendation_independence() {
+        // T-CC-02 (AC-19): permission_retries still uses allowlist; compile_cycles uses batching.
+        // The two recommendation templates share no text.
+        let pr_hotspot = HotspotFinding {
+            category: HotspotCategory::Friction,
+            severity: Severity::Warning,
+            rule_name: "permission_retries".to_string(),
+            claim: "retries".to_string(),
+            measured: 8.0,
+            threshold: 3.0,
+            evidence: vec![],
+        };
+        let cc_hotspot = HotspotFinding {
+            category: HotspotCategory::Session,
+            severity: Severity::Warning,
+            rule_name: "compile_cycles".to_string(),
+            claim: "compile".to_string(),
+            measured: 15.0,
+            threshold: 10.0,
+            evidence: vec![],
+        };
+
+        let pr_recs = recommendations_for_hotspots(&[pr_hotspot]);
+        let cc_recs = recommendations_for_hotspots(&[cc_hotspot]);
+
+        assert_eq!(pr_recs.len(), 1);
+        assert_eq!(cc_recs.len(), 1);
+
+        // permission_retries CAN reference allowlist (its correct recommendation)
+        assert!(
+            pr_recs[0].action.contains("allowlist"),
+            "permission_retries action should reference allowlist (its correct fix)"
+        );
+        // permission_retries must NOT reference compile_cycles concepts
+        assert!(
+            !pr_recs[0].action.contains("batch"),
+            "permission_retries must not reference batch compilation"
+        );
+        assert!(
+            !pr_recs[0].action.contains("iterative"),
+            "permission_retries must not reference iterative compilation"
+        );
+
+        // compile_cycles must NOT reference allowlist
+        assert!(
+            !cc_recs[0].action.contains("allowlist"),
+            "compile_cycles action must not reference allowlist"
+        );
+
+        // The two action strings must be distinct
+        assert_ne!(
+            pr_recs[0].action, cc_recs[0].action,
+            "permission_retries and compile_cycles must have distinct action text"
+        );
+    }
+
+    #[test]
+    fn test_compile_cycles_rationale_no_threshold_language() {
+        // T-CC-03 (AC-13): compile_cycles rationale must not contain "(threshold: N)"
+        let hotspot = HotspotFinding {
+            category: HotspotCategory::Session,
+            severity: Severity::Warning,
+            rule_name: "compile_cycles".to_string(),
+            claim: "compile".to_string(),
+            measured: 20.0,
+            threshold: 10.0,
+            evidence: vec![],
+        };
+        let recs = recommendations_for_hotspots(&[hotspot]);
+        assert_eq!(recs.len(), 1);
+        assert!(
+            !recs[0].rationale.contains("(threshold:"),
+            "compile_cycles rationale must not contain threshold language, got: {}",
+            recs[0].rationale
+        );
+    }
+
+    #[test]
+    fn test_compile_cycles_at_threshold_boundary() {
+        // Edge case: measured == 10.0 is not above threshold (guard is > 10.0), no recommendation
+        let hotspot = HotspotFinding {
+            category: HotspotCategory::Session,
+            severity: Severity::Info,
+            rule_name: "compile_cycles".to_string(),
+            claim: "compile".to_string(),
+            measured: 10.0,
+            threshold: 10.0,
+            evidence: vec![],
+        };
+        let recs = recommendations_for_hotspots(&[hotspot]);
+        assert!(
+            recs.is_empty(),
+            "measured == 10.0 should not trigger recommendation (guard is > 10.0)"
+        );
     }
 
     #[test]

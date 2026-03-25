@@ -195,6 +195,89 @@ pub struct SessionSummary {
     pub outcome: Option<String>,
 }
 
+/// Tool call counts grouped by category for a phase or session (col-026).
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ToolDistribution {
+    /// Read-category tool calls (Read, Glob, Grep, etc.).
+    #[serde(default)]
+    pub read: u64,
+    /// Execute-category tool calls (Bash, etc.).
+    #[serde(default)]
+    pub execute: u64,
+    /// Write-category tool calls (Edit, Write, etc.).
+    #[serde(default)]
+    pub write: u64,
+    /// Search-category tool calls (context_search, context_lookup, etc.).
+    #[serde(default)]
+    pub search: u64,
+}
+
+/// Gate outcome classification derived from `cycle_phase_end.outcome` text (col-026).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GateResult {
+    Pass,
+    Fail,
+    Rework,
+    #[default]
+    Unknown,
+}
+
+/// Aggregate statistics for one phase window in a feature cycle (col-026).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhaseStats {
+    /// Phase name (e.g., "design", "implementation").
+    pub phase: String,
+    /// 1-indexed pass number within this phase name for this cycle.
+    pub pass_number: u32,
+    /// Total number of passes for this phase name in the cycle (>1 = rework).
+    pub pass_count: u32,
+    /// Duration of this phase window in seconds.
+    pub duration_secs: u64,
+    /// Phase window start boundary in epoch milliseconds (GAP-1: required by formatter
+    /// to map finding evidence timestamps to phase windows for hotspot annotations).
+    pub start_ms: i64,
+    /// Phase window end boundary in epoch milliseconds, or None if the phase is open
+    /// (no cycle_stop event yet). GAP-1: required by formatter for hotspot annotations.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_ms: Option<i64>,
+    /// Number of distinct sessions with observations in this phase window.
+    pub session_count: usize,
+    /// Total observation records in this phase window.
+    pub record_count: usize,
+    /// Deduplicated agent names observed in this window, first-seen order.
+    pub agents: Vec<String>,
+    /// Tool call distribution by category.
+    pub tool_distribution: ToolDistribution,
+    /// Knowledge entries served to agents in this window.
+    pub knowledge_served: u64,
+    /// Knowledge entries stored by agents in this window.
+    pub knowledge_stored: u64,
+    /// Gate outcome classification for this phase.
+    pub gate_result: GateResult,
+    /// Raw outcome text from the `cycle_phase_end` event, if present.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gate_outcome_text: Option<String>,
+    /// Finding IDs (e.g., "F-01") associated with this phase; populated by the formatter.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hotspot_ids: Vec<String>,
+}
+
+/// A reference to a knowledge entry, used in cross-feature reuse reporting (col-026).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EntryRef {
+    /// Entry database ID.
+    pub id: u64,
+    /// Entry title.
+    pub title: String,
+    /// Feature cycle that stored this entry.
+    pub feature_cycle: String,
+    /// Entry category.
+    pub category: String,
+    /// Number of times this entry was served during the current cycle's sessions.
+    pub serve_count: u64,
+}
+
 /// Feature-scoped knowledge delivery measurement (col-020b).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeatureKnowledgeReuse {
@@ -208,6 +291,21 @@ pub struct FeatureKnowledgeReuse {
     pub by_category: HashMap<String, u64>,
     /// Categories with active entries but zero delivery.
     pub category_gaps: Vec<String>,
+    /// All distinct entry IDs served across sessions (alias of delivery_count for display).
+    #[serde(default)]
+    pub total_served: u64,
+    /// Knowledge entries created during this cycle.
+    #[serde(default)]
+    pub total_stored: u64,
+    /// Entries originating from prior feature cycles that were served.
+    #[serde(default)]
+    pub cross_feature_reuse: u64,
+    /// Entries stored during this cycle that were also served.
+    #[serde(default)]
+    pub intra_cycle_reuse: u64,
+    /// Top cross-feature entries by serve count (up to 5).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub top_cross_feature_entries: Vec<EntryRef>,
 }
 
 /// Attribution quality metadata for consumer trust assessment (col-020, ADR-003).
@@ -315,6 +413,34 @@ pub struct RetrospectiveReport {
     /// Absent from JSON (not null) when no cycle_events exist for the feature.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub phase_narrative: Option<PhaseNarrative>,
+
+    // ── col-026 new fields ────────────────────────────────────────────────
+    /// Goal text from `cycle_events.goal` on the `cycle_start` row, if present (col-026).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal: Option<String>,
+
+    /// Inferred cycle type from goal keywords (e.g., "Design", "Delivery") (col-026).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cycle_type: Option<String>,
+
+    /// Attribution path used to load observations (col-026).
+    /// Values: "cycle_events-first (primary)", "sessions.feature_cycle (legacy)",
+    /// "content-scan (fallback)".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attribution_path: Option<String>,
+
+    /// Whether the cycle is still in progress (col-026, ADR-001).
+    /// `None` = no `cycle_events` rows (cannot determine).
+    /// `Some(true)` = `cycle_start` present, no `cycle_stop`.
+    /// `Some(false)` = `cycle_stop` confirmed present.
+    /// NEVER plain `bool` — three-valued semantics are required (ADR-001).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_in_progress: Option<bool>,
+
+    /// Per-phase aggregate statistics computed from `cycle_events` time windows (col-026).
+    /// `None` when no `cycle_events` rows exist for this cycle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase_stats: Option<Vec<PhaseStats>>,
 }
 
 #[cfg(test)]
@@ -460,6 +586,11 @@ mod tests {
             cross_session_count: 2,
             by_category: by_cat,
             category_gaps: vec!["procedure".to_string()],
+            total_served: 0,
+            total_stored: 0,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
         };
 
         let json = serde_json::to_string(&reuse).expect("serialize");
@@ -529,6 +660,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
@@ -587,6 +723,11 @@ mod tests {
                 cross_session_count: 0,
                 by_category: by_cat,
                 category_gaps: vec!["procedure".to_string()],
+                total_served: 0,
+                total_stored: 0,
+                cross_feature_reuse: 0,
+                intra_cycle_reuse: 0,
+                top_cross_feature_entries: vec![],
             }),
             rework_session_count: Some(1),
             context_reload_pct: Some(0.45),
@@ -595,6 +736,11 @@ mod tests {
                 total_session_count: 4,
             }),
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
@@ -777,5 +923,399 @@ mod tests {
             .expect("should be Some via alias");
         assert_eq!(reuse.delivery_count, 3);
         assert_eq!(reuse.cross_session_count, 0);
+    }
+
+    // ── col-026 new type tests ─────────────────────────────────────────────
+
+    #[test]
+    fn test_tool_distribution_default() {
+        let td = ToolDistribution::default();
+        assert_eq!(td.read, 0);
+        assert_eq!(td.execute, 0);
+        assert_eq!(td.write, 0);
+        assert_eq!(td.search, 0);
+    }
+
+    #[test]
+    fn test_gate_result_default() {
+        // GateResult::default() must be Unknown
+        let gr = GateResult::default();
+        assert_eq!(gr, GateResult::Unknown);
+    }
+
+    #[test]
+    fn test_gate_result_serde() {
+        // Each variant round-trips via JSON
+        let cases = [
+            (GateResult::Pass, "\"pass\""),
+            (GateResult::Fail, "\"fail\""),
+            (GateResult::Rework, "\"rework\""),
+            (GateResult::Unknown, "\"unknown\""),
+        ];
+        for (variant, expected_json) in &cases {
+            let json = serde_json::to_string(variant).expect("serialize");
+            assert_eq!(
+                json, *expected_json,
+                "variant {:?} serialized incorrectly",
+                variant
+            );
+            let back: GateResult = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back, *variant, "variant {:?} did not round-trip", variant);
+        }
+    }
+
+    #[test]
+    fn test_entry_ref_serde() {
+        let entry = EntryRef {
+            id: 42,
+            title: "Serde extension pattern".to_string(),
+            feature_cycle: "col-024".to_string(),
+            category: "decision".to_string(),
+            serve_count: 3,
+        };
+        let json = serde_json::to_string(&entry).expect("serialize");
+        let back: EntryRef = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.id, 42);
+        assert_eq!(back.title, "Serde extension pattern");
+        assert_eq!(back.feature_cycle, "col-024");
+        assert_eq!(back.category, "decision");
+        assert_eq!(back.serve_count, 3);
+    }
+
+    #[test]
+    fn test_phase_stats_serde_roundtrip() {
+        let ps = PhaseStats {
+            phase: "implementation".to_string(),
+            pass_number: 1,
+            pass_count: 2,
+            duration_secs: 3600,
+            start_ms: 1_700_000_000_000,
+            end_ms: Some(1_700_003_600_000),
+            session_count: 3,
+            record_count: 150,
+            agents: vec!["coder-1".to_string(), "coder-2".to_string()],
+            tool_distribution: ToolDistribution {
+                read: 50,
+                execute: 20,
+                write: 30,
+                search: 10,
+            },
+            knowledge_served: 7,
+            knowledge_stored: 2,
+            gate_result: GateResult::Pass,
+            gate_outcome_text: Some("PASS — all tests green".to_string()),
+            hotspot_ids: vec!["F-01".to_string()],
+        };
+        let json = serde_json::to_string(&ps).expect("serialize");
+        let back: PhaseStats = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.phase, "implementation");
+        assert_eq!(back.pass_number, 1);
+        assert_eq!(back.pass_count, 2);
+        assert_eq!(back.duration_secs, 3600);
+        assert_eq!(back.start_ms, 1_700_000_000_000);
+        assert_eq!(back.end_ms, Some(1_700_003_600_000));
+        assert_eq!(back.session_count, 3);
+        assert_eq!(back.record_count, 150);
+        assert_eq!(back.agents, vec!["coder-1", "coder-2"]);
+        assert_eq!(back.tool_distribution.read, 50);
+        assert_eq!(back.tool_distribution.execute, 20);
+        assert_eq!(back.tool_distribution.write, 30);
+        assert_eq!(back.tool_distribution.search, 10);
+        assert_eq!(back.knowledge_served, 7);
+        assert_eq!(back.knowledge_stored, 2);
+        assert_eq!(back.gate_result, GateResult::Pass);
+        assert_eq!(
+            back.gate_outcome_text,
+            Some("PASS — all tests green".to_string())
+        );
+        assert_eq!(back.hotspot_ids, vec!["F-01"]);
+    }
+
+    #[test]
+    fn test_phase_stats_hotspot_ids_default_empty() {
+        // hotspot_ids absent in JSON → deserialized as empty vec
+        let json = r#"{
+            "phase": "scope",
+            "pass_number": 1,
+            "pass_count": 1,
+            "duration_secs": 600,
+            "start_ms": 1700000000000,
+            "session_count": 1,
+            "record_count": 10,
+            "agents": [],
+            "tool_distribution": {},
+            "knowledge_served": 0,
+            "knowledge_stored": 0,
+            "gate_result": "unknown"
+        }"#;
+        let ps: PhaseStats = serde_json::from_str(json).expect("deserialize");
+        assert!(ps.hotspot_ids.is_empty());
+        assert!(ps.gate_outcome_text.is_none());
+    }
+
+    #[test]
+    fn test_new_report_fields_absent_when_none() {
+        let report = RetrospectiveReport {
+            feature_cycle: "col-026".to_string(),
+            session_count: 1,
+            total_records: 5,
+            metrics: MetricVector::default(),
+            hotspots: vec![],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![],
+            session_summaries: None,
+            feature_knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
+            phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
+        };
+        let json = serde_json::to_string(&report).expect("serialize");
+        assert!(!json.contains("\"goal\""), "goal should be absent");
+        assert!(
+            !json.contains("\"cycle_type\""),
+            "cycle_type should be absent"
+        );
+        assert!(
+            !json.contains("\"attribution_path\""),
+            "attribution_path should be absent"
+        );
+        assert!(
+            !json.contains("\"is_in_progress\""),
+            "is_in_progress should be absent (not null)"
+        );
+        assert!(
+            !json.contains("\"phase_stats\""),
+            "phase_stats should be absent"
+        );
+    }
+
+    #[test]
+    fn test_new_report_fields_present_when_some() {
+        let mut report = RetrospectiveReport {
+            feature_cycle: "col-026".to_string(),
+            session_count: 2,
+            total_records: 20,
+            metrics: MetricVector::default(),
+            hotspots: vec![],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![],
+            session_summaries: None,
+            feature_knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
+            phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
+        };
+        report.goal = Some("Design the API surface".to_string());
+        report.cycle_type = Some("Design".to_string());
+        report.attribution_path = Some("cycle_events-first (primary)".to_string());
+        report.is_in_progress = Some(false);
+        report.phase_stats = Some(vec![PhaseStats {
+            phase: "scope".to_string(),
+            pass_number: 1,
+            pass_count: 1,
+            duration_secs: 600,
+            start_ms: 1_700_000_000_000,
+            end_ms: Some(1_700_000_600_000),
+            session_count: 1,
+            record_count: 10,
+            agents: vec![],
+            tool_distribution: ToolDistribution::default(),
+            knowledge_served: 0,
+            knowledge_stored: 0,
+            gate_result: GateResult::Pass,
+            gate_outcome_text: None,
+            hotspot_ids: vec![],
+        }]);
+        let json = serde_json::to_string(&report).expect("serialize");
+        assert!(json.contains("\"goal\""), "goal should be present");
+        assert!(
+            json.contains("\"cycle_type\""),
+            "cycle_type should be present"
+        );
+        assert!(
+            json.contains("\"attribution_path\""),
+            "attribution_path should be present"
+        );
+        assert!(
+            json.contains("\"is_in_progress\""),
+            "is_in_progress should be present"
+        );
+        assert!(
+            json.contains("\"phase_stats\""),
+            "phase_stats should be present"
+        );
+
+        let back: RetrospectiveReport = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.goal.as_deref(), Some("Design the API surface"));
+        assert_eq!(back.cycle_type.as_deref(), Some("Design"));
+        assert_eq!(
+            back.attribution_path.as_deref(),
+            Some("cycle_events-first (primary)")
+        );
+        assert_eq!(back.is_in_progress, Some(false));
+        assert!(back.phase_stats.is_some());
+    }
+
+    #[test]
+    fn test_is_in_progress_serde_roundtrip_none() {
+        // Deserializing JSON that lacks is_in_progress must yield None, not Some(false)
+        let json = r#"{
+            "feature_cycle": "col-026",
+            "session_count": 1,
+            "total_records": 0,
+            "metrics": {"computed_at": 0, "universal": {}, "phases": {}},
+            "hotspots": [],
+            "is_cached": false
+        }"#;
+        let report: RetrospectiveReport =
+            serde_json::from_str(json).expect("missing is_in_progress should deserialize");
+        assert!(
+            report.is_in_progress.is_none(),
+            "is_in_progress must be None, not Some(false)"
+        );
+    }
+
+    #[test]
+    fn test_phase_stats_none_absent_from_json() {
+        let mut report = RetrospectiveReport {
+            feature_cycle: "col-026".to_string(),
+            session_count: 0,
+            total_records: 0,
+            metrics: MetricVector::default(),
+            hotspots: vec![],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![],
+            session_summaries: None,
+            feature_knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
+            phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
+        };
+        report.phase_stats = None;
+        let json = serde_json::to_string(&report).expect("serialize");
+        assert!(
+            !json.contains("\"phase_stats\""),
+            "phase_stats key must be absent when None"
+        );
+    }
+
+    #[test]
+    fn test_phase_stats_some_empty_present_in_json() {
+        let mut report = RetrospectiveReport {
+            feature_cycle: "col-026".to_string(),
+            session_count: 0,
+            total_records: 0,
+            metrics: MetricVector::default(),
+            hotspots: vec![],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![],
+            session_summaries: None,
+            feature_knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
+            phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
+        };
+        report.phase_stats = Some(vec![]);
+        let json = serde_json::to_string(&report).expect("serialize");
+        assert!(
+            json.contains("\"phase_stats\":[]"),
+            "phase_stats key must be present with empty array when Some([])"
+        );
+    }
+
+    #[test]
+    fn test_knowledge_reuse_serde_backward_compat() {
+        // Old JSON without new fields — all must default to 0 / empty vec
+        let json =
+            r#"{"delivery_count":5,"cross_session_count":2,"by_category":{},"category_gaps":[]}"#;
+        let reuse: FeatureKnowledgeReuse =
+            serde_json::from_str(json).expect("old JSON should deserialize");
+        assert_eq!(reuse.cross_feature_reuse, 0);
+        assert_eq!(reuse.intra_cycle_reuse, 0);
+        assert_eq!(reuse.total_stored, 0);
+        assert_eq!(reuse.total_served, 0);
+        assert!(reuse.top_cross_feature_entries.is_empty());
+    }
+
+    #[test]
+    fn test_pre_col026_json_backward_compat() {
+        // Full pre-col-026 JSON with none of the five new fields
+        let json = r#"{
+            "feature_cycle": "col-020",
+            "session_count": 3,
+            "total_records": 42,
+            "metrics": {"computed_at": 0, "universal": {}, "phases": {}},
+            "hotspots": [],
+            "is_cached": false,
+            "feature_knowledge_reuse": {
+                "delivery_count": 5,
+                "cross_session_count": 2,
+                "by_category": {"decision": 3},
+                "category_gaps": []
+            }
+        }"#;
+        let report: RetrospectiveReport =
+            serde_json::from_str(json).expect("pre-col-026 JSON should deserialize without panic");
+        assert!(report.goal.is_none(), "goal must default to None");
+        assert!(
+            report.cycle_type.is_none(),
+            "cycle_type must default to None"
+        );
+        assert!(
+            report.attribution_path.is_none(),
+            "attribution_path must default to None"
+        );
+        assert!(
+            report.is_in_progress.is_none(),
+            "is_in_progress must default to None"
+        );
+        assert!(
+            report.phase_stats.is_none(),
+            "phase_stats must default to None"
+        );
+        let reuse = report
+            .feature_knowledge_reuse
+            .expect("feature_knowledge_reuse present");
+        assert_eq!(reuse.total_served, 0);
+        assert_eq!(reuse.total_stored, 0);
+        assert_eq!(reuse.cross_feature_reuse, 0);
+        assert_eq!(reuse.intra_cycle_reuse, 0);
+        assert!(reuse.top_cross_feature_entries.is_empty());
     }
 }
