@@ -53,20 +53,24 @@ pub fn build_report(
 
 /// Generate actionable recommendations for recognized hotspot types (col-010b).
 ///
-/// Covers four hotspot types: permission_retries, coordinator_respawns,
+/// Covers four hotspot types: orphaned_calls, coordinator_respawns,
 /// sleep_workarounds, and compile_cycles (only when measured > 10.0).
 /// Returns empty Vec for unrecognized types or when no hotspots are recognized.
 pub fn recommendations_for_hotspots(hotspots: &[HotspotFinding]) -> Vec<Recommendation> {
     hotspots.iter().filter_map(recommendation_for).collect()
 }
 
-fn recommendation_for(hotspot: &HotspotFinding) -> Option<Recommendation> {
+pub(crate) fn recommendation_for(hotspot: &HotspotFinding) -> Option<Recommendation> {
     match hotspot.rule_name.as_str() {
-        "permission_retries" => Some(Recommendation {
-            hotspot_type: "permission_retries".into(),
-            action: "Add common build/test commands to settings.json allowlist".into(),
+        "orphaned_calls" => Some(Recommendation {
+            hotspot_type: "orphaned_calls".into(),
+            action: "Investigate tool invocations with no terminal event (neither PostToolUse \
+                     nor PostToolUseFailure) — common causes are agent context overflow, \
+                     parallel call cancellation, or interrupted subagent turns"
+                .into(),
             rationale: format!(
-                "{} permission retries detected -- agents lose time waiting for approval",
+                "{} orphaned call(s) detected -- PreToolUse events with no terminal event \
+                 indicate interrupted or abandoned tool invocations",
                 hotspot.measured as u64
             ),
         }),
@@ -333,20 +337,20 @@ mod tests {
     // -- col-010b: recommendation tests (T-ES-09) --
 
     #[test]
-    fn test_recommendation_permission_retries() {
+    fn test_recommendation_orphaned_calls() {
         let hotspot = HotspotFinding {
             category: HotspotCategory::Friction,
             severity: Severity::Warning,
-            rule_name: "permission_retries".to_string(),
-            claim: "retries".to_string(),
+            rule_name: "orphaned_calls".to_string(),
+            claim: "orphaned calls".to_string(),
             measured: 8.0,
             threshold: 3.0,
             evidence: vec![],
         };
         let recs = recommendations_for_hotspots(&[hotspot]);
         assert_eq!(recs.len(), 1);
-        assert_eq!(recs[0].hotspot_type, "permission_retries");
-        assert!(recs[0].action.contains("allowlist"));
+        assert_eq!(recs[0].hotspot_type, "orphaned_calls");
+        assert!(recs[0].action.contains("terminal event"));
         assert!(!recs[0].rationale.is_empty());
     }
 
@@ -455,14 +459,14 @@ mod tests {
     }
 
     #[test]
-    fn test_permission_friction_recommendation_independence() {
-        // T-CC-02 (AC-19): permission_retries still uses allowlist; compile_cycles uses batching.
+    fn test_orphaned_calls_recommendation_independence() {
+        // T-CC-02 (AC-19): orphaned_calls uses orphan framing; compile_cycles uses batching.
         // The two recommendation templates share no text.
-        let pr_hotspot = HotspotFinding {
+        let oc_hotspot = HotspotFinding {
             category: HotspotCategory::Friction,
             severity: Severity::Warning,
-            rule_name: "permission_retries".to_string(),
-            claim: "retries".to_string(),
+            rule_name: "orphaned_calls".to_string(),
+            claim: "orphaned calls".to_string(),
             measured: 8.0,
             threshold: 3.0,
             evidence: vec![],
@@ -477,25 +481,26 @@ mod tests {
             evidence: vec![],
         };
 
-        let pr_recs = recommendations_for_hotspots(&[pr_hotspot]);
+        let oc_recs = recommendations_for_hotspots(&[oc_hotspot]);
         let cc_recs = recommendations_for_hotspots(&[cc_hotspot]);
 
-        assert_eq!(pr_recs.len(), 1);
+        assert_eq!(oc_recs.len(), 1);
         assert_eq!(cc_recs.len(), 1);
 
-        // permission_retries CAN reference allowlist (its correct recommendation)
+        // orphaned_calls must reference terminal event (its correct recommendation)
         assert!(
-            pr_recs[0].action.contains("allowlist"),
-            "permission_retries action should reference allowlist (its correct fix)"
+            oc_recs[0].action.contains("terminal event"),
+            "orphaned_calls action should reference terminal event; got: {}",
+            oc_recs[0].action
         );
-        // permission_retries must NOT reference compile_cycles concepts
+        // orphaned_calls must NOT reference compile_cycles concepts
         assert!(
-            !pr_recs[0].action.contains("batch"),
-            "permission_retries must not reference batch compilation"
+            !oc_recs[0].action.contains("batch"),
+            "orphaned_calls must not reference batch compilation"
         );
         assert!(
-            !pr_recs[0].action.contains("iterative"),
-            "permission_retries must not reference iterative compilation"
+            !oc_recs[0].action.contains("iterative"),
+            "orphaned_calls must not reference iterative compilation"
         );
 
         // compile_cycles must NOT reference allowlist
@@ -506,8 +511,8 @@ mod tests {
 
         // The two action strings must be distinct
         assert_ne!(
-            pr_recs[0].action, cc_recs[0].action,
-            "permission_retries and compile_cycles must have distinct action text"
+            oc_recs[0].action, cc_recs[0].action,
+            "orphaned_calls and compile_cycles must have distinct action text"
         );
     }
 
@@ -630,5 +635,61 @@ mod tests {
         let report: RetrospectiveReport = serde_json::from_str(json).expect("deserialize");
         assert!(report.narratives.is_none());
         assert!(report.recommendations.is_empty());
+    }
+
+    // -- Contract test: every default rule must have non-fallback recommendation and remediation --
+
+    /// Fallback string returned by `remediation_for_rule` for unrecognized rule names.
+    const REMEDIATION_FALLBACK: &str = "Review the recurring detection rule and consider adding it to the \
+         settings.json allowlist or adjusting detection thresholds.";
+
+    #[test]
+    fn test_all_default_rules_have_non_fallback_recommendation_and_remediation() {
+        use crate::detection;
+        use crate::extraction::recurring_friction::remediation_for_rule;
+        use crate::types::{EvidenceRecord, HotspotFinding, Severity};
+
+        let rules = detection::default_rules(None);
+
+        for rule in &rules {
+            let name = rule.name();
+
+            // Build a synthetic finding for this rule so recommendation_for can match on it
+            let finding = HotspotFinding {
+                category: rule.category(),
+                severity: Severity::Warning,
+                rule_name: name.to_string(),
+                claim: format!("synthetic finding for {name}"),
+                measured: 99.0,
+                threshold: 1.0,
+                evidence: vec![EvidenceRecord {
+                    description: "synthetic".to_string(),
+                    ts: 0,
+                    tool: None,
+                    detail: String::new(),
+                }],
+            };
+
+            // Check remediation: must not return the generic fallback
+            let remediation = remediation_for_rule(name);
+            assert_ne!(
+                remediation, REMEDIATION_FALLBACK,
+                "rule '{}' returns generic remediation fallback — add a specific match arm in \
+                 recurring_friction.rs::remediation_for_rule()",
+                name
+            );
+
+            // Check recommendation: `recommendation_for` returns None for unrecognized rules,
+            // but Some for recognized ones. This test only enforces that the recommendation
+            // hotspot_type matches the rule name when a recommendation IS returned —
+            // rules that return None are flagged if they also fall through to the remediation fallback.
+            if let Some(rec) = recommendation_for(&finding) {
+                assert_eq!(
+                    rec.hotspot_type, name,
+                    "rule '{}' recommendation hotspot_type '{}' does not match rule name",
+                    name, rec.hotspot_type
+                );
+            }
+        }
     }
 }

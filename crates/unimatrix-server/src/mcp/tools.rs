@@ -3204,8 +3204,8 @@ mod tests {
             hotspots: vec![unimatrix_observe::HotspotFinding {
                 category: unimatrix_observe::HotspotCategory::Friction,
                 severity: unimatrix_observe::Severity::Warning,
-                rule_name: "permission_retries".to_string(),
-                claim: "8 retries detected".to_string(),
+                rule_name: "orphaned_calls".to_string(),
+                claim: "8 orphaned calls detected".to_string(),
                 measured: 8.0,
                 threshold: 3.0,
                 evidence: vec![],
@@ -3215,8 +3215,8 @@ mod tests {
             entries_analysis: None,
             narratives: None,
             recommendations: vec![unimatrix_observe::Recommendation {
-                hotspot_type: "permission_retries".to_string(),
-                action: "Add to allowlist".to_string(),
+                hotspot_type: "orphaned_calls".to_string(),
+                action: "Investigate orphaned tool invocations".to_string(),
                 rationale: "saves time".to_string(),
             }],
             session_summaries: None,
@@ -3233,9 +3233,9 @@ mod tests {
         };
 
         let content = build_lesson_learned_content(&report);
-        assert!(content.contains("permission_retries"));
-        assert!(content.contains("8 retries detected"));
-        assert!(content.contains("Add to allowlist"));
+        assert!(content.contains("orphaned_calls"));
+        assert!(content.contains("8 orphaned calls detected"));
+        assert!(content.contains("Investigate orphaned tool invocations"));
     }
 
     #[test]
@@ -3248,8 +3248,8 @@ mod tests {
             hotspots: vec![unimatrix_observe::HotspotFinding {
                 category: unimatrix_observe::HotspotCategory::Friction,
                 severity: unimatrix_observe::Severity::Warning,
-                rule_name: "permission_retries".to_string(),
-                claim: "8 retries detected".to_string(),
+                rule_name: "orphaned_calls".to_string(),
+                claim: "8 orphaned calls detected".to_string(),
                 measured: 8.0,
                 threshold: 3.0,
                 evidence: vec![],
@@ -3258,15 +3258,15 @@ mod tests {
             baseline_comparison: None,
             entries_analysis: None,
             narratives: Some(vec![unimatrix_observe::HotspotNarrative {
-                hotspot_type: "permission_retries".to_string(),
-                summary: "Permission retries clustered around build commands".to_string(),
+                hotspot_type: "orphaned_calls".to_string(),
+                summary: "Orphaned calls clustered around build commands".to_string(),
                 clusters: vec![],
                 top_files: vec![],
                 sequence_pattern: None,
             }]),
             recommendations: vec![unimatrix_observe::Recommendation {
-                hotspot_type: "permission_retries".to_string(),
-                action: "Add to allowlist".to_string(),
+                hotspot_type: "orphaned_calls".to_string(),
+                action: "Investigate orphaned tool invocations".to_string(),
                 rationale: "saves time".to_string(),
             }],
             session_summaries: None,
@@ -3284,10 +3284,10 @@ mod tests {
 
         let content = build_lesson_learned_content(&report);
         // With narratives present, should use narrative summary (not hotspot claim)
-        assert!(content.contains("Permission retries clustered"));
-        assert!(!content.contains("8 retries detected"));
+        assert!(content.contains("Orphaned calls clustered"));
+        assert!(!content.contains("8 orphaned calls detected"));
         // Recommendations always included
-        assert!(content.contains("Add to allowlist"));
+        assert!(content.contains("Investigate orphaned tool invocations"));
     }
 
     #[test]

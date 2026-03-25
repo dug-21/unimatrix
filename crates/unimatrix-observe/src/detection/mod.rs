@@ -42,7 +42,7 @@ pub fn detect_hotspots(
 pub fn default_rules(history: Option<&[MetricVector]>) -> Vec<Box<dyn DetectionRule>> {
     vec![
         // Friction (5)
-        Box::new(friction::PermissionRetriesRule),
+        Box::new(friction::OrphanedCallsRule),
         Box::new(friction::SleepWorkaroundsRule),
         Box::new(friction::SearchViaBashRule),
         Box::new(friction::OutputParsingStruggleRule),
@@ -281,7 +281,7 @@ mod tests {
     fn test_default_rules_names() {
         let rules = default_rules(None);
         let names: Vec<&str> = rules.iter().map(|r| r.name()).collect();
-        assert!(names.contains(&"permission_retries"));
+        assert!(names.contains(&"orphaned_calls"));
         assert!(names.contains(&"session_timeout"));
         assert!(names.contains(&"sleep_workarounds"));
         assert!(names.contains(&"context_load"));

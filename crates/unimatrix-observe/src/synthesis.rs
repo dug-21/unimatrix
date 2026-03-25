@@ -242,13 +242,13 @@ mod tests {
     #[test]
     fn test_synthesize_narratives_one_per_hotspot() {
         let hotspots = vec![
-            make_hotspot("permission_retries", vec![make_evidence(1000, "retry 1")]),
+            make_hotspot("orphaned_calls", vec![make_evidence(1000, "orphaned 1")]),
             make_hotspot("sleep_workarounds", vec![make_evidence(2000, "sleep 30s")]),
             make_hotspot("compile_cycles", vec![make_evidence(3000, "compile")]),
         ];
         let narratives = synthesize_narratives(&hotspots);
         assert_eq!(narratives.len(), 3);
-        assert_eq!(narratives[0].hotspot_type, "permission_retries");
+        assert_eq!(narratives[0].hotspot_type, "orphaned_calls");
         assert_eq!(narratives[1].hotspot_type, "sleep_workarounds");
         assert_eq!(narratives[2].hotspot_type, "compile_cycles");
     }
@@ -316,7 +316,7 @@ mod tests {
             make_evidence(1000, "retry 30s"),
             make_evidence(2000, "retry 60s"),
         ];
-        let hotspot = make_hotspot("permission_retries", evidence);
+        let hotspot = make_hotspot("orphaned_calls", evidence);
         let pattern = extract_sequence_pattern(&hotspot);
         assert_eq!(pattern, None);
     }

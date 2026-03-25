@@ -82,6 +82,7 @@ fn compute_universal(
             }
         }
     }
+    // TODO(col-028): rename field to orphaned_call_events once metric migration is complete
     m.permission_friction_events = pre_counts
         .iter()
         .map(|(tool, &pre)| pre.saturating_sub(*terminal_counts.get(*tool).unwrap_or(&0)))
