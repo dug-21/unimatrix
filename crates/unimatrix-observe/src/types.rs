@@ -213,19 +213,14 @@ pub struct ToolDistribution {
 }
 
 /// Gate outcome classification derived from `cycle_phase_end.outcome` text (col-026).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GateResult {
     Pass,
     Fail,
     Rework,
+    #[default]
     Unknown,
-}
-
-impl Default for GateResult {
-    fn default() -> Self {
-        GateResult::Unknown
-    }
 }
 
 /// Aggregate statistics for one phase window in a feature cycle (col-026).
