@@ -491,15 +491,8 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
         // Must NOT call extract_response_fields() — error field handled in listener.rs.
         // Hook always exits 0: all field accesses use defensive Option chaining (FR-03.7).
         hook_type::POSTTOOLUSEFAILURE => {
-            // Extract tool_name defensively: absent or non-string yields empty string.
-            let tool_name = input
-                .extra
-                .get("tool_name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-
             // Compute topic_signal from tool_input (same source as PostToolUse arm).
+            // tool_name is carried in input.extra (payload) and extracted by listener.rs.
             // Returns None if tool_input is absent or produces no signal.
             let topic_signal = extract_event_topic_signal(event, input);
 

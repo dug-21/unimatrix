@@ -2690,7 +2690,7 @@ fn extract_error_field(payload: &serde_json::Value) -> (Option<i64>, Option<Stri
     };
 
     // Truncate to 500 bytes at a valid UTF-8 char boundary.
-    // Consistent with the 500-char limit in extract_response_fields().
+    // Consistent with the 500-byte limit in extract_response_fields().
     let snippet = truncate_at_utf8_boundary(error_str, 500);
 
     // response_size is always None for failure events (ADR-002, FR-04.4).
