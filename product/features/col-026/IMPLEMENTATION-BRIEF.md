@@ -27,21 +27,18 @@ No new MCP tools. Schema remains at v16.
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| RetrospectiveReport struct extensions | pseudocode/retrospective-report-extensions.md | test-plan/retrospective-report-extensions.md |
-| PhaseStats type + computation (step 10h) | pseudocode/phase-stats.md | test-plan/phase-stats.md |
-| FeatureKnowledgeReuse extension + batch lookup | pseudocode/knowledge-reuse-extension.md | test-plan/knowledge-reuse-extension.md |
-| Formatter overhaul (retrospective.rs) | pseudocode/formatter-overhaul.md | test-plan/formatter-overhaul.md |
-| compile_cycles recommendation fix (report.rs) | pseudocode/recommendation-fix.md | test-plan/recommendation-fix.md |
+| RetrospectiveReport struct extensions | product/features/col-026/pseudocode/retrospective-report-extensions.md | product/features/col-026/test-plan/retrospective-report-extensions.md |
+| PhaseStats type + computation (step 10h) | product/features/col-026/pseudocode/phase-stats.md | product/features/col-026/test-plan/phase-stats.md |
+| FeatureKnowledgeReuse extension + batch lookup | product/features/col-026/pseudocode/knowledge-reuse-extension.md | product/features/col-026/test-plan/knowledge-reuse-extension.md |
+| Formatter overhaul (retrospective.rs) | product/features/col-026/pseudocode/formatter-overhaul.md | product/features/col-026/test-plan/formatter-overhaul.md |
+| compile_cycles recommendation fix (report.rs) | product/features/col-026/pseudocode/recommendation-fix.md | product/features/col-026/test-plan/recommendation-fix.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
-
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists
-expected components from the architecture — actual file paths are filled during delivery.
+| Pseudocode Overview | product/features/col-026/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/col-026/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
@@ -79,18 +76,20 @@ expected components from the architecture — actual file paths are filled durin
 ## New Section Order (formatter)
 
 ```
-1. Header (rebranded + goal / cycle_type / attribution / status)
-2. Recommendations (moved from position 9)
-3. Phase Timeline (new)
-4. What Went Well (new)
-5. Sessions (existing, enhanced with tool distribution + agents)
-6. Findings (existing, + phase annotation + burst notation)
-7. Baseline Outliers (existing)
-8. Phase Outliers (existing)
-9. Knowledge Reuse (extended)
-10. Rework & Context Reload (existing)
-11. Phase Narrative (existing)
+1.  Header (rebranded + goal / cycle_type / attribution / status)
+2.  Recommendations (moved from position 9)
+3.  Phase Timeline (new)
+4.  What Went Well (new)
+5.  Sessions (existing, enhanced with tool distribution + agents)
+6.  Attribution note (existing, when partial)
+7.  Baseline Outliers (existing)
+8.  Findings (existing, + phase annotation + burst notation)
+9.  Phase Outliers (existing)
+10. Knowledge Reuse (extended)
+11. Rework & Context Reload (existing)
+12. Phase Narrative (existing)
 ```
+Note: SPECIFICATION §FR-12 is authoritative. Positions 7 (Baseline Outliers) and 8 (Findings) are corrected from the original brief.
 
 ---
 
