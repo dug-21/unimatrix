@@ -62,21 +62,29 @@ fn compute_universal(
     let sessions: HashSet<&str> = records.iter().map(|r| r.session_id.as_str()).collect();
     m.session_count = sessions.len() as u64;
 
-    // Permission friction: sum of (pre - post) per tool, only positive values
+    // Permission friction: sum of (pre - terminal) per tool, only positive values.
+    // "terminal" = PostToolUse OR PostToolUseFailure (col-027, ADR-004).
+    // A failed call is a resolved call — not a retried/blocked call.
     let mut pre_counts: HashMap<&str, u64> = HashMap::new();
-    let mut post_counts: HashMap<&str, u64> = HashMap::new();
+    // Widened (col-027): counts both PostToolUse and PostToolUseFailure as terminal events.
+    // Variable renamed from post_counts to terminal_counts for clarity (matches friction.rs).
+    let mut terminal_counts: HashMap<&str, u64> = HashMap::new();
     for r in &records {
         if let Some(tool) = &r.tool {
             if r.event_type == hook_type::PRETOOLUSE {
                 *pre_counts.entry(tool).or_default() += 1;
             } else if r.event_type == hook_type::POSTTOOLUSE {
-                *post_counts.entry(tool).or_default() += 1;
+                // unchanged: PostToolUse is a terminal event
+                *terminal_counts.entry(tool.as_str()).or_default() += 1;
+            } else if r.event_type == hook_type::POSTTOOLUSEFAILURE {
+                // NEW (col-027): PostToolUseFailure is also a terminal event
+                *terminal_counts.entry(tool.as_str()).or_default() += 1;
             }
         }
     }
     m.permission_friction_events = pre_counts
         .iter()
-        .map(|(tool, &pre)| pre.saturating_sub(*post_counts.get(tool).unwrap_or(&0)))
+        .map(|(tool, &pre)| pre.saturating_sub(*terminal_counts.get(*tool).unwrap_or(&0)))
         .sum();
 
     // Sleep workaround count

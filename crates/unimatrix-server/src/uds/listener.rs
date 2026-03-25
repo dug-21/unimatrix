@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use unimatrix_adapt::AdaptationService;
+use unimatrix_core::observation::hook_type;
 use unimatrix_core::Store;
 use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{EmbedService, NewEntry, Status, VectorAdapter};
@@ -2596,6 +2597,28 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
                 .map(|s| s.to_string());
             (tool, input, None, None)
         }
+        // col-027: Explicit arm for PostToolUseFailure.
+        // MUST be before the wildcard to avoid R-03 (tool = None storage).
+        // MUST call extract_error_field(), NOT extract_response_fields() (ADR-002, R-01).
+        x if x == hook_type::POSTTOOLUSEFAILURE => {
+            // tool_name field is the same as PostToolUse (FR-04.2).
+            let tool = event
+                .payload
+                .get("tool_name")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            // tool_input serialized as JSON string, same as PreToolUse (FR-04.6).
+            let input = event
+                .payload
+                .get("tool_input")
+                .map(|v| serde_json::to_string(v).unwrap_or_default());
+            // CRITICAL: extract_error_field reads payload["error"] as a plain string.
+            // extract_response_fields reads payload["tool_response"] which is absent on
+            // failure payloads — calling it here would silently return (None, None).
+            let (response_size, response_snippet) = extract_error_field(&event.payload);
+            (tool, input, response_size, response_snippet)
+        }
+
         "SubagentStop" | _ => (None, None, None, None),
     };
 
@@ -2640,6 +2663,38 @@ fn extract_response_fields(payload: &serde_json::Value) -> (Option<i64>, Option<
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
     (rs, rsnip)
+}
+
+/// Extract response_size and error snippet from a PostToolUseFailure event payload.
+///
+/// Reads `payload["error"]` as a plain string. Always returns `None` for response_size
+/// because error strings are small and byte-length tracking provides no analytical value
+/// for failure events (ADR-002, FR-04.4).
+///
+/// Returns `(None, None)` if the "error" field is absent, JSON null, non-string, or empty.
+/// Returns `(None, Some(snippet))` where snippet is truncated to 500 bytes at a valid UTF-8
+/// char boundary (consistent with extract_response_fields snippet budget).
+///
+/// This is a sibling to extract_response_fields() — NOT a modification of it (ADR-002).
+/// The separation is intentional: extract_response_fields reads `tool_response` (a JSON
+/// object) which does not exist on failure payloads. Calling it on failure payloads would
+/// silently return (None, None), losing the error content (SR-01).
+fn extract_error_field(payload: &serde_json::Value) -> (Option<i64>, Option<String>) {
+    // Access payload["error"] as a string.
+    // - payload.get("error") returns None if key absent
+    // - .as_str() returns None if value is not a JSON string (null, object, array)
+    // - !s.is_empty() guard rejects empty string -> caller sees None, not Some("")
+    let error_str = match payload.get("error").and_then(|v| v.as_str()) {
+        Some(s) if !s.is_empty() => s,
+        _ => return (None, None),
+    };
+
+    // Truncate to 500 bytes at a valid UTF-8 char boundary.
+    // Consistent with the 500-byte limit in extract_response_fields().
+    let snippet = truncate_at_utf8_boundary(error_str, 500);
+
+    // response_size is always None for failure events (ADR-002, FR-04.4).
+    (None, Some(snippet))
 }
 
 /// Insert a single observation row into the observations table.
@@ -4294,6 +4349,163 @@ mod tests {
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.response_size, None);
         assert_eq!(obs.response_snippet, None);
+    }
+
+    // -- col-027: extract_error_field and PostToolUseFailure arm tests --
+
+    #[test]
+    fn test_extract_error_field_present() {
+        // T-OS-01: error field present -> (None, Some(snippet)) (AC-03, R-01)
+        let payload = serde_json::json!({
+            "tool_name": "Bash",
+            "error": "permission denied",
+            "tool_input": {}
+        });
+        let (size, snippet) = extract_error_field(&payload);
+        assert_eq!(size, None);
+        assert_eq!(snippet, Some("permission denied".to_string()));
+    }
+
+    #[test]
+    fn test_extract_error_field_absent() {
+        // T-OS-02: error field absent -> (None, None), no panic (AC-03 edge case, R-01)
+        let payload = serde_json::json!({
+            "tool_name": "Bash",
+            "tool_input": {}
+        });
+        let (size, snippet) = extract_error_field(&payload);
+        assert_eq!(size, None);
+        assert_eq!(snippet, None);
+    }
+
+    #[test]
+    fn test_extract_error_field_null() {
+        // T-OS-03: error field is JSON null -> (None, None), no panic (R-08)
+        let payload = serde_json::json!({"error": null});
+        let (size, snippet) = extract_error_field(&payload);
+        assert_eq!(size, None);
+        assert_eq!(snippet, None);
+    }
+
+    #[test]
+    fn test_extract_error_field_non_string_type() {
+        // T-OS-04: error field is an array -> (None, None), as_str() returns None safely
+        let payload = serde_json::json!({"error": ["not", "a", "string"]});
+        let (size, snippet) = extract_error_field(&payload);
+        assert_eq!(size, None);
+        assert_eq!(snippet, None);
+    }
+
+    #[test]
+    fn test_extract_error_field_truncation_at_501_chars() {
+        // T-OS-05: 501-char ASCII string -> snippet truncated to 500 bytes (AC-03, R-01)
+        let s = "x".repeat(501);
+        let payload = serde_json::json!({"error": s});
+        let (size, snippet) = extract_error_field(&payload);
+        assert_eq!(size, None);
+        let snippet = snippet.expect("expected Some snippet");
+        assert_eq!(snippet.len(), 500);
+        assert!(std::str::from_utf8(snippet.as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn test_extract_error_field_exactly_500_chars() {
+        // T-OS-06: exactly 500-char string -> returned unchanged (boundary)
+        let s = "y".repeat(500);
+        let payload = serde_json::json!({"error": s.clone()});
+        let (size, snippet) = extract_error_field(&payload);
+        assert_eq!(size, None);
+        assert_eq!(snippet, Some(s));
+    }
+
+    #[test]
+    fn test_extract_error_field_empty_string() {
+        // T-OS-07: empty string -> (None, None); None is the safer choice so downstream
+        // rules that check response_snippet.is_some() do not match empty-content records.
+        let payload = serde_json::json!({"error": ""});
+        let (size, snippet) = extract_error_field(&payload);
+        assert_eq!(size, None);
+        assert_eq!(snippet, None);
+    }
+
+    #[test]
+    fn test_extract_observation_fields_posttoolusefailure_full() {
+        // T-OS-08: primary compound assertion — AC-03, AC-04, R-01, R-03, R-10
+        use unimatrix_core::observation::hook_type;
+        let event = ImplantEvent {
+            event_type: "PostToolUseFailure".to_string(),
+            session_id: "sess-1".to_string(),
+            timestamp: 1000,
+            payload: serde_json::json!({
+                "tool_name": "Bash",
+                "error": "some error message",
+                "tool_input": {}
+            }),
+            topic_signal: None,
+        };
+        let obs = extract_observation_fields(&event);
+        // AC-04: hook stored verbatim, not normalized to "PostToolUse"
+        assert_eq!(obs.hook, hook_type::POSTTOOLUSEFAILURE);
+        assert_ne!(obs.hook, hook_type::POSTTOOLUSE);
+        // R-03: tool_name extracted correctly
+        assert!(obs.tool.is_some());
+        assert_eq!(obs.tool.as_deref(), Some("Bash"));
+        // R-01: error content present in response_snippet
+        assert_eq!(obs.response_snippet.as_deref(), Some("some error message"));
+        // R-10: response_size always None for failure records
+        assert_eq!(obs.response_size, None);
+    }
+
+    #[test]
+    fn test_extract_observation_fields_posttoolusefailure_no_error_field() {
+        // T-OS-09: PostToolUseFailure with tool_name but no error field (R-01, R-03)
+        use unimatrix_core::observation::hook_type;
+        let event = ImplantEvent {
+            event_type: "PostToolUseFailure".to_string(),
+            session_id: "sess-2".to_string(),
+            timestamp: 2000,
+            payload: serde_json::json!({
+                "tool_name": "Read",
+                "tool_input": {"path": "/tmp/x"}
+            }),
+            topic_signal: None,
+        };
+        let obs = extract_observation_fields(&event);
+        assert_eq!(obs.hook, hook_type::POSTTOOLUSEFAILURE);
+        assert!(obs.tool.is_some());
+        assert_eq!(obs.response_snippet, None);
+        assert_eq!(obs.response_size, None);
+    }
+
+    #[test]
+    fn test_extract_observation_fields_posttoolusefailure_tool_absent() {
+        // T-OS-10: PostToolUseFailure with no tool_name -> obs.tool is None, no panic (R-03)
+        use unimatrix_core::observation::hook_type;
+        let event = ImplantEvent {
+            event_type: "PostToolUseFailure".to_string(),
+            session_id: "sess-3".to_string(),
+            timestamp: 3000,
+            payload: serde_json::json!({"error": "boom"}),
+            topic_signal: None,
+        };
+        let obs = extract_observation_fields(&event);
+        assert_eq!(obs.hook, hook_type::POSTTOOLUSEFAILURE);
+        assert_eq!(obs.tool, None);
+        assert_eq!(obs.response_snippet, Some("boom".to_string()));
+    }
+
+    #[test]
+    fn test_extract_response_fields_on_failure_payload_returns_none_none() {
+        // T-OS-11: negative/guard test — extract_response_fields on failure payload
+        // returns (None, None) because tool_response is absent.
+        // This documents WHY extract_error_field() exists as a sibling (ADR-002, R-01).
+        let payload = serde_json::json!({
+            "tool_name": "Bash",
+            "error": "permission denied"
+        });
+        let (size, snippet) = extract_response_fields(&payload);
+        assert_eq!(size, None);
+        assert_eq!(snippet, None);
     }
 
     // -- col-018: UserPromptSubmit observation tests --
