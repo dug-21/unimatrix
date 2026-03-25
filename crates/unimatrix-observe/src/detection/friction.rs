@@ -1,12 +1,19 @@
-//! Friction hotspot detection rules (4 rules).
+//! Friction hotspot detection rules (5 rules).
 //!
-//! 2 existing from col-002 (PermissionRetries, SleepWorkarounds) + 2 new (SearchViaBash, OutputParsingStruggle).
+//! 2 existing from col-002 (PermissionRetries, SleepWorkarounds) + 2 new (SearchViaBash, OutputParsingStruggle) + 1 new col-027 (ToolFailure).
 
 use std::collections::{HashMap, HashSet};
+
+use unimatrix_core::observation::hook_type;
 
 use crate::types::{EvidenceRecord, HotspotCategory, HotspotFinding, ObservationRecord, Severity};
 
 use super::{DetectionRule, contains_sleep_command, input_to_command_string, truncate};
+
+// col-027: ToolFailureRule threshold.
+// Fires when a single tool accumulates strictly more than this many PostToolUseFailure records.
+// ADR-005: hardcoded constant for col-027; extract to named constant for future configurability.
+const TOOL_FAILURE_THRESHOLD: u64 = 3;
 
 // -- Rule 1: PermissionRetriesRule (moved from col-002 detection.rs) --
 
@@ -28,7 +35,9 @@ impl DetectionRule for PermissionRetriesRule {
             .collect();
 
         let mut pre_counts: HashMap<String, u64> = HashMap::new();
-        let mut post_counts: HashMap<String, u64> = HashMap::new();
+        // CHANGED (col-027, ADR-004): renamed from post_counts to terminal_counts.
+        // Semantics widened: both PostToolUse and PostToolUseFailure are terminal events.
+        let mut terminal_counts: HashMap<String, u64> = HashMap::new();
         let mut evidence_records: HashMap<String, Vec<EvidenceRecord>> = HashMap::new();
 
         for record in &records {
@@ -45,7 +54,12 @@ impl DetectionRule for PermissionRetriesRule {
                             detail: format!("Pre-use event at ts={}", record.ts),
                         });
                 } else if record.event_type == "PostToolUse" {
-                    *post_counts.entry(tool.clone()).or_default() += 1;
+                    // unchanged: PostToolUse is a terminal event
+                    *terminal_counts.entry(tool.clone()).or_default() += 1;
+                } else if record.event_type == hook_type::POSTTOOLUSEFAILURE {
+                    // NEW (col-027): PostToolUseFailure is also a terminal event.
+                    // A failed call is still a resolved call — not a retried/blocked call.
+                    *terminal_counts.entry(tool.clone()).or_default() += 1;
                 }
             }
         }
@@ -54,8 +68,9 @@ impl DetectionRule for PermissionRetriesRule {
         let mut findings = Vec::new();
 
         for (tool, pre_count) in &pre_counts {
-            let post_count = post_counts.get(tool).copied().unwrap_or(0);
-            let retries = pre_count.saturating_sub(post_count);
+            // CHANGED (col-027): use terminal_counts instead of post_counts
+            let terminal_count = terminal_counts.get(tool).copied().unwrap_or(0);
+            let retries = pre_count.saturating_sub(terminal_count);
             if retries > threshold as u64 {
                 findings.push(HotspotFinding {
                     category: HotspotCategory::Friction,
@@ -67,6 +82,80 @@ impl DetectionRule for PermissionRetriesRule {
                     measured: retries as f64,
                     threshold,
                     evidence: evidence_records.remove(tool).unwrap_or_default(),
+                });
+            }
+        }
+
+        findings
+    }
+}
+
+// -- Rule 5: ToolFailureRule (col-027) --
+
+// col-027: New rule to surface per-tool failure counts (ADR-005).
+pub(crate) struct ToolFailureRule;
+
+impl DetectionRule for ToolFailureRule {
+    fn name(&self) -> &str {
+        "tool_failure_hotspot" // ADR-005: canonical name; do not use "tool_failures"
+    }
+
+    fn category(&self) -> HotspotCategory {
+        HotspotCategory::Friction
+    }
+
+    fn detect(&self, records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        // Pre-filter: source_domain == "claude-code" only (ADR-005, R-07)
+        // Consistent with all other friction rules.
+        let records: Vec<&ObservationRecord> = records
+            .iter()
+            .filter(|r| r.source_domain == "claude-code")
+            .collect();
+
+        // Count PostToolUseFailure records per tool and collect evidence.
+        let mut failure_counts: HashMap<String, u64> = HashMap::new();
+        let mut evidence_map: HashMap<String, Vec<EvidenceRecord>> = HashMap::new();
+
+        for record in &records {
+            // Only count PostToolUseFailure events (exact event_type match).
+            if record.event_type != hook_type::POSTTOOLUSEFAILURE {
+                continue;
+            }
+            // Skip records with no tool (tool_name absent in payload).
+            let tool = match record.tool.as_ref() {
+                Some(t) => t,
+                None => continue,
+            };
+
+            *failure_counts.entry(tool.clone()).or_default() += 1;
+
+            // Collect evidence: one EvidenceRecord per failure event (FR-07.7).
+            evidence_map
+                .entry(tool.clone())
+                .or_default()
+                .push(EvidenceRecord {
+                    description: format!("PostToolUseFailure for {tool}"),
+                    ts: record.ts,
+                    tool: Some(tool.clone()),
+                    // detail = response_snippet (the error string) if present (ADR-005).
+                    detail: record.response_snippet.clone().unwrap_or_default(),
+                });
+        }
+
+        // Emit one finding per tool that exceeds TOOL_FAILURE_THRESHOLD.
+        // Threshold is STRICTLY greater than (ADR-005): fires at count > 3, i.e., 4+.
+        let mut findings = Vec::new();
+        for (tool, count) in &failure_counts {
+            if *count > TOOL_FAILURE_THRESHOLD {
+                findings.push(HotspotFinding {
+                    category: HotspotCategory::Friction,
+                    severity: Severity::Warning,
+                    rule_name: "tool_failure_hotspot".to_string(),
+                    // Claim format: "Tool 'X' failed N times" (FR-07.4).
+                    claim: format!("Tool '{tool}' failed {count} times"),
+                    measured: *count as f64,
+                    threshold: TOOL_FAILURE_THRESHOLD as f64,
+                    evidence: evidence_map.remove(tool).unwrap_or_default(),
                 });
             }
         }
@@ -358,6 +447,19 @@ mod tests {
         }
     }
 
+    fn make_failure(ts: u64, tool: &str) -> ObservationRecord {
+        ObservationRecord {
+            ts,
+            event_type: hook_type::POSTTOOLUSEFAILURE.to_string(),
+            source_domain: "claude-code".to_string(),
+            session_id: "sess-1".to_string(),
+            tool: Some(tool.to_string()),
+            input: None,
+            response_size: None,
+            response_snippet: None,
+        }
+    }
+
     fn make_bash_with_input(ts: u64, command: &str) -> ObservationRecord {
         ObservationRecord {
             ts,
@@ -546,5 +648,296 @@ mod tests {
         ];
         let rule = OutputParsingStruggleRule;
         assert!(rule.detect(&records).is_empty());
+    }
+
+    // -- PermissionRetriesRule fix tests (col-027, ADR-004) --
+
+    #[test]
+    fn test_permission_retries_failure_as_terminal_no_finding() {
+        // T-FM-01: 5 Pre + 5 Failure -> retries = 0, no finding (AC-05, R-04)
+        let records = vec![
+            make_pre(1, "Bash"),
+            make_pre(2, "Bash"),
+            make_pre(3, "Bash"),
+            make_pre(4, "Bash"),
+            make_pre(5, "Bash"),
+            make_failure(6, "Bash"),
+            make_failure(7, "Bash"),
+            make_failure(8, "Bash"),
+            make_failure(9, "Bash"),
+            make_failure(10, "Bash"),
+        ];
+        let rule = PermissionRetriesRule;
+        assert!(rule.detect(&records).is_empty());
+    }
+
+    #[test]
+    fn test_permission_retries_mixed_post_and_failure_balanced() {
+        // T-FM-02: 4 Pre + 2 Post + 2 Failure -> retries = 0, no finding (AC-05 extension)
+        let records = vec![
+            make_pre(1, "Read"),
+            make_pre(2, "Read"),
+            make_pre(3, "Read"),
+            make_pre(4, "Read"),
+            make_post(5, "Read"),
+            make_post(6, "Read"),
+            make_failure(7, "Read"),
+            make_failure(8, "Read"),
+        ];
+        let rule = PermissionRetriesRule;
+        assert!(rule.detect(&records).is_empty());
+    }
+
+    #[test]
+    fn test_permission_retries_genuine_imbalance_with_failures() {
+        // T-FM-03: 5 Pre + 2 Post + 0 Failure -> retries = 3 > threshold(2) -> 1 finding (AC-06)
+        let records = vec![
+            make_pre(1, "Write"),
+            make_pre(2, "Write"),
+            make_pre(3, "Write"),
+            make_pre(4, "Write"),
+            make_pre(5, "Write"),
+            make_post(6, "Write"),
+            make_post(7, "Write"),
+        ];
+        let rule = PermissionRetriesRule;
+        let findings = rule.detect(&records);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].measured, 3.0);
+    }
+
+    // -- ToolFailureRule tests (col-027, ADR-005) --
+
+    #[test]
+    fn test_tool_failure_rule_at_threshold_no_finding() {
+        // T-FM-11: exactly 3 failures == threshold -> no finding (AC-09, R-06)
+        let records = vec![
+            make_failure(1, "Read"),
+            make_failure(2, "Read"),
+            make_failure(3, "Read"),
+        ];
+        let rule = ToolFailureRule;
+        assert!(rule.detect(&records).is_empty());
+    }
+
+    #[test]
+    fn test_tool_failure_rule_above_threshold_fires() {
+        // T-FM-12: 4 failures > threshold(3) -> 1 finding (AC-08, R-06)
+        let records = vec![
+            make_failure(1, "Bash"),
+            make_failure(2, "Bash"),
+            make_failure(3, "Bash"),
+            make_failure(4, "Bash"),
+        ];
+        let rule = ToolFailureRule;
+        let findings = rule.detect(&records);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].rule_name, "tool_failure_hotspot");
+        assert_eq!(findings[0].measured, 4.0);
+        assert_eq!(findings[0].threshold, 3.0);
+        assert_eq!(findings[0].claim, "Tool 'Bash' failed 4 times");
+        assert_eq!(findings[0].category, HotspotCategory::Friction);
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn test_tool_failure_rule_multiple_tools_independent() {
+        // T-FM-13: 4 Bash + 3 Read + 2 Write -> only Bash exceeds threshold
+        let records = vec![
+            make_failure(1, "Bash"),
+            make_failure(2, "Bash"),
+            make_failure(3, "Bash"),
+            make_failure(4, "Bash"),
+            make_failure(5, "Read"),
+            make_failure(6, "Read"),
+            make_failure(7, "Read"),
+            make_failure(8, "Write"),
+            make_failure(9, "Write"),
+        ];
+        let rule = ToolFailureRule;
+        let findings = rule.detect(&records);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].claim.contains("'Bash'"));
+        assert_eq!(findings[0].measured, 4.0);
+    }
+
+    #[test]
+    fn test_tool_failure_rule_multiple_tools_multiple_findings() {
+        // T-FM-14: 5 Bash + 4 Read -> both exceed threshold -> 2 findings
+        let records = vec![
+            make_failure(1, "Bash"),
+            make_failure(2, "Bash"),
+            make_failure(3, "Bash"),
+            make_failure(4, "Bash"),
+            make_failure(5, "Bash"),
+            make_failure(6, "Read"),
+            make_failure(7, "Read"),
+            make_failure(8, "Read"),
+            make_failure(9, "Read"),
+        ];
+        let rule = ToolFailureRule;
+        let findings = rule.detect(&records);
+        assert_eq!(findings.len(), 2);
+        let bash_finding = findings.iter().find(|f| f.claim.contains("'Bash'")).unwrap();
+        assert_eq!(bash_finding.measured, 5.0);
+        let read_finding = findings.iter().find(|f| f.claim.contains("'Read'")).unwrap();
+        assert_eq!(read_finding.measured, 4.0);
+    }
+
+    #[test]
+    fn test_tool_failure_rule_empty_records() {
+        // T-FM-15: empty input -> no findings, no panic
+        let rule = ToolFailureRule;
+        assert!(rule.detect(&[]).is_empty());
+    }
+
+    #[test]
+    fn test_tool_failure_rule_non_claude_code_excluded() {
+        // T-FM-16: 5 failures from non-claude-code domain -> no finding (R-07)
+        let records: Vec<ObservationRecord> = (1u64..=5)
+            .map(|ts| ObservationRecord {
+                ts,
+                event_type: hook_type::POSTTOOLUSEFAILURE.to_string(),
+                source_domain: "sre".to_string(),
+                session_id: "sess-1".to_string(),
+                tool: Some("Bash".to_string()),
+                input: None,
+                response_size: None,
+                response_snippet: None,
+            })
+            .collect();
+        let rule = ToolFailureRule;
+        assert!(rule.detect(&records).is_empty());
+    }
+
+    #[test]
+    fn test_tool_failure_rule_mixed_domains() {
+        // T-FM-17: 4 claude-code + 5 sre for same tool -> only claude-code counted -> 1 finding
+        let mut records: Vec<ObservationRecord> = (1u64..=4).map(|ts| make_failure(ts, "Bash")).collect();
+        records.extend((5u64..=9).map(|ts| ObservationRecord {
+            ts,
+            event_type: hook_type::POSTTOOLUSEFAILURE.to_string(),
+            source_domain: "other-agent".to_string(),
+            session_id: "sess-1".to_string(),
+            tool: Some("Bash".to_string()),
+            input: None,
+            response_size: None,
+            response_snippet: None,
+        }));
+        let rule = ToolFailureRule;
+        let findings = rule.detect(&records);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].measured, 4.0);
+    }
+
+    #[test]
+    fn test_tool_failure_rule_evidence_records() {
+        // T-FM-18: 4 failures with response_snippet -> evidence populated
+        let records: Vec<ObservationRecord> = (1u64..=4)
+            .map(|ts| ObservationRecord {
+                ts,
+                event_type: hook_type::POSTTOOLUSEFAILURE.to_string(),
+                source_domain: "claude-code".to_string(),
+                session_id: "sess-1".to_string(),
+                tool: Some("Bash".to_string()),
+                input: None,
+                response_size: None,
+                response_snippet: Some("permission denied".to_string()),
+            })
+            .collect();
+        let rule = ToolFailureRule;
+        let findings = rule.detect(&records);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].evidence.len(), 4);
+        assert!(findings[0].evidence[0].description.contains("PostToolUseFailure for Bash"));
+        assert_eq!(findings[0].evidence[0].detail, "permission denied");
+    }
+
+    #[test]
+    fn test_tool_failure_rule_no_tool_records_skipped() {
+        // Edge case: records with tool == None are skipped gracefully
+        let records = vec![
+            ObservationRecord {
+                ts: 1,
+                event_type: hook_type::POSTTOOLUSEFAILURE.to_string(),
+                source_domain: "claude-code".to_string(),
+                session_id: "sess-1".to_string(),
+                tool: None, // no tool
+                input: None,
+                response_size: None,
+                response_snippet: None,
+            },
+        ];
+        let rule = ToolFailureRule;
+        assert!(rule.detect(&records).is_empty());
+    }
+
+    // -- Two-site coherence tests (T-FM-08/09/10, ADR-004) --
+
+    #[test]
+    fn test_two_site_agreement_balanced_failure_and_post() {
+        // T-FM-08: 4 Pre + 2 Post + 2 Failure -> both sites agree: 0 imbalance (R-02)
+        use crate::metrics::compute_metric_vector;
+        let records = vec![
+            make_pre(1000, "Bash"),
+            make_pre(2000, "Bash"),
+            make_pre(3000, "Bash"),
+            make_pre(4000, "Bash"),
+            make_post(1500, "Bash"),
+            make_post(2500, "Bash"),
+            make_failure(3500, "Bash"),
+            make_failure(4500, "Bash"),
+        ];
+        // Site 1: metrics
+        let mv = compute_metric_vector(&records, &[], 0);
+        assert_eq!(mv.universal.permission_friction_events, 0);
+        // Site 2: rule
+        let findings = PermissionRetriesRule.detect(&records);
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn test_two_site_agreement_genuine_imbalance() {
+        // T-FM-09: 5 Pre + 2 Post + 1 Failure -> terminal=3, retries=2 (at threshold, no finding)
+        // Both sites must agree: friction_events==2 AND findings empty (threshold > 2)
+        use crate::metrics::compute_metric_vector;
+        let records = vec![
+            make_pre(1, "Read"),
+            make_pre(2, "Read"),
+            make_pre(3, "Read"),
+            make_pre(4, "Read"),
+            make_pre(5, "Read"),
+            make_post(6, "Read"),
+            make_post(7, "Read"),
+            make_failure(8, "Read"),
+        ];
+        let mv = compute_metric_vector(&records, &[], 0);
+        assert_eq!(mv.universal.permission_friction_events, 2);
+        let findings = PermissionRetriesRule.detect(&records);
+        // retries = 2, threshold = 2 -> 2 > 2 is false -> no finding
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn test_two_site_agreement_failure_only_no_post() {
+        // T-FM-10: 5 Pre + 0 Post + 5 Failure -> terminal=5, retries=0
+        // Both sites must agree: friction_events==0 AND findings empty
+        use crate::metrics::compute_metric_vector;
+        let records = vec![
+            make_pre(1, "Read"),
+            make_pre(2, "Read"),
+            make_pre(3, "Read"),
+            make_pre(4, "Read"),
+            make_pre(5, "Read"),
+            make_failure(6, "Read"),
+            make_failure(7, "Read"),
+            make_failure(8, "Read"),
+            make_failure(9, "Read"),
+            make_failure(10, "Read"),
+        ];
+        let mv = compute_metric_vector(&records, &[], 0);
+        assert_eq!(mv.universal.permission_friction_events, 0);
+        let findings = PermissionRetriesRule.detect(&records);
+        assert!(findings.is_empty());
     }
 }

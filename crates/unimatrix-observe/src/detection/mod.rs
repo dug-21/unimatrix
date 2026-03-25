@@ -1,6 +1,6 @@
 //! Hotspot detection framework with extensible rule trait.
 //!
-//! Ships 21 rules across 4 categories: agent (7), friction (4), session (5), scope (5).
+//! Ships 22 rules across 4 categories: agent (7), friction (5), session (5), scope (5).
 
 pub mod agent;
 pub mod friction;
@@ -35,17 +35,18 @@ pub fn detect_hotspots(
     findings
 }
 
-/// Return the default set of detection rules (21 total).
+/// Return the default set of detection rules (22 total).
 ///
 /// The `history` parameter provides historical MetricVectors for the
 /// PhaseDurationOutlierRule (ADR-001: constructor injection).
 pub fn default_rules(history: Option<&[MetricVector]>) -> Vec<Box<dyn DetectionRule>> {
     vec![
-        // Friction (4)
+        // Friction (5)
         Box::new(friction::PermissionRetriesRule),
         Box::new(friction::SleepWorkaroundsRule),
         Box::new(friction::SearchViaBashRule),
         Box::new(friction::OutputParsingStruggleRule),
+        Box::new(friction::ToolFailureRule), // col-027: PostToolUseFailure per-tool count
         // Session (5)
         Box::new(session::SessionTimeoutRule),
         Box::new(session::ColdRestartRule),
@@ -263,9 +264,17 @@ mod tests {
     // -- default_rules --
 
     #[test]
-    fn test_default_rules_has_21_rules() {
+    fn test_default_rules_has_22_rules() {
         let rules = default_rules(None);
-        assert_eq!(rules.len(), 21);
+        assert_eq!(rules.len(), 22);
+    }
+
+    #[test]
+    fn test_default_rules_contains_tool_failure_hotspot() {
+        // T-FM-19: ToolFailureRule must be registered by name (R-13)
+        let rules = default_rules(None);
+        let names: Vec<&str> = rules.iter().map(|r| r.name()).collect();
+        assert!(names.contains(&"tool_failure_hotspot"));
     }
 
     #[test]
@@ -293,6 +302,7 @@ mod tests {
         assert!(names.contains(&"adr_count"));
         assert!(names.contains(&"post_delivery_issues"));
         assert!(names.contains(&"phase_duration_outlier"));
+        assert!(names.contains(&"tool_failure_hotspot"));
     }
 
     #[test]
@@ -319,7 +329,7 @@ mod tests {
             .collect();
 
         let rules = default_rules(Some(&mvs));
-        assert_eq!(rules.len(), 21);
+        assert_eq!(rules.len(), 22);
     }
 
     // -- Helper tests --
