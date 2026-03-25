@@ -2455,9 +2455,12 @@ fn handle_cycle_event(
             }
         });
 
-        // Set current_goal synchronously in the registry.
+        // Set current_goal synchronously in the registry only when a goal is present.
         // If session is not yet registered, set_current_goal is a silent no-op.
-        session_registry.set_current_goal(&event.session_id, goal.clone());
+        // A cycle_start with no goal key must NOT overwrite a previously set goal (col-025).
+        if goal.is_some() {
+            session_registry.set_current_goal(&event.session_id, goal.clone());
+        }
         goal
     } else {
         // PhaseEnd and Stop do not read or modify current_goal (FR-01).
@@ -6342,9 +6345,9 @@ mod tests {
         );
     }
 
-    /// T-389-03: second cycle_start with no goal resets current_goal to None (GH #389).
-    /// set_current_goal is unconditional: a cycle_start without a goal key always yields None.
-    /// This test documents and pins the actual behavior (no silent guard — None clears goal).
+    /// T-389-03: second cycle_start with no goal preserves the existing current_goal (col-025).
+    /// set_current_goal is guarded: a cycle_start without a goal key does not overwrite a
+    /// previously set goal. Matches set_current_phase behavior (only writes when Some).
     #[tokio::test]
     async fn test_cycle_start_missing_goal_does_not_overwrite_existing() {
         let store = make_store().await;
@@ -6382,7 +6385,7 @@ mod tests {
         );
 
         // Second cycle_start: no goal in payload.
-        // set_current_goal is unconditional — None resets current_goal (no guard).
+        // set_current_goal is guarded — None must NOT reset the existing goal (col-025).
         let event2 = make_cycle_event(
             CYCLE_START_EVENT,
             "gh389-3",
@@ -6403,11 +6406,12 @@ mod tests {
         )
         .await;
 
-        // set_current_goal(None) clears the goal (FR-01: unconditional write).
+        // set_current_goal is guarded — existing goal must be preserved (col-025).
         let state_after_second = registry.get_state("gh389-3").expect("session must exist");
         assert_eq!(
-            state_after_second.current_goal, None,
-            "second cycle_start without goal resets current_goal to None (set_current_goal is unconditional)"
+            state_after_second.current_goal.as_deref(),
+            Some("existing goal"),
+            "second cycle_start without goal must preserve the previously set goal (col-025)"
         );
     }
 
