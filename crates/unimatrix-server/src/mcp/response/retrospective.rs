@@ -3465,7 +3465,7 @@ mod tests {
             ("compile_cycles", "43 compile cycles (threshold: 10)"),
             ("edit_bloat", "edit size 1200kb (threshold: 500)"),
             ("adr_count", "3 ADRs created (threshold: 2)"),
-            ("permission_retries", "5 retries (threshold: 3)"),
+            ("orphaned_calls", "5 orphaned calls (threshold: 3)"),
         ];
         for (rule_name, claim) in &claim_patterns {
             let result = format_claim_with_baseline(claim, rule_name, 10.0, 5.0, None);

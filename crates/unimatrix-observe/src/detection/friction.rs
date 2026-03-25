@@ -1,6 +1,6 @@
 //! Friction hotspot detection rules (5 rules).
 //!
-//! 2 existing from col-002 (PermissionRetries, SleepWorkarounds) + 2 new (SearchViaBash, OutputParsingStruggle) + 1 new col-027 (ToolFailure).
+//! 2 existing from col-002 (OrphanedCalls [renamed #383], SleepWorkarounds) + 2 new (SearchViaBash, OutputParsingStruggle) + 1 new col-027 (ToolFailure).
 
 use std::collections::{HashMap, HashSet};
 
@@ -15,13 +15,15 @@ use super::{DetectionRule, contains_sleep_command, input_to_command_string, trun
 // ADR-005: hardcoded constant for col-027; extract to named constant for future configurability.
 const TOOL_FAILURE_THRESHOLD: u64 = 3;
 
-// -- Rule 1: PermissionRetriesRule (moved from col-002 detection.rs) --
+// -- Rule 1: OrphanedCallsRule (renamed from PermissionRetriesRule in #383) --
+// Previously called PermissionRetriesRule; col-027 changed the computation to detect
+// PreToolUse with no terminal event (neither PostToolUse nor PostToolUseFailure).
 
-pub(crate) struct PermissionRetriesRule;
+pub(crate) struct OrphanedCallsRule;
 
-impl DetectionRule for PermissionRetriesRule {
+impl DetectionRule for OrphanedCallsRule {
     fn name(&self) -> &str {
-        "permission_retries"
+        "orphaned_calls"
     }
 
     fn category(&self) -> HotspotCategory {
@@ -75,9 +77,9 @@ impl DetectionRule for PermissionRetriesRule {
                 findings.push(HotspotFinding {
                     category: HotspotCategory::Friction,
                     severity: Severity::Warning,
-                    rule_name: "permission_retries".to_string(),
+                    rule_name: "orphaned_calls".to_string(),
                     claim: format!(
-                        "Tool '{tool}' had {retries} permission retries (Pre-Post differential)"
+                        "Tool '{tool}' had {retries} orphaned call(s) (Pre\u{2013}terminal differential)"
                     ),
                     measured: retries as f64,
                     threshold,
@@ -473,10 +475,10 @@ mod tests {
         }
     }
 
-    // -- PermissionRetriesRule --
+    // -- OrphanedCallsRule --
 
     #[test]
-    fn test_permission_retries_exceeds_threshold() {
+    fn test_orphaned_calls_exceeds_threshold() {
         let records = vec![
             make_pre(1000, "Read"),
             make_pre(2000, "Read"),
@@ -486,7 +488,7 @@ mod tests {
             make_post(1500, "Read"),
             make_post(2500, "Read"),
         ];
-        let rule = PermissionRetriesRule;
+        let rule = OrphanedCallsRule;
         let findings = rule.detect(&records);
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].measured, 3.0);
@@ -494,7 +496,7 @@ mod tests {
     }
 
     #[test]
-    fn test_permission_retries_equal_pre_post() {
+    fn test_orphaned_calls_equal_pre_post() {
         let records = vec![
             make_pre(1000, "Read"),
             make_pre(2000, "Read"),
@@ -503,13 +505,13 @@ mod tests {
             make_post(2500, "Read"),
             make_post(3500, "Read"),
         ];
-        let rule = PermissionRetriesRule;
+        let rule = OrphanedCallsRule;
         assert!(rule.detect(&records).is_empty());
     }
 
     #[test]
-    fn test_permission_retries_empty_records() {
-        let rule = PermissionRetriesRule;
+    fn test_orphaned_calls_empty_records() {
+        let rule = OrphanedCallsRule;
         assert!(rule.detect(&[]).is_empty());
     }
 
@@ -650,11 +652,11 @@ mod tests {
         assert!(rule.detect(&records).is_empty());
     }
 
-    // -- PermissionRetriesRule fix tests (col-027, ADR-004) --
+    // -- OrphanedCallsRule fix tests (col-027, ADR-004) --
 
     #[test]
-    fn test_permission_retries_failure_as_terminal_no_finding() {
-        // T-FM-01: 5 Pre + 5 Failure -> retries = 0, no finding (AC-05, R-04)
+    fn test_orphaned_calls_failure_as_terminal_no_finding() {
+        // T-FM-01: 5 Pre + 5 Failure -> orphaned = 0, no finding (AC-05, R-04)
         let records = vec![
             make_pre(1, "Bash"),
             make_pre(2, "Bash"),
@@ -667,13 +669,13 @@ mod tests {
             make_failure(9, "Bash"),
             make_failure(10, "Bash"),
         ];
-        let rule = PermissionRetriesRule;
+        let rule = OrphanedCallsRule;
         assert!(rule.detect(&records).is_empty());
     }
 
     #[test]
-    fn test_permission_retries_mixed_post_and_failure_balanced() {
-        // T-FM-02: 4 Pre + 2 Post + 2 Failure -> retries = 0, no finding (AC-05 extension)
+    fn test_orphaned_calls_mixed_post_and_failure_balanced() {
+        // T-FM-02: 4 Pre + 2 Post + 2 Failure -> orphaned = 0, no finding (AC-05 extension)
         let records = vec![
             make_pre(1, "Read"),
             make_pre(2, "Read"),
@@ -684,13 +686,13 @@ mod tests {
             make_failure(7, "Read"),
             make_failure(8, "Read"),
         ];
-        let rule = PermissionRetriesRule;
+        let rule = OrphanedCallsRule;
         assert!(rule.detect(&records).is_empty());
     }
 
     #[test]
-    fn test_permission_retries_genuine_imbalance_with_failures() {
-        // T-FM-03: 5 Pre + 2 Post + 0 Failure -> retries = 3 > threshold(2) -> 1 finding (AC-06)
+    fn test_orphaned_calls_genuine_imbalance_with_failures() {
+        // T-FM-03: 5 Pre + 2 Post + 0 Failure -> orphaned = 3 > threshold(2) -> 1 finding (AC-06)
         let records = vec![
             make_pre(1, "Write"),
             make_pre(2, "Write"),
@@ -700,7 +702,7 @@ mod tests {
             make_post(6, "Write"),
             make_post(7, "Write"),
         ];
-        let rule = PermissionRetriesRule;
+        let rule = OrphanedCallsRule;
         let findings = rule.detect(&records);
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].measured, 3.0);
@@ -778,9 +780,15 @@ mod tests {
         let rule = ToolFailureRule;
         let findings = rule.detect(&records);
         assert_eq!(findings.len(), 2);
-        let bash_finding = findings.iter().find(|f| f.claim.contains("'Bash'")).unwrap();
+        let bash_finding = findings
+            .iter()
+            .find(|f| f.claim.contains("'Bash'"))
+            .unwrap();
         assert_eq!(bash_finding.measured, 5.0);
-        let read_finding = findings.iter().find(|f| f.claim.contains("'Read'")).unwrap();
+        let read_finding = findings
+            .iter()
+            .find(|f| f.claim.contains("'Read'"))
+            .unwrap();
         assert_eq!(read_finding.measured, 4.0);
     }
 
@@ -813,7 +821,8 @@ mod tests {
     #[test]
     fn test_tool_failure_rule_mixed_domains() {
         // T-FM-17: 4 claude-code + 5 sre for same tool -> only claude-code counted -> 1 finding
-        let mut records: Vec<ObservationRecord> = (1u64..=4).map(|ts| make_failure(ts, "Bash")).collect();
+        let mut records: Vec<ObservationRecord> =
+            (1u64..=4).map(|ts| make_failure(ts, "Bash")).collect();
         records.extend((5u64..=9).map(|ts| ObservationRecord {
             ts,
             event_type: hook_type::POSTTOOLUSEFAILURE.to_string(),
@@ -849,25 +858,27 @@ mod tests {
         let findings = rule.detect(&records);
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].evidence.len(), 4);
-        assert!(findings[0].evidence[0].description.contains("PostToolUseFailure for Bash"));
+        assert!(
+            findings[0].evidence[0]
+                .description
+                .contains("PostToolUseFailure for Bash")
+        );
         assert_eq!(findings[0].evidence[0].detail, "permission denied");
     }
 
     #[test]
     fn test_tool_failure_rule_no_tool_records_skipped() {
         // Edge case: records with tool == None are skipped gracefully
-        let records = vec![
-            ObservationRecord {
-                ts: 1,
-                event_type: hook_type::POSTTOOLUSEFAILURE.to_string(),
-                source_domain: "claude-code".to_string(),
-                session_id: "sess-1".to_string(),
-                tool: None, // no tool
-                input: None,
-                response_size: None,
-                response_snippet: None,
-            },
-        ];
+        let records = vec![ObservationRecord {
+            ts: 1,
+            event_type: hook_type::POSTTOOLUSEFAILURE.to_string(),
+            source_domain: "claude-code".to_string(),
+            session_id: "sess-1".to_string(),
+            tool: None, // no tool
+            input: None,
+            response_size: None,
+            response_snippet: None,
+        }];
         let rule = ToolFailureRule;
         assert!(rule.detect(&records).is_empty());
     }
@@ -892,13 +903,13 @@ mod tests {
         let mv = compute_metric_vector(&records, &[], 0);
         assert_eq!(mv.universal.permission_friction_events, 0);
         // Site 2: rule
-        let findings = PermissionRetriesRule.detect(&records);
+        let findings = OrphanedCallsRule.detect(&records);
         assert!(findings.is_empty());
     }
 
     #[test]
     fn test_two_site_agreement_genuine_imbalance() {
-        // T-FM-09: 5 Pre + 2 Post + 1 Failure -> terminal=3, retries=2 (at threshold, no finding)
+        // T-FM-09: 5 Pre + 2 Post + 1 Failure -> terminal=3, orphaned=2 (at threshold, no finding)
         // Both sites must agree: friction_events==2 AND findings empty (threshold > 2)
         use crate::metrics::compute_metric_vector;
         let records = vec![
@@ -913,14 +924,14 @@ mod tests {
         ];
         let mv = compute_metric_vector(&records, &[], 0);
         assert_eq!(mv.universal.permission_friction_events, 2);
-        let findings = PermissionRetriesRule.detect(&records);
-        // retries = 2, threshold = 2 -> 2 > 2 is false -> no finding
+        let findings = OrphanedCallsRule.detect(&records);
+        // orphaned = 2, threshold = 2 -> 2 > 2 is false -> no finding
         assert!(findings.is_empty());
     }
 
     #[test]
     fn test_two_site_agreement_failure_only_no_post() {
-        // T-FM-10: 5 Pre + 0 Post + 5 Failure -> terminal=5, retries=0
+        // T-FM-10: 5 Pre + 0 Post + 5 Failure -> terminal=5, orphaned=0
         // Both sites must agree: friction_events==0 AND findings empty
         use crate::metrics::compute_metric_vector;
         let records = vec![
@@ -937,7 +948,7 @@ mod tests {
         ];
         let mv = compute_metric_vector(&records, &[], 0);
         assert_eq!(mv.universal.permission_friction_events, 0);
-        let findings = PermissionRetriesRule.detect(&records);
+        let findings = OrphanedCallsRule.detect(&records);
         assert!(findings.is_empty());
     }
 }

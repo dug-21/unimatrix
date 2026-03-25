@@ -87,19 +87,19 @@ fn run_rule(
 
 // ── GAP-01: Per-rule isolation tests (21 rules, naming: test_{rule_name}_ignores_non_claude_code_domain) ──
 
-/// Rule 1 (friction): permission_retries — source_domain guard isolates sre records.
+/// Rule 1 (friction): orphaned_calls — source_domain guard isolates sre records.
 #[test]
-fn test_permission_retries_ignores_non_claude_code_domain() {
-    // 10 PreToolUse + 2 PostToolUse for "Read" with sre domain → retries look like 8,
+fn test_orphaned_calls_ignores_non_claude_code_domain() {
+    // 10 PreToolUse + 2 PostToolUse for "Read" with sre domain → orphaned look like 8,
     // but domain guard must block all.
     let mut records: Vec<ObservationRecord> = (0..10)
         .map(|i| make_sre_tool(i * 1000, "PreToolUse", "Read"))
         .collect();
     records.extend((10..12).map(|i| make_sre_tool(i * 1000, "PostToolUse", "Read")));
-    let findings = run_rule("permission_retries", &records);
+    let findings = run_rule("orphaned_calls", &records);
     assert!(
         findings.is_empty(),
-        "permission_retries must produce no findings for sre domain; got: {:?}",
+        "orphaned_calls must produce no findings for sre domain; got: {:?}",
         findings
     );
 }
@@ -673,10 +673,10 @@ fn test_retrospective_report_backward_compat_claude_code_fixture() {
         categories
     );
 
-    // Permission retries (Friction category) must fire: fixture has 8 PreToolUse / 2 PostToolUse for Read.
+    // Orphaned calls (Friction category) must fire: fixture has 8 PreToolUse / 2 PostToolUse for Read.
     assert!(
         categories.contains(&HotspotCategory::Friction),
-        "expected Friction category findings from permission_retries; got categories: {:?}",
+        "expected Friction category findings from orphaned_calls; got categories: {:?}",
         categories
     );
 
@@ -700,7 +700,7 @@ fn test_retrospective_report_backward_compat_claude_code_fixture() {
 ///
 /// The fixture is designed to trigger multiple rule categories deterministically:
 /// - compile_cycles (Agent): 8 cargo test commands
-/// - permission_retries (Friction): 8 PreToolUse + 2 PostToolUse for Read tool
+/// - orphaned_calls (Friction): 8 PreToolUse + 2 PostToolUse for Read tool
 /// - session_timeout (Session): 3-hour gap between two events
 /// - sleep_workarounds (Friction): one sleep command
 fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
@@ -744,7 +744,7 @@ fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
         });
     }
 
-    // 8 Read PreToolUse without matching PostToolUse (triggers permission_retries)
+    // 8 Read PreToolUse without matching PostToolUse (triggers orphaned_calls)
     for i in 0u64..8 {
         records.push(ObservationRecord {
             ts: base_ts + 20_000 + i * 500,
@@ -757,7 +757,7 @@ fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
             response_snippet: None,
         });
     }
-    // Only 2 PostToolUse for Read (leaves 6 retries = > 2 threshold)
+    // Only 2 PostToolUse for Read (leaves 6 orphaned = > 2 threshold)
     for i in 0u64..2 {
         records.push(ObservationRecord {
             ts: base_ts + 24_000 + i * 500,

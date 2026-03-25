@@ -104,11 +104,11 @@ impl ExtractionRule for RecurringFrictionRule {
 ///
 /// Provides concrete guidance that an agent can act on immediately, rather than
 /// raw session UUID lists that carry no information. (GH #351)
-fn remediation_for_rule(rule_name: &str) -> &'static str {
+pub(crate) fn remediation_for_rule(rule_name: &str) -> &'static str {
     match rule_name {
-        "permission_retries" => {
-            "Add cargo, git, and other CLI commands to the settings.json allowlist \
-             to reduce permission prompts."
+        "orphaned_calls" => {
+            "Review agent behaviour around tool invocation abandonment — recurring orphaned \
+             calls suggest context overflow or parallel call management issues"
         }
         "tool_call_retries" => {
             "Review tool use patterns — repeated retries indicate ambiguous instructions \
@@ -137,6 +137,71 @@ fn remediation_for_rule(rule_name: &str) -> &'static str {
         "rework_events" => {
             "Ensure design artifacts (pseudocode, ADRs) are validated before \
              implementation begins to avoid late-stage rework."
+        }
+        "tool_failure_hotspot" => {
+            "Investigate the tool that accumulates repeated PostToolUseFailure events — \
+             common causes are incorrect arguments, missing files, or network failures. \
+             Fix the root cause rather than retrying blindly."
+        }
+        "context_load_before_first_write_kb" | "context_load" => {
+            "Reduce upfront file reading by scoping reads to relevant files only — \
+             excessive context load before the first write indicates over-reading."
+        }
+        "lifespan" => {
+            "Break long-lived agent sessions into smaller, focused sub-tasks with \
+             clear handoff points to prevent context overflow."
+        }
+        "file_breadth" => {
+            "Scope agent tasks to fewer files per session — high file breadth indicates \
+             the task scope is too broad or the agent is exploring rather than implementing."
+        }
+        "reread_rate" => {
+            "Cache file contents early in the session to avoid repeated reads — \
+             high reread rate indicates missing context that forces re-inspection."
+        }
+        "mutation_spread" => {
+            "Limit mutations to a focused set of files per session — spread across \
+             many files suggests the implementation boundary is unclear."
+        }
+        "edit_bloat" => {
+            "Prefer targeted edits over large file rewrites — high edit bloat \
+             increases review burden and merge conflict risk."
+        }
+        "session_timeout" => {
+            "Break work into shorter sessions to avoid timeout-induced context loss — \
+             use TaskCreate/TaskUpdate to checkpoint progress between sessions."
+        }
+        "cold_restart" => {
+            "Reduce cold restart frequency by persisting session context more aggressively \
+             and avoiding long gaps between tool invocations."
+        }
+        "coordinator_respawns" => {
+            "Review coordinator agent lifespan — frequent respawns indicate premature \
+             termination or context overflow. Increase session limits or checkpoint state."
+        }
+        "post_completion_work" => {
+            "Ensure agents stop tool invocations after task completion signals — \
+             post-completion work inflates cycle time and risks unintended side effects."
+        }
+        "source_file_count" => {
+            "Limit new source files per delivery cycle — high file counts indicate \
+             over-scoped implementation. Split into smaller features."
+        }
+        "design_artifact_count" => {
+            "Reduce design artifact generation — high counts indicate over-designed \
+             features. Focus on the minimum viable artifact set."
+        }
+        "adr_count" => {
+            "Consolidate architectural decisions — high ADR counts per cycle indicate \
+             excessive scope or indecision. Pre-validate architecture before implementation."
+        }
+        "post_delivery_issues" => {
+            "Invest in acceptance testing before delivery — post-delivery issues indicate \
+             acceptance criteria were not fully validated during implementation."
+        }
+        "phase_duration_outlier" => {
+            "Investigate phases that take significantly longer than historical baselines — \
+             outlier durations indicate scope creep, blockers, or rework not visible in tool counts."
         }
         _ => {
             "Review the recurring detection rule and consider adding it to the \
@@ -209,10 +274,10 @@ mod tests {
             .expect("open store")
     }
 
-    /// Create observations that will trigger the PermissionRetriesRule.
+    /// Create observations that will trigger the OrphanedCallsRule.
     ///
-    /// PermissionRetriesRule fires when pre_count - post_count > 2 for a tool.
-    /// We create 5 PreToolUse + 2 PostToolUse for "Read" => 3 retries > threshold(2).
+    /// OrphanedCallsRule fires when pre_count - terminal_count > 2 for a tool.
+    /// We create 5 PreToolUse + 2 PostToolUse for "Read" => 3 orphaned > threshold(2).
     fn make_permission_friction_obs(session_id: &str) -> Vec<ObservationRecord> {
         let mut obs: Vec<ObservationRecord> = (0..5)
             .map(|i| ObservationRecord {
@@ -249,7 +314,7 @@ mod tests {
         let rule = RecurringFrictionRule;
         let proposals = rule.evaluate(&observations, &store);
         // Should find at least one recurring friction pattern
-        // (PermissionRetriesRule should fire in all 3 sessions)
+        // (OrphanedCallsRule should fire in all 3 sessions)
         let friction: Vec<_> = proposals
             .iter()
             .filter(|p| p.category == "lesson-learned")
@@ -311,12 +376,13 @@ mod tests {
     async fn test_recurring_friction_skips_if_existing_entry() {
         let store = make_store().await;
 
-        // Pre-insert an entry with the title that would be generated for "permission_retries"
+        // Pre-insert an entry with the title that would be generated for "orphaned_calls"
         let existing = unimatrix_store::NewEntry {
-            title: "Recurring friction: permission_retries".to_string(),
-            content: "Detection rule 'permission_retries' fired in 3 sessions.\n\n\
-                      Remediation: Add cargo, git, and other CLI commands to the \
-                      settings.json allowlist to reduce permission prompts."
+            title: "Recurring friction: orphaned_calls".to_string(),
+            content: "Detection rule 'orphaned_calls' fired in 3 sessions.\n\n\
+                      Remediation: Review agent behaviour around tool invocation abandonment \
+                      — recurring orphaned calls suggest context overflow or parallel call \
+                      management issues"
                 .to_string(),
             topic: "process-improvement".to_string(),
             category: "lesson-learned".to_string(),
@@ -340,13 +406,13 @@ mod tests {
         let rule = RecurringFrictionRule;
         let proposals = rule.evaluate(&observations, &store);
 
-        // No new proposal for permission_retries should be generated
-        let permission_proposals: Vec<_> = proposals
+        // No new proposal for orphaned_calls should be generated
+        let orphaned_proposals: Vec<_> = proposals
             .iter()
-            .filter(|p| p.title.contains("permission_retries"))
+            .filter(|p| p.title.contains("orphaned_calls"))
             .collect();
         assert!(
-            permission_proposals.is_empty(),
+            orphaned_proposals.is_empty(),
             "dedup guard must suppress proposal when entry with same title already exists (status=0 active)"
         );
     }
@@ -361,7 +427,7 @@ mod tests {
 
         // Pre-insert an entry with the matching title but with Deprecated status.
         let deprecated_entry = unimatrix_store::NewEntry {
-            title: "Recurring friction: permission_retries".to_string(),
+            title: "Recurring friction: orphaned_calls".to_string(),
             content: "old deprecated content".to_string(),
             topic: "process-improvement".to_string(),
             category: "lesson-learned".to_string(),
@@ -389,12 +455,12 @@ mod tests {
         let rule = RecurringFrictionRule;
         let proposals = rule.evaluate(&observations, &store);
 
-        let permission_proposals: Vec<_> = proposals
+        let orphaned_proposals: Vec<_> = proposals
             .iter()
-            .filter(|p| p.title.contains("permission_retries"))
+            .filter(|p| p.title.contains("orphaned_calls"))
             .collect();
         assert!(
-            !permission_proposals.is_empty(),
+            !orphaned_proposals.is_empty(),
             "dedup guard must NOT suppress proposal when existing entry is deprecated (status != 0)"
         );
     }
@@ -437,11 +503,11 @@ mod tests {
     // -----------------------------------------------------------------------
 
     #[test]
-    fn remediation_for_permission_retries_is_actionable() {
-        let r = remediation_for_rule("permission_retries");
+    fn remediation_for_orphaned_calls_is_actionable() {
+        let r = remediation_for_rule("orphaned_calls");
         assert!(
-            r.contains("settings.json"),
-            "permission_retries remediation must mention settings.json"
+            r.contains("orphaned") || r.contains("context overflow"),
+            "orphaned_calls remediation must mention orphaned calls or context overflow; got: {r}"
         );
     }
 
