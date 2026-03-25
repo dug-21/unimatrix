@@ -30,11 +30,11 @@ If it has **numbered steps**, it's a procedure. If it's a **rule**, it's a conve
 ### Step 1: Check for existing procedure
 
 ```
-mcp__unimatrix__context_search(
-  query: "{what the procedure covers}",
-  category: "procedure",
-  k: 3
-)
+mcp__unimatrix__context_search({
+  "query": "{what the procedure covers}",
+  "category": "procedure",
+  "k": 3
+})
 ```
 
 If an existing procedure covers the same task, use Step 2 (Update) instead.
@@ -42,24 +42,24 @@ If an existing procedure covers the same task, use Step 2 (Update) instead.
 ### Step 2a: Store NEW procedure
 
 ```
-mcp__unimatrix__context_store(
-  title: "How to {task description}",
-  content: "{step-by-step content}",
-  topic: "{crate or area — e.g., 'unimatrix-server'}",
-  category: "procedure",
-  tags: ["{domain}", "{consuming-roles}"],
-  agent_id: "{your role name, e.g. uni-architect}"
-)
+mcp__unimatrix__context_store({
+  "title": "How to {task description}",
+  "content": "{step-by-step content}",
+  "topic": "{crate or area — e.g., 'unimatrix-server'}",
+  "category": "procedure",
+  "tags": ["{domain}", "{consuming-roles}"],
+  "agent_id": "{your role name, e.g. uni-architect}"
+})
 ```
 
 ### Step 2b: UPDATE existing procedure (supersedes old version)
 
 ```
-mcp__unimatrix__context_correct(
-  original_id: {old entry ID},
-  content: "{updated step-by-step content}",
-  reason: "Updated: {what changed and why}"
-)
+mcp__unimatrix__context_correct({
+  "original_id": {old entry ID},
+  "content": "{updated step-by-step content}",
+  "reason": "Updated: {what changed and why}"
+})
 ```
 
 This deprecates the old entry and creates a new one with a supersession chain. Agents querying later will get the latest version.

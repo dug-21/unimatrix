@@ -29,40 +29,40 @@ Searches Unimatrix for established patterns, procedures, and conventions relevan
 ### Step 1: Search by crate/area
 
 ```
-mcp__unimatrix__context_search(
-  query: "{what you're building — e.g., 'MCP tool handler'}",
-  category: "pattern",
-  k: 5
-)
+mcp__unimatrix__context_search({
+  "query": "{what you're building — e.g., 'MCP tool handler'}",
+  "category": "pattern",
+  "k": 5
+})
 ```
 
 ### Step 2: Also check conventions for the area
 
 ```
-mcp__unimatrix__context_search(
-  query: "{area — e.g., 'server tool pipeline'}",
-  category: "convention",
-  k: 5
-)
+mcp__unimatrix__context_search({
+  "query": "{area — e.g., 'server tool pipeline'}",
+  "category": "convention",
+  "k": 5
+})
 ```
 
 ### Step 3: Check for procedures (step-by-step techniques)
 
 ```
-mcp__unimatrix__context_search(
-  query: "{task — e.g., 'adding a new MCP tool'}",
-  category: "procedure",
-  k: 3
-)
+mcp__unimatrix__context_search({
+  "query": "{task — e.g., 'adding a new MCP tool'}",
+  "category": "procedure",
+  "k": 3
+})
 ```
 
 ### Step 4: Check for relevant ADRs
 
 ```
-mcp__unimatrix__context_lookup(
-  topic: "{feature-id}",
-  category: "decision"
-)
+mcp__unimatrix__context_lookup({
+  "topic": "{feature-id}",
+  "category": "decision"
+})
 ```
 
 ---
@@ -95,9 +95,9 @@ Query results may include entries that are outdated or incorrect. Fix them befor
 
 | Situation | Action |
 |-----------|--------|
-| Pattern/procedure is **wrong** | `mcp__unimatrix__context_correct(original_id: {id}, content: "{corrected version}", reason: "{why}")` |
-| Pattern/procedure is **outdated** | `mcp__unimatrix__context_deprecate(id: {id}, reason: "{why}")` |
-| Convention no longer applies | `mcp__unimatrix__context_deprecate(id: {id}, reason: "{why}")` |
+| Pattern/procedure is **wrong** | `mcp__unimatrix__context_correct({"original_id": {id}, "content": "{corrected version}", "reason": "{why}"})` |
+| Pattern/procedure is **outdated** | `mcp__unimatrix__context_deprecate({"id": {id}, "reason": "{why}"})` |
+| Convention no longer applies | `mcp__unimatrix__context_deprecate({"id": {id}, "reason": "{why}"})` |
 
 If you correct or deprecate an entry during your session, mention it in your return to the coordinator so it can be noted in the outcome.
 

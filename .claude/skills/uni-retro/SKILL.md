@@ -26,7 +26,7 @@ Gather all evidence about the shipped feature:
 
 1. **Run retrospective analysis** (if observation data exists):
    ```
-   mcp__unimatrix__context_cycle_review(feature_cycle: "{feature-id}", format: "markdown")
+   mcp__unimatrix__context_cycle_review({"feature_cycle": "{feature-id}", "format": "markdown"})
    ```
    This returns structured data: metrics, hotspots, baseline comparisons, narratives, and recommendations.
 
@@ -84,10 +84,7 @@ Before extracting new patterns, review the quality of entries agents stored duri
 
 1. **Query entries stored during the feature**:
    ```
-   mcp__unimatrix__context_search(
-     query: "{feature-id}",
-     k: 20
-   )
+   mcp__unimatrix__context_search({"query": "{feature-id}", "k": 20})
    ```
    Also search by feature_cycle tag if available. Use content/title matching as fallback — not all agents tag consistently.
 

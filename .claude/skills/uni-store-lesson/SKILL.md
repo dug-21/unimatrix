@@ -18,11 +18,11 @@ Stores a lesson learned in Unimatrix. Lessons capture what went wrong, why, and 
 ### Step 1: Check for existing lessons in the same area
 
 ```
-mcp__unimatrix__context_search(
-  query: "{what went wrong}",
-  category: "lesson-learned",
-  k: 3
-)
+mcp__unimatrix__context_search({
+  "query": "{what went wrong}",
+  "category": "lesson-learned",
+  "k": 3
+})
 ```
 
 If a matching lesson already exists, go to Step 2b (supersede) instead of creating a duplicate.
@@ -30,24 +30,24 @@ If a matching lesson already exists, go to Step 2b (supersede) instead of creati
 ### Step 2a: Store NEW lesson (no prior exists)
 
 ```
-mcp__unimatrix__context_store(
-  title: "{concise description of what went wrong}",
-  content: "{structured lesson content}",
-  topic: "{feature-id or crate}",
-  category: "lesson-learned",
-  tags: ["{domain}", "{failure-type}"],
-  agent_id: "{your role name, e.g. uni-architect}"
-)
+mcp__unimatrix__context_store({
+  "title": "{concise description of what went wrong}",
+  "content": "{structured lesson content}",
+  "topic": "{feature-id or crate}",
+  "category": "lesson-learned",
+  "tags": ["{domain}", "{failure-type}"],
+  "agent_id": "{your role name, e.g. uni-architect}"
+})
 ```
 
 ### Step 2b: Supersede EXISTING lesson (prior exists but is incomplete or outdated)
 
 ```
-mcp__unimatrix__context_correct(
-  original_id: {old entry ID},
-  content: "{updated lesson with new evidence or broader scope}",
-  reason: "Updated: {what new evidence or context was added}"
-)
+mcp__unimatrix__context_correct({
+  "original_id": {old entry ID},
+  "content": "{updated lesson with new evidence or broader scope}",
+  "reason": "Updated: {what new evidence or context was added}"
+})
 ```
 
 This deprecates the old lesson and creates a corrected version with a supersession chain. Future searches return the latest version.
@@ -57,7 +57,7 @@ This deprecates the old lesson and creates a corrected version with a supersessi
 If a lesson is simply wrong or no longer applies (e.g., the underlying code was redesigned):
 
 ```
-mcp__unimatrix__context_deprecate(id: {entry ID}, reason: "{why it no longer applies}")
+mcp__unimatrix__context_deprecate({"id": {entry ID}, "reason": "{why it no longer applies}"})
 ```
 
 ---

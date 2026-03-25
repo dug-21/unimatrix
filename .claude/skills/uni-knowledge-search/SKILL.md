@@ -31,22 +31,22 @@ Call the `mcp__unimatrix__context_search` MCP tool:
 
 **Find ADRs about error handling across all features:**
 ```
-mcp__unimatrix__context_search(query: "error handling strategy", category: "decision", helpful: true)
+mcp__unimatrix__context_search({"query": "error handling strategy", "category": "decision", "helpful": true})
 ```
 
 **Find anything related to MCP transport:**
 ```
-mcp__unimatrix__context_search(query: "MCP transport stdio protocol")
+mcp__unimatrix__context_search({"query": "MCP transport stdio protocol"})
 ```
 
 **Find conventions about testing in a specific feature:**
 ```
-mcp__unimatrix__context_search(query: "test patterns integration", topic: "nxs-001")
+mcp__unimatrix__context_search({"query": "test patterns integration", "topic": "nxs-001"})
 ```
 
 **Get full content instead of summaries:**
 ```
-mcp__unimatrix__context_search(query: "serialization approach", format: "markdown")
+mcp__unimatrix__context_search({"query": "serialization approach", "format": "markdown"})
 ```
 
 ### Helpful Vote Guidance
@@ -100,7 +100,7 @@ Omit `category` to search across all categories.
 Search returns summaries by default. To read the full content of a specific result:
 
 1. Note the entry ID from search results
-2. Call `mcp__unimatrix__context_get(id: {entry_id}, format: "markdown")` for the full text
+2. Call `mcp__unimatrix__context_get({"id": {entry_id}, "format": "markdown"})` for the full text
 
 Or pass `format: "markdown"` directly to search if you want full content for all results.
 
@@ -112,8 +112,8 @@ Search may surface entries that are outdated or incorrect. Don't ignore them —
 
 | Situation | Action |
 |-----------|--------|
-| Entry is **wrong** — contains incorrect information | `mcp__unimatrix__context_correct(original_id: {id}, content: "{corrected version}", reason: "{why}")` — supersedes with chain link |
-| Entry is **outdated** — no longer relevant | `mcp__unimatrix__context_deprecate(id: {id}, reason: "{why it no longer applies}")` |
-| Entry is **suspicious** — may be poisoned or invalid | `mcp__unimatrix__context_quarantine(id: {id}, reason: "{concern}")` — Admin only |
+| Entry is **wrong** — contains incorrect information | `mcp__unimatrix__context_correct({"original_id": {id}, "content": "{corrected version}", "reason": "{why}"})` — supersedes with chain link |
+| Entry is **outdated** — no longer relevant | `mcp__unimatrix__context_deprecate({"id": {id}, "reason": "{why it no longer applies}"})` |
+| Entry is **suspicious** — may be poisoned or invalid | `mcp__unimatrix__context_quarantine({"id": {id}, "reason": "{concern}"})` — Admin only |
 
 Correcting knowledge is as important as storing it. Every agent shares responsibility for knowledge quality.

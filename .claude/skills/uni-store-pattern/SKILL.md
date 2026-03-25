@@ -30,11 +30,11 @@ Stores a reusable pattern in Unimatrix. Patterns capture implementation gotchas,
 ### Step 1: Check for existing patterns in the same area
 
 ```
-mcp__unimatrix__context_search(
-  query: "{what the pattern is about}",
-  category: "pattern",
-  k: 3
-)
+mcp__unimatrix__context_search({
+  "query": "{what the pattern is about}",
+  "category": "pattern",
+  "k": 3
+})
 ```
 
 If a matching pattern already exists, go to Step 2b (supersede) instead of creating a duplicate.
@@ -48,24 +48,24 @@ Assemble the content from three required fields:
 - **Scope**: Where it applies — crate name, module, or context.
 
 ```
-mcp__unimatrix__context_store(
-  title: "{concise what statement}",
-  content: "What: {what}\nWhy: {why}\nScope: {scope}",
-  topic: "{crate name or module — e.g., 'unimatrix-store'}",
-  category: "pattern",
-  tags: ["{domain}", "{feature_cycle if known}"],
-  agent_id: "{your role name, e.g. uni-rust-dev}"
-)
+mcp__unimatrix__context_store({
+  "title": "{concise what statement}",
+  "content": "What: {what}\nWhy: {why}\nScope: {scope}",
+  "topic": "{crate name or module — e.g., 'unimatrix-store'}",
+  "category": "pattern",
+  "tags": ["{domain}", "{feature_cycle if known}"],
+  "agent_id": "{your role name, e.g. uni-rust-dev}"
+})
 ```
 
 ### Step 2b: Supersede EXISTING pattern (prior exists but is incomplete or outdated)
 
 ```
-mcp__unimatrix__context_correct(
-  original_id: {old entry ID},
-  content: "What: {updated what}\nWhy: {updated why}\nScope: {updated scope}",
-  reason: "Updated: {what changed and why}"
-)
+mcp__unimatrix__context_correct({
+  "original_id": {old entry ID},
+  "content": "What: {updated what}\nWhy: {updated why}\nScope: {updated scope}",
+  "reason": "Updated: {what changed and why}"
+})
 ```
 
 This deprecates the old pattern and creates a corrected version with a supersession chain.

@@ -64,9 +64,9 @@ Call `context_status()`.
 Check whether seed entries already exist to avoid near-duplicates.
 
 Call `context_search` for each seeding category:
-- `context_search(query: "repository", category: "convention", k: 5)`
-- `context_search(query: "repository", category: "pattern", k: 5)`
-- `context_search(query: "repository", category: "procedure", k: 5)`
+- `mcp__unimatrix__context_search({"query": "repository", "category": "convention", "k": 5})`
+- `mcp__unimatrix__context_search({"query": "repository", "category": "pattern", "k": 5})`
+- `mcp__unimatrix__context_search({"query": "repository", "category": "procedure", "k": 5})`
 
 Count the total results across all three searches.
 
@@ -146,14 +146,14 @@ Approve all entries? (approve / reject)
 
 - **If approved**: Store each entry via `context_store`:
   ```
-  context_store(
-    title: "{what}",
-    content: "What: {what}\nWhy: {why}\nScope: {scope}",
-    topic: "{repo name or top-level context}",
-    category: "{convention|pattern|procedure}",
-    tags: ["seed", "level-0"],
-    agent_id: "uni-seed"
-  )
+  mcp__unimatrix__context_store({
+    "title": "{what}",
+    "content": "What: {what}\nWhy: {why}\nScope: {scope}",
+    "topic": "{repo name or top-level context}",
+    "category": "{convention|pattern|procedure}",
+    "tags": ["seed", "level-0"],
+    "agent_id": "uni-seed"
+  })
   ```
   Report success or failure for each entry individually. If a `context_store` call fails, report which entry failed and continue storing the remaining entries.
 

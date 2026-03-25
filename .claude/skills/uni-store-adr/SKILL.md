@@ -18,7 +18,7 @@ Stores an architectural decision record in Unimatrix as the **sole authoritative
 ### Step 1: Search for prior ADRs in the same domain (MANDATORY)
 
 ```
-mcp__unimatrix__context_search(query: "{decision domain}", category: "decision", k: 5)
+mcp__unimatrix__context_search({"query": "{decision domain}", "category": "decision", "k": 5})
 ```
 
 Check if any existing ADR covers the same concern. If so, you may need to supersede it (see "How to Supersede" below).
@@ -26,16 +26,16 @@ Check if any existing ADR covers the same concern. If so, you may need to supers
 ### Step 2: Store the ADR
 
 ```
-mcp__unimatrix__context_store(
-  title: "ADR-NNN: {decision title}",
-  content: "## Context\n{why this decision is needed}\n\n## Decision\n{what we decided}\n\n## Consequences\n{what follows from this decision}",
-  topic: "{feature-id}",
-  category: "decision",
-  tags: ["adr", "{phase-prefix}", "{domain-tags}"],
-  source: "architect",
-  feature_cycle: "{feature-id}",
-  agent_id: "{your role name, e.g. uni-architect}"
-)
+mcp__unimatrix__context_store({
+  "title": "ADR-NNN: {decision title}",
+  "content": "## Context\n{why this decision is needed}\n\n## Decision\n{what we decided}\n\n## Consequences\n{what follows from this decision}",
+  "topic": "{feature-id}",
+  "category": "decision",
+  "tags": ["adr", "{phase-prefix}", "{domain-tags}"],
+  "source": "architect",
+  "feature_cycle": "{feature-id}",
+  "agent_id": "{your role name, e.g. uni-architect}"
+})
 ```
 
 ### Step 3: Record the entry ID
@@ -63,7 +63,7 @@ When a new decision replaces a prior one:
 ### Step 1: Find the old ADR
 
 ```
-mcp__unimatrix__context_search(query: "{domain of old decision}", category: "decision")
+mcp__unimatrix__context_search({"query": "{domain of old decision}", "category": "decision"})
 ```
 
 Note the old entry's ID.
@@ -71,12 +71,12 @@ Note the old entry's ID.
 ### Step 2: Use context_correct to supersede
 
 ```
-mcp__unimatrix__context_correct(
-  original_id: {old entry ID},
-  content: "## Context\n{why the old decision is being replaced}\n\n## Decision\n{new decision}\n\n## Consequences\n{what changes}",
-  title: "ADR-NNN: {new decision title}",
-  reason: "Superseded by {feature-id}: {short explanation}"
-)
+mcp__unimatrix__context_correct({
+  "original_id": {old entry ID},
+  "content": "## Context\n{why the old decision is being replaced}\n\n## Decision\n{new decision}\n\n## Consequences\n{what changes}",
+  "title": "ADR-NNN: {new decision title}",
+  "reason": "Superseded by {feature-id}: {short explanation}"
+})
 ```
 
 This automatically:
