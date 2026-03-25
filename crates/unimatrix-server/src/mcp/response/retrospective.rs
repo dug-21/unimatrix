@@ -45,6 +45,9 @@ pub fn format_retrospective_markdown(report: &RetrospectiveReport) -> CallToolRe
     // 1. Header (always rendered — rebranded col-026 FR-01..FR-05)
     output.push_str(&render_header(report));
 
+    // GH#384: goal section — always rendered, with fallback when None
+    output.push_str(&render_goal_section(report));
+
     // 2. Recommendations (moved from position 9 — FR-12)
     if !report.recommendations.is_empty() {
         output.push_str(&render_recommendations(&report.recommendations));
@@ -149,12 +152,6 @@ fn render_header(report: &RetrospectiveReport) -> String {
     // FR-01: rebranded header
     let _ = writeln!(out, "# Unimatrix Cycle Review — {}\n", report.feature_cycle);
 
-    // FR-02: goal line — omit entirely when None
-    if let Some(goal) = &report.goal {
-        let safe_goal = goal.replace('\n', " ").replace('\r', " ");
-        let _ = writeln!(out, "**Goal**: {}", safe_goal);
-    }
-
     // FR-03 + FR-04 + FR-05: cycle type, attribution, status — build meta line
     let cycle_type = report.cycle_type.as_deref().unwrap_or("Unknown");
     let mut meta_parts: Vec<String> = vec![format!("Cycle type: {}", cycle_type)];
@@ -179,6 +176,22 @@ fn render_header(report: &RetrospectiveReport) -> String {
     );
 
     out.push_str("\n---\n\n");
+    out
+}
+
+fn render_goal_section(report: &RetrospectiveReport) -> String {
+    let mut out = String::new();
+    out.push_str("## Goal\n");
+    match &report.goal {
+        Some(goal) => {
+            let safe_goal = goal.replace('\n', " ").replace('\r', " ");
+            let _ = writeln!(out, "{}", safe_goal);
+        }
+        None => {
+            out.push_str("No goal recorded for this cycle.\n");
+        }
+    }
+    out.push('\n');
     out
 }
 
@@ -2703,17 +2716,22 @@ mod tests {
 
     #[test]
     fn test_header_goal_present() {
+        // GH#384: goal now renders as ## Goal section, not inline **Goal**: prefix
         let mut report = make_report();
         report.goal = Some("Implement feature X".to_string());
         let text = extract_text(&format_retrospective_markdown(&report));
-        assert!(text.contains("**Goal**: Implement feature X"));
+        assert!(text.contains("## Goal"));
+        assert!(text.contains("Implement feature X"));
+        assert!(!text.contains("**Goal**:"));
     }
 
     #[test]
     fn test_header_goal_absent() {
+        // GH#384: absent goal always renders fallback text, never silently omitted
         let report = make_report();
         let text = extract_text(&format_retrospective_markdown(&report));
-        assert!(!text.contains("Goal:"));
+        assert!(text.contains("## Goal"));
+        assert!(text.contains("No goal recorded for this cycle."));
         assert!(!text.contains("**Goal**"));
     }
 
@@ -2724,9 +2742,64 @@ mod tests {
         let text = extract_text(&format_retrospective_markdown(&report));
         // Newlines stripped to single line
         assert!(text.contains("line1 line2"));
-        // No spurious newline-based section
-        let goal_line = text.lines().find(|l| l.contains("**Goal**")).unwrap_or("");
-        assert!(!goal_line.is_empty());
+        // Appears in the ## Goal section
+        assert!(text.contains("## Goal"));
+    }
+
+    // ── GH#384: render_goal_section ──────────────────────────────────
+
+    #[test]
+    fn test_goal_section_absent_goal_renders_fallback() {
+        let report = make_report(); // goal: None
+        let text = extract_text(&format_retrospective_markdown(&report));
+        assert!(
+            text.contains("## Goal"),
+            "## Goal section must always be present"
+        );
+        assert!(
+            text.contains("No goal recorded for this cycle."),
+            "fallback text must appear when goal is None"
+        );
+    }
+
+    #[test]
+    fn test_goal_section_present_goal_renders_verbatim() {
+        let mut report = make_report();
+        report.goal = Some("Fix the cycle review formatter.".to_string());
+        let text = extract_text(&format_retrospective_markdown(&report));
+        assert!(text.contains("## Goal"), "## Goal section must be present");
+        assert!(
+            text.contains("Fix the cycle review formatter."),
+            "verbatim goal text must appear"
+        );
+        assert!(
+            !text.contains("**Goal**:"),
+            "old inline **Goal**: format must not appear"
+        );
+    }
+
+    #[test]
+    fn test_goal_section_appears_before_recommendations() {
+        let mut report = make_report();
+        report.goal = Some("Add goal section.".to_string());
+        report.recommendations = vec![Recommendation {
+            hotspot_type: "compile_cycles".to_string(),
+            action: "Batch builds".to_string(),
+            rationale: "Reduce cycles".to_string(),
+        }];
+        let text = extract_text(&format_retrospective_markdown(&report));
+        let goal_pos = text
+            .find("## Goal")
+            .expect("## Goal section must be present");
+        let rec_pos = text
+            .find("## Recommendations")
+            .expect("## Recommendations must be present");
+        assert!(
+            goal_pos < rec_pos,
+            "## Goal must appear before ## Recommendations (goal_pos={}, rec_pos={})",
+            goal_pos,
+            rec_pos
+        );
     }
 
     // ── AC-03: Cycle type classification ────────────────────────────
@@ -3558,6 +3631,7 @@ mod tests {
 
         let expected_order = [
             "# Unimatrix Cycle Review",
+            "## Goal",
             "## Recommendations",
             "## Phase Timeline",
             "## What Went Well",
