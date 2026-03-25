@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use unimatrix_adapt::AdaptationService;
+use unimatrix_core::observation::hook_type;
 use unimatrix_core::Store;
 use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{EmbedService, NewEntry, Status, VectorAdapter};
@@ -2599,7 +2600,7 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
         // col-027: Explicit arm for PostToolUseFailure.
         // MUST be before the wildcard to avoid R-03 (tool = None storage).
         // MUST call extract_error_field(), NOT extract_response_fields() (ADR-002, R-01).
-        "PostToolUseFailure" => {
+        x if x == hook_type::POSTTOOLUSEFAILURE => {
             // tool_name field is the same as PostToolUse (FR-04.2).
             let tool = event
                 .payload
