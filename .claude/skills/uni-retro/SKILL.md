@@ -36,7 +36,7 @@ Gather all evidence about the shipped feature:
       - `Warning` hotspots → potential lessons or procedure gaps
       - `Info` hotspots → note trends, may not need action
       - Key hotspot types to watch:
-        - `permission_retries` → settings.json allowlist may need updating
+        - `orphaned_calls` → tool invocations with no terminal event — check context overflow or parallel call management
         - `sleep_workarounds` → agents using sleep instead of run_in_background
         - `cold_restart` → context loss after gaps, agents re-reading files
         - `coordinator_respawns` → SM lifetime/handoff issues
