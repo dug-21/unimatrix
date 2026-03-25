@@ -1021,8 +1021,13 @@ async fn dispatch_request(
                         };
                     }
                     // entries empty → fall through to existing ContextSearch path (graceful degradation)
+                } else {
+                    tracing::debug!(
+                        target: "unimatrix_server::obs",
+                        session_id = ?session_id,
+                        "UDS: SubagentStart goal-absent — falling through to ContextSearch"
+                    );
                 }
-                // goal absent or empty → fall through to existing ContextSearch dispatch
             }
 
             // col-018: Record observation as a side effect.
