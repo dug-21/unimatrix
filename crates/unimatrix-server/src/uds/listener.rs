@@ -12,9 +12,9 @@ use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use unimatrix_adapt::AdaptationService;
-use unimatrix_core::observation::hook_type;
 use unimatrix_core::Store;
 use unimatrix_core::async_wrappers::AsyncVectorStore;
+use unimatrix_core::observation::hook_type;
 use unimatrix_core::{EmbedService, NewEntry, Status, VectorAdapter};
 use unimatrix_engine::auth;
 use unimatrix_engine::coaccess::generate_pairs;
@@ -6254,6 +6254,246 @@ mod tests {
             state.current_goal.as_deref(),
             Some("existing goal"),
             "current_goal must not be modified by CYCLE_STOP_EVENT"
+        );
+    }
+
+    // -- GH #389: goal propagation from hook payload --
+
+    /// T-389-01: cycle_start RecordEvent with payload["goal"] → current_goal set in registry (GH #389).
+    /// This is the end-to-end path: the hook builds the payload, the listener reads it.
+    #[tokio::test]
+    async fn test_cycle_start_goal_flows_from_hook_payload_to_session_registry() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("gh389-1", None, Some("col-389-test".to_string()));
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "gh389-1",
+            serde_json::json!({"feature_cycle": "col-389-test", "goal": "test goal"}),
+            Some("col-389-test".to_string()),
+        );
+
+        let _ = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        let state = registry.get_state("gh389-1").expect("session must exist");
+        assert_eq!(
+            state.current_goal.as_deref(),
+            Some("test goal"),
+            "current_goal must be set from hook payload goal (GH #389)"
+        );
+    }
+
+    /// T-389-02: cycle_start RecordEvent with payload["goal"] → goal stored in DB (GH #389).
+    #[tokio::test]
+    async fn test_cycle_start_goal_flows_from_hook_payload_to_db() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("gh389-2", None, Some("col-389-test".to_string()));
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "gh389-2",
+            serde_json::json!({"feature_cycle": "col-389-test", "goal": "test goal"}),
+            Some("col-389-test".to_string()),
+        );
+
+        let _ = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // Allow the fire-and-forget spawn to complete.
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        let goal_from_db = store
+            .get_cycle_start_goal("col-389-test")
+            .await
+            .expect("get_cycle_start_goal must not error");
+        assert_eq!(
+            goal_from_db.as_deref(),
+            Some("test goal"),
+            "goal must be persisted to cycle_events DB row (GH #389)"
+        );
+    }
+
+    /// T-389-03: second cycle_start with no goal resets current_goal to None (GH #389).
+    /// set_current_goal is unconditional: a cycle_start without a goal key always yields None.
+    /// This test documents and pins the actual behavior (no silent guard — None clears goal).
+    #[tokio::test]
+    async fn test_cycle_start_missing_goal_does_not_overwrite_existing() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("gh389-3", None, Some("col-389-test".to_string()));
+
+        // First cycle_start: sets goal.
+        let event1 = make_cycle_event(
+            CYCLE_START_EVENT,
+            "gh389-3",
+            serde_json::json!({"feature_cycle": "col-389-test", "goal": "existing goal"}),
+            Some("col-389-test".to_string()),
+        );
+        let _ = dispatch_request(
+            HookRequest::RecordEvent { event: event1 },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        let state_after_first = registry.get_state("gh389-3").expect("session must exist");
+        assert_eq!(
+            state_after_first.current_goal.as_deref(),
+            Some("existing goal"),
+            "current_goal must be set after first cycle_start with goal"
+        );
+
+        // Second cycle_start: no goal in payload.
+        // set_current_goal is unconditional — None resets current_goal (no guard).
+        let event2 = make_cycle_event(
+            CYCLE_START_EVENT,
+            "gh389-3",
+            serde_json::json!({"feature_cycle": "col-389-test"}),
+            Some("col-389-test".to_string()),
+        );
+        let _ = dispatch_request(
+            HookRequest::RecordEvent { event: event2 },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // set_current_goal(None) clears the goal (FR-01: unconditional write).
+        let state_after_second = registry.get_state("gh389-3").expect("session must exist");
+        assert_eq!(
+            state_after_second.current_goal, None,
+            "second cycle_start without goal resets current_goal to None (set_current_goal is unconditional)"
+        );
+    }
+
+    /// T-389-04: end-to-end regression — goal set via hook payload triggers SubagentStart
+    /// BriefingContent branch (GH #389 root cause verification).
+    ///
+    /// The test environment has no embedding model, so IndexBriefingService returns empty
+    /// entries and the branch falls through to ContextSearch (graceful degradation).
+    /// The log line confirms the goal-present branch was entered.
+    #[tracing_test::traced_test]
+    #[tokio::test]
+    async fn test_subagent_start_fires_goal_branch_when_goal_set_via_hook_payload() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session(
+            "gh389-4",
+            Some("dev".to_string()),
+            Some("col-389".to_string()),
+        );
+
+        // Step 1: Dispatch cycle_start with goal in payload — this populates current_goal
+        // via the hook payload path (the bug fix).
+        let cycle_event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "gh389-4",
+            serde_json::json!({"feature_cycle": "col-389", "goal": "col-389 goal"}),
+            Some("col-389".to_string()),
+        );
+        let _ = dispatch_request(
+            HookRequest::RecordEvent { event: cycle_event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // Verify goal was set.
+        let state = registry
+            .get_state("gh389-4")
+            .expect("session must exist after cycle_start");
+        assert_eq!(
+            state.current_goal.as_deref(),
+            Some("col-389 goal"),
+            "current_goal must be set after cycle_start with goal (GH #389 fix)"
+        );
+
+        // Step 2: Dispatch ContextSearch with source=SubagentStart — must enter goal branch.
+        let _resp = dispatch_request(
+            HookRequest::ContextSearch {
+                query: "some subagent content".to_string(),
+                session_id: Some("gh389-4".to_string()),
+                role: None,
+                task: None,
+                feature: None,
+                k: Some(5),
+                max_tokens: None,
+                source: Some("SubagentStart".to_string()),
+            },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // The goal-present branch must fire — confirmed via the log message.
+        assert!(
+            logs_contain("col-025: SubagentStart goal-present branch"),
+            "SubagentStart must enter goal-present branch when goal was set via hook payload (GH #389)"
+        );
+        assert!(
+            logs_contain("col-389 goal"),
+            "log must include the goal preview from the hook payload"
         );
     }
 

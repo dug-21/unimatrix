@@ -629,6 +629,27 @@ fn build_cycle_event_or_fallthrough(
         CycleType::Stop => CYCLE_STOP_EVENT.to_string(),
     };
 
+    // Step 4b: Extract goal for cycle_start events (col-025, GH #389).
+    // Only populated for Start; PhaseEnd and Stop explicitly yield None (FR-01).
+    // Uses eprintln! (not tracing!) — hook runs outside the tokio runtime (ADR-002).
+    // Truncation mirrors truncate_at_utf8_boundary in listener.rs.
+    let goal_opt: Option<String> = if validated.cycle_type == CycleType::Start {
+        tool_input.get("goal").and_then(|v| v.as_str()).map(|g| {
+            if g.len() > MAX_GOAL_BYTES {
+                eprintln!("[unimatrix hook] goal exceeds MAX_GOAL_BYTES, truncating");
+                let mut end = MAX_GOAL_BYTES;
+                while end > 0 && !g.is_char_boundary(end) {
+                    end -= 1;
+                }
+                g[..end].to_string()
+            } else {
+                g.to_string()
+            }
+        })
+    } else {
+        None
+    };
+
     // Build payload with feature_cycle and optional phase/outcome/next_phase.
     // The feature_cycle key in payload is what the #198 extraction path and
     // the cycle event handlers look for.
@@ -644,6 +665,11 @@ fn build_cycle_event_or_fallthrough(
     }
     if let Some(ref np) = validated.next_phase {
         payload["next_phase"] = serde_json::Value::String(np.clone());
+    }
+
+    // Insert goal into payload so the listener can read payload.get("goal") (GH #389).
+    if let Some(ref g) = goal_opt {
+        payload["goal"] = serde_json::Value::String(g.clone());
     }
 
     // Set topic_signal to the topic value -- strong signal for eager attribution
@@ -3308,6 +3334,75 @@ mod tests {
     #[test]
     fn test_cycle_phase_end_constant_value() {
         assert_eq!(CYCLE_PHASE_END_EVENT, "cycle_phase_end");
+    }
+
+    // -- goal propagation in hook payload (GH #389) --
+
+    #[test]
+    fn build_cycle_event_or_fallthrough_cycle_start_with_goal_in_payload() {
+        // cycle_start with a goal present → payload["goal"] must be set (GH #389).
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start", "topic": "col-389", "goal": "some goal text"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_START_EVENT);
+                assert_eq!(
+                    event.payload["goal"].as_str(),
+                    Some("some goal text"),
+                    "goal must be forwarded into the RecordEvent payload"
+                );
+            }
+            _ => panic!("expected cycle_start RecordEvent, got {req:?}"),
+        }
+    }
+
+    #[test]
+    fn build_cycle_event_or_fallthrough_cycle_start_without_goal_absent_from_payload() {
+        // cycle_start with no goal key → payload must NOT contain "goal" (GH #389).
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start", "topic": "col-389"}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_START_EVENT);
+                assert!(
+                    event.payload.get("goal").is_none(),
+                    "goal must not appear in payload when not supplied"
+                );
+            }
+            _ => panic!("expected cycle_start RecordEvent, got {req:?}"),
+        }
+    }
+
+    #[test]
+    fn build_cycle_event_or_fallthrough_cycle_phase_end_with_goal_ignored() {
+        // phase-end with a goal key in tool_input → payload must NOT contain "goal" (FR-01 / GH #389).
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "phase-end",
+                "topic": "col-389",
+                "phase": "design",
+                "outcome": "pass",
+                "goal": "something"
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_PHASE_END_EVENT);
+                assert!(
+                    event.payload.get("goal").is_none(),
+                    "goal must not appear in payload for phase-end events"
+                );
+            }
+            _ => panic!("expected phase_end RecordEvent, got {req:?}"),
+        }
     }
 
     // -- crt-027 WA-4a: SubagentStart routing tests --
