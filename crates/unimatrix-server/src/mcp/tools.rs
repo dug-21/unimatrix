@@ -1297,6 +1297,11 @@ impl UnimatrixServer {
                         context_reload_pct: None,
                         attribution: None,
                         phase_narrative: None,
+                        goal: None,
+                        cycle_type: None,
+                        attribution_path: None,
+                        is_in_progress: None,
+                        phase_stats: None,
                     };
 
                     // Cached path also respects format (vnc-011)
@@ -2646,6 +2651,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         // Clone and truncate
@@ -2693,6 +2703,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         let content = build_lesson_learned_content(&report);
@@ -2738,6 +2753,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         let content = build_lesson_learned_content(&report);
@@ -2767,6 +2787,11 @@ mod tests {
             context_reload_pct: None,
             attribution: None,
             phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
         };
 
         let content = build_lesson_learned_content(&report);
