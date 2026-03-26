@@ -30,22 +30,16 @@ is captured in memory. Both changes are additive and backward-compatible. GH iss
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
 | SessionState (infra/session.rs) | pseudocode/session-state.md | test-plan/session-state.md |
-| Phase Helper + Four Read-Side Call Sites (mcp/tools.rs) | pseudocode/tools-read-side.md | test-plan/tools-read-side.md |
+| Phase Helper + Four Read-Side Call Sites + query_log Write Site (mcp/tools.rs) | pseudocode/tools-read-side.md | test-plan/tools-read-side.md |
 | D-01 Guard (services/usage.rs) | pseudocode/usage-d01-guard.md | test-plan/usage-d01-guard.md |
 | Schema Migration v16→v17 (unimatrix-store) | pseudocode/migration-v16-v17.md | test-plan/migration-v16-v17.md |
-| query_log Write Site — context_search (mcp/tools.rs) | pseudocode/tools-read-side.md | test-plan/tools-read-side.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
-
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map
-lists expected components from the architecture — actual file paths are filled during delivery.
-The query_log write site shares its pseudocode and test-plan files with the Phase Helper
-component since both live in `mcp/tools.rs`.
 
 ---
 

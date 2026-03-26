@@ -46,3 +46,10 @@ Note: Earlier Unimatrix entries #3504–#3509 (from prior design pass) cover the
 ## Open Questions for Spec Writer
 
 None. All design decisions are resolved per SCOPE.md. The phase snapshot session_id source question (from prior pass) is resolved: use `ctx.audit_ctx.session_id.as_deref()` after build_context, matching the context_store pattern exactly.
+
+## Knowledge Stewardship
+
+- Queried: context_search for col-028 ADRs (category: decision, topic: col-028) — found #3513–#3519 (ADR-001 through ADR-007). All applied.
+- Queried: context_search for phase snapshot patterns, SessionState field addition patterns, UsageDedup patterns — applied pattern #3027 (synchronous snapshot), #3180 (test helper update), #838 (shared constructor).
+- Stored: ADR-001 through ADR-007 as Unimatrix decision entries (#3513–#3519) per design protocol.
+- Declined: no additional novel patterns to store — all decisions are feature-specific and already stored as ADRs.
