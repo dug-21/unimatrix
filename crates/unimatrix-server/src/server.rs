@@ -2056,7 +2056,7 @@ mod tests {
                     .fetch_one(store.read_pool_test())
                     .await
                     .unwrap();
-            assert_eq!(version, 16);
+            assert_eq!(version, 17);
 
             // Verify backfill: quarantined entry should have pre_quarantine_status = 0
             let pre_q: Option<i64> =
@@ -2081,7 +2081,7 @@ mod tests {
                     .fetch_one(store.read_pool_test())
                     .await
                     .unwrap();
-            assert_eq!(version, 16, "schema version should remain 16 on re-open");
+            assert_eq!(version, 17, "schema version should remain 17 on re-open");
         }
     }
 

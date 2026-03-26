@@ -29,6 +29,7 @@ pub struct QueryLogRecord {
     pub similarity_scores: String,
     pub retrieval_mode: String,
     pub source: String,
+    pub phase: Option<String>, // col-028: workflow phase at query time; None for UDS rows
 }
 
 // -- Shared constructor --
@@ -42,6 +43,7 @@ impl QueryLogRecord {
         similarity_scores: &[f64],
         retrieval_mode: &str,
         source: &str,
+        phase: Option<String>, // col-028: workflow phase at query time; final parameter
     ) -> Self {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -58,6 +60,7 @@ impl QueryLogRecord {
             similarity_scores: serde_json::to_string(similarity_scores).unwrap_or_default(),
             retrieval_mode: retrieval_mode.to_string(),
             source: source.to_string(),
+            phase,
         }
     }
 }
@@ -88,6 +91,7 @@ impl SqlxStore {
                 Some(record.retrieval_mode.clone())
             },
             source: record.source.clone(),
+            phase: record.phase.clone(), // col-028
         });
     }
 
@@ -115,7 +119,7 @@ impl SqlxStore {
 
             let sql = format!(
                 "SELECT query_id, session_id, query_text, ts, result_count, \
-                        result_entry_ids, similarity_scores, retrieval_mode, source \
+                        result_entry_ids, similarity_scores, retrieval_mode, source, phase \
                  FROM query_log \
                  WHERE session_id IN ({placeholders}) \
                  ORDER BY ts ASC"
@@ -143,7 +147,7 @@ impl SqlxStore {
     pub async fn scan_query_log_by_session(&self, session_id: &str) -> Result<Vec<QueryLogRecord>> {
         let rows = sqlx::query(
             "SELECT query_id, session_id, query_text, ts, result_count, \
-                    result_entry_ids, similarity_scores, retrieval_mode, source \
+                    result_entry_ids, similarity_scores, retrieval_mode, source, phase \
              FROM query_log \
              WHERE session_id = ?1 \
              ORDER BY ts ASC",
@@ -179,5 +183,10 @@ fn row_to_query_log(row: &sqlx::sqlite::SqliteRow) -> Result<QueryLogRecord> {
             .map_err(|e| StoreError::Database(e.into()))?
             .unwrap_or_default(),
         source: row.try_get(8).map_err(|e| StoreError::Database(e.into()))?,
+        // col-028: phase at index 9 — must match SELECT column list order (AC-17, SR-01 guard).
+        // source is at index 8; phase is at index 9. Do NOT swap.
+        phase: row
+            .try_get::<Option<String>, _>(9)
+            .map_err(|e| StoreError::Database(e.into()))?,
     })
 }

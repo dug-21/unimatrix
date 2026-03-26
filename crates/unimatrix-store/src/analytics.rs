@@ -57,6 +57,7 @@ pub enum AnalyticsWrite {
         similarity_scores: Option<String>,
         retrieval_mode: Option<String>,
         source: String,
+        phase: Option<String>, // col-028: workflow phase at query time
     },
 
     /// Table: `signal_queue` — append-only insert.
@@ -476,12 +477,13 @@ async fn execute_analytics_write(
             similarity_scores,
             retrieval_mode,
             source,
+            phase,
         } => {
             sqlx::query(
                 "INSERT INTO query_log
                     (session_id, query_text, ts, result_count,
-                     result_entry_ids, similarity_scores, retrieval_mode, source)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                     result_entry_ids, similarity_scores, retrieval_mode, source, phase)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             )
             .bind(session_id)
             .bind(query_text)
@@ -491,6 +493,7 @@ async fn execute_analytics_write(
             .bind(similarity_scores)
             .bind(retrieval_mode)
             .bind(source)
+            .bind(phase)
             .execute(&mut **txn)
             .await?;
         }
@@ -873,6 +876,7 @@ mod tests {
                     similarity_scores: None,
                     retrieval_mode: None,
                     source: "test".into(),
+                    phase: None,
                 },
             ),
             (

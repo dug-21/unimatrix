@@ -1,8 +1,8 @@
 //! Integration tests for the v15→v16 schema migration (col-025).
 //!
-//! Covers: AC-09 (cycle_events.goal column added), AC-16 (CURRENT_SCHEMA_VERSION = 16),
+//! Covers: AC-09 (cycle_events.goal column added), AC-16 (CURRENT_SCHEMA_VERSION now 17),
 //! R-02 (migration cascade), R-08 (no positional offset after migration), R-10
-//! (fresh DB at v16), R-14 (idempotency), pattern #1264 (pragma_table_info guard).
+//! (fresh DB at v17), R-14 (idempotency), pattern #1264 (pragma_table_info guard).
 //!
 //! Pattern: create a v15-shaped database, open with current SqlxStore to trigger
 //! migration, assert schema state and data round-trips.
@@ -325,21 +325,21 @@ async fn goal_column_exists(store: &SqlxStore) -> bool {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_current_schema_version_is_16() {
+fn test_current_schema_version_is_17() {
     // Simple constant check to catch accidental off-by-one in version bump.
     assert_eq!(
         unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
-        16,
-        "CURRENT_SCHEMA_VERSION must be 16"
+        17,
+        "CURRENT_SCHEMA_VERSION must be 17"
     );
 }
 
 // ---------------------------------------------------------------------------
-// T-V16-01: Fresh database creates schema v16 directly (AC-09, R-10)
+// T-V16-01: Fresh database creates schema v17 directly (AC-09, R-10)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_fresh_db_creates_schema_v16() {
+async fn test_fresh_db_creates_schema_v17() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
@@ -349,11 +349,11 @@ async fn test_fresh_db_creates_schema_v16() {
         .await
         .expect("open fresh store");
 
-    // Assert: schema_version == 16
+    // Assert: schema_version == 17
     assert_eq!(
         read_schema_version(&store).await,
-        16,
-        "fresh database must be at schema v16"
+        17,
+        "fresh database must be at schema v17"
     );
 
     // Assert: goal column present on cycle_events (fresh schema has the full DDL).
@@ -388,8 +388,8 @@ async fn test_v15_to_v16_migration_adds_goal_column() {
         "cycle_events.goal column must exist after v15→v16 migration (AC-09)"
     );
 
-    // Assert: schema_version == 16.
-    assert_eq!(read_schema_version(&store).await, 16);
+    // Assert: schema_version == 17.
+    assert_eq!(read_schema_version(&store).await, 17);
 
     store.close().await.unwrap();
 }
@@ -454,7 +454,7 @@ async fn test_v15_to_v16_migration_idempotent() {
             .await
             .expect("first open");
         assert!(goal_column_exists(&store).await);
-        assert_eq!(read_schema_version(&store).await, 16);
+        assert_eq!(read_schema_version(&store).await, 17);
         store.close().await.unwrap();
     }
 
@@ -463,7 +463,7 @@ async fn test_v15_to_v16_migration_idempotent() {
         .await
         .expect("second open must succeed (idempotency)");
 
-    assert_eq!(read_schema_version(&store).await, 16);
+    assert_eq!(read_schema_version(&store).await, 17);
     assert!(goal_column_exists(&store).await);
 
     // Exactly one goal column must exist (not duplicated).
@@ -503,8 +503,8 @@ async fn test_pragma_table_info_guard_prevents_duplicate_goal_column() {
         .await
         .expect("open must succeed — pragma guard skips duplicate ALTER TABLE");
 
-    // Assert: no error; schema_version == 16; exactly one goal column.
-    assert_eq!(read_schema_version(&store).await, 16);
+    // Assert: no error; schema_version == 17; exactly one goal column.
+    assert_eq!(read_schema_version(&store).await, 17);
     let col_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM pragma_table_info('cycle_events') WHERE name = 'goal'",
     )
@@ -520,11 +520,11 @@ async fn test_pragma_table_info_guard_prevents_duplicate_goal_column() {
 }
 
 // ---------------------------------------------------------------------------
-// T-V16-06: schema_version counter = 16 after migration (AC-16)
+// T-V16-06: schema_version counter = 17 after migration (AC-16, SR-02 cascade)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_schema_version_is_16_after_migration() {
+async fn test_schema_version_is_17_after_v15_to_v16_migration() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
@@ -534,11 +534,11 @@ async fn test_schema_version_is_16_after_migration() {
         .await
         .expect("open migrated store");
 
-    // Assert: counters table carries schema_version = 16.
-    assert_eq!(read_schema_version(&store).await, 16);
+    // Assert: counters table carries schema_version = 17.
+    assert_eq!(read_schema_version(&store).await, 17);
 
     // Assert: Rust const agrees.
-    assert_eq!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION, 16);
+    assert_eq!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION, 17);
 
     store.close().await.unwrap();
 }

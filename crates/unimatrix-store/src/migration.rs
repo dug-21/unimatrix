@@ -15,8 +15,8 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 15 to 16 by col-025 (cycle_events.goal column).
-pub const CURRENT_SCHEMA_VERSION: u64 = 16;
+/// Current schema version. Incremented from 16 to 17 by col-028 (query_log.phase).
+pub const CURRENT_SCHEMA_VERSION: u64 = 17;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -555,7 +555,45 @@ async fn run_main_migrations(
         // goal-absent sessions degrade gracefully to topic-ID fallback (ADR-001, col-025).
     }
 
-    // Update schema_version counter to CURRENT_SCHEMA_VERSION (16).
+    // v16 → v17: query_log.phase column (col-028).
+    //
+    // Idempotency (C-02, pattern #1264): SQLite does not support ALTER TABLE ADD COLUMN
+    // IF NOT EXISTS. Pre-check with pragma_table_info before attempting ALTER TABLE.
+    if current_version < 17 {
+        let has_phase_column: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM pragma_table_info('query_log') WHERE name = 'phase'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|count| count > 0)
+        .unwrap_or(false);
+
+        if !has_phase_column {
+            sqlx::query("ALTER TABLE query_log ADD COLUMN phase TEXT")
+                .execute(&mut **txn)
+                .await
+                .map_err(|e| StoreError::Migration {
+                    source: Box::new(e),
+                })?;
+        }
+
+        // CREATE INDEX IF NOT EXISTS: idempotent even without the pragma pre-check.
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_query_log_phase ON query_log (phase)")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+
+        sqlx::query("UPDATE counters SET value = 17 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // Update schema_version counter to CURRENT_SCHEMA_VERSION (17).
     sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', ?1)")
         .bind(CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut **txn)
