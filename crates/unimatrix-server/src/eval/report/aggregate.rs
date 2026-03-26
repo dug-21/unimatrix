@@ -1,11 +1,14 @@
-//! Aggregation functions for eval report (nan-007 D4).
+//! Aggregation functions for eval report (nan-007 D4, extended nan-008).
 //!
 //! Computes aggregate statistics, regressions, latency buckets, and
 //! entry-level rank change summaries from per-scenario results.
 
 use std::collections::HashMap;
 
-use super::{AggregateStats, EntryRankSummary, LatencyBucket, RegressionRecord, ScenarioResult};
+use super::{
+    AggregateStats, CcAtKScenarioRow, EntryRankSummary, LatencyBucket, RegressionRecord,
+    ScenarioResult,
+};
 
 // ---------------------------------------------------------------------------
 // compute_aggregate_stats
@@ -47,6 +50,10 @@ pub(super) fn compute_aggregate_stats(results: &[ScenarioResult]) -> Vec<Aggrega
         let mut p_at_k_delta_sum = 0.0_f64;
         let mut mrr_delta_sum = 0.0_f64;
         let mut latency_delta_sum = 0.0_f64;
+        let mut cc_at_k_sum = 0.0_f64;
+        let mut icd_sum = 0.0_f64;
+        let mut cc_at_k_delta_sum = 0.0_f64;
+        let mut icd_delta_sum = 0.0_f64;
         let mut count = 0_usize;
 
         for result in results {
@@ -54,10 +61,14 @@ pub(super) fn compute_aggregate_stats(results: &[ScenarioResult]) -> Vec<Aggrega
                 p_at_k_sum += prof_result.p_at_k;
                 mrr_sum += prof_result.mrr;
                 latency_sum += prof_result.latency_ms as f64;
+                cc_at_k_sum += prof_result.cc_at_k;
+                icd_sum += prof_result.icd;
                 if profile_name != &baseline_name {
                     p_at_k_delta_sum += result.comparison.p_at_k_delta;
                     mrr_delta_sum += result.comparison.mrr_delta;
                     latency_delta_sum += result.comparison.latency_overhead_ms as f64;
+                    cc_at_k_delta_sum += result.comparison.cc_at_k_delta;
+                    icd_delta_sum += result.comparison.icd_delta;
                 }
                 count += 1;
             }
@@ -86,9 +97,18 @@ pub(super) fn compute_aggregate_stats(results: &[ScenarioResult]) -> Vec<Aggrega
                 } else {
                     latency_delta_sum / count as f64
                 },
-                // nan-008 Wave 2 (aggregate.rs): populate mean_cc_at_k, mean_icd,
-                // cc_at_k_delta, icd_delta from cc_at_k/icd sums.
-                ..Default::default()
+                mean_cc_at_k: cc_at_k_sum / count as f64,
+                mean_icd: icd_sum / count as f64,
+                cc_at_k_delta: if is_baseline {
+                    0.0
+                } else {
+                    cc_at_k_delta_sum / count as f64
+                },
+                icd_delta: if is_baseline {
+                    0.0
+                } else {
+                    icd_delta_sum / count as f64
+                },
             });
         }
     }
@@ -286,4 +306,89 @@ pub(super) fn compute_entry_rank_changes(results: &[ScenarioResult]) -> EntryRan
         most_promoted,
         most_demoted,
     }
+}
+
+// ---------------------------------------------------------------------------
+// compute_cc_at_k_scenario_rows
+// ---------------------------------------------------------------------------
+
+/// Collect per-scenario CC@k rows for the Distribution Analysis section (nan-008).
+///
+/// Only produces rows when two or more profiles are present in a result (baseline +
+/// candidate comparison is meaningful). Single-profile results are skipped. The
+/// returned Vec is sorted by `cc_at_k_delta` descending (most improved first,
+/// most degraded last) so that `render.rs` can take the first N and last N rows
+/// without re-sorting.
+///
+/// `cc_at_k_delta` is taken directly from `result.comparison.cc_at_k_delta` rather
+/// than recomputed, keeping it consistent with the Summary table values.
+pub(super) fn compute_cc_at_k_scenario_rows(results: &[ScenarioResult]) -> Vec<CcAtKScenarioRow> {
+    let mut rows: Vec<CcAtKScenarioRow> = Vec::new();
+
+    for result in results {
+        // Need at least two profiles for a meaningful comparison.
+        if result.profiles.len() < 2 {
+            continue;
+        }
+
+        // Determine baseline using the same sort+force-first logic as
+        // compute_aggregate_stats for deterministic, consistent selection.
+        let mut profile_names: Vec<&str> = result.profiles.keys().map(|s| s.as_str()).collect();
+        profile_names.sort();
+        if let Some(pos) = profile_names
+            .iter()
+            .position(|n| n.to_lowercase() == "baseline")
+        {
+            let baseline = profile_names.remove(pos);
+            profile_names.insert(0, baseline);
+        }
+
+        let baseline_name = match profile_names.first() {
+            Some(n) => *n,
+            None => continue,
+        };
+
+        let baseline_result = match result.profiles.get(baseline_name) {
+            Some(r) => r,
+            None => continue,
+        };
+
+        // Take the first non-baseline profile as the primary candidate.
+        let candidate_name = match profile_names.iter().find(|&&n| n != baseline_name) {
+            Some(n) => *n,
+            None => continue,
+        };
+
+        let candidate_result = match result.profiles.get(candidate_name) {
+            Some(r) => r,
+            None => continue,
+        };
+
+        // Truncate query to ~60 chars for readability in the report table.
+        let query = if result.query.len() > 60 {
+            format!("{}…", &result.query[..60])
+        } else {
+            result.query.clone()
+        };
+
+        rows.push(CcAtKScenarioRow {
+            scenario_id: result.scenario_id.clone(),
+            query,
+            baseline_cc_at_k: baseline_result.cc_at_k,
+            candidate_cc_at_k: candidate_result.cc_at_k,
+            // Use the stored delta — not recomputed — for consistency with Summary table.
+            cc_at_k_delta: result.comparison.cc_at_k_delta,
+        });
+    }
+
+    // Sort descending by cc_at_k_delta: largest positive delta first,
+    // most negative last (R-12 guard). render.rs can then take rows[0..N]
+    // for top improvements and rows[len-N..] reversed for top degradations.
+    rows.sort_by(|a, b| {
+        b.cc_at_k_delta
+            .partial_cmp(&a.cc_at_k_delta)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    rows
 }
