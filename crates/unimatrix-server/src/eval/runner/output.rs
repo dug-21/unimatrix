@@ -17,6 +17,8 @@ use serde::{Deserialize, Serialize};
 pub struct ScoredEntry {
     pub id: u64,
     pub title: String,
+    /// Knowledge category of this entry — populated from `se.entry.category` in replay.rs.
+    pub category: String,
     pub final_score: f64,
     pub similarity: f64,
     pub confidence: f64,
@@ -32,6 +34,10 @@ pub struct ProfileResult {
     pub latency_ms: u64,
     pub p_at_k: f64,
     pub mrr: f64,
+    /// Fraction of configured categories represented in the result — range [0.0, 1.0].
+    pub cc_at_k: f64,
+    /// Raw Shannon entropy (natural log) over result category distribution — range [0.0, ln(n)].
+    pub icd: f64,
 }
 
 /// Rank change record for a single entry between baseline and candidate profiles.
@@ -58,6 +64,10 @@ pub struct ComparisonMetrics {
     pub p_at_k_delta: f64,
     /// `candidate.latency_ms as i64 - baseline.latency_ms as i64`
     pub latency_overhead_ms: i64,
+    /// `candidate.cc_at_k - baseline.cc_at_k`; positive means candidate improved.
+    pub cc_at_k_delta: f64,
+    /// `candidate.icd - baseline.icd`; positive means candidate improved.
+    pub icd_delta: f64,
 }
 
 /// Complete result for one scenario across all profiles.
@@ -87,4 +97,114 @@ pub(super) fn write_scenario_result(
     let json = serde_json::to_string_pretty(&result)?;
     std::fs::write(&out_path, json.as_bytes())?;
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_scored_entry(category: &str) -> ScoredEntry {
+        ScoredEntry {
+            id: 1,
+            title: "Entry 1".to_string(),
+            category: category.to_string(),
+            final_score: 0.9,
+            similarity: 0.85,
+            confidence: 0.7,
+            status: "Active".to_string(),
+            nli_rerank_delta: None,
+        }
+    }
+
+    fn make_profile_result(cc_at_k: f64, icd: f64) -> ProfileResult {
+        ProfileResult {
+            entries: vec![make_scored_entry("decision")],
+            latency_ms: 10,
+            p_at_k: 1.0,
+            mrr: 1.0,
+            cc_at_k,
+            icd,
+        }
+    }
+
+    fn make_comparison_metrics(cc_at_k_delta: f64, icd_delta: f64) -> ComparisonMetrics {
+        ComparisonMetrics {
+            kendall_tau: 1.0,
+            rank_changes: vec![],
+            mrr_delta: 0.0,
+            p_at_k_delta: 0.0,
+            latency_overhead_ms: 0,
+            cc_at_k_delta,
+            icd_delta,
+        }
+    }
+
+    #[test]
+    fn test_scored_entry_category_serializes() {
+        let entry = make_scored_entry("lesson-learned");
+        let json = serde_json::to_string(&entry).expect("serialization failed");
+        assert!(json.contains("\"category\""), "JSON missing 'category' key");
+        assert!(
+            json.contains("\"lesson-learned\""),
+            "JSON missing 'lesson-learned' value"
+        );
+    }
+
+    #[test]
+    fn test_profile_result_cc_at_k_icd_serialize() {
+        let result = make_profile_result(0.75, 1.1);
+        let json = serde_json::to_string(&result).expect("serialization failed");
+        assert!(json.contains("\"cc_at_k\""), "JSON missing 'cc_at_k' key");
+        assert!(json.contains("\"icd\""), "JSON missing 'icd' key");
+        assert!(json.contains("0.75"), "JSON missing cc_at_k value");
+        assert!(json.contains("1.1"), "JSON missing icd value");
+    }
+
+    #[test]
+    fn test_comparison_metrics_delta_fields_serialize() {
+        let cm = make_comparison_metrics(0.15, -0.05);
+        let json = serde_json::to_string(&cm).expect("serialization failed");
+        assert!(
+            json.contains("\"cc_at_k_delta\""),
+            "JSON missing 'cc_at_k_delta' key"
+        );
+        assert!(
+            json.contains("\"icd_delta\""),
+            "JSON missing 'icd_delta' key"
+        );
+    }
+
+    #[test]
+    fn test_scored_entry_round_trip() {
+        let entry = make_scored_entry("decision");
+        let json = serde_json::to_string(&entry).expect("serialization failed");
+        let decoded: ScoredEntry = serde_json::from_str(&json).expect("deserialization failed");
+        assert_eq!(decoded.id, entry.id);
+        assert_eq!(decoded.category, "decision");
+        assert_eq!(decoded.title, entry.title);
+        assert_eq!(decoded.final_score, entry.final_score);
+    }
+
+    #[test]
+    fn test_profile_result_round_trip() {
+        let result = make_profile_result(0.857, 1.234);
+        let json = serde_json::to_string(&result).expect("serialization failed");
+        let decoded: ProfileResult = serde_json::from_str(&json).expect("deserialization failed");
+        assert_eq!(decoded.cc_at_k, 0.857);
+        assert_eq!(decoded.icd, 1.234);
+    }
+
+    #[test]
+    fn test_comparison_metrics_round_trip() {
+        let cm = make_comparison_metrics(0.143, 0.211);
+        let json = serde_json::to_string(&cm).expect("serialization failed");
+        let decoded: ComparisonMetrics =
+            serde_json::from_str(&json).expect("deserialization failed");
+        assert_eq!(decoded.cc_at_k_delta, 0.143);
+        assert_eq!(decoded.icd_delta, 0.211);
+    }
 }
