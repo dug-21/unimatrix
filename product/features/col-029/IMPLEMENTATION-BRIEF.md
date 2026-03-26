@@ -12,7 +12,7 @@ GH Issue: #413
 | Architecture | product/features/col-029/architecture/ARCHITECTURE.md |
 | Specification | product/features/col-029/specification/SPECIFICATION.md |
 | Risk-Test Strategy | product/features/col-029/RISK-TEST-STRATEGY.md |
-| Alignment Report | product/features/col-029/ALIGNMENT-REPORT.md _(pending — not yet produced)_ |
+| Alignment Report | product/features/col-029/ALIGNMENT-REPORT.md |
 
 ---
 
@@ -50,7 +50,7 @@ background-tick caching.
 |----------|------------|--------|----------|
 | Where to define the `"nli"` source constant to prevent SR-01 string divergence | `pub const EDGE_SOURCE_NLI: &str = "nli"` in `unimatrix-store/src/read.rs`, re-exported from `lib.rs`; bare literals in `nli_detection.rs` are candidates for follow-up migration | ADR-001 | `architecture/ADR-001-edge-source-nli-constant.md` |
 | One query vs. two queries vs. six queries for the six metrics | Two SQL queries: Query 1 is pure GRAPH_EDGES aggregates (no JOIN); Query 2 joins `entries` for connectivity and cross-category. `mean_entry_degree`, `connectivity_rate`, and `isolated_entry_count` are derived in Rust from those two query results | ADR-002 | `architecture/ADR-002-two-sql-queries.md` |
-| Which pool to use — `read_pool()` vs. `write_pool_server()` | `write_pool_server()` for both queries, matching all other GRAPH_EDGES readers (`query_bootstrap_contradicts`, `find_nli_count_for_circuit_breaker`). Note: SCOPE.md incorrectly cited `compute_status_aggregates` as using `write_pool_server()`; it uses `read_pool()`. Cohesion uses write pool because GRAPH_EDGES is write-active during NLI inference and freshness matters | ADR-003 | `architecture/ADR-003-write-pool-server-for-cohesion-queries.md` |
+| Which pool to use — `read_pool()` vs. `write_pool_server()` | `read_pool()` for both queries. `compute_status_aggregates` (the direct precedent) uses `read_pool()` at lines 959 and 983 of `read.rs`. Cohesion queries are read-only aggregates that require no write serialisation; `read_pool()` is the correct pool for read-only queries. Note: earlier design drafts (SCOPE.md background, ARCHITECTURE.md) incorrectly stated `write_pool_server()` — ADR-003 documents the correction. | ADR-003 | `architecture/ADR-003-write-pool-server-for-cohesion-queries.md` |
 | How to count cross-category edges without a cartesian product (SR-04) | Query 2 uses explicit `LEFT JOIN entries src_e ON src_e.id = ge.source_id AND src_e.status = 0` and `LEFT JOIN entries tgt_e ON tgt_e.id = ge.target_id AND tgt_e.status = 0` with a four-condition CASE guard (`ge.id IS NOT NULL AND src_e.category IS NOT NULL AND tgt_e.category IS NOT NULL AND src_e.category != tgt_e.category`) | ADR-004 | `architecture/ADR-004-cross-category-sql-no-cartesian-product.md` |
 
 ---
@@ -154,6 +154,8 @@ LEFT JOIN entries tgt_e ON tgt_e.id = ge.target_id AND tgt_e.status = 0
 WHERE e.status = 0
 ```
 
+Both queries execute against `read_pool()` (ADR-003).
+
 Rust-side derivation (division guards required):
 ```rust
 let connectivity_rate = if active > 0 { connected as f64 / active as f64 } else { 0.0 };
@@ -203,7 +205,7 @@ Markdown (always present inside `### Coherence` block):
 - **No schema migration**: all data exists in `GRAPH_EDGES` (v13) and `entries` (v17). No new columns, tables, or indexes.
 - **`bootstrap_only = 0` filter mandatory on all six metrics**: matches `TypedRelationGraph.inner` semantics. Bootstrap-only edges are not real inference edges.
 - **Active-only entry join (`status = 0`)**: deprecated (status=1) and quarantined (status=3) entries are invisible to PPR and must be invisible to cohesion metrics.
-- **`write_pool_server()` for all SQL in `compute_graph_cohesion_metrics()`**: matches all other GRAPH_EDGES readers; ensures freshness against NLI write activity (ADR-003).
+- **`read_pool()` for all SQL in `compute_graph_cohesion_metrics()`**: consistent with `compute_status_aggregates` (the direct precedent), which uses `read_pool()` at lines 959 and 983 of `read.rs`. Cohesion queries are read-only aggregates and do not require write-pool serialisation (ADR-003).
 - **Two-query maximum**: Query 1 (pure GRAPH_EDGES), Query 2 (entries JOIN). A UNION scalar sub-query for `connected_entry_count` is embedded in Query 2 (ADR-002). Rust-side HashSet is an acceptable alternative.
 - **Function + struct ≤ 50 lines** in `read.rs`. Note: `read.rs` is already 1570 lines (exceeds the 500-line housekeeping rule). Splitting is out of scope; annotate as a future housekeeping concern.
 - **No new crate dependency**: uses only `sqlx` and scalar arithmetic already present in `unimatrix-store`.
@@ -221,10 +223,10 @@ Markdown (always present inside `### Coherence` block):
 | `sqlx` | Crate (existing) | All SQL queries use existing pool handles |
 | `GRAPH_EDGES` table | Schema (existing, v13) | `bootstrap_only`, `source`, `relation_type` columns used |
 | `entries` table | Schema (existing, v17) | Joined on `status = 0` and `category` |
-| `write_pool_server()` | Pool handle (existing) | In `unimatrix-store/src/db.rs` |
+| `read_pool()` | Pool handle (existing) | In `unimatrix-store/src/db.rs`; used by `compute_status_aggregates` precedent |
 | `open_test_store()` | Test helper (existing) | Used by all new unit tests |
 | `create_graph_edges_table()` | Test helper (existing, `read.rs` `#[cfg(test)]`) | Used by unit tests to populate edges |
-| `compute_status_aggregates` | Pattern reference | New function follows the same structure |
+| `compute_status_aggregates` | Pattern reference | New function follows the same structure; confirmed to use `read_pool()` |
 | GH #412 (NLI inference) | Integration dependency | Defines `source='nli'`; `EDGE_SOURCE_NLI` constant coordinates the string |
 
 ---
@@ -246,13 +248,31 @@ Markdown (always present inside `### Coherence` block):
 
 ## Alignment Status
 
-ALIGNMENT-REPORT.md was not produced by Session 1 (no vision guardian artifact found at
-`product/features/col-029/ALIGNMENT-REPORT.md`). Alignment status is **pending**.
+ALIGNMENT-REPORT.md was produced and reviewed on 2026-03-26. Overall status: **PASS with two WARNs**.
 
-No variances have been flagged. The feature is narrowly scoped (read-only SQL, display-only
-metrics, no lambda change, no schema migration) and poses low vision alignment risk. The
-implementation brief proceeds on that basis; any variances identified in a subsequent
-alignment pass should be reconciled before Stage 3b begins.
+| Check | Status | Notes |
+|-------|--------|-------|
+| Vision Alignment | PASS | Directly enables W3-1 `graph_degree` feature vector and W1-4 NLI observability |
+| Milestone Fit | PASS | Wave 1 / Wave 1A support work; no future-milestone capabilities built |
+| Scope Gaps | WARN | Spec FR-11 error propagation diverges from architecture's non-fatal pattern |
+| Scope Additions | WARN | `EDGE_SOURCE_NLI` constant and `lib.rs` re-export not in SCOPE.md, but low-risk and well-justified |
+| Architecture Consistency | PASS | All four layers internally consistent |
+| Risk Completeness | PASS | 10 risks, 27 scenarios; all critical paths covered |
+
+### WARN 1 — FR-11 Error Propagation Model (Resolved: use architecture's non-fatal pattern)
+
+SPECIFICATION FR-11 specifies fatal error propagation (`ServiceError::Core(CoreError::Store(e))`),
+while the architecture (Layer 3), risk-test strategy (R-07 failure modes), and SCOPE.md all
+describe a non-fatal pattern (`tracing::warn!` + skip with cohesion fields at zero). Three of
+four documents align on non-fatal. The implementation must follow the non-fatal architecture
+model. The service call site in the Function Signatures section above reflects this resolution.
+
+### WARN 2 — EDGE_SOURCE_NLI Scope Addition (Accepted)
+
+The `EDGE_SOURCE_NLI` constant and `lib.rs` re-export are not listed in SCOPE.md but are
+required by ADR-001 to resolve SR-01 (string coupling with GH #412). This addition is
+non-breaking, well-documented, and accepted. It is included in the Files to Create / Modify
+table above.
 
 ---
 
@@ -267,3 +287,4 @@ These risks from RISK-TEST-STRATEGY.md require explicit test coverage:
 | R-03 — bootstrap_only=1 NLI edge leak | High | An edge with `source='nli'` AND `bootstrap_only=1` must not appear in `inferred_edge_count`. The `bootstrap_only = 0` filter in the WHERE clause is the guard. Test explicitly (AC-16). |
 | R-05 — division by zero | High | `mean_entry_degree` and `connectivity_rate` must return `0.0` (not `NaN`/`inf`) when `active_entry_count = 0`. |
 | R-04 — `StatusReport::default()` missing field | Medium | Hand-written `Default` impl; failing to add any of the six fields causes a compile error. Confirmed by `cargo check`. |
+| R-11 — WAL staleness with read_pool() | Low/Medium | Under SQLite WAL mode, `read_pool()` may return a snapshot that does not include the most recent NLI inference writes until the next WAL checkpoint. Risk is Low severity given that `context_status` is a diagnostic tool where a slightly stale read (seconds to minutes) is acceptable; operators re-invoke after a checkpoint if precision is needed. No test required — accepted trade-off documented in ADR-003. |

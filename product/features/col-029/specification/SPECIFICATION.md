@@ -19,9 +19,9 @@ caching and no schema migration.
 
 `Store::compute_graph_cohesion_metrics()` must be added to
 `crates/unimatrix-store/src/read.rs` as a `pub async fn` returning
-`Result<GraphCohesionMetrics>`. It must use `write_pool_server()`, consistent
-with `compute_status_aggregates`. The function must complete in two SQL queries
-(not one per metric).
+`Result<GraphCohesionMetrics>`. It must use `read_pool()`, consistent with
+`compute_status_aggregates` (ADR-003). The function must complete in two SQL
+queries (not one per metric).
 
 ### FR-02: bootstrap_only=0 filter on all metrics
 
@@ -200,10 +200,14 @@ exceeds 500 lines after the addition, the new code must be placed in a new
 The six metrics are informational only. `coherence` (lambda), `graph_quality_score`,
 and the four coherence dimension scores must not be modified by this feature.
 
-### NFR-07: write_pool_server() usage
+### NFR-07: read_pool() usage
 
-All SQL in `compute_graph_cohesion_metrics()` must use `write_pool_server()`,
-consistent with `compute_status_aggregates` and all other server-layer raw queries.
+All SQL in `compute_graph_cohesion_metrics()` must use `read_pool()`, consistent
+with `compute_status_aggregates` (ADR-003). `write_pool_server()` must NOT be used:
+its `max_connections = 1` serialization point would contend with NLI inference writes
+and tool call writes during the exact moments an operator invokes `context_status` to
+inspect the system. Bounded WAL staleness (up to one checkpoint interval) is an
+acceptable trade-off for a diagnostic aggregate with no write-after-read dependency.
 
 ---
 
@@ -230,6 +234,7 @@ address SR-04 and integration gaps not fully specified in SCOPE.md.
 | AC-14 | `cross_category_edge_count` SQL joins `entries` twice (once on `source_id`, once on `target_id`) with `status = 0` on both aliases; an edge where one endpoint is deprecated/quarantined is excluded from the count | Code review of SQL in `compute_graph_cohesion_metrics`; confirmed by AC-08 unit test |
 | AC-15 | `compute_graph_cohesion_metrics()` is NOT called from the background maintenance tick (`maintenance_tick`) or written into `MaintenanceDataSnapshot` | Code review: `grep` for `compute_graph_cohesion_metrics` confirms single call site in `compute_report()` |
 | AC-16 | Bootstrap-only edges (bootstrap_only=1) are excluded from all six metrics, including `inferred_edge_count` for any `source='nli'` rows that happen to have `bootstrap_only=1` | Unit test with a bootstrap_only=1 NLI-sourced edge: `inferred_edge_count` must remain 0 |
+| AC-17 | `compute_graph_cohesion_metrics()` uses `read_pool()` for both SQL queries; `write_pool_server()` does not appear in the function body (ADR-003) | Code review: `grep` for `write_pool_server` in `read.rs` (or `read_graph.rs`) confirms absence in `compute_graph_cohesion_metrics`; `grep` for `read_pool` confirms presence |
 
 ---
 
@@ -298,8 +303,9 @@ u64 → `0`. These fields are display-only; they do not feed into `coherence` (l
 
 ## Constraints
 
-- **SQLite via sqlx only**: all queries use `sqlx::query` with `write_pool_server()`.
-  No direct `rusqlite` connections.
+- **SQLite via sqlx only**: all queries use `sqlx::query` with `read_pool()`.
+  No direct `rusqlite` connections. `write_pool_server()` must not be used (ADR-003:
+  contention risk on the single-connection write serialization point).
 - **bootstrap_only=0 filter mandatory on all six metrics**: matches the
   semantics of `TypedRelationGraph.inner` which already excludes them.
 - **Active-only join (status=0)**: deprecated/quarantined entries are invisible

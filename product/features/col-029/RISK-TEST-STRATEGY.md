@@ -12,7 +12,8 @@ GH Issue: #413
 | R-04 | `StatusReport::default()` missing field: the struct has a manual (non-derived) `Default` impl; omitting any of the six new fields causes a compile error that could be missed if the implementer adds struct fields but forgets the `default()` block | Med | Med | Medium |
 | R-05 | Division-by-zero in `mean_entry_degree` and `graph_connectivity_rate`: if `active_entry_count = 0`, integer division or unchecked `f64` division by zero produces `NaN` or `inf` rather than `0.0` | High | Low | Medium |
 | R-06 | `compute_graph_cohesion_metrics()` called from maintenance tick: a future refactor or copy-paste in `status.rs` places the call inside `load_maintenance_snapshot()`, causing per-tick SQL overhead that NFR-01 explicitly forbids | Med | Low | Medium |
-| R-07 | `write_pool_server()` acquire timeout (5 s) blocks `context_status` under heavy NLI inference write load; the two cohesion queries contend on the single write connection | Med | Low | Medium |
+| R-07 | ~~write_pool_server() contention~~ — **eliminated by ADR-003 correction**: `compute_graph_cohesion_metrics()` now uses `read_pool()`, removing all write-pool contention risk | — | — | — |
+| R-11 | WAL read staleness: `read_pool()` connections may see a snapshot that lags the most recent GRAPH_EDGES writes by up to one checkpoint interval; cohesion counts in `context_status` may momentarily undercount NLI-inferred edges immediately after a batch run | Low | Med | Low |
 | R-08 | Query 2 `connected_raw` sum is not clamped: if UNION sub-query approach is abandoned for Rust HashSet post-processing, a logic error in the set construction could under- or over-count connected entries | Med | Med | Medium |
 | R-09 | `EDGE_SOURCE_NLI` constant not re-exported from `lib.rs`: `nli_detection.rs` cannot import it; bare `"nli"` literals persist in both files, defeating SR-01 mitigation | Med | Med | Medium |
 | R-10 | Format output conditional guard: Summary line is suppressed when all six metrics are zero (empty store), but an operator on a fresh store sees no graph cohesion line at all — no confirmation whether the feature is present | Low | Med | Low |
@@ -112,17 +113,27 @@ GH Issue: #413
 
 ---
 
-### R-07: write_pool_server() acquire timeout under concurrent inference
+### R-07: ~~write_pool_server() acquire timeout under concurrent inference~~ — ELIMINATED
 
-**Severity**: Med
-**Likelihood**: Low
-**Impact**: `context_status` hangs for up to 5 seconds while NLI inference holds the write connection. Entry #2058 (Pool Acquire Timeout Values: write=5s) and #2130 (write_pool max_connections=1 prevents SQLITE_BUSY_SNAPSHOT) document the contention model.
+**Eliminated by ADR-003 correction.** `compute_graph_cohesion_metrics()` was changed to use `read_pool()` (not `write_pool_server()`). The write-pool contention scenario described in entries #2058 and #2130 no longer applies to this function.
+
+The non-fatal error-path requirement (warn + zero fields) is retained as implementation guidance but is no longer driven by pool timeout risk — it is driven by general store error resilience (see Failure Modes table).
+
+**Coverage Requirement**: The non-fatal error path in `compute_report()` Phase 5 still requires test coverage — confirm the `Err(e) => tracing::warn!(...)` arm does not abort the report. This is now categorised under general store-error resilience, not pool contention.
+
+---
+
+### R-11: WAL read staleness in cohesion metrics
+
+**Severity**: Low
+**Likelihood**: Med
+**Impact**: `read_pool()` connections operate on a WAL snapshot. Under active NLI inference, recent edge writes may not have been checkpointed before `context_status` is called. Cohesion counts (`inferred_edge_count`, `connected_entry_count`) may momentarily undercount by the number of edges written since the last checkpoint. The lag is bounded by `wal_autocheckpoint` (default 1000 pages) and is non-corrupting — data is not lost, only briefly unreported. An operator who calls `context_status` mid-inference batch may see a lower `inferred_edge_count` than expected and incorrectly conclude inference is stalled.
 
 **Test Scenarios**:
-1. No direct unit test is feasible (requires concurrent write load). Risk is mitigated by the infrequent diagnostic nature of `context_status`.
-2. Non-fatal error handling: if `compute_graph_cohesion_metrics()` returns `Err`, the service must log a warning and return the report with cohesion fields at their default zero values — not propagate a fatal error to the caller. Verify error path: inject a store error mock (or use the non-fatal match arm) and assert `StatusReport` is still returned.
+1. Documentation/comment check: `compute_graph_cohesion_metrics()` must carry a comment noting that read-pool snapshot semantics are intentional and that a bounded lag is acceptable per ADR-003. Absence of this comment risks a future developer "correcting" the pool choice back to `write_pool_server()`.
+2. Operator-facing: the `context_status` help text or response notes (if any) should not claim "current" or "real-time" graph counts. Assert that no response field label implies instantaneous consistency.
 
-**Coverage Requirement**: The non-fatal error path in `compute_report()` Phase 5 must be tested — confirm the `Err(e) => tracing::warn!(...)` arm does not abort the report. A test that returns an error from the store call and asserts the report is returned with zero cohesion fields satisfies this.
+**Coverage Requirement**: No runtime test is required (the staleness window is not deterministically reproducible in unit tests without WAL manipulation). The risk is mitigated by design (ADR-003 documents the acceptable trade-off). The tester confirms the ADR-003 comment is present at the call site as part of delivery gate review.
 
 ---
 
@@ -174,9 +185,9 @@ GH Issue: #413
 
 The call is non-fatal on error (warn + skip). The risk is that the error branch is never exercised in tests and a future regression silently drops all six metrics from the report without any visible failure. The `Err` arm must be covered by at least one test that injects a store-level error and asserts the report is returned with zero cohesion fields.
 
-**Layer boundary: Store SQL → SQLite (write_pool_server)**
+**Layer boundary: Store SQL → SQLite (read_pool)**
 
-Both cohesion queries use `write_pool_server()`. If the pool is acquired by a concurrent long-running write (NLI inference batch), `context_status` waits up to 5 s (ADR-003, entry #2058). This is documented as an accepted trade-off; the risk is not blocked but should be noted in delivery.
+Both cohesion queries use `read_pool()` (ADR-003 corrected). This eliminates write-pool contention with NLI inference. The residual integration risk is WAL snapshot staleness (R-11): the read pool may see an older GRAPH_EDGES snapshot if a checkpoint has not occurred since the last write batch. This is non-corrupting and bounded; see R-11 for mitigation.
 
 **Layer boundary: StatusReport → format_status_report**
 
@@ -220,7 +231,7 @@ The constant is defined in `unimatrix-store/src/read.rs` and must be re-exported
 | Failure | Expected Behavior | Verification |
 |---------|------------------|--------------|
 | `compute_graph_cohesion_metrics()` returns `Err` | `tracing::warn!` logged; report returned with all six cohesion fields at `0` / `0.0`; no error propagated to MCP caller | Test with injected store error; assert report is returned |
-| `write_pool_server()` acquire timeout (5 s exceeded) | sqlx returns `Err(PoolTimedOut)`; same non-fatal path as above | Covered by the non-fatal error path test |
+| WAL snapshot lag (`read_pool()` sees older GRAPH_EDGES snapshot) | Cohesion counts undercount by recent-write delta; non-fatal, self-correcting after next checkpoint; no error returned to caller | Not testable deterministically; mitigated by ADR-003 documentation (R-11) |
 | `active_entry_count = 0` (empty store) | `connectivity_rate = 0.0`, `mean_entry_degree = 0.0` via explicit guard; no `NaN`/`inf` | Unit test with empty store |
 | `StatusReport` fields missing from `default()` | Compile error — caught at `cargo check` | Compile-time; no runtime failure mode |
 | `connected_entry_count > active_entry_count` due to double-count | `graph_connectivity_rate > 1.0`; would surface in the `all_connected` unit test | Unit test R-01 scenarios catch this |
@@ -232,7 +243,7 @@ The constant is defined in `unimatrix-store/src/read.rs` and must be re-exported
 | Scope Risk | Architecture Risk | Resolution |
 |-----------|------------------|------------|
 | SR-01 — `source='nli'` literal coupling with #412 | R-09 | ADR-001 introduces `EDGE_SOURCE_NLI` constant in `unimatrix-store/src/read.rs`, re-exported from `lib.rs`. R-09 tests verify the re-export exists and is usable from the server crate. |
-| SR-02 — Expensive cross-join at maintenance-tick frequency | R-06, R-07 | Resolved by per-call design (NFR-01) — cohesion is never run from the tick. R-07 covers the remaining pool contention risk on `context_status` calls during active inference. |
+| SR-02 — Expensive cross-join at maintenance-tick frequency | R-06, R-11 | Resolved by per-call design (NFR-01) — cohesion is never run from the tick. Pool contention risk (original R-07) eliminated by ADR-003 correction: `read_pool()` is used, not `write_pool_server()`. R-11 captures the residual WAL staleness trade-off, which ADR-003 explicitly accepts. |
 | SR-03 — Caching plumbing back to `compute_report` | — | Accepted/resolved by scope decision: per-call SQL, no caching, no `MaintenanceDataSnapshot` involvement. No architecture-level risk remains. |
 | SR-04 — Cross-category double JOIN cartesian product risk | R-02 | ADR-004 uses explicit LEFT JOIN aliases with tight equality predicates and a CASE guard. R-02 tests verify the NULL-guard excludes deprecated endpoints and prevents false positives. |
 | SR-05 — Six new fields missing from `StatusReport::default()` | R-04 | R-04 tests and compile-check verify all six fields appear in the `default()` block. |
@@ -246,12 +257,13 @@ The constant is defined in `unimatrix-store/src/read.rs` and must be re-exported
 |----------|-----------|-------------------|
 | Critical | 1 (R-01) | 3 scenarios (double-count, bidirectional chain, rate bounds) |
 | High | 3 (R-02, R-03, R-05) | 3 + 4 + 2 = 9 scenarios |
-| Medium | 5 (R-04, R-06, R-07, R-08, R-09) | 5 + 2 + 2 + 2 + 2 = 13 scenarios |
-| Low | 1 (R-10) | 2 scenarios |
+| Medium | 4 (R-04, R-06, R-08, R-09) | 5 + 2 + 2 + 2 = 11 scenarios |
+| Low | 2 (R-10, R-11) | 2 + 2 = 4 scenarios |
+| Eliminated | 1 (R-07) | — |
 
 **Total required test scenarios**: 27
 
-The seven mandatory unit test functions (AC-13) cover R-01, R-02, R-03, R-05 directly. R-04, R-06, R-09 are compile-time or static-check verifications. R-07 requires one non-fatal error-path test. R-08 is covered by the mixed-connectivity test if it includes a deprecated-endpoint edge. R-10 requires one non-empty-store Summary format test.
+The seven mandatory unit test functions (AC-13) cover R-01, R-02, R-03, R-05 directly. R-04, R-06, R-09 are compile-time or static-check verifications. R-07 is eliminated (write-pool contention removed by ADR-003 correction); its non-fatal error-path requirement is retained under general store-error resilience (see R-07 section). R-08 is covered by the mixed-connectivity test. R-10 requires one non-empty-store Summary format test. R-11 requires an ADR-003 comment check at the call site — no runtime test.
 
 ---
 

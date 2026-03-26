@@ -30,8 +30,8 @@ New items:
   implementation to prevent silent string mismatch (addresses SR-01)
 - `pub struct GraphCohesionMetrics` — typed output struct (six fields)
 - `pub async fn Store::compute_graph_cohesion_metrics() -> Result<GraphCohesionMetrics>`
-  — two SQL queries via `write_pool_server()`, following the `compute_status_aggregates`
-  pattern
+  — two SQL queries via `read_pool()`, matching the `compute_status_aggregates`
+  pattern (ADR-003)
 
 The constant is placed in `read.rs` alongside `ENTRY_COLUMNS` and near the graph row
 types. It is re-exported from `lib.rs` so `nli_detection.rs` in the server crate can
@@ -146,7 +146,7 @@ format_status_report()            (mcp/response/status.rs)
 Data flow for `compute_graph_cohesion_metrics()`:
 
 ```
-write_pool_server()
+read_pool()
     │
     ├── SQL Query 1 (pure GRAPH_EDGES, bootstrap_only=0):
     │       → total_edges: i64
@@ -170,7 +170,7 @@ GraphCohesionMetrics (computed):
 See ADR files. Summary:
 - ADR-001: `EDGE_SOURCE_NLI` constant in `unimatrix-store/src/read.rs` (SR-01)
 - ADR-002: Two SQL queries (not one mega-query) for cohesion metrics
-- ADR-003: `write_pool_server()` for both queries (not `read_pool()`)
+- ADR-003: `read_pool()` for both queries (not `write_pool_server()`)
 - ADR-004: Exact SQL design for cross-category edge count (SR-04 — no cartesian product)
 
 ## Integration Points
@@ -178,7 +178,7 @@ See ADR files. Summary:
 | Boundary | Direction | Detail |
 |----------|-----------|--------|
 | `StatusService` → `Store` | Call | `store.compute_graph_cohesion_metrics()` |
-| `Store` → SQLite | Query | Two queries via `write_pool_server()` |
+| `Store` → SQLite | Query | Two queries via `read_pool()` |
 | `StatusService` → `StatusReport` | Assign | Six field assignments after call |
 | `format_status_report` → `StatusReport` | Read | Six new fields in Summary + Markdown |
 | `lib.rs` re-export | Public API | `GraphCohesionMetrics`, `EDGE_SOURCE_NLI` |
@@ -197,7 +197,7 @@ See ADR files. Summary:
 | `StatusReport::supports_edge_count` | `pub u64` | `unimatrix-server/src/mcp/response/status.rs` (new) |
 | `StatusReport::mean_entry_degree` | `pub f64` | `unimatrix-server/src/mcp/response/status.rs` (new) |
 | `StatusReport::inferred_edge_count` | `pub u64` | `unimatrix-server/src/mcp/response/status.rs` (new) |
-| `write_pool_server()` | `fn(&self) -> &SqlitePool` | `unimatrix-store/src/db.rs` (existing) |
+| `read_pool()` | `fn(&self) -> &SqlitePool` | `unimatrix-store/src/db.rs` (existing) |
 | `open_test_store()` | test helper | `unimatrix-store/src/test_helpers` (existing) |
 | `create_graph_edges_table()` | test helper | `unimatrix-store/src/read.rs` `#[cfg(test)]` (existing) |
 
