@@ -106,7 +106,7 @@ async fn do_scenarios(
 
     let sql = format!(
         "SELECT query_id, session_id, query_text, retrieval_mode, source, \
-                result_entry_ids, similarity_scores \
+                result_entry_ids, similarity_scores, phase \
          FROM query_log \
          WHERE 1=1{source_clause} \
          ORDER BY query_id ASC{limit_clause}"

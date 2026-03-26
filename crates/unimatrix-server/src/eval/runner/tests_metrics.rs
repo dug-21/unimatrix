@@ -34,6 +34,7 @@ fn make_scenario(
             feature_cycle: "nan-007".to_string(),
             session_id: "sess-1".to_string(),
             retrieval_mode: "flexible".to_string(),
+            phase: None,
         },
         baseline: baseline_ids.map(|ids| {
             let scores = vec![0.9f32; ids.len()];

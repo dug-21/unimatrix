@@ -129,6 +129,7 @@ fn test_write_scenario_result_sanitizes_id() {
             cc_at_k_delta: 0.0,
             icd_delta: 0.0,
         },
+        phase: None,
     };
     write_scenario_result(result, dir.path()).expect("write must succeed");
     let expected_file = dir.path().join("a_b_c.json");
@@ -184,6 +185,7 @@ fn test_output_json_schema_completeness() {
             cc_at_k_delta: 0.0,
             icd_delta: 0.0,
         },
+        phase: None,
     };
 
     write_scenario_result(result, dir.path()).expect("write must succeed");
