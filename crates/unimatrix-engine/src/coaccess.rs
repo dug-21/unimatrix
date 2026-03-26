@@ -11,8 +11,13 @@ use unimatrix_store::SqlxStore;
 /// 10 entries = 45 pairs. Beyond this, pairs are not generated.
 pub const MAX_CO_ACCESS_ENTRIES: usize = 10;
 
-/// Default staleness threshold for co-access pairs: 30 days in seconds.
-pub const CO_ACCESS_STALENESS_SECONDS: u64 = 30 * 24 * 3600; // 2_592_000
+/// Staleness threshold for co-access pairs.
+///
+/// Set to 365 days (one year) to tolerate feature cycles that go dormant for
+/// weeks or months and then resume. Co-access signal accumulated before a pause
+/// should remain available when work resumes. Pairs older than this threshold
+/// are excluded from boost calculations and deleted during maintenance ticks.
+pub const CO_ACCESS_STALENESS_SECONDS: u64 = 365 * 24 * 3600; // 31_536_000
 
 /// Maximum additive boost for search results from co-access signal.
 pub const MAX_CO_ACCESS_BOOST: f64 = 0.03;
@@ -285,6 +290,16 @@ mod tests {
         let base = crate::confidence::rerank_score(0.90, 0.5, 0.15);
         let with_boost = base + 0.02;
         assert!(with_boost > base);
+    }
+
+    // -- GH #408: staleness threshold regression --
+
+    #[test]
+    fn co_access_staleness_at_least_one_year() {
+        assert!(
+            CO_ACCESS_STALENESS_SECONDS >= 365 * 24 * 3600,
+            "staleness window must be at least one year to tolerate dormant feature cycles (GH #408)"
+        );
     }
 
     // -- crt-005: f64 type verification --
