@@ -73,12 +73,18 @@ pub struct ComparisonMetrics {
 /// Complete result for one scenario across all profiles.
 ///
 /// Written as a pretty-printed JSON file per scenario to the output directory.
+/// `phase` carries the `query_log.phase` value through from scenario context.
+/// `#[serde(default)]` only — no `skip_serializing_if`; the runner always emits
+/// `"phase":null` or `"phase":"delivery"` so downstream tooling can rely on key
+/// presence (ADR-001: consistent key presence on the writer side).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScenarioResult {
     pub scenario_id: String,
     pub query: String,
     pub profiles: HashMap<String, ProfileResult>,
     pub comparison: ComparisonMetrics,
+    #[serde(default)]
+    pub phase: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -206,5 +212,43 @@ mod tests {
             serde_json::from_str(&json).expect("deserialization failed");
         assert_eq!(decoded.cc_at_k_delta, 0.143);
         assert_eq!(decoded.icd_delta, 0.211);
+    }
+
+    fn make_scenario_result(phase: Option<String>) -> ScenarioResult {
+        ScenarioResult {
+            scenario_id: "test-id".to_string(),
+            query: "test query".to_string(),
+            profiles: HashMap::new(),
+            comparison: make_comparison_metrics(0.0, 0.0),
+            phase,
+        }
+    }
+
+    /// Runner copy carries `#[serde(default)]` only — no `skip_serializing_if`.
+    /// Confirms the key IS present as `"phase":null` when phase is None (R-05, AC-03).
+    /// If a delivery agent mistakenly adds `skip_serializing_if`, this test fails.
+    #[test]
+    fn test_scenario_result_phase_null_serialized_as_null() {
+        let result = make_scenario_result(None);
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(
+            json.contains("\"phase\":null"),
+            "runner copy must emit explicit \"phase\":null for None — got: {json}"
+        );
+        assert!(
+            !json.contains("\"phase\":\""),
+            "phase must not be a non-null string value when None — got: {json}"
+        );
+    }
+
+    /// Confirms non-null phase serializes as the string value (AC-03).
+    #[test]
+    fn test_scenario_result_phase_non_null_serialized() {
+        let result = make_scenario_result(Some("delivery".to_string()));
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(
+            json.contains("\"phase\":\"delivery\""),
+            "runner copy must emit \"phase\":\"delivery\" — got: {json}"
+        );
     }
 }

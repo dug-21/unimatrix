@@ -1,14 +1,15 @@
-//! Markdown report generation for eval results (nan-007 D4).
+//! Markdown report generation for eval results (nan-007 D4, extended nan-009).
 //!
 //! Reads per-scenario JSON result files from a `--results` directory, aggregates
-//! across all scenarios, and writes a Markdown report with five required sections:
+//! across all scenarios, and writes a Markdown report with up to seven sections:
 //!
 //! 1. Summary
 //! 2. Notable Ranking Changes
 //! 3. Latency Distribution
 //! 4. Entry-Level Analysis
 //! 5. Zero-Regression Check
-//! 6. Distribution Analysis
+//! 6. Phase-Stratified Metrics  (omitted when all phases are None)
+//! 7. Distribution Analysis
 //!
 //! This module is entirely synchronous: pure filesystem reads and string formatting.
 //! No database, no sqlx, no tokio runtime, no async. Dispatched directly in the sync
@@ -21,8 +22,19 @@
 
 mod aggregate;
 mod render;
+mod render_phase;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_core_units;
+#[cfg(test)]
+mod tests_distribution;
+#[cfg(test)]
+mod tests_distribution_pipeline;
+#[cfg(test)]
+mod tests_phase;
+#[cfg(test)]
+mod tests_phase_pipeline;
 
 use std::collections::HashMap;
 use std::io::Write as _;
@@ -32,7 +44,7 @@ use serde::{Deserialize, Serialize};
 
 use aggregate::{
     compute_aggregate_stats, compute_cc_at_k_scenario_rows, compute_entry_rank_changes,
-    compute_latency_buckets, find_regressions,
+    compute_latency_buckets, compute_phase_stats, find_regressions,
 };
 use render::render_report;
 
@@ -118,6 +130,8 @@ pub(crate) struct ScenarioResult {
     pub profiles: HashMap<String, ProfileResult>,
     #[serde(default = "default_comparison")]
     pub comparison: ComparisonMetrics,
+    #[serde(default)]
+    pub phase: Option<String>, // tolerates absent key (pre-nan-009) and explicit null
 }
 
 pub(crate) fn default_comparison() -> ComparisonMetrics {
@@ -150,6 +164,20 @@ pub(super) struct AggregateStats {
     pub mean_icd: f64,
     pub cc_at_k_delta: f64,
     pub icd_delta: f64,
+}
+
+/// Aggregate metrics for one phase stratum (nan-009).
+///
+/// Produced by `compute_phase_stats`. Phase label is the `query_log.phase` value,
+/// or `"(unset)"` for the null bucket. Sorted alphabetically with `"(unset)"` last.
+#[derive(Debug, Default)]
+pub(super) struct PhaseAggregateStats {
+    pub phase_label: String, // "design" | "delivery" | "bugfix" | "(unset)"
+    pub scenario_count: usize,
+    pub mean_p_at_k: f64,
+    pub mean_mrr: f64,
+    pub mean_cc_at_k: f64,
+    pub mean_icd: f64,
 }
 
 /// Per-scenario row for CC@k comparison in the Distribution Analysis section.
@@ -246,10 +274,13 @@ pub fn run_report(
     let latency_buckets = compute_latency_buckets(&scenario_results);
     let entry_rank_changes = compute_entry_rank_changes(&scenario_results);
     let cc_at_k_rows = compute_cc_at_k_scenario_rows(&scenario_results);
+    let phase_stats = compute_phase_stats(&scenario_results);
+    // Returns empty vec when all phases are None; render_report omits section 6 in that case.
 
     // Step 5: Render.
     let md = render_report(
         &aggregate_stats,
+        &phase_stats,
         &scenario_results,
         &regressions,
         &latency_buckets,

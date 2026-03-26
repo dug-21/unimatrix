@@ -6,8 +6,8 @@
 use std::collections::HashMap;
 
 use super::{
-    AggregateStats, CcAtKScenarioRow, EntryRankSummary, LatencyBucket, RegressionRecord,
-    ScenarioResult,
+    AggregateStats, CcAtKScenarioRow, EntryRankSummary, LatencyBucket, PhaseAggregateStats,
+    RegressionRecord, ScenarioResult,
 };
 
 // ---------------------------------------------------------------------------
@@ -391,4 +391,97 @@ pub(super) fn compute_cc_at_k_scenario_rows(results: &[ScenarioResult]) -> Vec<C
     });
 
     rows
+}
+
+// ---------------------------------------------------------------------------
+// compute_phase_stats
+// ---------------------------------------------------------------------------
+
+/// Group results by phase and compute per-phase mean metrics (nan-009).
+///
+/// Returns empty `Vec` when all phases are `None` (R-07, AC-04: section 6 omitted).
+/// Sort: named phases alphabetically; `"(unset)"` last — plain lex is wrong because
+/// `(` (ASCII 40) < `a` (ASCII 97); explicit override required (ADR-003).
+pub(super) fn compute_phase_stats(results: &[ScenarioResult]) -> Vec<PhaseAggregateStats> {
+    if results.is_empty() {
+        return Vec::new();
+    }
+
+    // All-null guard: return empty so caller skips section 6 (R-07, AC-04).
+    if !results.iter().any(|r| r.phase.is_some()) {
+        return Vec::new();
+    }
+
+    struct Acc {
+        count: usize,
+        sum_p: f64,
+        sum_mrr: f64,
+        sum_cc: f64,
+        sum_icd: f64,
+    }
+
+    let mut groups: HashMap<Option<String>, Acc> = HashMap::new();
+
+    for result in results {
+        let Some((p, mrr, cc, icd)) = baseline_metrics(result) else {
+            continue;
+        };
+        let acc = groups.entry(result.phase.clone()).or_insert(Acc {
+            count: 0,
+            sum_p: 0.0,
+            sum_mrr: 0.0,
+            sum_cc: 0.0,
+            sum_icd: 0.0,
+        });
+        acc.count += 1;
+        acc.sum_p += p;
+        acc.sum_mrr += mrr;
+        acc.sum_cc += cc;
+        acc.sum_icd += icd;
+    }
+
+    let mut stats: Vec<PhaseAggregateStats> = groups
+        .into_iter()
+        .filter(|(_, a)| a.count > 0)
+        .map(|(key, a)| PhaseAggregateStats {
+            phase_label: key.unwrap_or_else(|| "(unset)".to_string()), // ADR-003; NOT "(none)"
+            scenario_count: a.count,
+            mean_p_at_k: a.sum_p / a.count as f64,
+            mean_mrr: a.sum_mrr / a.count as f64,
+            mean_cc_at_k: a.sum_cc / a.count as f64,
+            mean_icd: a.sum_icd / a.count as f64,
+        })
+        .collect();
+
+    // Explicit sort: named phases ascending; "(unset)" last.
+    // '(' (ASCII 40) < 'a' — naive lex would put "(unset)" first. ADR-003 requires last.
+    stats.sort_by(
+        |a, b| match (a.phase_label.as_str(), b.phase_label.as_str()) {
+            ("(unset)", "(unset)") => std::cmp::Ordering::Equal,
+            ("(unset)", _) => std::cmp::Ordering::Greater,
+            (_, "(unset)") => std::cmp::Ordering::Less,
+            (x, y) => x.cmp(y),
+        },
+    );
+
+    stats
+}
+
+/// Select the baseline profile and return (p_at_k, mrr, cc_at_k, icd).
+///
+/// Baseline selection: "baseline" (case-insensitive) forced first; otherwise the
+/// alphabetically first profile name. Consistent with `compute_aggregate_stats`.
+/// Returns `None` if the result has no profiles.
+fn baseline_metrics(result: &ScenarioResult) -> Option<(f64, f64, f64, f64)> {
+    if result.profiles.is_empty() {
+        return None;
+    }
+    let mut names: Vec<&str> = result.profiles.keys().map(|s| s.as_str()).collect();
+    names.sort();
+    if let Some(pos) = names.iter().position(|n| n.to_lowercase() == "baseline") {
+        let b = names.remove(pos);
+        names.insert(0, b);
+    }
+    let prof = result.profiles.get(*names.first()?)?;
+    Some((prof.p_at_k, prof.mrr, prof.cc_at_k, prof.icd))
 }

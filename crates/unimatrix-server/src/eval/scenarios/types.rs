@@ -68,6 +68,10 @@ pub struct ScenarioContext {
     pub session_id: String,
     /// Retrieval mode: `"flexible"` or `"strict"`. Defaults to `"flexible"` if absent.
     pub retrieval_mode: String,
+    /// Workflow phase from `query_log.phase` (col-028). Absent from JSONL when `None`
+    /// (ADR-001: null phase must not emit `"phase":null` — backward wire-compat).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase: Option<String>,
 }
 
 /// Baseline search results captured at query time.

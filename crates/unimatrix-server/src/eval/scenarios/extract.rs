@@ -4,7 +4,8 @@
 //!
 //! The real schema (from `migration.rs`) has these columns:
 //! `query_id`, `session_id`, `query_text`, `ts`, `result_count`,
-//! `result_entry_ids`, `similarity_scores`, `retrieval_mode`, `source`.
+//! `result_entry_ids`, `similarity_scores`, `retrieval_mode`, `source`,
+//! `phase` (added col-028, GH #403; nullable).
 //!
 //! There is no `agent_id` or `feature_cycle` column. The pseudocode assumed
 //! those columns — they are absent. `ScenarioContext.agent_id` is populated
@@ -30,6 +31,8 @@ pub(crate) fn build_scenario_record(
         .try_get::<Option<String>, _>("retrieval_mode")?
         .unwrap_or_else(|| "flexible".to_string());
     let source: String = row.try_get("source")?;
+    // Phase is nullable (col-028); None for pre-col-028 rows or UDS sessions.
+    let phase: Option<String> = row.try_get("phase")?;
 
     // Parse entry_ids JSON array (may be NULL)
     let entry_ids_json: String = row
@@ -85,6 +88,7 @@ pub(crate) fn build_scenario_record(
             feature_cycle: String::new(),
             session_id,
             retrieval_mode,
+            phase,
         },
         baseline,
         source,

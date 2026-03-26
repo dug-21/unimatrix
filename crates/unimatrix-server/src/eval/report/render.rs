@@ -1,16 +1,20 @@
-//! Markdown rendering functions for eval report (nan-007 D4, extended nan-008).
+//! Markdown rendering functions for eval report (nan-007 D4, extended nan-008, nan-009).
 //!
-//! Renders the six required sections from aggregated data structures:
+//! Renders the seven required sections from aggregated data structures:
 //! 1. Summary, 2. Notable Ranking Changes, 3. Latency Distribution,
 //! 4. Entry-Level Analysis, 5. Zero-Regression Check,
-//! 6. Distribution Analysis.
+//! 6. Phase-Stratified Metrics, 7. Distribution Analysis.
+//!
+//! Section 6 is omitted when all scenario results have phase = None.
+//! `render_phase_section` lives in `render_phase.rs` (sibling module, split for 500-line limit).
 
 use std::collections::HashMap;
 
 use super::ScoredEntry;
+use super::render_phase::render_phase_section;
 use super::{
-    AggregateStats, CcAtKScenarioRow, EntryRankSummary, LatencyBucket, RegressionRecord,
-    ScenarioResult,
+    AggregateStats, CcAtKScenarioRow, EntryRankSummary, LatencyBucket, PhaseAggregateStats,
+    RegressionRecord, ScenarioResult,
 };
 
 // ---------------------------------------------------------------------------
@@ -26,6 +30,7 @@ pub(super) type NotableEntry<'a> = (String, String, f64, &'a [ScoredEntry], &'a 
 
 pub(super) fn render_report(
     stats: &[AggregateStats],
+    phase_stats: &[PhaseAggregateStats],
     results: &[ScenarioResult],
     regressions: &[RegressionRecord],
     latency_buckets: &[LatencyBucket],
@@ -110,9 +115,23 @@ pub(super) fn render_report(
         md.push_str("_No ranking changes across all scenarios._\n\n");
     } else {
         for (scenario_id, query, tau, baseline_entries, candidate_entries) in &notable {
+            // Look up phase from the results slice for this scenario (RD-04: do not extend
+            // NotableEntry tuple; read phase directly from ScenarioResult).
+            let phase_label_opt = results
+                .iter()
+                .find(|r| &r.scenario_id == scenario_id)
+                .and_then(|r| r.phase.as_deref());
+
             md.push_str(&format!("### {scenario_id}\n\n"));
             md.push_str(&format!("**Query**: {query}  \n"));
-            md.push_str(&format!("**Kendall \u{03C4}**: {tau:.4}\n\n"));
+            md.push_str(&format!("**Kendall \u{03C4}**: {tau:.4}\n"));
+
+            // Add phase line only when non-null (FR-10, R-12 guard).
+            if let Some(phase_label) = phase_label_opt {
+                md.push_str(&format!("**Phase**: {phase_label}  \n"));
+            }
+
+            md.push('\n');
             md.push_str("| Rank | Baseline Entry | Candidate Entry |\n");
             md.push_str("|------|---------------|-----------------|\n");
             let max_rows = baseline_entries.len().max(candidate_entries.len()).min(10);
@@ -193,16 +212,26 @@ pub(super) fn render_report(
     }
 
     // ----------------------------------------------------------------
-    // SECTION 6: Distribution Analysis (nan-008, FR-09, AC-05)
+    // SECTION 6: Phase-Stratified Metrics (nan-009)
+    // Only rendered when at least one scenario has a non-null phase.
     // ----------------------------------------------------------------
-    md.push_str("## 6. Distribution Analysis\n\n");
+    let phase_section = render_phase_section(phase_stats);
+    if !phase_section.is_empty() {
+        md.push_str(&phase_section);
+    }
+    // No else branch — section is omitted entirely when empty (AC-04, R-09).
+
+    // ----------------------------------------------------------------
+    // SECTION 7: Distribution Analysis (formerly section 6, nan-008)
+    // ----------------------------------------------------------------
+    md.push_str("## 7. Distribution Analysis\n\n");
     md.push_str(&render_distribution_analysis(stats, results, cc_at_k_rows));
 
     md
 }
 
 // ---------------------------------------------------------------------------
-// render_distribution_analysis (helper for Section 6)
+// render_distribution_analysis (helper for Section 7, formerly Section 6)
 // ---------------------------------------------------------------------------
 
 /// Renders the Distribution Analysis section: per-profile CC@k and ICD range

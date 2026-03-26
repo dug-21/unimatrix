@@ -26,6 +26,9 @@ mod tests {
     }
 
     /// Insert a `query_log` row directly via a raw pool.
+    ///
+    /// `phase` maps to `query_log.phase` (col-028). Pass `None` to insert SQL NULL
+    /// (pre-col-028 behaviour); pass `Some("delivery")` etc. to test non-null paths.
     async fn insert_query_log_row(
         pool: &sqlx::SqlitePool,
         session_id: &str,
@@ -34,6 +37,7 @@ mod tests {
         source: &str,
         entry_ids_json: Option<&str>,
         scores_json: Option<&str>,
+        phase: Option<&str>,
     ) {
         sqlx::query(
             "INSERT INTO query_log \
@@ -49,7 +53,7 @@ mod tests {
         .bind(scores_json)
         .bind(retrieval_mode)
         .bind(source)
-        .bind(Option::<String>::None) // col-028: phase=NULL for test helper rows (IR-03)
+        .bind(phase.map(|s| s.to_string()))
         .execute(pool)
         .await
         .expect("insert query_log");
@@ -110,6 +114,7 @@ mod tests {
             "mcp",
             Some("[1,2,3]"),
             Some("[0.9,0.8,0.7]"),
+            None,
         )
         .await;
         insert_query_log_row(
@@ -120,6 +125,7 @@ mod tests {
             "mcp",
             Some("[4,5]"),
             Some("[0.85,0.75]"),
+            None,
         )
         .await;
         pool.close().await;
@@ -181,6 +187,7 @@ mod tests {
             "mcp",
             Some("[10,20,30]"),
             Some("[0.9,0.8]"),
+            None,
         )
         .await;
         pool.close().await;
@@ -218,6 +225,7 @@ mod tests {
             "mcp",
             Some("[1]"),
             Some("[0.9]"),
+            None,
         )
         .await;
         insert_query_log_row(
@@ -228,6 +236,7 @@ mod tests {
             "uds",
             Some("[2]"),
             Some("[0.8]"),
+            None,
         )
         .await;
         pool.close().await;
@@ -257,6 +266,7 @@ mod tests {
             "mcp",
             Some("[1]"),
             Some("[0.9]"),
+            None,
         )
         .await;
         insert_query_log_row(
@@ -267,6 +277,7 @@ mod tests {
             "uds",
             Some("[2]"),
             Some("[0.8]"),
+            None,
         )
         .await;
         pool.close().await;
@@ -296,6 +307,7 @@ mod tests {
             "mcp",
             Some("[1]"),
             Some("[0.9]"),
+            None,
         )
         .await;
         insert_query_log_row(
@@ -306,6 +318,7 @@ mod tests {
             "uds",
             Some("[2]"),
             Some("[0.8]"),
+            None,
         )
         .await;
         pool.close().await;
@@ -361,6 +374,7 @@ mod tests {
                 "mcp",
                 None,
                 None,
+                None,
             )
             .await;
         }
@@ -390,6 +404,7 @@ mod tests {
             "mcp",
             Some("[1]"),
             Some("[0.9]"),
+            None,
         )
         .await;
         pool.close().await;
@@ -424,6 +439,7 @@ mod tests {
                 &format!("query uid {i}"),
                 "flexible",
                 "mcp",
+                None,
                 None,
                 None,
             )
@@ -461,6 +477,7 @@ mod tests {
             "mcp",
             Some("[42]"),
             Some("[0.99]"),
+            None,
         )
         .await;
         pool.close().await;
@@ -505,6 +522,7 @@ mod tests {
             "mcp",
             None,
             None,
+            None,
         )
         .await;
         pool.close().await;
@@ -538,6 +556,7 @@ mod tests {
             "mcp",
             None,
             None,
+            None,
         )
         .await;
         pool.close().await;
@@ -552,6 +571,117 @@ mod tests {
             lines[0]["query"].as_str().unwrap(),
             unicode_query,
             "unicode query text must round-trip correctly"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // nan-009: ScenarioContext.phase serde unit tests (R-05, AC-09)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_scenario_context_phase_non_null_present_in_jsonl() {
+        use super::super::types::ScenarioContext;
+
+        let ctx = ScenarioContext {
+            agent_id: "agent-1".to_string(),
+            feature_cycle: String::new(),
+            session_id: "sess-x".to_string(),
+            retrieval_mode: "flexible".to_string(),
+            phase: Some("delivery".to_string()),
+        };
+        let json = serde_json::to_string(&ctx).expect("serialize");
+        assert!(
+            json.contains("\"phase\""),
+            "phase key must be present for Some(phase): {json}"
+        );
+        assert!(
+            json.contains("\"phase\":\"delivery\""),
+            "phase value must be 'delivery': {json}"
+        );
+    }
+
+    #[test]
+    fn test_scenario_context_phase_null_absent_from_jsonl() {
+        use super::super::types::ScenarioContext;
+
+        let ctx = ScenarioContext {
+            agent_id: "agent-1".to_string(),
+            feature_cycle: String::new(),
+            session_id: "sess-x".to_string(),
+            retrieval_mode: "flexible".to_string(),
+            phase: None,
+        };
+        let json = serde_json::to_string(&ctx).expect("serialize");
+        assert!(
+            !json.contains("\"phase\""),
+            "phase key must be absent for None phase (skip_serializing_if): {json}"
+        );
+        assert!(
+            !json.contains("null"),
+            "no null value must appear for None phase: {json}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // nan-009: phase extraction integration tests (AC-10, R-04, IR-01)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_scenarios_extract_phase_non_null() {
+        let (dir, db_path) = make_snapshot_db().await;
+        let pool = open_write_pool(&db_path).await;
+        insert_query_log_row(
+            &pool,
+            "sess-phase-delivery",
+            "phase extraction query",
+            "flexible",
+            "mcp",
+            None,
+            None,
+            Some("delivery"),
+        )
+        .await;
+        pool.close().await;
+
+        let out = dir.path().join("phase_non_null.jsonl");
+        run_scenarios(&db_path, ScenarioSource::All, None, &out)
+            .expect("run_scenarios must succeed");
+
+        let lines = read_jsonl(&out);
+        assert_eq!(lines.len(), 1, "expected exactly 1 scenario line");
+        assert_eq!(
+            lines[0]["context"]["phase"].as_str(),
+            Some("delivery"),
+            "context.phase must be 'delivery'"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_scenarios_extract_phase_null() {
+        let (dir, db_path) = make_snapshot_db().await;
+        let pool = open_write_pool(&db_path).await;
+        insert_query_log_row(
+            &pool,
+            "sess-phase-null",
+            "null phase query",
+            "flexible",
+            "mcp",
+            None,
+            None,
+            None,
+        )
+        .await;
+        pool.close().await;
+
+        let out = dir.path().join("phase_null.jsonl");
+        run_scenarios(&db_path, ScenarioSource::All, None, &out)
+            .expect("run_scenarios must succeed");
+
+        let lines = read_jsonl(&out);
+        assert_eq!(lines.len(), 1, "expected exactly 1 scenario line");
+        assert!(
+            lines[0]["context"].get("phase").is_none(),
+            "phase key must be absent for null phase (skip_serializing_if guard)"
         );
     }
 }

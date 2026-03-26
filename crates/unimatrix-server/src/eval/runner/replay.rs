@@ -77,6 +77,7 @@ pub(super) async fn replay_scenario(
         query: record.query.clone(),
         profiles: profile_results,
         comparison,
+        phase: record.context.phase.clone(), // metadata passthrough only — never forwarded to ServiceSearchParams or AuditContext (R-06)
     })
 }
 
