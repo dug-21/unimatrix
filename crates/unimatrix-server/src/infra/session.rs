@@ -140,6 +140,15 @@ pub struct SessionState {
     /// Some  — set from context_cycle(start) payload via handle_cycle_event,
     ///         or reconstructed from cycle_events on session resume.
     pub current_goal: Option<String>,
+    // col-028 fields
+    /// Entry IDs explicitly retrieved by the agent this session.
+    ///
+    /// Populated by `context_get` (always) and `context_lookup` (single-ID
+    /// requests only — request-side cardinality, not result-set cardinality).
+    /// Not populated by briefing, search, write, or mutation tools.
+    /// In-memory only; reset on register_session; never persisted.
+    /// First consumer: Thompson Sampling (future feature).
+    pub confirmed_entries: HashSet<u64>,
 }
 
 /// Thread-safe registry for per-session state.
@@ -184,6 +193,7 @@ impl SessionRegistry {
                 current_phase: None,
                 category_counts: HashMap::new(), // crt-026: empty histogram on session start
                 current_goal: None, // col-025: initialized None; populated by handle_cycle_event or resume
+                confirmed_entries: HashSet::new(), // col-028: empty on session start
             },
         );
     }
@@ -255,6 +265,20 @@ impl SessionRegistry {
                 .entry(category.to_string())
                 .or_insert(0);
             *count += 1;
+        }
+        // Unregistered session: silent no-op (matches record_injection contract)
+    }
+
+    /// Record an entry ID as explicitly retrieved by the agent this session (col-028).
+    ///
+    /// Called after a successful `context_get` (always) or `context_lookup` with a
+    /// single target ID (request-side cardinality). No I/O, no spawn_blocking, no
+    /// await — same lock-and-mutate contract as `record_category_store`.
+    /// Silent no-op for unregistered sessions. HashSet insert is idempotent.
+    pub fn record_confirmed_entry(&self, session_id: &str, entry_id: u64) {
+        let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(state) = sessions.get_mut(session_id) {
+            state.confirmed_entries.insert(entry_id);
         }
         // Unregistered session: silent no-op (matches record_injection contract)
     }
@@ -1092,6 +1116,7 @@ mod tests {
             current_phase: None,
             category_counts: HashMap::new(),
             current_goal: None,
+            confirmed_entries: HashSet::new(), // col-028
         }
     }
 
@@ -1859,6 +1884,111 @@ mod tests {
         assert_eq!(
             reg.get_state("s1").unwrap().current_goal,
             Some("my goal".to_string())
+        );
+    }
+
+    // -- col-028: confirmed_entries tests --
+
+    /// AC-08: register_session initialises confirmed_entries as empty.
+    #[test]
+    fn test_register_session_confirmed_entries_starts_empty() {
+        // Arrange
+        let registry = SessionRegistry::new();
+        // Act
+        registry.register_session("sess-001", None, None);
+        let state = registry.get_state("sess-001").expect("state");
+        // Assert
+        assert!(
+            state.confirmed_entries.is_empty(),
+            "confirmed_entries must be empty after register_session"
+        );
+    }
+
+    /// AC-08 variant: re-registration resets confirmed_entries.
+    #[test]
+    fn test_re_register_session_resets_confirmed_entries() {
+        // Arrange: register and populate confirmed_entries.
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-002", None, None);
+        registry.record_confirmed_entry("sess-002", 42_u64);
+        // Sanity check: entry is present.
+        let state = registry.get_state("sess-002").expect("state");
+        assert!(state.confirmed_entries.contains(&42_u64));
+
+        // Act: re-register same session_id.
+        registry.register_session("sess-002", None, None);
+
+        // Assert: confirmed_entries is reset to empty.
+        let state = registry.get_state("sess-002").expect("state");
+        assert!(
+            state.confirmed_entries.is_empty(),
+            "confirmed_entries must reset on re-registration"
+        );
+    }
+
+    /// AC-09 / AC-10 positive arm: record_confirmed_entry inserts the entry_id.
+    #[test]
+    fn test_record_confirmed_entry_single_id_is_stored() {
+        // Arrange
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-003", None, None);
+
+        // Act: record_confirmed_entry is called when context_lookup target_ids.len() == 1
+        registry.record_confirmed_entry("sess-003", 100_u64);
+
+        // Assert
+        let state = registry.get_state("sess-003").expect("state");
+        assert!(
+            state.confirmed_entries.contains(&100_u64),
+            "confirmed_entries must contain entry 100 after record_confirmed_entry"
+        );
+    }
+
+    /// AC-10 negative arm: confirmed_entries not modified without explicit record call.
+    #[test]
+    fn test_confirmed_entries_not_modified_without_record_call() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-004", None, None);
+        // No calls to record_confirmed_entry
+        let state = registry.get_state("sess-004").expect("state");
+        assert!(state.confirmed_entries.is_empty());
+        // The multi-target guard is tested in tools-read-side.md AC-10 negative arm
+    }
+
+    /// AC-10: multiple calls accumulate; same entry is idempotent (HashSet).
+    #[test]
+    fn test_record_confirmed_entry_multiple_entries_accumulate() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-005", None, None);
+        registry.record_confirmed_entry("sess-005", 10_u64);
+        registry.record_confirmed_entry("sess-005", 20_u64);
+        registry.record_confirmed_entry("sess-005", 10_u64); // duplicate
+
+        let state = registry.get_state("sess-005").expect("state");
+        assert!(state.confirmed_entries.contains(&10_u64));
+        assert!(state.confirmed_entries.contains(&20_u64));
+        // HashSet deduplicates: len is 2, not 3
+        assert_eq!(state.confirmed_entries.len(), 2);
+    }
+
+    /// EC-03: record_confirmed_entry for non-existent session is a silent no-op.
+    #[test]
+    fn test_record_confirmed_entry_unknown_session_is_noop() {
+        let registry = SessionRegistry::new();
+        // No registration for "unknown-sess"
+        // Must not panic
+        registry.record_confirmed_entry("unknown-sess", 99_u64);
+        // No assertion needed — the test passes if no panic occurs
+    }
+
+    /// AC-20: make_state_with_rework compiles (confirmed_entries field present in helper).
+    /// Verified by this test compiling and passing without "missing field" error.
+    #[test]
+    fn test_make_state_with_rework_includes_confirmed_entries() {
+        let state = make_state_with_rework(vec![]);
+        assert!(
+            state.confirmed_entries.is_empty(),
+            "make_state_with_rework must initialise confirmed_entries as empty HashSet"
         );
     }
 }
