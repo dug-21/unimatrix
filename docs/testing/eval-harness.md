@@ -145,7 +145,8 @@ unimatrix eval scenarios \
     "agent_id": "uni-rust-dev",
     "feature_cycle": "crt-022",
     "session_id": "sess-abc123",
-    "retrieval_mode": "flexible"
+    "retrieval_mode": "flexible",
+    "phase": "delivery"         // populated from query_log.phase; absent when null
   },
   "baseline": {
     "entry_ids": [42, 17, 103],
@@ -165,6 +166,30 @@ should be, write [hand-authored scenarios](#hand-authored-scenarios) and set
 **Note on schema:** The `agent_id` and `feature_cycle` fields in `context` are
 populated from `session_id` as a proxy — the `query_log` table does not store these
 fields directly. They are informational only.
+
+**`context.phase`**: The workflow phase of the session that issued this query.
+Populated from `query_log.phase`, which is set by `context_cycle` at session start.
+Phase is populated only for MCP-sourced sessions that called `context_cycle`. Rows
+inserted via the UDS transport, and all rows predating col-028 (GH #403), have
+`phase = NULL`.
+
+Phase is present in the JSONL only when the source `query_log` row has a non-null
+value — null-phase records omit the key entirely. Consumers should use
+`#[serde(default)]` to tolerate absent keys.
+
+**Known phase vocabulary (snapshot at nan-009, not a fixed allowlist):**
+`"design"`, `"delivery"`, `"bugfix"`. Session types introduced after nan-009
+will produce new phase values in the per-phase report automatically, without a
+harness code change. If historical rows need relabeling (e.g., a session type
+was renamed), apply a `query_log` data migration:
+
+    UPDATE query_log SET phase = 'new-name' WHERE phase = 'old-name';
+
+No schema change is needed — `phase` is free-form TEXT.
+
+**Corpus note:** An `eval scenarios` run against a pre-col-028 snapshot or a
+UDS-only corpus will produce no `phase` keys in the JSONL output, and `eval report`
+will omit section 6.
 
 ---
 
@@ -217,6 +242,7 @@ This produces one JSON result file per scenario in `--out`, named by scenario ID
 {
   "scenario_id": "q-a1b2c3d4",
   "query": "what is the confidence scoring formula",
+  "phase": "delivery",          // copied from context.phase; null when unset
   "profiles": {
     "baseline": {
       "entries": [/* ScoredEntry list — each entry has a "category" field */],
@@ -248,6 +274,10 @@ This produces one JSON result file per scenario in `--out`, named by scenario ID
   }
 }
 ```
+
+**`phase`**: The workflow phase of the originating session, copied from
+`context.phase`. Always present as either a phase string (e.g., `"delivery"`) or
+`null` — the key is never absent from result JSON files produced by `eval run`.
 
 **Guard:** `eval run` applies the same live-DB path guard as `snapshot`. If `--db`
 resolves to the active daemon's database path (checked via `canonicalize()`), the
@@ -356,7 +386,8 @@ accepted now but has no effect until the model integration is wired.
 
 ## Reading the report
 
-The report contains six sections in order:
+The report contains up to seven sections. Section 6 is present only when at least
+one scenario result has a non-null phase value:
 
 ### 1. Summary
 
@@ -398,7 +429,35 @@ low-value scenario (e.g., a one-off query with an unusual phrasing) is different
 from a regression in a high-frequency scenario. The harness surfaces the data;
 the human decides.
 
-### 6. Distribution Analysis
+### 6. Phase-Stratified Metrics
+
+Aggregate metrics broken down by workflow phase. Each row represents all scenarios
+that originated from sessions in that phase.
+
+| Phase | Count | P@K | MRR | CC@k | ICD |
+|-------|-------|-----|-----|------|-----|
+| bugfix | 312 | 0.2813 | 0.3920 | 0.2244 | 0.4831 |
+| delivery | 1,847 | 0.3102 | 0.4271 | 0.2688 | 0.5311 |
+| design | 741 | 0.2944 | 0.4055 | 0.2501 | 0.4990 |
+| (unset) | 407 | 0.3219 | 0.4418 | 0.2744 | 0.5102 |
+
+_(The table above is a sample — your actual values will differ.)_
+
+Phase values are sorted alphabetically. The `(unset)` bucket groups all scenarios
+whose source `query_log` row had `phase = NULL` — this includes UDS-sourced queries
+and all pre-col-028 sessions.
+
+**This section is omitted entirely when no results have a non-null phase.** If you
+run `eval report` against a corpus built entirely from UDS-only sessions or
+pre-col-028 snapshots, section 6 will not appear and the numbering skips directly
+from section 5 to section 7. This is expected behavior, not a bug.
+
+Metrics in this section are computed from the **baseline profile only**. Phase
+stratification answers "how does retrieval quality differ by workflow phase on the
+baseline pipeline?" — not "which profile performs better per phase." A per-phase
+x profile cross-product view is deferred to a future iteration.
+
+### 7. Distribution Analysis
 
 Per-profile CC@k and ICD range table, plus top-5 improvement/degradation rows
 when two profiles are compared. This section is informational only — `eval report`
@@ -679,6 +738,8 @@ unimatrix eval report \
   --out       /tmp/eval/report.md
 
 # 6. Review the report — focus on section 5 (Zero-Regression Check)
+#    Section 6 (Phase-Stratified Metrics) is present when your corpus has phase data.
+#    Section 7 (Distribution Analysis) shows CC@k and ICD distributions.
 cat /tmp/eval/report.md
 
 # 7. Record the baseline (always — even for baseline-only runs)
