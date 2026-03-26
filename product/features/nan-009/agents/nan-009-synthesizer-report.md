@@ -27,3 +27,9 @@ Date: 2026-03-26
 3. **AC count extended to 12.** SCOPE.md defines AC-01 through AC-10. SPECIFICATION.md adds AC-11 (round-trip integration test) and AC-12 (golden-output section-order test). All 12 are included in ACCEPTANCE-MAP.md.
 
 4. **Section renumbering impact table included in brief.** All five affected sites are named to prevent the SR-02 partial-update regression (pattern #3426).
+
+## Knowledge Stewardship
+
+- Queried: all design session source documents read directly (SCOPE.md, ALIGNMENT-REPORT.md, architecture, specification, risk strategy)
+- Stored: nothing — synthesis produces IMPLEMENTATION-BRIEF.md and ACCEPTANCE-MAP.md as artifacts; no novel reusable patterns discovered
+- Declined: GH issue comment body produced as text only, not posted to GitHub

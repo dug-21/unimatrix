@@ -25,21 +25,19 @@ GH Issue: #400
 
 | Component | Pseudocode | Test Plan |
 |-----------|------------|-----------|
-| Scenario Extraction (`eval/scenarios/`) | pseudocode/scenario-extraction.md | test-plan/scenario-extraction.md |
-| Result Passthrough (`eval/runner/`) | pseudocode/result-passthrough.md | test-plan/result-passthrough.md |
-| Report Aggregation (`eval/report/aggregate.rs`) | pseudocode/report-aggregation.md | test-plan/report-aggregation.md |
-| Report Rendering (`eval/report/render.rs`) | pseudocode/report-rendering.md | test-plan/report-rendering.md |
-| Report Entry Point (`eval/report/mod.rs`) | pseudocode/report-entrypoint.md | test-plan/report-entrypoint.md |
-| Documentation (`docs/testing/eval-harness.md`) | pseudocode/documentation.md | test-plan/documentation.md |
+| Scenario Extraction (`eval/scenarios/`) | product/features/nan-009/pseudocode/scenario-extraction.md | product/features/nan-009/test-plan/scenario-extraction.md |
+| Result Passthrough (`eval/runner/`) | product/features/nan-009/pseudocode/result-passthrough.md | product/features/nan-009/test-plan/result-passthrough.md |
+| Report Aggregation (`eval/report/aggregate.rs`) | product/features/nan-009/pseudocode/report-aggregation.md | product/features/nan-009/test-plan/report-aggregation.md |
+| Report Rendering (`eval/report/render.rs`) | product/features/nan-009/pseudocode/report-rendering.md | product/features/nan-009/test-plan/report-rendering.md |
+| Report Entry Point (`eval/report/mod.rs`) | product/features/nan-009/pseudocode/report-entrypoint.md | product/features/nan-009/test-plan/report-entrypoint.md |
+| Documentation (`docs/testing/eval-harness.md`) | product/features/nan-009/pseudocode/documentation.md | product/features/nan-009/test-plan/documentation.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
-
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists expected components from the architecture — actual file paths are filled during delivery. The Cross-Cutting Artifacts section tracks files consumed by specific stages.
+| Pseudocode Overview | product/features/nan-009/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/nan-009/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 

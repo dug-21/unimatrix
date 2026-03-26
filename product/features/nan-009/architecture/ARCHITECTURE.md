@@ -228,7 +228,7 @@ A single integration test `test_report_round_trip_phase_section_7_distribution` 
    - `content.contains("delivery")` — phase label appears in section 6.
    - Section order: `pos("## 6.")` < `pos("## 7.")`.
    - `!content.contains("## 6. Distribution Analysis")` — old heading absent.
-5. Also updates the existing `test_report_contains_all_five_sections` to assert six
+5. Also updates the existing `test_report_contains_all_five_sections` to assert seven
    sections and the existing round-trip test to assert the new section 7 heading.
 
 ### Scenario extraction integration test (AC-10)

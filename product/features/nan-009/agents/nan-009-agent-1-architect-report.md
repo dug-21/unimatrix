@@ -77,3 +77,11 @@ Sort order: named phases alphabetically ascending, `"(unset)"` unconditionally l
 
 2. **`(phase × profile)` table**: Deferred per SCOPE.md RD-02. `PhaseAggregateStats`
    is deliberately structured without a `profile_name` field to keep it simple.
+
+## Knowledge Stewardship
+
+- Queried: context_search for eval harness serde patterns, nan-009 architectural decisions
+- Stored: ADR-001, ADR-002, ADR-003 attempted via context_store — all failed with
+  `-32003: Agent 'anonymous' lacks Write capability`. ADR content is complete on disk.
+  Delivery Leader must store these via context_store with a Write-capable agent ID.
+- Declined: no novel patterns discovered beyond what is already in ADR files
