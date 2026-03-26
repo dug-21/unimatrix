@@ -219,16 +219,20 @@ This produces one JSON result file per scenario in `--out`, named by scenario ID
   "query": "what is the confidence scoring formula",
   "profiles": {
     "baseline": {
-      "entries": [/* ScoredEntry list */],
+      "entries": [/* ScoredEntry list — each entry has a "category" field */],
       "latency_ms": 12,
       "p_at_k": 0.8,
-      "mrr": 0.92
+      "mrr": 0.92,
+      "cc_at_k": 0.71,   // fraction of configured_categories covered in top-k
+      "icd": 1.3219      // raw Shannon entropy of category distribution
     },
     "nli-candidate": {
       "entries": [/* ScoredEntry list */],
       "latency_ms": 38,
       "p_at_k": 0.9,
-      "mrr": 0.95
+      "mrr": 0.95,
+      "cc_at_k": 0.86,
+      "icd": 1.5041
     }
   },
   "comparison": {
@@ -236,6 +240,8 @@ This produces one JSON result file per scenario in `--out`, named by scenario ID
     "mrr_delta": 0.03,
     "p_at_k_delta": 0.10,
     "latency_overhead_ms": 26,
+    "cc_at_k_delta": 0.15,   // candidate.cc_at_k - baseline.cc_at_k
+    "icd_delta": 0.1822,     // candidate.icd - baseline.icd
     "rank_changes": [
       { "entry_id": 103, "from_rank": 3, "to_rank": 1 }
     ]
@@ -285,7 +291,7 @@ platform retrieval quality over time — it is the only way to know whether a
 future change improved or regressed the platform.
 
 ```bash
-echo '{"date":"'$(date +%Y-%m-%d)'","scenarios":1528,"p_at_k":0.3256,"mrr":0.4466,"avg_latency_ms":7.2,"feature_cycle":"my-feature","note":"short description"}' \
+echo '{"date":"'$(date +%Y-%m-%d)'","scenarios":1528,"p_at_k":0.3256,"mrr":0.4466,"avg_latency_ms":7.2,"cc_at_k":0.2636,"icd":0.5244,"feature_cycle":"my-feature","note":"short description"}' \
   >> product/test/eval-baselines/log.jsonl
 ```
 
@@ -350,7 +356,7 @@ accepted now but has no effect until the model integration is wired.
 
 ## Reading the report
 
-The report contains five sections in order:
+The report contains six sections in order:
 
 ### 1. Summary
 
@@ -392,11 +398,21 @@ low-value scenario (e.g., a one-off query with an unusual phrasing) is different
 from a regression in a high-frequency scenario. The harness surfaces the data;
 the human decides.
 
+### 6. Distribution Analysis
+
+Per-profile CC@k and ICD range table, plus top-5 improvement/degradation rows
+when two profiles are compared. This section is informational only — `eval report`
+always exits 0 regardless of the values here. Use it to detect distribution shifts
+caused by features such as PPR, Contradicts suppression, or phase-conditioned
+retrieval that would not be visible from P@K and MRR alone.
+
+This section is omitted for single-profile runs (no candidate to compare against).
+
 ---
 
 ## Understanding the metrics
 
-The report summary table contains four measurements per profile:
+The report summary table contains measurements per profile:
 
 **P@K — Precision at K**
 
@@ -412,22 +428,65 @@ score is 1.0; rank 2 → 0.5; rank 3 → 0.33. MRR averages this across all
 scenarios. An MRR of `0.45` means the first relevant result lands at roughly
 rank 2.2 on average.
 
-**Reading them together:** MRR higher than P@K is the normal, healthy pattern.
-It means the system surfaces one strong result near the top but fills the
-remaining slots with noise. Agents rely most heavily on the top result, so MRR
-is the more important number for day-to-day quality.
+**Reading P@K and MRR together:** MRR higher than P@K is the normal, healthy
+pattern. It means the system surfaces one strong result near the top but fills
+the remaining slots with noise. Agents rely most heavily on the top result, so
+MRR is the more important number for day-to-day quality.
 
-**Current platform baseline (2026-03-20):**
+**CC@k — Category Coverage at K**
+
+Fraction of configured categories represented by at least one entry in the top-k
+results.
+
+```
+CC@k = |{cat : ∃ entry ∈ top-k, cat ∈ results ∩ configured_categories}|
+       ─────────────────────────────────────────────────────────────────
+                          |configured_categories|
+```
+
+Range: `[0.0, 1.0]`.
+
+- `1.0` — every configured category appeared at least once in the top-k results.
+- `0.2` — only 1 of 5 configured categories appeared in the top-k results.
+
+Target: **CC@5 ≥ 0.7** before promoting PPR or phase-conditioned features to
+production. The denominator is always `|configured_categories|` from the profile
+TOML — never the number of categories observed in the result set. This caps
+CC@k at 1.0 naturally (intersection semantics).
+
+**ICD — Intra-query Category Diversity**
+
+Raw Shannon entropy (natural log) over the category distribution in the top-k
+results.
+
+```
+ICD = -Σ p(cat) * ln(p(cat))    where p(cat) = count(cat) / total entries
+```
+
+Range: `[0.0, ln(n_distinct_categories_in_result)]`.
+
+- High ICD — diverse results spanning many categories.
+- ICD = 0 — all results are from a single category.
+
+**Comparability caveat:** ICD is raw entropy (not normalized), so it is not
+directly comparable across profiles with different numbers of configured
+categories. The report annotates ICD column headers with `ICD (max=ln(n))` to
+make this visible. When comparing runs, ensure both profiles used the same
+category count.
+
+**Current platform baseline (2026-03-26):**
 
 | Metric | Value |
 |--------|-------|
-| Scenarios | 1,528 |
-| P@5 | 0.3256 |
-| MRR | 0.4466 |
-| Avg latency | 7.2ms |
+| Scenarios | 3,307 |
+| P@5 | 0.3058 |
+| MRR | 0.4181 |
+| Avg latency | 8.7ms |
+| CC@5 | 0.2636 |
+| ICD | 0.5244 |
 
 These numbers are only meaningful relative to future changes. A candidate that
-moves MRR from 0.45 → 0.52 is a demonstrated improvement. One that drops it
+moves MRR from 0.42 → 0.52 is a demonstrated improvement. One that drops it
 to 0.38 is a regression you should catch before shipping.
 
 ---
@@ -623,6 +682,6 @@ unimatrix eval report \
 cat /tmp/eval/report.md
 
 # 7. Record the baseline (always — even for baseline-only runs)
-echo '{"date":"'$(date +%Y-%m-%d)'","scenarios":<N>,"p_at_k":<value>,"mrr":<value>,"avg_latency_ms":<value>,"feature_cycle":"<feature>","note":"<short description>"}' \
+echo '{"date":"'$(date +%Y-%m-%d)'","scenarios":<N>,"p_at_k":<value>,"mrr":<value>,"avg_latency_ms":<value>,"cc_at_k":<value>,"icd":<value>,"feature_cycle":"<feature>","note":"<short description>"}' \
   >> product/test/eval-baselines/log.jsonl
 ```

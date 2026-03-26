@@ -106,6 +106,8 @@ pub(super) fn compute_comparison(
         mrr_delta: candidate.mrr - baseline.mrr,
         p_at_k_delta: candidate.p_at_k - baseline.p_at_k,
         latency_overhead_ms: candidate.latency_ms as i64 - baseline.latency_ms as i64,
+        cc_at_k_delta: candidate.cc_at_k - baseline.cc_at_k,
+        icd_delta: candidate.icd - baseline.icd,
     })
 }
 
@@ -212,4 +214,75 @@ pub(super) fn compute_rank_changes(baseline_ids: &[u64], candidate_ids: &[u64]) 
     });
 
     changes
+}
+
+// ---------------------------------------------------------------------------
+// Distribution metrics (nan-008)
+// ---------------------------------------------------------------------------
+
+/// Category Coverage at K.
+///
+/// Fraction of `configured_categories` represented by at least one entry in
+/// the result set. Uses intersection semantics: only categories that appear in
+/// BOTH `entries` AND `configured_categories` count toward the numerator. This
+/// naturally caps the return value at 1.0 (ADR-004 nan-008, WARN-2 resolution).
+///
+/// Returns 0.0 and emits `tracing::warn!` when `configured_categories` is empty
+/// (division-by-zero guard, ADR-004 nan-008).
+///
+/// Range: [0.0, 1.0].
+pub(super) fn compute_cc_at_k(entries: &[ScoredEntry], configured_categories: &[String]) -> f64 {
+    if configured_categories.is_empty() {
+        tracing::warn!(
+            "compute_cc_at_k: configured_categories is empty, returning 0.0. \
+             Check [knowledge] categories in the profile TOML."
+        );
+        return 0.0;
+    }
+
+    let configured_set: HashSet<&String> = configured_categories.iter().collect();
+
+    // Count distinct categories that are in BOTH entries AND configured_categories.
+    let distinct_covered: HashSet<&str> = entries
+        .iter()
+        .filter(|e| configured_set.contains(&e.category))
+        .map(|e| e.category.as_str())
+        .collect();
+
+    distinct_covered.len() as f64 / configured_categories.len() as f64
+}
+
+/// Intra-query Category Diversity.
+///
+/// Raw Shannon entropy (natural log) over the category distribution in `entries`.
+/// Returns 0.0 for empty entries or single-category results.
+///
+/// Iterates only over categories with count > 0 to avoid evaluating
+/// `0.0 * f64::ln(0.0)` which produces NaN (ADR-002 nan-008).
+///
+/// Range: [0.0, ln(n)] where n is the number of distinct categories in `entries`.
+pub(super) fn compute_icd(entries: &[ScoredEntry]) -> f64 {
+    if entries.is_empty() {
+        return 0.0;
+    }
+
+    let total = entries.len() as f64;
+
+    let mut counts: HashMap<&str, usize> = HashMap::new();
+    for entry in entries {
+        *counts.entry(entry.category.as_str()).or_insert(0) += 1;
+    }
+
+    let mut entropy = 0.0_f64;
+    for (_, count) in &counts {
+        if *count == 0 {
+            // Defensive NaN guard: HashMap construction above never inserts zeros,
+            // but skip explicitly to prevent 0.0 * f64::ln(0.0) = NaN.
+            continue;
+        }
+        let p = *count as f64 / total;
+        entropy -= p * p.ln();
+    }
+
+    entropy
 }

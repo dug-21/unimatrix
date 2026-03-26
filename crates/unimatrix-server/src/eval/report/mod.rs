@@ -8,6 +8,7 @@
 //! 3. Latency Distribution
 //! 4. Entry-Level Analysis
 //! 5. Zero-Regression Check
+//! 6. Distribution Analysis
 //!
 //! This module is entirely synchronous: pure filesystem reads and string formatting.
 //! No database, no sqlx, no tokio runtime, no async. Dispatched directly in the sync
@@ -30,7 +31,8 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 use aggregate::{
-    compute_aggregate_stats, compute_entry_rank_changes, compute_latency_buckets, find_regressions,
+    compute_aggregate_stats, compute_cc_at_k_scenario_rows, compute_entry_rank_changes,
+    compute_latency_buckets, find_regressions,
 };
 use render::render_report;
 
@@ -48,6 +50,8 @@ use render::render_report;
 pub(crate) struct ScoredEntry {
     pub id: u64,
     pub title: String,
+    #[serde(default)]
+    pub category: String,
     #[serde(default)]
     pub final_score: f64,
     #[serde(default)]
@@ -81,6 +85,10 @@ pub(crate) struct ComparisonMetrics {
     pub p_at_k_delta: f64,
     #[serde(default)]
     pub latency_overhead_ms: i64,
+    #[serde(default)]
+    pub cc_at_k_delta: f64,
+    #[serde(default)]
+    pub icd_delta: f64,
 }
 
 /// Metrics for one profile on one scenario.
@@ -94,6 +102,10 @@ pub(crate) struct ProfileResult {
     pub p_at_k: f64,
     #[serde(default)]
     pub mrr: f64,
+    #[serde(default)]
+    pub cc_at_k: f64,
+    #[serde(default)]
+    pub icd: f64,
 }
 
 /// Per-scenario result JSON file schema.
@@ -115,6 +127,8 @@ pub(crate) fn default_comparison() -> ComparisonMetrics {
         mrr_delta: 0.0,
         p_at_k_delta: 0.0,
         latency_overhead_ms: 0,
+        cc_at_k_delta: 0.0,
+        icd_delta: 0.0,
     }
 }
 
@@ -122,7 +136,7 @@ pub(crate) fn default_comparison() -> ComparisonMetrics {
 // Internal aggregate types (used by aggregate.rs and render.rs)
 // ---------------------------------------------------------------------------
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(super) struct AggregateStats {
     pub profile_name: String,
     pub scenario_count: usize,
@@ -132,6 +146,20 @@ pub(super) struct AggregateStats {
     pub p_at_k_delta: f64,
     pub mrr_delta: f64,
     pub latency_delta_ms: f64,
+    pub mean_cc_at_k: f64,
+    pub mean_icd: f64,
+    pub cc_at_k_delta: f64,
+    pub icd_delta: f64,
+}
+
+/// Per-scenario row for CC@k comparison in the Distribution Analysis section.
+#[derive(Debug)]
+pub(super) struct CcAtKScenarioRow {
+    pub scenario_id: String,
+    pub query: String,
+    pub baseline_cc_at_k: f64,
+    pub candidate_cc_at_k: f64,
+    pub cc_at_k_delta: f64,
 }
 
 #[derive(Debug)]
@@ -217,6 +245,7 @@ pub fn run_report(
     let regressions = find_regressions(&scenario_results, &query_map);
     let latency_buckets = compute_latency_buckets(&scenario_results);
     let entry_rank_changes = compute_entry_rank_changes(&scenario_results);
+    let cc_at_k_rows = compute_cc_at_k_scenario_rows(&scenario_results);
 
     // Step 5: Render.
     let md = render_report(
@@ -226,6 +255,7 @@ pub fn run_report(
         &latency_buckets,
         &entry_rank_changes,
         &query_map,
+        &cc_at_k_rows,
     );
 
     // Step 6: Write output.
