@@ -294,8 +294,8 @@ eval report:
 | `DistributionGateResult` | `{ cc_at_k: MetricGateRow, icd: MetricGateRow, mrr_floor: MetricGateRow, diversity_passed: bool, mrr_floor_passed: bool, overall_passed: bool }` | `eval/report/aggregate/distribution.rs` (new) |
 | `MetricGateRow` | `{ target: f64, actual: f64, passed: bool }` | `eval/report/aggregate/distribution.rs` (new) |
 | `check_distribution_targets(stats, targets)` | `fn(&AggregateStats, &DistributionTargets) -> DistributionGateResult` | `eval/report/aggregate/distribution.rs` (new) |
-| `render_distribution_gate_section(profile_name, gate)` | `fn(&str, &DistributionGateResult) -> String` | `eval/report/render_distribution_gate.rs` (new) |
-| `load_profile_meta(dir)` | `fn(&Path) -> HashMap<String, ProfileMetaEntry>` | `eval/report/mod.rs` (new private helper) |
+| `render_distribution_gate_section(profile_name, gate, baseline_stats, heading_level)` | `fn(&str, &DistributionGateResult, &AggregateStats, HeadingLevel) -> String` | `eval/report/render_distribution_gate.rs` (new) |
+| `load_profile_meta(dir)` | `fn(&Path) -> Result<HashMap<String, ProfileMetaEntry>, EvalError>` | `eval/report/mod.rs` (new private helper) |
 | `profile-meta.json` schema | `{ "version": 1, "profiles": { "<name>": { "distribution_change": bool, "distribution_targets": null | { "cc_at_k_min": f64, "icd_min": f64, "mrr_floor": f64 } } } }` | Written by runner, read by report |
 
 ## File Change Map

@@ -29,10 +29,12 @@
 5. Per-profile Section 5 with independent gating; single vs multi-candidate heading levels
    differ (ADR-005).
 
-## Open Questions
+## Open Questions (all resolved during design review)
 
-- OQ-01: Should the Distribution Gate table include a "Baseline MRR (reference)" row to help
-  users choose mrr_floor values? If yes, render_distribution_gate_section needs the baseline
-  AggregateStats as an additional parameter.
-- OQ-02: Confirm the `## 5.` vs `### 5.N` heading level distinction for single vs multi
-  candidate profile runs matches report consumer expectations before render implementation.
+- OQ-01: RESOLVED — Include "Baseline MRR (reference)" row. Label as informational. render_distribution_gate_section takes baseline AggregateStats as second parameter.
+- OQ-02: RESOLVED — `## 5.` parent anchor always present; `### 5.N` children for multi-candidate; single-candidate omits sub-heading.
+
+## Knowledge Stewardship
+
+- ADRs stored in Unimatrix: #3586 (ADR-001), #3587 (ADR-002), #3588 (ADR-003), #3589 (ADR-004), #3590 (ADR-005)
+- All five ADRs are active with category "decision", topic "nan-010", feature_cycle "nan-010"
