@@ -359,6 +359,7 @@ mod tests {
             current_phase: None,
             category_counts: HashMap::new(),
             current_goal: current_goal.map(str::to_string), // col-025
+            confirmed_entries: HashSet::new(),              // col-028
         }
     }
 

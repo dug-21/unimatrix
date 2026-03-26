@@ -390,6 +390,7 @@ impl UnimatrixServer {
                 &scores,
                 "flexible",
                 "mcp",
+                None, // col-028 placeholder: Agent 2 (tools-read-side) will supply the real phase
             );
 
             let store_clone = Arc::clone(&self.store);

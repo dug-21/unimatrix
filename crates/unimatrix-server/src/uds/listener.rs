@@ -1317,6 +1317,7 @@ async fn handle_context_search(
                 &scores,
                 "strict",
                 "uds",
+                None, // col-028: UDS compile-fix only — no phase semantics (C-08, SR-03)
             );
 
             let store_clone = Arc::clone(store);
