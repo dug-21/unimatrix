@@ -86,6 +86,9 @@ pub(super) fn compute_aggregate_stats(results: &[ScenarioResult]) -> Vec<Aggrega
                 } else {
                     latency_delta_sum / count as f64
                 },
+                // nan-008 Wave 2 (aggregate.rs): populate mean_cc_at_k, mean_icd,
+                // cc_at_k_delta, icd_delta from cc_at_k/icd sums.
+                ..Default::default()
             });
         }
     }

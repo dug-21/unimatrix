@@ -22,6 +22,8 @@ fn make_profile_result(p_at_k: f64, mrr: f64, latency_ms: u64) -> ProfileResult 
         latency_ms,
         p_at_k,
         mrr,
+        cc_at_k: 0.0,
+        icd: 0.0,
     }
 }
 
@@ -52,6 +54,8 @@ fn make_scenario_result(
             mrr_delta: candidate_mrr - baseline_mrr,
             p_at_k_delta: candidate_p - baseline_p,
             latency_overhead_ms: 10,
+            cc_at_k_delta: 0.0,
+            icd_delta: 0.0,
         },
     }
 }
@@ -414,6 +418,7 @@ fn test_report_entry_level_analysis_promotion_demotion() {
         ScoredEntry {
             id: 99,
             title: "Entry Ninety Nine".to_string(),
+            category: String::new(),
             final_score: 0.9,
             similarity: 0.9,
             confidence: 0.9,
@@ -423,6 +428,7 @@ fn test_report_entry_level_analysis_promotion_demotion() {
         ScoredEntry {
             id: 42,
             title: "Entry Forty Two".to_string(),
+            category: String::new(),
             final_score: 0.5,
             similarity: 0.5,
             confidence: 0.5,

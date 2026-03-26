@@ -128,6 +128,7 @@ async fn run_single_profile(
         .map(|se| ScoredEntry {
             id: se.entry.id as u64,
             title: se.entry.title.clone(),
+            category: se.entry.category.clone(),
             final_score: se.final_score,
             similarity: se.similarity,
             confidence: se.entry.confidence,
@@ -148,6 +149,10 @@ async fn run_single_profile(
         latency_ms,
         p_at_k,
         mrr,
+        // nan-008 Wave 1 (runner/replay.rs): populate cc_at_k and icd via
+        // compute_cc_at_k / compute_icd after assembling the entries vec.
+        cc_at_k: 0.0,
+        icd: 0.0,
     })
 }
 

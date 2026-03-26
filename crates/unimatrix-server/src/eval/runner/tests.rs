@@ -126,6 +126,8 @@ fn test_write_scenario_result_sanitizes_id() {
             mrr_delta: 0.0,
             p_at_k_delta: 0.0,
             latency_overhead_ms: 0,
+            cc_at_k_delta: 0.0,
+            icd_delta: 0.0,
         },
     };
     write_scenario_result(result, dir.path()).expect("write must succeed");
@@ -150,6 +152,7 @@ fn test_output_json_schema_completeness() {
             entries: vec![ScoredEntry {
                 id: 1,
                 title: "T".to_string(),
+                category: String::new(),
                 final_score: 0.9,
                 similarity: 0.8,
                 confidence: 0.7,
@@ -159,6 +162,8 @@ fn test_output_json_schema_completeness() {
             latency_ms: 10,
             p_at_k: 0.5,
             mrr: 1.0,
+            cc_at_k: 0.0,
+            icd: 0.0,
         },
     );
 
@@ -176,6 +181,8 @@ fn test_output_json_schema_completeness() {
             mrr_delta: 0.1,
             p_at_k_delta: 0.2,
             latency_overhead_ms: -5,
+            cc_at_k_delta: 0.0,
+            icd_delta: 0.0,
         },
     };
 

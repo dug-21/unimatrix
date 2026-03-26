@@ -49,6 +49,7 @@ fn make_entries(ids: &[u64]) -> Vec<ScoredEntry> {
         .map(|&id| ScoredEntry {
             id,
             title: format!("Entry {id}"),
+            category: String::new(),
             final_score: 0.9,
             similarity: 0.85,
             confidence: 0.7,

@@ -106,6 +106,10 @@ pub(super) fn compute_comparison(
         mrr_delta: candidate.mrr - baseline.mrr,
         p_at_k_delta: candidate.p_at_k - baseline.p_at_k,
         latency_overhead_ms: candidate.latency_ms as i64 - baseline.latency_ms as i64,
+        // nan-008 Wave 1 (runner/metrics.rs): populate cc_at_k_delta and icd_delta
+        // from candidate and baseline ProfileResult cc_at_k / icd values.
+        cc_at_k_delta: 0.0,
+        icd_delta: 0.0,
     })
 }
 
