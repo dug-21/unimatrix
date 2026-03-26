@@ -11,7 +11,10 @@ use crate::eval::profile::{EvalProfile, EvalServiceLayer};
 use crate::eval::scenarios::ScenarioRecord;
 use crate::services::{AuditContext, AuditSource, CallerId, RetrievalMode, ServiceSearchParams};
 
-use super::metrics::{compute_comparison, compute_mrr, compute_p_at_k, determine_ground_truth};
+use super::metrics::{
+    compute_cc_at_k, compute_comparison, compute_icd, compute_mrr, compute_p_at_k,
+    determine_ground_truth,
+};
 use super::output::{ProfileResult, ScenarioResult, ScoredEntry, write_scenario_result};
 
 // ---------------------------------------------------------------------------
@@ -55,7 +58,13 @@ pub(super) async fn replay_scenario(
     let mut profile_results: HashMap<String, ProfileResult> = HashMap::new();
 
     for (profile, layer) in profiles.iter().zip(layers.iter()) {
-        let result = run_single_profile(record, layer, k).await?;
+        let result = run_single_profile(
+            record,
+            layer,
+            k,
+            &profile.config_overrides.knowledge.categories,
+        )
+        .await?;
         profile_results.insert(profile.name.clone(), result);
     }
 
@@ -75,6 +84,7 @@ async fn run_single_profile(
     record: &ScenarioRecord,
     layer: &EvalServiceLayer,
     k: usize,
+    configured_categories: &[String],
 ) -> Result<ProfileResult, Box<dyn std::error::Error>> {
     // 1. Build search params from scenario context
     let retrieval_mode = match record.context.retrieval_mode.as_str() {
@@ -144,15 +154,17 @@ async fn run_single_profile(
     let p_at_k = compute_p_at_k(&entries, &ground_truth, k);
     let mrr = compute_mrr(&entries, &ground_truth);
 
+    // 6. Compute distribution metrics
+    let cc_at_k = compute_cc_at_k(&entries, configured_categories);
+    let icd = compute_icd(&entries);
+
     Ok(ProfileResult {
         entries,
         latency_ms,
         p_at_k,
         mrr,
-        // nan-008 Wave 1 (runner/replay.rs): populate cc_at_k and icd via
-        // compute_cc_at_k / compute_icd after assembling the entries vec.
-        cc_at_k: 0.0,
-        icd: 0.0,
+        cc_at_k,
+        icd,
     })
 }
 
