@@ -16,6 +16,8 @@ use sqlx::sqlite::SqliteConnectOptions;
 use tempfile::TempDir;
 use unimatrix_store::SqlxStore;
 use unimatrix_store::pool_config::PoolConfig;
+use unimatrix_store::test_helpers::open_test_store;
+use unimatrix_store::query_log::QueryLogRecord;
 
 // ---------------------------------------------------------------------------
 // V16 database builder
@@ -536,4 +538,132 @@ async fn test_schema_version_is_17_after_migration() {
     assert_eq!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION, 17);
 
     store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// AC-17: query_log.phase round-trip — SR-01 atomic-unit guard
+// ---------------------------------------------------------------------------
+//
+// This is the primary runtime guard against positional column index drift
+// across the four atomic sites: analytics.rs INSERT (?9), both scan_query_log_*
+// SELECTs (tenth column), and row_to_query_log (index 9).
+//
+// If any of the four sites diverges:
+// - INSERT missing phase bind: rows[0].phase = None even though Some("design") written.
+// - SELECT missing phase column: row_to_query_log panics or returns wrong type at index 9.
+// - row_to_query_log reading index 8 (source): phase reads back as "mcp" instead of "design".
+//
+// Pattern: flush (close+reopen) drains the analytics channel so rows are committed
+// before the scan reads. This matches the sqlite_parity.rs `flush` pattern (#3004).
+
+#[tokio::test]
+async fn test_query_log_phase_round_trip_some() {
+    // Arrange: fresh v17 store
+    let dir = TempDir::new().expect("temp dir");
+    let store = open_test_store(&dir).await;
+
+    // Act: enqueue a query_log row via insert_query_log with phase = Some("design")
+    let record = QueryLogRecord::new(
+        "session-rt-some".to_string(),
+        "round trip phase some".to_string(),
+        &[1_u64, 2, 3],
+        &[0.9_f64, 0.8, 0.7],
+        "semantic",
+        "mcp",
+        Some("design".to_string()), // col-028: phase — NEW parameter
+    );
+    store.insert_query_log(&record);
+
+    // Flush: close + reopen drains the analytics channel (sqlite_parity flush pattern).
+    store.close().await.expect("close");
+    let store = open_test_store(&dir).await;
+
+    // Assert: read back via scan_query_log_by_session
+    let rows = store
+        .scan_query_log_by_session("session-rt-some")
+        .await
+        .expect("scan_query_log_by_session must not error (AC-17)");
+
+    assert_eq!(rows.len(), 1, "exactly one row in AC-17 round-trip test");
+    assert_eq!(
+        rows[0].phase,
+        Some("design".to_string()),
+        "AC-17 SR-01 guard: phase must round-trip — written as Some('design'), read back as \
+         Some('design'). Mismatch indicates positional drift in INSERT, SELECT, or \
+         row_to_query_log (col-028, ADR-007)."
+    );
+
+    store.close().await.expect("close");
+}
+
+#[tokio::test]
+async fn test_query_log_phase_round_trip_none() {
+    // phase=None must deserialize as None (not empty string, not panic) — AC-17 NULL path.
+    let dir = TempDir::new().expect("temp dir");
+    let store = open_test_store(&dir).await;
+
+    let record = QueryLogRecord::new(
+        "session-rt-none".to_string(),
+        "round trip phase none".to_string(),
+        &[4_u64, 5],
+        &[0.85_f64, 0.75],
+        "strict",
+        "mcp",
+        None, // col-028: phase = NULL
+    );
+    store.insert_query_log(&record);
+
+    store.close().await.expect("close");
+    let store = open_test_store(&dir).await;
+
+    let rows = store
+        .scan_query_log_by_session("session-rt-none")
+        .await
+        .expect("scan_query_log_by_session with phase=None must not error");
+
+    assert_eq!(rows.len(), 1, "exactly one row in AC-17 None round-trip");
+    assert!(
+        rows[0].phase.is_none(),
+        "AC-17 SR-01 guard: phase=None must round-trip as None (NULL → Option<String>::None). \
+         Got: {:?}",
+        rows[0].phase
+    );
+
+    store.close().await.expect("close");
+}
+
+#[tokio::test]
+async fn test_query_log_phase_round_trip_non_trivial_value() {
+    // EC-06: phase containing a slash must round-trip correctly.
+    // Verifies that SQLx parameterized binding handles non-trivial strings.
+    let dir = TempDir::new().expect("temp dir");
+    let store = open_test_store(&dir).await;
+
+    let record = QueryLogRecord::new(
+        "session-rt-slash".to_string(),
+        "round trip non-trivial phase".to_string(),
+        &[],
+        &[],
+        "flexible",
+        "mcp",
+        Some("design/v2".to_string()), // EC-06: contains slash
+    );
+    store.insert_query_log(&record);
+
+    store.close().await.expect("close");
+    let store = open_test_store(&dir).await;
+
+    let rows = store
+        .scan_query_log_by_session("session-rt-slash")
+        .await
+        .expect("scan must not error");
+
+    assert_eq!(rows.len(), 1);
+    assert_eq!(
+        rows[0].phase,
+        Some("design/v2".to_string()),
+        "EC-06: phase 'design/v2' must round-trip exactly (parameterized binding, no injection)"
+    );
+
+    store.close().await.expect("close");
 }
