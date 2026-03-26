@@ -455,12 +455,14 @@ pub(super) fn compute_phase_stats(results: &[ScenarioResult]) -> Vec<PhaseAggreg
 
     // Explicit sort: named phases ascending; "(unset)" last.
     // '(' (ASCII 40) < 'a' — naive lex would put "(unset)" first. ADR-003 requires last.
-    stats.sort_by(|a, b| match (a.phase_label.as_str(), b.phase_label.as_str()) {
-        ("(unset)", "(unset)") => std::cmp::Ordering::Equal,
-        ("(unset)", _) => std::cmp::Ordering::Greater,
-        (_, "(unset)") => std::cmp::Ordering::Less,
-        (x, y) => x.cmp(y),
-    });
+    stats.sort_by(
+        |a, b| match (a.phase_label.as_str(), b.phase_label.as_str()) {
+            ("(unset)", "(unset)") => std::cmp::Ordering::Equal,
+            ("(unset)", _) => std::cmp::Ordering::Greater,
+            (_, "(unset)") => std::cmp::Ordering::Less,
+            (x, y) => x.cmp(y),
+        },
+    );
 
     stats
 }

@@ -6,10 +6,12 @@
 //! 6. Phase-Stratified Metrics, 7. Distribution Analysis.
 //!
 //! Section 6 is omitted when all scenario results have phase = None.
+//! `render_phase_section` lives in `render_phase.rs` (sibling module, split for 500-line limit).
 
 use std::collections::HashMap;
 
 use super::ScoredEntry;
+use super::render_phase::render_phase_section;
 use super::{
     AggregateStats, CcAtKScenarioRow, EntryRankSummary, LatencyBucket, PhaseAggregateStats,
     RegressionRecord, ScenarioResult,
@@ -226,54 +228,6 @@ pub(super) fn render_report(
     md.push_str(&render_distribution_analysis(stats, results, cc_at_k_rows));
 
     md
-}
-
-// ---------------------------------------------------------------------------
-// render_phase_section (Section 6 — nan-009)
-// ---------------------------------------------------------------------------
-
-/// Renders the Phase-Stratified Metrics section as a Markdown table.
-///
-/// Returns an empty string when `phase_stats` is empty; the caller in
-/// `render_report` checks for this and skips the section entirely (AC-04, R-09).
-/// Input is assumed already sorted: alphabetical ascending for named phases,
-/// `"(unset)"` unconditionally last (guaranteed by `compute_phase_stats`).
-pub(super) fn render_phase_section(phase_stats: &[PhaseAggregateStats]) -> String {
-    if phase_stats.is_empty() {
-        return String::new();
-    }
-
-    let mut out = String::new();
-
-    out.push_str("## 6. Phase-Stratified Metrics\n\n");
-
-    // Interpretation note matching style of render_distribution_analysis.
-    out.push_str(
-        "_Metrics are computed from the baseline profile only. \
-Phase is populated for MCP-sourced sessions that called `context_cycle`._\n\n",
-    );
-
-    // Table header — columns: Phase | Count | P@K | MRR | CC@k | ICD
-    out.push_str("| Phase | Count | P@K | MRR | CC@k | ICD |\n");
-    out.push_str("|-------|-------|-----|-----|------|-----|\n");
-
-    // One row per phase stat; already sorted by aggregate.rs.
-    for stat in phase_stats {
-        out.push_str(&format!(
-            "| {} | {} | {:.4} | {:.4} | {:.4} | {:.4} |\n",
-            stat.phase_label,
-            stat.scenario_count,
-            stat.mean_p_at_k,
-            stat.mean_mrr,
-            stat.mean_cc_at_k,
-            stat.mean_icd,
-        ));
-    }
-
-    // Trailing newline before next section.
-    out.push('\n');
-
-    out
 }
 
 // ---------------------------------------------------------------------------

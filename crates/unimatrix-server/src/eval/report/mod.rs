@@ -22,8 +22,19 @@
 
 mod aggregate;
 mod render;
+mod render_phase;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_core_units;
+#[cfg(test)]
+mod tests_distribution;
+#[cfg(test)]
+mod tests_distribution_pipeline;
+#[cfg(test)]
+mod tests_phase;
+#[cfg(test)]
+mod tests_phase_pipeline;
 
 use std::collections::HashMap;
 use std::io::Write as _;
