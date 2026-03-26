@@ -9,10 +9,13 @@ use unimatrix_engine::test_scenarios::kendall_tau;
 
 use crate::eval::scenarios::{ScenarioBaseline, ScenarioContext, ScenarioRecord};
 
+use std::collections::HashMap;
+
 use super::metrics::{
-    compute_mrr, compute_p_at_k, compute_rank_changes, compute_tau_safe, determine_ground_truth,
+    compute_cc_at_k, compute_comparison, compute_icd, compute_mrr, compute_p_at_k,
+    compute_rank_changes, compute_tau_safe, determine_ground_truth,
 };
-use super::output::ScoredEntry;
+use super::output::{ProfileResult, ScoredEntry};
 
 // -----------------------------------------------------------------------
 // Helper builders (metrics tests)
@@ -289,4 +292,226 @@ fn test_eval_run_metric_reproducibility() {
     let m1 = compute_mrr(&entries, &ground_truth);
     let m2 = compute_mrr(&entries, &ground_truth);
     assert_eq!(m1, m2, "MRR must be deterministic");
+}
+
+// -----------------------------------------------------------------------
+// Helper: build ScoredEntry slices with explicit categories (nan-008)
+// -----------------------------------------------------------------------
+
+fn make_entries_with_categories(pairs: &[(u64, &str)]) -> Vec<ScoredEntry> {
+    pairs
+        .iter()
+        .map(|&(id, cat)| ScoredEntry {
+            id,
+            title: format!("Entry {id}"),
+            category: cat.to_string(),
+            final_score: 0.9,
+            similarity: 0.85,
+            confidence: 0.7,
+            status: "Active".to_string(),
+            nli_rerank_delta: None,
+        })
+        .collect()
+}
+
+fn make_profile_result_for_comparison(cc_at_k: f64, icd: f64) -> ProfileResult {
+    ProfileResult {
+        entries: make_entries_with_categories(&[(1, "decision")]),
+        latency_ms: 10,
+        p_at_k: 0.5,
+        mrr: 0.5,
+        cc_at_k,
+        icd,
+    }
+}
+
+// -----------------------------------------------------------------------
+// AC-10: CC@k boundary tests
+// -----------------------------------------------------------------------
+
+#[test]
+fn test_cc_at_k_all_categories_present() {
+    let entries = make_entries_with_categories(&[(1, "a"), (2, "b"), (3, "c")]);
+    let configured = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+    let result = compute_cc_at_k(&entries, &configured);
+    assert_eq!(result, 1.0, "all three categories covered → CC@k = 1.0");
+}
+
+#[test]
+fn test_cc_at_k_one_category_present() {
+    let entries = make_entries_with_categories(&[(1, "a"), (2, "a"), (3, "a")]);
+    let configured = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+    let result = compute_cc_at_k(&entries, &configured);
+    let expected = 1.0 / 3.0;
+    assert!(
+        (result - expected).abs() < 1e-9,
+        "only 1 of 3 categories covered → CC@k ≈ 0.333, got {result}"
+    );
+}
+
+#[test]
+fn test_icd_maximum_entropy() {
+    // Four entries, each a different category → uniform distribution → entropy = ln(4)
+    let entries = make_entries_with_categories(&[(1, "a"), (2, "b"), (3, "c"), (4, "d")]);
+    let result = compute_icd(&entries);
+    let expected = f64::ln(4.0);
+    assert!(
+        (result - expected).abs() < 1e-9,
+        "uniform 4-category distribution → ICD = ln(4) ≈ {expected}, got {result}"
+    );
+}
+
+#[test]
+fn test_icd_single_category() {
+    let entries = make_entries_with_categories(&[(1, "a"), (2, "a"), (3, "a")]);
+    let result = compute_icd(&entries);
+    assert_eq!(result, 0.0, "single category → ICD = 0.0");
+}
+
+// -----------------------------------------------------------------------
+// AC-10: guard tests
+// -----------------------------------------------------------------------
+
+#[test]
+fn test_cc_at_k_empty_configured_categories_returns_zero() {
+    let entries = make_entries_with_categories(&[(1, "a"), (2, "b")]);
+    let result = compute_cc_at_k(&entries, &[]);
+    assert_eq!(result, 0.0, "empty configured_categories → 0.0, no panic");
+}
+
+#[test]
+fn test_icd_nan_guard() {
+    // Mixed distribution: p(a)=2/3, p(b)=1/3 — exercises non-uniform path.
+    let entries = make_entries_with_categories(&[(1, "a"), (2, "a"), (3, "b")]);
+    let result = compute_icd(&entries);
+    assert!(!result.is_nan(), "ICD must not be NaN");
+    assert!(!result.is_infinite(), "ICD must not be infinite");
+    assert!(result > 0.0, "mixed categories → ICD > 0.0");
+}
+
+// -----------------------------------------------------------------------
+// AC-10: intersection semantics guard (WARN-2 resolution)
+// -----------------------------------------------------------------------
+
+#[test]
+fn test_cc_at_k_intersection_semantics_category_outside_configured_not_counted() {
+    // "legacy-cat" is in entries but NOT in configured_categories.
+    // Intersection semantics: only "decision" counts → 1/2.
+    let entries = make_entries_with_categories(&[(1, "legacy-cat"), (2, "decision")]);
+    let configured = vec!["decision".to_string(), "convention".to_string()];
+    let result = compute_cc_at_k(&entries, &configured);
+    let expected = 1.0 / 2.0;
+    assert!(
+        (result - expected).abs() < 1e-9,
+        "intersection semantics: only configured categories count; expected {expected}, got {result}"
+    );
+    assert!(result <= 1.0, "CC@k must never exceed 1.0, got {result}");
+}
+
+// -----------------------------------------------------------------------
+// Additional edge cases from test plan
+// -----------------------------------------------------------------------
+
+#[test]
+fn test_cc_at_k_entries_empty_configured_non_empty() {
+    let result = compute_cc_at_k(&[], &["a".to_string(), "b".to_string(), "c".to_string()]);
+    assert_eq!(result, 0.0, "no entries → zero coverage");
+}
+
+#[test]
+fn test_icd_empty_entries_returns_zero() {
+    let result = compute_icd(&[]);
+    assert_eq!(result, 0.0, "empty entries → ICD = 0.0");
+}
+
+#[test]
+fn test_icd_two_entries_one_category_each() {
+    let entries = make_entries_with_categories(&[(1, "a"), (2, "b")]);
+    let result = compute_icd(&entries);
+    let expected = f64::ln(2.0);
+    assert!(
+        (result - expected).abs() < 1e-9,
+        "two equal-probability categories → ICD = ln(2) ≈ {expected}, got {result}"
+    );
+}
+
+// -----------------------------------------------------------------------
+// Delta sign tests for compute_comparison (R-10)
+// -----------------------------------------------------------------------
+
+#[test]
+fn test_compute_comparison_delta_positive() {
+    let baseline = make_profile_result_for_comparison(0.4, 0.6);
+    let candidate = make_profile_result_for_comparison(0.7, 1.1);
+
+    let mut profiles = HashMap::new();
+    profiles.insert("baseline".to_string(), baseline);
+    profiles.insert("candidate".to_string(), candidate);
+
+    let result = compute_comparison(&profiles, "baseline").expect("comparison failed");
+
+    assert!(
+        result.cc_at_k_delta > 0.0,
+        "cc_at_k_delta must be positive, got {}",
+        result.cc_at_k_delta
+    );
+    assert!(
+        result.icd_delta > 0.0,
+        "icd_delta must be positive, got {}",
+        result.icd_delta
+    );
+    assert!(
+        (result.cc_at_k_delta - 0.3).abs() < 1e-9,
+        "cc_at_k_delta = 0.7 - 0.4 = 0.3, got {}",
+        result.cc_at_k_delta
+    );
+    assert!(
+        (result.icd_delta - 0.5).abs() < 1e-9,
+        "icd_delta = 1.1 - 0.6 = 0.5, got {}",
+        result.icd_delta
+    );
+}
+
+#[test]
+fn test_compute_comparison_delta_negative() {
+    let baseline = make_profile_result_for_comparison(0.8, 1.2);
+    let candidate = make_profile_result_for_comparison(0.5, 0.9);
+
+    let mut profiles = HashMap::new();
+    profiles.insert("baseline".to_string(), baseline);
+    profiles.insert("candidate".to_string(), candidate);
+
+    let result = compute_comparison(&profiles, "baseline").expect("comparison failed");
+
+    assert!(
+        result.cc_at_k_delta < 0.0,
+        "cc_at_k_delta must be negative, got {}",
+        result.cc_at_k_delta
+    );
+    assert!(
+        result.icd_delta < 0.0,
+        "icd_delta must be negative, got {}",
+        result.icd_delta
+    );
+}
+
+// -----------------------------------------------------------------------
+// Determinism (NFR reproducibility extension for nan-008 metrics)
+// -----------------------------------------------------------------------
+
+#[test]
+fn test_cc_at_k_deterministic() {
+    let entries = make_entries_with_categories(&[(1, "a"), (2, "b"), (3, "a")]);
+    let configured = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+    let r1 = compute_cc_at_k(&entries, &configured);
+    let r2 = compute_cc_at_k(&entries, &configured);
+    assert_eq!(r1, r2, "CC@k must be deterministic");
+}
+
+#[test]
+fn test_icd_deterministic() {
+    let entries = make_entries_with_categories(&[(1, "a"), (2, "b"), (3, "c")]);
+    let r1 = compute_icd(&entries);
+    let r2 = compute_icd(&entries);
+    assert_eq!(r1, r2, "ICD must be deterministic");
 }
