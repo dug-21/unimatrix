@@ -31,7 +31,8 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 use aggregate::{
-    compute_aggregate_stats, compute_entry_rank_changes, compute_latency_buckets, find_regressions,
+    compute_aggregate_stats, compute_cc_at_k_scenario_rows, compute_entry_rank_changes,
+    compute_latency_buckets, find_regressions,
 };
 use render::render_report;
 
@@ -244,6 +245,7 @@ pub fn run_report(
     let regressions = find_regressions(&scenario_results, &query_map);
     let latency_buckets = compute_latency_buckets(&scenario_results);
     let entry_rank_changes = compute_entry_rank_changes(&scenario_results);
+    let cc_at_k_rows = compute_cc_at_k_scenario_rows(&scenario_results);
 
     // Step 5: Render.
     let md = render_report(
@@ -253,6 +255,7 @@ pub fn run_report(
         &latency_buckets,
         &entry_rank_changes,
         &query_map,
+        &cc_at_k_rows,
     );
 
     // Step 6: Write output.

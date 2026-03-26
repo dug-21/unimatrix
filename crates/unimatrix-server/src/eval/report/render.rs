@@ -1,13 +1,17 @@
-//! Markdown rendering functions for eval report (nan-007 D4).
+//! Markdown rendering functions for eval report (nan-007 D4, extended nan-008).
 //!
-//! Renders the five required sections from aggregated data structures:
+//! Renders the six required sections from aggregated data structures:
 //! 1. Summary, 2. Notable Ranking Changes, 3. Latency Distribution,
-//! 4. Entry-Level Analysis, 5. Zero-Regression Check.
+//! 4. Entry-Level Analysis, 5. Zero-Regression Check,
+//! 6. Distribution Analysis.
 
 use std::collections::HashMap;
 
 use super::ScoredEntry;
-use super::{AggregateStats, EntryRankSummary, LatencyBucket, RegressionRecord, ScenarioResult};
+use super::{
+    AggregateStats, CcAtKScenarioRow, EntryRankSummary, LatencyBucket, RegressionRecord,
+    ScenarioResult,
+};
 
 // ---------------------------------------------------------------------------
 // Type alias for the complex return type of find_notable_ranking_changes
@@ -27,6 +31,7 @@ pub(super) fn render_report(
     latency_buckets: &[LatencyBucket],
     entry_rank_changes: &EntryRankSummary,
     query_map: &HashMap<String, String>,
+    cc_at_k_rows: &[CcAtKScenarioRow],
 ) -> String {
     let mut md = String::new();
 
@@ -46,10 +51,10 @@ pub(super) fn render_report(
         md.push_str("_No results to summarize._\n\n");
     } else {
         md.push_str(
-            "| Profile | Scenarios | P@K | MRR | Avg Latency (ms) | \u{0394}P@K | \u{0394}MRR | \u{0394}Latency (ms) |\n",
+            "| Profile | Scenarios | P@K | MRR | CC@k | ICD (max=ln(n)) | Avg Latency (ms) | \u{0394}P@K | \u{0394}MRR | \u{0394}CC@k | \u{0394}ICD | \u{0394}Latency (ms) |\n",
         );
         md.push_str(
-            "|---------|-----------|-----|-----|-----------------|------|------|---------------|\n",
+            "|---------|-----------|-----|-----|------|----------------|-----------------|------|------|--------|------|---------------|\n",
         );
         for stat in stats {
             let delta_p = if stat.p_at_k_delta == 0.0 {
@@ -62,20 +67,34 @@ pub(super) fn render_report(
             } else {
                 format!("{:+.4}", stat.mrr_delta)
             };
+            let delta_cc_at_k = if stat.cc_at_k_delta == 0.0 {
+                "\u{2014}".to_string()
+            } else {
+                format!("{:+.4}", stat.cc_at_k_delta)
+            };
+            let delta_icd = if stat.icd_delta == 0.0 {
+                "\u{2014}".to_string()
+            } else {
+                format!("{:+.4}", stat.icd_delta)
+            };
             let delta_lat = if stat.latency_delta_ms == 0.0 {
                 "\u{2014}".to_string()
             } else {
                 format!("{:+.1}", stat.latency_delta_ms)
             };
             md.push_str(&format!(
-                "| {} | {} | {:.4} | {:.4} | {:.1} | {} | {} | {} |\n",
+                "| {} | {} | {:.4} | {:.4} | {:.4} | {:.4} | {:.1} | {} | {} | {} | {} | {} |\n",
                 stat.profile_name,
                 stat.scenario_count,
                 stat.mean_p_at_k,
                 stat.mean_mrr,
+                stat.mean_cc_at_k,
+                stat.mean_icd,
                 stat.mean_latency_ms,
                 delta_p,
                 delta_mrr,
+                delta_cc_at_k,
+                delta_icd,
                 delta_lat,
             ));
         }
@@ -173,7 +192,162 @@ pub(super) fn render_report(
         );
     }
 
+    // ----------------------------------------------------------------
+    // SECTION 6: Distribution Analysis (nan-008, FR-09, AC-05)
+    // ----------------------------------------------------------------
+    md.push_str("## 6. Distribution Analysis\n\n");
+    md.push_str(&render_distribution_analysis(stats, results, cc_at_k_rows));
+
     md
+}
+
+// ---------------------------------------------------------------------------
+// render_distribution_analysis (helper for Section 6)
+// ---------------------------------------------------------------------------
+
+/// Renders the Distribution Analysis section: per-profile CC@k and ICD range
+/// tables, and (for two-profile runs with comparison data) top-5 improvement
+/// and degradation scenario rows.
+fn render_distribution_analysis(
+    stats: &[AggregateStats],
+    results: &[ScenarioResult],
+    cc_at_k_rows: &[CcAtKScenarioRow],
+) -> String {
+    let mut out = String::new();
+
+    // Interpretation note (ADR-002).
+    out.push_str("_ICD is raw Shannon entropy (natural log). Maximum value is ln(n_categories).\n");
+    out.push_str(
+        "Values are comparable across profiles run with the same configured categories._\n\n",
+    );
+
+    // ----------------------------------------------------------------
+    // Per-profile CC@k range table
+    // ----------------------------------------------------------------
+    out.push_str("### CC@k Range by Profile\n\n");
+    out.push_str("| Profile | Scenarios | Min | Max | Mean |\n");
+    out.push_str("|---------|-----------|-----|-----|------|\n");
+
+    for stat in stats {
+        let profile_cc_at_k_values: Vec<f64> = results
+            .iter()
+            .filter_map(|r| r.profiles.get(&stat.profile_name))
+            .map(|pr| pr.cc_at_k)
+            .collect();
+
+        let (min_str, max_str) = if profile_cc_at_k_values.is_empty() {
+            ("\u{2014}".to_string(), "\u{2014}".to_string())
+        } else {
+            let min_val = profile_cc_at_k_values
+                .iter()
+                .cloned()
+                .fold(f64::INFINITY, f64::min);
+            let max_val = profile_cc_at_k_values
+                .iter()
+                .cloned()
+                .fold(f64::NEG_INFINITY, f64::max);
+            (format!("{min_val:.4}"), format!("{max_val:.4}"))
+        };
+
+        out.push_str(&format!(
+            "| {} | {} | {} | {} | {:.4} |\n",
+            stat.profile_name, stat.scenario_count, min_str, max_str, stat.mean_cc_at_k,
+        ));
+    }
+
+    // ----------------------------------------------------------------
+    // Per-profile ICD range table (max=ln(n))
+    // ----------------------------------------------------------------
+    out.push_str("\n### ICD Range by Profile (max=ln(n))\n\n");
+    out.push_str("| Profile | Scenarios | Min | Max | Mean |\n");
+    out.push_str("|---------|-----------|-----|-----|------|\n");
+
+    for stat in stats {
+        let profile_icd_values: Vec<f64> = results
+            .iter()
+            .filter_map(|r| r.profiles.get(&stat.profile_name))
+            .map(|pr| pr.icd)
+            .collect();
+
+        let (min_str, max_str) = if profile_icd_values.is_empty() {
+            ("\u{2014}".to_string(), "\u{2014}".to_string())
+        } else {
+            let min_val = profile_icd_values
+                .iter()
+                .cloned()
+                .fold(f64::INFINITY, f64::min);
+            let max_val = profile_icd_values
+                .iter()
+                .cloned()
+                .fold(f64::NEG_INFINITY, f64::max);
+            (format!("{min_val:.4}"), format!("{max_val:.4}"))
+        };
+
+        out.push_str(&format!(
+            "| {} | {} | {} | {} | {:.4} |\n",
+            stat.profile_name, stat.scenario_count, min_str, max_str, stat.mean_icd,
+        ));
+    }
+
+    // ----------------------------------------------------------------
+    // Comparison sub-tables: only for two-profile runs with comparison data
+    // ----------------------------------------------------------------
+    if stats.len() >= 2 && !cc_at_k_rows.is_empty() {
+        // Top-5 improvement rows (sorted descending, positive delta first).
+        let improvement_rows: Vec<&CcAtKScenarioRow> = cc_at_k_rows
+            .iter()
+            .filter(|r| r.cc_at_k_delta > 0.0)
+            .take(5)
+            .collect();
+
+        if !improvement_rows.is_empty() {
+            out.push_str("\n### Top Scenarios by CC@k Improvement\n\n");
+            out.push_str("| Scenario | Query | Baseline CC@k | Candidate CC@k | \u{0394} CC@k |\n");
+            out.push_str("|----------|-------|--------------|----------------|--------|\n");
+            for row in improvement_rows {
+                let query_len = row.query.len().min(40);
+                out.push_str(&format!(
+                    "| {} | {} | {:.4} | {:.4} | {:+.4} |\n",
+                    row.scenario_id,
+                    &row.query[..query_len],
+                    row.baseline_cc_at_k,
+                    row.candidate_cc_at_k,
+                    row.cc_at_k_delta,
+                ));
+            }
+        }
+
+        // Top-5 degradation rows (sorted ascending = most negative delta first).
+        // cc_at_k_rows is already sorted descending, so negatives are at the end.
+        // Collect all negative-delta rows, then reverse to put most-negative first.
+        let mut degradation_rows: Vec<&CcAtKScenarioRow> = cc_at_k_rows
+            .iter()
+            .filter(|r| r.cc_at_k_delta < 0.0)
+            .collect();
+        // Most negative (worst) first.
+        degradation_rows.reverse();
+        let degradation_rows: Vec<&CcAtKScenarioRow> =
+            degradation_rows.into_iter().take(5).collect();
+
+        if !degradation_rows.is_empty() {
+            out.push_str("\n### Top Scenarios by CC@k Degradation\n\n");
+            out.push_str("| Scenario | Query | Baseline CC@k | Candidate CC@k | \u{0394} CC@k |\n");
+            out.push_str("|----------|-------|--------------|----------------|--------|\n");
+            for row in degradation_rows {
+                let query_len = row.query.len().min(40);
+                out.push_str(&format!(
+                    "| {} | {} | {:.4} | {:.4} | {:+.4} |\n",
+                    row.scenario_id,
+                    &row.query[..query_len],
+                    row.baseline_cc_at_k,
+                    row.candidate_cc_at_k,
+                    row.cc_at_k_delta,
+                ));
+            }
+        }
+    }
+
+    out
 }
 
 // ---------------------------------------------------------------------------
