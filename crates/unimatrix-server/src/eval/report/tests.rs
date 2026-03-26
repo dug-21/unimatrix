@@ -51,6 +51,7 @@ fn make_scenario_result(
         scenario_id: id.to_string(),
         query: query.to_string(),
         profiles,
+        phase: None,
         comparison: ComparisonMetrics {
             kendall_tau: 0.8,
             rank_changes: Vec::new(),
@@ -526,6 +527,7 @@ fn test_find_regressions_single_profile_no_regressions() {
         scenario_id: "s1".to_string(),
         query: "q".to_string(),
         profiles: HashMap::new(),
+        phase: None,
         comparison: default_comparison(),
     };
     r.profiles
@@ -585,6 +587,7 @@ fn make_scenario_result_with_metrics(
         scenario_id: id.to_string(),
         query: query.to_string(),
         profiles,
+        phase: None,
         comparison: ComparisonMetrics {
             kendall_tau: 0.8,
             rank_changes: Vec::new(),
@@ -748,6 +751,7 @@ fn test_cc_at_k_scenario_rows_single_profile_returns_empty() {
         scenario_id: "s1".to_string(),
         query: "q".to_string(),
         profiles: HashMap::new(),
+        phase: None,
         comparison: default_comparison(),
     };
     r.profiles.insert(
@@ -861,6 +865,7 @@ fn test_report_round_trip_cc_at_k_icd_fields_and_section_6() {
         scenario_id: "round-trip-01".to_string(),
         query: "test round trip query".to_string(),
         profiles,
+        phase: None,
         comparison: ComparisonMetrics {
             kendall_tau: 0.9,
             rank_changes: Vec::new(),
@@ -919,18 +924,23 @@ fn test_report_round_trip_cc_at_k_icd_fields_and_section_6() {
         "rendered report must contain cc_at_k_delta value 0.143:\n{content}"
     );
 
-    // Assert section 6 heading is present.
+    // Assert section 7 (Distribution Analysis) heading is present — renumbered from 6 in nan-009.
     assert!(
-        content.contains("## 6."),
-        "rendered report must contain section 6:\n{content}"
+        content.contains("## 7. Distribution Analysis"),
+        "rendered report must contain '## 7. Distribution Analysis':\n{content}"
+    );
+    // Assert old section 6 heading is absent (SR-02 guard).
+    assert!(
+        !content.contains("## 6. Distribution Analysis"),
+        "old '## 6. Distribution Analysis' heading must not appear:\n{content}"
     );
 
-    // Assert section order: section 5 must precede section 6 (ADR-003, R-02).
+    // Assert section order: section 5 must precede section 7 (ADR-003, R-02).
     let pos5 = content.find("## 5.").expect("section 5 must be present");
-    let pos6 = content.find("## 6.").expect("section 6 must be present");
+    let pos7 = content.find("## 7.").expect("section 7 must be present");
     assert!(
-        pos5 < pos6,
-        "section 5 must appear before section 6: pos5={pos5}, pos6={pos6}"
+        pos5 < pos7,
+        "section 5 must appear before section 7: pos5={pos5}, pos7={pos7}"
     );
 }
 
@@ -977,7 +987,10 @@ fn test_report_contains_all_six_sections() {
 
     let content = std::fs::read_to_string(&out_path).expect("read report");
 
-    // Assert all six sections present.
+    // Assert all seven sections present (section 6 = Phase-Stratified Metrics added in nan-009;
+    // section 7 = Distribution Analysis renumbered from 6).
+    // NOTE: phase_stats is empty (no phase values in test data), so section 6 is omitted.
+    // This test verifies the core five sections + section 7 always present.
     assert!(content.contains("## 1. Summary"), "section 1 missing");
     assert!(
         content.contains("## 2. Notable Ranking Changes"),
@@ -996,20 +1009,25 @@ fn test_report_contains_all_six_sections() {
         "section 5 missing"
     );
     assert!(
-        content.contains("## 6. Distribution Analysis"),
-        "section 6 missing"
+        content.contains("## 7. Distribution Analysis"),
+        "section 7 (Distribution Analysis) missing"
+    );
+    // Assert old section 6 heading is absent (SR-02 guard).
+    assert!(
+        !content.contains("## 6. Distribution Analysis"),
+        "old '## 6. Distribution Analysis' heading must not appear"
     );
 
-    // Assert strict position ordering 1 < 2 < 3 < 4 < 5 < 6.
+    // Assert strict position ordering 1 < 2 < 3 < 4 < 5 < 7.
     let pos1 = content.find("## 1.").expect("## 1. not found");
     let pos2 = content.find("## 2.").expect("## 2. not found");
     let pos3 = content.find("## 3.").expect("## 3. not found");
     let pos4 = content.find("## 4.").expect("## 4. not found");
     let pos5 = content.find("## 5.").expect("## 5. not found");
-    let pos6 = content.find("## 6.").expect("## 6. not found");
+    let pos7 = content.find("## 7.").expect("## 7. not found");
     assert!(
-        pos1 < pos2 && pos2 < pos3 && pos3 < pos4 && pos4 < pos5 && pos5 < pos6,
-        "sections must appear in order 1-6: {pos1} < {pos2} < {pos3} < {pos4} < {pos5} < {pos6}"
+        pos1 < pos2 && pos2 < pos3 && pos3 < pos4 && pos4 < pos5 && pos5 < pos7,
+        "sections must appear in order 1-5, 7: {pos1} < {pos2} < {pos3} < {pos4} < {pos5} < {pos7}"
     );
 
     // Assert CC@k and ICD appear in the Summary section.
@@ -1026,7 +1044,7 @@ fn test_report_contains_all_six_sections() {
     );
 
     // Assert no section heading appears twice.
-    for heading in ["## 1.", "## 2.", "## 3.", "## 4.", "## 5.", "## 6."] {
+    for heading in ["## 1.", "## 2.", "## 3.", "## 4.", "## 5.", "## 7."] {
         let count = content.matches(heading).count();
         assert_eq!(
             count, 1,
