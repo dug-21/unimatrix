@@ -785,7 +785,8 @@ pub(crate) async fn create_tables_if_needed(
             result_entry_ids TEXT,
             similarity_scores TEXT,
             retrieval_mode TEXT,
-            source TEXT NOT NULL
+            source TEXT NOT NULL,
+            phase TEXT
         )",
     )
     .execute(&mut *conn)
@@ -795,6 +796,9 @@ pub(crate) async fn create_tables_if_needed(
         .execute(&mut *conn)
         .await?;
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_query_log_ts ON query_log(ts)")
+        .execute(&mut *conn)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_query_log_phase ON query_log(phase)")
         .execute(&mut *conn)
         .await?;
 

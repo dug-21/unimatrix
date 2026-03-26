@@ -1006,15 +1006,16 @@ async fn test_sql_analytics_query() {
 
 // Note: test was test_schema_version_is_13 (crt-021). Updated to 14 for col-023.
 // Updated to 15 for crt-025 (cycle_events + feature_entries.phase).
-// Updated to 16 for col-025 (cycle_events.goal column). Uses >= per pattern #2933.
+// Updated to 16 for col-025 (cycle_events.goal column).
+// Updated to 17 for col-028 (query_log.phase column). Uses >= per pattern #2933.
 #[tokio::test]
 async fn test_schema_version_is_14() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 16,
-        "schema version must be 16 after col-025 (was 15 after crt-025)"
+        version, 17,
+        "schema version must be 17 after col-028 (was 16 after col-025)"
     );
     store.close().await.unwrap();
 }
@@ -1151,7 +1152,7 @@ async fn test_create_tables_query_log_schema() {
     .await
     .unwrap();
 
-    assert_eq!(rows.len(), 9, "query_log should have 9 columns");
+    assert_eq!(rows.len(), 10, "query_log should have 10 columns"); // col-028: phase added
 
     let names: Vec<String> = rows
         .iter()
@@ -1169,6 +1170,7 @@ async fn test_create_tables_query_log_schema() {
             "similarity_scores",
             "retrieval_mode",
             "source",
+            "phase", // col-028
         ]
     );
 
@@ -1298,8 +1300,8 @@ async fn test_create_tables_idempotent() {
         .await
         .unwrap();
     assert_eq!(
-        ql_cols, 9,
-        "query_log should still have 9 columns after re-open"
+        ql_cols, 10,
+        "query_log should still have 10 columns after re-open" // col-028: phase added
     );
     store2.close().await.unwrap();
 }

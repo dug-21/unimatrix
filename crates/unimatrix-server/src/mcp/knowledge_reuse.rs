@@ -302,6 +302,7 @@ mod tests {
             similarity_scores: "[]".to_string(),
             retrieval_mode: "strict".to_string(),
             source: "mcp".to_string(),
+            phase: None, // col-028: compile fix
         }
     }
 

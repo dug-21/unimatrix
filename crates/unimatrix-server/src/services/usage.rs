@@ -63,11 +63,15 @@ pub(crate) struct UsageContext {
     /// Default MUST be 1. A value of 0 silently drops the access increment (EC-04).
     /// UsageDedup fires BEFORE this multiplier is applied (C-05).
     pub access_weight: u32,
-    /// Workflow phase active at the moment `context_store` was called (ADR-001 crt-025).
+    /// Workflow phase active at the moment the MCP tool was called.
     ///
     /// Snapshotted from `SessionState.current_phase` at call time — never re-read from
-    /// live state during drain or spawn. `None` for all non-store operations (search,
-    /// lookup, get, correct, deprecate, etc.) and for store calls with no active phase.
+    /// live state during drain or spawn.
+    /// - Populated for: `context_search`, `context_lookup`, `context_get`,
+    ///   `context_briefing`, `context_store`.
+    /// - `None` for: mutation tools (correct, deprecate, quarantine), tools with no
+    ///   session, and any call in a session where no `context_cycle(start)` has been
+    ///   emitted.
     pub current_phase: Option<String>,
 }
 
@@ -312,6 +316,13 @@ impl UsageService {
 
     /// Briefing usage: access count only (no votes, no injection log).
     fn record_briefing_usage(&self, entry_ids: &[u64], ctx: UsageContext) {
+        // D-01 guard (col-028): weight-0 is an offer-only event.
+        // Must appear before filter_access to avoid burning the dedup slot.
+        // EC-04 contract enforcement: access_count is NOT incremented for briefing.
+        if ctx.access_weight == 0 {
+            return;
+        }
+
         let agent_id = ctx.agent_id.clone().unwrap_or_default();
 
         // Dedup access count only
@@ -1041,4 +1052,253 @@ mod usage_tests {
             "phase must be NULL when current_phase=None"
         );
     }
+
+    // ---------------------------------------------------------------------------
+    // col-028 Component 3: D-01 Guard Tests
+    // ---------------------------------------------------------------------------
+
+    /// AC-06 / AC-07 (POSITIVE ARM): briefing with access_weight=0 does NOT increment
+    /// access_count for any entry and does NOT consume the UsageDedup slot.
+    ///
+    /// After briefing at weight=0, a subsequent context_get (weight=2) MUST increment
+    /// access_count by 2 — proving the dedup slot was preserved.
+    #[tokio::test]
+    async fn test_d01_guard_briefing_weight_zero_does_not_consume_dedup_slot() {
+        let (service, store, _dir) = make_usage_service().await;
+        let entry_id = insert_test_entry(&store).await;
+        let agent_id = "test-agent-d01";
+        let session_id = "sess-d01-positive";
+
+        // Step 1: call record_briefing_usage with weight=0
+        service.record_access(
+            &[entry_id],
+            AccessSource::Briefing,
+            UsageContext {
+                session_id: Some(session_id.to_string()),
+                agent_id: Some(agent_id.to_string()),
+                helpful: None,
+                feature_cycle: None,
+                trust_level: None,
+                access_weight: 0,
+                current_phase: None,
+            },
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        // Step 2: briefing at weight=0 must not increment access_count
+        let entry = store.get(entry_id).await.expect("entry");
+        assert_eq!(
+            entry.access_count, 0,
+            "D-01: briefing with weight=0 must not increment access_count"
+        );
+
+        // Step 3: context_get path — access_weight=2
+        service.record_access(
+            &[entry_id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: Some(session_id.to_string()),
+                agent_id: Some(agent_id.to_string()),
+                helpful: Some(true),
+                feature_cycle: None,
+                trust_level: None,
+                access_weight: 2,
+                current_phase: None,
+            },
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        // Step 4: dedup slot was not consumed by briefing — context_get must increment by 2
+        let entry = store.get(entry_id).await.expect("entry");
+        assert_eq!(
+            entry.access_count, 2,
+            "D-01: context_get after briefing must increment access_count by 2 \
+             (briefing did not consume the dedup slot)"
+        );
+    }
+
+    /// AC-07 (NEGATIVE ARM — CRITICAL): demonstrates WHY the D-01 guard is load-bearing.
+    ///
+    /// Simulates the guard-absent scenario by calling UsageDedup::filter_access directly
+    /// with the same (agent_id, entry_id) pair that a weight=0 briefing would use.
+    /// The slot is consumed — a second filter_access call returns empty (slot already taken).
+    ///
+    /// This is the bug the D-01 guard prevents:
+    ///   WITHOUT guard: briefing calls filter_access → slot consumed →
+    ///     subsequent context_get → filter_access returns empty → access_count += 0
+    ///   WITH guard (post-col-028): briefing returns early → filter_access never called →
+    ///     slot free → context_get → filter_access passes → access_count += 2
+    #[test]
+    fn test_d01_absent_guard_would_consume_dedup_slot_negative_arm() {
+        let dedup = crate::infra::usage_dedup::UsageDedup::new();
+        let agent_id = "test-agent-neg";
+        let entry_id: u64 = 9999;
+
+        // Simulate what record_briefing_usage does WITHOUT the D-01 guard:
+        // It would call filter_access, consuming the slot.
+        let first_pass = dedup.filter_access(agent_id, &[entry_id]);
+        assert_eq!(
+            first_pass,
+            vec![entry_id],
+            "NEGATIVE ARM: first filter_access must pass — slot was free"
+        );
+
+        // Now simulate context_get trying to record the same entry for the same agent:
+        let second_pass = dedup.filter_access(agent_id, &[entry_id]);
+        assert!(
+            second_pass.is_empty(),
+            "NEGATIVE ARM: without D-01 guard, briefing consumes the dedup slot — \
+             subsequent context_get returns empty (access_count would be 0, not 2). \
+             This is the bug D-01 guard prevents."
+        );
+    }
+
+    /// AC-06: briefing with access_weight=0 over multiple entries — none get
+    /// access_count incremented and no dedup slots are consumed.
+    #[tokio::test]
+    async fn test_briefing_weight_zero_no_increment_for_multiple_entries() {
+        let (service, store, _dir) = make_usage_service().await;
+        let id_x = insert_test_entry(&store).await;
+        let id_y = insert_test_entry(&store).await;
+        let id_z = insert_test_entry(&store).await;
+        let agent_id = "test-agent-multi";
+
+        // Briefing at weight=0 with multiple entries
+        service.record_access(
+            &[id_x, id_y, id_z],
+            AccessSource::Briefing,
+            UsageContext {
+                session_id: None,
+                agent_id: Some(agent_id.to_string()),
+                helpful: None,
+                feature_cycle: None,
+                trust_level: None,
+                access_weight: 0,
+                current_phase: None,
+            },
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        // All entries must remain at access_count = 0
+        for id in [id_x, id_y, id_z] {
+            let entry = store.get(id).await.expect("entry");
+            assert_eq!(
+                entry.access_count, 0,
+                "AC-06: briefing weight=0 must not increment access_count for entry {id}"
+            );
+        }
+
+        // Dedup slots must still be free — context_get on each must succeed
+        for id in [id_x, id_y, id_z] {
+            service.record_access(
+                &[id],
+                AccessSource::McpTool,
+                UsageContext {
+                    session_id: None,
+                    agent_id: Some(agent_id.to_string()),
+                    helpful: None,
+                    feature_cycle: None,
+                    trust_level: None,
+                    access_weight: 2,
+                    current_phase: None,
+                },
+            );
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        for id in [id_x, id_y, id_z] {
+            let entry = store.get(id).await.expect("entry");
+            assert_eq!(
+                entry.access_count, 2,
+                "AC-06: context_get after multi-entry briefing must increment by 2 for entry {id}"
+            );
+        }
+    }
+
+    /// AC-06: briefing twice in same session with weight=0 — dedup slot still absent
+    /// after both calls; subsequent context_get still increments by 2.
+    #[tokio::test]
+    async fn test_briefing_twice_same_entry_dedup_slot_remains_absent() {
+        let (service, store, _dir) = make_usage_service().await;
+        let id = insert_test_entry(&store).await;
+        let agent_id = "test-agent-double-brief";
+
+        // Call briefing at weight=0 twice for the same entry
+        for _ in 0..2 {
+            service.record_access(
+                &[id],
+                AccessSource::Briefing,
+                UsageContext {
+                    session_id: None,
+                    agent_id: Some(agent_id.to_string()),
+                    helpful: None,
+                    feature_cycle: None,
+                    trust_level: None,
+                    access_weight: 0,
+                    current_phase: None,
+                },
+            );
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        // access_count must be 0 after both briefing calls
+        let entry = store.get(id).await.expect("entry");
+        assert_eq!(
+            entry.access_count, 0,
+            "AC-06: two briefings at weight=0 must not increment access_count"
+        );
+
+        // context_get must still increment by 2 — slot was never consumed
+        service.record_access(
+            &[id],
+            AccessSource::McpTool,
+            UsageContext {
+                session_id: None,
+                agent_id: Some(agent_id.to_string()),
+                helpful: None,
+                feature_cycle: None,
+                trust_level: None,
+                access_weight: 2,
+                current_phase: None,
+            },
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        let entry = store.get(id).await.expect("entry");
+        assert_eq!(
+            entry.access_count, 2,
+            "AC-06: context_get after two briefings must increment by 2 (dedup slot was never consumed)"
+        );
+    }
+
+    /// EC-03: briefing with empty entry list at weight=0 — no panic.
+    ///
+    /// Note: record_access has an existing early-return for entry_ids.is_empty()
+    /// before dispatching to record_briefing_usage, so the D-01 guard is not reached
+    /// in this case. But the overall behavior is correct: no dedup slot consumed, no panic.
+    #[tokio::test]
+    async fn test_briefing_empty_entry_list_no_panic() {
+        let (service, _store, _dir) = make_usage_service().await;
+
+        // Must not panic — empty list returns immediately before D-01 guard
+        service.record_access(
+            &[],
+            AccessSource::Briefing,
+            UsageContext {
+                session_id: None,
+                agent_id: Some("agent-empty".to_string()),
+                helpful: None,
+                feature_cycle: None,
+                trust_level: None,
+                access_weight: 0,
+                current_phase: None,
+            },
+        );
+        // No assertion needed — absence of panic is the contract.
+    }
+
+    // AC-07 (INTEGRATION): The end-to-end infra-001 integration test for the full
+    // briefing → get sequence through the MCP JSON-RPC path is located in
+    // suites/test_lifecycle.py: test_briefing_then_get_does_not_consume_dedup_slot.
+    // That test is Stage 3c work and is NOT included here.
 }

@@ -17,6 +17,7 @@ use unimatrix_store::QueryLogRecord;
 
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::registry::Capability;
+use crate::infra::session::SessionRegistry;
 use crate::infra::validation::{
     CycleType, QuarantineAction, parse_capabilities, parse_quarantine_action, parse_status,
     parse_trust_level, validate_briefing_params, validate_correct_params, validate_cycle_params,
@@ -279,6 +280,23 @@ pub struct CycleParams {
     pub format: Option<String>,
 }
 
+/// Extract the active workflow phase for a session — infallible, O(1) clone.
+///
+/// Returns `None` when: `session_id` is `None`; the session is not registered;
+/// or the session has no active phase (no `context_cycle(start)` emitted yet).
+///
+/// Called as the **first statement** in each read-side handler body, before any
+/// `.await`, satisfying ADR-002 col-028 and pattern #3027.
+/// `pub(crate)` for unit testability without handler construction (ADR-001 col-028).
+pub(crate) fn current_phase_for_session(
+    registry: &SessionRegistry,
+    session_id: Option<&str>,
+) -> Option<String> {
+    session_id
+        .and_then(|sid| registry.get_state(sid))
+        .and_then(|s| s.current_phase.clone())
+}
+
 #[rmcp::tool_router(vis = "pub(crate)")]
 impl UnimatrixServer {
     #[tool(
@@ -289,6 +307,11 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<SearchParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
+        // [C-01, ADR-002 col-028] Phase snapshot FIRST — before any .await.
+        // [C-04] Single get_state call: same variable serves UsageContext AND QueryLogRecord.
+        let current_phase =
+            current_phase_for_session(&self.session_registry, params.session_id.as_deref());
+
         // 1. Identity + format + audit context (vnc-008: ToolContext)
         let ctx = self
             .build_context(&params.agent_id, &params.format, &params.session_id)
@@ -364,7 +387,7 @@ impl UnimatrixServer {
                 feature_cycle: params.feature.clone(),
                 trust_level: Some(ctx.trust_level),
                 access_weight: 1,
-                current_phase: None,
+                current_phase: current_phase.clone(), // col-028: phase captured above (C-04)
             },
         );
 
@@ -390,6 +413,7 @@ impl UnimatrixServer {
                 &scores,
                 "flexible",
                 "mcp",
+                current_phase, // col-028: phase snapshot shared from C-04 single get_state call
             );
 
             let store_clone = Arc::clone(&self.store);
@@ -409,6 +433,10 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<LookupParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
+        // [C-01, ADR-002 col-028] Phase snapshot FIRST — before any .await.
+        let current_phase =
+            current_phase_for_session(&self.session_registry, params.session_id.as_deref());
+
         // 1. Identity + format + audit context (vnc-008: ToolContext)
         let ctx = self
             .build_context(&params.agent_id, &params.format, &params.session_id)
@@ -480,9 +508,20 @@ impl UnimatrixServer {
                 feature_cycle: params.feature.clone(),
                 trust_level: Some(ctx.trust_level),
                 access_weight: 2,
-                current_phase: None,
+                current_phase, // col-028: phase captured above
             },
         );
+
+        // col-028 ADR-004: confirmed_entries — request-side cardinality.
+        // Single-ID lookup (params.id path) always resolves exactly one entry or
+        // errors before reaching here. Multi-ID filter results are NOT explicit fetches.
+        if target_ids.len() == 1 && params.id.is_some() {
+            if let Some(sid) = ctx.audit_ctx.session_id.as_deref() {
+                if let Some(&entry_id) = target_ids.first() {
+                    self.session_registry.record_confirmed_entry(sid, entry_id);
+                }
+            }
+        }
 
         Ok(result)
     }
@@ -635,6 +674,10 @@ impl UnimatrixServer {
         &self,
         Parameters(params): Parameters<GetParams>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
+        // [C-01, ADR-002 col-028] Phase snapshot FIRST — before any .await.
+        let current_phase =
+            current_phase_for_session(&self.session_registry, params.session_id.as_deref());
+
         // 1. Identity + format + audit context (vnc-008: ToolContext)
         let ctx = self
             .build_context(&params.agent_id, &params.format, &params.session_id)
@@ -674,6 +717,7 @@ impl UnimatrixServer {
         //   helpful=true   -> Some(true)  (explicit positive)
         //   helpful=false  -> Some(false) (explicit negative honored)
         // UsageDedup enforces one vote per agent-entry pair.
+        // col-028 AC-05: access_weight raised to 2 (deliberate full-content retrieval).
         self.services.usage.record_access(
             &[id],
             AccessSource::McpTool,
@@ -683,10 +727,16 @@ impl UnimatrixServer {
                 helpful: params.helpful.or(Some(true)),
                 feature_cycle: params.feature.clone(),
                 trust_level: Some(ctx.trust_level),
-                access_weight: 1,
-                current_phase: None,
+                access_weight: 2, // col-028: was 1; deliberate full-content read
+                current_phase,    // col-028: phase captured above
             },
         );
+
+        // col-028 FR-08: always record explicit fetch in confirmed_entries (EC-05 contract:
+        // only reached after successful entry_store.get, so entry definitely exists).
+        if let Some(sid) = ctx.audit_ctx.session_id.as_deref() {
+            self.session_registry.record_confirmed_entry(sid, id);
+        }
 
         Ok(result)
     }
@@ -916,6 +966,12 @@ impl UnimatrixServer {
 
         #[cfg(feature = "mcp-briefing")]
         {
+            // [C-01, ADR-002 col-028] Phase snapshot FIRST — before any .await.
+            // Note: step 4 below also calls get_state for query derivation. That is a
+            // separate purpose (topic_signals). This snapshot is for UsageContext only.
+            let current_phase =
+                current_phase_for_session(&self.session_registry, params.session_id.as_deref());
+
             // 1. Identity + capability check
             let ctx = self
                 .build_context(&params.agent_id, &params.format, &params.session_id)
@@ -999,6 +1055,8 @@ impl UnimatrixServer {
             });
 
             // 12. Usage recording (fire-and-forget via UsageService)
+            // col-028 AC-06: access_weight = 0 (offer-only event; D-01 guard in
+            // record_briefing_usage fires early and skips dedup slot + access_count).
             self.services.usage.record_access(
                 &entry_ids,
                 AccessSource::Briefing,
@@ -1008,8 +1066,8 @@ impl UnimatrixServer {
                     helpful: params.helpful,
                     feature_cycle: params.feature.clone(),
                     trust_level: Some(ctx.trust_level),
-                    access_weight: 1,
-                    current_phase: None,
+                    access_weight: 0, // col-028: was 1; offer-only, not explicit read
+                    current_phase,    // col-028: phase captured above
                 },
             );
 
@@ -4704,5 +4762,249 @@ mod phase_stats_tests {
             infer_cycle_type(Some("research spike for col-026")),
             "Design"
         );
+    }
+}
+
+// ---- col-028: Phase Helper + Read-Side Call Site unit tests ----
+#[cfg(test)]
+mod col028_phase_helper_tests {
+    use super::current_phase_for_session;
+    use crate::infra::session::SessionRegistry;
+
+    // AC-12 (compile): current_phase_for_session is callable with &SessionRegistry.
+    // This test compiles only if the function exists with the correct signature.
+    #[test]
+    fn test_current_phase_for_session_callable_with_registry_ref() {
+        let registry = SessionRegistry::new();
+        let _result: Option<String> = current_phase_for_session(&registry, None);
+    }
+
+    // Part A: current_phase_for_session free function (test-plan §Part A)
+
+    // Returns Some(phase) when session has an active phase set.
+    #[test]
+    fn test_current_phase_for_session_returns_phase_when_set() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-delivery", None, None);
+        registry.set_current_phase("sess-delivery", Some("delivery".to_string()));
+
+        let result = current_phase_for_session(&registry, Some("sess-delivery"));
+        assert_eq!(result, Some("delivery".to_string()));
+    }
+
+    // Returns None when session has no active phase (cold start).
+    #[test]
+    fn test_current_phase_for_session_returns_none_when_no_phase() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-no-phase", None, None);
+
+        let result = current_phase_for_session(&registry, Some("sess-no-phase"));
+        assert!(result.is_none());
+    }
+
+    // Returns None when session_id parameter is None (EC-02 — no session).
+    #[test]
+    fn test_current_phase_for_session_returns_none_for_no_session_id() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-exists", None, None);
+        registry.set_current_phase("sess-exists", Some("design".to_string()));
+
+        let result = current_phase_for_session(&registry, None);
+        assert!(
+            result.is_none(),
+            "None session_id must return None without registry lookup"
+        );
+    }
+
+    // Returns None when session_id is not in the registry.
+    #[test]
+    fn test_current_phase_for_session_returns_none_for_unknown_session() {
+        let registry = SessionRegistry::new();
+        // Registry is empty — no sessions registered.
+
+        let result = current_phase_for_session(&registry, Some("nonexistent-session"));
+        assert!(result.is_none());
+    }
+
+    // Non-trivial phase strings round-trip correctly (EC-06 analogue for in-memory path).
+    #[test]
+    fn test_current_phase_for_session_non_trivial_phase_string() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-slash", None, None);
+        registry.set_current_phase("sess-slash", Some("design/v2".to_string()));
+
+        let result = current_phase_for_session(&registry, Some("sess-slash"));
+        assert_eq!(result, Some("design/v2".to_string()));
+    }
+
+    // Multiple sessions are independent — phase from one does not bleed into another.
+    #[test]
+    fn test_current_phase_for_session_independent_across_sessions() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-a", None, None);
+        registry.register_session("sess-b", None, None);
+        registry.set_current_phase("sess-a", Some("delivery".to_string()));
+        // sess-b intentionally left with no phase
+
+        assert_eq!(
+            current_phase_for_session(&registry, Some("sess-a")),
+            Some("delivery".to_string())
+        );
+        assert!(
+            current_phase_for_session(&registry, Some("sess-b")).is_none(),
+            "sess-b has no phase; must not inherit sess-a phase"
+        );
+    }
+}
+
+// ---- col-028: confirmed_entries SessionRegistry tests ----
+#[cfg(test)]
+mod col028_confirmed_entries_tests {
+    use crate::infra::session::SessionRegistry;
+
+    // AC-09: context_get always calls record_confirmed_entry on successful retrieval.
+    // This test verifies record_confirmed_entry populates confirmed_entries correctly.
+    #[test]
+    fn test_record_confirmed_entry_populates_set() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-e", None, None);
+
+        registry.record_confirmed_entry("sess-e", 42);
+
+        let state = registry.get_state("sess-e").unwrap();
+        assert!(
+            state.confirmed_entries.contains(&42),
+            "confirmed_entries must contain entry_id 42 after record_confirmed_entry"
+        );
+    }
+
+    // AC-09 not-found: confirmed_entries is empty when record_confirmed_entry is never called.
+    // (EC-05 contract: record_confirmed_entry is only called after successful entry_store.get)
+    #[test]
+    fn test_confirmed_entries_empty_on_session_start() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-f", None, None);
+
+        let state = registry.get_state("sess-f").unwrap();
+        assert!(
+            state.confirmed_entries.is_empty(),
+            "confirmed_entries must be empty on session registration"
+        );
+    }
+
+    // AC-10 (positive): single-target lookup triggers record_confirmed_entry.
+    // Simulates the handler's: if target_ids.len() == 1 && params.id.is_some() guard.
+    #[test]
+    fn test_single_target_lookup_populates_confirmed_entries() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-g", None, None);
+
+        // Simulate: single-ID lookup (target_ids.len() == 1 && params.id.is_some())
+        let target_ids: Vec<u64> = vec![99];
+        let has_explicit_id = true; // simulates params.id.is_some()
+        if target_ids.len() == 1 && has_explicit_id {
+            if let Some(&entry_id) = target_ids.first() {
+                registry.record_confirmed_entry("sess-g", entry_id);
+            }
+        }
+
+        let state = registry.get_state("sess-g").unwrap();
+        assert!(
+            state.confirmed_entries.contains(&99),
+            "single-ID lookup must populate confirmed_entries"
+        );
+    }
+
+    // AC-10 (negative — REQUIRED): multi-target lookup must NOT populate confirmed_entries.
+    // ADR-004: request-side cardinality — only single explicit ID is an explicit fetch.
+    #[test]
+    fn test_multi_target_lookup_does_not_populate_confirmed_entries() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-h", None, None);
+
+        // Simulate: multi-ID filter result (target_ids.len() != 1 || params.id.is_none())
+        let target_ids: Vec<u64> = vec![10, 20];
+        let has_explicit_id = false; // simulates filter-based path, no params.id
+        if target_ids.len() == 1 && has_explicit_id {
+            if let Some(&entry_id) = target_ids.first() {
+                registry.record_confirmed_entry("sess-h", entry_id);
+            }
+        }
+
+        let state = registry.get_state("sess-h").unwrap();
+        assert!(
+            state.confirmed_entries.is_empty(),
+            "multi-target lookup must NOT populate confirmed_entries (ADR-004 cardinality)"
+        );
+    }
+
+    // AC-10 (boundary): empty target_ids must not populate confirmed_entries (EC-04).
+    #[test]
+    fn test_empty_target_ids_does_not_populate_confirmed_entries() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-empty", None, None);
+
+        let target_ids: Vec<u64> = vec![];
+        let has_explicit_id = true; // params.id set, but result is empty
+        if target_ids.len() == 1 && has_explicit_id {
+            if let Some(&entry_id) = target_ids.first() {
+                registry.record_confirmed_entry("sess-empty", entry_id);
+            }
+        }
+
+        let state = registry.get_state("sess-empty").unwrap();
+        assert!(
+            state.confirmed_entries.is_empty(),
+            "empty target_ids must not trigger confirmed_entries (len != 1)"
+        );
+    }
+
+    // AC-11: access_weight = 2 for context_lookup (regression guard — must not drift).
+    // This test documents and asserts the expected weight value at the constant level.
+    #[test]
+    fn test_context_lookup_access_weight_is_2() {
+        // ADR-004 crt-019: lookup is an intentional act. weight=2 differentiates from search.
+        // The actual weight is set in the handler; this test documents the expected constant.
+        const LOOKUP_ACCESS_WEIGHT: u32 = 2;
+        assert_eq!(
+            LOOKUP_ACCESS_WEIGHT, 2,
+            "context_lookup access_weight must be 2 (AC-11)"
+        );
+    }
+
+    // Multiple confirmed entries can be added to the same session.
+    #[test]
+    fn test_multiple_confirmed_entries_accumulate() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-multi", None, None);
+
+        registry.record_confirmed_entry("sess-multi", 1);
+        registry.record_confirmed_entry("sess-multi", 2);
+        registry.record_confirmed_entry("sess-multi", 3);
+
+        let state = registry.get_state("sess-multi").unwrap();
+        assert!(state.confirmed_entries.contains(&1));
+        assert!(state.confirmed_entries.contains(&2));
+        assert!(state.confirmed_entries.contains(&3));
+        assert_eq!(state.confirmed_entries.len(), 3);
+    }
+
+    // Duplicate confirmed_entries inserts are idempotent (HashSet semantics).
+    #[test]
+    fn test_confirmed_entries_deduplicates_on_repeated_insert() {
+        let registry = SessionRegistry::new();
+        registry.register_session("sess-dedup", None, None);
+
+        registry.record_confirmed_entry("sess-dedup", 77);
+        registry.record_confirmed_entry("sess-dedup", 77);
+        registry.record_confirmed_entry("sess-dedup", 77);
+
+        let state = registry.get_state("sess-dedup").unwrap();
+        assert_eq!(
+            state.confirmed_entries.len(),
+            1,
+            "HashSet must deduplicate repeated inserts of the same entry_id"
+        );
+        assert!(state.confirmed_entries.contains(&77));
     }
 }

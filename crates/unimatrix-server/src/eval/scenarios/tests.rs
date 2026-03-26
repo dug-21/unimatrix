@@ -38,8 +38,8 @@ mod tests {
         sqlx::query(
             "INSERT INTO query_log \
              (session_id, query_text, ts, result_count, result_entry_ids, \
-              similarity_scores, retrieval_mode, source) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+              similarity_scores, retrieval_mode, source, phase) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         )
         .bind(session_id)
         .bind(query_text)
@@ -49,6 +49,7 @@ mod tests {
         .bind(scores_json)
         .bind(retrieval_mode)
         .bind(source)
+        .bind(Option::<String>::None) // col-028: phase=NULL for test helper rows (IR-03)
         .execute(pool)
         .await
         .expect("insert query_log");

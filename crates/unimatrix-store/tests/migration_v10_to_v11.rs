@@ -342,7 +342,7 @@ async fn test_migration_v10_to_v11_basic() {
 
     // Assert: tables created with correct column counts
     assert_eq!(column_count(&store, "topic_deliveries").await, 9);
-    assert_eq!(column_count(&store, "query_log").await, 9);
+    assert_eq!(column_count(&store, "query_log").await, 10); // col-028: phase column added
 
     // Assert: topic-a backfilled correctly
     let ta = read_topic_delivery(&store, "topic-a")
@@ -512,7 +512,7 @@ async fn test_migration_fresh_database_skips() {
 
     // Assert: tables exist (created by create_tables, not migration)
     assert_eq!(column_count(&store, "topic_deliveries").await, 9);
-    assert_eq!(column_count(&store, "query_log").await, 9);
+    assert_eq!(column_count(&store, "query_log").await, 10); // col-028: phase column added
     assert_eq!(count_topic_deliveries(&store).await, 0);
     assert_eq!(count_query_log(&store).await, 0);
 
