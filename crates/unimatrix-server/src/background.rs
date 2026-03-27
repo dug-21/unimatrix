@@ -673,7 +673,14 @@ async fn run_single_tick(
     // Runs after bootstrap promotion so bootstrap-promoted edges are visible to the tick's
     // pre-filter HashSet. Must remain after maybe_run_bootstrap_promotion (sequencing invariant).
     if inference_config.nli_enabled {
-        run_graph_inference_tick(store, nli_handle, vector_index, ml_inference_pool, inference_config).await;
+        run_graph_inference_tick(
+            store,
+            nli_handle,
+            vector_index,
+            ml_inference_pool,
+            inference_config,
+        )
+        .await;
     }
 
     // Update next scheduled time
