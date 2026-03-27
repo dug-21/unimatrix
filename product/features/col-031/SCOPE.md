@@ -36,9 +36,15 @@ phase-agnostic results today.
 4. Activate `w_phase_explicit` in fused scoring: compute `phase_explicit_norm` from
    the frequency table at query time; raise the default from `0.0` to `0.05` in
    `InferenceConfig`.
-5. Wire the frequency table into PPR personalization vector (#398): when PPR is
-   called, scale each seed entry's HNSW score by `phase_affinity_score(entry, phase)`
-   derived from the frequency table before normalization.
+5. Expose `phase_affinity_score(entry_id: u64, entry_category: &str, phase: &str) -> f32`
+   as a public method on `PhaseFreqTable` — the integration API that #398 will call to
+   weight the PPR personalization vector. col-031 does not wire into PPR internals (PPR
+   does not yet exist); it only publishes the contract. Cold start returns `1.0` (neutral
+   multiplier: `hnsw_score × 1.0 = hnsw_score`), ensuring PPR seeds are unaffected when
+   no phase history exists. Note: this is a distinct cold-start behavior from fused
+   scoring — `phase_explicit_norm` returns `0.0` on cold start (Goal 7); `phase_affinity_score`
+   returns `1.0`. The two methods serve different roles and must not share a cold-start
+   value.
 6. Expose `query_log_retention_cycles` in `InferenceConfig` to govern the lookback
    window for the frequency table SQL query (aligns with #409 retention framework
    without blocking on it).
@@ -315,10 +321,16 @@ once before the scoring loop, same pattern as `category_histogram`.
 - AC-10: `InferenceConfig.query_log_retention_cycles` field exists with default `20`.
   Config TOML with no `query_log_retention_cycles` deserializes to `20`.
 
-- AC-11: Cold-start invariant: when `PhaseFreqTable` is empty (cold-start or empty
-  `query_log`), all `phase_explicit_norm` values in the scoring loop are `0.0`, and
-  `compute_fused_score` output is bit-for-bit identical to pre-col-031 behavior when
-  `w_phase_explicit * 0.0 = 0.0`.
+- AC-11: Cold-start invariants (three cases — all must be tested independently):
+  1. `current_phase = None`: `phase_explicit_norm = 0.0` → score bit-for-bit identical to pre-col-031.
+  2. `current_phase = Some(phase)`, `use_fallback = true` (empty table): the scoring hot-path
+     checks `use_fallback` before calling `phase_affinity_score` and returns `phase_explicit_norm = 0.0`
+     directly — bit-for-bit identical to pre-col-031. The `use_fallback` guard is mandatory; without
+     it, `phase_affinity_score` returns `1.0` (neutral), producing a `+0.05` uniform offset that
+     changes scores even with no phase history.
+  3. `phase_affinity_score` itself returns `1.0` on cold-start (`use_fallback = true`) — this is the
+     PPR contract. Fused scoring never calls `phase_affinity_score` when `use_fallback = true`;
+     PPR always does. Two callers, two cold-start behaviors, one method.
 
 - AC-12: Eval regression gate: after col-031 is implemented, run the eval harness.
   MRR ≥ 0.35 (floor), CC@5 must not decrease from 0.2659 baseline, ICD must not

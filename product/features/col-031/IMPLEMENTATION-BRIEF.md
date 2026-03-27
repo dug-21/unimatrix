@@ -75,7 +75,7 @@ lists expected components from the architecture — actual file paths are filled
 |------|---------|
 | `crates/unimatrix-store/src/query_log.rs` | Add `PhaseFreqRow` struct and `Store::query_phase_freq_table(retention_cycles: u32)` method; SQL aggregation with `json_each`, retention window subquery, and `entries` join. |
 | `crates/unimatrix-server/src/services/mod.rs` | Add `phase_freq_table: PhaseFreqTableHandle` field to `ServiceLayer`; call `PhaseFreqTable::new_handle()` in `with_rate_config()`; add `phase_freq_table_handle()` accessor; `Arc::clone` into `SearchService` and background tick. |
-| `crates/unimatrix-server/src/services/search.rs` | Accept `PhaseFreqTableHandle` constructor parameter; before scoring loop acquire read lock, extract `use_fallback` and relevant bucket data, release lock; replace hardcoded `phase_explicit_norm: 0.0` with computed value from `phase_affinity_score`. |
+| `crates/unimatrix-server/src/services/search.rs` | Accept `PhaseFreqTableHandle` constructor parameter; before scoring loop, when `current_phase = Some(phase)`, acquire read lock, extract `use_fallback` and relevant bucket data, release lock. In scoring loop: if `use_fallback = true` or `current_phase = None`, `phase_explicit_norm = 0.0` (bit-for-bit identical to pre-col-031); if `use_fallback = false`, compute from `phase_affinity_score`. The `use_fallback` guard is mandatory — without it, cold-start would silently apply a `+0.05` uniform offset. |
 | `crates/unimatrix-server/src/background.rs` | Accept `PhaseFreqTableHandle` in `spawn_background_tick` and `run_single_tick`; after `TypedGraphState::rebuild`, call `PhaseFreqTable::rebuild`; swap handle on success; log error and retain state on failure. |
 | `crates/unimatrix-server/src/infra/config.rs` | Change `default_w_phase_explicit()` from `0.0` to `0.05`; add `query_log_retention_cycles: u32` field with default `20`; update `FusionWeights` sum-check comment to `0.95 + 0.02 + 0.05 = 1.02`. |
 | `crates/unimatrix-server/src/eval/scenarios/extract.rs` | Add `query_log.phase` to scenario extraction SQL; populate `current_phase` field in emitted scenario output. Bounded change — nothing else in `extract.rs` changes. |
@@ -220,7 +220,8 @@ Rules:
 - Background tick swap blocks are non-nested sequential scopes — `TypedGraphState` swap
   completes before `PhaseFreqTable` swap block opens.
 - All lock acquisitions use `.unwrap_or_else(|e| e.into_inner())` for poison recovery.
-- If `params.current_phase` is `None`, `PhaseFreqTableHandle` is never acquired.
+- If `params.current_phase` is `None`, `PhaseFreqTableHandle` is never acquired (lock skip optimization).
+- If `params.current_phase` is `Some(phase)` and `use_fallback = true`, the lock is acquired, `use_fallback` checked, and `phase_explicit_norm = 0.0` returned without calling `phase_affinity_score`. Lock is released before the scoring loop begins.
 
 ---
 
@@ -307,7 +308,7 @@ The following risks are **Critical priority** and must have test coverage before
 | Risk | Coverage Required |
 |------|------------------|
 | R-01: `json_each` cast produces no rows | AC-08 integration test against real SQLite `TestDb` — not a mock. A mock cannot catch `json_each` expansion failures. |
-| R-02: Cold-start semantic drift | AC-11 must test both paths: `current_phase = None` (bit-for-bit identical to pre-col-031) AND `current_phase = Some(...)` + cold-start (ranking-preserving, uniform +0.05 offset — NOT score-identical). |
+| R-02: Cold-start semantic drift | AC-11 must test three cases: (A) `current_phase = None` → `phase_explicit_norm = 0.0`, score identical; (B) `current_phase = Some(phase)` + `use_fallback = true` → `phase_explicit_norm = 0.0` via `use_fallback` guard, score identical; (C) `phase_affinity_score` called directly on cold-start table → returns `1.0` (PPR contract). Cases (A) and (B) are both score-identical to pre-col-031. The `+0.05` offset scenario is a bug, not a valid cold-start state — the `use_fallback` guard prevents it. |
 | R-04: Vacuous eval gate | AC-12 must include a pre-check: generated scenario JSONL contains `current_phase != null` for at least one scenario. If all are null, AC-16 is not complete and AC-12 must NOT be declared passing. |
 | R-05: AC-16 and scoring activation shipped separately | Delivery protocol must treat AC-12 and AC-16 as a single wave. Gate-3c must not declare AC-12 passing without AC-16 already passing in the same or preceding wave. |
 

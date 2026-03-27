@@ -229,12 +229,18 @@ assertions as stated.
 TOML with no `query_log_retention_cycles` key deserializes to `20`.
 *Verification*: unit test — deserialize empty TOML section, assert `query_log_retention_cycles == 20`.
 
-**AC-11** — Cold-start ranking-preservation invariant: when `params.current_phase` is `None`
-(no phase in request), all `phase_explicit_norm` values in the scoring loop are `0.0`, and
-`compute_fused_score` output is numerically identical to pre-col-031 behavior.
-*Verification*: unit test — run scoring with `current_phase = None` and a populated
-`PhaseFreqTable`; assert `phase_explicit_norm == 0.0` for all candidates; assert final scores
-match pre-col-031 reference values (captured from col-030 baseline).
+**AC-11** — Cold-start invariants: three cases, each requires a separate unit test.
+- **Case A** (`current_phase = None`): `phase_explicit_norm = 0.0` for all candidates.
+  `compute_fused_score` output is numerically identical to pre-col-031. Test with a populated table.
+- **Case B** (`current_phase = Some(phase)`, `use_fallback = true`): the scoring hot-path
+  checks `use_fallback` *before* calling `phase_affinity_score` and returns `phase_explicit_norm = 0.0`
+  directly. Score is bit-for-bit identical to pre-col-031. Without this guard, `phase_affinity_score`
+  returns `1.0`, silently applying a `+0.05` uniform offset to all scores even with no phase history.
+- **Case C** (`phase_affinity_score` called on cold-start table directly): returns `1.0`. This is the
+  PPR contract — PPR always calls this method; fused scoring bypasses it via the `use_fallback` guard.
+*Verification*: three unit tests sharing a fixture — (A) `None` phase + populated table, (B) `Some`
+phase + `use_fallback=true` table asserts `phase_explicit_norm == 0.0`, (C) `phase_affinity_score`
+called directly on cold-start table asserts return `== 1.0`.
 
 **AC-12** — Eval regression gate: after col-031 implementation, run the eval harness with
 phase-aware scenarios (requires AC-16 complete). Results must satisfy: MRR ≥ 0.35 (floor),
