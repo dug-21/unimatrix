@@ -30,6 +30,7 @@ pub(crate) mod effectiveness;
 pub(crate) mod gateway;
 pub(crate) mod index_briefing;
 pub(crate) mod nli_detection;
+pub(crate) mod nli_detection_tick;
 pub(crate) mod observation;
 pub(crate) mod search;
 pub(crate) mod status;

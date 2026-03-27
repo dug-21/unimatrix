@@ -363,6 +363,47 @@ pub struct InferenceConfig {
     /// W3-1 is trained. Not part of the six-weight sum constraint.
     #[serde(default = "default_w_phase_explicit")]
     pub w_phase_explicit: f64,
+
+    // -----------------------------------------------------------------------
+    // Background graph inference tick fields (crt-029)
+    // -----------------------------------------------------------------------
+    /// HNSW similarity floor for candidate pair pre-filter.
+    ///
+    /// Pairs with similarity <= supports_candidate_threshold are excluded before NLI scoring.
+    /// Must be strictly less than supports_edge_threshold (enforced by validate()).
+    /// Default: 0.5. Range: (0.0, 1.0) exclusive.
+    ///
+    /// Independent of nli_entailment_threshold (post-store path).
+    #[serde(default = "default_supports_candidate_threshold")]
+    pub supports_candidate_threshold: f32,
+
+    /// NLI entailment floor for writing Supports edges from the background tick.
+    ///
+    /// Pairs with scores.entailment > supports_edge_threshold receive a Supports edge.
+    /// Must be strictly greater than supports_candidate_threshold (enforced by validate()).
+    /// Default: 0.7 (intentionally higher than nli_entailment_threshold = 0.6 because
+    /// the tick covers a larger pair space than the post-store path; C-06).
+    /// Range: (0.0, 1.0) exclusive.
+    ///
+    /// Independent of nli_entailment_threshold (post-store path).
+    #[serde(default = "default_supports_edge_threshold")]
+    pub supports_edge_threshold: f32,
+
+    /// Maximum number of candidate pairs scored per tick.
+    ///
+    /// Acts as the sole throttle on tick NLI budget. Also used as the source-candidate
+    /// cap: select_source_candidates returns at most max_graph_inference_per_tick source IDs
+    /// (ADR-003 — no separate max_source_candidates_per_tick field).
+    /// Default: 100. Range: [1, 1000].
+    #[serde(default = "default_max_graph_inference_per_tick")]
+    pub max_graph_inference_per_tick: usize,
+
+    /// HNSW neighbour count for tick path HNSW expansion.
+    ///
+    /// Independent of nli_post_store_k (tick is background, not latency-sensitive).
+    /// Default: 10. Range: [1, 100].
+    #[serde(default = "default_graph_inference_k")]
+    pub graph_inference_k: usize,
 }
 
 impl Default for InferenceConfig {
@@ -398,6 +439,11 @@ impl Default for InferenceConfig {
             w_prov: 0.05,
             w_phase_histogram: 0.02, // crt-026: full session signal budget (ADR-004)
             w_phase_explicit: 0.0,   // crt-026: W3-1 placeholder (ADR-003)
+            // crt-029: background graph inference tick fields
+            supports_candidate_threshold: 0.5,
+            supports_edge_threshold: 0.7,
+            max_graph_inference_per_tick: 100,
+            graph_inference_k: 10,
         }
     }
 }
@@ -470,6 +516,26 @@ fn default_w_phase_histogram() -> f64 {
 // crt-026: default_w_phase_explicit — 0.0 (W3-1 placeholder, ADR-003)
 fn default_w_phase_explicit() -> f64 {
     0.0
+}
+
+// ---------------------------------------------------------------------------
+// Background graph inference tick default value functions (crt-029)
+// ---------------------------------------------------------------------------
+
+fn default_supports_candidate_threshold() -> f32 {
+    0.5
+}
+
+fn default_supports_edge_threshold() -> f32 {
+    0.7
+}
+
+fn default_max_graph_inference_per_tick() -> usize {
+    100
+}
+
+fn default_graph_inference_k() -> usize {
+    10
 }
 
 /// Returns `true` if `name` is a recognized NLI model variant (case-insensitive).
@@ -593,6 +659,56 @@ impl InferenceConfig {
                 path: path.to_path_buf(),
                 auto_quarantine: self.nli_auto_quarantine_threshold,
                 contradiction: self.nli_contradiction_threshold,
+            });
+        }
+
+        // -- crt-029: supports_candidate_threshold range check (0.0, 1.0) exclusive --
+        if self.supports_candidate_threshold <= 0.0 || self.supports_candidate_threshold >= 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "supports_candidate_threshold",
+                value: self.supports_candidate_threshold.to_string(),
+                reason: "must be in range (0.0, 1.0) exclusive",
+            });
+        }
+
+        // -- crt-029: supports_edge_threshold range check (0.0, 1.0) exclusive --
+        if self.supports_edge_threshold <= 0.0 || self.supports_edge_threshold >= 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "supports_edge_threshold",
+                value: self.supports_edge_threshold.to_string(),
+                reason: "must be in range (0.0, 1.0) exclusive",
+            });
+        }
+
+        // -- crt-029: cross-field invariant: supports_candidate_threshold < supports_edge_threshold (SR-03 / AC-02) --
+        // Strict `>=`: equal values are also rejected.
+        if self.supports_candidate_threshold >= self.supports_edge_threshold {
+            return Err(ConfigError::GraphInferenceThresholdInvariantViolated {
+                path: path.to_path_buf(),
+                candidate: self.supports_candidate_threshold,
+                edge: self.supports_edge_threshold,
+            });
+        }
+
+        // -- crt-029: max_graph_inference_per_tick range check [1, 1000] --
+        if self.max_graph_inference_per_tick < 1 || self.max_graph_inference_per_tick > 1000 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "max_graph_inference_per_tick",
+                value: self.max_graph_inference_per_tick.to_string(),
+                reason: "must be in range [1, 1000]",
+            });
+        }
+
+        // -- crt-029: graph_inference_k range check [1, 100] --
+        if self.graph_inference_k < 1 || self.graph_inference_k > 100 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "graph_inference_k",
+                value: self.graph_inference_k.to_string(),
+                reason: "must be in range [1, 100]",
             });
         }
 
@@ -788,6 +904,14 @@ pub enum ConfigError {
         path: PathBuf,
         auto_quarantine: f32,
         contradiction: f32,
+    },
+    /// `supports_candidate_threshold` is not strictly less than `supports_edge_threshold`.
+    ///
+    /// Both equal values and candidate > edge are rejected (strict `<` required; crt-029 AC-02 / SR-03).
+    GraphInferenceThresholdInvariantViolated {
+        path: PathBuf,
+        candidate: f32,
+        edge: f32,
     },
     /// The six fusion weight fields (`w_sim + w_nli + w_conf + w_coac + w_util + w_prov`) sum
     /// to more than 1.0.
@@ -987,6 +1111,19 @@ impl fmt::Display for ConfigError {
                 path.display(),
                 auto_quarantine,
                 contradiction
+            ),
+            ConfigError::GraphInferenceThresholdInvariantViolated {
+                path,
+                candidate,
+                edge,
+            } => write!(
+                f,
+                "config error in {}: supports_candidate_threshold ({}) must be \
+                 strictly less than supports_edge_threshold ({}); \
+                 equal values are not allowed",
+                path.display(),
+                candidate,
+                edge
             ),
             ConfigError::FusionWeightSumExceeded {
                 path,
@@ -1630,6 +1767,39 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.w_phase_explicit
             } else {
                 global.inference.w_phase_explicit
+            },
+            // crt-029: background graph inference tick fields
+            supports_candidate_threshold: if (project.inference.supports_candidate_threshold
+                - default.inference.supports_candidate_threshold)
+                .abs()
+                > f32::EPSILON
+            {
+                project.inference.supports_candidate_threshold
+            } else {
+                global.inference.supports_candidate_threshold
+            },
+            supports_edge_threshold: if (project.inference.supports_edge_threshold
+                - default.inference.supports_edge_threshold)
+                .abs()
+                > f32::EPSILON
+            {
+                project.inference.supports_edge_threshold
+            } else {
+                global.inference.supports_edge_threshold
+            },
+            max_graph_inference_per_tick: if project.inference.max_graph_inference_per_tick
+                != default.inference.max_graph_inference_per_tick
+            {
+                project.inference.max_graph_inference_per_tick
+            } else {
+                global.inference.max_graph_inference_per_tick
+            },
+            graph_inference_k: if project.inference.graph_inference_k
+                != default.inference.graph_inference_k
+            {
+                project.inference.graph_inference_k
+            } else {
+                global.inference.graph_inference_k
             },
         },
     }
@@ -4423,6 +4593,268 @@ w_sim = 0.25
         assert_eq!(
             cfg.w_phase_histogram, 0.02,
             "w_phase_histogram must be present and default to 0.02"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-029: InferenceConfig additions — AC-01, AC-17, AC-02, AC-03, AC-04, AC-04b
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_inference_config_defaults() {
+        // AC-01: default() must return the four new fields at their spec'd defaults.
+        let config = InferenceConfig::default();
+        assert_eq!(
+            config.supports_candidate_threshold, 0.5_f32,
+            "supports_candidate_threshold default must be 0.5"
+        );
+        assert_eq!(
+            config.supports_edge_threshold, 0.7_f32,
+            "supports_edge_threshold default must be 0.7"
+        );
+        assert_eq!(
+            config.max_graph_inference_per_tick, 100_usize,
+            "max_graph_inference_per_tick default must be 100"
+        );
+        assert_eq!(
+            config.graph_inference_k, 10_usize,
+            "graph_inference_k default must be 10"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_toml_defaults() {
+        // AC-17: Absent fields in TOML use serde(default = "...") values.
+        // Deserializing directly into InferenceConfig — fields at top level, no [inference] header.
+        let toml_str = "nli_enabled = true\n";
+        let config: InferenceConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.supports_candidate_threshold, 0.5_f32);
+        assert_eq!(config.supports_edge_threshold, 0.7_f32);
+        assert_eq!(config.max_graph_inference_per_tick, 100_usize);
+        assert_eq!(config.graph_inference_k, 10_usize);
+    }
+
+    #[test]
+    fn test_inference_config_toml_explicit_values() {
+        // AC-17: Explicit TOML values override defaults.
+        // Deserializing directly into InferenceConfig — fields at top level, no [inference] header.
+        let toml_str = "supports_candidate_threshold = 0.4\n\
+            supports_edge_threshold = 0.8\n\
+            max_graph_inference_per_tick = 50\n\
+            graph_inference_k = 20\n";
+        let config: InferenceConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.supports_candidate_threshold, 0.4_f32);
+        assert_eq!(config.supports_edge_threshold, 0.8_f32);
+        assert_eq!(config.max_graph_inference_per_tick, 50_usize);
+        assert_eq!(config.graph_inference_k, 20_usize);
+    }
+
+    #[test]
+    fn test_validate_rejects_equal_thresholds() {
+        // AC-02: equal values must be rejected (strict `<` required).
+        let c = InferenceConfig {
+            supports_candidate_threshold: 0.7,
+            supports_edge_threshold: 0.7,
+            ..InferenceConfig::default()
+        };
+        let result = c.validate(Path::new("/fake/config.toml"));
+        assert!(result.is_err(), "equal thresholds must fail validation");
+        let msg = result.unwrap_err().to_string();
+        assert!(
+            msg.contains("supports_candidate_threshold") || msg.contains("supports_edge_threshold"),
+            "error must reference threshold fields: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_candidate_above_edge() {
+        // AC-02: candidate > edge must be rejected.
+        let c = InferenceConfig {
+            supports_candidate_threshold: 0.8,
+            supports_edge_threshold: 0.7,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_err(),
+            "candidate > edge must fail validation"
+        );
+    }
+
+    #[test]
+    fn test_validate_accepts_candidate_below_edge() {
+        // AC-02: candidate < edge must pass (boundary: 0.69 < 0.70).
+        let c = InferenceConfig {
+            supports_candidate_threshold: 0.69,
+            supports_edge_threshold: 0.7,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "candidate strictly less than edge must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_candidate_threshold_zero() {
+        // AC-03: 0.0 is outside (0.0, 1.0) exclusive.
+        let c = InferenceConfig {
+            supports_candidate_threshold: 0.0,
+            supports_edge_threshold: 0.7,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_err(),
+            "supports_candidate_threshold = 0.0 must fail"
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_candidate_threshold_one() {
+        // AC-03: 1.0 is outside (0.0, 1.0) exclusive.
+        let c = InferenceConfig {
+            supports_candidate_threshold: 1.0,
+            supports_edge_threshold: 0.7,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_err(),
+            "supports_candidate_threshold = 1.0 must fail"
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_edge_threshold_zero() {
+        // AC-03: 0.0 is outside (0.0, 1.0) exclusive.
+        let c = InferenceConfig {
+            supports_candidate_threshold: 0.3,
+            supports_edge_threshold: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_err(),
+            "supports_edge_threshold = 0.0 must fail"
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_edge_threshold_one() {
+        // AC-03: 1.0 is outside (0.0, 1.0) exclusive.
+        let c = InferenceConfig {
+            supports_candidate_threshold: 0.3,
+            supports_edge_threshold: 1.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_err(),
+            "supports_edge_threshold = 1.0 must fail"
+        );
+    }
+
+    #[test]
+    fn test_validate_accepts_threshold_boundaries() {
+        // AC-03: Values inside the exclusive range must pass.
+        let c = InferenceConfig {
+            supports_candidate_threshold: 0.01,
+            supports_edge_threshold: 0.99,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "candidate=0.01, edge=0.99 are inside the exclusive range and must pass"
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_max_inference_zero() {
+        // AC-04: 0 is below [1, 1000].
+        let c = InferenceConfig {
+            max_graph_inference_per_tick: 0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_err(),
+            "max_graph_inference_per_tick = 0 must fail"
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_max_inference_over_limit() {
+        // AC-04: 1001 is above [1, 1000].
+        let c = InferenceConfig {
+            max_graph_inference_per_tick: 1001,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_err(),
+            "max_graph_inference_per_tick = 1001 must fail"
+        );
+    }
+
+    #[test]
+    fn test_validate_accepts_max_inference_at_bounds() {
+        // AC-04: 1 and 1000 are at the inclusive bounds.
+        let c_low = InferenceConfig {
+            max_graph_inference_per_tick: 1,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c_low.validate(Path::new("/fake/config.toml")).is_ok(),
+            "max_graph_inference_per_tick = 1 must pass"
+        );
+        let c_high = InferenceConfig {
+            max_graph_inference_per_tick: 1000,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c_high.validate(Path::new("/fake/config.toml")).is_ok(),
+            "max_graph_inference_per_tick = 1000 must pass"
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_graph_inference_k_zero() {
+        // AC-04b: 0 is below [1, 100].
+        let c = InferenceConfig {
+            graph_inference_k: 0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_err(),
+            "graph_inference_k = 0 must fail"
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_graph_inference_k_over_limit() {
+        // AC-04b: 101 is above [1, 100].
+        let c = InferenceConfig {
+            graph_inference_k: 101,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_err(),
+            "graph_inference_k = 101 must fail"
+        );
+    }
+
+    #[test]
+    fn test_validate_accepts_graph_inference_k_at_bounds() {
+        // AC-04b: 1 and 100 are at the inclusive bounds.
+        let c_low = InferenceConfig {
+            graph_inference_k: 1,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c_low.validate(Path::new("/fake/config.toml")).is_ok(),
+            "graph_inference_k = 1 must pass"
+        );
+        let c_high = InferenceConfig {
+            graph_inference_k: 100,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c_high.validate(Path::new("/fake/config.toml")).is_ok(),
+            "graph_inference_k = 100 must pass"
         );
     }
 

@@ -529,7 +529,7 @@ async fn write_edges_with_cap(
 ///
 /// Uses `INSERT OR IGNORE` for idempotency on `UNIQUE(source_id, target_id, relation_type)`.
 /// Returns `true` if the insert succeeded (edge written or already existed).
-async fn write_nli_edge(
+pub(crate) async fn write_nli_edge(
     store: &Store,
     source_id: u64,
     target_id: u64,
@@ -625,7 +625,7 @@ async fn set_bootstrap_marker(store: &Store) -> Result<(), unimatrix_store::Stor
 /// Serialize NLI scores to the required GRAPH_EDGES metadata JSON format.
 ///
 /// Uses `serde_json::to_string` to prevent SQL injection via string concatenation.
-fn format_nli_metadata(scores: &NliScores) -> String {
+pub(crate) fn format_nli_metadata(scores: &NliScores) -> String {
     // Output: '{"nli_entailment": 0.85, "nli_contradiction": 0.07}'
     // Required fields per AC-11: nli_entailment and nli_contradiction (f32).
     serde_json::json!({
@@ -636,7 +636,7 @@ fn format_nli_metadata(scores: &NliScores) -> String {
 }
 
 /// Current Unix timestamp in seconds.
-fn current_timestamp_secs() -> u64 {
+pub(crate) fn current_timestamp_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
