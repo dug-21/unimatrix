@@ -1,4 +1,4 @@
-//! `AnalyticsMode` and `EvalProfile` type definitions (nan-007).
+//! `AnalyticsMode`, `EvalProfile`, and `DistributionTargets` type definitions (nan-007, nan-010).
 
 use crate::infra::config::UnimatrixConfig;
 
@@ -22,10 +22,31 @@ pub enum AnalyticsMode {
 }
 
 // ---------------------------------------------------------------------------
+// DistributionTargets
+// ---------------------------------------------------------------------------
+
+/// Human-specified floor values for the distribution gate.
+///
+/// All three fields are required together when `distribution_change = true`.
+/// No serde derives — in-memory only. The JSON representation lives in
+/// `DistributionTargetsJson` in `runner/profile_meta.rs` (nan-010).
+#[derive(Debug, Clone)]
+pub struct DistributionTargets {
+    /// Minimum mean CC@k required across all scenarios in the candidate profile.
+    pub cc_at_k_min: f64,
+    /// Minimum mean ICD required across all scenarios in the candidate profile.
+    pub icd_min: f64,
+    /// Absolute minimum mean MRR (veto, evaluated independently from CC@k/ICD).
+    pub mrr_floor: f64,
+}
+
+// ---------------------------------------------------------------------------
 // EvalProfile
 // ---------------------------------------------------------------------------
 
 /// A named eval profile parsed from a TOML file.
+///
+/// Populated by `parse_profile_toml` in `validation.rs`; never construct directly.
 ///
 /// An empty TOML body (with only `[profile]` name/description) represents
 /// the baseline profile and uses all compiled defaults from `UnimatrixConfig`.
@@ -35,6 +56,12 @@ pub enum AnalyticsMode {
 /// [profile]
 /// name = "candidate-weights-v1"
 /// description = "Test higher base weight"   # optional
+/// distribution_change = false               # optional; default false
+///
+/// [profile.distribution_targets]            # required when distribution_change = true
+/// cc_at_k_min = 0.60
+/// icd_min = 1.20
+/// mrr_floor = 0.35
 ///
 /// [confidence.weights]
 /// # All six weight fields required if [confidence.weights] present (C-06).
@@ -61,4 +88,14 @@ pub struct EvalProfile {
     /// Config overrides. Absent sections use compiled defaults.
     /// An empty `UnimatrixConfig` → all compiled defaults → baseline profile.
     pub config_overrides: UnimatrixConfig,
+
+    /// Whether this profile declares an intentional distribution shift (nan-010).
+    /// Default: `false`. When `true`, `distribution_targets` is `Some(_)`.
+    /// Baseline profiles must not set this to `true`; `parse_profile_toml`
+    /// returns `EvalError::ConfigInvariant` if they do.
+    pub distribution_change: bool,
+
+    /// Distribution gate floor values. `Some(_)` when `distribution_change = true`.
+    /// `None` when `distribution_change = false`.
+    pub distribution_targets: Option<DistributionTargets>,
 }

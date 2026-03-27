@@ -485,3 +485,6 @@ fn baseline_metrics(result: &ScenarioResult) -> Option<(f64, f64, f64, f64)> {
     let prof = result.profiles.get(*names.first()?)?;
     Some((prof.p_at_k, prof.mrr, prof.cc_at_k, prof.icd))
 }
+
+pub(super) mod distribution;
+pub(super) use distribution::{DistributionGateResult, MetricGateRow, check_distribution_targets};

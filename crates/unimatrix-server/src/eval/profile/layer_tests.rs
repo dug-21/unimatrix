@@ -39,6 +39,8 @@ mod layer_tests {
             name: "baseline".to_string(),
             description: None,
             config_overrides: UnimatrixConfig::default(),
+            distribution_change: false,
+            distribution_targets: None,
         }
     }
 
@@ -124,6 +126,8 @@ mod layer_tests {
             name: "bad-weights".to_string(),
             description: None,
             config_overrides,
+            distribution_change: false,
+            distribution_targets: None,
         };
 
         let result = EvalServiceLayer::from_profile(&snap, &profile, None).await;
@@ -360,6 +364,8 @@ mod layer_tests {
             name: "good-weights".to_string(),
             description: None,
             config_overrides,
+            distribution_change: false,
+            distribution_targets: None,
         };
 
         let result = EvalServiceLayer::from_profile(&snap, &profile, None).await;
