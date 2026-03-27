@@ -63,3 +63,16 @@ None. All design decisions are closed.
   `&[EntryRecord]` to `select_source_candidates` is equally acceptable.
 - `graph_inference_k` is a fourth new `InferenceConfig` field per SCOPE.md AC-04b — confirm
   it is added alongside the other three.
+
+## Knowledge Stewardship
+
+Queried before designing:
+- `context_search(query: 'NLI tick graph inference', category: 'pattern')` — found entry #3653 (single rayon dispatch per tick), #3655 (bound source-candidate selection)
+- `context_search(query: 'InferenceConfig validation patterns')` — found entry #2730 (struct literal trap, crt-023 gate failure)
+- `context_briefing(agent_id: 'crt-029-agent-1-architect', topic: 'crt-029')` — returned duties + conventions
+
+ADRs stored in Unimatrix after writing each file:
+- ADR-001 → Unimatrix entry #3656 (nli_detection_tick.rs mandatory module split)
+- ADR-002 → Unimatrix entry #3657 (write_inferred_edges_with_cap Supports-only named variant)
+- ADR-003 → Unimatrix entry #3658 (source-candidate bound derived from max_graph_inference_per_tick)
+- ADR-004 → Unimatrix entry #3659 (query_existing_supports_pairs targeted pre-filter query)

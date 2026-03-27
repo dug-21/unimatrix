@@ -20,20 +20,17 @@ GH Issue: #412
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| InferenceConfig additions | pseudocode/inference-config.md | test-plan/inference-config.md |
-| Store::query_entries_without_edges | pseudocode/store-query-helpers.md | test-plan/store-query-helpers.md |
-| Store::query_existing_supports_pairs | pseudocode/store-query-helpers.md | test-plan/store-query-helpers.md |
-| run_graph_inference_tick | pseudocode/nli-detection-tick.md | test-plan/nli-detection-tick.md |
-| write_inferred_edges_with_cap | pseudocode/nli-detection-tick.md | test-plan/nli-detection-tick.md |
-| select_source_candidates | pseudocode/nli-detection-tick.md | test-plan/nli-detection-tick.md |
+| InferenceConfig additions + pub(crate) promotions + mod declaration | pseudocode/inference-config.md | test-plan/inference-config.md |
+| Store::query_entries_without_edges + Store::query_existing_supports_pairs | pseudocode/store-query-helpers.md | test-plan/store-query-helpers.md |
+| run_graph_inference_tick + select_source_candidates + write_inferred_edges_with_cap | pseudocode/nli-detection-tick.md | test-plan/nli-detection-tick.md |
 | background.rs call site | pseudocode/background-call-site.md | test-plan/background-call-site.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/crt-029/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/crt-029/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
