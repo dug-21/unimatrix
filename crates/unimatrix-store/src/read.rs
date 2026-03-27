@@ -1365,6 +1365,73 @@ impl SqlxStore {
             .collect::<Result<Vec<_>>>()
     }
 
+    /// Return IDs of active entries with no non-bootstrap graph edge on either endpoint (crt-029).
+    ///
+    /// An entry is "isolated" when it does not appear in either `source_id` or `target_id` of any
+    /// `graph_edges` row that has `bootstrap_only = 0`. Bootstrap-only edges (written during the
+    /// initial NLI promotion pass) are deliberately excluded: they are tentative edges that have not
+    /// been confirmed by the tick path, and their presence should not prevent an entry from being
+    /// reconsidered by the background inference tick.
+    ///
+    /// Uses `read_pool()` — this is a read-only query (C-02, crt-029).
+    pub async fn query_entries_without_edges(&self) -> Result<Vec<u64>> {
+        let rows = sqlx::query(
+            "SELECT id FROM entries \
+             WHERE status = 0 \
+               AND id NOT IN ( \
+                 SELECT source_id FROM graph_edges WHERE bootstrap_only = 0 \
+                 UNION \
+                 SELECT target_id FROM graph_edges WHERE bootstrap_only = 0 \
+               )",
+        )
+        .fetch_all(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        rows.into_iter()
+            .map(|row| {
+                row.try_get::<i64, _>("id")
+                    .map(|id| id as u64)
+                    .map_err(|e| StoreError::Database(e.into()))
+            })
+            .collect::<Result<Vec<u64>>>()
+    }
+
+    /// Return all non-bootstrap Supports edges as normalized `(min, max)` pairs (crt-029).
+    ///
+    /// Pairs are normalised to `(min(source_id, target_id), max(source_id, target_id))` so that
+    /// the caller can do a symmetric membership test with a single `HashSet::contains` call.
+    /// This matches Phase 4 of `run_graph_inference_tick`, which normalises candidate pairs the
+    /// same way before checking the pre-filter set (ADR-004 crt-029).
+    ///
+    /// Only non-bootstrap Supports rows are returned — bootstrap edges written during the initial
+    /// NLI pass are excluded via `bootstrap_only = 0`. Contradicts and all other relation types
+    /// are excluded via `relation_type = 'Supports'`. This is lighter than `query_graph_edges()`
+    /// which returns all edge types with all columns.
+    ///
+    /// Uses `read_pool()` — this is a read-only query (C-02, ADR-004, crt-029).
+    pub async fn query_existing_supports_pairs(&self) -> Result<HashSet<(u64, u64)>> {
+        let rows = sqlx::query(
+            "SELECT source_id, target_id FROM graph_edges \
+             WHERE relation_type = 'Supports' AND bootstrap_only = 0",
+        )
+        .fetch_all(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        rows.into_iter()
+            .map(|row| {
+                let a = row
+                    .try_get::<i64, _>("source_id")
+                    .map_err(|e| StoreError::Database(e.into()))? as u64;
+                let b = row
+                    .try_get::<i64, _>("target_id")
+                    .map_err(|e| StoreError::Database(e.into()))? as u64;
+                Ok((a.min(b), a.max(b)))
+            })
+            .collect::<Result<HashSet<(u64, u64)>>>()
+    }
+
     /// Fetch all GRAPH_EDGES rows with bootstrap_only=1 AND relation_type='Contradicts'.
     ///
     /// Returns (edge_id, source_id, target_id) for all bootstrap contradiction edges.
@@ -2041,6 +2108,300 @@ mod tests {
         assert!(
             !m.mean_entry_degree.is_infinite(),
             "mean_entry_degree must not be infinite"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // query_entries_without_edges tests (crt-029, AC-15)
+    // ---------------------------------------------------------------------------
+
+    /// AC-15: empty store returns empty Vec — NOT IN over an empty set must not panic.
+    #[tokio::test]
+    async fn test_query_entries_without_edges_empty_store() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let ids = store
+            .query_entries_without_edges()
+            .await
+            .expect("query_entries_without_edges");
+
+        assert!(ids.is_empty(), "empty store must return empty Vec");
+    }
+
+    /// AC-15: 3 active entries, no edges — all 3 are isolated.
+    #[tokio::test]
+    async fn test_query_entries_without_edges_no_edges() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 2, "pattern", 0).await;
+        insert_test_entry(&store.write_pool, 3, "convention", 0).await;
+
+        let mut ids = store
+            .query_entries_without_edges()
+            .await
+            .expect("query_entries_without_edges");
+        ids.sort_unstable();
+
+        assert_eq!(ids, vec![1, 2, 3], "all 3 entries must be returned");
+    }
+
+    /// AC-15: all 4 entries covered by non-bootstrap edges — result is empty.
+    #[tokio::test]
+    async fn test_query_entries_without_edges_with_edges() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 2, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 3, "pattern", 0).await;
+        insert_test_entry(&store.write_pool, 4, "pattern", 0).await;
+        // 1→2 covers 1 and 2; 3→4 covers 3 and 4
+        insert_test_edge(&store.write_pool, 1, 2, "Supports", "nli", 0).await;
+        insert_test_edge(&store.write_pool, 3, 4, "Supports", "nli", 0).await;
+
+        let ids = store
+            .query_entries_without_edges()
+            .await
+            .expect("query_entries_without_edges");
+
+        assert!(
+            ids.is_empty(),
+            "all entries have non-bootstrap edges; result must be empty"
+        );
+    }
+
+    /// AC-15: 5 entries; only 1→2 has non-bootstrap edge; IDs 3, 4, 5 are isolated.
+    #[tokio::test]
+    async fn test_query_entries_without_edges_partial_coverage() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        for i in 1u64..=5 {
+            insert_test_entry(&store.write_pool, i, "decision", 0).await;
+        }
+        insert_test_edge(&store.write_pool, 1, 2, "Supports", "nli", 0).await;
+
+        let mut ids = store
+            .query_entries_without_edges()
+            .await
+            .expect("query_entries_without_edges");
+        ids.sort_unstable();
+
+        assert_eq!(ids, vec![3, 4, 5], "IDs 3, 4, 5 are isolated");
+        assert!(
+            !ids.contains(&1),
+            "ID 1 has a non-bootstrap edge as source; must not be returned"
+        );
+        assert!(
+            !ids.contains(&2),
+            "ID 2 has a non-bootstrap edge as target; must not be returned"
+        );
+    }
+
+    /// AC-15: bootstrap-only edges (bootstrap_only=1) must not count as edges.
+    ///
+    /// This is the critical test distinguishing bootstrap from non-bootstrap edges.
+    /// All 3 entries have bootstrap edges — they are still treated as isolated by the tick.
+    #[tokio::test]
+    async fn test_query_entries_without_edges_bootstrap_only_ignored() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 2, "pattern", 0).await;
+        insert_test_entry(&store.write_pool, 3, "convention", 0).await;
+        // bootstrap_only=1 edges must be invisible to the NOT IN subquery
+        insert_test_edge(&store.write_pool, 1, 2, "Supports", "nli", 1).await;
+        insert_test_edge(&store.write_pool, 2, 3, "Supports", "nli", 1).await;
+
+        let mut ids = store
+            .query_entries_without_edges()
+            .await
+            .expect("query_entries_without_edges");
+        ids.sort_unstable();
+
+        assert_eq!(
+            ids,
+            vec![1, 2, 3],
+            "bootstrap-only edges must not count; all 3 entries still isolated"
+        );
+    }
+
+    /// AC-15: deprecated entries (status != 0) must be excluded.
+    #[tokio::test]
+    async fn test_query_entries_without_edges_inactive_excluded() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await; // active
+        insert_test_entry(&store.write_pool, 2, "pattern", 0).await; // active
+        insert_test_entry(&store.write_pool, 3, "convention", 1).await; // deprecated (status=1)
+
+        let mut ids = store
+            .query_entries_without_edges()
+            .await
+            .expect("query_entries_without_edges");
+        ids.sort_unstable();
+
+        assert_eq!(
+            ids,
+            vec![1, 2],
+            "only active entries (status=0) returned; deprecated entry excluded"
+        );
+        assert!(
+            !ids.contains(&3),
+            "deprecated entry ID 3 must not be returned"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // query_existing_supports_pairs tests (crt-029, R-04)
+    // ---------------------------------------------------------------------------
+
+    /// R-04: empty graph_edges returns empty HashSet.
+    #[tokio::test]
+    async fn test_query_existing_supports_pairs_empty() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let pairs = store
+            .query_existing_supports_pairs()
+            .await
+            .expect("query_existing_supports_pairs");
+
+        assert!(
+            pairs.is_empty(),
+            "empty graph_edges must return empty HashSet"
+        );
+    }
+
+    /// R-04: one non-bootstrap Supports row — returned as normalized (min, max) pair.
+    #[tokio::test]
+    async fn test_query_existing_supports_pairs_supports_only() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 10, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 20, "pattern", 0).await;
+        insert_test_edge(&store.write_pool, 10, 20, "Supports", "nli", 0).await;
+
+        let pairs = store
+            .query_existing_supports_pairs()
+            .await
+            .expect("query_existing_supports_pairs");
+
+        assert_eq!(pairs.len(), 1, "exactly one pair expected");
+        assert!(
+            pairs.contains(&(10, 20)),
+            "normalized pair (10, 20) must be present"
+        );
+    }
+
+    /// R-04: only bootstrap Supports rows — bootstrap_only=1 excluded; result is empty.
+    #[tokio::test]
+    async fn test_query_existing_supports_pairs_bootstrap_excluded() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 2, "pattern", 0).await;
+        insert_test_edge(&store.write_pool, 1, 2, "Supports", "nli", 1).await; // bootstrap
+
+        let pairs = store
+            .query_existing_supports_pairs()
+            .await
+            .expect("query_existing_supports_pairs");
+
+        assert!(
+            pairs.is_empty(),
+            "bootstrap Supports rows must be excluded from pre-filter"
+        );
+    }
+
+    /// R-04: Contradicts and non-Supports edges are excluded; only Supports pair returned.
+    #[tokio::test]
+    async fn test_query_existing_supports_pairs_excludes_contradicts() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        for i in 1u64..=6 {
+            insert_test_entry(&store.write_pool, i, "decision", 0).await;
+        }
+        // Contradicts non-bootstrap — must be excluded (wrong relation_type)
+        insert_test_edge(&store.write_pool, 1, 2, "Contradicts", "nli", 0).await;
+        // Supports bootstrap — must be excluded (bootstrap_only=1)
+        insert_test_edge(&store.write_pool, 3, 4, "Supports", "nli", 1).await;
+        // Supports non-bootstrap — must be included
+        insert_test_edge(&store.write_pool, 5, 6, "Supports", "nli", 0).await;
+
+        let pairs = store
+            .query_existing_supports_pairs()
+            .await
+            .expect("query_existing_supports_pairs");
+
+        assert_eq!(
+            pairs.len(),
+            1,
+            "only the non-bootstrap Supports pair expected"
+        );
+        assert!(pairs.contains(&(5, 6)), "(5, 6) must be present");
+        assert!(
+            !pairs.contains(&(1, 2)),
+            "Contradicts edge must not appear in Supports pairs"
+        );
+        assert!(
+            !pairs.contains(&(3, 4)),
+            "bootstrap Supports edge must not appear"
+        );
+    }
+
+    /// R-04: mixed bootstrap / non-bootstrap Supports rows — only non-bootstrap included.
+    #[tokio::test]
+    async fn test_query_existing_supports_pairs_mixed_bootstrap() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        for i in 1u64..=5 {
+            insert_test_entry(&store.write_pool, i, "decision", 0).await;
+        }
+        insert_test_edge(&store.write_pool, 1, 2, "Supports", "nli", 0).await; // non-bootstrap
+        insert_test_edge(&store.write_pool, 1, 3, "Supports", "nli", 1).await; // bootstrap
+        insert_test_edge(&store.write_pool, 4, 5, "Supports", "nli", 0).await; // non-bootstrap
+
+        let pairs = store
+            .query_existing_supports_pairs()
+            .await
+            .expect("query_existing_supports_pairs");
+
+        assert_eq!(pairs.len(), 2, "exactly two non-bootstrap pairs expected");
+        assert!(pairs.contains(&(1, 2)), "(1, 2) must be present");
+        assert!(pairs.contains(&(4, 5)), "(4, 5) must be present");
+        assert!(
+            !pairs.contains(&(1, 3)),
+            "bootstrap pair (1, 3) must be absent"
+        );
+    }
+
+    /// R-04: pair stored as (higher, lower) must normalise to (lower, higher).
+    ///
+    /// Phase 4 of run_graph_inference_tick checks `existing_supports_pairs.contains(&(min, max))`.
+    /// This test verifies the contract: regardless of DB storage order, lookup by (min, max) works.
+    #[tokio::test]
+    async fn test_query_existing_supports_pairs_normalization() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 10, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 30, "pattern", 0).await;
+        // Stored as (source=30, target=10) — reversed from normalized form
+        insert_test_edge(&store.write_pool, 30, 10, "Supports", "nli", 0).await;
+
+        let pairs = store
+            .query_existing_supports_pairs()
+            .await
+            .expect("query_existing_supports_pairs");
+
+        assert_eq!(pairs.len(), 1, "exactly one pair expected");
+        assert!(
+            pairs.contains(&(10, 30)),
+            "pair must be normalized to (min=10, max=30)"
+        );
+        assert!(
+            !pairs.contains(&(30, 10)),
+            "raw (30, 10) form must not be present after normalization"
         );
     }
 }

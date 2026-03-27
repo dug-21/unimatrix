@@ -43,6 +43,7 @@ use crate::services::contradiction_cache::{
 };
 use crate::services::effectiveness::EffectivenessStateHandle;
 use crate::services::nli_detection::maybe_run_bootstrap_promotion;
+use crate::services::nli_detection_tick::run_graph_inference_tick;
 use crate::services::status::{MaintenanceDataSnapshot, StatusService};
 use crate::services::typed_graph::{TypedGraphState, TypedGraphStateHandle};
 use unimatrix_engine::effectiveness::EffectivenessCategory;
@@ -666,6 +667,13 @@ async fn run_single_tick(
     // When NLI is not ready, defers silently without setting marker (FR-25).
     if inference_config.nli_enabled {
         maybe_run_bootstrap_promotion(store, nli_handle, ml_inference_pool, inference_config).await;
+    }
+
+    // crt-029: Background graph inference (recurring, cap-throttled via max_graph_inference_per_tick).
+    // Runs after bootstrap promotion so bootstrap-promoted edges are visible to the tick's
+    // pre-filter HashSet. Must remain after maybe_run_bootstrap_promotion (sequencing invariant).
+    if inference_config.nli_enabled {
+        run_graph_inference_tick(store, nli_handle, vector_index, ml_inference_pool, inference_config).await;
     }
 
     // Update next scheduled time
