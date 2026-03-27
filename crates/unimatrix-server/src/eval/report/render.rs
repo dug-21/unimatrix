@@ -11,6 +11,8 @@
 use std::collections::HashMap;
 
 use super::ScoredEntry;
+#[allow(unused_imports)]
+use super::render_distribution_gate::{HeadingLevel, render_distribution_gate_section};
 use super::render_phase::render_phase_section;
 use super::{
     AggregateStats, CcAtKScenarioRow, EntryRankSummary, LatencyBucket, PhaseAggregateStats,

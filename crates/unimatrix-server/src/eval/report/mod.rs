@@ -22,6 +22,7 @@
 
 mod aggregate;
 mod render;
+mod render_distribution_gate;
 mod render_phase;
 #[cfg(test)]
 mod tests;
