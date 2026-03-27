@@ -489,7 +489,10 @@ fn test_check_distribution_targets_all_pass() {
 
     // Per-metric assertions (R-08: verify correct field reads)
     assert_eq!(gate.cc_at_k.target, 0.60, "cc_at_k target mismatch");
-    assert_eq!(gate.cc_at_k.actual, 0.65, "cc_at_k actual must be mean_cc_at_k");
+    assert_eq!(
+        gate.cc_at_k.actual, 0.65,
+        "cc_at_k actual must be mean_cc_at_k"
+    );
     assert!(gate.cc_at_k.passed, "cc_at_k: 0.65 >= 0.60 must pass");
 
     assert_eq!(gate.icd.target, 1.20, "icd target mismatch");
@@ -497,13 +500,22 @@ fn test_check_distribution_targets_all_pass() {
     assert!(gate.icd.passed, "icd: 1.35 >= 1.20 must pass");
 
     assert_eq!(gate.mrr_floor.target, 0.35, "mrr_floor target mismatch");
-    assert_eq!(gate.mrr_floor.actual, 0.50, "mrr_floor actual must be mean_mrr (candidate)");
+    assert_eq!(
+        gate.mrr_floor.actual, 0.50,
+        "mrr_floor actual must be mean_mrr (candidate)"
+    );
     assert!(gate.mrr_floor.passed, "mrr: 0.50 >= 0.35 must pass");
 
     // Aggregate flags
-    assert!(gate.diversity_passed, "diversity must pass when cc_at_k and icd both pass");
+    assert!(
+        gate.diversity_passed,
+        "diversity must pass when cc_at_k and icd both pass"
+    );
     assert!(gate.mrr_floor_passed, "mrr_floor must pass");
-    assert!(gate.overall_passed, "overall must pass when all metrics pass");
+    assert!(
+        gate.overall_passed,
+        "overall must pass when all metrics pass"
+    );
 }
 
 /// AC-13, R-05: CC@k fails target → diversity fails, overall fails, mrr_floor independent.
@@ -522,7 +534,7 @@ fn test_check_distribution_targets_cc_at_k_fail() {
         p_at_k_delta: 0.02,
         mrr_delta: 0.01,
         latency_delta_ms: 8.0,
-        mean_cc_at_k: 0.45,  // below target 0.60
+        mean_cc_at_k: 0.45, // below target 0.60
         mean_icd: 1.35,
         cc_at_k_delta: -0.05,
         icd_delta: 0.15,
@@ -540,9 +552,18 @@ fn test_check_distribution_targets_cc_at_k_fail() {
     assert!(gate.icd.passed, "icd: 1.35 >= 1.20 must pass");
     assert!(gate.mrr_floor.passed, "mrr_floor: 0.50 >= 0.35 must pass");
 
-    assert!(!gate.diversity_passed, "diversity must fail when cc_at_k fails");
-    assert!(gate.mrr_floor_passed, "mrr_floor_passed independent of diversity");
-    assert!(!gate.overall_passed, "overall must fail when diversity fails");
+    assert!(
+        !gate.diversity_passed,
+        "diversity must fail when cc_at_k fails"
+    );
+    assert!(
+        gate.mrr_floor_passed,
+        "mrr_floor_passed independent of diversity"
+    );
+    assert!(
+        !gate.overall_passed,
+        "overall must fail when diversity fails"
+    );
 }
 
 /// AC-13, R-05: ICD fails target → diversity fails, overall fails, cc_at_k independent.
@@ -562,7 +583,7 @@ fn test_check_distribution_targets_icd_fail() {
         mrr_delta: 0.02,
         latency_delta_ms: 6.0,
         mean_cc_at_k: 0.65,
-        mean_icd: 1.05,  // below target 1.20
+        mean_icd: 1.05, // below target 1.20
         cc_at_k_delta: 0.08,
         icd_delta: -0.10,
     };
@@ -580,8 +601,14 @@ fn test_check_distribution_targets_icd_fail() {
     assert!(gate.mrr_floor.passed, "mrr_floor: 0.55 >= 0.35 must pass");
 
     assert!(!gate.diversity_passed, "diversity must fail when icd fails");
-    assert!(gate.mrr_floor_passed, "mrr_floor_passed independent of diversity");
-    assert!(!gate.overall_passed, "overall must fail when diversity fails");
+    assert!(
+        gate.mrr_floor_passed,
+        "mrr_floor_passed independent of diversity"
+    );
+    assert!(
+        !gate.overall_passed,
+        "overall must fail when diversity fails"
+    );
 }
 
 /// AC-13, R-05, R-14: MRR floor fails → veto fires, diversity independent.
@@ -604,7 +631,7 @@ fn test_check_distribution_targets_mrr_floor_fail() {
         profile_name: "ppr-candidate".to_string(),
         scenario_count: 5,
         mean_p_at_k: 0.78,
-        mean_mrr: 0.28,  // below floor 0.35; baseline MRR would be 0.60 (above floor)
+        mean_mrr: 0.28, // below floor 0.35; baseline MRR would be 0.60 (above floor)
         mean_latency_ms: 62.0,
         p_at_k_delta: 0.03,
         mrr_delta: -0.32,
@@ -626,15 +653,24 @@ fn test_check_distribution_targets_mrr_floor_fail() {
     // Diversity passes (both cc_at_k and icd meet targets).
     assert!(gate.cc_at_k.passed, "cc_at_k: 0.65 >= 0.60 must pass");
     assert!(gate.icd.passed, "icd: 1.35 >= 1.20 must pass");
-    assert!(gate.diversity_passed, "diversity must pass when cc_at_k and icd pass");
+    assert!(
+        gate.diversity_passed,
+        "diversity must pass when cc_at_k and icd pass"
+    );
 
     // MRR floor fails — checks candidate MRR (0.28), not baseline MRR (0.60).
-    assert_eq!(gate.mrr_floor.actual, 0.28, "actual MRR must be candidate's mean_mrr (0.28), not baseline (0.60)");
+    assert_eq!(
+        gate.mrr_floor.actual, 0.28,
+        "actual MRR must be candidate's mean_mrr (0.28), not baseline (0.60)"
+    );
     assert!(!gate.mrr_floor.passed, "mrr_floor: 0.28 < 0.35 must fail");
     assert!(!gate.mrr_floor_passed, "mrr_floor_passed must be false");
 
     // Overall fails even though diversity passed (veto semantics, ADR-003).
-    assert!(!gate.overall_passed, "overall must fail: MRR floor veto fires even when diversity passes");
+    assert!(
+        !gate.overall_passed,
+        "overall must fail: MRR floor veto fires even when diversity passes"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -649,8 +685,8 @@ fn test_check_distribution_targets_mrr_floor_fail() {
 /// SPECIFICATION.md constraint 8).
 #[test]
 fn test_distribution_gate_baseline_rejected() {
-    use tempfile::TempDir;
     use crate::eval::profile::parse_profile_toml;
+    use tempfile::TempDir;
 
     let dir = TempDir::new().unwrap();
     let path = dir.path().join("baseline.toml");

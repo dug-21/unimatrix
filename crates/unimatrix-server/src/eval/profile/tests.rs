@@ -310,7 +310,8 @@ mod tests {
         )
         .unwrap();
 
-        let profile = parse_profile_toml(&path).expect("valid distribution-change profile must parse");
+        let profile =
+            parse_profile_toml(&path).expect("valid distribution-change profile must parse");
 
         assert_eq!(profile.name, "ppr-candidate");
         assert!(
@@ -453,11 +454,7 @@ mod tests {
     fn test_parse_no_distribution_change_flag() {
         let dir = TempDir::new().unwrap();
         let path = dir.path().join("baseline.toml");
-        std::fs::write(
-            &path,
-            "[profile]\nname = \"baseline\"\n",
-        )
-        .unwrap();
+        std::fs::write(&path, "[profile]\nname = \"baseline\"\n").unwrap();
 
         let profile = parse_profile_toml(&path).expect("standard profile must parse");
 
