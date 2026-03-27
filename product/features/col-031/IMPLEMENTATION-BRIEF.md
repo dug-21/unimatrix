@@ -105,10 +105,8 @@ pub struct PhaseFreqRow {
     pub phase: String,
     pub category: String,
     pub entry_id: u64,
-    /// Raw COUNT(*) from SQL aggregation.
-    /// NOTE: delivery agent must confirm whether sqlx maps SQLite INTEGER COUNT(*)
-    /// to i64 or u64 and reconcile the field type accordingly (see delivery note below).
-    pub freq: u64,  // WARN: may need to be i64 — see delivery note
+    /// Raw COUNT(*) from SQL aggregation. sqlx maps SQLite INTEGER to i64.
+    pub freq: i64,
 }
 ```
 
@@ -236,12 +234,12 @@ Rules:
 | `w_phase_explicit` is an additive term outside the six-weight sum constraint. `validate()` logic is unchanged; only the FusionWeights sum-check comment requires updating. | SCOPE.md, NFR-09 |
 | Background tick is the sole writer of `PhaseFreqTableHandle`. Search hot path is read-only. | SCOPE.md, NFR-04 |
 | Phase vocabulary is runtime strings — no compile-time enum. Phase rename makes old key go cold (neutral); new key starts empty. Silent degradation is accepted behavior; document in code comments. | SCOPE.md, C-05, NFR-08 |
-| No new crate dependencies. Uses only `std::collections::HashMap`, `std::sync::{Arc, RwLock}`, existing `tokio`, `rusqlite`/`sqlx`, `tracing`. | NFR-10 |
+| No new crate dependencies. Uses only `std::collections::HashMap`, `std::sync::{Arc, RwLock}`, existing `tokio`, `sqlx`, `tracing`. | NFR-10 |
 | No schema migration. Zero new tables, columns, or migrations. | NFR-07 |
 | No `query_log` GC implementation. `query_log_retention_cycles` governs lookback window only; GC belongs to #409. | C-09 |
 | Existing `TICK_TIMEOUT` applies to the full tick including the frequency table rebuild. No separate inner timeout. | C-11 |
 | `json_each` form must be verified against a live `query_log` row (AC-08 integration test is the gate). Do not assume correctness from SCOPE.md prose. | ADR-003, C-02 |
-| Confirm whether `COUNT(*)` via sqlx returns `i64` or `u64` from SQLite and set `PhaseFreqRow.freq` type accordingly. | See delivery note. |
+| `PhaseFreqRow.freq` is `i64` — sqlx maps all SQLite INTEGER (including COUNT(*)) to `i64`. | ADR-002, NFR-10 |
 
 ---
 
@@ -261,7 +259,7 @@ Rules:
 | `eval/scenarios/extract.rs` | To be modified | Add `current_phase` to scenario extraction. Bounded change. |
 | `tracing` crate | Active | `tracing::error!` on tick rebuild failure; `tracing::debug!` for timing. |
 | `tokio` | Active | `rebuild` is `async fn`. |
-| `rusqlite` / `sqlx` | Active | SQL aggregation in `unimatrix-store`. |
+| `sqlx` | Active | SQL aggregation in `unimatrix-store`. |
 | GH #409 retention framework | Not yet shipped | `query_log_retention_cycles` default (20) aligns with #409; GC logic belongs there, not here. |
 
 ---
@@ -296,14 +294,9 @@ Rules:
 | Risk Completeness | PASS | 14 risks catalogued; all SR-01 through SR-07 scope risks traced; Critical and High risks have multi-scenario coverage. |
 | Scope Additions | WARN (non-blocking) | Architecture adds lock ordering formalization (ADR-004) and timing observability instrumentation (SR-07) not explicitly in SCOPE.md. Both are necessary elaborations that resolve risks explicitly identified in SCOPE-RISK-ASSESSMENT.md. No approval required. |
 
-### Delivery Note — Type Inconsistency (must resolve before implementation)
+### Delivery Note — `PhaseFreqRow.freq` is `i64`
 
-SPECIFICATION.md FR-06 specifies `Store::query_phase_freq_table` returns `Vec<(String, String, u64, i64)>` (note `i64` for `freq_count`), while ARCHITECTURE.md Integration Point table shows `PhaseFreqRow.freq: u64`. The discrepancy arises because SQLite's `COUNT(*)` returns an INTEGER, and sqlx typically deserializes SQLite INTEGER as `i64`. RISK-TEST-STRATEGY.md R-13 scenario 1 flags this exact concern.
-
-**Delivery agent must:**
-1. Confirm what type sqlx returns for `COUNT(*)` on a SQLite INTEGER column in this codebase.
-2. Set `PhaseFreqRow.freq` to that type (`i64` or `u64`) consistently across `PhaseFreqRow`, the SQL query mapping, and `PhaseFreqTable::rebuild` conversion logic.
-3. If `i64`, add a runtime non-negative assertion or `as u64` cast with a comment explaining the safe cast (COUNT is always ≥ 0).
+sqlx maps all SQLite INTEGER columns (including `COUNT(*)`) to `i64`. `PhaseFreqRow.freq` is `i64` throughout — in the struct definition, the SQL query mapping, and `PhaseFreqTable::rebuild`. COUNT is always ≥ 0; no assertion needed, but an `as u64` cast with a comment is acceptable if the rebuild logic requires unsigned arithmetic.
 
 ---
 

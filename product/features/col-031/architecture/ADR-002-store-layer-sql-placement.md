@@ -39,7 +39,7 @@ pub struct PhaseFreqRow {
     pub phase: String,
     pub category: String,
     pub entry_id: u64,
-    pub freq: u64,
+    pub freq: i64,
 }
 ```
 

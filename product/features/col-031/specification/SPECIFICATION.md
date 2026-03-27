@@ -160,7 +160,7 @@ comment must be updated; `validate()` logic is unchanged (per-field range `[0.0,
 covers 0.05).
 
 **NFR-10** — **No new crate dependencies**: The implementation uses only SQLite (via existing
-`rusqlite`/`sqlx`), `tokio` (existing), and standard `std::collections::HashMap`. No new crates
+`sqlx`), `tokio` (existing), and standard `std::collections::HashMap`. No new crates
 may be added.
 
 ---
@@ -452,7 +452,7 @@ frequency table rebuild. No separate inner timeout for `PhaseFreqTable::rebuild`
 | Eval harness `extract.rs` | Internal (eval crate) | To be modified | Add `current_phase` to scenario extraction. Bounded change. |
 | `tracing` crate | Crate (existing) | Active | For `tracing::error!` on tick rebuild failure. |
 | `tokio` (async runtime) | Crate (existing) | Active | `rebuild` is `async`. |
-| `rusqlite` / `sqlx` | Crate (existing) | Active | SQL aggregation in `unimatrix-store`. |
+| `sqlx` | Crate (existing) | Active | SQL aggregation in `unimatrix-store`. |
 
 ---
 

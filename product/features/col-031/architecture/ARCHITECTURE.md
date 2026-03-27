@@ -66,7 +66,7 @@ Single-responsibility: execute the SQL aggregation and return raw rows.
 - SQL aggregation over `query_log` joined with `entries` via `json_each`.
 - Filters `WHERE phase IS NOT NULL`.
 - Retention window via `feature_cycle` subquery (last N completed cycles or open cycles).
-- Returns `Vec<PhaseFreqRow>` — `(phase: String, category: String, entry_id: u64, freq: u64)`.
+- Returns `Vec<PhaseFreqRow>` — `(phase: String, category: String, entry_id: u64, freq: i64)`.
 
 **Location:** `crates/unimatrix-store/src/query_log.rs` — extends the existing
 `query_log` module rather than creating a new file. Follows the pattern of
@@ -272,7 +272,7 @@ See ADR files:
 | `PhaseFreqTable::phase_affinity_score` | `fn phase_affinity_score(&self, entry_id: u64, entry_category: &str, phase: &str) -> f32` | `services/phase_freq_table.rs` |
 | `PhaseFreqTableHandle` | `type PhaseFreqTableHandle = Arc<RwLock<PhaseFreqTable>>` | `services/phase_freq_table.rs` |
 | `Store::query_phase_freq_table` | `async fn query_phase_freq_table(&self, retention_cycles: u32) -> Result<Vec<PhaseFreqRow>>` | `unimatrix-store/src/query_log.rs` |
-| `PhaseFreqRow` | `struct PhaseFreqRow { phase: String, category: String, entry_id: u64, freq: u64 }` | `unimatrix-store/src/query_log.rs` |
+| `PhaseFreqRow` | `struct PhaseFreqRow { phase: String, category: String, entry_id: u64, freq: i64 }` | `unimatrix-store/src/query_log.rs` |
 | `ServiceLayer::phase_freq_table_handle` | `fn phase_freq_table_handle(&self) -> PhaseFreqTableHandle` | `services/mod.rs` |
 | `InferenceConfig::query_log_retention_cycles` | `u32`, default `20` | `infra/config.rs` |
 
@@ -286,7 +286,7 @@ See ADR files:
 | `phase_affinity_score` | `(&self, entry_id: u64, entry_category: &str, phase: &str) -> f32` | `services/phase_freq_table.rs` |
 | `PhaseFreqTable.table` | `HashMap<(String, String), Vec<(u64, f32)>>` | `services/phase_freq_table.rs` |
 | `PhaseFreqTable.use_fallback` | `bool` | `services/phase_freq_table.rs` |
-| `PhaseFreqRow` | `{ phase: String, category: String, entry_id: u64, freq: u64 }` | `unimatrix-store/src/query_log.rs` |
+| `PhaseFreqRow` | `{ phase: String, category: String, entry_id: u64, freq: i64 }` | `unimatrix-store/src/query_log.rs` |
 | `query_phase_freq_table` | `async fn(&self, retention_cycles: u32) -> Result<Vec<PhaseFreqRow>>` | `unimatrix-store/src/query_log.rs` |
 | `FusedScoreInputs.phase_explicit_norm` | `f64` (was hardcoded `0.0`; now computed from `phase_affinity_score as f64`) | `services/search.rs` |
 | `InferenceConfig.w_phase_explicit` | `f64`, default changed `0.0 → 0.05` | `infra/config.rs` |

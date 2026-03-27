@@ -190,10 +190,10 @@
 ### R-13: `PhaseFreqRow` public API surface growth
 **Severity**: Low
 **Likelihood**: Low
-**Impact**: Exporting `PhaseFreqRow` from `unimatrix-store` is a minor public API expansion. Future changes to field types (e.g., `freq: u64 → i64` for sqlx compatibility, or adding a `weight` field) require coordinated changes in both crates.
+**Impact**: Exporting `PhaseFreqRow` from `unimatrix-store` is a minor public API expansion. Future changes to field types (e.g., adding a `weight` field) require coordinated changes in both crates.
 
 **Test Scenarios**:
-1. Code review: confirm `PhaseFreqRow` fields match the SQL column types exactly (`entry_id: u64`, `freq: u64`) to avoid silent truncation on the `CAST(je.value AS INTEGER)` boundary.
+1. Code review: confirm `PhaseFreqRow` fields match the SQL column types exactly (`entry_id: u64`, `freq: i64` — sqlx maps SQLite INTEGER to `i64`) to avoid silent truncation on the `CAST(je.value AS INTEGER)` boundary.
 2. No additional test needed — this is a compile-time contract; type mismatches fail build.
 
 **Coverage Requirement**: Code review only.
