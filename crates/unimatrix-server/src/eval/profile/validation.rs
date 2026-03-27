@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::infra::config::UnimatrixConfig;
 
 use super::error::EvalError;
-use super::types::EvalProfile;
+use super::types::{DistributionTargets, EvalProfile};
 
 /// Expected sum of the six confidence weight fields (ADR-005 invariant).
 pub(super) const EXPECTED_WEIGHT_SUM: f64 = 0.92;
@@ -79,6 +79,75 @@ pub(crate) fn parse_profile_toml(path: &Path) -> Result<EvalProfile, EvalError> 
         .and_then(|d| d.as_str())
         .map(|s| s.to_string());
 
+    // Extract [profile].distribution_change and [profile.distribution_targets]
+    // BEFORE the [profile] section is stripped (FR-04, SR-07, constraint 3).
+    // Extraction must precede the table.remove("profile") call below.
+    let profile_section = raw.get("profile");
+
+    let distribution_change: bool = profile_section
+        .and_then(|p| p.get("distribution_change"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let distribution_targets: Option<DistributionTargets> = if distribution_change {
+        // Baseline profiles must not declare distribution_change = true (ADR-001,
+        // constraint 8).
+        if name.eq_ignore_ascii_case("baseline") {
+            return Err(EvalError::ConfigInvariant(
+                "baseline profile must not declare `distribution_change = true`".to_string(),
+            ));
+        }
+
+        // [profile.distribution_targets] sub-table is required when flag is set.
+        let targets_table = profile_section
+            .and_then(|p| p.get("distribution_targets"))
+            .and_then(|v| v.as_table());
+
+        let targets_table = targets_table.ok_or_else(|| {
+            EvalError::ConfigInvariant(
+                "[profile.distribution_targets] is required when distribution_change = true"
+                    .to_string(),
+            )
+        })?;
+
+        // All three fields are required; name the missing one explicitly (NFR-06).
+        let cc_at_k_min = targets_table
+            .get("cc_at_k_min")
+            .and_then(|v| v.as_float())
+            .ok_or_else(|| {
+                EvalError::ConfigInvariant(
+                    "[profile.distribution_targets].cc_at_k_min is required".to_string(),
+                )
+            })?;
+
+        let icd_min = targets_table
+            .get("icd_min")
+            .and_then(|v| v.as_float())
+            .ok_or_else(|| {
+                EvalError::ConfigInvariant(
+                    "[profile.distribution_targets].icd_min is required".to_string(),
+                )
+            })?;
+
+        let mrr_floor = targets_table
+            .get("mrr_floor")
+            .and_then(|v| v.as_float())
+            .ok_or_else(|| {
+                EvalError::ConfigInvariant(
+                    "[profile.distribution_targets].mrr_floor is required".to_string(),
+                )
+            })?;
+
+        Some(DistributionTargets {
+            cc_at_k_min,
+            icd_min,
+            mrr_floor,
+        })
+    } else {
+        // distribution_change = false or absent → targets not needed.
+        None
+    };
+
     // Build config_overrides by stripping [profile] section then deserializing
     // the remainder as UnimatrixConfig. This allows [confidence] and [inference]
     // sections to flow through to the UnimatrixConfig defaults.
@@ -105,7 +174,7 @@ pub(crate) fn parse_profile_toml(path: &Path) -> Result<EvalProfile, EvalError> 
         name,
         description,
         config_overrides,
-        distribution_change: false,
-        distribution_targets: None,
+        distribution_change,
+        distribution_targets,
     })
 }
