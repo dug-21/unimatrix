@@ -37,10 +37,23 @@ The architecture defines the integration surface. Your pseudocode MUST reference
 
 Read individual ADR files in `product/features/{feature-id}/architecture/ADR-*.md`. These contain design decisions your pseudocode must follow.
 
-### 3. Query Patterns and Procedures
+### 3. Query Unimatrix
 
-- Use `/uni-query-patterns` to search for existing component patterns in affected crates — build on established patterns, note deviations
-- Use `/uni-knowledge-search` (category: "procedure") to find design procedures relevant to your task. If server unavailable or no results, proceed without — this is non-blocking.
+Call `context_briefing` using a 1-2 sentence summary of your specific task from your spawn prompt:
+
+```
+mcp__unimatrix__context_briefing({
+  "task": "<1-2 sentence summary of your specific pseudocode task>",
+  "feature": "{feature-id}",
+  "agent_id": "{agent-id}"
+})
+```
+
+Then optionally:
+- Use `/uni-knowledge-search` to find design procedures or component patterns relevant to your task
+- Use `context_get` (with entry ID) for specific entries surfaced by the briefing
+
+If the server is unavailable or returns no results, proceed without — this is non-blocking.
 
 ## Design Principles (How to Think)
 
@@ -117,7 +130,7 @@ Read-only tier — no storage expected. Query `/uni-query-patterns` for affected
 ### Report Block
 ```markdown
 ## Knowledge Stewardship
-- Queried: /uni-query-patterns for {crate} -- {findings summary or "no results"}
+- Queried: mcp__unimatrix__context_briefing -- {findings summary or "no results"}
 - Deviations from established patterns: {list or "none"}
 ```
 

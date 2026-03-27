@@ -78,9 +78,17 @@ You are responsible for architectural decisions in Unimatrix. Every ADR you prod
 
 Before writing any architecture or ADRs for a new feature, you MUST:
 
-1. **Search for prior decisions in the affected domain** — Use `/uni-knowledge-search` with the feature's domain keywords (e.g., "serialization", "MCP transport", "error handling"). This surfaces ADRs from prior features that may constrain or inform your decisions.
+1. **Call context_briefing** — Summarize your specific task from your spawn prompt and retrieve all relevant prior decisions:
 
-2. **Use `/uni-query-patterns` to search for existing component patterns and conventions in affected crates**
+   ```
+   mcp__unimatrix__context_briefing({
+     "task": "<1-2 sentence summary of your specific architecture task>",
+     "feature": "{feature-id}",
+     "agent_id": "{agent-id}"
+   })
+   ```
+
+2. **Search for prior decisions in the affected domain** — Optionally use `/uni-knowledge-search` with the feature's domain keywords (e.g., "serialization", "MCP transport", "error handling") for deeper search beyond what briefing returned.
 
 3. **Look up ADRs for related features** — Use `/uni-knowledge-lookup` with the topic set to related feature IDs (e.g., `topic: "nxs-001"`, `category: "decision"`). Check if any existing decisions conflict with or are superseded by your new feature's requirements.
 
@@ -173,6 +181,6 @@ Do not store feature-specific details that won't generalize.
 - [ ] Integration Surface table included for features with cross-boundary concerns
 - [ ] No placeholder or TBD sections — flag unknowns as open questions instead
 - [ ] All output files within `product/features/{feature-id}/architecture/`
-- [ ] Searched Unimatrix for existing ADRs in the affected domain before designing
+- [ ] Called context_briefing before designing and applied relevant prior decisions
 - [ ] Every ADR stored in Unimatrix via `/uni-store-adr` (file-only ADR = incomplete)
 - [ ] Any superseded ADRs have deprecation notices stored in Unimatrix

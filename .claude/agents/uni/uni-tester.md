@@ -28,8 +28,21 @@ Your spawn prompt tells you which phase you're in. Read it carefully.
 
 ## MANDATORY: Before Starting
 
-Query Unimatrix for procedural knowledge relevant to your task:
-- Use `/uni-knowledge-search` (category: "procedure") for testing procedures (e.g., "gate verification steps," "integration test triage"). If server unavailable or no results, proceed without — this is non-blocking.
+Call `context_briefing` using a 1-2 sentence summary of your specific task from your spawn prompt. Use your current phase to describe what you are doing:
+
+```
+mcp__unimatrix__context_briefing({
+  "task": "<1-2 sentence summary of your specific testing task>",
+  "feature": "{feature-id}",
+  "agent_id": "{agent-id}"
+})
+```
+
+Then optionally:
+- Use `/uni-knowledge-search` for testing procedures (e.g., "gate verification steps," "integration test triage")
+- Use `context_get` (with entry ID) for specific entries surfaced by the briefing
+
+If the server is unavailable or returns no results, proceed without — this is non-blocking.
 
 ---
 
@@ -271,7 +284,7 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 ## Knowledge Stewardship
 
 ### Before Starting
-Query `/uni-knowledge-search` (category: "procedure") for testing procedures relevant to your task. Also query `/uni-query-patterns` for the crate(s) being tested — patterns often reveal edge cases worth testing.
+Already covered in the **MANDATORY: Before Starting** section above.
 
 ### After Completing
 Store new test infrastructure patterns via `/uni-store-pattern` or `/uni-store-procedure`:
@@ -285,7 +298,7 @@ If nothing novel was discovered, state that explicitly in your report with a rea
 Include in your agent report:
 ```markdown
 ## Knowledge Stewardship
-- Queried: /uni-knowledge-search for testing procedures -- {findings summary or "no results"}
+- Queried: mcp__unimatrix__context_briefing -- {findings summary or "no results"}
 - Stored: entry #{id} "{title}" via /uni-store-pattern (or "nothing novel to store -- {reason}")
 ```
 

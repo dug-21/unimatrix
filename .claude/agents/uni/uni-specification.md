@@ -25,6 +25,20 @@ You produce the Specification artifact for Unimatrix features. You translate SCO
 From the Design Leader's spawn prompt:
 - Feature ID and SCOPE.md path
 
+## MANDATORY: Before Starting
+
+Call `context_briefing` using a 1-2 sentence summary of your specific task from your spawn prompt:
+
+```
+mcp__unimatrix__context_briefing({
+  "task": "<1-2 sentence summary of your specific specification task>",
+  "feature": "{feature-id}",
+  "agent_id": "{agent-id}"
+})
+```
+
+Then optionally use `/uni-knowledge-search` to find established conventions and acceptance criteria patterns from prior features in the same domain. If the server is unavailable or returns no results, proceed without — this is non-blocking.
+
 ## What You Produce
 
 ### SPECIFICATION.md
@@ -71,12 +85,10 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 
 Read-only tier — no storage expected. Spec decisions are feature-specific, not generalizable patterns. The retro can promote any interpretation that turns out to generalize.
 
-Query `/uni-query-patterns` for the feature's domain before writing to find established conventions and AC patterns from prior features.
-
 ### Report Block
 ```markdown
 ## Knowledge Stewardship
-- Queried: /uni-query-patterns for {domain} -- {findings summary or "no results"}
+- Queried: mcp__unimatrix__context_briefing -- {findings summary or "no results"}
 ```
 
 ## Self-Check (Run Before Returning Results)

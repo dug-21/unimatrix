@@ -45,10 +45,23 @@ Read the files specified in your spawn prompt:
 
 Read relevant ADRs in `architecture/ADR-*.md`. These are binding design decisions.
 
-### 3. Query Patterns and Procedures
+### 3. Query Unimatrix
 
-- Use `/uni-query-patterns` to search for existing component patterns and conventions in affected crates
-- Use `/uni-knowledge-search` (category: "procedure") to find procedural knowledge relevant to your task (e.g., "server integration file order," "crate bootstrapping sequence"). If server unavailable or no results, proceed without — this is non-blocking.
+Call `context_briefing` using a 1-2 sentence summary of your specific task from your spawn prompt:
+
+```
+mcp__unimatrix__context_briefing({
+  "task": "<1-2 sentence summary of your specific implementation task>",
+  "feature": "{feature-id}",
+  "agent_id": "{agent-id}"
+})
+```
+
+Then optionally:
+- Use `/uni-knowledge-search` to find implementation patterns, crate conventions, or procedural knowledge relevant to your task
+- Use `context_get` (with entry ID) for specific entries surfaced by the briefing
+
+If the server is unavailable or returns no results, proceed without — this is non-blocking.
 
 ## Design Principles (How to Think)
 
@@ -108,7 +121,7 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 ## Knowledge Stewardship
 
 ### Before Starting
-Query `/uni-query-patterns` for the crate(s) you're implementing in. Look for gotchas, traps, and conventions specific to the affected crate. Apply what you find — don't rediscover known patterns.
+Already covered in the **MANDATORY: Before Implementing** section above. The briefing surfaces gotchas, traps, and conventions for the affected crate. Apply what you find — don't rediscover known patterns.
 
 ### After Completing
 Store implementation patterns you discovered via `/uni-store-pattern`. Focus on gotchas invisible in source code — things that compile but break at runtime, non-obvious integration requirements, crate-specific traps. Use the crate name as topic (e.g., `unimatrix-store`).
@@ -124,7 +137,7 @@ If nothing novel was discovered, state that explicitly in your report with a rea
 Include in your agent report:
 ```markdown
 ## Knowledge Stewardship
-- Queried: /uni-query-patterns for {crate} -- {findings summary or "no results"}
+- Queried: mcp__unimatrix__context_briefing -- {findings summary or "no results"}
 - Stored: entry #{id} "{title}" via /uni-store-pattern (or "nothing novel to store -- {reason}")
 ```
 

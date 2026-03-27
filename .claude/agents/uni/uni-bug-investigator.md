@@ -32,13 +32,21 @@ From the Bugfix Manager's spawn prompt:
 - GH Issue URL or inline description
 - Previous diagnosis report path (if this is a rework after human feedback)
 
-## Before You Investigate
+## MANDATORY: Before You Investigate
 
-Query Unimatrix for prior knowledge that may accelerate diagnosis:
+Call `context_briefing` using a 1-2 sentence summary of your specific bug from your spawn prompt:
 
-1. **Known bug patterns** — `/uni-query-patterns` with the affected crate/module name to find recurring root cause patterns
-2. **Prior lessons** — `/uni-knowledge-search` with query describing the symptom (e.g., "confidence scoring returns wrong value") to find lessons from past bugfixes
-3. **Related decisions** — `/uni-knowledge-lookup` with `category: "decision"` and relevant topic to understand design intent
+```
+mcp__unimatrix__context_briefing({
+  "task": "<1-2 sentence summary of the bug you are diagnosing>",
+  "feature": "bugfix-{issue-number}",
+  "agent_id": "{agent-id}"
+})
+```
+
+Then optionally:
+- Use `/uni-knowledge-search` with a query describing the symptom (e.g., "confidence scoring returns wrong value") for lessons from prior bugfixes
+- Use `context_get` (with entry ID) for specific decisions or patterns surfaced by the briefing
 
 Findings from these queries should inform your investigation — don't re-discover what the team already knows.
 
@@ -152,7 +160,7 @@ Only store generalizable insights — the specific bug diagnosis lives on the GH
 Include in your agent report:
 ```markdown
 ## Knowledge Stewardship
-- Queried: /uni-query-patterns for {crate} -- {findings summary or "no results"}
+- Queried: mcp__unimatrix__context_briefing -- {findings summary or "no results"}
 - Stored: entry #{id} "{title}" via /uni-store-lesson (or "nothing novel to store -- {reason}")
 ```
 

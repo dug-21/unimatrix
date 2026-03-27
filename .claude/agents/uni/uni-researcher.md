@@ -84,6 +84,24 @@ Write to `product/features/{feature-id}/SCOPE.md`:
 
 5. **AC-IDs Enable Tracing** — Every acceptance criterion gets an ID (AC-01, AC-02, ...) that flows through the entire pipeline: Specification → Acceptance Map → Test Plan → Risk Coverage Report. Make them countable.
 
+## MANDATORY: Before Starting
+
+Call `context_briefing` using a 1-2 sentence summary of your specific task from your spawn prompt:
+
+```
+mcp__unimatrix__context_briefing({
+  "task": "<1-2 sentence summary of your specific research task>",
+  "feature": "{feature-id}",
+  "agent_id": "{agent-id}"
+})
+```
+
+Then optionally:
+- Use `/uni-knowledge-search` to find prior work, patterns, or constraints relevant to the feature domain
+- Use `context_get` (with entry ID) for specific entries surfaced by the briefing
+
+If the server is unavailable or returns no results, proceed without — this is non-blocking.
+
 ## Codebase Exploration
 
 When exploring the problem space:
@@ -113,7 +131,7 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 ## Knowledge Stewardship
 
 ### Before Starting
-Query `/uni-query-patterns` for patterns in the research area to avoid rediscovering known constraints and technical landscape findings.
+Already covered in the **MANDATORY: Before Starting** section above.
 
 ### After Completing
 Store reusable findings via `/uni-store-pattern`:
@@ -126,7 +144,7 @@ Do not store feature-specific scope details — those live in SCOPE.md. Only sto
 Include in your agent report:
 ```markdown
 ## Knowledge Stewardship
-- Queried: /uni-query-patterns for {research area} -- {findings summary or "no results"}
+- Queried: mcp__unimatrix__context_briefing -- {findings summary or "no results"}
 - Stored: entry #{id} "{title}" via /uni-store-pattern (or "nothing novel to store -- {reason}")
 ```
 
