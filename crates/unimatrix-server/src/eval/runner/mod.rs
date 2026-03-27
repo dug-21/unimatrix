@@ -17,12 +17,15 @@
 mod layer;
 mod metrics;
 mod output;
+pub(crate) mod profile_meta;
 mod replay;
 
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_metrics;
+
+pub use profile_meta::{DistributionTargetsJson, ProfileMetaEntry};
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -187,6 +190,13 @@ async fn run_eval_async(
     // NOTE: profiles and layers may now differ in length if NLI profiles were SKIPPED.
     // run_replay_loop works on the layers slice; use layer.profile_name() for labelling.
     replay::run_replay_loop(&profiles, &layers, &scenario_records, k, out).await?;
+
+    // 5. Write profile metadata sidecar after replay completes (nan-010).
+    // Passes the full profiles slice (including NLI-skipped profiles) so that all
+    // TOML-declared metadata is captured. If the run failed before this point,
+    // the sidecar is absent — eval report falls back to backward-compat mode.
+    profile_meta::write_profile_meta(&profiles, out)
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
     eprintln!("eval run: complete. results in {}", out.display());
     Ok(())

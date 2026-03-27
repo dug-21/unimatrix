@@ -31,6 +31,8 @@ mod tests_core_units;
 #[cfg(test)]
 mod tests_distribution;
 #[cfg(test)]
+mod tests_distribution_gate;
+#[cfg(test)]
 mod tests_distribution_pipeline;
 #[cfg(test)]
 mod tests_phase;
