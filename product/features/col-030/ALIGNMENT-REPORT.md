@@ -13,13 +13,15 @@
 
 ## Summary
 
+**6 PASS, 0 WARN, 0 FAIL** — all variances resolved before synthesis.
+
 | Check | Status | Notes |
 |-------|--------|-------|
 | Vision Alignment | PASS | Directly advances the "knowledge integrity" and "trustworthy retrieval" core vision |
 | Milestone Fit | PASS | Correctly positioned as Wave 1A stepping stone; no future-milestone capability introduced |
 | Scope Gaps | PASS | All SCOPE.md goals, non-goals, constraints, and acceptance criteria are represented in the source docs |
-| Scope Additions | WARN | Architecture adds a chain-suppression behaviour case (rank-0 → rank-2 → rank-3) not described in SCOPE.md §Suppression Logic; minor |
-| Architecture Consistency | WARN | Architecture resolves SCOPE.md Open Question 4 (file placement) but the specification carries OQ-01 as "Unresolved. Assigned to architect." — the two documents are out of sync |
+| Scope Additions | PASS | Chain-suppression test case (rank-0 → rank-2 → rank-3) confirmed consistent with SCOPE.md §Suppression Logic algorithm; safe addition |
+| Architecture Consistency | PASS | OQ-01 resolved in SPECIFICATION.md (ADR-001: `graph_suppression.rs`); `graph_tests.rs` placement corrected in ARCHITECTURE.md §Test Coverage Strategy |
 | Risk Completeness | PASS | RISK-TEST-STRATEGY covers all SCOPE-RISK-ASSESSMENT risks (SR-01 through SR-08) and adds 5 new delivery-specific risks with full scenario coverage |
 
 ---
@@ -35,43 +37,27 @@
 
 ---
 
-## Variances Requiring Approval
+## Variances — All Resolved
 
-### WARN-01: Specification carries OQ-01 as "Unresolved" while Architecture has resolved it
+### WARN-01 (RESOLVED): Specification carries OQ-01 as "Unresolved" while Architecture has resolved it
 
-**What**: SPECIFICATION.md §Open Questions states:
+**Original issue**: SPECIFICATION.md §Open Questions OQ-01 was marked "Unresolved. Assigned to architect." while ARCHITECTURE.md ADR-001 had already resolved it to `graph_suppression.rs`.
 
-> OQ-01 — File placement (SR-06, FR-12) ... *Status*: Unresolved. Assigned to architect.
+**Resolution**: SPECIFICATION.md §Open Questions OQ-01 updated to:
 
-ARCHITECTURE.md §File Placement Decision states:
-
-> Decision: `graph_suppression.rs` as a sibling module. (ADR-001)
-
-FR-12 in the specification itself reads "If ... the function must be placed in a new sibling module ... This placement decision must be resolved before implementation begins." The architect has resolved it. The specification's OQ-01 status block was not updated to reflect that resolution.
-
-**Why it matters**: An implementation agent reading only SPECIFICATION.md (the document they are most likely to follow as a delivery contract) sees an unresolved open question on file placement. This is the exact scenario SCOPE-RISK-ASSESSMENT SR-06 flagged as a gate-3b risk. If the delivery agent treats OQ-01 as genuinely open and makes their own placement choice (e.g., inline in `graph.rs`), it will produce a gate-3b violation because `graph.rs` is already at 587 lines.
-
-**Recommendation**: Before the implementation brief is issued, update SPECIFICATION.md §Open Questions OQ-01 to:
-
-> *Status*: Resolved by architecture (ADR-001). `suppress_contradicts` placed in `graph_suppression.rs`, re-exported from `graph.rs`. See ARCHITECTURE.md §File Placement Decision.
-
-This is a one-line edit with no functional change to the spec. The delivery coordinator should make this update before spawning the implementation agent.
+> *Status*: **Resolved — see ARCHITECTURE.md ADR-001.** Function goes in `crates/unimatrix-engine/src/graph_suppression.rs`, re-exported from `graph.rs` via `pub use graph_suppression::suppress_contradicts`. Unit tests go in `graph_suppression.rs` under `#[cfg(test)]` (NOT `graph_tests.rs` — 1,068 lines; see R-01 in RISK-TEST-STRATEGY.md).
 
 ---
 
-### WARN-02: `graph_tests.rs` line-count risk not surfaced in architecture document
+### WARN-02 (RESOLVED): `graph_tests.rs` line-count risk not surfaced in architecture document
 
-**What**: RISK-TEST-STRATEGY R-01 identifies `graph_tests.rs` at 1,068 lines — already more than double the 500-line convention — and classifies this as Critical/High. It mandates that new `suppress_contradicts` unit tests must live in a separate `graph_suppression_tests.rs` (or inline in `graph_suppression.rs` under `#[cfg(test)]`), not appended to the existing file.
+**Original issue**: ARCHITECTURE.md §Test Coverage Strategy directed unit tests to `graph_tests.rs` (1,068 lines), contradicting RISK-TEST-STRATEGY R-01 which mandates tests must NOT go there.
 
-ARCHITECTURE.md §Test Coverage Strategy states:
+**Resolution**: ARCHITECTURE.md updated in two places:
+1. §Component 3 heading changed from "Unit tests in `graph_tests.rs` (extended)" → "Unit tests in `graph_suppression.rs` (inline `#[cfg(test)]`)" with explicit NOT `graph_tests.rs` callout.
+2. §File Placement Decision and §Test Coverage Strategy now direct unit tests to `graph_suppression.rs` under `#[cfg(test)]`, referencing R-01.
 
-> Tests for `suppress_contradicts` using hand-constructed `TypedRelationGraph` instances ... go in `graph_tests.rs` to keep test colocation consistent with the existing pattern.
-
-This directly contradicts R-01's mandatory requirement. The architecture document sends the unit tests to a file that is already at 1,068 lines; the risk strategy says they must not go there.
-
-**Why it matters**: If the implementation brief follows ARCHITECTURE.md, the implementation agent will append tests to `graph_tests.rs`, producing a 1,148+ line file. Gate-3b checks file size and will reject the PR. This is classified as Critical/High in the risk strategy and was documented as a primary source of rework in nan-009 (entry #3580).
-
-**Recommendation**: Architecture §Test Coverage Strategy must be updated before the implementation brief is issued. Replace "go in `graph_tests.rs`" with a directive that unit tests for `suppress_contradicts` belong in `graph_suppression.rs` under `#[cfg(test)]`, or in a new `graph_suppression_tests.rs` sibling. The implementation brief must include this as an explicit, unambiguous placement instruction.
+All three source documents (ARCHITECTURE.md, SPECIFICATION.md, RISK-TEST-STRATEGY.md) now consistently direct unit tests to `graph_suppression.rs #[cfg(test)]`.
 
 ---
 
@@ -113,9 +99,9 @@ The architecture document is thorough, technically correct, and well-aligned wit
 - The parallel Vec invariant (SR-02) is addressed with an explicit code-level contract, not just a principle statement.
 - The integration surface table is complete and precise.
 
-One internal inconsistency (WARN-02 above): §Test Coverage Strategy directs unit tests to `graph_tests.rs` (currently 1,068 lines), contradicting the risk strategy's Critical/High finding.
+One internal inconsistency (WARN-02, now resolved): §Test Coverage Strategy previously directed unit tests to `graph_tests.rs` (1,068 lines), contradicting the risk strategy's Critical/High finding. Fixed: §Test Coverage Strategy and §Component 3 now direct tests to `graph_suppression.rs #[cfg(test)]`.
 
-One external inconsistency (WARN-01 above): the architecture resolves OQ-01 but the specification's OQ-01 status block was not updated.
+One external inconsistency (WARN-01, now resolved): the architecture resolved OQ-01 but the specification's OQ-01 status block was not updated. Fixed: SPECIFICATION.md §Open Questions OQ-01 marked resolved with reference to ADR-001.
 
 The architecture correctly avoids:
 - Touching the scoring formula (non-goal in SCOPE.md).
@@ -134,7 +120,7 @@ FR-13 expands SCOPE.md's six test cases to eight. The additions are:
 
 Both additions are safe and conservative — they prevent delivery-agent errors that SCOPE.md's original test case list would not catch.
 
-The specification carries one unfixed open question: OQ-01 (see WARN-01). All other open questions from SCOPE.md are correctly resolved and marked resolved in the specification.
+All open questions from SCOPE.md are correctly resolved and marked resolved in the specification, including OQ-01 (resolved per WARN-01 fix).
 
 NFR-05 (observability floor: DEBUG log with both suppressed entry ID and contradicting entry ID) is correctly derived from SCOPE-RISK-ASSESSMENT SR-04 and extended in the right direction. The specification does not weaken SR-04's recommendation.
 
