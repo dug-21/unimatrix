@@ -120,6 +120,12 @@ Index: `idx_query_log_ts ON query_log (ts)` (existing).
 
 There is **no `feature_cycle` column** in `query_log`. Retention is time-based.
 
+`ts` is stored as SQLite `INTEGER` (verified: `migration.rs` — `ts INTEGER NOT NULL`;
+`query_log.rs` — `row.try_get::<i64, _>(3)`). It holds Unix epoch seconds. The
+time-window arithmetic `strftime('%s', 'now') - lookback_days * 86400` is correct for
+this type. If `ts` were `TEXT` (ISO 8601), that arithmetic would silently return no rows;
+it is not TEXT.
+
 `result_entry_ids` is serialized by `serde_json::to_string(&[u64])` → unquoted JSON
 integers, e.g. `[42,7,19]`. The `json_each` expansion form is
 `CAST(json_each.value AS INTEGER)` (verified from `mcp/knowledge_reuse.rs` usage).
@@ -154,9 +160,14 @@ given phase. Min-max (even with a floor) collapses most entries near-zero with o
 at 1.0, producing a degenerate PPR personalization vector. Rank-based spreads signal evenly
 regardless of access count distribution, giving PageRank a richer gradient.
 
-Formula: `score = 1.0 - (rank as f32 / N as f32)` where rank is 0-indexed within the
-`(phase, category)` bucket, N = bucket size. Top entry (rank 0) → 1.0. Last entry → 1/N.
-Single-entry bucket: N=1, rank=0 → 1.0. Absent entry → 1.0 (neutral).
+Formula: `score = 1.0 - ((rank - 1) as f32 / N as f32)` where rank is 1-indexed within
+the `(phase, category)` bucket (rank 1 = most frequent), N = bucket size.
+Top entry (rank 1) → 1.0. Last entry (rank N) → (N-1)/N.
+Single-entry bucket (N=1, rank=1) → 1.0 — full signal, not zero.
+Absent entry → 1.0 (neutral).
+
+Note: `1 - rank/N` with 1-indexed rank produces `0.0` for N=1 (1 - 1/1 = 0). The
+1-based form `1 - (rank-1)/N` is used to make the single-entry case explicit and safe.
 
 ### Cold-Start Semantics: Two Behaviors, One Method
 
@@ -349,8 +360,9 @@ lock across the scoring loop. When `use_fallback = true` or `current_phase = Non
   `current_phase` values. AC-12 must not be declared passing without AC-16.
 
 - **AC-13**: Rank-based normalization: within each `(phase, category)` bucket,
-  `score = 1.0 - (rank / N)` (0-indexed rank, N = bucket size). Top entry → 1.0,
-  last entry → 1/N. Single-entry bucket → 1.0. Absent entry → 1.0.
+  `score = 1.0 - ((rank - 1) / N)` (1-indexed rank, N = bucket size). Top entry
+  (rank 1) → 1.0. Last entry (rank N) → (N-1)/N. Single-entry bucket (N=1) → 1.0.
+  Absent entry → 1.0.
 
 - **AC-14**: Unit test: `PhaseFreqTable::rebuild` from synthetic `query_log` (via
   existing test fixtures) produces correct `(phase, category)` keying, correct
