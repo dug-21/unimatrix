@@ -17,7 +17,9 @@ use unimatrix_engine::effectiveness::{
 };
 
 use unimatrix_engine::coaccess::MAX_CO_ACCESS_BOOST;
-use unimatrix_engine::graph::{FALLBACK_PENALTY, find_terminal_active, graph_penalty};
+use unimatrix_engine::graph::{
+    FALLBACK_PENALTY, find_terminal_active, graph_penalty, suppress_contradicts,
+};
 
 use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
 use crate::confidence::cosine_similarity;
@@ -902,6 +904,55 @@ impl SearchService {
         if let Some(conf_floor) = params.confidence_floor {
             results_with_scores.retain(|(entry, _)| entry.confidence >= conf_floor);
         }
+
+        // Step 10b: Contradicts collision suppression (col-030).
+        // Uses if-expression to re-bind final_scores at the correct scope for Step 11 (ADR-004, R-03).
+        // Guard: only when TypedRelationGraph is built (use_fallback = false).
+        // When use_fallback = true (cold-start), skip — all results pass through unchanged (AC-05).
+        // Both Vecs rebuilt in a single indexed pass to preserve the parallel Vec invariant (ADR-004, SR-02).
+        let final_scores = if !use_fallback {
+            let result_ids: Vec<u64> = results_with_scores
+                .iter()
+                .map(|(entry, _)| entry.id)
+                .collect();
+
+            let (keep_mask, contradicting_ids) = suppress_contradicts(&result_ids, &typed_graph);
+
+            // aligned_len MUST be results_with_scores.len(), NOT final_scores.len() (R-07).
+            // After Step 10 floors, results_with_scores may be shorter than final_scores.
+            let aligned_len = results_with_scores.len();
+
+            let mut new_rws: Vec<(EntryRecord, f64)> = Vec::with_capacity(aligned_len);
+            let mut new_fs: Vec<f64> = Vec::with_capacity(aligned_len);
+
+            // Single indexed pass over zip of the aligned prefix (ADR-004).
+            // Never two separate retain calls on each Vec — that violates SR-02 (silently misaligns).
+            for (i, (rw, &fs)) in results_with_scores
+                .iter()
+                .zip(final_scores[..aligned_len].iter())
+                .enumerate()
+            {
+                if keep_mask[i] {
+                    new_rws.push(rw.clone());
+                    new_fs.push(fs);
+                } else {
+                    // FR-09, NFR-05: emit DEBUG log with both IDs.
+                    tracing::debug!(
+                        suppressed_entry_id    = rw.0.id,
+                        contradicting_entry_id = ?contradicting_ids[i],
+                        "contradicts collision suppression: entry suppressed"
+                    );
+                }
+            }
+
+            results_with_scores = new_rws;
+            new_fs // expression: this Vec<f64> is the new value of the outer final_scores binding
+        } else {
+            // cold-start: original Vec<f64> passes through unchanged (AC-05)
+            final_scores
+        };
+        // final_scores is now the post-suppression Vec (or original on cold-start).
+        // Step 11 uses this binding — alignment with results_with_scores is preserved.
 
         // Step 11: Build ScoredEntry with fused final_score.
         // ScoredEntry.final_score = compute_fused_score * status_penalty (already computed).
@@ -3368,5 +3419,248 @@ mod tests {
         assert_eq!(effective_nli_active.w_phase_histogram, 0.02);
         assert_eq!(effective_nli_active.w_phase_explicit, 0.0);
         assert_eq!(effective_nli_active.w_nli, 0.35);
+    }
+
+    // =========================================================================
+    // col-030: Contradicts collision suppression — Step 10b integration tests
+    // =========================================================================
+
+    /// Build a TypedRelationGraph with a single Contradicts edge (source→target).
+    /// Uses build_typed_relation_graph with in-memory GraphEdgeRow fixtures (SR-07, R-12).
+    /// bootstrap_only=false is required — bootstrap_only=true edges are excluded.
+    fn make_graph_with_contradicts(
+        higher_id: u64,
+        lower_id: u64,
+    ) -> unimatrix_engine::graph::TypedRelationGraph {
+        use unimatrix_engine::graph::{GraphEdgeRow, RelationType, build_typed_relation_graph};
+        let entries = vec![
+            make_test_entry(higher_id, Status::Active, None, 0.9, "decision"),
+            make_test_entry(lower_id, Status::Active, None, 0.9, "decision"),
+        ];
+        let edges = vec![GraphEdgeRow {
+            source_id: higher_id,
+            target_id: lower_id,
+            relation_type: RelationType::Contradicts.as_str().to_string(),
+            weight: 1.0,
+            created_at: 0,
+            created_by: "test".to_string(),
+            source: "nli".to_string(),
+            bootstrap_only: false, // MUST be false — bootstrap_only=true excluded by build_typed_relation_graph
+        }];
+        build_typed_relation_graph(&entries, &edges).expect("valid graph with contradicts edge")
+    }
+
+    /// T-SC-08: Positive integration test — Step 10b removes the lower-ranked member
+    /// of a Contradicts pair. Higher-ranked entry A is retained; lower-ranked B is
+    /// suppressed; unrelated entry C is retained. (AC-07, FR-14, SR-05)
+    ///
+    /// Tests the Step 10b block logic directly against pre-built Vecs, mirroring
+    /// how the existing search.rs unit tests exercise sub-pipeline logic.
+    #[test]
+    fn test_step10b_contradicts_suppression_removes_lower_ranked() {
+        // Arrange: entries A (rank-0, sim=0.90), B (rank-1, sim=0.75), C (rank-2, sim=0.65).
+        // A and B share a Contradicts edge; A ranks higher. C has no edges.
+        let entry_a = make_test_entry(1, Status::Active, None, 0.9, "decision");
+        let entry_b = make_test_entry(2, Status::Active, None, 0.9, "decision");
+        let entry_c = make_test_entry(3, Status::Active, None, 0.9, "decision");
+
+        // Simulate post-Step-10 state: sorted DESC by final_score.
+        // results_with_scores: (entry, similarity) — sorted rank order
+        let mut results_with_scores: Vec<(EntryRecord, f64)> = vec![
+            (entry_a.clone(), 0.90), // rank-0 (highest)
+            (entry_b.clone(), 0.75), // rank-1 (contradicts rank-0 → will be suppressed)
+            (entry_c.clone(), 0.65), // rank-2 (no edges)
+        ];
+        // final_scores: parallel Vec<f64> (may be longer than results_with_scores in
+        // production after floors; here equal length for simplicity)
+        let final_scores: Vec<f64> = vec![0.90, 0.75, 0.65];
+
+        // Build typed graph with Contradicts edge A→B (source=1, target=2)
+        let typed_graph = make_graph_with_contradicts(1, 2);
+        let use_fallback = false;
+
+        // Act: replicate Step 10b block exactly as inserted into search.rs
+        let final_scores = if !use_fallback {
+            let result_ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
+            let (keep_mask, contradicting_ids) = suppress_contradicts(&result_ids, &typed_graph);
+            let aligned_len = results_with_scores.len();
+            let mut new_rws: Vec<(EntryRecord, f64)> = Vec::with_capacity(aligned_len);
+            let mut new_fs: Vec<f64> = Vec::with_capacity(aligned_len);
+            for (i, (rw, &fs)) in results_with_scores
+                .iter()
+                .zip(final_scores[..aligned_len].iter())
+                .enumerate()
+            {
+                if keep_mask[i] {
+                    new_rws.push(rw.clone());
+                    new_fs.push(fs);
+                } else {
+                    let _ = contradicting_ids[i]; // consumed in production by debug! log
+                }
+            }
+            results_with_scores = new_rws;
+            new_fs
+        } else {
+            final_scores
+        };
+
+        // Assert: A retained, B suppressed, C retained
+        assert_eq!(
+            results_with_scores.len(),
+            2,
+            "k=3 minus 1 suppressed = 2 results"
+        );
+        assert_eq!(
+            results_with_scores[0].0.id, 1,
+            "rank-0 (A, id=1) must be retained"
+        );
+        assert_eq!(
+            results_with_scores[1].0.id, 3,
+            "rank-2 (C, id=3) must be retained; rank-1 (B, id=2) was suppressed"
+        );
+        // B must be absent
+        let ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
+        assert!(!ids.contains(&2), "B (id=2) must be absent from results");
+
+        // final_scores shadow must be aligned with surviving entries
+        assert_eq!(
+            final_scores.len(),
+            2,
+            "final_scores must match result count"
+        );
+        assert!(
+            (final_scores[0] - 0.90).abs() < 1e-10,
+            "final_scores[0] must be A's score (0.90)"
+        );
+        assert!(
+            (final_scores[1] - 0.65).abs() < 1e-10,
+            "final_scores[1] must be C's score (0.65), not B's (0.75) — R-03 validation"
+        );
+    }
+
+    /// T-SC-09: Floor + suppression combo. Both Step 10 similarity floor and Step 10b
+    /// suppression active in the same pipeline invocation. Validates `aligned_len` (R-07)
+    /// and `final_scores` shadow correctness (R-03).
+    ///
+    /// Setup: A (sim=0.90, passes floor), B (sim=0.82, passes floor, contradicts A →
+    /// suppressed), C (sim=0.78, passes floor, no edges), D (sim=0.45, below floor →
+    /// removed at Step 10). After Step 10b: A and C survive; B and D absent.
+    ///
+    /// Critical: if aligned_len uses final_scores.len() (=4) instead of
+    /// results_with_scores.len() (=3), the zip panics or misaligns scores. The assertion
+    /// on results[1].final_score == F_C catches silent score misalignment (R-03).
+    #[test]
+    fn test_step10b_floor_and_suppression_combo_correct_scores() {
+        use unimatrix_engine::graph::{GraphEdgeRow, RelationType, build_typed_relation_graph};
+
+        // Arrange: four entries; D will be removed by floor; B will be suppressed.
+        let entry_a = make_test_entry(1, Status::Active, None, 0.9, "decision");
+        let entry_b = make_test_entry(2, Status::Active, None, 0.9, "decision");
+        let entry_c = make_test_entry(3, Status::Active, None, 0.9, "decision");
+        let entry_d = make_test_entry(4, Status::Active, None, 0.9, "decision");
+
+        // Pre-floor state: all four entries sorted by final_score DESC.
+        // final_scores has all 4 entries (NOT filtered by floor — matches production behaviour).
+        let score_a = 0.90_f64;
+        let score_b = 0.82_f64;
+        let score_c = 0.78_f64;
+        let score_d = 0.45_f64; // will be dropped by Step 10 floor
+
+        // final_scores built BEFORE Step 10 floors (parallel to the full sorted set).
+        let final_scores_pre: Vec<f64> = vec![score_a, score_b, score_c, score_d];
+
+        // Step 10: apply similarity floor (0.60) — removes D.
+        // results_with_scores holds (entry, similarity) AFTER floor.
+        let mut results_with_scores: Vec<(EntryRecord, f64)> = vec![
+            (entry_a.clone(), 0.90),
+            (entry_b.clone(), 0.82),
+            (entry_c.clone(), 0.78),
+            (entry_d.clone(), 0.45), // below floor
+        ];
+        let sim_floor = 0.60_f64;
+        results_with_scores.retain(|(_, sim)| *sim >= sim_floor);
+        // After floor: [(A, 0.90), (B, 0.82), (C, 0.78)] — len=3; final_scores_pre still len=4
+
+        // Build typed graph: Contradicts A→B (id=1 → id=2).
+        let entries_for_graph = vec![entry_a.clone(), entry_b.clone()];
+        let edges = vec![GraphEdgeRow {
+            source_id: 1,
+            target_id: 2,
+            relation_type: RelationType::Contradicts.as_str().to_string(),
+            weight: 1.0,
+            created_at: 0,
+            created_by: "test".to_string(),
+            source: "nli".to_string(),
+            bootstrap_only: false,
+        }];
+        let typed_graph =
+            build_typed_relation_graph(&entries_for_graph, &edges).expect("valid graph");
+        let use_fallback = false;
+
+        // Act: replicate Step 10b block. final_scores moves from pre-floor Vec into block.
+        let final_scores = if !use_fallback {
+            let result_ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
+            let (keep_mask, contradicting_ids) = suppress_contradicts(&result_ids, &typed_graph);
+            // CRITICAL (R-07): aligned_len MUST be results_with_scores.len() (=3), NOT
+            // final_scores_pre.len() (=4). Using 4 would panic or misalign.
+            let aligned_len = results_with_scores.len(); // = 3
+            let mut new_rws: Vec<(EntryRecord, f64)> = Vec::with_capacity(aligned_len);
+            let mut new_fs: Vec<f64> = Vec::with_capacity(aligned_len);
+            for (i, (rw, &fs)) in results_with_scores
+                .iter()
+                .zip(final_scores_pre[..aligned_len].iter())
+                .enumerate()
+            {
+                if keep_mask[i] {
+                    new_rws.push(rw.clone());
+                    new_fs.push(fs);
+                } else {
+                    let _ = contradicting_ids[i]; // consumed in production by debug! log
+                }
+            }
+            results_with_scores = new_rws;
+            new_fs
+        } else {
+            final_scores_pre
+        };
+
+        // Assert: 2 survivors — A and C; B suppressed; D removed by floor.
+        assert_eq!(
+            results_with_scores.len(),
+            2,
+            "D removed by floor + B suppressed → 2 survivors"
+        );
+        assert_eq!(
+            results_with_scores[0].0.id, 1,
+            "results[0] must be A (id=1)"
+        );
+        assert_eq!(
+            results_with_scores[1].0.id, 3,
+            "results[1] must be C (id=3)"
+        );
+
+        // B (id=2) and D (id=4) must be absent.
+        let ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
+        assert!(!ids.contains(&2), "B (id=2) must be absent (suppressed)");
+        assert!(!ids.contains(&4), "D (id=4) must be absent (below floor)");
+
+        // CRITICAL (R-03): final_scores shadow correctness.
+        // results[0] → score_a (0.90), results[1] → score_c (0.78).
+        // If the shadow is omitted, results[1] would pair with final_scores_pre[1] = score_b (0.82).
+        assert_eq!(
+            final_scores.len(),
+            2,
+            "final_scores must match result count"
+        );
+        assert!(
+            (final_scores[0] - score_a).abs() < 1e-10,
+            "final_scores[0] must be A's score ({score_a}), got {}",
+            final_scores[0]
+        );
+        assert!(
+            (final_scores[1] - score_c).abs() < 1e-10,
+            "final_scores[1] must be C's score ({score_c}), not B's ({score_b}), got {} — R-03 validation",
+            final_scores[1]
+        );
     }
 }
