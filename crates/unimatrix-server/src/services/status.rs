@@ -515,6 +515,13 @@ impl StatusService {
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
+            // Graph Cohesion Metrics (col-029) — populated later in Phase 5
+            graph_connectivity_rate: 0.0,
+            isolated_entry_count: 0,
+            cross_category_edge_count: 0,
+            supports_edge_count: 0,
+            mean_entry_degree: 0.0,
+            inferred_edge_count: 0,
             maintenance_recommendations: Vec::new(),
             total_outcomes,
             outcomes_by_type: outcomes_by_type.into_iter().collect(),

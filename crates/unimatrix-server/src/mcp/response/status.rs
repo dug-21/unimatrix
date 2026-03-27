@@ -67,6 +67,23 @@ pub struct StatusReport {
     pub graph_stale_ratio: f64,
     /// Whether graph compaction was performed this call.
     pub graph_compacted: bool,
+    // --- Graph Cohesion Metrics (col-029) ---
+    /// Fraction of active entries with at least one non-bootstrap edge. Range [0.0, 1.0].
+    /// 0.0 when no active entries exist or when compute_graph_cohesion_metrics() fails.
+    pub graph_connectivity_rate: f64,
+    /// Active entries with zero non-bootstrap edges on either endpoint.
+    /// Complement of connected_entry_count: total_active - connected_active.
+    pub isolated_entry_count: u64,
+    /// Non-bootstrap edges where both active endpoints have different category values.
+    /// Excludes edges where either endpoint is deprecated or quarantined.
+    pub cross_category_edge_count: u64,
+    /// Non-bootstrap edges with relation_type = 'Supports'.
+    pub supports_edge_count: u64,
+    /// Average in+out degree across active entries: (2 * non_bootstrap_edges) / active_entries.
+    /// 0.0 when no active entries exist or when compute_graph_cohesion_metrics() fails.
+    pub mean_entry_degree: f64,
+    /// Non-bootstrap edges with source = 'nli' (NLI-inferred edges from GH #412).
+    pub inferred_edge_count: u64,
     /// Actionable maintenance recommendations.
     pub maintenance_recommendations: Vec<String>,
     /// Total outcome entries.
@@ -131,6 +148,13 @@ impl Default for StatusReport {
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
+            // --- Graph Cohesion Metrics (col-029) ---
+            graph_connectivity_rate: 0.0,
+            isolated_entry_count: 0,
+            cross_category_edge_count: 0,
+            supports_edge_count: 0,
+            mean_entry_degree: 0.0,
+            inferred_edge_count: 0,
             maintenance_recommendations: Vec::new(),
             total_outcomes: 0,
             outcomes_by_type: Vec::new(),
@@ -226,6 +250,20 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             }
             if report.graph_compacted {
                 text.push_str("\nGraph compacted: yes");
+            }
+            // Graph cohesion summary (col-029)
+            // Suppress when all discriminating metrics are zero (empty/bootstrap-only store).
+            if report.isolated_entry_count > 0
+                || report.cross_category_edge_count > 0
+                || report.inferred_edge_count > 0
+            {
+                text.push_str(&format!(
+                    "\nGraph cohesion: {:.1}% connected, {} isolated, {} cross-category, {} inferred",
+                    report.graph_connectivity_rate * 100.0,
+                    report.isolated_entry_count,
+                    report.cross_category_edge_count,
+                    report.inferred_edge_count,
+                ));
             }
             for rec in &report.maintenance_recommendations {
                 text.push_str(&format!("\nRecommendation: {rec}"));
@@ -433,6 +471,40 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             text.push_str(&format!(
                 "Graph compacted: {}\n",
                 if report.graph_compacted { "yes" } else { "no" }
+            ));
+            // Graph Cohesion sub-section (col-029)
+            // Always present inside ### Coherence. Shows all six metrics regardless of
+            // whether they are zero — operators on a fresh store see the sub-section header
+            // and know the feature is active.
+            text.push_str("\n#### Graph Cohesion\n");
+            let connected_count = report
+                .total_active
+                .saturating_sub(report.isolated_entry_count);
+            text.push_str(&format!(
+                "- Connectivity: {:.1}% ({}/{} active entries connected)\n",
+                report.graph_connectivity_rate * 100.0,
+                connected_count,
+                report.total_active,
+            ));
+            text.push_str(&format!(
+                "- Isolated entries: {}\n",
+                report.isolated_entry_count,
+            ));
+            text.push_str(&format!(
+                "- Cross-category edges: {}\n",
+                report.cross_category_edge_count,
+            ));
+            text.push_str(&format!(
+                "- Supports edges: {}\n",
+                report.supports_edge_count,
+            ));
+            text.push_str(&format!(
+                "- Mean entry degree: {:.2}\n",
+                report.mean_entry_degree,
+            ));
+            text.push_str(&format!(
+                "- Inferred (NLI) edges: {}\n",
+                report.inferred_edge_count,
             ));
             if !report.maintenance_recommendations.is_empty() {
                 text.push_str("\n#### Maintenance Recommendations\n\n");
@@ -707,6 +779,13 @@ struct StatusReportJson {
     confidence_refreshed_count: u64,
     graph_stale_ratio: f64,
     graph_compacted: bool,
+    // Graph Cohesion Metrics (col-029)
+    graph_connectivity_rate: f64,
+    isolated_entry_count: u64,
+    cross_category_edge_count: u64,
+    supports_edge_count: u64,
+    mean_entry_degree: f64,
+    inferred_edge_count: u64,
     maintenance_recommendations: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     contradictions: Option<Vec<crate::infra::contradiction::ContradictionPair>>,
@@ -860,6 +939,148 @@ struct UnmatchedEntryJson {
 struct DataWindowJson {
     session_count: u32,
     span_days: u64,
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests (col-029)
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mcp::response::ResponseFormat;
+
+    fn result_text(result: &rmcp::model::CallToolResult) -> String {
+        result
+            .content
+            .first()
+            .and_then(|c| c.as_text())
+            .map(|t| t.text.clone())
+            .unwrap_or_default()
+    }
+
+    fn make_report_with_cohesion() -> StatusReport {
+        StatusReport {
+            graph_connectivity_rate: 0.75,
+            isolated_entry_count: 2,
+            cross_category_edge_count: 5,
+            supports_edge_count: 3,
+            mean_entry_degree: 1.5,
+            inferred_edge_count: 4,
+            ..StatusReport::default()
+        }
+    }
+
+    // --- status-report-fields tests ---
+
+    #[test]
+    fn test_status_report_default_cohesion_fields() {
+        let r = StatusReport::default();
+        assert_eq!(r.graph_connectivity_rate, 0.0_f64);
+        assert_eq!(r.isolated_entry_count, 0_u64);
+        assert_eq!(r.cross_category_edge_count, 0_u64);
+        assert_eq!(r.supports_edge_count, 0_u64);
+        assert_eq!(r.mean_entry_degree, 0.0_f64);
+        assert_eq!(r.inferred_edge_count, 0_u64);
+    }
+
+    // --- format-output tests ---
+
+    #[test]
+    fn test_format_summary_graph_cohesion_present() {
+        let report = make_report_with_cohesion();
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(
+            text.contains("Graph cohesion:"),
+            "Summary must include graph cohesion line"
+        );
+        assert!(
+            text.contains("75.0%"),
+            "Connectivity rate must appear as percentage with one decimal"
+        );
+        assert!(
+            text.contains(" 2 ") || text.contains(",2 ") || text.contains("2 isolated"),
+            "isolated_entry_count must appear"
+        );
+        assert!(
+            text.contains("5 cross-category"),
+            "cross_category_edge_count must appear"
+        );
+        assert!(
+            text.contains("4 inferred"),
+            "inferred_edge_count must appear"
+        );
+    }
+
+    #[test]
+    fn test_format_summary_graph_cohesion_absent() {
+        let report = StatusReport::default();
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(
+            !text.contains("Graph cohesion:"),
+            "Summary must omit graph cohesion line when all metrics are zero"
+        );
+    }
+
+    #[test]
+    fn test_format_markdown_graph_cohesion_section() {
+        let report = make_report_with_cohesion();
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let text = result_text(&result);
+
+        // Sub-section header must be present inside the Coherence block
+        assert!(
+            text.contains("#### Graph Cohesion"),
+            "Markdown must include #### Graph Cohesion"
+        );
+
+        // All six metric labels must appear (AC-10)
+        assert!(text.contains("Connectivity:"), "Missing Connectivity label");
+        assert!(
+            text.contains("Isolated entries:"),
+            "Missing Isolated entries label"
+        );
+        assert!(
+            text.contains("Cross-category edges:"),
+            "Missing Cross-category edges label"
+        );
+        assert!(
+            text.contains("Supports edges:"),
+            "Missing Supports edges label"
+        );
+        assert!(
+            text.contains("Mean entry degree:"),
+            "Missing Mean entry degree label"
+        );
+        assert!(
+            text.contains("Inferred (NLI) edges:"),
+            "Missing Inferred (NLI) edges label"
+        );
+
+        // Verify numeric values
+        assert!(
+            text.contains("75.0%"),
+            "Connectivity percentage must appear in Markdown"
+        );
+        assert!(
+            text.contains("1.50"),
+            "mean_entry_degree must appear with 2 decimal places"
+        );
+
+        // Verify placement: #### Graph Cohesion must appear after ### Coherence
+        let coherence_pos = text
+            .find("### Coherence")
+            .expect("### Coherence must exist");
+        let graph_cohesion_pos = text
+            .find("#### Graph Cohesion")
+            .expect("#### Graph Cohesion must exist");
+        assert!(
+            graph_cohesion_pos > coherence_pos,
+            "#### Graph Cohesion must appear after ### Coherence block"
+        );
+    }
 }
 
 impl From<&StatusReport> for StatusReportJson {
@@ -1029,6 +1250,13 @@ impl From<&StatusReport> for StatusReportJson {
             confidence_refreshed_count: r.confidence_refreshed_count,
             graph_stale_ratio: r.graph_stale_ratio,
             graph_compacted: r.graph_compacted,
+            // Graph Cohesion Metrics (col-029)
+            graph_connectivity_rate: r.graph_connectivity_rate,
+            isolated_entry_count: r.isolated_entry_count,
+            cross_category_edge_count: r.cross_category_edge_count,
+            supports_edge_count: r.supports_edge_count,
+            mean_entry_degree: r.mean_entry_degree,
+            inferred_edge_count: r.inferred_edge_count,
             maintenance_recommendations: r.maintenance_recommendations.clone(),
             contradictions,
             contradiction_count,
