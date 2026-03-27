@@ -447,3 +447,236 @@ fn test_distribution_gate_exit_code_zero() {
         result.err()
     );
 }
+
+// ---------------------------------------------------------------------------
+// Component 4: Distribution Gate Aggregation (`check_distribution_targets`)
+// ---------------------------------------------------------------------------
+
+/// AC-13, R-05, R-08: All three metrics pass → overall PASSED, individual flags correct.
+///
+/// Verifies that `diversity_passed`, `mrr_floor_passed`, and `overall_passed` are all true
+/// when cc_at_k, icd, and mrr all meet or exceed their targets (>= semantics).
+/// R-08: also checks that `mean_cc_at_k` and `mean_mrr` in AggregateStats are read correctly
+/// (not confused with baseline or wrong fields).
+#[test]
+fn test_check_distribution_targets_all_pass() {
+    use super::AggregateStats;
+    use super::aggregate::check_distribution_targets;
+    use crate::eval::profile::DistributionTargets;
+
+    let stats = AggregateStats {
+        profile_name: "ppr-candidate".to_string(),
+        scenario_count: 10,
+        mean_p_at_k: 0.80,
+        mean_mrr: 0.50,
+        mean_latency_ms: 55.0,
+        p_at_k_delta: 0.05,
+        mrr_delta: 0.03,
+        latency_delta_ms: 5.0,
+        mean_cc_at_k: 0.65,
+        mean_icd: 1.35,
+        cc_at_k_delta: 0.10,
+        icd_delta: 0.25,
+    };
+
+    let targets = DistributionTargets {
+        cc_at_k_min: 0.60,
+        icd_min: 1.20,
+        mrr_floor: 0.35,
+    };
+
+    let gate = check_distribution_targets(&stats, &targets);
+
+    // Per-metric assertions (R-08: verify correct field reads)
+    assert_eq!(gate.cc_at_k.target, 0.60, "cc_at_k target mismatch");
+    assert_eq!(gate.cc_at_k.actual, 0.65, "cc_at_k actual must be mean_cc_at_k");
+    assert!(gate.cc_at_k.passed, "cc_at_k: 0.65 >= 0.60 must pass");
+
+    assert_eq!(gate.icd.target, 1.20, "icd target mismatch");
+    assert_eq!(gate.icd.actual, 1.35, "icd actual must be mean_icd");
+    assert!(gate.icd.passed, "icd: 1.35 >= 1.20 must pass");
+
+    assert_eq!(gate.mrr_floor.target, 0.35, "mrr_floor target mismatch");
+    assert_eq!(gate.mrr_floor.actual, 0.50, "mrr_floor actual must be mean_mrr (candidate)");
+    assert!(gate.mrr_floor.passed, "mrr: 0.50 >= 0.35 must pass");
+
+    // Aggregate flags
+    assert!(gate.diversity_passed, "diversity must pass when cc_at_k and icd both pass");
+    assert!(gate.mrr_floor_passed, "mrr_floor must pass");
+    assert!(gate.overall_passed, "overall must pass when all metrics pass");
+}
+
+/// AC-13, R-05: CC@k fails target → diversity fails, overall fails, mrr_floor independent.
+#[test]
+fn test_check_distribution_targets_cc_at_k_fail() {
+    use super::AggregateStats;
+    use super::aggregate::check_distribution_targets;
+    use crate::eval::profile::DistributionTargets;
+
+    let stats = AggregateStats {
+        profile_name: "ppr-candidate".to_string(),
+        scenario_count: 5,
+        mean_p_at_k: 0.75,
+        mean_mrr: 0.50,
+        mean_latency_ms: 60.0,
+        p_at_k_delta: 0.02,
+        mrr_delta: 0.01,
+        latency_delta_ms: 8.0,
+        mean_cc_at_k: 0.45,  // below target 0.60
+        mean_icd: 1.35,
+        cc_at_k_delta: -0.05,
+        icd_delta: 0.15,
+    };
+
+    let targets = DistributionTargets {
+        cc_at_k_min: 0.60,
+        icd_min: 1.20,
+        mrr_floor: 0.35,
+    };
+
+    let gate = check_distribution_targets(&stats, &targets);
+
+    assert!(!gate.cc_at_k.passed, "cc_at_k: 0.45 < 0.60 must fail");
+    assert!(gate.icd.passed, "icd: 1.35 >= 1.20 must pass");
+    assert!(gate.mrr_floor.passed, "mrr_floor: 0.50 >= 0.35 must pass");
+
+    assert!(!gate.diversity_passed, "diversity must fail when cc_at_k fails");
+    assert!(gate.mrr_floor_passed, "mrr_floor_passed independent of diversity");
+    assert!(!gate.overall_passed, "overall must fail when diversity fails");
+}
+
+/// AC-13, R-05: ICD fails target → diversity fails, overall fails, cc_at_k independent.
+#[test]
+fn test_check_distribution_targets_icd_fail() {
+    use super::AggregateStats;
+    use super::aggregate::check_distribution_targets;
+    use crate::eval::profile::DistributionTargets;
+
+    let stats = AggregateStats {
+        profile_name: "ppr-candidate".to_string(),
+        scenario_count: 5,
+        mean_p_at_k: 0.78,
+        mean_mrr: 0.55,
+        mean_latency_ms: 58.0,
+        p_at_k_delta: 0.03,
+        mrr_delta: 0.02,
+        latency_delta_ms: 6.0,
+        mean_cc_at_k: 0.65,
+        mean_icd: 1.05,  // below target 1.20
+        cc_at_k_delta: 0.08,
+        icd_delta: -0.10,
+    };
+
+    let targets = DistributionTargets {
+        cc_at_k_min: 0.60,
+        icd_min: 1.20,
+        mrr_floor: 0.35,
+    };
+
+    let gate = check_distribution_targets(&stats, &targets);
+
+    assert!(gate.cc_at_k.passed, "cc_at_k: 0.65 >= 0.60 must pass");
+    assert!(!gate.icd.passed, "icd: 1.05 < 1.20 must fail");
+    assert!(gate.mrr_floor.passed, "mrr_floor: 0.55 >= 0.35 must pass");
+
+    assert!(!gate.diversity_passed, "diversity must fail when icd fails");
+    assert!(gate.mrr_floor_passed, "mrr_floor_passed independent of diversity");
+    assert!(!gate.overall_passed, "overall must fail when diversity fails");
+}
+
+/// AC-13, R-05, R-14: MRR floor fails → veto fires, diversity independent.
+///
+/// R-14 guard: fixture has candidate MRR (0.28) below floor (0.35) but
+/// baseline MRR would be higher (0.60). The gate must compare the CANDIDATE's
+/// mean_mrr against the floor — not the baseline's MRR. Using baseline MRR would
+/// incorrectly pass (0.60 >= 0.35). The test detects this regression.
+///
+/// Fixture: candidate MRR = 0.28, floor = 0.35, diversity targets met.
+#[test]
+fn test_check_distribution_targets_mrr_floor_fail() {
+    use super::AggregateStats;
+    use super::aggregate::check_distribution_targets;
+    use crate::eval::profile::DistributionTargets;
+
+    // Candidate stats: cc_at_k and icd pass their targets; MRR is below the floor.
+    // Baseline MRR (not passed here) would be 0.60, which is above the floor.
+    let candidate_stats = AggregateStats {
+        profile_name: "ppr-candidate".to_string(),
+        scenario_count: 5,
+        mean_p_at_k: 0.78,
+        mean_mrr: 0.28,  // below floor 0.35; baseline MRR would be 0.60 (above floor)
+        mean_latency_ms: 62.0,
+        p_at_k_delta: 0.03,
+        mrr_delta: -0.32,
+        latency_delta_ms: 10.0,
+        mean_cc_at_k: 0.65,
+        mean_icd: 1.35,
+        cc_at_k_delta: 0.10,
+        icd_delta: 0.25,
+    };
+
+    let targets = DistributionTargets {
+        cc_at_k_min: 0.60,
+        icd_min: 1.20,
+        mrr_floor: 0.35,
+    };
+
+    let gate = check_distribution_targets(&candidate_stats, &targets);
+
+    // Diversity passes (both cc_at_k and icd meet targets).
+    assert!(gate.cc_at_k.passed, "cc_at_k: 0.65 >= 0.60 must pass");
+    assert!(gate.icd.passed, "icd: 1.35 >= 1.20 must pass");
+    assert!(gate.diversity_passed, "diversity must pass when cc_at_k and icd pass");
+
+    // MRR floor fails — checks candidate MRR (0.28), not baseline MRR (0.60).
+    assert_eq!(gate.mrr_floor.actual, 0.28, "actual MRR must be candidate's mean_mrr (0.28), not baseline (0.60)");
+    assert!(!gate.mrr_floor.passed, "mrr_floor: 0.28 < 0.35 must fail");
+    assert!(!gate.mrr_floor_passed, "mrr_floor_passed must be false");
+
+    // Overall fails even though diversity passed (veto semantics, ADR-003).
+    assert!(!gate.overall_passed, "overall must fail: MRR floor veto fires even when diversity passes");
+}
+
+// ---------------------------------------------------------------------------
+// Component 2: Baseline Profile Rejection (`parse_profile_toml`)
+// ---------------------------------------------------------------------------
+
+/// R-03: Baseline profile with `distribution_change = true` is rejected at parse time.
+///
+/// Verifies that `parse_profile_toml` returns `Err(ConfigInvariant)` when a profile
+/// named "baseline" (case-insensitive) declares `distribution_change = true`.
+/// The error must be caught at parse time — before the sidecar write path (FR-04,
+/// SPECIFICATION.md constraint 8).
+#[test]
+fn test_distribution_gate_baseline_rejected() {
+    use tempfile::TempDir;
+    use crate::eval::profile::parse_profile_toml;
+
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join("baseline.toml");
+
+    // Write a TOML where the baseline profile declares distribution_change = true.
+    std::fs::write(
+        &path,
+        "[profile]\n\
+         name = \"baseline\"\n\
+         distribution_change = true\n\
+         \n\
+         [profile.distribution_targets]\n\
+         cc_at_k_min = 0.60\n\
+         icd_min = 1.20\n\
+         mrr_floor = 0.35\n",
+    )
+    .unwrap();
+
+    let result = parse_profile_toml(&path);
+    assert!(
+        result.is_err(),
+        "baseline profile with distribution_change = true must be rejected"
+    );
+    let msg = format!("{}", result.unwrap_err());
+    assert!(
+        msg.contains("baseline") && msg.contains("distribution_change"),
+        "error must mention 'baseline' and 'distribution_change', got: {msg}"
+    );
+}

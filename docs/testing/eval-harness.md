@@ -209,7 +209,8 @@ unimatrix eval run \
   --k        5
 ```
 
-This produces one JSON result file per scenario in `--out`, named by scenario ID.
+This produces one JSON result file per scenario in `--out`, named by scenario ID,
+plus a `profile-meta.json` sidecar in the same directory.
 
 **Flags:**
 
@@ -282,6 +283,29 @@ This produces one JSON result file per scenario in `--out`, named by scenario ID
 **Guard:** `eval run` applies the same live-DB path guard as `snapshot`. If `--db`
 resolves to the active daemon's database path (checked via `canonicalize()`), the
 command refuses with a non-zero exit code before opening any pool.
+
+**`profile-meta.json` sidecar:** After the eval loop completes, `eval run` writes
+`<--out>/profile-meta.json`. This file records the distribution-change configuration
+of each profile so `eval report` can dispatch Section 5 rendering correctly:
+
+```jsonc
+{
+  "version": 1,
+  "profiles": {
+    "baseline":      { "distribution_change": false, "distribution_targets": null },
+    "ppr-candidate": {
+      "distribution_change": true,
+      "distribution_targets": { "cc_at_k_min": 0.60, "icd_min": 1.20, "mrr_floor": 0.35 }
+    }
+  }
+}
+```
+
+`eval report` reads this file to decide whether to render the Zero-Regression Check
+or the Distribution Gate for each profile. If the sidecar is absent, `eval report`
+treats all profiles as zero-regression (backward-compatible with pre-nan-010 result
+directories). If the sidecar is present but malformed, `eval report` exits non-zero
+with the message: `profile-meta.json is malformed — re-run eval to regenerate`.
 
 **Memory note:** One `VectorIndex` instance is constructed per profile. For
 snapshots with large entry counts, running many profiles simultaneously will increase
@@ -378,6 +402,35 @@ trust = 0.12
 field or incorrect sum causes `eval run` to fail at profile construction with a
 user-readable error naming the expected and actual sums.
 
+**Candidate — distribution change (PPR/re-ranking):**
+
+When a change is expected to shift the result distribution rather than preserve
+it (e.g., Personalized PageRank, phase-conditioned re-ranking), declare
+`distribution_change = true` and supply explicit thresholds under
+`[profile.distribution_targets]`:
+
+```toml
+[profile]
+name = "ppr-candidate"
+description = "PPR re-ranking — intentional distribution shift"
+distribution_change = true
+
+[profile.distribution_targets]
+cc_at_k_min = 0.60   # mean(cc_at_k) must reach or exceed this
+icd_min     = 1.20   # mean(icd) must reach or exceed this
+mrr_floor   = 0.35   # mean(mrr) must not fall below this (veto)
+```
+
+All three target fields are required when `distribution_change = true`; `eval run`
+fails at parse time naming the missing field if any are absent. The baseline profile
+(`name = "baseline"`) must NOT declare `distribution_change = true` — that also
+causes a parse failure at startup.
+
+When `distribution_change = false` (the default, applies when the key is absent),
+the standard zero-regression check applies for that profile. Multiple non-baseline
+profiles in a single run can mix zero-regression and distribution-change profiles —
+each is dispatched independently.
+
 **Future: inference overrides** (`[inference]` section) will be used for NLI/GGUF
 model path configuration when those features land (W1-4, W2-4). The section is
 accepted now but has no effect until the model integration is wired.
@@ -414,11 +467,17 @@ promoted entries are the ones the candidate profile believes are more relevant.
 The most consistently demoted entries are the ones it believes are less relevant.
 Cross-reference against your domain knowledge.
 
-### 5. Zero-Regression Check
+### 5. Zero-Regression Check / Distribution Gate
 
-**This is the primary shipping gate.** A list of all scenarios where any candidate
-profile has lower MRR **or** lower P@K than the baseline. A scenario appears if
-*either* metric regresses — not both. When the list is empty, the report prints:
+Section 5 rendering depends on the `profile-meta.json` sidecar written by `eval run`.
+Each non-baseline profile is dispatched independently — a single run can mix both
+modes when multiple candidate profiles are present.
+
+**Zero-Regression Check** (default, `distribution_change = false` or absent sidecar):
+
+A list of all scenarios where the candidate profile has lower MRR **or** lower P@K
+than the baseline. A scenario appears if *either* metric regresses — not both. When
+the list is empty, the report prints:
 
 ```
 No regressions detected.
@@ -428,6 +487,38 @@ If regressions exist, review each before deciding to ship. A regression in a
 low-value scenario (e.g., a one-off query with an unusual phrasing) is different
 from a regression in a high-frequency scenario. The harness surfaces the data;
 the human decides.
+
+**Distribution Gate** (`distribution_change = true` in the profile):
+
+Replaces the zero-regression check for that profile. Applied when the change is
+expected to shift result distribution (e.g., PPR, phase-conditioned re-ranking),
+making a regression-based comparison against the old distribution meaningless.
+
+The gate evaluates two independent criteria:
+
+- **Diversity targets**: `mean(cc_at_k) ≥ cc_at_k_min` AND `mean(icd) ≥ icd_min`
+  — asserts the new distribution meets the intended diversity floor.
+- **MRR floor (veto)**: `mean(mrr) ≥ mrr_floor` — asserts ranking quality did not
+  collapse under the distribution shift. Evaluated independently of diversity.
+
+Four distinct outcomes are reported with distinguishable messages:
+
+| Outcome | Meaning |
+|---------|---------|
+| All passed | Both diversity targets and MRR floor met. |
+| Diversity failed only | `cc_at_k` or `icd` below threshold; MRR floor met. |
+| MRR floor only | Diversity met but ranking floor breached. |
+| Both failed | Neither diversity nor MRR floor passed. |
+
+**Exit code:** `eval report` always exits 0 when the Distribution Gate fails —
+gate failure appears in the report body only. `eval report` exits non-zero only
+for I/O errors and corrupt sidecars.
+
+**Section heading:** With one non-baseline candidate, the section is titled
+`## 5. Distribution Gate` or `## 5. Zero-Regression Check` as appropriate.
+With multiple non-baseline candidates, the parent heading is
+`## 5. Distribution Gate / Zero-Regression Check` with per-profile sub-sections
+`### 5.1 ...`, `### 5.2 ...`.
 
 ### 6. Phase-Stratified Metrics
 
@@ -687,7 +778,7 @@ integration test environment, not in offline CI.
 |---|---|
 | Never commit snapshots | Snapshots contain full agent interaction history. Treat them as sensitive data. |
 | Never pass the live DB to `eval run` | The live-DB path guard (FR-44) catches this. If it fires, you are pointing at the wrong `--db` path. |
-| `eval report` exits 0 always | Do not use the exit code as a CI gate. The report is a human-reviewed artifact. |
+| `eval report` exits 0 on gate failures | Do not use the exit code as a CI gate. Zero-Regression and Distribution Gate failures appear in the report body only. `eval report` exits non-zero only for I/O errors and corrupt `profile-meta.json`. |
 | UDS ≠ hook socket | `UnimatrixUdsClient` and `UnimatrixHookClient` use different framing and different sockets. Connecting to the wrong one produces framing errors, not a clean error message. |
 | Weight sum = 0.92 | All six `[confidence.weights]` fields must sum to exactly 0.92 ± 1e-9. |
 | `cargo install` for production binary | `cargo build --release` writes to `target/release/` and does NOT update the running daemon. Use `cargo install --path crates/unimatrix-server` to replace the installed binary. Run before deploying a new build; kill the running daemon first. |
@@ -737,7 +828,8 @@ unimatrix eval report \
   --scenarios /tmp/eval/scenarios.jsonl \
   --out       /tmp/eval/report.md
 
-# 6. Review the report — focus on section 5 (Zero-Regression Check)
+# 6. Review the report — focus on section 5 (Zero-Regression Check or Distribution Gate)
+#    Section 5 renders as Distribution Gate when the candidate profile declares distribution_change = true.
 #    Section 6 (Phase-Stratified Metrics) is present when your corpus has phase data.
 #    Section 7 (Distribution Analysis) shows CC@k and ICD distributions.
 cat /tmp/eval/report.md

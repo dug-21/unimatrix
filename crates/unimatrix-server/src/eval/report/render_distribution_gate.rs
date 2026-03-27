@@ -271,10 +271,10 @@ mod tests {
         );
         assert!(out.contains("0.5103"), "missing baseline MRR value 0.5103");
 
-        // Reference row uses em-dashes for Floor and Result (not a gate criterion)
+        // Reference row uses em-dash for Floor column (not a gate criterion)
         assert!(
-            out.contains("— | — |"),
-            "reference row must use em-dashes for non-gate columns"
+            out.contains("Baseline MRR (reference) | — |"),
+            "reference row must have em-dash for Floor column (not a gate criterion)"
         );
 
         // R-13: no regression-related text must appear
