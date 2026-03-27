@@ -5,8 +5,7 @@
 Phase is the highest-signal discrete feature for knowledge surfacing quality (ASS-032
 RESEARCH-SYNTHESIS.md). The fused scoring formula has a placeholder term
 `w_phase_explicit * phase_explicit_norm` that is hardcoded to `0.0` since crt-026
-(ADR-003: "W3-1 reserved placeholder"). The PPR personalization vector (#398) uses
-flat HNSW scores with no phase weighting. Neither the scoring formula nor the graph
+(ADR-003: "W3-1 reserved placeholder"). Neither the scoring formula nor the graph
 traversal is phase-informed.
 
 This creates a structural blindness: Unimatrix does not know that "during delivery
@@ -17,9 +16,8 @@ from the same prior.
 The frequency table is the non-parametric RA-DIT feedback loop (Loop 2,
 RESEARCH-SYNTHESIS.md §Loop 2). It requires no training step, no model downloads, and
 no new ML infrastructure — it is purely a SQL aggregation over `query_log` rows
-(already populated with `phase` since col-028 / #397), rebuilt each background tick.
-With col-028 shipped (schema v17, `query_log.phase` populated for all four read-side
-tools since 2026-03-26), the prerequisite data is present.
+(already populated with `phase` since col-028 / #397, schema v17). With col-028
+shipped (gate-3c PASS 2026-03-26), the prerequisite data is present.
 
 Affected agents: every agent in a named workflow phase querying Unimatrix, who receives
 phase-agnostic results today.
@@ -27,413 +25,394 @@ phase-agnostic results today.
 ## Goals
 
 1. Implement `PhaseFreqTable` — an in-memory struct holding
-   `HashMap<(phase: String, category: String), Vec<(entry_id, f32)>>` sorted by
-   descending frequency, rebuilt each background tick from `query_log`.
+   `HashMap<(phase: String, category: String), Vec<(entry_id: u64, score: f32)>>`
+   sorted descending by rank score, rebuilt each background tick from `query_log`.
 2. Implement `PhaseFreqTableHandle = Arc<RwLock<PhaseFreqTable>>` following the
-   `TypedGraphStateHandle` / `EffectivenessStateHandle` pattern.
+   `TypedGraphStateHandle` / `EffectivenessStateHandle` pattern exactly.
 3. Wire the handle into `ServiceLayer` and thread it to `SearchService` and the
-   background tick.
+   background tick via `Arc::clone`.
 4. Activate `w_phase_explicit` in fused scoring: compute `phase_explicit_norm` from
    the frequency table at query time; raise the default from `0.0` to `0.05` in
-   `InferenceConfig`.
+   `InferenceConfig`. The scoring hot-path must check `use_fallback` before calling
+   `phase_affinity_score` — when `use_fallback = true` or `current_phase = None`,
+   `phase_explicit_norm = 0.0` (bit-for-bit identical to pre-col-031).
 5. Expose `phase_affinity_score(entry_id: u64, entry_category: &str, phase: &str) -> f32`
-   as a public method on `PhaseFreqTable` — the integration API that #398 will call to
-   weight the PPR personalization vector. col-031 does not wire into PPR internals (PPR
-   does not yet exist); it only publishes the contract. Cold start returns `1.0` (neutral
-   multiplier: `hnsw_score × 1.0 = hnsw_score`), ensuring PPR seeds are unaffected when
-   no phase history exists. Note: this is a distinct cold-start behavior from fused
-   scoring — `phase_explicit_norm` returns `0.0` on cold start (Goal 7); `phase_affinity_score`
-   returns `1.0`. The two methods serve different roles and must not share a cold-start
-   value.
-6. Expose `query_log_retention_cycles` in `InferenceConfig` to govern the lookback
-   window for the frequency table SQL query (aligns with #409 retention framework
-   without blocking on it).
-7. Cold-start degrades gracefully: empty table produces `phase_explicit_norm = 0.0`
-   for all candidates — score bit-for-bit identical to pre-col-031.
+   as a public method on `PhaseFreqTable` — the integration contract that #398 will call
+   to weight its PPR personalization vector. col-031 does not implement PPR (#398 does
+   not yet exist) and does not wire into PPR internals. It publishes the API only.
+   `phase_affinity_score` returns `1.0` on cold-start (`use_fallback = true`) — neutral
+   multiplier for PPR: `hnsw_score × 1.0 = hnsw_score`. This is distinct from Goal 4:
+   fused scoring returns `0.0` via the `use_fallback` guard; PPR calls `phase_affinity_score`
+   directly and receives `1.0`. Two callers, two cold-start behaviors, one method.
+6. Add `query_log_lookback_days: u32` to `InferenceConfig` (default 30) to govern the
+   time window used by the frequency table SQL query. The retention window is
+   `WHERE ts > strftime('%s', 'now') - lookback_days * 86400` — a simple time filter
+   on `query_log.ts`. No JOIN with `sessions` is required and no cycle-based schema is
+   assumed. `#409` owns proper cycle-aligned GC; col-031 does not anticipate that schema.
+7. Cold-start degrades gracefully: `use_fallback = true` → `phase_explicit_norm = 0.0`
+   via the Goal 4 guard → scores bit-for-bit identical to pre-col-031.
 
 ## Non-Goals
 
-- **No changes to col-028 / query_log schema** — `query_log.phase` column already
-  exists (schema v17). No new migrations.
-- **No Thompson Sampling** — deferred (ROADMAP.md: "after PPR baseline ICD measured").
-- **No gap detection** — separate feature (#409 covers retention; gap detection is
-  Loop 3, a distinct feature after the frequency table is operating).
-- **No PPR implementation** — this feature does not implement PPR (#398). It provides
-  `phase_affinity_score` which #398 will consume. If #398 is not yet shipped, the
-  PPR wire-up AC is not applicable; the scoring wire-up (Goals 4) stands independently.
-- **No W3-1 GNN** — the frequency table is the non-parametric predecessor. W3-1 is
-  deferred until CC@k ≥ 0.7 (ROADMAP.md).
+- **No query_log schema changes** — `query_log.phase` (schema v17) is the prerequisite,
+  already shipped. Zero new migrations.
+- **No PPR implementation** — col-031 publishes `phase_affinity_score` as the integration
+  contract. PPR itself is #398.
+- **No cycle-based retention** — `query_log_lookback_days` is a time window, not a cycle
+  count. Cycle-aligned GC and retention belong to #409.
+- **No `query_log` GC** — `query_log_lookback_days` governs the rebuild SQL window only.
+- **No Thompson Sampling** — deferred until after PPR baseline ICD is measured.
+- **No gap detection** — Loop 3, a separate feature after the frequency table is operating.
+- **No W3-1 GNN** — frequency table is the non-parametric predecessor; GNN deferred until
+  CC@k ≥ 0.7.
 - **No BM25 hybrid retrieval** — separate work item.
-- **No `query_log` GC implementation** — `query_log_retention_cycles` in config is
-  used for the lookback window only; the GC logic itself belongs to #409.
-- **No backfill of `query_log` rows with phase=NULL** — pre-col-028 rows contribute
-  zero signal (filtered by `WHERE phase IS NOT NULL`). This is expected.
-- **No UI or diagnostic endpoint** — the table is internal state; no new MCP tool.
+- **No backfill of phase=NULL rows** — pre-col-028 rows are filtered by `WHERE phase IS NOT NULL`.
+- **No MCP tool or diagnostic endpoint** — `PhaseFreqTable` is internal state.
 - **No change to `w_phase_histogram`** — session histogram term (crt-026) is unaffected.
 
 ## Background Research
 
 ### w_phase_explicit Placeholder (crt-026, ADR-003)
 
-`search.rs` line 873: `phase_explicit_norm: 0.0` — hardcoded regardless of phase.
-`config.rs` line 441: `w_phase_explicit: 0.0` — default zero, held as W3-1 placeholder.
-`FusedScoreInputs.phase_explicit_norm` is a named, stable field that W3-1 depends on
-(NFR-06 comment). The field exists, the weight exists, the formula includes it — only
-the signal source is missing. This feature provides that signal source.
+`search.rs:873`: `phase_explicit_norm: 0.0` — hardcoded regardless of phase.
+`config.rs:441`: `w_phase_explicit: 0.0` — default zero, W3-1 placeholder.
+`FusedScoreInputs.phase_explicit_norm` is a named, stable field. The field exists, the
+weight exists, the formula includes it — only the signal source is missing.
 
-ADR-003 (crt-026, Unimatrix #3163) deferred the explicit phase signal to "W3-1"; the
-ASS-032 roadmap (#414) now designates the frequency table as the W3-1 predecessor that
-activates this placeholder non-parametrically.
+ADR-003 (crt-026, Unimatrix #3163) deferred the signal to "W3-1". ASS-032 designates the
+frequency table as the non-parametric predecessor that activates this placeholder.
 
-### TypedGraphStateHandle Pattern (the rebuild-each-tick model to replicate)
+### TypedGraphStateHandle Pattern
 
-`services/typed_graph.rs` is the exact template for `PhaseFreqTable`:
+`services/typed_graph.rs` is the exact template:
 
-- `TypedGraphState` struct wraps the computed state.
+- `TypedGraphState` struct wraps computed state.
 - `TypedGraphStateHandle = Arc<RwLock<TypedGraphState>>` is the shared type.
-- `TypedGraphState::new_handle()` creates the cold-start handle.
-- `TypedGraphState::rebuild(store: &Store)` is called by the background tick each
-  cycle; returns `Ok(new_state)` on success.
+- `TypedGraphState::new_handle()` creates the cold-start handle (`use_fallback = true`).
+- `TypedGraphState::rebuild(store: &Store)` is called by the background tick; returns
+  `Ok(new_state)` on success.
 - The tick swaps via `*guard = new_state` under write lock.
-- Hot path (search) takes a short read lock, clones what it needs, releases before
-  any scoring work.
-- Poison recovery: `.unwrap_or_else(|e| e.into_inner())` on all lock acquisitions
-  (consistent with `EffectivenessStateHandle` and `CategoryAllowlist`).
-- Cold-start: empty state, graceful degradation. `EffectivenessState` is the reference
-  for generation-counter optimization if HashMap clones become expensive.
+- Hot path takes a short read lock, clones what it needs, releases before scoring.
+- Poison recovery: `.unwrap_or_else(|e| e.into_inner())` on all lock acquisitions.
 
-`EffectivenessState` adds a `generation: u64` counter for clone-avoidance via
-`EffectivenessSnapshot` (Unimatrix #1561). The frequency table may benefit from the
-same optimization but it is out of scope for this feature (defer until profiling shows
-need).
+`EffectivenessState` adds a `generation: u64` counter for clone-avoidance. Defer this
+optimization for `PhaseFreqTable` until profiling shows need.
 
 ### query_log Schema (col-028 / schema v17)
 
-`query_log` table columns (post-col-028): `query_id`, `session_id`, `query_text`,
-`result_entry_ids` (JSON), `top_similarity`, `timestamp`, `source`, `feature_cycle`,
-`phase` (TEXT, nullable).
+Actual `query_log` columns verified against `migration.rs` and `query_log.rs`:
 
-Index: `idx_query_log_phase ON query_log (phase)`.
+```
+query_id         INTEGER PRIMARY KEY AUTOINCREMENT
+session_id       TEXT NOT NULL
+query_text       TEXT NOT NULL
+ts               INTEGER NOT NULL   -- Unix timestamp seconds (u64 in Rust, stored as i64)
+result_count     INTEGER NOT NULL
+result_entry_ids TEXT               -- JSON array of u64 entry IDs, e.g. [42, 7, 19]
+similarity_scores TEXT
+retrieval_mode   TEXT
+source           TEXT NOT NULL
+phase            TEXT               -- col-028: nullable, workflow phase at query time
+```
 
-Relevant for the table build SQL:
+Index: `idx_query_log_phase ON query_log (phase)` (col-028).
+Index: `idx_query_log_ts ON query_log (ts)` (existing).
+
+There is **no `feature_cycle` column** in `query_log`. Retention is time-based.
+
+`result_entry_ids` is serialized by `serde_json::to_string(&[u64])` → unquoted JSON
+integers, e.g. `[42,7,19]`. The `json_each` expansion form is
+`CAST(json_each.value AS INTEGER)` (verified from `mcp/knowledge_reuse.rs` usage).
+
+### SQL for the Frequency Table Rebuild
+
 ```sql
-SELECT phase, entry_id, COUNT(*) as freq
-FROM query_log
-  CROSS JOIN json_each(result_entry_ids)      -- entry_id from JSON array
-  JOIN entries ON entries.id = json_each.value::INTEGER
-WHERE phase IS NOT NULL
-  AND feature_cycle IN (last K completed cycles OR open cycles)
-GROUP BY phase, entries.category, entries.id
-ORDER BY phase, entries.category, freq DESC
+SELECT
+    q.phase,
+    e.category,
+    CAST(je.value AS INTEGER)  AS entry_id,
+    COUNT(*)                   AS freq
+FROM query_log q
+  CROSS JOIN json_each(q.result_entry_ids) AS je
+  JOIN entries e ON CAST(je.value AS INTEGER) = e.id
+WHERE q.phase IS NOT NULL
+  AND q.result_entry_ids IS NOT NULL
+  AND q.ts > strftime('%s', 'now') - ?1 * 86400
+GROUP BY q.phase, e.category, CAST(je.value AS INTEGER)
+ORDER BY q.phase, e.category, freq DESC
 ```
 
-The `query_log_retention_cycles` value governs how many completed cycles are
-included. This aligns with #409 (retention framework) which defines K=20 as the
-suggested default.
+`?1` = `lookback_days as i64`. The `strftime('%s', 'now')` expression returns current
+Unix time in seconds; `lookback_days * 86400` converts days to seconds.
 
-Note: `result_entry_ids` is stored as a JSON array of integers. The `json_each`
-expansion is the access pattern used elsewhere in the codebase (see
-`mcp/knowledge_reuse.rs`).
+No JOIN with `sessions` is required. No subquery over feature cycles.
 
-### Background Tick Pattern
+### Normalization: Rank-Based
 
-`background.rs` shows the rebuild sequence: maintenance → graph compaction →
-`TypedGraphState::rebuild` → `EffectivenessState` update → NLI detection tick.
-The `PhaseFreqTable` rebuild belongs in this sequence, after the `TypedGraphState`
-rebuild (no dependency ordering required, but convention places analytical state
-after structural state).
+Access patterns are power-law distributed — a handful of entries dominate counts in any
+given phase. Min-max (even with a floor) collapses most entries near-zero with one outlier
+at 1.0, producing a degenerate PPR personalization vector. Rank-based spreads signal evenly
+regardless of access count distribution, giving PageRank a richer gradient.
 
-The tick is bounded by `TICK_TIMEOUT` (`tokio::time::timeout`). The frequency table
-rebuild is a SQL aggregation, not a full graph traversal. At 20K query_log rows it
-completes in < 5ms. A separate timeout is not necessary; the existing tick timeout
-applies.
+Formula: `score = 1.0 - (rank as f32 / N as f32)` where rank is 0-indexed within the
+`(phase, category)` bucket, N = bucket size. Top entry (rank 0) → 1.0. Last entry → 1/N.
+Single-entry bucket: N=1, rank=0 → 1.0. Absent entry → 1.0 (neutral).
 
-### PPR Personalization Vector (#398 integration point)
+### Cold-Start Semantics: Two Behaviors, One Method
 
-GH #398 specifies:
+`phase_affinity_score` returns `1.0` when `use_fallback = true`. This is the correct
+neutral value for PPR (seed weight = hnsw_score × 1.0 = unmodified).
+
+Fused scoring must NOT call `phase_affinity_score` when `use_fallback = true`. The
+scoring hot-path checks `use_fallback` first and returns `phase_explicit_norm = 0.0`
+directly. This preserves pre-col-031 score identity when no phase history exists.
+
+```rust
+// Before scoring loop — acquire lock once, extract snapshot, release:
+let phase_snapshot = match &params.current_phase {
+    None => None,  // lock never acquired
+    Some(phase) => {
+        let guard = freq_table.read().unwrap_or_else(|e| e.into_inner());
+        if guard.use_fallback {
+            None  // cold-start: treat as no phase — 0.0 contribution
+        } else {
+            Some(/* clone relevant bucket data */)
+        }
+    }
+};
+
+// In scoring loop:
+let phase_explicit_norm: f64 = match &phase_snapshot {
+    None => 0.0,
+    Some(snapshot) => snapshot.affinity(entry.id, &entry.category) as f64,
+};
 ```
-personalization[v] = hnsw_score[v] if v ∈ candidates, else 0.0
-normalize personalization
+
+### PPR Integration Contract (#398)
+
+col-031 publishes `phase_affinity_score` as the API #398 will call:
+
+```
+personalization[v] = hnsw_score[v] * phase_affinity_score(v.id, v.category, current_phase)
 ```
 
-The col-031 wire-up adds:
-```
-personalization[v] = hnsw_score[v] * phase_affinity_score(v, current_phase)
-```
+Since #398 is not yet implemented, the function must exist as a public method and be
+documented as the integration point. No PPR scaffolding goes into col-031.
 
-where `phase_affinity_score(entry_id, phase)` is derived from the frequency table:
-if `(phase, entry.category)` is in the table and `entry_id` appears in the Vec,
-return a normalized score in [0, 1]; otherwise return 1.0 (neutral, no penalty on
-cold start). This matches the cold-start invariant.
+### InferenceConfig Extension
 
-Since #398 is not yet implemented, the PPR wire-up AC (AC-07, AC-08) is conditional:
-the `phase_affinity_score` function must be implemented as a public API on
-`PhaseFreqTable`, and the call site in #398 is left as a documented integration point.
+`w_phase_explicit` is already in `InferenceConfig` and `FusionWeights`. Changes:
+1. `default_w_phase_explicit()` → `0.05`.
+2. FusionWeights sum-check comment updated: the six-weight sum (0.95) is unchanged;
+   `w_phase_explicit` (0.05) is additive outside it. Total with defaults: `0.95 + 0.02 + 0.05 = 1.02`.
+   Per ADR-004 (crt-026, Unimatrix #3175), additive phase terms do not enter the sum constraint.
+3. `test_inference_config_default_phase_weights` updated to assert `0.05`.
+4. New field: `query_log_lookback_days: u32`, default `30`.
 
-### InferenceConfig Extension Pattern (crt-026 / Unimatrix #3206, #3207)
+### Eval Harness Gap
 
-`w_phase_explicit` is already in `InferenceConfig` and `FusionWeights`. Raising the
-default from 0.0 to 0.05 requires:
-1. Changing `default_w_phase_explicit()` → 0.05.
-2. Updating the `validate()` sum-check comment (the six-weight sum is unchanged;
-   `w_phase_explicit` remains an additive term outside the constraint).
-3. Updating the test `test_inference_config_default_phase_weights` to assert 0.05.
-4. No `validate()` logic change — per-field range [0.0, 1.0] check already handles it.
-
-ADR-004 (crt-026, Unimatrix #3175) established that additive phase terms do not enter
-the six-weight sum constraint. The total with defaults becomes: 0.95 + 0.02 + 0.05 =
-1.02 — still within per-field range but the sum comment in FusionWeights must be
-updated.
-
-### Retention Framework Alignment (#409)
-
-GH #409 specifies `query_log_retention_cycles = 20` (K) as the single parameter
-governing both GC and frequency table lookback. This feature adds the config field
-`query_log_retention_cycles: u32` to `InferenceConfig` with default 20. The GC
-implementation belongs to #409. The frequency table SQL uses this value as the
-lookback bound — the constraint documented in Unimatrix #3414 ("K is the hard ceiling
-for phase-conditioned frequency table lookback and GNN training reconstruction window")
-is satisfied by sharing the same config parameter.
-
-### Eval Harness Baseline
-
-Current baseline (col-030, 2026-03-27):
-- P@5: 0.2874, MRR: 0.4007, CC@5: 0.2659, ICD: 0.5340
-- PPR gate: CC@5 ≥ 0.3659, ICD improvement, MRR ≥ 0.35
-
-col-031 activates `w_phase_explicit = 0.05`. This is a distribution-changing
-scoring modification. The distribution gate (#402) must be applied: CC@5 and ICD must
-not regress from baseline; MRR floor ≥ 0.35. Because the frequency table starts empty
-on fresh data, the eval harness replay uses phase-aware scenarios; results with
-`query_log.phase = NULL` produce `phase_explicit_norm = 0.0` (no signal, safe).
+`eval/scenarios/extract.rs` does not select `query_log.phase`, so all eval scenarios have
+`current_phase = None` → `phase_explicit_norm = 0.0` → AC-12 passes trivially (signal never
+activated). This is a vacuous gate. Fix is bounded: add `current_phase` to scenario extraction
+SQL; nothing else in `extract.rs` changes. This fix is in scope as AC-16. Without it, AC-12
+cannot be a meaningful regression gate.
 
 ## Proposed Approach
 
-### Module: `services/phase_freq_table.rs`
+### Module: `crates/unimatrix-server/src/services/phase_freq_table.rs`
 
-New file (analogous to `services/typed_graph.rs`). Exports:
+New file (analogous to `services/typed_graph.rs`). Max 500 lines.
 
 ```rust
 pub struct PhaseFreqTable {
-    /// (phase, category) -> Vec<(entry_id, score_f32)>, sorted desc by score.
-    /// Empty on cold-start; rebuilt each tick.
+    /// (phase, category) → Vec<(entry_id, rank_score)>, sorted descending.
     pub table: HashMap<(String, String), Vec<(u64, f32)>>,
-    pub use_fallback: bool,  // true = empty / cold-start
+    /// true on cold-start or when rebuild produced no rows.
+    pub use_fallback: bool,
 }
 
 pub type PhaseFreqTableHandle = Arc<RwLock<PhaseFreqTable>>;
 
 impl PhaseFreqTable {
-    pub fn new() -> Self  // cold-start empty, use_fallback=true
+    pub fn new() -> Self                         // use_fallback=true, empty table
     pub fn new_handle() -> PhaseFreqTableHandle
-    pub async fn rebuild(store: &Store, retention_cycles: u32) -> Result<Self, StoreError>
-    /// phase_affinity_score: normalized [0.0, 1.0] frequency score for an entry in a phase.
-    /// Returns 1.0 (neutral) when table is empty, phase absent, or entry absent in phase.
+    pub async fn rebuild(store: &Store, lookback_days: u32) -> Result<Self, StoreError>
+    /// Returns rank-based score ∈ [0.0, 1.0].
+    /// Returns 1.0 when use_fallback=true, phase absent, or entry absent in bucket.
     pub fn phase_affinity_score(&self, entry_id: u64, entry_category: &str, phase: &str) -> f32
 }
 ```
 
-The `rebuild` method executes the SQL aggregation. The `phase_affinity_score` method
-is the integration API for #398 PPR and for `compute_phase_explicit_norm` in search.
+### Store Layer: `crates/unimatrix-store/src/query_log.rs`
 
-### Store Layer: `query_log_phase_freq` query
-
-New method on `Store`: `query_phase_freq_table(retention_cycles: u32)` → async result
-of `Vec<(phase, category, entry_id, freq_count)>`. Implemented in `unimatrix-store`
-as a SQL aggregation. The JSON expansion of `result_entry_ids` requires `json_each`.
-
-### ServiceLayer integration
-
-`PhaseFreqTable::new_handle()` called in `ServiceLayer::with_rate_config()`. The
-handle is `Arc::clone`-d into `SearchService` and the background tick, following
-the identical pattern used for `TypedGraphStateHandle`.
-
-### Background tick integration
-
-After `TypedGraphState::rebuild` in `run_single_tick`: call
-`PhaseFreqTable::rebuild(store, config.query_log_retention_cycles).await`, swap
-handle under write lock on success, log error and retain old state on failure.
-
-### Scoring wire-up
-
-In the fused scoring loop in `search.rs`, replace the hardcoded `phase_explicit_norm: 0.0`
-with a computed value:
+New struct and method on `SqlxStore` (= `Store`):
 
 ```rust
-let phase_explicit_norm = if let Some(phase) = &params.current_phase {
-    freq_table.phase_affinity_score(entry.id, &entry.category, phase) as f64
-} else {
-    0.0
-};
+pub struct PhaseFreqRow {
+    pub phase: String,
+    pub category: String,
+    pub entry_id: u64,
+    pub freq: i64,   // COUNT(*) — sqlx maps SQLite INTEGER to i64
+}
+
+impl SqlxStore {
+    pub async fn query_phase_freq_table(&self, lookback_days: u32) -> Result<Vec<PhaseFreqRow>>
+}
 ```
 
-`params.current_phase` is the snapshot taken at the start of `handle_search` (already
-in `ServiceSearchParams` from crt-025/crt-026). The `PhaseFreqTableHandle` is read
-once before the scoring loop, same pattern as `category_histogram`.
+Uses `sqlx::query(...).bind(lookback_days as i64).fetch_all(self.read_pool()).await`.
+Row deserialization via `row.try_get::<T, _>(index)` — same pattern as all existing
+`query_log.rs` methods.
 
-### InferenceConfig changes
+### ServiceLayer Integration
 
-- `w_phase_explicit` default: 0.0 → 0.05
-- New field: `query_log_retention_cycles: u32`, default 20
-- `validate()`: no sum-constraint changes needed; per-field range check already covers
+`PhaseFreqTable::new_handle()` called in `ServiceLayer::with_rate_config()`.
+`Arc::clone`-d into `SearchService` and background tick. Same wiring as
+`TypedGraphStateHandle`.
+
+### Background Tick Integration
+
+After `TypedGraphState::rebuild` in `run_single_tick`:
+```rust
+match PhaseFreqTable::rebuild(&store, config.query_log_lookback_days).await {
+    Ok(new_table) => { *handle.write()... = new_table; }
+    Err(e) => { tracing::error!(...); /* retain existing state */ }
+}
+```
+
+### Scoring Wire-up (`search.rs`)
+
+Before the scoring loop, acquire `PhaseFreqTableHandle` read lock once, check
+`use_fallback`, extract the relevant bucket data, release the lock. Never hold the
+lock across the scoring loop. When `use_fallback = true` or `current_phase = None`,
+`phase_explicit_norm = 0.0` for all candidates.
+
+### InferenceConfig Changes
+
+- `w_phase_explicit` default: `0.0` → `0.05`
+- New field: `query_log_lookback_days: u32`, default `30`
+- `validate()`: unchanged (per-field range check already covers both fields)
+- FusionWeights sum-check comment updated
 
 ## Acceptance Criteria
 
-- AC-01: `PhaseFreqTable::new()` returns `use_fallback = true` and an empty `table`.
-  `phase_affinity_score(any_entry_id, any_category, any_phase)` returns 1.0 (neutral)
-  when `use_fallback = true`.
+- **AC-01**: `PhaseFreqTable::new()` returns `use_fallback = true`, empty table.
 
-- AC-02: `PhaseFreqTable::rebuild(store, retention_cycles)` queries `query_log` rows
-  where `phase IS NOT NULL` and the feature_cycle is within the last `retention_cycles`
-  completed cycles (or is an open cycle). The result is a `HashMap<(String, String),
-  Vec<(u64, f32)>>` keyed by `(phase, category)`, entries sorted descending by
-  frequency score.
+- **AC-02**: `PhaseFreqTable::rebuild(store, lookback_days)` queries `query_log` rows
+  where `phase IS NOT NULL`, `result_entry_ids IS NOT NULL`, and
+  `ts > strftime('%s', 'now') - lookback_days * 86400`. Result is
+  `HashMap<(String, String), Vec<(u64, f32)>>` keyed by `(phase, category)`, each Vec
+  sorted descending by rank score.
 
-- AC-03: `PhaseFreqTable::new_handle()` returns `Arc<RwLock<PhaseFreqTable>>` with a
-  cold-start state. Poison recovery uses `.unwrap_or_else(|e| e.into_inner())`.
+- **AC-03**: `PhaseFreqTable::new_handle()` returns `Arc<RwLock<PhaseFreqTable>>` in
+  cold-start state. All lock acquisitions use `.unwrap_or_else(|e| e.into_inner())`.
 
-- AC-04: The background tick calls `PhaseFreqTable::rebuild` once per tick cycle.
-  On success, the handle is swapped under write lock. On failure, the existing state
-  is retained and the error is logged via `tracing::error!`.
+- **AC-04**: Background tick calls `PhaseFreqTable::rebuild` once per cycle. On success,
+  handle swapped under write lock. On failure, existing state retained,
+  `tracing::error!` emitted.
 
-- AC-05: `ServiceLayer` creates the `PhaseFreqTableHandle` and threads it to both
-  `SearchService` and the background tick via `Arc::clone`.
+- **AC-05**: `ServiceLayer` creates `PhaseFreqTableHandle` and threads it to
+  `SearchService` and background tick via `Arc::clone`.
 
-- AC-06: In the fused scoring loop, `FusedScoreInputs.phase_explicit_norm` is computed
-  from `PhaseFreqTable::phase_affinity_score` when `params.current_phase` is `Some`.
-  When `params.current_phase` is `None`, `phase_explicit_norm = 0.0`.
+- **AC-06**: In the fused scoring loop, `FusedScoreInputs.phase_explicit_norm` is:
+  `0.0` when `current_phase = None` or `use_fallback = true`; otherwise computed from
+  `phase_affinity_score`. The `use_fallback` check happens before `phase_affinity_score`
+  is called — the lock is released before the scoring loop begins.
 
-- AC-07: `PhaseFreqTable::phase_affinity_score` is a public method callable from the
-  PPR implementation (#398). It accepts `(entry_id: u64, entry_category: &str,
-  phase: &str)` and returns `f32 ∈ [0.0, 1.0]`. Returns 1.0 when the table is in
-  cold-start, phase is absent, or entry_id is not in the top entries for
-  `(phase, category)`.
+- **AC-07**: `phase_affinity_score(entry_id, entry_category, phase) -> f32` is public.
+  Returns `f32 ∈ [0.0, 1.0]`. Returns `1.0` when `use_fallback = true`, phase absent,
+  or entry absent in bucket.
 
-- AC-08: Integration test: given a `query_log` with 10 rows for phase="delivery",
-  category="decision", all pointing to entry ID 42, `PhaseFreqTable::rebuild` returns
-  a table where `phase_affinity_score(42, "decision", "delivery") > 0.0` and
-  `phase_affinity_score(99, "decision", "delivery") == 1.0` (neutral for absent entry).
+- **AC-08**: Integration test using `TestDb`: seed `query_log` with 10 rows,
+  `phase="delivery"`, `result_entry_ids=[42]`, `ts` within lookback window. After
+  `rebuild`, assert `phase_affinity_score(42, "decision", "delivery") > 0.0` and
+  `phase_affinity_score(99, "decision", "delivery") == 1.0`.
 
-- AC-09: `InferenceConfig.w_phase_explicit` default is `0.05` (raised from `0.0`).
-  Config TOML with no `w_phase_explicit` key deserializes to `0.05`. Existing test
+- **AC-09**: `InferenceConfig.w_phase_explicit` default is `0.05`. Config TOML with no
+  `w_phase_explicit` key deserializes to `0.05`. Existing test
   `test_inference_config_default_phase_weights` updated to assert `0.05`.
 
-- AC-10: `InferenceConfig.query_log_retention_cycles` field exists with default `20`.
-  Config TOML with no `query_log_retention_cycles` deserializes to `20`.
+- **AC-10**: `InferenceConfig.query_log_lookback_days` exists with default `30`. Config
+  TOML with no `query_log_lookback_days` key deserializes to `30`.
 
-- AC-11: Cold-start invariants (three cases — all must be tested independently):
-  1. `current_phase = None`: `phase_explicit_norm = 0.0` → score bit-for-bit identical to pre-col-031.
-  2. `current_phase = Some(phase)`, `use_fallback = true` (empty table): the scoring hot-path
-     checks `use_fallback` before calling `phase_affinity_score` and returns `phase_explicit_norm = 0.0`
-     directly — bit-for-bit identical to pre-col-031. The `use_fallback` guard is mandatory; without
-     it, `phase_affinity_score` returns `1.0` (neutral), producing a `+0.05` uniform offset that
-     changes scores even with no phase history.
-  3. `phase_affinity_score` itself returns `1.0` on cold-start (`use_fallback = true`) — this is the
-     PPR contract. Fused scoring never calls `phase_affinity_score` when `use_fallback = true`;
-     PPR always does. Two callers, two cold-start behaviors, one method.
+- **AC-11**: Cold-start invariants — three separate unit tests:
+  1. `current_phase = None`, populated table → `phase_explicit_norm = 0.0`, scores
+     identical to pre-col-031.
+  2. `current_phase = Some(phase)`, `use_fallback = true` → `phase_explicit_norm = 0.0`
+     via `use_fallback` guard, scores identical to pre-col-031. The guard fires before
+     `phase_affinity_score` is called.
+  3. `phase_affinity_score` called directly on `use_fallback = true` table → returns
+     `1.0` (PPR neutral multiplier contract).
 
-- AC-12: Eval regression gate: after col-031 is implemented, run the eval harness.
-  MRR ≥ 0.35 (floor), CC@5 must not decrease from 0.2659 baseline, ICD must not
-  decrease from 0.5340 baseline.
+- **AC-12**: Eval regression gate (requires AC-16 complete): MRR ≥ 0.35, CC@5 ≥ 0.2659,
+  ICD ≥ 0.5340 (col-030 baselines). Gate is non-vacuous only when eval scenarios carry
+  `current_phase` values. AC-12 must not be declared passing without AC-16.
 
-- AC-13: `phase_affinity_score` normalization: scores are normalized within each
-  `(phase, category)` bucket so the maximum score in a bucket maps to 1.0 and
-  minimum maps to 0.0. Entries absent from the bucket return 1.0 (neutral, not 0.0).
+- **AC-13**: Rank-based normalization: within each `(phase, category)` bucket,
+  `score = 1.0 - (rank / N)` (0-indexed rank, N = bucket size). Top entry → 1.0,
+  last entry → 1/N. Single-entry bucket → 1.0. Absent entry → 1.0.
 
-- AC-14: Unit test: frequency table rebuild from a synthetic `query_log` (via test
-  support fixtures, not isolated scaffolding) produces correct `(phase, category)`
-  keying, correct entry ranking, and correct normalization.
+- **AC-14**: Unit test: `PhaseFreqTable::rebuild` from synthetic `query_log` (via
+  existing test fixtures) produces correct `(phase, category)` keying, correct
+  descending rank order, and correct normalization values.
 
-- AC-15: The `PhaseFreqTable` module is in `services/phase_freq_table.rs` and does
-  not exceed 500 lines. The store query method is in `unimatrix-store` at the
-  appropriate query layer.
+- **AC-15**: `services/phase_freq_table.rs` ≤ 500 lines. SQL aggregation in
+  `unimatrix-store/src/query_log.rs`.
+
+- **AC-16**: `eval/scenarios/extract.rs` selects `query_log.phase` and populates
+  `current_phase` in emitted scenario output. Bounded change — nothing else in
+  `extract.rs` is modified.
 
 ## Constraints
 
-- **col-028 must be shipped**: `query_log.phase` column (schema v17) must be present.
-  Confirmed shipped (gate-3c PASS 2026-03-26, 3629 tests pass). Pre-col-028 rows
-  have `phase = NULL` and are filtered by `WHERE phase IS NOT NULL`.
+- **col-028 prerequisite**: `query_log.phase` (schema v17) confirmed shipped
+  (gate-3c PASS 2026-03-26). Pre-col-028 rows have `phase = NULL`; filtered by
+  `WHERE phase IS NOT NULL`.
 
-- **Phase vocabulary is runtime strings**: phase keys in the frequency table are string
-  values from `query_log.phase` — whatever the session's `current_phase` was at call
-  time. No compile-time phase enum. Renaming a phase = old phase key goes cold,
-  new phase key starts empty. Domain-agnostic invariant (ASS-032).
+- **sqlx 0.8**: The store layer uses `sqlx 0.8` with `features = ["sqlite", "runtime-tokio",
+  "macros"]`. All SQL runs through `sqlx::query(...).bind(...).fetch_all(self.read_pool())`.
+  SQLite INTEGER columns (including `COUNT(*)`) map to `i64` in sqlx — `PhaseFreqRow.freq`
+  is `i64`.
 
-- **w_phase_explicit additive invariant**: The six-weight sum constraint
-  (`w_sim + w_nli + w_conf + w_coac + w_util + w_prov ≤ 1.0`) does not include
-  `w_phase_explicit`. The total with new default becomes 0.95 + 0.02 + 0.05 = 1.02.
-  FusionWeights sum-check and NLI-absent denominator exclude this field per ADR-004
-  (crt-026, Unimatrix #3206). No change to `validate()` sum constraint required.
+- **No `feature_cycle` in `query_log`**: Retention is time-based (`ts` column).
+  No JOIN with `sessions` table. No subquery over cycle identifiers.
 
-- **Sole writer contract**: The background tick is the sole writer of the
-  `PhaseFreqTableHandle`. Search hot path is read-only. Lock ordering: never hold
-  `PhaseFreqTableHandle` write lock while acquiring any other lock.
+- **Phase vocabulary is runtime strings**: no compile-time enum. Phase rename makes
+  old key go cold; new key starts empty. Silent graceful degradation.
 
-- **500-line file limit**: `services/phase_freq_table.rs` must stay under 500 lines.
-  The SQL aggregation query moves to `unimatrix-store` as a dedicated method.
+- **w_phase_explicit additive invariant**: outside the six-weight sum constraint.
+  `validate()` unchanged. FusionWeights sum-check comment must be updated to reflect
+  `0.95 + 0.02 + 0.05 = 1.02`.
 
-- **json_each availability**: The SQL aggregation must expand `result_entry_ids` (JSON
-  array). SQLite's `json_each` is available; the existing codebase uses it (see
-  `mcp/knowledge_reuse.rs`). No new SQLite extension needed.
+- **Sole writer / lock ordering**: background tick is the sole writer of
+  `PhaseFreqTableHandle`. Acquisition order: `EffectivenessStateHandle` →
+  `TypedGraphStateHandle` → `PhaseFreqTableHandle`. Each lock acquired, data extracted,
+  released before the next is acquired. Never hold any of these locks across the scoring
+  loop.
 
-- **#398 PPR not yet implemented**: AC-07 specifies the API surface for PPR
-  integration, but PPR itself is a separate feature. col-031 must not block on #398,
-  and #398 must not block on col-031. The `phase_affinity_score` method is the
-  published integration contract.
+- **500-line file limit**: `phase_freq_table.rs` ≤ 500 lines. SQL in `unimatrix-store`.
 
-- **Eval baseline**: The distribution gate (#402) is in place (ROADMAP.md ✅). Eval
-  must be run post-implementation. Activate `w_phase_explicit = 0.05` only after
-  confirming AC-12.
+- **json_each form**: `CAST(json_each.value AS INTEGER)` — verified against
+  `mcp/knowledge_reuse.rs`. No new SQLite extension required.
 
-- **File path**: new module at
-  `crates/unimatrix-server/src/services/phase_freq_table.rs`.
+- **#398 not yet shipped**: `phase_affinity_score` is the published integration contract.
+  col-031 must not implement PPR internals. Confirm #398 status at delivery start.
 
-## Open Questions
+- **AC-12 / AC-16 non-separable**: AC-16 (eval harness fix) must be complete before
+  AC-12 (regression gate) can be declared. Treating them as separate deliverables makes
+  AC-12 vacuous.
 
-1. **Normalization strategy for `phase_affinity_score`**: **DECIDED: rank-based.**
-   Access patterns are power-law distributed — a handful of entries dominate counts in
-   any given phase. Min-max (even with a 0.5 floor) collapses most entries to the floor
-   with one or two outliers near 1.0, producing a degenerate PPR personalization vector
-   (almost uniform with a spike). Rank-based spreads signal evenly across the bucket
-   regardless of access count distribution, giving PageRank a richer gradient to
-   traverse. Formula: `score = 1.0 - (rank / N)` where rank is 0-indexed (top entry
-   rank=0 → score=1.0). Entries absent from the bucket return 1.0 (neutral).
+## Decisions
 
-2. **SQL query correctness for json_each expansion**: `result_entry_ids` is stored as
-   a JSON array of integer entry IDs. The precise SQL form for `json_each` with SQLite
-   needs confirmation against the actual stored format (integer vs. string elements in
-   the JSON array). This should be verified against a real `query_log` row during
-   implementation.
-
-3. **Lookup join shape**: The rebuild query needs `entries.category` to key the
-   `(phase, category)` bucket. This requires joining `query_log` (for phase, entry IDs
-   via json_each) with `entries` (for category). Confirm this join is within the
-   `unimatrix-store` query layer's access pattern and does not cross crate boundaries
-   inappropriately.
-
-4. **Tick placement within run_single_tick**: Should the `PhaseFreqTable` rebuild run
-   before or after the `TypedGraphState` rebuild? There is no ordering dependency.
-   Convention in the tick places structural state (graph) before analytical state
-   (effectiveness, frequency). Confirm this placement is acceptable.
-
-5. **Eval harness phase data availability**: **DECIDED: fix in col-031 scope.**
-   `eval/scenarios/extract.rs` does not select `query_log.phase` (known gap, Unimatrix
-   #3555). Without this fix, AC-12 passes trivially — not because the signal is
-   neutral, but because it was never activated. That is a vacuous gate. The #398 PPR
-   gate requires the frequency table active; if active is untestable, that prerequisite
-   check is meaningless. The extract.rs change is bounded: add `current_phase` to
-   scenario extraction, nothing else. AC-12 becomes a real regression gate rather than
-   a noise check. Add AC-16 to acceptance criteria covering the eval harness fix.
-
-6. **w_phase_explicit = 0.05 weight calibration**: **DECIDED: configurable default,
-   ship active at 0.05.** Cold-start degradation already handles sparse-data risk:
-   empty table → near-uniform weights → `0.05 × near-uniform ≈ 0` net effect on
-   ranking. Real signal only emerges when query history is meaningful — which is
-   precisely when the weight should be live. Shipping inert (0.0) would make the PPR
-   gate's frequency-table prerequisite vacuous. Weight is larger than `w_phase_histogram`
-   (0.02), which is correct: frequency table is a durable cross-session signal vs. the
-   ephemeral session histogram. Configurable via `InferenceConfig` for operator tuning.
+| # | Decision | Rationale |
+|---|----------|-----------|
+| D-01 | Rank-based normalization: `1.0 - rank/N` | Power-law access distributions make min-max degenerate for PPR |
+| D-02 | Time-based retention: `query_log_lookback_days = 30` | `query_log` has no `feature_cycle` column; #409 owns cycle-based GC |
+| D-03 | `w_phase_explicit = 0.05` ships active | Cold-start guard ensures no effect until history exists; ships inert is a vacuous PPR gate |
+| D-04 | Eval harness fix in scope (AC-16) | Without it AC-12 is a noise check, not a real gate |
+| D-05 | Two cold-start values: `phase_affinity_score = 1.0`, fused scoring `= 0.0` | PPR needs neutral multiplier; fused scoring needs score identity with pre-col-031 |
 
 ## Tracking
 
-GH Issue: #414. Will be updated with GH Issue link after Session 1.
+GH Issue: #414
+Draft PR: https://github.com/dug-21/unimatrix/pull/423
