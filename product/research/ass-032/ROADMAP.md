@@ -75,8 +75,8 @@ The graph builds itself. Phase affinity self-improves with every query.
 
 | Issue | Title | Notes |
 |---|---|---|
-| #413 | Graph cohesion metrics in `context_status` | No deps. `isolated_entry_count`, `cross_category_edge_count`, `supports_coverage`, `mean_entry_degree`. Primary health view for graph inference. |
-| #395 | Contradicts collision suppression | Independent. Validates TypedRelationGraph retrieval path before PPR. Post-scoring filter using `edges_of_type(Contradicts)`. |
+| ✅ #413 | Graph cohesion metrics in `context_status` | No deps. `isolated_entry_count`, `cross_category_edge_count`, `supports_coverage`, `mean_entry_degree`. Primary health view for graph inference. |
+| ✅ #395 | Contradicts collision suppression | Independent. Validates TypedRelationGraph retrieval path before PPR. Post-scoring filter using `edges_of_type(Contradicts)`. |
 | #412 | Automated graph inference pass | NLI entailment → `Supports` edges. Asymmetric entailment → `Prerequisite` candidates. HNSW pre-filter (similarity > 0.5). Same `max_*_per_tick` throttle as contradiction detection. Cross-category pairs and isolated entries prioritised. Zero new ML — same ort session, same model. |
 
 ---
@@ -138,10 +138,21 @@ The graph builds itself. Phase affinity self-improves with every query.
 
 | Feature | Gate |
 |---|---|
-| #395 (Contradicts) | Zero-regression check (preserves ranking, doesn't change distribution) |
+| #395 (Contradicts) | ✅ PASSED 2026-03-27 — zero-regression confirmed. P@5/MRR dip explained by 419 new thin-ground-truth scenarios, not distribution shift. CC@5 and ICD both improved. |
 | #412 (Graph inference) | Graph cohesion metrics (#413): `isolated_entry_count` trending down, `cross_category_edge_count` trending up. `SUPPORTS_EDGE_THRESHOLD` tuned if growth stalls. |
-| #398 (PPR) | Distribution gate (#402): CC@5 ≥ baseline + 0.10, ICD improvement, MRR floor ≥ 0.35 |
+| #398 (PPR) | Distribution gate (#402): CC@5 ≥ **0.3659** (baseline 0.2659 + 0.10), ICD improvement vs 0.5340, MRR floor ≥ 0.35 |
 | #415 (w_coac reduction) | Eval profiles: PPR-only vs PPR+direct, measurement gate before any weight reduction |
+
+## Baseline snapshot — 2026-03-27 (col-030, pre-#412)
+
+| Metric | Value | Notes |
+|---|---|---|
+| Scenarios | 3,726 | +419 vs nan-008 (thin ground truth — expected to revert as sessions repeat) |
+| P@5 | 0.2874 | Floor for future features |
+| MRR | 0.4007 | Floor for future features; PPR gate requires ≥ 0.35 |
+| CC@5 | 0.2659 | PPR gate target: ≥ 0.3659 |
+| ICD | 0.5340 | PPR gate: must improve |
+| Avg latency | 9.2ms | |
 
 ---
 

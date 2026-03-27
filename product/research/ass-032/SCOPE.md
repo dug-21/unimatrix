@@ -1,8 +1,8 @@
-# ASS-032: Best-Possible Knowledge Surfacing Pipeline
+# ASS-032: Best-Possible Knowledge Surfacing Pipeline for a Self-Learning Knowledge Engine
 
-**Status**: Complete (revised 2026-03-25)
-**Supersedes**: ASS-032 v1 (2026-03-25, feedback loop audit) — absorbed as Part 1
-**Feeds**: W3-1 delivery scoping; possible redesign of W3-1 learning objective
+**Status**: Revised (2026-03-25) — expanded scope; Parts 1–5 are background; Part 6 is the active research mandate
+**Supersedes**: ASS-032 v1 (2026-03-25, feedback loop audit) — absorbed as Part 1; ASS-032 v2 (same day, software-dev framing) — corrected by Part 6
+**Feeds**: W3-1 delivery scoping; possible redesign of W3-1 learning objective; broader self-learning architecture
 **Predecessor**: ASS-031 (W3-1 pre-implementation research spike)
 
 ---
@@ -45,11 +45,25 @@ The previous ASS-032 converged on a staged fix (epsilon injection + phase-affini
 
 ## Part 1: The Use Case, Precisely Stated
 
-Unimatrix surfaces knowledge to agents in a multi-agent software development orchestration system. The precise requirements:
+### 1.0 What Unimatrix Actually Is
 
-- **Agents have roles**: architect, spec writer, tester, rust-dev, researcher, etc. Each role has different knowledge needs.
-- **Agents operate in known workflow phases**: scope, design, delivery, review, retro. Phase shifts are discrete and detectable (via `context_cycle`).
-- **Knowledge is categorized**: decision/ADR, convention, pattern, procedure, lesson-learned, outcome. Categories are not decorative — they encode the type of knowledge and its appropriate context of use.
+**Unimatrix is a general-purpose, workflow-aware knowledge management engine.** Its schema (knowledge categories) and workflow topology (phase definitions) are deployment-configurable via domain packs. There is no hard coupling to software development.
+
+**Structural invariants across all domain packs:**
+1. **Categories** — typed knowledge containers. Every deployment defines a category taxonomy. Categories encode the *type* of knowledge and its appropriate context of use. The number, names, and semantics of categories are domain-specific.
+2. **Phases** — discrete workflow states. Every deployment defines a phase topology. Phases encode *where in a workflow* an agent is operating, which changes which categories of knowledge are most relevant.
+
+**The software development domain pack** (the current default deployment) uses categories: `decision/ADR`, `convention`, `pattern`, `procedure`, `lesson-learned`, `outcome` — and phases: `scope`, `design`, `delivery`, `review`, `retro`. These are *examples*, not invariants. A legal research deployment might use categories `precedent`, `statute`, `procedure`, `brief-fragment` with phases `intake`, `discovery`, `drafting`, `review`. A medical deployment might use `guideline`, `contraindication`, `protocol`, `case-note` with phases `triage`, `diagnosis`, `treatment`, `followup`.
+
+**Architectural mandate**: All pipeline designs must be correct and meaningful for any (categories, phases) configuration. No hardcoded category names, no hardcoded phase names, no assumptions about their semantics. The surfacing pipeline must reason over whatever the deployment defines.
+
+### 1.1 The General Use Case
+
+Unimatrix surfaces knowledge to agents in a multi-agent orchestration system operating within a structured workflow. The precise requirements:
+
+- **Agents have roles**: roles are deployment-specific (e.g. architect, spec writer, tester for software dev; or case analyst, drafter, reviewer for legal). Each role has different knowledge needs.
+- **Agents operate in known workflow phases**: phases are defined by the domain pack and are discrete, detectable (via `context_cycle`). The software-dev phases (scope, design, delivery, review, retro) are one instance.
+- **Knowledge is categorized**: categories are defined by the domain pack. Categories encode the type of knowledge and its appropriate use context. The software-dev categories (decision, pattern, procedure, etc.) are one instance.
 - **Agents do not know what they need**: They cannot formulate precise queries for unknown unknowns. The system must proactively surface relevant knowledge without a query.
 - **Human feedback is sparse**: Helpful/unhelpful votes are infrequent. Most entries receive no explicit feedback. Implicit behavioral signals (session outcomes, rework events) provide more signal but are noisy.
 - **The system must improve over time**: It is not a static retrieval system. Self-improvement is a design requirement.
@@ -303,6 +317,91 @@ The 5-6 day effort estimate from ASS-031 is still valid for the modified scope. 
 
 ---
 
+---
+
+## Part 6: Expanded Research Mandate — Self-Learning Knowledge Engine
+
+Parts 1–5 derived the best-possible pipeline *within the constraints of the current architecture* and the feedback loop problem. This part opens the problem from first principles: **what would the best self-learning knowledge engine look like if we were designing it today?** The current architecture is an input to the answer, not a constraint on it.
+
+### 6.1 What "Self-Learning" Means
+
+A self-learning knowledge engine:
+
+1. **Improves retrieval quality over time** without requiring manual curation or explicit retraining triggers.
+2. **Discovers what it does not know** — identifies gaps in its knowledge base relative to the domains it is queried on.
+3. **Adapts to the domain it is deployed in** — the phase-affinity and category-relevance relationships are learned, not configured.
+4. **Generalizes across category/phase configurations** — the learning pipeline works regardless of what domain pack is installed.
+5. **Operates at inference-time with minimal latency** — in-process, no external service calls on the hot path.
+
+This is distinct from the "feedback loop fix" framing of Parts 1–5. The feedback loop fix is one small piece of a self-learning engine. The full picture requires answering:
+
+- What signals feed learning? (explicit votes, implicit session outcomes, co-access, query patterns, outcome correlations)
+- What is being learned? (relevance model, phase-affinity weights, category importance scores, embedding quality)
+- How is the learned state maintained? (continual learning, periodic retraining, online updates)
+- How is the domain-agnostic invariant preserved? (no hardcoded categories/phases in any learned artifact)
+
+### 6.2 Rust-Native ML Ecosystem Survey (Required)
+
+We are a Rust-first system. The question is: what neural model capabilities are available in-process in Rust, without FFI to Python, without external service calls?
+
+**Candidate libraries/frameworks to evaluate:**
+
+- **[ruvnet/ruvector](https://github.com/ruvnet/ruvector)** — Rust vector/neural engine; understand what it provides and whether it fits our use case
+- **[burn-rs/burn](https://github.com/burn-rs/burn)** — full deep learning framework in Rust; Wgpu/CUDA/CPU backends; model export; could replace unimatrix-learn's ndarray MLP
+- **[huggingface/candle](https://github.com/huggingface/candle)** — minimalist ML framework; GGML/GGUF model loading; runs transformer models in-process
+- **[ort-rs/ort](https://github.com/pykeio/ort)** — ONNX Runtime bindings for Rust; already used for embedding (ONNX boundary); could also run neural re-rankers
+- **[hora (hora-search)](https://github.com/hora-search/hora)** — Rust ANN library; HNSW + other index types; compare to current hnsw_rs
+- **[usearch](https://github.com/unum-cloud/usearch)** — HNSW + multi-index + quantization in Rust (via C bindings); supports custom distance metrics
+- **[linfa](https://github.com/rust-ml/linfa)** — sklearn-style ML in Rust; includes clustering, regression, dimensionality reduction; useful for unsupervised learning over entries
+- **[smartcore](https://github.com/smartcorelib/smartcore)** — comprehensive ML in Rust; gradient boosting, SVMs, etc.
+- **[tract](https://github.com/sonos/tract)** — ONNX/NNEF inference in pure Rust; alternative to ort
+
+**For each candidate, evaluate:**
+1. Can it run inference in-process, on a CPU-only server, without Python or external services?
+2. What is the latency for a forward pass on a small model (< 5M params) at serving time?
+3. Does it support quantized models (INT8/FP16) to reduce memory footprint?
+4. Can it be trained (or fine-tuned) in-process, or inference-only?
+5. What is the ecosystem maturity (release cadence, GitHub stars, production usage evidence)?
+
+### 6.3 Novel Approaches to Research (Beyond Parts 1–5)
+
+Parts 1–5 covered: Thompson Sampling bandits, IPS debiasing, EWC++ continual learning, MLP re-ranking, recommender system coverage metrics. These are all valid. The following are *additional* directions to investigate that may produce better results:
+
+**Direction 1 — Late Interaction Models (ColBERT-style)**
+
+ColBERT stores per-token embeddings and defers interaction to retrieval time. For a knowledge engine where documents are short (knowledge entries, not full documents), late interaction could give significantly better re-ranking precision than a single dense vector. The question is: does this work at our corpus scale (10K entries) with in-process Rust compute?
+
+**Direction 2 — Splade / Sparse-Dense Hybrid Retrieval**
+
+SPLADE expands sparse token weights using a masked language model, then uses inverted-index retrieval. Dense vectors for recall, sparse for precision. The hybrid achieves near-perfect recall on out-of-domain queries. For Unimatrix, this is relevant because some knowledge entries use domain-specific terminology that pure dense retrieval misses.
+
+**Direction 3 — Graph-Augmented Retrieval**
+
+The existing co-access graph captures which entries are accessed together. This is one form of graph signal. A fuller knowledge graph could encode: entry A contradicts entry B, entry C supersedes entry D, entry E is a prerequisite for understanding entry F. Retrieval could traverse this graph (multi-hop) to surface prerequisite and contextual knowledge alongside the directly matched entry. Relevant prior art: GraphRAG (Microsoft), KG-RAG.
+
+**Direction 4 — Instruction-Tuned Relevance Scoring**
+
+Rather than a trained MLP, a small instruction-tuned LLM (running via candle or ort in-process, < 1B params, quantized) could score entry-query pairs directly. The model prompt: "Given that an agent is in phase X performing role Y, is the following knowledge entry relevant? Entry: {text}. Answer: yes/no/partial". This eliminates the need for labeled training data — the model's instruction-following transfers zero-shot.
+
+**Direction 5 — Self-Supervised Contrastive Learning for Embedding Quality**
+
+The current embedding pipeline uses a frozen sentence-transformers ONNX model. A self-supervised contrastive learning step could fine-tune embeddings using in-corpus pairs: (entry, its correction chain) as positive pairs, (entry, contradicted entry) as negative pairs. This would make the embedding space more semantically precise for the actual knowledge domain without requiring labeled data.
+
+**Direction 6 — Active Learning for Knowledge Gap Detection**
+
+Rather than passively waiting for queries to reveal underrepresented knowledge, an active learning loop could: (a) cluster existing queries by topic, (b) identify clusters with low coverage (few high-confidence entries), (c) surface these clusters to the human operator for targeted knowledge addition. This turns the system from reactive (learn from what happens) to proactive (identify what's missing).
+
+### 6.4 Research Framing
+
+This is a **research-only** expanded mandate. The deliverable is not an implementation plan — it is a research report that answers:
+
+1. **Current capabilities audit**: What does the current search/scoring pipeline actually do, end-to-end? Every component, every weight, every feedback channel. No assumptions.
+2. **Rust ML options**: For each direction in 6.3, which Rust libraries could enable it? What are the realistic implementation costs?
+3. **Novel approach assessment**: For each direction in 6.3, does external research (papers, production systems) support it as a better path than the current Thompson Sampling + MLP hybrid? What is the evidence?
+4. **Recommended next steps**: Given the full picture, what is the best architecture for a self-learning, domain-agnostic Unimatrix? This may or may not look like the Part 4 proposed pipeline.
+
+---
+
 ## Goals
 
 1. Correct the corpus size assumption in all downstream design artifacts.
@@ -311,6 +410,10 @@ The 5-6 day effort estimate from ASS-031 is still valid for the modified scope. 
 4. Produce a concrete component evaluation table (keep/replace/add with rationale).
 5. Define the evaluation framework (what metrics, what constitutes improvement).
 6. Determine whether W3-1 as designed should proceed, be modified, or be reconsidered.
+7. **[New]** Fully audit the current search/scoring pipeline end-to-end: every component, weight, feedback channel, and path through the code.
+8. **[New]** Survey the Rust ML ecosystem for viable in-process neural model options (burn, candle, ort, ruvector, usearch, etc.).
+9. **[New]** Research novel self-learning knowledge engine approaches (late interaction, sparse-dense hybrid, graph-augmented retrieval, active learning, self-supervised embeddings) with evidence from papers and production systems.
+10. **[New]** Produce a domain-agnostic framing — all designs must work for any (categories, phases) configuration, not just the software development domain pack.
 
 ---
 
@@ -334,6 +437,11 @@ The 5-6 day effort estimate from ASS-031 is still valid for the modified scope. 
 - AC-06: W3-1 go/no-go decision is explicit with specific conditions for the modifications required before delivery.
 - AC-07: The feedback loop concern from the original ASS-032 is quantified with live corpus data (not assumed corpus state).
 - AC-08: EWC++ risk in biased training setting is evaluated with reference to external research on EWC failure modes.
+- **AC-09 [New]**: Current search pipeline is documented end-to-end: candidate retrieval path, every scoring component, re-ranking, serving modes (injection/briefing/search), and all feedback channels back into learning state.
+- **AC-10 [New]**: At least 5 Rust-native ML/neural libraries are evaluated for feasibility against the criteria in Section 6.2 (in-process inference, latency, quantization, training support, maturity). ruvector must be included.
+- **AC-11 [New]**: Each of the 6 novel directions in Section 6.3 is assessed: summarize what the approach does, cite external evidence for/against, evaluate Rust implementation path, and give a recommendation (pursue/defer/reject) with rationale.
+- **AC-12 [New]**: All proposed designs are framed in terms of the configurable (categories, phases) abstraction — no hardcoded category names or phase names in any recommendation.
+- **AC-13 [New]**: A final synthesis section gives an opinionated answer to "what is the best architecture for a self-learning, domain-agnostic Unimatrix?" — may supersede or extend the Part 4 proposed pipeline.
 
 ---
 
@@ -349,6 +457,10 @@ The 5-6 day effort estimate from ASS-031 is still valid for the modified scope. 
 ---
 
 ## Open Questions
+
+**OQ-F [New, High Priority]**: `context_get` is the strongest implicit positive signal in the system — it means the agent selected a specific entry from search/briefing results and fetched it in full. Yet `current_phase` is always `None` for gets (policy in `usage.rs:69`). The phase-conditioned frequency table cannot be built from get-signals because the phase dimension is stripped. Fix: snapshot `current_phase` from `SessionState` at get-time (same pattern as `context_store`, tools.rs:519–531) and raise `access_weight` for gets to differentiate them from search appearances. Add `confirmed_entries: HashSet<u64>` to `SessionState` to track "agent chose this" vs. "agent was shown this."
+
+**OQ-G [New]**: The signal weight hierarchy needs formal specification. A `context_get` should contribute more to the phase-conditioned frequency table than a search appearance, and less than an explicit `helpful=true` vote. Proposed: search_appearance=1, context_get=3, context_lookup=2, explicit_helpful=10. These weights feed both the phase-conditioned table and the per-(phase, entry) Beta posteriors in Thompson Sampling.
 
 **OQ-A**: The phase-affinity matrix initial values are illustrative. What is the correct calibration for a software development orchestration workflow? Recommendation: extract from the live `FEATURE_ENTRIES` table and `observations` table — which phases correlate with which category stores? This is a data-driven calibration step, not a design question.
 
