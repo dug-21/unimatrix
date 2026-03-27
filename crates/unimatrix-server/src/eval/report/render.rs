@@ -1,23 +1,20 @@
-//! Markdown rendering functions for eval report (nan-007 D4, extended nan-008, nan-009).
+//! Markdown rendering for eval report (nan-007 D4, extended nan-008/nan-009/nan-010).
 //!
-//! Renders the seven required sections from aggregated data structures:
-//! 1. Summary, 2. Notable Ranking Changes, 3. Latency Distribution,
-//! 4. Entry-Level Analysis, 5. Zero-Regression Check,
-//! 6. Phase-Stratified Metrics, 7. Distribution Analysis.
-//!
-//! Section 6 is omitted when all scenario results have phase = None.
-//! `render_phase_section` lives in `render_phase.rs` (sibling module, split for 500-line limit).
+//! Sections: 1. Summary, 2. Notable Ranking Changes, 3. Latency, 4. Entry-Level Analysis,
+//! 5. Per-profile gate dispatch (distribution gate or zero-regression, nan-010 ADR-005),
+//! 6. Phase-Stratified Metrics (omitted when all phases None), 7. Distribution Analysis.
+//! Section 5+6 helpers live in render_zero_regression.rs / render_distribution_gate.rs.
 
-use std::collections::HashMap;
-
-use super::ScoredEntry;
-#[allow(unused_imports)]
 use super::render_distribution_gate::{HeadingLevel, render_distribution_gate_section};
 use super::render_phase::render_phase_section;
+use super::render_zero_regression::render_zero_regression_block;
 use super::{
     AggregateStats, CcAtKScenarioRow, EntryRankSummary, LatencyBucket, PhaseAggregateStats,
-    RegressionRecord, ScenarioResult,
+    RegressionRecord, ScenarioResult, ScoredEntry,
 };
+use crate::eval::profile::types::DistributionTargets;
+use crate::eval::runner::profile_meta::ProfileMetaEntry;
+use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // Type alias for the complex return type of find_notable_ranking_changes
@@ -39,6 +36,7 @@ pub(super) fn render_report(
     entry_rank_changes: &EntryRankSummary,
     query_map: &HashMap<String, String>,
     cc_at_k_rows: &[CcAtKScenarioRow],
+    profile_meta: &HashMap<String, ProfileMetaEntry>,
 ) -> String {
     let mut md = String::new();
 
@@ -180,37 +178,39 @@ pub(super) fn render_report(
     md.push_str("## 4. Entry-Level Analysis\n\n");
     md.push_str(&render_entry_analysis(entry_rank_changes));
 
-    // ----------------------------------------------------------------
-    // SECTION 5: Zero-Regression Check (FR-27 item 5, AC-08, AC-09)
-    // ----------------------------------------------------------------
-    md.push_str("## 5. Zero-Regression Check\n\n");
-    if regressions.is_empty() {
-        // Explicit empty-list indicator (AC-09, FR-28).
-        md.push_str("**No regressions detected.** All candidate profiles maintain or improve MRR and P@K across all scenarios.\n\n");
+    // SECTION 5: Per-profile gate dispatch (nan-010, ADR-005).
+    // No candidates → empty zero-regression (backward-compat AC-11).
+    let non_baseline_stats: &[AggregateStats] = if stats.len() > 1 { &stats[1..] } else { &[] };
+    let multi_profile = non_baseline_stats.len() > 1;
+    if non_baseline_stats.is_empty() {
+        md.push_str(&render_zero_regression_block(regressions, "", 1, false));
     } else {
-        md.push_str(&format!(
-            "**{} regression(s) detected:**\n\n",
-            regressions.len()
-        ));
-        md.push_str("| Scenario | Query | Profile | Reason | Baseline MRR | Candidate MRR | Baseline P@K | Candidate P@K |\n");
-        md.push_str("|----------|-------|---------|--------|-------------|--------------|-------------|---------------|\n");
-        for reg in regressions {
-            md.push_str(&format!(
-                "| {} | {} | {} | {} | {:.4} | {:.4} | {:.4} | {:.4} |\n",
-                reg.scenario_id,
-                reg.query,
-                reg.profile_name,
-                reg.reason,
-                reg.baseline_mrr,
-                reg.candidate_mrr,
-                reg.baseline_p_at_k,
-                reg.candidate_p_at_k,
-            ));
+        if multi_profile {
+            md.push_str("## 5. Distribution Gate / Zero-Regression Check\n\n");
         }
-        md.push('\n');
-        md.push_str(
-            "_This list is a human-reviewed artifact. No automated gate logic is applied._\n\n",
-        );
+        for (idx, stat) in non_baseline_stats.iter().enumerate() {
+            let profile_name = &stat.profile_name;
+            let index = idx + 1;
+            let meta = profile_meta.get(profile_name.as_str());
+            if meta.map(|e| e.distribution_change).unwrap_or(false) {
+                match (stats.first(), meta.and_then(|e| e.distribution_targets.as_ref())) {
+                    (Some(baseline), Some(t)) => {
+                        let targets = DistributionTargets { cc_at_k_min: t.cc_at_k_min, icd_min: t.icd_min, mrr_floor: t.mrr_floor };
+                        let gate = super::aggregate::check_distribution_targets(stat, &targets);
+                        let heading = if multi_profile { HeadingLevel::Multi { index } } else { HeadingLevel::Single };
+                        md.push_str(&render_distribution_gate_section(profile_name, &gate, baseline, heading));
+                    }
+                    _ => md.push_str(&format!("<!-- WARN: distribution gate targets missing for profile '{profile_name}' -->\n\n")),
+                }
+            } else {
+                md.push_str(&render_zero_regression_block(
+                    regressions,
+                    profile_name,
+                    index,
+                    multi_profile,
+                ));
+            }
+        }
     }
 
     // ----------------------------------------------------------------
