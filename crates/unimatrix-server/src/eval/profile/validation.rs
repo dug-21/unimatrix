@@ -105,5 +105,7 @@ pub(crate) fn parse_profile_toml(path: &Path) -> Result<EvalProfile, EvalError> 
         name,
         description,
         config_overrides,
+        distribution_change: false,
+        distribution_targets: None,
     })
 }

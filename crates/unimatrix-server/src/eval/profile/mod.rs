@@ -23,5 +23,5 @@ mod tests;
 // Public re-exports consumed by eval/mod.rs and runner.rs.
 pub use error::EvalError;
 pub use layer::EvalServiceLayer;
-pub use types::{AnalyticsMode, EvalProfile};
+pub use types::{AnalyticsMode, DistributionTargets, EvalProfile};
 pub(crate) use validation::parse_profile_toml;
