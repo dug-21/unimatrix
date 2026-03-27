@@ -486,4 +486,5 @@ fn baseline_metrics(result: &ScenarioResult) -> Option<(f64, f64, f64, f64)> {
     Some((prof.p_at_k, prof.mrr, prof.cc_at_k, prof.icd))
 }
 
-pub(crate) mod distribution;
+pub(super) mod distribution;
+pub(super) use distribution::{DistributionGateResult, MetricGateRow, check_distribution_targets};
