@@ -23,6 +23,10 @@ use petgraph::stable_graph::{EdgeReference, NodeIndex, StableGraph};
 use petgraph::visit::{EdgeRef, IntoEdgeReferences};
 use unimatrix_core::{EntryRecord, Status};
 
+#[path = "graph_suppression.rs"]
+mod graph_suppression;
+pub use graph_suppression::suppress_contradicts;
+
 // -- Penalty constants (ADR-006: named, fixed for v1) --
 
 /// Deprecated entry with no successors — softest penalty (orphan, not replaceable).
