@@ -1000,6 +1000,144 @@ impl SqlxStore {
         })
     }
 
+    /// Compute six graph cohesion metrics from GRAPH_EDGES and entries (col-029).
+    ///
+    /// Uses `read_pool()` — consistent with `compute_status_aggregates()` (ADR-003 col-029).
+    /// WAL snapshot semantics are intentional: bounded staleness is acceptable for this
+    /// diagnostic aggregate. Routing through `write_pool_server()` would contend with NLI
+    /// inference writes on its single-connection serialization point.
+    ///
+    /// Called only from `StatusService::compute_report()` Phase 5. Must NOT be called
+    /// from the background maintenance tick (NFR-01 col-029).
+    pub async fn compute_graph_cohesion_metrics(&self) -> Result<GraphCohesionMetrics> {
+        // --- Query 1: pure graph_edges aggregates (no JOIN) ---
+        // Counts non-bootstrap Supports edges and NLI-inferred edges.
+        // Single-row result; COALESCE guards the SUM columns.
+        let row1 = sqlx::query(
+            "SELECT \
+                COALESCE(SUM(CASE WHEN relation_type = 'Supports' THEN 1 ELSE 0 END), 0) \
+                    AS supports_edge_count, \
+                COALESCE(SUM(CASE WHEN source = 'nli' THEN 1 ELSE 0 END), 0) \
+                    AS inferred_edge_count \
+             FROM graph_edges \
+             WHERE bootstrap_only = 0",
+        )
+        .fetch_one(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        let supports_count: i64 = row1
+            .try_get::<i64, _>(0)
+            .map_err(|e| StoreError::Database(e.into()))?;
+        let inferred_count: i64 = row1
+            .try_get::<i64, _>(1)
+            .map_err(|e| StoreError::Database(e.into()))?;
+
+        // --- Query 2: scalar sub-queries for connectivity + cross-category + active-active edges ---
+        //
+        // active_entry_count: COUNT(DISTINCT id) over entries WHERE status=0.
+        //
+        // connected_entry_count: counts active entries with at least one non-bootstrap
+        // edge where BOTH endpoints are active. Uses a UNION of source_ids and target_ids
+        // from qualifying edges (edges where both source and target are active, status=0).
+        // The UNION deduplicates the ID set (ADR-002, R-01): an entry appearing as both
+        // source_id and target_id in different edges is counted once.
+        // IMPORTANT: Both endpoint joins restrict to status=0 so that edges to/from
+        // deprecated entries do NOT count the active endpoint as "connected" (R-08).
+        //
+        // cross_category_edge_count: counts edges directly from graph_edges joined to
+        // entries for both endpoints (active only). Counting per-edge avoids the
+        // double-counting that occurs in a per-entry outer loop (each edge A→B would
+        // otherwise be counted twice — once when iterating entry A, once for entry B).
+        // NULL guard on both categories prevents NULL != NULL evaluating to NULL (R-02).
+        //
+        // active_active_edge_count: non-bootstrap edges between two active entries.
+        // Used for mean_entry_degree (excludes edges to/from deprecated entries per
+        // test semantics — an edge to a deprecated entry contributes 0 to the degree
+        // seen by the active endpoint's PPR neighbourhood).
+        let row2 = sqlx::query(
+            "SELECT \
+                (SELECT COUNT(DISTINCT id) FROM entries WHERE status = 0) \
+                    AS active_entry_count, \
+                ( \
+                    SELECT COUNT(*) FROM ( \
+                        SELECT ge.source_id AS id \
+                        FROM graph_edges ge \
+                        JOIN entries src_a ON src_a.id = ge.source_id AND src_a.status = 0 \
+                        JOIN entries tgt_a ON tgt_a.id = ge.target_id AND tgt_a.status = 0 \
+                        WHERE ge.bootstrap_only = 0 \
+                        UNION \
+                        SELECT ge.target_id AS id \
+                        FROM graph_edges ge \
+                        JOIN entries src_b ON src_b.id = ge.source_id AND src_b.status = 0 \
+                        JOIN entries tgt_b ON tgt_b.id = ge.target_id AND tgt_b.status = 0 \
+                        WHERE ge.bootstrap_only = 0 \
+                    ) AS connected_ids \
+                ) AS connected_entry_count, \
+                ( \
+                    SELECT COALESCE(COUNT(*), 0) \
+                    FROM graph_edges ge \
+                    JOIN entries src_e ON src_e.id = ge.source_id AND src_e.status = 0 \
+                    JOIN entries tgt_e ON tgt_e.id = ge.target_id AND tgt_e.status = 0 \
+                    WHERE ge.bootstrap_only = 0 \
+                      AND src_e.category IS NOT NULL \
+                      AND tgt_e.category IS NOT NULL \
+                      AND src_e.category != tgt_e.category \
+                ) AS cross_category_edge_count, \
+                ( \
+                    SELECT COALESCE(COUNT(*), 0) \
+                    FROM graph_edges ge \
+                    JOIN entries src_m ON src_m.id = ge.source_id AND src_m.status = 0 \
+                    JOIN entries tgt_m ON tgt_m.id = ge.target_id AND tgt_m.status = 0 \
+                    WHERE ge.bootstrap_only = 0 \
+                ) AS active_active_edge_count",
+        )
+        .fetch_one(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        let active: i64 = row2
+            .try_get::<i64, _>(0)
+            .map_err(|e| StoreError::Database(e.into()))?;
+        let connected: i64 = row2
+            .try_get::<i64, _>(1)
+            .map_err(|e| StoreError::Database(e.into()))?;
+        let cross_cat: i64 = row2
+            .try_get::<i64, _>(2)
+            .map_err(|e| StoreError::Database(e.into()))?;
+        // active_active_edge_count: non-bootstrap edges where both endpoints are active;
+        // used for mean_entry_degree so edges to/from deprecated entries are excluded.
+        let active_active_edges: i64 = row2
+            .try_get::<i64, _>(3)
+            .map_err(|e| StoreError::Database(e.into()))?;
+
+        // --- Rust-side derivation (R-05: division guards required) ---
+        let connectivity_rate = if active > 0 {
+            connected as f64 / active as f64
+        } else {
+            0.0
+        };
+
+        let mean_entry_degree = if active > 0 {
+            (2.0 * active_active_edges as f64) / active as f64
+        } else {
+            0.0
+        };
+
+        // saturating_sub prevents u64 underflow if connected somehow exceeds active
+        // (defensive; the UNION approach ensures connected <= active).
+        let isolated = (active as u64).saturating_sub(connected as u64);
+
+        Ok(GraphCohesionMetrics {
+            connectivity_rate,
+            isolated_entry_count: isolated,
+            cross_category_edge_count: cross_cat as u64,
+            supports_edge_count: supports_count as u64,
+            mean_entry_degree,
+            inferred_edge_count: inferred_count as u64,
+        })
+    }
+
     /// Count active entries grouped by category.
     pub async fn count_active_entries_by_category(&self) -> Result<HashMap<String, u64>> {
         let rows = sqlx::query(
@@ -1410,6 +1548,21 @@ pub struct ContradictEdgeRow {
 }
 
 // ---------------------------------------------------------------------------
+// NLI edge source constant (ADR-001 col-029)
+// ---------------------------------------------------------------------------
+
+/// Named constant for the NLI-inferred edge source value.
+///
+/// Prevents silent string divergence between `read.rs` and `nli_detection.rs`
+/// (SR-01 col-029). All code that reads or writes the `source` column with the
+/// value `"nli"` should reference this constant.
+///
+/// NOTE: `read.rs` is already >1570 lines (exceeds the 500-line housekeeping rule).
+/// Splitting graph-adjacent types and queries to a `read_graph.rs` sub-module is
+/// deferred — out of scope for col-029 but should be addressed in a future cycle.
+pub const EDGE_SOURCE_NLI: &str = "nli";
+
+// ---------------------------------------------------------------------------
 // Public output types
 // ---------------------------------------------------------------------------
 
@@ -1421,6 +1574,27 @@ pub struct StatusAggregates {
     pub total_correction_count: u64,
     pub trust_source_distribution: BTreeMap<String, u64>,
     pub unattributed_count: u64,
+}
+
+/// Six graph topology metrics derived from GRAPH_EDGES joined to entries (col-029).
+///
+/// All metrics exclude `bootstrap_only=1` edges. All entry joins restrict to `status=0`
+/// (active only). Computed per-call via two SQL queries against `read_pool()` (ADR-003).
+#[derive(Debug, Clone)]
+pub struct GraphCohesionMetrics {
+    /// Fraction of active entries with at least one non-bootstrap edge. Range [0.0, 1.0].
+    pub connectivity_rate: f64,
+    /// Active entries with zero non-bootstrap edges on either endpoint.
+    pub isolated_entry_count: u64,
+    /// Non-bootstrap edges where both active endpoints have different category values.
+    pub cross_category_edge_count: u64,
+    /// Non-bootstrap edges with `relation_type = 'Supports'`.
+    pub supports_edge_count: u64,
+    /// Average in+out degree: `(2 * non_bootstrap_edge_count) / active_entry_count`.
+    /// Returns `0.0` when `active_entry_count = 0`.
+    pub mean_entry_degree: f64,
+    /// Non-bootstrap edges with `source = EDGE_SOURCE_NLI` (`"nli"`).
+    pub inferred_edge_count: u64,
 }
 
 /// Raw effectiveness data aggregated by SQL (crt-018: ADR-001).
@@ -1566,5 +1740,307 @@ mod tests {
             .expect("row source_id=3");
         assert!(!row_false.bootstrap_only, "0 must map to false");
         assert!(row_true.bootstrap_only, "1 must map to true");
+    }
+
+    // ---------------------------------------------------------------------------
+    // Graph cohesion metrics tests (col-029, AC-13)
+    // ---------------------------------------------------------------------------
+
+    /// Insert an entry into the entries table using write_pool.
+    /// `status`: 0 = Active, 1 = Deprecated, 3 = Quarantined.
+    async fn insert_test_entry(
+        pool: &sqlx::sqlite::SqlitePool,
+        id: u64,
+        category: &str,
+        status: i64,
+    ) {
+        sqlx::query(
+            "INSERT INTO entries \
+                (id, title, content, category, topic, source, trust_source, status, created_at, updated_at) \
+             VALUES (?1, ?2, ?3, ?4, '', '', 'human', ?5, 0, 0)",
+        )
+        .bind(id as i64)
+        .bind(format!("entry-{id}"))
+        .bind(format!("content-{id}"))
+        .bind(category)
+        .bind(status)
+        .execute(pool)
+        .await
+        .expect("insert entry");
+    }
+
+    /// Insert an edge into graph_edges using write_pool.
+    async fn insert_test_edge(
+        pool: &sqlx::sqlite::SqlitePool,
+        source_id: u64,
+        target_id: u64,
+        relation_type: &str,
+        source: &str,
+        bootstrap_only: i64,
+    ) {
+        sqlx::query(
+            "INSERT INTO graph_edges \
+                (source_id, target_id, relation_type, weight, created_at, \
+                 created_by, source, bootstrap_only) \
+             VALUES (?1, ?2, ?3, 1.0, 0, 'test', ?4, ?5)",
+        )
+        .bind(source_id as i64)
+        .bind(target_id as i64)
+        .bind(relation_type)
+        .bind(source)
+        .bind(bootstrap_only)
+        .execute(pool)
+        .await
+        .expect("insert edge");
+    }
+
+    /// AC-02, AC-07, R-05: 3 active entries, no edges — all isolated, no division by zero.
+    #[tokio::test]
+    async fn test_graph_cohesion_all_isolated() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 2, "pattern", 0).await;
+        insert_test_entry(&store.write_pool, 3, "convention", 0).await;
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(m.connectivity_rate, 0.0);
+        assert_eq!(m.isolated_entry_count, 3);
+        assert_eq!(m.cross_category_edge_count, 0);
+        assert_eq!(m.supports_edge_count, 0);
+        assert_eq!(m.mean_entry_degree, 0.0);
+        assert_eq!(m.inferred_edge_count, 0);
+        // R-05: explicit NaN/inf guards
+        assert!(
+            !m.mean_entry_degree.is_nan(),
+            "mean_entry_degree must not be NaN"
+        );
+        assert!(
+            !m.mean_entry_degree.is_infinite(),
+            "mean_entry_degree must not be infinite"
+        );
+        assert!(
+            !m.connectivity_rate.is_nan(),
+            "connectivity_rate must not be NaN"
+        );
+        assert!(
+            !m.connectivity_rate.is_infinite(),
+            "connectivity_rate must not be infinite"
+        );
+    }
+
+    /// AC-03, AC-06, AC-07, R-01: chain A→B→C — B is both source and target, must not double-count.
+    #[tokio::test]
+    async fn test_graph_cohesion_all_connected() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 2, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 3, "decision", 0).await;
+        // A→B, B→C: B appears as both target_id and source_id
+        insert_test_edge(&store.write_pool, 1, 2, "Supports", "", 0).await;
+        insert_test_edge(&store.write_pool, 2, 3, "Supports", "", 0).await;
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        // R-01: UNION dedup must yield connectivity_rate == 1.0, not 4/3
+        assert_eq!(m.connectivity_rate, 1.0, "all 3 entries must be connected");
+        assert!(
+            m.connectivity_rate <= 1.0,
+            "connectivity_rate must be bounded to 1.0"
+        );
+        assert_eq!(m.isolated_entry_count, 0);
+        assert_eq!(m.supports_edge_count, 2);
+        assert_eq!(m.inferred_edge_count, 0);
+        // mean = (2*2 edges) / 3 entries = 4/3
+        assert!(
+            (m.mean_entry_degree - (4.0_f64 / 3.0_f64)).abs() < 1e-10,
+            "mean_entry_degree expected 4/3, got {}",
+            m.mean_entry_degree
+        );
+    }
+
+    /// AC-08, R-01, R-08: 4 active + 1 deprecated; only A→B connects; C→deprecated does not.
+    #[tokio::test]
+    async fn test_graph_cohesion_mixed_connectivity() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 2, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 3, "pattern", 0).await;
+        insert_test_entry(&store.write_pool, 4, "pattern", 0).await;
+        insert_test_entry(&store.write_pool, 5, "convention", 1).await; // deprecated
+        insert_test_edge(&store.write_pool, 1, 2, "Supports", "", 0).await; // A→B: both active
+        insert_test_edge(&store.write_pool, 3, 5, "Supports", "", 0).await; // C→deprecated: does NOT connect C
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(m.connectivity_rate, 0.5, "2 of 4 active entries connected");
+        assert_eq!(m.isolated_entry_count, 2, "C and D are isolated");
+        assert!(m.connectivity_rate <= 1.0);
+        assert_eq!(
+            m.cross_category_edge_count, 0,
+            "A→B same category; C→deprecated excluded"
+        );
+        assert!(
+            (m.mean_entry_degree - 0.5_f64).abs() < 1e-10,
+            "mean = (2*1)/4 = 0.5, got {}",
+            m.mean_entry_degree
+        );
+    }
+
+    /// AC-04, R-02: cross-category counting with deprecated endpoint NULL guard.
+    #[tokio::test]
+    async fn test_graph_cohesion_cross_category() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await; // A
+        insert_test_entry(&store.write_pool, 2, "pattern", 0).await; // B
+        insert_test_entry(&store.write_pool, 3, "decision", 0).await; // C
+        insert_test_entry(&store.write_pool, 4, "convention", 1).await; // D deprecated
+        insert_test_edge(&store.write_pool, 1, 2, "Supports", "", 0).await; // A→B cross-category: counts
+        insert_test_edge(&store.write_pool, 1, 3, "CoAccess", "", 0).await; // A→C same-category: doesn't count
+        insert_test_edge(&store.write_pool, 1, 4, "Supersedes", "", 0).await; // A→D deprecated tgt: R-02 NULL guard
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(m.cross_category_edge_count, 1, "only A→B counts");
+        assert_eq!(
+            m.connectivity_rate, 1.0,
+            "A, B, C all connected via non-bootstrap edges"
+        );
+        assert_eq!(m.isolated_entry_count, 0);
+    }
+
+    /// AC-04 (same-category exclusion): edges between same-category entries not counted.
+    #[tokio::test]
+    async fn test_graph_cohesion_same_category_only() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 2, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 3, "decision", 0).await;
+        // Edges without Supports relation_type to also check supports_edge_count = 0
+        insert_test_edge(&store.write_pool, 1, 2, "CoAccess", "", 0).await;
+        insert_test_edge(&store.write_pool, 2, 3, "CoAccess", "", 0).await;
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(m.cross_category_edge_count, 0);
+        assert_eq!(m.connectivity_rate, 1.0);
+        assert_eq!(m.isolated_entry_count, 0);
+        assert_eq!(m.supports_edge_count, 0);
+        assert_eq!(m.inferred_edge_count, 0);
+    }
+
+    /// AC-05, R-03: NLI source edge with bootstrap_only=0 counts; bootstrap_only=1 must not.
+    #[tokio::test]
+    async fn test_graph_cohesion_nli_source() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 2, "pattern", 0).await;
+        // Real NLI edge (should count)
+        insert_test_edge(&store.write_pool, 1, 2, "Supports", "nli", 0).await;
+        // Bootstrap NLI edge — different relation_type to avoid UNIQUE conflict; must NOT count
+        insert_test_edge(&store.write_pool, 1, 2, "CoAccess", "nli", 1).await;
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(
+            m.inferred_edge_count, 1,
+            "only bootstrap_only=0 NLI edge counts"
+        );
+        assert_eq!(m.connectivity_rate, 1.0);
+        assert_eq!(
+            m.cross_category_edge_count, 1,
+            "decision vs pattern, non-bootstrap edge"
+        );
+    }
+
+    /// AC-16, R-03: all edges bootstrap_only=1 — all metrics must be zero.
+    #[tokio::test]
+    async fn test_graph_cohesion_bootstrap_excluded() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 2, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 3, "decision", 0).await;
+        // All edges are bootstrap_only=1 — must be invisible to all metrics
+        insert_test_edge(&store.write_pool, 1, 2, "Supports", "nli", 1).await;
+        insert_test_edge(&store.write_pool, 2, 3, "Supersedes", "bootstrap", 1).await;
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(m.connectivity_rate, 0.0);
+        assert_eq!(m.isolated_entry_count, 3);
+        assert_eq!(m.cross_category_edge_count, 0);
+        assert_eq!(
+            m.supports_edge_count, 0,
+            "bootstrap Supports edges must not count"
+        );
+        assert_eq!(m.mean_entry_degree, 0.0);
+        assert_eq!(
+            m.inferred_edge_count, 0,
+            "NLI source + bootstrap_only=1 must not count"
+        );
+    }
+
+    /// R-05: empty store — zero active entries, division guards must return 0.0 not NaN/inf.
+    #[tokio::test]
+    async fn test_graph_cohesion_empty_store() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        // No entries, no edges
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(m.connectivity_rate, 0.0);
+        assert_eq!(m.mean_entry_degree, 0.0);
+        assert_eq!(m.isolated_entry_count, 0);
+        assert_eq!(m.cross_category_edge_count, 0);
+        assert_eq!(m.supports_edge_count, 0);
+        assert_eq!(m.inferred_edge_count, 0);
+        assert!(
+            !m.connectivity_rate.is_nan(),
+            "connectivity_rate must not be NaN"
+        );
+        assert!(
+            !m.connectivity_rate.is_infinite(),
+            "connectivity_rate must not be infinite"
+        );
+        assert!(
+            !m.mean_entry_degree.is_nan(),
+            "mean_entry_degree must not be NaN"
+        );
+        assert!(
+            !m.mean_entry_degree.is_infinite(),
+            "mean_entry_degree must not be infinite"
+        );
     }
 }

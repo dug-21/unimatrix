@@ -515,6 +515,13 @@ impl StatusService {
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
+            // Graph Cohesion Metrics (col-029) — populated later in Phase 5
+            graph_connectivity_rate: 0.0,
+            isolated_entry_count: 0,
+            cross_category_edge_count: 0,
+            supports_edge_count: 0,
+            mean_entry_degree: 0.0,
+            inferred_edge_count: 0,
             maintenance_recommendations: Vec::new(),
             total_outcomes,
             outcomes_by_type: outcomes_by_type.into_iter().collect(),
@@ -667,6 +674,21 @@ impl StatusService {
         report.graph_quality_score =
             coherence::graph_quality_score(graph_stale_count, graph_point_count);
         report.graph_stale_ratio = graph_stale_ratio;
+
+        // Graph cohesion metrics (col-029)
+        // ADR-003: read_pool() — WAL snapshot semantics intentional, bounded staleness accepted.
+        // On error, all six fields remain at default 0 / 0.0.
+        match self.store.compute_graph_cohesion_metrics().await {
+            Ok(gcm) => {
+                report.graph_connectivity_rate = gcm.connectivity_rate;
+                report.isolated_entry_count = gcm.isolated_entry_count;
+                report.cross_category_edge_count = gcm.cross_category_edge_count;
+                report.supports_edge_count = gcm.supports_edge_count;
+                report.mean_entry_degree = gcm.mean_entry_degree;
+                report.inferred_edge_count = gcm.inferred_edge_count;
+            }
+            Err(e) => tracing::warn!("graph cohesion metrics failed: {e}"),
+        }
 
         let embed_dim = if report.embedding_check_performed {
             let total_checked = active_entries.len();

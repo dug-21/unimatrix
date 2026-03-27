@@ -634,6 +634,13 @@ mod tests {
             extraction_stats: None,
             coherence_by_source: Vec::new(),
             effectiveness: None,
+            // Graph Cohesion Metrics (col-029)
+            graph_connectivity_rate: 0.0,
+            isolated_entry_count: 0,
+            cross_category_edge_count: 0,
+            supports_edge_count: 0,
+            mean_entry_degree: 0.0,
+            inferred_edge_count: 0,
         }
     }
 
@@ -719,6 +726,13 @@ mod tests {
             extraction_stats: None,
             coherence_by_source: Vec::new(),
             effectiveness: None,
+            // Graph Cohesion Metrics (col-029)
+            graph_connectivity_rate: 0.0,
+            isolated_entry_count: 0,
+            cross_category_edge_count: 0,
+            supports_edge_count: 0,
+            mean_entry_degree: 0.0,
+            inferred_edge_count: 0,
         };
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
@@ -971,6 +985,13 @@ mod tests {
             extraction_stats: None,
             coherence_by_source: Vec::new(),
             effectiveness: None,
+            // Graph Cohesion Metrics (col-029)
+            graph_connectivity_rate: 0.0,
+            isolated_entry_count: 0,
+            cross_category_edge_count: 0,
+            supports_edge_count: 0,
+            mean_entry_degree: 0.0,
+            inferred_edge_count: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Summary);
@@ -1041,6 +1062,13 @@ mod tests {
             extraction_stats: None,
             coherence_by_source: Vec::new(),
             effectiveness: None,
+            // Graph Cohesion Metrics (col-029)
+            graph_connectivity_rate: 0.0,
+            isolated_entry_count: 0,
+            cross_category_edge_count: 0,
+            supports_edge_count: 0,
+            mean_entry_degree: 0.0,
+            inferred_edge_count: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1113,6 +1141,13 @@ mod tests {
             extraction_stats: None,
             coherence_by_source: Vec::new(),
             effectiveness: None,
+            // Graph Cohesion Metrics (col-029)
+            graph_connectivity_rate: 0.0,
+            isolated_entry_count: 0,
+            cross_category_edge_count: 0,
+            supports_edge_count: 0,
+            mean_entry_degree: 0.0,
+            inferred_edge_count: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Json);
@@ -1177,6 +1212,13 @@ mod tests {
             extraction_stats: None,
             coherence_by_source: Vec::new(),
             effectiveness: None,
+            // Graph Cohesion Metrics (col-029)
+            graph_connectivity_rate: 0.0,
+            isolated_entry_count: 0,
+            cross_category_edge_count: 0,
+            supports_edge_count: 0,
+            mean_entry_degree: 0.0,
+            inferred_edge_count: 0,
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1245,6 +1287,13 @@ mod tests {
             extraction_stats: None,
             coherence_by_source: Vec::new(),
             effectiveness: None,
+            // Graph Cohesion Metrics (col-029)
+            graph_connectivity_rate: 0.0,
+            isolated_entry_count: 0,
+            cross_category_edge_count: 0,
+            supports_edge_count: 0,
+            mean_entry_degree: 0.0,
+            inferred_edge_count: 0,
         }
     }
 
@@ -1380,6 +1429,13 @@ mod tests {
             extraction_stats: None,
             coherence_by_source: Vec::new(),
             effectiveness: None,
+            // Graph Cohesion Metrics (col-029)
+            graph_connectivity_rate: 0.0,
+            isolated_entry_count: 0,
+            cross_category_edge_count: 0,
+            supports_edge_count: 0,
+            mean_entry_degree: 0.0,
+            inferred_edge_count: 0,
         }
     }
 

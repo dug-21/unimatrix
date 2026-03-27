@@ -16,8 +16,8 @@ use sqlx::sqlite::SqliteConnectOptions;
 use tempfile::TempDir;
 use unimatrix_store::SqlxStore;
 use unimatrix_store::pool_config::PoolConfig;
-use unimatrix_store::test_helpers::open_test_store;
 use unimatrix_store::query_log::QueryLogRecord;
+use unimatrix_store::test_helpers::open_test_store;
 
 // ---------------------------------------------------------------------------
 // V16 database builder
