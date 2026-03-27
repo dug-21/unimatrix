@@ -24,6 +24,7 @@ mod aggregate;
 mod render;
 mod render_distribution_gate;
 mod render_phase;
+mod render_zero_regression;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -45,6 +46,8 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use crate::eval::profile::EvalError;
+use crate::eval::runner::profile_meta::{ProfileMetaEntry, ProfileMetaFile};
 use aggregate::{
     compute_aggregate_stats, compute_cc_at_k_scenario_rows, compute_entry_rank_changes,
     compute_latency_buckets, compute_phase_stats, find_regressions,
@@ -218,6 +221,51 @@ pub(super) struct EntryRankSummary {
 }
 
 // ---------------------------------------------------------------------------
+// Private helpers
+// ---------------------------------------------------------------------------
+
+/// Load `profile-meta.json` from the eval results directory (nan-010, Component 7).
+///
+/// # Behavior contract
+///
+/// - File absent → `Ok(HashMap::new())` (backward-compat fallback, AC-11, ADR-002, FR-09).
+///   Pre-nan-010 result directories have no sidecar; they must render Section 5 as
+///   "Zero-Regression Check" without error.
+/// - File present but unreadable (permission denied, etc.) → `Err(EvalError::Io(_))`.
+///   A present-but-unreadable file is distinct from absent.
+/// - File present, non-JSON or structurally invalid → `Err(EvalError::ConfigInvariant(_))`
+///   with message "profile-meta.json is malformed — re-run eval to regenerate".
+///   Silent WARN+fallback is explicitly rejected (ARCHITECTURE.md Component 7, R-07,
+///   ADR-004 abort requirement).
+/// - File present and valid → `Ok(populated_map)`.
+pub(super) fn load_profile_meta(
+    dir: &Path,
+) -> Result<HashMap<String, ProfileMetaEntry>, EvalError> {
+    let path = dir.join("profile-meta.json");
+
+    // Absent file → backward-compat (AC-11, ADR-002, knowledge package #3585).
+    match std::fs::read_to_string(&path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(HashMap::new()),
+        Err(e) => {
+            // Present but unreadable — propagate as I/O error.
+            Err(EvalError::Io(e))
+        }
+        Ok(contents) => {
+            // File found — attempt JSON deserialization.
+            // Corrupt sidecar → abort (ADR-004, ARCHITECTURE.md Component 7, R-07).
+            // Do NOT silently fall back to empty map.
+            serde_json::from_str::<ProfileMetaFile>(&contents)
+                .map(|meta_file| meta_file.profiles)
+                .map_err(|parse_err| {
+                    EvalError::ConfigInvariant(format!(
+                        "profile-meta.json is malformed — re-run eval to regenerate (parse error: {parse_err})"
+                    ))
+                })
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
 
@@ -228,6 +276,7 @@ pub(super) struct EntryRankSummary {
 /// - `out`: path to write the Markdown report
 ///
 /// Always returns `Ok(())` — never exits non-zero due to regression count (C-07, FR-29).
+/// Returns `Err` only for I/O errors or a corrupt `profile-meta.json` sidecar.
 pub fn run_report(
     results: &Path,
     scenarios: Option<&Path>,
@@ -271,6 +320,13 @@ pub fn run_report(
         None => HashMap::new(),
     };
 
+    // Step 3.5 (nan-010): Load profile-meta.json sidecar.
+    //
+    // Absent file → empty map (backward-compat, AC-11, ADR-002).
+    // Present but malformed → Err propagated here — report aborts, CLI exits non-zero.
+    // This satisfies: corrupt sidecar = abort with non-zero exit (ARCHITECTURE.md C7, R-07).
+    let profile_meta = load_profile_meta(results)?;
+
     // Step 4: Aggregate.
     let aggregate_stats = compute_aggregate_stats(&scenario_results);
     let regressions = find_regressions(&scenario_results, &query_map);
@@ -290,6 +346,7 @@ pub fn run_report(
         &entry_rank_changes,
         &query_map,
         &cc_at_k_rows,
+        &profile_meta, // nan-010: per-profile distribution gate metadata
     );
 
     // Step 6: Write output.

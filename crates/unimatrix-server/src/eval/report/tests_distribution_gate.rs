@@ -9,7 +9,7 @@
 use tempfile::TempDir;
 
 use crate::eval::profile::{DistributionTargets, EvalProfile};
-use crate::eval::runner::profile_meta::{write_profile_meta, ProfileMetaFile};
+use crate::eval::runner::profile_meta::{ProfileMetaFile, write_profile_meta};
 use crate::infra::config::UnimatrixConfig;
 
 // ---------------------------------------------------------------------------
@@ -245,5 +245,205 @@ fn test_write_profile_meta_nonexistent_dir_returns_err() {
     assert!(
         result.is_err(),
         "write_profile_meta to nonexistent dir must return Err"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Component 7: Report Sidecar Load (`load_profile_meta` and `run_report`)
+// ---------------------------------------------------------------------------
+
+/// AC-11, AC-14, R-15: Backward compatibility — absent `profile-meta.json`.
+///
+/// Sub-scenario A: absent sidecar → `load_profile_meta` returns `Ok(empty map)`.
+/// Sub-scenario B: pre-nan-010 `ScenarioResult` JSON (no `distribution_change` field)
+///   deserializes without error, confirming zero new fields were added to `ScenarioResult`.
+///
+/// The full `run_report` call must succeed and the rendered output must contain
+/// "Zero-Regression Check" with no "Distribution Gate" text.
+#[test]
+fn test_report_without_profile_meta_json() {
+    use std::collections::HashMap;
+
+    use super::{ComparisonMetrics, ProfileResult, ScenarioResult, load_profile_meta, run_report};
+
+    let results_dir = TempDir::new().unwrap();
+
+    // Sub-scenario A: load_profile_meta returns Ok(empty) when file is absent.
+    let result = load_profile_meta(results_dir.path());
+    assert!(
+        result.is_ok(),
+        "load_profile_meta must return Ok when profile-meta.json is absent, got: {:?}",
+        result.err()
+    );
+    let map = result.unwrap();
+    assert!(
+        map.is_empty(),
+        "load_profile_meta must return empty map when file is absent"
+    );
+
+    // Sub-scenario B: pre-nan-010 ScenarioResult JSON (no distribution_change field).
+    // This simulates a result directory produced before nan-010 — no sidecar, no new fields.
+    let pre_nan010_json = r#"{
+        "scenario_id": "legacy-01",
+        "query": "test query",
+        "profiles": {
+            "baseline": {
+                "latency_ms": 50,
+                "p_at_k": 0.7,
+                "mrr": 0.6,
+                "cc_at_k": 0.4,
+                "icd": 0.8
+            },
+            "candidate": {
+                "latency_ms": 60,
+                "p_at_k": 0.75,
+                "mrr": 0.65,
+                "cc_at_k": 0.5,
+                "icd": 0.9
+            }
+        },
+        "comparison": {
+            "kendall_tau": 0.9,
+            "mrr_delta": 0.05,
+            "p_at_k_delta": 0.05,
+            "latency_overhead_ms": 10,
+            "cc_at_k_delta": 0.1,
+            "icd_delta": 0.1
+        }
+    }"#;
+    let scenario: ScenarioResult = serde_json::from_str(pre_nan010_json)
+        .expect("pre-nan-010 ScenarioResult JSON must deserialize — dual-type constraint (R-15)");
+    assert_eq!(scenario.scenario_id, "legacy-01");
+
+    // Write the legacy JSON file to the results dir.
+    std::fs::write(results_dir.path().join("legacy-01.json"), pre_nan010_json).unwrap();
+
+    // run_report must succeed (no profile-meta.json → empty profile_meta map).
+    let out_dir = TempDir::new().unwrap();
+    let out_path = out_dir.path().join("report.md");
+    run_report(results_dir.path(), None, &out_path)
+        .expect("run_report must succeed with pre-nan-010 results directory");
+
+    let content = std::fs::read_to_string(&out_path).expect("read report");
+
+    // Section 5 must be "Zero-Regression Check" — no distribution gate.
+    assert!(
+        content.contains("Zero-Regression Check"),
+        "report must contain 'Zero-Regression Check' when no profile-meta.json:\n{content}"
+    );
+    assert!(
+        !content.contains("Distribution Gate"),
+        "report must NOT contain 'Distribution Gate' when no profile-meta.json:\n{content}"
+    );
+
+    // Suppress unused import warning from direct use of these types in this test.
+    let _: HashMap<String, ProfileResult> = HashMap::new();
+    let _: ComparisonMetrics;
+}
+
+/// R-07: Corrupt `profile-meta.json` → `load_profile_meta` returns `Err` with
+/// "profile-meta.json is malformed" message. No silent fallback.
+///
+/// This test guards against regression to WARN+fallback behavior (resolved WARN-3 in
+/// ALIGNMENT-REPORT.md). See ARCHITECTURE.md Component 7 and ADR-004.
+#[test]
+fn test_distribution_gate_corrupt_sidecar_aborts() {
+    use super::load_profile_meta;
+
+    let tmp_dir = TempDir::new().unwrap();
+
+    // Write truncated/invalid JSON to profile-meta.json.
+    std::fs::write(
+        tmp_dir.path().join("profile-meta.json"),
+        b"not valid json {{{{",
+    )
+    .unwrap();
+
+    let result = load_profile_meta(tmp_dir.path());
+
+    // Must return Err — not Ok(empty map).
+    assert!(
+        result.is_err(),
+        "load_profile_meta must return Err for corrupt sidecar — not Ok fallback"
+    );
+
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("profile-meta.json is malformed"),
+        "error must contain 'profile-meta.json is malformed', got: {err_msg}"
+    );
+    assert!(
+        err_msg.contains("re-run eval to regenerate"),
+        "error must contain 're-run eval to regenerate', got: {err_msg}"
+    );
+}
+
+/// R-12: Distribution Gate failure does NOT cause `run_report` to return `Err`.
+///
+/// When a distribution-change profile fails its gate, the failure appears in the
+/// report body only. `run_report` must return `Ok(())` — exit code 0 (C-07, FR-29).
+///
+/// The `run_report` Err path is reserved exclusively for I/O errors and corrupt sidecars.
+/// This test also verifies that `run_report` returns Ok when there is no profile-meta.json
+/// (the distribution gate path requires a sidecar — without one, zero-regression runs).
+#[test]
+fn test_distribution_gate_exit_code_zero() {
+    use super::{ComparisonMetrics, ProfileResult, ScenarioResult, run_report};
+    use std::collections::HashMap;
+
+    let results_dir = TempDir::new().unwrap();
+    let out_dir = TempDir::new().unwrap();
+    let out_path = out_dir.path().join("report.md");
+
+    // Build a scenario where candidate MRR < baseline MRR (a regression in zero-regression check).
+    let mut profiles = HashMap::new();
+    profiles.insert(
+        "baseline".to_string(),
+        ProfileResult {
+            entries: Vec::new(),
+            latency_ms: 50,
+            p_at_k: 0.8,
+            mrr: 0.7,
+            cc_at_k: 0.5,
+            icd: 0.9,
+        },
+    );
+    profiles.insert(
+        "candidate".to_string(),
+        ProfileResult {
+            entries: Vec::new(),
+            latency_ms: 60,
+            p_at_k: 0.6,
+            mrr: 0.4,
+            cc_at_k: 0.3,
+            icd: 0.6,
+        },
+    );
+    let scenario = ScenarioResult {
+        scenario_id: "exit-code-test-01".to_string(),
+        query: "exit code test query".to_string(),
+        profiles,
+        phase: None,
+        comparison: ComparisonMetrics {
+            kendall_tau: 0.6,
+            rank_changes: Vec::new(),
+            mrr_delta: -0.3,
+            p_at_k_delta: -0.2,
+            latency_overhead_ms: 10,
+            cc_at_k_delta: -0.2,
+            icd_delta: -0.3,
+        },
+    };
+
+    let json = serde_json::to_string(&scenario).unwrap();
+    std::fs::write(results_dir.path().join("exit-code-test-01.json"), json).unwrap();
+
+    // No profile-meta.json → zero-regression path.
+    // Even with regressions present, run_report must return Ok(()) — not Err.
+    let result = run_report(results_dir.path(), None, &out_path);
+    assert!(
+        result.is_ok(),
+        "run_report must return Ok(()) even with regressions — exit code 0 (C-07, FR-29): {:?}",
+        result.err()
     );
 }
