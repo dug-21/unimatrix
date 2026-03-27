@@ -3,7 +3,9 @@
     "unimatrix": {
       "command": "/usr/local/cargo/bin/unimatrix",
       "args": [],
-      "env": {}
+      "env": {
+        "RUST_LOG": "unimatrix_server=debug"
+      }
     }
   }
 }

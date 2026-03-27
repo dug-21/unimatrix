@@ -74,7 +74,7 @@ Gather all evidence about the shipped feature:
    ```
    Look for rework commits (`fix(gate):`) — these indicate where the process struggled.
 
-6. **Share the interim results**: provide cleaned view of the retrospective output with key observations
+6. **Share the interim results**: provide cleaned view of the retrospective output with key observations before moving forward
 
 ---
 

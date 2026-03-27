@@ -68,9 +68,15 @@ Knowledge engine (MCP server). **Use it.**
 
 **Single item lookup** — use `context_get` to retrieve full details of any Unimatrix entry by ID. The `id` field is an **integer** — never quote it:
 
+format options: 
+    {null}              // Summarized content in text
+    {markdown}          // Full text in markdown
+    {json}              // Full text in json format
+
+Example:    
 ```
 mcp__unimatrix__context_get({
-  "id": 3267
+  "id": 3267, "feature": "{feature id}, "format": "markdown"
 })
 ```
 

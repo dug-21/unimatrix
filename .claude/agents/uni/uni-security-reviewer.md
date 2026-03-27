@@ -50,7 +50,7 @@ Read the full diff of all changes on the branch.
 Read the investigator's diagnosis report at the path provided in your spawn prompt.
 
 ### 3. Security-Related ADRs
-Read any ADR files in the affected crate's feature directory that relate to security, input validation, or trust boundaries.
+Use skill /uni-knowledge-search for `decisions` (ADR's), `patterns` and general information about the feature/topic or crates involved that relate to security, input validation, or trust boundaries.
 
 ### 4. Affected Source Files
 Read the full source files that were modified — not just the diff lines. Understand the surrounding context.
