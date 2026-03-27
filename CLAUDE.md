@@ -61,10 +61,17 @@ Features use `{phase}-{NNN}` naming. Track via **GitHub Issues**; commits refere
 
 Knowledge engine (MCP server). **Use it.**
 
-- `/uni-query-patterns` — before designing or implementing, check what exists
 - `/uni-store-adr` — after each architectural decision (Unimatrix-only, no ADR files)
 - `/uni-record-outcome` — at the end of every session
 - `/uni-store-procedure` — when a reusable technique evolves
 - `/uni-store-lesson` — after failures and gate rejections
+
+**Single item lookup** — use `context_get` to retrieve full details of any Unimatrix entry by ID. The `id` field is an **integer** — never quote it:
+
+```
+mcp__unimatrix__context_get({
+  "id": 3267
+})
+```
 
 Do not store workflow choreography in Unimatrix. Protocols live in `.claude/protocols/uni/`.
