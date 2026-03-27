@@ -39,8 +39,9 @@ constraints require a split; see C-08). The function:
 - Truncates remaining pairs to `max_graph_inference_per_tick`.
 - Dispatches all NLI scoring as a single `rayon_pool.spawn()` call (W1-2 contract; see C-01).
 - Writes `Supports` edges when `entailment > supports_edge_threshold`.
-- Writes `Contradicts` edges when `contradiction > nli_contradiction_threshold` (existing field,
-  not a new or looser threshold).
+- MUST NOT write `Contradicts` edges. The dedicated contradiction detection path is the sole
+  writer of `Contradicts` edges. Mixing Contradicts writes in the tick creates a second code
+  path with independent threshold drift risk (see C-13).
 - Logs total edges written at `debug` level.
 
 ### FR-02 — Four new `InferenceConfig` fields
@@ -121,18 +122,19 @@ All edges written by `run_graph_inference_tick` must:
   col-029 ADR-001, Unimatrix entry #3591).
 - Set `bootstrap_only = false`.
 
-### FR-08 — Combined NLI pass per pair
+### FR-08 — Supports-only NLI write pass per pair
 
-For each scored pair, both `entailment` and `contradiction` scores are evaluated in the same
-pass (one NLI call per pair, two edge-write opportunities). This reuses the logic already
-implemented in `write_edges_with_cap` or a minimal named variant. Cap logic must not be inlined;
-it must be extracted into a unit-testable function (SR-08 risk mitigation).
+For each scored pair, only the `entailment` score is evaluated for edge writing. Although
+the NLI call returns both `entailment` and `contradiction` scores, the tick evaluates only
+`entailment` — the `contradiction` score is discarded. The tick MUST NOT write `Contradicts`
+edges (see C-13). Cap logic must not be inlined; it must be extracted into a unit-testable
+function (SR-08 risk mitigation).
 
 ### FR-09 — Per-tick edge cap
 
 The total number of edges written per tick must not exceed `max_graph_inference_per_tick`. The
-cap counts `Supports` and `Contradicts` edges combined. Processing stops as soon as the cap is
-reached, regardless of which type was written last.
+cap counts Supports edges only — the tick writes no other edge types. Processing stops as soon
+as the cap is reached.
 
 ### FR-10 — Source-candidate bound before embedding lookup
 
@@ -236,11 +238,13 @@ scoring (pre-filter, not `INSERT OR IGNORE`). Existing confirmed pairs consume z
 Verification: unit test seeds an existing `Supports` edge; assert NLI scorer is not called for
 that pair.
 
-**AC-06c** — `get_embedding` is called only for source candidates as they are selected — not
-for all active entries upfront. Source candidate count is bounded to `max_graph_inference_per_tick`
-before any embedding lookup.
+**AC-06c** — Source candidates are capped to `max_graph_inference_per_tick` BEFORE any
+`get_embedding` call — not after. The cap is applied in `select_source_candidates` (Phase 3)
+which operates on metadata only (IDs and category strings). `get_embedding` is called in Phase
+4 only for the already-capped list. The ordering is: cap first, then fetch embeddings.
 Verification: unit test with N active entries and cap=M asserts `get_embedding` is called at
-most M times per tick.
+most M times per tick, and that no `get_embedding` call precedes the completion of
+`select_source_candidates`.
 
 **AC-07** — Candidate pairs are processed in priority order: cross-category pairs first,
 isolated entries (no existing non-bootstrap edges) second, remaining pairs by similarity
@@ -257,14 +261,16 @@ supports_edge_threshold` (strict `>`). Uses `INSERT OR IGNORE`.
 Verification: unit test with mock scores above and at threshold; at-threshold pair must not
 produce an edge.
 
-**AC-10** — A `Contradicts` edge `(A, B, "Contradicts")` is written when
-`score(A→B).contradiction > nli_contradiction_threshold` (strict `>`; existing threshold reused,
-not lowered). Uses `INSERT OR IGNORE`.
-Verification: unit test with mock scores confirms existing `nli_contradiction_threshold` is the
-floor; a score equal to the threshold does not produce an edge.
+**AC-10a** — TICK MUST NOT WRITE CONTRADICTS — `write_inferred_edges_with_cap` is a
+Supports-only function. It accepts no `contradiction_threshold` parameter and writes no
+`Contradicts` edges. The dedicated contradiction detection path (`run_post_store_nli` and the
+contradiction scan in `infra/contradiction.rs`) is the sole writer of `Contradicts` edges.
+Any `Contradicts` write in `nli_detection_tick.rs` is a gate-blocking defect.
+Verification: `grep -n 'Contradicts' nli_detection_tick.rs` must return empty; code review
+confirms `write_inferred_edges_with_cap` signature has no `contradiction_threshold` parameter.
 
 **AC-11** — Total edges written per tick is bounded by `max_graph_inference_per_tick`. The cap
-counts `Supports` + `Contradicts` edges combined.
+counts Supports edges only (the tick writes no other edge types).
 Verification: unit test with cap=3 and 10 high-scoring pairs asserts exactly 3 edges written.
 
 **AC-13** — All written edges carry `source = EDGE_SOURCE_NLI` ("nli").
@@ -299,14 +305,13 @@ Verification: `grep -rn 'InferenceConfig {' crates/unimatrix-server/src/` before
 occurrence updated. Current count is 52 occurrences across `nli_detection.rs` and `config.rs`
 (confirmed by grep at spec time). All must compile after the four fields are added.
 
-**AC-19†** — Contradiction edges written by `run_graph_inference_tick` use
-`nli_contradiction_threshold` exactly — the same threshold as `run_post_store_nli`. No
-alternative, softer contradiction threshold is introduced for the tick path. This prevents
-false-positive `Contradicts` edges from silently suppressing valid results via col-030
-`suppress_contradicts`.
-Verification: code review confirms no separate contradiction threshold field is read for the
-tick path; unit test asserts a pair scoring at `nli_contradiction_threshold` does not produce
-a `Contradicts` edge.
+**AC-19†** — `run_graph_inference_tick` writes NO `Contradicts` edges. The `contradiction_threshold`
+parameter has been removed from `write_inferred_edges_with_cap`. No contradiction threshold
+logic is present in the tick path. The tick is Supports-only. The dedicated contradiction
+detection path remains the sole `Contradicts` writer.
+Verification: `grep -n 'Contradicts\|contradiction_threshold\|nli_contradiction' nli_detection_tick.rs`
+must return empty; `write_inferred_edges_with_cap` signature must have no `contradiction_threshold`
+parameter.
 
 ---
 
@@ -332,10 +337,12 @@ entails or corroborates the target entry, as determined by the NLI cross-encoder
 
 ### Contradicts Edge
 
-A graph edge with `relation_type = 'Contradicts'`. Indicates semantic contradiction. Written by
-the tick path when `contradiction_score > nli_contradiction_threshold`. These edges interact with
-col-030 `suppress_contradicts` in `SearchService::search`; false positives suppress valid
-results with no operator signal.
+A graph edge with `relation_type = 'Contradicts'`. Indicates semantic contradiction. NOT written
+by the tick path — the tick is Supports-only. `Contradicts` edges are written exclusively by
+the dedicated contradiction detection path (`run_post_store_nli`, the contradiction scan).
+These edges interact with col-030 `suppress_contradicts` in `SearchService::search`; false
+positives suppress valid results with no operator signal. The tick's Supports-only design
+prevents it from producing false-positive `Contradicts` edges.
 
 ### EDGE_SOURCE_NLI
 
@@ -370,7 +377,8 @@ blocks the tokio executor.
 1. Operator sets `nli_enabled = true` in the project or global TOML config.
 2. Server starts; `NliServiceHandle` loads the cross-encoder model.
 3. On each background tick, `run_graph_inference_tick` runs after bootstrap promotion.
-4. Over successive ticks, `Supports` (and incidentally `Contradicts`) edges accumulate.
+4. Over successive ticks, `Supports` edges accumulate. The tick does NOT write `Contradicts`
+   edges — that remains the dedicated contradiction detection path's responsibility.
 5. Operator observes progress via `context_status` → `graph_cohesion` → `isolated_entry_count`,
    `cross_category_edge_count`, `inferred_edge_count`.
 
@@ -397,7 +405,7 @@ blocks the tokio executor.
 10. Deduplicates and pre-filters already-supported pairs.
 11. Sorts by priority; truncates to `max_graph_inference_per_tick`.
 12. Dispatches all pairs to rayon for NLI scoring.
-13. Writes `Supports` and `Contradicts` edges up to cap.
+13. Writes `Supports` edges up to cap (no `Contradicts` edges written by tick).
 14. Logs count at `debug` level.
 
 ---
@@ -427,10 +435,10 @@ tick processes a much larger pair space than post-store NLI. The higher bar (def
 post-store 0.6) reduces false positives. Both are independent config fields; changing one does
 not affect the other.
 
-**C-07 — nli_contradiction_threshold is the floor for tick Contradicts edges**: the tick must
-not use a softer (lower) contradiction threshold than `nli_contradiction_threshold`. Introducing
-a separate looser threshold for the tick would generate false-positive `Contradicts` edges that
-silently suppress valid results via col-030's always-on `suppress_contradicts` (SR-01 risk).
+**C-07 — SUPERSEDED by C-13**: the tick does not write `Contradicts` edges at all. C-07 was
+the prior mitigation (explicit threshold floor); C-13 supersedes it with a stronger guarantee:
+the tick has no Contradicts write path. The `nli_contradiction_threshold` field remains in
+`InferenceConfig` for the post-store NLI path (`run_post_store_nli`), which is unchanged.
 
 **C-08 — File size hard limit 800 lines**: `nli_detection.rs` currently ~650 lines. Adding
 the tick function and helpers must not push the combined file past 800 lines. If it would,
@@ -442,6 +450,28 @@ variant already exists in the type system but has no tick write path in this fea
 
 **C-10 — No changes to run_post_store_nli**: the hot-path post-store NLI function is unchanged.
 The tick is additive.
+
+**C-13 — Tick MUST NOT write Contradicts edges**: `write_inferred_edges_with_cap` is a
+Supports-only function. It evaluates only `entailment` scores and writes only `Supports` edges.
+The `contradiction_threshold` parameter does not exist on this function. The dedicated
+contradiction detection path is the sole writer of `Contradicts` edges. Rationale: mixing
+Contradicts writes in the tick creates a second code path for contradiction inference that can
+drift out of calibration with the dedicated path. This is a hard constraint; any `Contradicts`
+write in `nli_detection_tick.rs` is a gate-3c failure.
+
+**C-14 — R-09 rayon/tokio boundary (named constraint)**: the rayon closure passed to
+`rayon_pool.spawn()` inside `run_graph_inference_tick` MUST be a synchronous CPU-bound closure
+only. The following are PROHIBITED inside any rayon closure in this module:
+- `tokio::runtime::Handle::current()`
+- `.await` expressions
+- Any function that internally calls `.await` or accesses the Tokio runtime
+Rationale: rayon worker threads have no Tokio runtime; any of the above panics at runtime
+with "no current Tokio runtime". This failure is compile-invisible and test-invisible in unit
+tests that don't use the full runtime.
+Detection method: `grep -n 'Handle::current\|\.await' nli_detection_tick.rs` — any match
+inside a rayon closure is a gate-blocking defect. Manual inspection of the closure body is
+required. The validator MUST NOT be the same agent that wrote the rayon closure
+(independent review required).
 
 **C-11 — InferenceConfig struct literal grep before merge (SR-07)**: before the PR is opened,
 the implementor must run `grep -rn 'InferenceConfig {' crates/unimatrix-server/src/` and update

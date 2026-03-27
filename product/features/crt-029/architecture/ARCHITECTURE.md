@@ -98,15 +98,16 @@ fn select_source_candidates(
     max_sources: usize,
 ) -> Vec<u64>
 
-// Write NLI-scored edges from a batch result. Returns edges_written count.
-// Uses supports_edge_threshold (not nli_entailment_threshold) and the provided
-// contradiction_threshold as the Contradicts floor (SR-01).
+// Write NLI-scored Supports edges from a batch result. Returns edges_written count.
+// Uses supports_edge_threshold (not nli_entailment_threshold).
+// Supports-ONLY: this function MUST NOT write Contradicts edges (C-13 / AC-10a).
+// The contradiction_threshold parameter is intentionally absent — the tick is a
+// Supports-only pass; the dedicated contradiction path is the sole Contradicts writer.
 async fn write_inferred_edges_with_cap(
     store: &Store,
     pairs: &[(u64, u64)],           // (source_id, target_id)
     nli_scores: &[NliScores],
     supports_threshold: f32,        // config.supports_edge_threshold
-    contradiction_threshold: f32,   // config.nli_contradiction_threshold (floor, not lower)
     max_edges: usize,               // config.max_graph_inference_per_tick
 ) -> usize
 ```
@@ -115,8 +116,10 @@ async fn write_inferred_edges_with_cap(
 `nli_detection.rs`. It cannot reuse the existing function directly: the existing function
 takes `(source_id, &[(neighbor_id, text)])` where one source maps to many targets, while the
 tick path has a flat `Vec<(u64, u64)>` of mixed-source pairs. The threshold parameter
-semantics also differ (supports vs entailment). The cap logic and `write_nli_edge` call
-pattern are shared by importing `write_nli_edge` from `nli_detection.rs` (making it
+semantics also differ (supports vs entailment). Crucially, the tick variant has no
+`contradiction_threshold` parameter and does not write `Contradicts` edges — this is an
+intentional scope constraint (C-13), not an oversight. The cap logic and `write_nli_edge`
+call pattern are shared by importing `write_nli_edge` from `nli_detection.rs` (making it
 `pub(crate)`), or by duplicating the trivial INSERT helper.
 
 ### Component 4 — `background.rs` call site
@@ -202,7 +205,7 @@ background_tick_loop
 | `Store::query_existing_supports_pairs()` | `unimatrix-store/src/read.rs` | `async fn query_existing_supports_pairs(&self) -> Result<HashSet<(u64, u64)>>` |
 | `run_graph_inference_tick` | `services/nli_detection_tick.rs` | `pub async fn run_graph_inference_tick(store: &Store, nli_handle: &NliServiceHandle, vector_index: &VectorIndex, rayon_pool: &RayonPool, config: &InferenceConfig)` |
 | `select_source_candidates` | `services/nli_detection_tick.rs` | `fn select_source_candidates(all_active: &[ActiveEntryMeta], existing_edge_set: &HashSet<(u64, u64)>, isolated_ids: &HashSet<u64>, max_sources: usize) -> Vec<u64>` |
-| `write_inferred_edges_with_cap` | `services/nli_detection_tick.rs` | `async fn write_inferred_edges_with_cap(store: &Store, pairs: &[(u64, u64)], nli_scores: &[NliScores], supports_threshold: f32, contradiction_threshold: f32, max_edges: usize) -> usize` |
+| `write_inferred_edges_with_cap` | `services/nli_detection_tick.rs` | `async fn write_inferred_edges_with_cap(store: &Store, pairs: &[(u64, u64)], nli_scores: &[NliScores], supports_threshold: f32, max_edges: usize) -> usize` — Supports-only; no `contradiction_threshold` (C-13) |
 
 ## Integration Surface
 
@@ -211,7 +214,7 @@ background_tick_loop
 | `query_entries_without_edges` | `async fn(&self) -> Result<Vec<u64>>` — reads via `read_pool()` | new, `unimatrix-store/src/read.rs` |
 | `query_existing_supports_pairs` | `async fn(&self) -> Result<HashSet<(u64, u64)>>` — reads via `read_pool()` | new, `unimatrix-store/src/read.rs` |
 | `run_graph_inference_tick` | `async fn(store: &Store, nli_handle: &NliServiceHandle, vector_index: &VectorIndex, rayon_pool: &RayonPool, config: &InferenceConfig)` | new, `nli_detection_tick.rs` |
-| `write_inferred_edges_with_cap` | `async fn(store, pairs, nli_scores, supports_threshold, contradiction_threshold, max_edges) -> usize` | new, `nli_detection_tick.rs` (private but testable) |
+| `write_inferred_edges_with_cap` | `async fn(store, pairs, nli_scores, supports_threshold, max_edges) -> usize` — Supports-only; no `contradiction_threshold` parameter (C-13) | new, `nli_detection_tick.rs` (private but testable) |
 | `write_nli_edge` | `async fn(store: &Store, source_id: u64, target_id: u64, relation_type: &str, weight: f32, created_at: u64, metadata: &str) -> bool` | existing, `nli_detection.rs`; promote to `pub(crate)` |
 | `format_nli_metadata` | `fn(scores: &NliScores) -> String` | existing, `nli_detection.rs`; promote to `pub(crate)` |
 | `current_timestamp_secs` | `fn() -> u64` | existing, `nli_detection.rs`; promote to `pub(crate)` |
@@ -236,7 +239,7 @@ Three concurrent-safe sequential reads:
 2. `store.query_entries_without_edges()` → `HashSet<u64>` (isolated IDs)
 3. `store.query_existing_supports_pairs()` → `HashSet<(u64, u64)>` (skip set for pre-filter)
 
-### Phase 3 — Source candidate selection (SR-02 mitigation)
+### Phase 3 — Source candidate selection (SR-02 mitigation; cap BEFORE embedding)
 `select_source_candidates` applies priority ordering to produce a `Vec<u64>` of at most
 `max_graph_inference_per_tick` source IDs. Priority:
 1. Entries appearing in cross-category pairs (entries whose category differs from at least
@@ -244,12 +247,17 @@ Three concurrent-safe sequential reads:
 2. Isolated entries (in `isolated_ids` set)
 3. Remaining active entries ordered by `created_at` descending (newest first)
 
-Truncation to `max_graph_inference_per_tick` happens here. This bounding ensures that
-`get_embedding` calls in Phase 4 are at most `max_graph_inference_per_tick` — the O(N) cost
-is paid at most that many times. No separate config field is needed (ADR-003).
+Truncation to `max_graph_inference_per_tick` happens HERE — in Phase 3, on metadata only
+(IDs and category strings). No `get_embedding` call occurs in Phase 3. This is the critical
+ordering constraint (AC-06c / R-02): the source candidate list is CAPPED FIRST, then Phase 4
+fetches embeddings only for the already-capped list. Fetching embeddings before capping would
+allow O(N) scans on all N active entries.
 
-### Phase 4 — HNSW expansion (sync lock-guarded, tokio thread)
-For each source candidate (in order):
+No separate config field is needed (ADR-003).
+
+### Phase 4 — HNSW expansion (sync lock-guarded, tokio thread; embeddings for capped list only)
+For each source candidate (in order) — this list was already capped to
+`max_graph_inference_per_tick` in Phase 3:
 1. Call `vector_index.get_embedding(id).await` (async spawn_blocking wrapper). Skip if `None`.
 2. Call `vector_index.search(emb, graph_inference_k, EF_SEARCH=32).await`.
 3. Collect `(source_id, neighbour_id, similarity)` triples where `similarity > supports_candidate_threshold`
@@ -266,22 +274,36 @@ For each pair `(source_id, target_id)`: fetch `content` via `store.get_content_v
 This matches the bootstrap promotion pattern (uses write-pool to see recently committed rows).
 Skip pairs where either endpoint content cannot be fetched (log at `debug`).
 
-### Phase 7 — W1-2 dispatch (single rayon spawn)
+### Phase 7 — W1-2 dispatch (single rayon spawn) — R-09 NAMED CONSTRAINT
 Collect all `(source_text, target_text)` pairs. Dispatch as one `rayon_pool.spawn()` closure
 calling `provider.score_batch(&pairs)`. Await the result. This is the only point where rayon
 is touched. A second spawn for remaining pairs is explicitly prohibited (entry #3653).
 
-### Phase 8 — Write
+**R-09 rayon/tokio boundary (C-14)**: the closure body passed to `rayon_pool.spawn()` MUST
+be a synchronous CPU-bound closure only. The following are PROHIBITED inside this closure:
+- `tokio::runtime::Handle::current()`
+- `.await` expressions
+- Any function that internally awaits or accesses the Tokio runtime
+Rayon worker threads have no Tokio runtime; any violation panics at runtime with "no current
+Tokio runtime". This failure is compile-invisible and test-invisible in unit tests that don't
+use the full runtime. Detection: `grep -n 'Handle::current\|\.await'` inside the rayon closure
+body in `nli_detection_tick.rs`. Independent validator required (not the author of the closure).
+
+### Phase 8 — Write (Supports only)
 Call `write_inferred_edges_with_cap(store, &scored_pairs, &nli_scores, supports_edge_threshold,
-nli_contradiction_threshold, max_graph_inference_per_tick)`. Log `edges_written` at `debug`.
+max_graph_inference_per_tick)`. Note: no `contradiction_threshold` parameter — the tick writes
+Supports edges only (C-13 / AC-10a). Log `edges_written` at `debug`.
 
 ## Risk Mitigations Applied
 
-### SR-01 — Contradiction threshold floor
-`write_inferred_edges_with_cap` uses `config.nli_contradiction_threshold` as the Contradicts
-write threshold — the same value used by `write_edges_with_cap` in the post-store path. The
-function signature takes this as an explicit parameter, preventing a caller from accidentally
-passing a lower value. This is documented in the function's doc comment.
+### SR-01 — Tick does not write Contradicts edges (scope change)
+`write_inferred_edges_with_cap` is a Supports-only function. It has no `contradiction_threshold`
+parameter and does not evaluate `scores.contradiction` for edge writing. The risk of false-
+positive `Contradicts` edges from the tick is eliminated by design: there is no tick Contradicts
+write path at all. The dedicated contradiction detection path (`run_post_store_nli`, the
+contradiction scan) remains the sole writer. This is a stronger mitigation than the previous
+approach of passing an explicit threshold parameter — the tick cannot write Contradicts edges
+regardless of what scores the NLI model returns. AC-10a and AC-19† verify this constraint.
 
 ### SR-02 — `get_embedding` O(N) bound
 Source candidates are capped to `max_graph_inference_per_tick` in `select_source_candidates`

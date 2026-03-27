@@ -39,7 +39,8 @@ Alternatives considered:
 ### Decision
 
 Introduce `write_inferred_edges_with_cap` as a standalone private async function in
-`nli_detection_tick.rs`:
+`nli_detection_tick.rs`. The function is **Supports-only** — it writes no `Contradicts` edges.
+The `contradiction_threshold` parameter is intentionally absent (see rationale below).
 
 ```rust
 async fn write_inferred_edges_with_cap(
@@ -47,17 +48,24 @@ async fn write_inferred_edges_with_cap(
     pairs: &[(u64, u64)],           // (source_id, target_id), already ordered and capped
     nli_scores: &[NliScores],
     supports_threshold: f32,        // config.supports_edge_threshold
-    contradiction_threshold: f32,   // config.nli_contradiction_threshold (floor — SR-01)
     max_edges: usize,               // config.max_graph_inference_per_tick
 ) -> usize
 ```
 
 It uses `write_nli_edge` (promoted to `pub(crate)` from `nli_detection.rs`) and
 `format_nli_metadata` for the INSERT. The cap stops processing once `edges_written >= max_edges`.
+Only `scores.entailment` is evaluated; `scores.contradiction` is not read.
 
-The `contradiction_threshold` parameter is named to make its floor semantics explicit in the
-function contract. A call site passing a value lower than `nli_contradiction_threshold` would
-violate the contract; documentation in the function's doc comment enforces this (SR-01).
+**Rationale for Supports-only design (human decision)**: the tick's job is Supports edge
+inference. Contradiction detection has its own dedicated path (`run_post_store_nli` and the
+contradiction scan in `infra/contradiction.rs`). Mixing both in the tick creates two independent
+code paths that can drift out of calibration. The prior design passed `contradiction_threshold`
+as an explicit parameter to enforce a threshold floor — the new design removes the concern
+entirely by not writing `Contradicts` edges in the tick at all. This is a stronger guarantee.
+
+`write_edges_with_cap` in `nli_detection.rs` (which does write Contradicts edges) is unchanged
+and continues to handle the post-store NLI path. The two functions are parallel, not
+hierarchical — each owns its call path.
 
 ### Consequences
 
@@ -65,9 +73,10 @@ The cap boundary is independently testable without a live ONNX model: construct 
 `NliScores` vectors with known scores, pass them to `write_inferred_edges_with_cap`, verify
 edge counts. This is identical to the crt-023 test pattern (entry #2728).
 
-`write_edges_with_cap` in `nli_detection.rs` is unchanged. The two functions are parallel,
-not hierarchical — each owns its call path.
+Removing the `contradiction_threshold` parameter eliminates the entire class of false-positive
+`Contradicts` edges from the tick — no threshold tuning required. The function is strictly
+simpler and its test surface is smaller.
 
-The Contradicts-write threshold is explicit in the function signature: a future caller that
-tries to pass a lower-than-floor value will need to make that explicit in code, triggering
-a review.
+A future caller cannot accidentally pass a softer contradiction threshold because the function
+has no such parameter. Code review of the function signature is sufficient to verify the
+Supports-only invariant.

@@ -39,7 +39,13 @@ GH Issue: #412
 
 ## Goal
 
-Add a recurring background pass (`run_graph_inference_tick`) that systematically fills `Supports` (and incidentally `Contradicts`) graph edges across the full active entry population using the existing NLI cross-encoder and HNSW index. This fixes the isolation of pre-NLI entries and cross-category pairs that the post-store path (`run_post_store_nli`) never reaches, directly improving PPR-based retrieval quality and reducing the `isolated_entry_count` visible in col-029 `context_status` metrics.
+Add a recurring background pass (`run_graph_inference_tick`) that systematically fills `Supports`
+graph edges across the full active entry population using the existing NLI cross-encoder and HNSW
+index. The tick is Supports-only — it MUST NOT write `Contradicts` edges; that is the dedicated
+contradiction detection path's responsibility. This fixes the isolation of pre-NLI entries and
+cross-category pairs that the post-store path (`run_post_store_nli`) never reaches, directly
+improving PPR-based retrieval quality and reducing the `isolated_entry_count` visible in col-029
+`context_status` metrics.
 
 ---
 
@@ -121,14 +127,14 @@ fn select_source_candidates(
     max_sources: usize,
 ) -> Vec<u64>
 
-// Writes Supports and Contradicts edges from scored pairs; returns edges_written.
-// contradiction_threshold MUST be config.nli_contradiction_threshold — not lower.
+// Writes Supports edges ONLY from scored pairs; returns edges_written.
+// Supports-only: no contradiction_threshold parameter, no Contradicts writes (C-13 / AC-10a).
+// The dedicated contradiction detection path is the sole Contradicts writer.
 async fn write_inferred_edges_with_cap(
     store: &Store,
     pairs: &[(u64, u64)],
     nli_scores: &[NliScores],
     supports_threshold: f32,        // config.supports_edge_threshold
-    contradiction_threshold: f32,   // config.nli_contradiction_threshold (floor)
     max_edges: usize,
 ) -> usize
 ```
@@ -167,11 +173,15 @@ if inference_config.nli_enabled {
 2. `query_entries_without_edges()` → `HashSet<u64>` (isolated IDs)
 3. `query_existing_supports_pairs()` → `HashSet<(u64, u64)>` (pre-filter skip set)
 
-**Phase 3 — Source candidate selection**: `select_source_candidates` → `Vec<u64>` bounded to
-`max_graph_inference_per_tick`. Priority: (1) cross-category entries, (2) isolated entries,
-(3) remaining by `created_at` desc. No `get_embedding` calls in this phase.
+**Phase 3 — Source candidate selection (cap BEFORE embedding)**: `select_source_candidates` →
+`Vec<u64>` bounded to `max_graph_inference_per_tick`. Priority: (1) cross-category entries,
+(2) isolated entries, (3) remaining by `created_at` desc. No `get_embedding` calls in this
+phase — operates on metadata only (IDs, category strings). The cap is applied HERE so that
+Phase 4 calls `get_embedding` only for the already-capped list. This is the critical ordering:
+cap first (Phase 3), then fetch embeddings (Phase 4). (AC-06c / R-02)
 
-**Phase 4 — HNSW expansion**: For each source candidate (in order): call `get_embedding(id).await`
+**Phase 4 — HNSW expansion (embeddings for capped list only)**: For each source candidate
+already capped in Phase 3 (in order): call `get_embedding(id).await`
 (skip if `None`); call `search(emb, graph_inference_k, EF_SEARCH=32).await`; collect
 `(source_id, neighbour_id, similarity)` triples where `similarity > supports_candidate_threshold`;
 deduplicate `(A,B)` == `(B,A)` by normalising to `(min, max)`; skip pairs in pre-filter set.
@@ -183,13 +193,21 @@ endpoint isolated second, similarity desc third. Truncate to `max_graph_inferenc
 `store.get_content_via_write_pool()` (matches bootstrap promotion pattern to see recent rows).
 Skip pairs where either content cannot be fetched; log at `debug`.
 
-**Phase 7 — W1-2 dispatch (single rayon spawn)**: Collect all `(source_text, target_text)` pairs;
-dispatch as ONE `rayon_pool.spawn()` closure calling `provider.score_batch(&pairs)`. Await result.
-A second spawn for remaining pairs is explicitly prohibited (Unimatrix entry #3653).
+**Phase 7 — W1-2 dispatch (single rayon spawn) — R-09 CRITICAL**: Collect all
+`(source_text, target_text)` pairs; dispatch as ONE `rayon_pool.spawn()` closure calling
+`provider.score_batch(&pairs)`. Await result. A second spawn for remaining pairs is explicitly
+prohibited (Unimatrix entry #3653).
 
-**Phase 8 — Write**: Call `write_inferred_edges_with_cap(store, &scored_pairs, &nli_scores,
-supports_edge_threshold, nli_contradiction_threshold, max_graph_inference_per_tick)`.
-Log `edges_written` at `debug`.
+CRITICAL — R-09 rayon/tokio boundary (C-14): the closure body MUST be a synchronous CPU-bound
+closure only. PROHIBITED inside the closure: `tokio::runtime::Handle::current()`, `.await`
+expressions, any function that internally awaits or accesses the Tokio runtime. Rayon worker
+threads have no Tokio runtime; any violation panics at runtime. This is compile-invisible.
+Pre-merge gate: `grep -n 'Handle::current' crates/unimatrix-server/src/services/nli_detection_tick.rs`
+must return empty inside any rayon closure. Independent validator required — not the author.
+
+**Phase 8 — Write (Supports only)**: Call `write_inferred_edges_with_cap(store, &scored_pairs,
+&nli_scores, supports_edge_threshold, max_graph_inference_per_tick)`. No `contradiction_threshold`
+parameter — the tick writes Supports edges only (C-13 / AC-10a). Log `edges_written` at `debug`.
 
 ---
 
@@ -203,7 +221,9 @@ Log `edges_written` at `debug`.
 | C-04 | No schema migration. No new columns. No `ALTER TABLE`. No schema version bump. |
 | C-05 | No new crate dependencies. Confined to existing workspace crates: `unimatrix-core`, `unimatrix-embed`, `unimatrix-store`, `sqlx`, `tokio`, `tracing`. |
 | C-06 | `supports_edge_threshold` default 0.7 is intentionally higher than `nli_entailment_threshold` default 0.6. Both are independent fields. |
-| C-07 | `nli_contradiction_threshold` is the floor for tick Contradicts edges. No softer alternative. Passing a lower value to `write_inferred_edges_with_cap` violates the function contract (R-01 critical). |
+| C-07 | SUPERSEDED by C-13. The tick writes NO Contradicts edges. |
+| C-13 | Tick MUST NOT write Contradicts edges. `write_inferred_edges_with_cap` is Supports-only and has no `contradiction_threshold` parameter. The dedicated contradiction detection path is the sole Contradicts writer. Any Contradicts write in `nli_detection_tick.rs` is a gate-3c failure (AC-10a). |
+| C-14 | R-09 rayon/tokio boundary: the rayon closure in Phase 7 MUST be a synchronous CPU-bound closure only. `tokio::runtime::Handle::current()`, `.await`, and all async calls are PROHIBITED inside `rayon_pool.spawn()`. Rayon worker threads have no Tokio runtime; violations panic at runtime. Compile-invisible — requires grep detection and independent code review. |
 | C-08 | File size hard limit: `nli_detection_tick.rs` must not exceed 800 lines. This is a merge gate condition (NFR-05). |
 | C-09 | Supports-only inference. No `Prerequisite` write path in this feature. `RelationType::Prerequisite` exists in the type system but no tick write path is added here. |
 | C-10 | `run_post_store_nli` is unchanged. The tick is additive only. |
@@ -275,6 +295,17 @@ grep -n 'pub(crate) fn write_nli_edge\|pub(crate) fn format_nli_metadata\|pub(cr
 grep -n 'compute_graph_cohesion_metrics\|read_pool\|write_pool' \
   crates/unimatrix-store/src/read.rs
 # Expected: function uses read_pool()
+
+# Gate 6 — tick writes NO Contradicts edges (C-13 / AC-10a)
+grep -n 'Contradicts' crates/unimatrix-server/src/services/nli_detection_tick.rs
+# Expected: empty (no Contradicts writes; tick is Supports-only)
+
+# Gate 7 — R-09 rayon/tokio boundary (C-14)
+# Run inside nli_detection_tick.rs; any match inside a rayon closure is gate-blocking
+grep -n 'Handle::current' crates/unimatrix-server/src/services/nli_detection_tick.rs
+# Expected: empty
+# Also: manual inspection of the rayon_pool.spawn() closure body for .await expressions
+# REQUIRED: independent validator (not the author) must confirm the closure body is sync-only
 ```
 
 ---

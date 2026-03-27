@@ -4,7 +4,7 @@
 
 | Risk ID | Risk Description | Severity | Likelihood | Priority |
 |---------|-----------------|----------|------------|----------|
-| R-01 | False-positive `Contradicts` edges written by tick silently suppress valid search results via col-030 `suppress_contradicts` | High | Med | Critical |
+| R-01 | ~~False-positive `Contradicts` edges written by tick~~ — **RISK ELIMINATED BY DESIGN**: tick is Supports-only (C-13); no Contradicts write path exists in `nli_detection_tick.rs` | High | Low | High (residual: verify absence) |
 | R-02 | `get_embedding` O(N) scan unbounded if source-candidate cap is not enforced before Phase 4 | High | Med | Critical |
 | R-03 | Threshold boundary validation accepts equal values (`candidate == edge`) if predicate uses `>` instead of `>=` | Med | Med | High |
 | R-04 | `query_existing_supports_pairs()` performs a full GRAPH_EDGES scan in memory each tick at large graph sizes | Med | Low | Medium |
@@ -24,18 +24,28 @@
 
 ### R-01: False-positive `Contradicts` edges via tick suppress valid results
 **Severity**: High
-**Likelihood**: Med
-**Impact**: A `Contradicts` edge written with a softer threshold than `nli_contradiction_threshold` interacts with `suppress_contradicts` (col-030, always-on) to silently hide a valid result from `context_search`. No operator signal is produced; the suppression is invisible.
+**Likelihood**: Low (mitigated by design — scope change)
+**Impact**: A `Contradicts` edge written by the tick with a softer threshold than
+`nli_contradiction_threshold` interacts with `suppress_contradicts` (col-030, always-on) to
+silently hide a valid result from `context_search`. No operator signal is produced; the
+suppression is invisible.
 
-**Architecture mitigation**: `write_inferred_edges_with_cap` takes `contradiction_threshold` as an explicit parameter; the call site passes `config.nli_contradiction_threshold` — the same value used by `run_post_store_nli`. AC-19† verifies no softer value is introduced.
+**Architecture mitigation (updated)**: The tick DOES NOT write `Contradicts` edges at all.
+`write_inferred_edges_with_cap` is a Supports-only function with no `contradiction_threshold`
+parameter. This eliminates the risk by design — there is no tick Contradicts write path. The
+prior mitigation (explicit threshold parameter) has been superseded by this stronger guarantee.
+The dedicated contradiction detection path remains the sole `Contradicts` writer.
 
 **Test Scenarios**:
-1. Unit test: mock `NliScores` with `contradiction = nli_contradiction_threshold` exactly — assert no `Contradicts` edge written (strict `>`).
-2. Unit test: mock `NliScores` with `contradiction = nli_contradiction_threshold + 0.01` — assert `Contradicts` edge written.
-3. Code review: grep `nli_detection_tick.rs` for any literal contradiction threshold value not sourced from `config.nli_contradiction_threshold`.
-4. Integration test: run tick, then call `context_search` for a pair that scored at threshold — assert result is not suppressed.
+1. Code review / grep: `grep -n 'Contradicts' nli_detection_tick.rs` — must return empty.
+2. Code review: `write_inferred_edges_with_cap` signature has no `contradiction_threshold`
+   parameter.
+3. Integration test: run tick against a pair that would have scored above
+   `nli_contradiction_threshold` — assert no `Contradicts` edge appears in GRAPH_EDGES for
+   rows with `created_by` matching the tick path.
 
-**Coverage Requirement**: AC-10 and AC-19† must both pass. No call path through `write_inferred_edges_with_cap` may pass a value lower than `config.nli_contradiction_threshold` as `contradiction_threshold`.
+**Coverage Requirement**: AC-10a and AC-19† must both pass. Zero `Contradicts` writes in
+`nli_detection_tick.rs` is a merge gate condition.
 
 ---
 
@@ -44,7 +54,11 @@
 **Likelihood**: Med
 **Impact**: Without a pre-embedding source-candidate cap, iterating all N active entries through `get_embedding` (O(N) per call via HNSW linear scan) can consume the full tick budget on embedding lookups alone, leaving no time for NLI scoring. At N=10,000 entries this is 10,000 O(N) scans — O(N²) total.
 
-**Architecture mitigation**: `select_source_candidates` caps output to `max_graph_inference_per_tick` source IDs (ADR-003). Phase 3 operates on metadata only; `get_embedding` is not called until Phase 4 and only for the capped list.
+**Architecture mitigation**: `select_source_candidates` caps output to `max_graph_inference_per_tick`
+source IDs (ADR-003). The cap is applied in Phase 3 on metadata only (IDs and category strings).
+`get_embedding` is NOT called until Phase 4, and only for the already-capped list. The ordering
+is explicit: cap first (Phase 3), then fetch embeddings (Phase 4). Fetching embeddings before
+capping is a defect — AC-06c verifies the ordering, not just the count.
 
 **Test Scenarios**:
 1. Unit test (AC-06c): seed N=50 active entries, set `max_graph_inference_per_tick=5`; mock `get_embedding` with a call counter — assert counter never exceeds 5 per tick.
@@ -146,7 +160,7 @@
 1. Unit test (AC-11): construct mock `NliScores` all scoring above threshold, set `cap=3`, pass 10 pairs — assert exactly 3 edges written, function returns `3`.
 2. Unit test: cap=0 (invalid by AC-04 but defensible) — assert 0 edges written.
 3. Unit test: cap >= pairs.len() — assert all eligible pairs written.
-4. Unit test: mixed Supports + Contradicts scores — assert combined count respects cap (not per-type caps).
+4. Unit test: high entailment + high contradiction scores — assert only Supports edges are written (the tick ignores contradiction scores); cap counts Supports edges only.
 
 **Coverage Requirement**: AC-11 must pass. `write_inferred_edges_with_cap` must have dedicated unit tests callable without live ONNX. The function's test module must exist in `nli_detection_tick.rs` under `#[cfg(test)]`.
 
@@ -155,16 +169,38 @@
 ### R-09: Tokio handle access inside rayon closure — panic
 **Severity**: High
 **Likelihood**: Med
-**Impact**: Rayon worker threads have no Tokio runtime. Any async call, `Handle::current()`, or `.await` inside the rayon closure panics at runtime with "no current Tokio runtime". This was the exact failure mode in crt-022 (Unimatrix entries #3339, #3353). The tick's rayon closure must be a synchronous CPU-bound closure only.
+**Impact**: Rayon worker threads have no Tokio runtime. Any async call, `Handle::current()`, or
+`.await` inside the rayon closure panics at runtime with "no current Tokio runtime". This was
+the exact failure mode in crt-022 (Unimatrix entries #3339, #3353). The tick's rayon closure
+must be a synchronous CPU-bound closure only. This failure is compile-invisible and
+test-invisible in unit tests that don't use the full runtime.
 
-**Architecture mitigation**: The rayon dispatch calls `provider.score_batch(&pairs)` — a sync function. All DB access (text fetch, edge write) happens outside the rayon closure on the tokio thread. The architecture diagram confirms this separation.
+**Architecture mitigation**: The rayon dispatch calls `provider.score_batch(&pairs)` — a sync
+function. All DB access (text fetch, edge write) happens outside the rayon closure on the tokio
+thread. The architecture diagram and C-14 confirm this separation with explicit prohibitions.
+
+**Detection method**:
+- `grep -n 'Handle::current' crates/unimatrix-server/src/services/nli_detection_tick.rs`
+  must return empty
+- `grep -n '\.await' crates/unimatrix-server/src/services/nli_detection_tick.rs` — any match
+  inside the body of the `rayon_pool.spawn()` closure is a gate-blocking defect
+- Manual inspection of the rayon closure body is required (grep may miss multi-line patterns)
 
 **Test Scenarios**:
-1. Code review gate: `nli_detection_tick.rs` rayon closure body must contain no `.await`, no `tokio::`, no `Handle::current()`.
-2. Integration test with NLI enabled: run tick, assert no panic in thread output.
-3. Unit test: tick function structure demonstrates single-dispatch, sync closure pattern (structure test, not execution test).
+1. Pre-merge grep gate (mandatory): `grep -n 'Handle::current' nli_detection_tick.rs` — empty.
+2. Pre-merge grep gate (mandatory): manual inspection of the rayon_pool.spawn() closure in
+   `nli_detection_tick.rs` — no `.await` expressions inside the closure body.
+3. Integration test with NLI enabled: run tick end-to-end; assert no panic in thread output.
+4. Unit test: tick function structure demonstrates single-dispatch, sync closure pattern
+   (structure test, not execution test).
 
-**Coverage Requirement**: This is a compile-time-invisible runtime panic. Code review of the rayon closure is mandatory. The pattern from entry #2742 (collect owned data before spawn) must be followed.
+**Independent validator requirement**: the agent or reviewer that checks this constraint MUST
+NOT be the same agent that wrote the rayon closure. This rule exists because the failure mode
+is invisible to the author during compilation — independent eyes are required.
+
+**Coverage Requirement**: This is a compile-time-invisible runtime panic. Code review of the
+rayon closure is mandatory. The pattern from entry #2742 (collect owned data before spawn)
+must be followed. C-14 in the specification names this constraint explicitly.
 
 ---
 
@@ -270,7 +306,12 @@ Phase 2 loads all active `EntryRecord` structs. The tick uses only `id` and `cat
 
 **Untrusted input surface**: `run_graph_inference_tick` reads only from the internal `Store` and `VectorIndex`. It does not accept any external input — no MCP tool parameters, no user-supplied text path into this function. The tick's input is bounded to active entries already in the store, which were validated at `context_store` time.
 
-**Blast radius if compromised**: An adversary who can write arbitrary entries to the store could craft entries whose NLI scores reliably produce `Contradicts` edges for targeted pairs. This would trigger `suppress_contradicts` in `SearchService::search`, silently suppressing search results. This is not a new attack surface — `run_post_store_nli` has the same exposure. The mitigation is the NLI threshold floor (R-01) and the fact that the tick does not lower existing thresholds.
+**Blast radius if compromised**: An adversary who can write arbitrary entries to the store could
+in principle craft entries whose NLI scores produce adverse graph edges. The tick path cannot
+produce `Contradicts` edges (the tick is Supports-only; C-13 / AC-10a), so the
+`suppress_contradicts` suppression vector via the tick is eliminated. The post-store NLI path
+(`run_post_store_nli`) retains the same exposure it had before crt-029; the tick does not
+increase the attack surface for Contradicts-based suppression.
 
 **`INSERT OR IGNORE` semantic**: Not a SQL injection risk — all identifiers (`source_id`, `target_id`) are `u64` values from trusted internal state. No string interpolation in SQL.
 
@@ -297,8 +338,8 @@ Phase 2 loads all active `EntryRecord` structs. The tick uses only `id` and `cat
 
 | Scope Risk | Severity | Architecture Risk | Resolution |
 |-----------|----------|------------------|------------|
-| SR-01 — NLI false-positive Contradicts via tick silences results | High | R-01 | `write_inferred_edges_with_cap` takes `contradiction_threshold` as explicit parameter; call site passes `config.nli_contradiction_threshold` exactly. AC-19† enforces no softer value. ADR-002 documents the contract. |
-| SR-02 — `get_embedding` O(N) per call unbounded | High | R-02 | `select_source_candidates` caps to `max_graph_inference_per_tick` before Phase 4. ADR-003 documents the derivation. AC-06c unit test enforces the call count. |
+| SR-01 — NLI false-positive Contradicts via tick silences results | High | R-01 | Tick does NOT write Contradicts edges — `write_inferred_edges_with_cap` is Supports-only with no `contradiction_threshold` parameter. Risk eliminated by design. AC-10a and AC-19† verify. ADR-002 documents the rationale. |
+| SR-02 — `get_embedding` O(N) per call unbounded | High | R-02 | `select_source_candidates` caps to `max_graph_inference_per_tick` BEFORE Phase 4 — the cap is applied on metadata (Phase 3); `get_embedding` is called only for the already-capped list (Phase 4). Ordering is explicit: cap first, then fetch embeddings. ADR-003 documents the derivation. AC-06c unit test enforces both the call count and the ordering. |
 | SR-03 — Threshold boundary `>=` vs `>` ambiguity | Med | R-03 | `InferenceConfig::validate()` uses `>=` reject predicate (explicit in AC-02 wording). Unit tests cover equal-value case. |
 | SR-04 — Pre-filter query scale (GRAPH_EDGES covering index) | Med | R-04 | ADR-004 uses `query_existing_supports_pairs()` with targeted SQL against the `UNIQUE` index. Scale boundary documented in architecture (NFR-07). |
 | SR-05 — Rayon pool contention post-store vs tick | Med | R-05 | Single-dispatch pattern (AC-08) minimises contention window. TICK_TIMEOUT provides 120s headroom. Documented in NFR-06. |
@@ -312,8 +353,8 @@ Phase 2 loads all active `EntryRecord` structs. The tick uses only `id` and `cat
 
 | Priority | Risk Count | Required Scenarios |
 |----------|-----------|-------------------|
-| Critical | 3 (R-01, R-02, R-09) | 9 scenarios (3+3+3) |
-| High | 5 (R-03, R-06, R-07, R-08, R-10, R-11) | 14 scenarios |
+| Critical | 2 (R-02, R-09) | 7 scenarios (3+4; R-01 risk eliminated by design) |
+| High | 6 (R-01-residual, R-03, R-06, R-07, R-08, R-10, R-11) | 15 scenarios |
 | Medium | 4 (R-04, R-05, R-12, R-13) | 12 scenarios |
 | Low | 1 (R-13) | 2 scenarios |
 
@@ -327,6 +368,9 @@ Phase 2 loads all active `EntryRecord` structs. The tick uses only `id` and `cat
 - `wc -l nli_detection_tick.rs` ≤ 800 (NFR-05)
 - `grep -n 'spawn_blocking' nli_detection_tick.rs` — must return empty (C-01, AC-08)
 - `grep -n 'pub(crate) fn write_nli_edge\|pub(crate) fn format_nli_metadata\|pub(crate) fn current_timestamp_secs' nli_detection.rs` — all three present (R-11)
+- `grep -n 'Contradicts' nli_detection_tick.rs` — must return empty; tick is Supports-only (C-13, AC-10a)
+- `grep -n 'Handle::current' nli_detection_tick.rs` — must return empty inside any rayon closure (R-09, C-14)
+- Independent code review of the `rayon_pool.spawn()` closure body for `.await` expressions (R-09); reviewer must not be the author
 
 ---
 

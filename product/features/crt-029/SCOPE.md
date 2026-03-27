@@ -26,8 +26,10 @@ PPR-based retrieval quality for any deployment where most entries pre-date NLI a
    the O(N²) pair space to O(N×K) before any NLI call is made.
 3. Process pairs in priority order: cross-category pairs first, then isolated entries (entries
    with no existing non-bootstrap edges), then high-similarity pairs.
-4. Write `Supports` edges when `entailment > supports_edge_threshold` (default 0.7); share the
-   single NLI call per pair with contradiction detection (combined pass).
+4. Write `Supports` edges when `entailment > supports_edge_threshold` (default 0.7). The tick
+   MUST NOT write `Contradicts` edges — contradiction detection has its own dedicated path
+   (`nli_detection.rs:run_post_store_nli` and the contradiction scan). Mixing both in the tick
+   creates two code paths that can drift out of calibration.
 5. Add three new fields to `InferenceConfig`: `supports_candidate_threshold` (default 0.5),
    `supports_edge_threshold` (default 0.7), `max_graph_inference_per_tick` (default 100).
 6. Gate the new tick pass behind `inference_config.nli_enabled`; no-op when NLI is not ready.
@@ -38,6 +40,10 @@ PPR-based retrieval quality for any deployment where most entries pre-date NLI a
   inference surface. No new ONNX models, no new rayon pools.
 - No changes to `run_post_store_nli`. That path continues to operate independently on each
   `context_store` call.
+- No `Contradicts` edges written by the tick. The dedicated contradiction detection path
+  (`nli_detection.rs`) is the only writer of `Contradicts` edges. The tick is a Supports-only
+  pass; introducing Contradicts writes in the tick would create a second code path with its own
+  threshold drift risk.
 - No `Prerequisite` edge inference in crt-029. Asymmetric NLI entailment is a weak proxy for
   topic ordering without a domain-anchored category prerequisite signal; noisy edges would
   traverse PPR as positive signal and hurt ranking. Deferred to W3-1.
@@ -135,17 +141,18 @@ col-030 (GH #419) added `suppress_contradicts` — always-on Contradicts suppres
 The new tick pass must not lower the contradiction threshold below `nli_contradiction_threshold`
 (currently 0.6 default, same pass used by post-store NLI which already uses this guard).
 
-### Combined Pass Design
+### Supports-Only Pass Design
 
-The GH #412 spec says "one NLI call per pair, both contradiction and Supports considered". This
-maps directly to the existing `write_edges_with_cap` function — it already evaluates both
-`scores.entailment` and `scores.contradiction` in a single loop. The new tick function can
-call a variant of this helper (or the same helper) after the rayon batch returns, reusing all
-existing threshold logic.
+The tick infers `Supports` edges only. Although each NLI call returns both `entailment` and
+`contradiction` scores, the tick evaluates only `entailment`. The `Contradicts` write path is
+the responsibility of the dedicated contradiction detection path (`run_post_store_nli` and the
+contradiction scan); mixing both in the tick creates two code paths that can drift out of
+calibration. The `write_inferred_edges_with_cap` function takes no `contradiction_threshold`
+parameter and writes no `Contradicts` edges.
 
 The difference from post-store NLI: the tick pass iterates over selected pairs drawn from the
 full active entry set (not just one new entry's neighbours) and writes up to
-`max_graph_inference_per_tick` edges per tick.
+`max_graph_inference_per_tick` Supports edges per tick.
 
 ## Proposed Approach
 
@@ -187,9 +194,13 @@ Add `run_graph_inference_tick` as a new public async function in `nli_detection.
    pre-filter set.
 7. Sort remaining pairs by priority: cross-category first, then isolated endpoints, then
    similarity desc. Truncate to `max_graph_inference_per_tick` pairs.
-8. Dispatch all pairs as a single `rayon_pool.spawn()` call (W1-2 contract).
-9. Write edges via the existing `write_edges_with_cap`-style logic, using
-   `supports_edge_threshold` for entailment and `nli_contradiction_threshold` for Contradicts.
+8. Dispatch all pairs as a single `rayon_pool.spawn()` call (W1-2 contract). CRITICAL: the
+   rayon closure MUST NOT contain `.await`, `tokio::runtime::Handle::current()`, or any async
+   call — rayon worker threads have no Tokio runtime and will panic. This is R-09 (compile-
+   invisible runtime panic). Detection: grep for `Handle::current` and `\.await` inside rayon
+   closures in `nli_detection_tick.rs`.
+9. Write `Supports` edges only — using `supports_edge_threshold` for entailment. The tick
+   MUST NOT write `Contradicts` edges; that is the dedicated path's responsibility.
 10. Log total edges written at `debug` level.
 
 Note on `nli_detection.rs` file size: currently ~650 lines. Adding the new tick function and
@@ -260,18 +271,25 @@ only IDs, not full entry content.
   `graph_inference_k` as the HNSW neighbour count (independent of `nli_post_store_k`).
 - AC-06b: Pairs where a `Supports` edge already exists in GRAPH_EDGES are skipped before NLI
   scoring (pre-filter, not `INSERT OR IGNORE`). This bounds wasted NLI calls as the graph matures.
-- AC-06c: `get_embedding` is called only for source candidates as they are selected — not for
-  all active entries upfront.
+- AC-06c: Source candidates are capped to `max_graph_inference_per_tick` BEFORE any
+  `get_embedding` call — not after. The cap is applied during `select_source_candidates` (Phase
+  3, metadata-only). `get_embedding` is then called in Phase 4 only for the already-capped list.
+  The ordering is: cap first, then fetch embeddings.
 - AC-07: Candidate pairs are processed in priority order: cross-category pairs first, isolated
   entries (no existing non-bootstrap edges) second, remaining pairs by similarity descending.
 - AC-08: For each pair, a single `rayon_pool.spawn()` call is used for all NLI inference
   (W1-2 contract; no `spawn_blocking`, no inline async NLI).
 - AC-09: A `Supports` edge `(A, B, "Supports")` is written when `score(A→B).entailment >
   supports_edge_threshold`. Uses `INSERT OR IGNORE` for idempotency.
-- AC-10: A `Contradicts` edge `(A, B, "Contradicts")` is written when `score(A→B).contradiction
-  > nli_contradiction_threshold` (existing threshold reused). Uses `INSERT OR IGNORE`.
+- AC-10-REMOVED: Tick MUST NOT write `Contradicts` edges. The dedicated contradiction detection
+  path is the sole writer. `write_inferred_edges_with_cap` is a Supports-only function; it
+  accepts no `contradiction_threshold` parameter.
+- AC-10a: TICK MUST NOT WRITE CONTRADICTS — any `Contradicts` edge write in
+  `nli_detection_tick.rs` is a gate-blocking defect. Verified by: code review of
+  `write_inferred_edges_with_cap`; grep for `Contradicts` in `nli_detection_tick.rs` must
+  return empty.
 - AC-11: Total edges written per tick is bounded by `max_graph_inference_per_tick`. The cap
-  counts Supports + Contradicts + Prerequisite edges combined.
+  counts Supports edges only (the tick writes no other edge types).
 - AC-13: All written edges use `source = "nli"` (the `EDGE_SOURCE_NLI` constant from col-029).
 - AC-14: `run_graph_inference_tick` is called from `background_tick_loop` after
   `maybe_run_bootstrap_promotion`, gated on `inference_config.nli_enabled`.
@@ -306,8 +324,16 @@ only IDs, not full entry content.
 - **TICK_TIMEOUT**: `run_graph_inference_tick` must complete within the existing `TICK_TIMEOUT`
   constant. The `max_graph_inference_per_tick` cap (default 100 pairs) bounds the NLI work to
   well within this limit.
-- **`get_embedding` is O(N)**: call only for selected source candidates, not for all active
-  entries. Source candidate set is bounded by the `max_graph_inference_per_tick` cap.
+- **`get_embedding` is O(N)**: cap source candidates to `max_graph_inference_per_tick` BEFORE
+  calling `get_embedding`. The cap is applied in `select_source_candidates` (Phase 3) on
+  metadata only. `get_embedding` is then called in Phase 4 only for the capped list — cap
+  first, then fetch embeddings. (R-02 mitigation; ordering is explicit.)
+- **R-09 rayon/tokio boundary**: the rayon closure inside `run_graph_inference_tick` MUST be
+  a synchronous CPU-bound closure only. `tokio::runtime::Handle::current()` or any `.await`
+  inside `rayon_pool.spawn()` panics at runtime (no Tokio runtime on rayon worker threads).
+  Detection: grep for `Handle::current` and `\.await` inside rayon closures in
+  `nli_detection_tick.rs`. Independent validator required — the agent that wrote the rayon
+  closure must not be the same agent that checks it.
 
 ## Design Decisions (Closed)
 
