@@ -42,6 +42,7 @@ clap = { version = "4", features = ["derive"] }
 bincode = { version = "2", features = ["serde"] }
 toml = "0.8"
 rayon = "1"
+rand = "0.9"
 num_cpus = "1"
 thiserror = "2"
 

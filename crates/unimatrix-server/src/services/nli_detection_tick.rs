@@ -90,10 +90,20 @@ pub async fn run_graph_inference_tick(
     // Phase 3 — Source candidate selection (cap BEFORE embedding).
     // AC-06c / R-02: operates on metadata only (IDs + category strings). No get_embedding here.
     // Invariant: source_candidates.len() <= config.max_graph_inference_per_tick (ADR-003).
+    //
+    // Build the embedded set so select_source_candidates can exclude no-embedding entries
+    // (RC-2 fix: prevents no-embedding entries from permanently polluting tier 1).
+    let embedded_ids: HashSet<u64> = all_active
+        .iter()
+        .filter(|e| vector_index.contains(e.id))
+        .map(|e| e.id)
+        .collect();
+
     let source_candidates = select_source_candidates(
         &all_active,
         &existing_supports_pairs,
         &isolated_ids,
+        &embedded_ids,
         config.max_graph_inference_per_tick,
     );
 
@@ -295,8 +305,13 @@ pub async fn run_graph_inference_tick(
 /// Operates on metadata only — no `get_embedding` calls. The cap on this function
 /// bounds all Phase 4 `get_embedding` calls to `max_sources` (SR-02).
 ///
-/// Priority: (1) isolated entries, (2) non-isolated ordered by `created_at` descending.
-/// Full cross-category pair priority is applied in Phase 5 on expanded candidates.
+/// Only entries present in `embedded_ids` are eligible — entries without an embedding
+/// are permanently excluded so they cannot occupy slots every tick (RC-2 fix).
+///
+/// Priority: (1) isolated entries with embeddings, (2) non-isolated entries with embeddings.
+/// Both tiers are shuffled before selection to prevent deterministic re-selection of the
+/// same top-N candidates across ticks (RC-1 fix). Full cross-category pair priority is
+/// applied in Phase 5 on expanded candidates.
 ///
 /// `existing_edge_set` is accepted per the architecture's function signature; it is not
 /// consumed in source selection — cross-category pair detection is deferred to Phase 5.
@@ -304,16 +319,22 @@ fn select_source_candidates(
     all_active: &[EntryRecord],
     _existing_edge_set: &HashSet<(u64, u64)>,
     isolated_ids: &HashSet<u64>,
+    embedded_ids: &HashSet<u64>,
     max_sources: usize,
 ) -> Vec<u64> {
+    use rand::seq::SliceRandom;
+
     if all_active.is_empty() || max_sources == 0 {
         return vec![];
     }
 
-    let mut tier1: Vec<&EntryRecord> = Vec::new(); // isolated — highest priority
-    let mut tier2: Vec<&EntryRecord> = Vec::new(); // non-isolated — ordered by created_at desc
+    let mut tier1: Vec<&EntryRecord> = Vec::new(); // isolated + has embedding — highest priority
+    let mut tier2: Vec<&EntryRecord> = Vec::new(); // non-isolated + has embedding
 
     for entry in all_active {
+        if !embedded_ids.contains(&entry.id) {
+            continue; // no embedding — skip permanently (RC-2 fix)
+        }
         if isolated_ids.contains(&entry.id) {
             tier1.push(entry);
         } else {
@@ -321,7 +342,9 @@ fn select_source_candidates(
         }
     }
 
-    tier2.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    let mut rng = rand::rng();
+    tier1.shuffle(&mut rng);
+    tier2.shuffle(&mut rng);
 
     tier1
         .iter()
@@ -466,7 +489,9 @@ mod tests {
     #[test]
     fn test_select_source_candidates_cap_enforced() {
         let entries: Vec<EntryRecord> = (0..200u64).map(|i| make_entry(i, "decision", i)).collect();
-        let result = select_source_candidates(&entries, &HashSet::new(), &HashSet::new(), 10);
+        let all_ids: HashSet<u64> = (0..200u64).collect();
+        let result =
+            select_source_candidates(&entries, &HashSet::new(), &HashSet::new(), &all_ids, 10);
         assert_eq!(result.len(), 10);
         let unique: HashSet<u64> = result.iter().cloned().collect();
         assert_eq!(unique.len(), 10, "no duplicates");
@@ -475,20 +500,25 @@ mod tests {
     #[test]
     fn test_select_source_candidates_cap_larger_than_entries() {
         let entries: Vec<EntryRecord> = (0..5u64).map(|i| make_entry(i, "pattern", i)).collect();
-        let result = select_source_candidates(&entries, &HashSet::new(), &HashSet::new(), 20);
+        let all_ids: HashSet<u64> = (0..5u64).collect();
+        let result =
+            select_source_candidates(&entries, &HashSet::new(), &HashSet::new(), &all_ids, 20);
         assert_eq!(result.len(), 5);
     }
 
     #[test]
     fn test_select_source_candidates_empty_input() {
-        let result = select_source_candidates(&[], &HashSet::new(), &HashSet::new(), 10);
+        let result =
+            select_source_candidates(&[], &HashSet::new(), &HashSet::new(), &HashSet::new(), 10);
         assert!(result.is_empty());
     }
 
     #[test]
     fn test_select_source_candidates_max_sources_zero() {
         let entries: Vec<EntryRecord> = (0..5u64).map(|i| make_entry(i, "decision", i)).collect();
-        let result = select_source_candidates(&entries, &HashSet::new(), &HashSet::new(), 0);
+        let all_ids: HashSet<u64> = (0..5u64).collect();
+        let result =
+            select_source_candidates(&entries, &HashSet::new(), &HashSet::new(), &all_ids, 0);
         assert!(result.is_empty());
     }
 
@@ -499,7 +529,8 @@ mod tests {
         let mut isolated = HashSet::new();
         isolated.insert(3u64);
         isolated.insert(4u64);
-        let result = select_source_candidates(&entries, &HashSet::new(), &isolated, 2);
+        let all_ids: HashSet<u64> = (0..5u64).collect();
+        let result = select_source_candidates(&entries, &HashSet::new(), &isolated, &all_ids, 2);
         assert_eq!(result.len(), 2);
         assert!(result.contains(&3));
         assert!(result.contains(&4));
@@ -508,16 +539,25 @@ mod tests {
     #[test]
     fn test_select_source_candidates_remainder_by_created_at() {
         let entries: Vec<EntryRecord> = (0..5u64).map(|i| make_entry(i, "decision", i)).collect();
-        let result = select_source_candidates(&entries, &HashSet::new(), &HashSet::new(), 3);
-        // Tier2 sorted desc by created_at (= id): 4, 3, 2.
-        assert_eq!(result, vec![4, 3, 2]);
+        let all_ids: HashSet<u64> = (0..5u64).collect();
+        let result =
+            select_source_candidates(&entries, &HashSet::new(), &HashSet::new(), &all_ids, 3);
+        // With shuffle, order is non-deterministic — assert set membership and no duplicates.
+        assert_eq!(result.len(), 3);
+        let result_set: HashSet<u64> = result.iter().cloned().collect();
+        assert_eq!(result_set.len(), 3, "no duplicates");
+        assert!(
+            result_set.iter().all(|id| *id < 5),
+            "all IDs in valid range"
+        );
     }
 
     #[test]
     fn test_select_source_candidates_priority_ordering_combined() {
         let entries: Vec<EntryRecord> = (0..6u64).map(|i| make_entry(i, "decision", i)).collect();
         let isolated: HashSet<u64> = vec![3, 4, 5].into_iter().collect();
-        let result = select_source_candidates(&entries, &HashSet::new(), &isolated, 5);
+        let all_ids: HashSet<u64> = (0..6u64).collect();
+        let result = select_source_candidates(&entries, &HashSet::new(), &isolated, &all_ids, 5);
         assert_eq!(result.len(), 5);
         let first_three: HashSet<u64> = result[..3].iter().cloned().collect();
         assert_eq!(
@@ -530,8 +570,54 @@ mod tests {
     fn test_select_source_candidates_all_isolated() {
         let entries: Vec<EntryRecord> = (0..10u64).map(|i| make_entry(i, "lesson", i)).collect();
         let isolated: HashSet<u64> = (0..10).collect();
-        let result = select_source_candidates(&entries, &HashSet::new(), &isolated, 4);
+        let all_ids: HashSet<u64> = (0..10u64).collect();
+        let result = select_source_candidates(&entries, &HashSet::new(), &isolated, &all_ids, 4);
         assert_eq!(result.len(), 4);
+    }
+
+    /// RC-2 fix: entries without embeddings are excluded from both tiers.
+    #[test]
+    fn test_select_source_candidates_excludes_no_embedding_entries() {
+        // 6 entries: 0-2 isolated, 3-5 non-isolated; only 1, 2, 4, 5 have embeddings
+        let entries: Vec<EntryRecord> = (0..6u64).map(|i| make_entry(i, "decision", i)).collect();
+        let isolated: HashSet<u64> = vec![0u64, 1, 2].into_iter().collect();
+        let embedded_ids: HashSet<u64> = vec![1u64, 2, 4, 5].into_iter().collect();
+
+        let result =
+            select_source_candidates(&entries, &HashSet::new(), &isolated, &embedded_ids, 10);
+
+        // Entry 0 (isolated, no embedding) and entry 3 (non-isolated, no embedding) must be absent.
+        assert!(
+            !result.contains(&0),
+            "no-embedding isolated entry must be excluded"
+        );
+        assert!(
+            !result.contains(&3),
+            "no-embedding non-isolated entry must be excluded"
+        );
+        // Embedded entries must all be present (pool fits within cap).
+        assert!(result.contains(&1));
+        assert!(result.contains(&2));
+        assert!(result.contains(&4));
+        assert!(result.contains(&5));
+        assert_eq!(result.len(), 4);
+    }
+
+    /// RC-1 fix: when pool > cap, verify result is valid (correct length, valid IDs, no duplicates).
+    /// Shuffle randomises selection; we assert correctness properties rather than non-equality
+    /// to avoid a flaky assertion.
+    #[test]
+    fn test_select_source_candidates_nondeterministic_rotation() {
+        let entries: Vec<EntryRecord> = (0..20u64).map(|i| make_entry(i, "decision", i)).collect();
+        let all_ids: HashSet<u64> = (0..20u64).collect();
+
+        let result =
+            select_source_candidates(&entries, &HashSet::new(), &HashSet::new(), &all_ids, 5);
+
+        assert_eq!(result.len(), 5, "must return exactly cap entries");
+        let unique: HashSet<u64> = result.iter().cloned().collect();
+        assert_eq!(unique.len(), 5, "no duplicates");
+        assert!(unique.iter().all(|id| *id < 20), "all IDs from valid pool");
     }
 
     // -----------------------------------------------------------------------
@@ -735,14 +821,24 @@ mod tests {
 
     #[test]
     fn test_tick_empty_entry_set_select_candidates() {
-        assert!(select_source_candidates(&[], &HashSet::new(), &HashSet::new(), 10).is_empty());
+        assert!(
+            select_source_candidates(&[], &HashSet::new(), &HashSet::new(), &HashSet::new(), 10)
+                .is_empty()
+        );
     }
 
     #[test]
     fn test_tick_single_active_entry() {
         let entries = vec![make_entry(42, "decision", 100)];
+        let embedded_ids: HashSet<u64> = vec![42u64].into_iter().collect();
         assert_eq!(
-            select_source_candidates(&entries, &HashSet::new(), &HashSet::new(), 10),
+            select_source_candidates(
+                &entries,
+                &HashSet::new(),
+                &HashSet::new(),
+                &embedded_ids,
+                10
+            ),
             vec![42]
         );
     }
