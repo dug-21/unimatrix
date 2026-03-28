@@ -44,7 +44,7 @@ mcp__unimatrix__context_store({
 
 ```
 mcp__unimatrix__context_correct({
-  "original_id": {old entry ID},
+  "original_id": 1234,  // integer — never quote it
   "content": "{updated lesson with new evidence or broader scope}",
   "reason": "Updated: {what new evidence or context was added}"
 })
@@ -57,7 +57,7 @@ This deprecates the old lesson and creates a corrected version with a supersessi
 If a lesson is simply wrong or no longer applies (e.g., the underlying code was redesigned):
 
 ```
-mcp__unimatrix__context_deprecate({"id": {entry ID}, "reason": "{why it no longer applies}"})
+mcp__unimatrix__context_deprecate({"id": 1234, "reason": "{why it no longer applies}"})  // id is an integer — never quote it
 ```
 
 ---

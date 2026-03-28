@@ -56,7 +56,7 @@ mcp__unimatrix__context_store({
 
 ```
 mcp__unimatrix__context_correct({
-  "original_id": {old entry ID},
+  "original_id": 1234,  // integer — never quote it
   "content": "{updated step-by-step content}",
   "reason": "Updated: {what changed and why}"
 })

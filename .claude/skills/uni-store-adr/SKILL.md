@@ -72,7 +72,7 @@ Note the old entry's ID.
 
 ```
 mcp__unimatrix__context_correct({
-  "original_id": {old entry ID},
+  "original_id": 1234,  // integer — never quote it
   "content": "## Context\n{why the old decision is being replaced}\n\n## Decision\n{new decision}\n\n## Consequences\n{what changes}",
   "title": "ADR-NNN: {new decision title}",
   "reason": "Superseded by {feature-id}: {short explanation}"

@@ -68,16 +68,24 @@ Knowledge engine (MCP server). **Use it.**
 
 **Single item lookup** — use `context_get` to retrieve full details of any Unimatrix entry by ID. The `id` field is an **integer** — never quote it:
 
-format options: 
+format options:
     {null}              // Summarized content in text
     {markdown}          // Full text in markdown
     {json}              // Full text in json format
 
-Example:    
+Example:
 ```
 mcp__unimatrix__context_get({
   "id": 3267, "feature": "{feature id}, "format": "markdown"
 })
 ```
+
+**MCP Parameter Format Rules** — applies to ALL Unimatrix tool calls:
+
+| Parameter | Correct | Wrong |
+|-----------|---------|-------|
+| `id`, `original_id` | `3267` (integer) | `"3267"` (string) |
+| `tags` | `["adr", "col-031"]` (JSON array) | `"adr, col-031"` or `"[\"adr\"]"` |
+| String content | `"content here"` | `"content \"quoted\" here"` — avoid escaped quotes inside strings |
 
 Do not store workflow choreography in Unimatrix. Protocols live in `.claude/protocols/uni/`.

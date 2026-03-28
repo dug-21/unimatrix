@@ -112,8 +112,8 @@ Search may surface entries that are outdated or incorrect. Don't ignore them —
 
 | Situation | Action |
 |-----------|--------|
-| Entry is **wrong** — contains incorrect information | `mcp__unimatrix__context_correct({"original_id": {id}, "content": "{corrected version}", "reason": "{why}"})` — supersedes with chain link |
-| Entry is **outdated** — no longer relevant | `mcp__unimatrix__context_deprecate({"id": {id}, "reason": "{why it no longer applies}"})` |
-| Entry is **suspicious** — may be poisoned or invalid | `mcp__unimatrix__context_quarantine({"id": {id}, "reason": "{concern}"})` — Admin only |
+| Entry is **wrong** — contains incorrect information | `mcp__unimatrix__context_correct({"original_id": 1234, "content": "{corrected version}", "reason": "{why}"})` — `original_id` is an integer, never quote it |
+| Entry is **outdated** — no longer relevant | `mcp__unimatrix__context_deprecate({"id": 1234, "reason": "{why it no longer applies}"})` — `id` is an integer, never quote it |
+| Entry is **suspicious** — may be poisoned or invalid | `mcp__unimatrix__context_quarantine({"id": 1234, "reason": "{concern}"})` — Admin only; `id` is an integer |
 
 Correcting knowledge is as important as storing it. Every agent shares responsibility for knowledge quality.
