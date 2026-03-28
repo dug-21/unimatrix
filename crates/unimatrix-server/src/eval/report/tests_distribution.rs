@@ -294,3 +294,90 @@ fn test_cc_at_k_scenario_rows_empty() {
     let rows = compute_cc_at_k_scenario_rows(&[]);
     assert!(rows.is_empty(), "empty input must produce empty rows");
 }
+
+// ---------------------------------------------------------------------------
+// GH-407: test_cc_at_k_scenario_rows_unicode_query_no_panic
+// ---------------------------------------------------------------------------
+
+/// Verify that compute_cc_at_k_scenario_rows does not panic when the query
+/// contains multi-byte UTF-8 characters (CJK, 3 bytes each) whose total byte
+/// length exceeds the 60-char truncation limit, and that the resulting query
+/// field is truncated at a char boundary with the ellipsis appended.
+#[test]
+fn test_cc_at_k_scenario_rows_unicode_query_no_panic() {
+    // "あ" is U+3042, encoded as 3 bytes in UTF-8.
+    // 25 repetitions = 25 chars, 75 bytes — exceeds the 60-byte limit that
+    // previously caused a panic.
+    let long_unicode_query: String = "あ".repeat(25);
+    assert_eq!(long_unicode_query.len(), 75, "precondition: 75 bytes");
+    assert_eq!(
+        long_unicode_query.chars().count(),
+        25,
+        "precondition: 25 chars"
+    );
+
+    let r = make_scenario_result_with_metrics(
+        "unicode-1",
+        &long_unicode_query,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.7,
+        0.7,
+        0.7,
+        0.7,
+    );
+
+    // Must not panic.
+    let rows = compute_cc_at_k_scenario_rows(&[r]);
+
+    assert_eq!(rows.len(), 1, "expected 1 row");
+
+    // 25 chars is less than 60, so no truncation or ellipsis should occur.
+    assert_eq!(
+        rows[0].query, long_unicode_query,
+        "query shorter than 60 chars must be returned unchanged"
+    );
+
+    // Now test with a query that truly exceeds 60 chars (70 × "あ" = 70 chars, 210 bytes).
+    let very_long_query: String = "あ".repeat(70);
+    assert_eq!(
+        very_long_query.chars().count(),
+        70,
+        "precondition: 70 chars"
+    );
+
+    let r2 = make_scenario_result_with_metrics(
+        "unicode-2",
+        &very_long_query,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.7,
+        0.7,
+        0.7,
+        0.7,
+    );
+
+    // Must not panic.
+    let rows2 = compute_cc_at_k_scenario_rows(&[r2]);
+
+    assert_eq!(rows2.len(), 1, "expected 1 row for long unicode query");
+
+    // The query must end with the ellipsis character.
+    assert!(
+        rows2[0].query.ends_with('…'),
+        "truncated query must end with ellipsis, got: {:?}",
+        rows2[0].query
+    );
+
+    // The prefix before the ellipsis must be exactly 60 "あ" characters.
+    let expected_prefix: String = "あ".repeat(60);
+    let expected = format!("{}…", expected_prefix);
+    assert_eq!(
+        rows2[0].query, expected,
+        "truncated query must be 60 chars + ellipsis"
+    );
+}
