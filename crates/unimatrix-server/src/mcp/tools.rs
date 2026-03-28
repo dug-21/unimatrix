@@ -354,6 +354,7 @@ impl UnimatrixServer {
                 let h = self.session_registry.get_category_histogram(sid);
                 if h.is_empty() { None } else { Some(h) }
             }),
+            current_phase: None, // col-031: MCP tools.rs — phase not yet threaded from tool params
         };
 
         let search_results = self
@@ -3831,6 +3832,7 @@ mod tests {
             retrieval_mode: RetrievalMode::Flexible,
             session_id: session_id_ctx.clone(),
             category_histogram,
+            current_phase: None, // col-031: no phase in this test
         };
 
         assert_eq!(params.session_id.as_deref(), Some("s1"));

@@ -32,6 +32,23 @@ pub struct QueryLogRecord {
     pub phase: Option<String>, // col-028: workflow phase at query time; None for UDS rows
 }
 
+/// Transient row returned by `query_phase_freq_table`.
+///
+/// Used only during `PhaseFreqTable::rebuild`; not stored or returned to callers.
+///
+/// `freq` is i64 because SQLite `COUNT(*)` maps to i64 via sqlx 0.8.
+/// Do NOT use u64 — sqlx deserialization will fail silently at runtime (R-13).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PhaseFreqRow {
+    pub phase: String,
+    pub category: String,
+    /// entry_id read as i64 from SQL (CAST result), then cast to u64.
+    /// The SQL CAST(je.value AS INTEGER) guarantees a non-negative integer value.
+    pub entry_id: u64,
+    /// COUNT(*) result — always i64 in sqlx 0.8 SQLite mapping.
+    pub freq: i64,
+}
+
 // -- Shared constructor --
 
 impl QueryLogRecord {
@@ -159,6 +176,96 @@ impl SqlxStore {
 
         rows.iter().map(row_to_query_log).collect()
     }
+
+    /// Query (phase, category, entry_id, freq) aggregates from query_log within
+    /// a time window, joined to entries for category lookup.
+    ///
+    /// # SQL
+    ///
+    /// The SQL uses CROSS JOIN json_each to expand the JSON array in
+    /// `result_entry_ids`. CAST(je.value AS INTEGER) is MANDATORY — omitting it
+    /// causes a text-to-integer JOIN mismatch that returns zero rows silently (R-05).
+    /// Verified against mcp/knowledge_reuse.rs json_each usage (Unimatrix #3681).
+    ///
+    /// Results are ordered by (phase, category, freq DESC) — the caller uses this
+    /// ordering directly for rank-based normalization without re-sorting.
+    ///
+    /// # Parameters
+    ///
+    /// `lookback_days` is bound as i64 (sqlx 0.8 INTEGER mapping requirement).
+    /// Validated to [1, 3650] by InferenceConfig::validate() at startup (R-08).
+    ///
+    /// # Returns
+    ///
+    /// Empty Vec when:
+    ///   - No query_log rows have non-null phase within the time window.
+    ///   - All result_entry_ids are null.
+    ///   - The entries table has no rows matching any entry_id in the log.
+    ///
+    /// Caller (`PhaseFreqTable::rebuild`) treats an empty Vec as use_fallback=true.
+    pub async fn query_phase_freq_table(&self, lookback_days: u32) -> Result<Vec<PhaseFreqRow>> {
+        // The SQL is specified verbatim — do NOT modify the CAST forms or WHERE clause.
+        // Any change to CAST(je.value AS INTEGER) risks returning zero rows silently (R-05).
+        let sql = "
+            SELECT
+                q.phase,
+                e.category,
+                CAST(je.value AS INTEGER)  AS entry_id,
+                COUNT(*)                   AS freq
+            FROM query_log q
+              CROSS JOIN json_each(q.result_entry_ids) AS je
+              JOIN entries e ON CAST(je.value AS INTEGER) = e.id
+            WHERE q.phase IS NOT NULL
+              AND q.result_entry_ids IS NOT NULL
+              AND q.ts > strftime('%s', 'now') - ?1 * 86400
+            GROUP BY q.phase, e.category, CAST(je.value AS INTEGER)
+            ORDER BY q.phase, e.category, freq DESC
+        ";
+
+        // Bind lookback_days as i64 (sqlx 0.8 INTEGER mapping — u32 would fail).
+        let rows = sqlx::query(sql)
+            .bind(lookback_days as i64)
+            .fetch_all(self.read_pool())
+            .await
+            .map_err(|e| StoreError::Database(e.into()))?;
+
+        // Deserialize using positional index access, matching existing query_log.rs pattern.
+        // Column order from SELECT:
+        //   0: q.phase       -> String
+        //   1: e.category    -> String
+        //   2: entry_id      -> i64  (CAST result is INTEGER in SQLite)
+        //   3: freq          -> i64  (COUNT(*) is always i64 in sqlx 0.8)
+        rows.iter().map(row_to_phase_freq_row).collect()
+    }
+}
+
+/// Deserialize a single SQL row into PhaseFreqRow.
+///
+/// Column positions must match the SELECT clause in query_phase_freq_table:
+///   0: phase    (String)
+///   1: category (String)
+///   2: entry_id (i64, cast to u64)
+///   3: freq     (i64)
+///
+/// entry_id is read as i64 and cast to u64 because:
+///   - SQLite INTEGER is always signed i64 in sqlx 0.8
+///   - Entry IDs are non-negative by construction
+///   - The CAST(je.value AS INTEGER) SQL expression produces INTEGER affinity
+fn row_to_phase_freq_row(row: &sqlx::sqlite::SqliteRow) -> Result<PhaseFreqRow> {
+    Ok(PhaseFreqRow {
+        phase: row
+            .try_get::<String, _>(0)
+            .map_err(|e| StoreError::Database(e.into()))?,
+        category: row
+            .try_get::<String, _>(1)
+            .map_err(|e| StoreError::Database(e.into()))?,
+        entry_id: row
+            .try_get::<i64, _>(2)
+            .map_err(|e| StoreError::Database(e.into()))? as u64,
+        freq: row
+            .try_get::<i64, _>(3)
+            .map_err(|e| StoreError::Database(e.into()))?,
+    })
 }
 
 fn row_to_query_log(row: &sqlx::sqlite::SqliteRow) -> Result<QueryLogRecord> {
@@ -190,3 +297,7 @@ fn row_to_query_log(row: &sqlx::sqlite::SqliteRow) -> Result<QueryLogRecord> {
             .map_err(|e| StoreError::Database(e.into()))?,
     })
 }
+
+#[cfg(test)]
+#[path = "query_log_tests.rs"]
+mod tests;

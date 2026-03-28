@@ -182,6 +182,7 @@ impl IndexBriefingService {
             retrieval_mode: RetrievalMode::Strict,
             session_id: params.session_id.clone(),
             category_histogram: params.category_histogram,
+            current_phase: None, // col-031: briefing does not carry phase context
         };
 
         // Step 3: Resolve caller identity

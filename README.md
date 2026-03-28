@@ -292,10 +292,18 @@ nli_auto_quarantine_threshold = 0.85
 # w_phase_histogram: boost weight for implicit category histogram signal. Applied inside
 # compute_fused_score. Max boost = w_phase_histogram * 1.0 = 0.02 per entry (default: 0.02).
 w_phase_histogram = 0.02
-# w_phase_explicit: boost weight for explicit phase signal (WA-1 current_phase). Reserved
-# for W3-1 (GNN). Default 0.0 — always inactive in the current release. Configurable
-# but no phase-category mapping is implemented; setting this above 0.0 has no effect.
-w_phase_explicit = 0.0
+# w_phase_explicit: boost weight for explicit phase signal (WA-1 current_phase). Activates
+# the PhaseFreqTable — a per-(phase, category) frequency table rebuilt each background tick
+# from query_log. Entries accessed frequently in the current phase receive a higher
+# phase_explicit_norm contribution. Cold-start guard: when no phase history exists,
+# phase_explicit_norm = 0.0 and scores are bit-for-bit identical to pre-col-031.
+# Default 0.05 (additive, outside the six-weight sum constraint).
+w_phase_explicit = 0.05
+# query_log_lookback_days: time window (in days) for the PhaseFreqTable rebuild SQL query.
+# Only query_log rows within this window contribute to phase-frequency rankings.
+# Default 30. Increasing this window widens the historical signal; decreasing it makes
+# rankings more sensitive to recent access patterns.
+query_log_lookback_days = 30
 ```
 
 ```toml

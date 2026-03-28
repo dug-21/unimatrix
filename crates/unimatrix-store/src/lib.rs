@@ -32,7 +32,7 @@ pub use error::{PoolKind, Result, StoreError};
 pub use hash::compute_content_hash;
 pub use injection_log::InjectionLogRecord;
 pub use metrics::{MetricVector, PhaseMetrics, UNIVERSAL_METRICS_FIELDS, UniversalMetrics};
-pub use query_log::QueryLogRecord;
+pub use query_log::{PhaseFreqRow, QueryLogRecord};
 pub use read::{
     ContradictEdgeRow, EDGE_SOURCE_NLI, GraphCohesionMetrics, GraphEdgeRow, StatusAggregates,
 };

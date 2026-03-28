@@ -1221,6 +1221,7 @@ async fn handle_context_search(
         retrieval_mode: crate::services::RetrievalMode::Strict, // crt-010: UDS uses strict mode
         session_id: session_id.clone(), // crt-026: thread session_id for logging/tracing
         category_histogram,             // crt-026: pre-resolved histogram (WA-2)
+        current_phase: None,            // col-031: UDS does not carry phase context
     };
 
     // 3. Delegate to SearchService (UDS sessions are rate-exempt via CallerId::UdsSession)

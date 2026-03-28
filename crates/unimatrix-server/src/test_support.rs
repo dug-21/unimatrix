@@ -162,6 +162,7 @@ impl TestHarness {
             retrieval_mode: RetrievalMode::Flexible,
             session_id: None,         // crt-026: no session context in test harness
             category_histogram: None, // crt-026: no histogram in test harness
+            current_phase: None,      // col-031: no phase context in test harness
         };
 
         let audit_ctx = AuditContext {
@@ -212,6 +213,7 @@ impl TestHarness {
             retrieval_mode: RetrievalMode::Flexible,
             session_id: None,         // crt-026: no session context in test harness
             category_histogram: None, // crt-026: no histogram in test harness
+            current_phase: None,      // col-031: no phase context in test harness
         };
 
         let audit_ctx = AuditContext {
