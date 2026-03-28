@@ -139,15 +139,15 @@ pub(super) fn render_report(
                 let b_entry = baseline_entries
                     .get(i)
                     .map(|e| {
-                        let title_len = e.title.len().min(30);
-                        format!("{}: {}", e.id, &e.title[..title_len])
+                        let title_truncated: String = e.title.chars().take(30).collect();
+                        format!("{}: {}", e.id, title_truncated)
                     })
                     .unwrap_or_else(|| "-".to_string());
                 let c_entry = candidate_entries
                     .get(i)
                     .map(|e| {
-                        let title_len = e.title.len().min(30);
-                        format!("{}: {}", e.id, &e.title[..title_len])
+                        let title_truncated: String = e.title.chars().take(30).collect();
+                        format!("{}: {}", e.id, title_truncated)
                     })
                     .unwrap_or_else(|| "-".to_string());
                 md.push_str(&format!("| {} | {} | {} |\n", i + 1, b_entry, c_entry));
@@ -336,11 +336,11 @@ fn render_distribution_analysis(
             out.push_str("| Scenario | Query | Baseline CC@k | Candidate CC@k | \u{0394} CC@k |\n");
             out.push_str("|----------|-------|--------------|----------------|--------|\n");
             for row in improvement_rows {
-                let query_len = row.query.len().min(40);
+                let query_truncated: String = row.query.chars().take(40).collect();
                 out.push_str(&format!(
                     "| {} | {} | {:.4} | {:.4} | {:+.4} |\n",
                     row.scenario_id,
-                    &row.query[..query_len],
+                    query_truncated,
                     row.baseline_cc_at_k,
                     row.candidate_cc_at_k,
                     row.cc_at_k_delta,
@@ -365,11 +365,11 @@ fn render_distribution_analysis(
             out.push_str("| Scenario | Query | Baseline CC@k | Candidate CC@k | \u{0394} CC@k |\n");
             out.push_str("|----------|-------|--------------|----------------|--------|\n");
             for row in degradation_rows {
-                let query_len = row.query.len().min(40);
+                let query_truncated: String = row.query.chars().take(40).collect();
                 out.push_str(&format!(
                     "| {} | {} | {:.4} | {:.4} | {:+.4} |\n",
                     row.scenario_id,
-                    &row.query[..query_len],
+                    query_truncated,
                     row.baseline_cc_at_k,
                     row.candidate_cc_at_k,
                     row.cc_at_k_delta,
@@ -454,13 +454,8 @@ fn render_entry_analysis(summary: &EntryRankSummary) -> String {
         out.push_str("| Entry ID | Title | Avg Rank Gain |\n");
         out.push_str("|----------|-------|---------------|\n");
         for (id, title, gain) in &summary.most_promoted {
-            let title_len = title.len().min(40);
-            out.push_str(&format!(
-                "| {} | {} | +{} |\n",
-                id,
-                &title[..title_len],
-                gain
-            ));
+            let title_truncated: String = title.chars().take(40).collect();
+            out.push_str(&format!("| {} | {} | +{} |\n", id, title_truncated, gain));
         }
         out.push('\n');
     }
@@ -470,13 +465,8 @@ fn render_entry_analysis(summary: &EntryRankSummary) -> String {
         out.push_str("| Entry ID | Title | Avg Rank Loss |\n");
         out.push_str("|----------|-------|---------------|\n");
         for (id, title, loss) in &summary.most_demoted {
-            let title_len = title.len().min(40);
-            out.push_str(&format!(
-                "| {} | {} | {} |\n",
-                id,
-                &title[..title_len],
-                loss
-            ));
+            let title_truncated: String = title.chars().take(40).collect();
+            out.push_str(&format!("| {} | {} | {} |\n", id, title_truncated, loss));
         }
         out.push('\n');
     }

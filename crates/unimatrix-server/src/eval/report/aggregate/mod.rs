@@ -365,10 +365,12 @@ pub(super) fn compute_cc_at_k_scenario_rows(results: &[ScenarioResult]) -> Vec<C
         };
 
         // Truncate query to ~60 chars for readability in the report table.
-        let query = if result.query.len() > 60 {
-            format!("{}…", &result.query[..60])
+        // Use char-based counting and slicing to avoid panics on multi-byte UTF-8.
+        let truncated: String = result.query.chars().take(60).collect();
+        let query = if result.query.chars().count() > 60 {
+            format!("{}…", truncated)
         } else {
-            result.query.clone()
+            truncated
         };
 
         rows.push(CcAtKScenarioRow {
