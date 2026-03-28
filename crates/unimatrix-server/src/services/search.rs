@@ -33,6 +33,7 @@ use crate::infra::timeout::{MCP_HANDLER_TIMEOUT, spawn_blocking_with_timeout};
 use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::effectiveness::{EffectivenessSnapshot, EffectivenessStateHandle};
 use crate::services::gateway::SecurityGateway;
+use crate::services::phase_freq_table::PhaseFreqTableHandle;
 use crate::services::typed_graph::TypedGraphStateHandle;
 use crate::services::{AuditContext, CallerId, ServiceError};
 
@@ -270,6 +271,20 @@ pub(crate) struct ServiceSearchParams {
     /// Cold-start invariant: None → phase_histogram_norm = 0.0 for all candidates
     /// → compute_fused_score output bit-for-bit identical to pre-crt-026 (NFR-02).
     pub category_histogram: Option<HashMap<String, u32>>,
+    /// col-031: Workflow phase at query time, used for phase-conditioned scoring.
+    ///
+    /// Set by MCP transport from tool call `current_phase` parameter.
+    /// Set by eval runner from `record.context.phase` (AC-16).
+    ///
+    /// When None:
+    ///   - Lock on PhaseFreqTableHandle is never acquired.
+    ///   - phase_explicit_norm = 0.0 for all candidates.
+    ///   - Fused score is bit-for-bit identical to pre-col-031 (NFR-04).
+    ///
+    /// When Some(phase) and use_fallback = true:
+    ///   - use_fallback guard fires; phase_explicit_norm = 0.0.
+    ///   - phase_affinity_score is NOT called (ADR-003, R-03).
+    pub current_phase: Option<String>,
 }
 
 /// Search results including query embedding for reuse.
@@ -332,6 +347,13 @@ pub(crate) struct SearchService {
     /// in SearchService::new. Stored here so EvalServiceLayer profile TOMLs can
     /// supply different weights per eval run (FR-14, AC-15).
     fusion_weights: FusionWeights,
+    /// col-031: phase-conditioned frequency table for phase_explicit_norm signal.
+    ///
+    /// Arc clone received from ServiceLayer (created once in with_rate_config).
+    /// Background tick is sole writer. Search path acquires short read lock,
+    /// extracts phase snapshot, releases before scoring loop (NFR-02).
+    /// Non-optional — missing wiring is a compile error (ADR-005).
+    phase_freq_table: PhaseFreqTableHandle,
 }
 
 // ---------------------------------------------------------------------------
@@ -451,6 +473,7 @@ impl SearchService {
         nli_top_k: usize,
         nli_enabled: bool,
         fusion_weights: FusionWeights,
+        phase_freq_table: PhaseFreqTableHandle, // col-031: required, non-optional (ADR-005)
     ) -> Self {
         SearchService {
             store,
@@ -469,6 +492,7 @@ impl SearchService {
             nli_top_k,
             nli_enabled,
             fusion_weights,
+            phase_freq_table, // col-031
         }
     }
 
@@ -778,6 +802,63 @@ impl SearchService {
             HashMap::new()
         };
 
+        // col-031: Pre-loop phase snapshot extraction (ADR-003, NFR-02).
+        //
+        // LOCK ORDER CONTEXT: At this point, EffectivenessStateHandle read lock has
+        // already been acquired and released (step above). TypedGraphStateHandle read
+        // lock has been acquired and released (step 614-625 above). Now we acquire
+        // PhaseFreqTableHandle read lock — this is the third in the chain:
+        //   EffectivenessStateHandle -> TypedGraphStateHandle -> PhaseFreqTableHandle
+        //
+        // Lock acquired once before the scoring loop. Lock MUST be released before
+        // the loop body executes (NFR-02: no lock held across scoring loop).
+        //
+        // Three cases:
+        //   1. current_phase = None:
+        //      -> phase_snapshot = None; lock never acquired.
+        //   2. current_phase = Some(phase) AND use_fallback = true:
+        //      -> Guard fires; phase_snapshot = None; phase_explicit_norm = 0.0 for all.
+        //      -> Scores bit-for-bit identical to pre-col-031 (NFR-04).
+        //      -> phase_affinity_score is NOT called (ADR-003 fused-scoring contract).
+        //   3. current_phase = Some(phase) AND use_fallback = false:
+        //      -> Clone the phase's bucket data out of the guard. Release lock.
+        //      -> phase_explicit_norm computed per-entry from cloned snapshot.
+        //
+        // Snapshot type: HashMap<String, Vec<(u64, f32)>>
+        //   key = entry_category, value = sorted (entry_id, rank_score) pairs for this phase.
+        let phase_snapshot: Option<HashMap<String, Vec<(u64, f32)>>> = match &params.current_phase {
+            None => None, // lock never acquired
+            Some(phase) => {
+                // Acquire read lock once
+                let guard = self
+                    .phase_freq_table
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+
+                if guard.use_fallback {
+                    // GUARD FIRES: cold-start; do NOT call phase_affinity_score.
+                    // phase_explicit_norm = 0.0 for all candidates (score identity).
+                    None
+                    // guard drops here — lock released
+                } else {
+                    // Extract all (category -> Vec<(entry_id, score)>) entries for
+                    // this specific phase. Clone out before dropping the guard.
+                    //
+                    // We need all categories for this phase because the scoring loop
+                    // iterates over diverse entries with different categories.
+                    let snapshot: HashMap<String, Vec<(u64, f32)>> = guard
+                        .table
+                        .iter()
+                        .filter(|((p, _cat), _)| p == phase)
+                        .map(|((_p, cat), bucket)| (cat.clone(), bucket.clone()))
+                        .collect();
+                    Some(snapshot)
+                    // guard drops here — lock released BEFORE scoring loop
+                }
+            }
+        };
+        // PhaseFreqTableHandle read lock is now released. Scoring loop may begin.
+
         // Step 7: NLI scoring (if enabled) → fused score computation (single pass) →
         //         sort by final_score DESC → truncate to k.
         //
@@ -861,6 +942,39 @@ impl SearchService {
                 0.0
             };
 
+            // -- col-031: phase_explicit_norm from pre-built snapshot (no lock in loop body). --
+            //
+            // phase_snapshot = None when:
+            //   - current_phase is None (no phase provided)
+            //   - use_fallback = true (cold-start; guard fired pre-loop)
+            //   In both cases: 0.0 (pre-col-031 score identity preserved, NFR-04).
+            //
+            // phase_snapshot = Some(snapshot) when:
+            //   - Phase history exists and use_fallback = false.
+            //   Lookup entry_id in the snapshot's category bucket:
+            //     - Entry found: return its rank_score as f64.
+            //     - Bucket absent or entry absent: 1.0 (neutral, no suppression).
+            //   NOTE: 1.0 neutral return from snapshot is consistent with
+            //   phase_affinity_score absent-entry contract (ADR-003).
+            let phase_explicit_norm: f64 = match &phase_snapshot {
+                None => 0.0,
+                Some(snapshot) => {
+                    // Look up this entry's category bucket in the phase snapshot.
+                    // snapshot is HashMap<category, Vec<(entry_id, score)>>.
+                    match snapshot.get(&entry.category) {
+                        None => 1.0, // no history for (phase, category) -> neutral
+                        Some(bucket) => {
+                            // Linear scan within bucket for this entry_id.
+                            // Buckets are small; linear scan is appropriate.
+                            match bucket.iter().find(|(id, _)| *id == entry.id) {
+                                Some((_, score)) => *score as f64,
+                                None => 1.0, // entry not in bucket -> neutral
+                            }
+                        }
+                    }
+                }
+            };
+
             // -- Construct FusedScoreInputs --
             let inputs = FusedScoreInputs {
                 similarity: *sim,
@@ -870,8 +984,7 @@ impl SearchService {
                 util_norm,
                 prov_norm,
                 phase_histogram_norm, // crt-026: histogram affinity
-                // crt-026: ADR-003 placeholder — always 0.0; W3-1 will populate this field
-                phase_explicit_norm: 0.0,
+                phase_explicit_norm,  // col-031: from pre-built phase snapshot
             };
 
             // -- Fused score + status penalty (ADR-004: penalty at call site) --
@@ -3030,6 +3143,7 @@ mod tests {
             retrieval_mode: RetrievalMode::Flexible,
             session_id: None,         // NEW crt-026 field
             category_histogram: None, // NEW crt-026 field
+            current_phase: None,      // col-031: phase field present (AC-05 compile-time check)
         };
 
         assert!(
@@ -3039,6 +3153,10 @@ mod tests {
         assert!(
             params.category_histogram.is_none(),
             "category_histogram field must exist and be Option<HashMap<String, u32>>"
+        );
+        assert!(
+            params.current_phase.is_none(),
+            "current_phase field must exist and be Option<String>"
         );
     }
 
@@ -3061,12 +3179,14 @@ mod tests {
             retrieval_mode: RetrievalMode::Flexible,
             session_id: Some("sid-abc".to_string()),
             category_histogram: Some(hist),
+            current_phase: Some("col".to_string()), // col-031: exercise Some(phase) path
         };
 
         assert_eq!(params.session_id.as_deref(), Some("sid-abc"));
         let h = params.category_histogram.as_ref().unwrap();
         assert_eq!(h.get("decision"), Some(&3));
         assert_eq!(h.get("pattern"), Some(&2));
+        assert_eq!(params.current_phase.as_deref(), Some("col"));
     }
 
     // -- T-SP-NEW-03: test_service_search_params_empty_histogram_maps_to_none (AC-08 partial, R-02, R-09) --
@@ -3662,6 +3782,286 @@ mod tests {
             (final_scores[1] - score_c).abs() < 1e-10,
             "final_scores[1] must be C's score ({score_c}), not B's ({score_b}), got {} — R-03 validation",
             final_scores[1]
+        );
+    }
+
+    // =========================================================================
+    // col-031: Phase snapshot extraction and phase_explicit_norm tests
+    // AC-11 cold-start invariants, R-03, R-06
+    // =========================================================================
+
+    /// Helper: compute phase_explicit_norm from a pre-built snapshot and a candidate entry.
+    /// This mirrors the scoring loop logic exactly.
+    fn compute_phase_explicit_norm(
+        phase_snapshot: &Option<HashMap<String, Vec<(u64, f32)>>>,
+        entry_id: u64,
+        entry_category: &str,
+    ) -> f64 {
+        match phase_snapshot {
+            None => 0.0,
+            Some(snapshot) => match snapshot.get(entry_category) {
+                None => 1.0,
+                Some(bucket) => match bucket.iter().find(|(id, _)| *id == entry_id) {
+                    Some((_, score)) => *score as f64,
+                    None => 1.0,
+                },
+            },
+        }
+    }
+
+    /// Helper: build a populated phase snapshot (not cold-start).
+    fn make_phase_snapshot(entries: &[(u64, &str, f32)]) -> HashMap<String, Vec<(u64, f32)>> {
+        let mut snapshot: HashMap<String, Vec<(u64, f32)>> = HashMap::new();
+        for (entry_id, category, score) in entries {
+            snapshot
+                .entry(category.to_string())
+                .or_default()
+                .push((*entry_id, *score));
+        }
+        snapshot
+    }
+
+    // AC-11 Test 1: current_phase = None -> phase_snapshot = None -> phase_explicit_norm = 0.0
+    #[test]
+    fn test_scoring_current_phase_none_sets_phase_explicit_norm_zero() {
+        let phase_snapshot: Option<HashMap<String, Vec<(u64, f32)>>> = None;
+
+        assert_eq!(
+            compute_phase_explicit_norm(&phase_snapshot, 42, "decision"),
+            0.0_f64,
+            "AC-11 Test 1: current_phase = None must produce phase_explicit_norm = 0.0"
+        );
+        assert_eq!(
+            compute_phase_explicit_norm(&phase_snapshot, 99, "pattern"),
+            0.0_f64,
+            "AC-11 Test 1: any entry with phase_snapshot=None must yield 0.0"
+        );
+    }
+
+    // AC-11 Test 2: use_fallback = true → guard fires before phase_affinity_score →
+    // phase_snapshot = None → phase_explicit_norm = 0.0. R-03 primary.
+    #[test]
+    fn test_scoring_use_fallback_true_sets_phase_explicit_norm_zero() {
+        use crate::services::phase_freq_table::PhaseFreqTable;
+
+        let handle = PhaseFreqTable::new_handle();
+        // Cold-start handle: use_fallback = true.
+        let current_phase: Option<String> = Some("delivery".to_string());
+
+        let phase_snapshot: Option<HashMap<String, Vec<(u64, f32)>>> = match &current_phase {
+            None => None,
+            Some(phase) => {
+                let guard = handle.read().unwrap_or_else(|e| e.into_inner());
+                if guard.use_fallback {
+                    // GUARD FIRES before phase_affinity_score: return None.
+                    None
+                } else {
+                    let snapshot: HashMap<String, Vec<(u64, f32)>> = guard
+                        .table
+                        .iter()
+                        .filter(|((p, _cat), _)| p == phase)
+                        .map(|((_p, cat), bucket)| (cat.clone(), bucket.clone()))
+                        .collect();
+                    Some(snapshot)
+                }
+            }
+        };
+
+        // Guard fires -> phase_snapshot = None (even though current_phase is Some).
+        assert!(
+            phase_snapshot.is_none(),
+            "AC-11 Test 2: use_fallback=true must produce phase_snapshot=None \
+             even when current_phase=Some"
+        );
+
+        // phase_explicit_norm = 0.0 for all candidates.
+        assert_eq!(
+            compute_phase_explicit_norm(&phase_snapshot, 42, "decision"),
+            0.0_f64,
+            "AC-11 Test 2: use_fallback=true must yield phase_explicit_norm=0.0"
+        );
+    }
+
+    // AC-11 Test 3: cold-start scores are bit-for-bit identical to pre-col-031.
+    // NFR-04, R-03.
+    #[test]
+    fn test_scoring_score_identity_cold_start() {
+        let weights = FusionWeights {
+            w_sim: 0.25,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+            w_phase_histogram: 0.02,
+            w_phase_explicit: 0.05,
+        };
+
+        let base_inputs = FusedScoreInputs {
+            similarity: 0.8,
+            nli_entailment: 0.7,
+            confidence: 0.6,
+            coac_norm: 0.3,
+            util_norm: 0.5,
+            prov_norm: 0.0,
+            phase_histogram_norm: 0.2,
+            phase_explicit_norm: 0.0,
+        };
+
+        // Cold-start: phase_snapshot = None -> phase_explicit_norm = 0.0.
+        let phase_snapshot_none: Option<HashMap<String, Vec<(u64, f32)>>> = None;
+        let norm_cold = compute_phase_explicit_norm(&phase_snapshot_none, 42, "decision");
+        let inputs_cold = FusedScoreInputs {
+            phase_explicit_norm: norm_cold,
+            ..base_inputs
+        };
+        let score_cold = compute_fused_score(&inputs_cold, &weights);
+
+        // Pre-col-031 baseline: phase_explicit_norm hardcoded to 0.0.
+        let inputs_baseline = FusedScoreInputs {
+            phase_explicit_norm: 0.0,
+            ..base_inputs
+        };
+        let score_baseline = compute_fused_score(&inputs_baseline, &weights);
+
+        // Must be bit-for-bit identical (NFR-04).
+        assert_eq!(
+            score_cold, score_baseline,
+            "AC-11 Test 3: cold-start score must be bit-for-bit identical to pre-col-031 baseline"
+        );
+    }
+
+    // Populated snapshot: entry present in bucket -> non-zero norm.
+    #[test]
+    fn test_scoring_populated_snapshot_produces_nonzero_norm() {
+        let snapshot = make_phase_snapshot(&[(42, "decision", 1.0_f32)]);
+        let phase_snapshot = Some(snapshot);
+
+        let norm = compute_phase_explicit_norm(&phase_snapshot, 42, "decision");
+        assert!(
+            norm > 0.0_f64,
+            "populated snapshot: entry present must yield norm > 0.0, got {norm}"
+        );
+        assert!(
+            (norm - 1.0_f64).abs() < f64::EPSILON,
+            "entry with rank score 1.0 must yield norm = 1.0, got {norm}"
+        );
+    }
+
+    // Absent entry in populated snapshot -> 1.0 (neutral per ADR-003 contract).
+    #[test]
+    fn test_scoring_absent_entry_in_snapshot_norm_is_neutral() {
+        let snapshot = make_phase_snapshot(&[(42, "decision", 0.8_f32)]);
+        let phase_snapshot = Some(snapshot);
+
+        let norm = compute_phase_explicit_norm(&phase_snapshot, 99, "decision");
+        assert!(
+            (norm - 1.0_f64).abs() < f64::EPSILON,
+            "absent entry in populated snapshot must yield 1.0 (neutral), got {norm}"
+        );
+    }
+
+    // Absent category in snapshot -> 1.0 (neutral).
+    #[test]
+    fn test_scoring_absent_category_in_snapshot_norm_is_neutral() {
+        let snapshot = make_phase_snapshot(&[(42, "decision", 0.8_f32)]);
+        let phase_snapshot = Some(snapshot);
+
+        let norm = compute_phase_explicit_norm(&phase_snapshot, 42, "pattern");
+        assert!(
+            (norm - 1.0_f64).abs() < f64::EPSILON,
+            "absent category in snapshot must yield 1.0 (neutral), got {norm}"
+        );
+    }
+
+    // ServiceSearchParams.current_phase field accepts None (backward-compatible).
+    #[test]
+    fn test_service_search_params_current_phase_accepts_none() {
+        let params = ServiceSearchParams {
+            query: "test".to_string(),
+            k: 5,
+            filters: None,
+            similarity_floor: None,
+            confidence_floor: None,
+            feature_tag: None,
+            co_access_anchors: None,
+            caller_agent_id: None,
+            retrieval_mode: RetrievalMode::Flexible,
+            session_id: None,
+            category_histogram: None,
+            current_phase: None,
+        };
+        assert!(
+            params.current_phase.is_none(),
+            "ServiceSearchParams.current_phase must accept None (backward-compatible default)"
+        );
+    }
+
+    // Multi-entry bucket: rank scores looked up correctly for each entry.
+    #[test]
+    fn test_scoring_snapshot_bucket_rank_lookup() {
+        let snapshot = make_phase_snapshot(&[
+            (10, "decision", 1.0_f32),
+            (20, "decision", 0.5_f32),
+            (30, "decision", 0.333_f32),
+        ]);
+        let phase_snapshot = Some(snapshot);
+
+        let norm_10 = compute_phase_explicit_norm(&phase_snapshot, 10, "decision");
+        let norm_20 = compute_phase_explicit_norm(&phase_snapshot, 20, "decision");
+        let norm_30 = compute_phase_explicit_norm(&phase_snapshot, 30, "decision");
+
+        assert!((norm_10 - 1.0_f64).abs() < 1e-6, "rank-1 must yield 1.0");
+        assert!((norm_20 - 0.5_f64).abs() < 1e-6, "rank-2 must yield 0.5");
+        assert!(
+            (norm_30 - 0.333_f64).abs() < 1e-4,
+            "rank-3 must yield ~0.333"
+        );
+        assert!(norm_10 > norm_20, "rank-1 must outrank rank-2");
+        assert!(norm_20 > norm_30, "rank-2 must outrank rank-3");
+    }
+
+    // R-06: read lock released before scoring loop. Exercises the acquire/extract/release
+    // pattern and confirms a concurrent writer can acquire the write lock immediately after.
+    #[test]
+    fn test_scoring_lock_released_before_scoring_loop() {
+        use crate::services::phase_freq_table::PhaseFreqTable;
+
+        let handle = PhaseFreqTable::new_handle();
+        let current_phase: Option<String> = Some("delivery".to_string());
+
+        // Simulate pre-loop extraction (mirrors search() logic).
+        let phase_snapshot: Option<HashMap<String, Vec<(u64, f32)>>> = match &current_phase {
+            None => None,
+            Some(phase) => {
+                let guard = handle.read().unwrap_or_else(|e| e.into_inner());
+                if guard.use_fallback {
+                    None
+                    // guard drops here — lock released
+                } else {
+                    let snapshot: HashMap<String, Vec<(u64, f32)>> = guard
+                        .table
+                        .iter()
+                        .filter(|((p, _cat), _)| p == phase)
+                        .map(|((_p, cat), bucket)| (cat.clone(), bucket.clone()))
+                        .collect();
+                    Some(snapshot)
+                    // guard drops here — lock released
+                }
+            }
+        };
+        // Read lock now released. Write must not block.
+
+        {
+            let mut guard = handle.write().unwrap_or_else(|e| e.into_inner());
+            guard.use_fallback = false;
+        }
+
+        // Cold-start produced None snapshot (expected).
+        assert!(
+            phase_snapshot.is_none(),
+            "R-06: cold-start handle must produce None snapshot; \
+             write succeeded without blocking confirms lock was released"
         );
     }
 }
