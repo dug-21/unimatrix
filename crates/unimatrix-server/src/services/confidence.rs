@@ -188,7 +188,7 @@ mod tests {
             w_help: 0.12,
             w_corr: 0.16,
             w_trust: 0.14,
-            freshness_half_life_hours: 168.0,
+            freshness_half_life_hours: 336.0,
             alpha0: 3.0,
             beta0: 3.0,
         });
@@ -269,7 +269,7 @@ mod tests {
             w_help: 0.12,
             w_corr: 0.16,
             w_trust: 0.14,
-            freshness_half_life_hours: 168.0,
+            freshness_half_life_hours: 336.0,
             alpha0: 3.0,
             beta0: 3.0,
         };

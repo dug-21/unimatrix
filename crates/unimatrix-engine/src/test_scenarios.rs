@@ -147,13 +147,16 @@ pub fn auto_extracted_new() -> EntryProfile {
 }
 
 /// Deprecated, moderate access, very stale, mixed votes, human-authored.
+///
+/// last_accessed_at is set to 2 years ago so freshness is low even with the
+/// 8760h (1 year) half-life: exp(-2*8760/8760) = exp(-2) ≈ 0.135.
 pub fn stale_deprecated() -> EntryProfile {
     EntryProfile {
         label: "stale-deprecated",
         status: Status::Deprecated,
         access_count: 10,
-        last_accessed_at: CANONICAL_NOW - 90 * 24 * 3600, // 90 days ago
-        created_at: CANONICAL_NOW - 180 * 24 * 3600,      // 180 days ago
+        last_accessed_at: CANONICAL_NOW - 2 * 365 * 24 * 3600, // 2 years ago
+        created_at: CANONICAL_NOW - 3 * 365 * 24 * 3600,       // 3 years ago
         helpful_count: 3,
         unhelpful_count: 3,
         correction_count: 4,
