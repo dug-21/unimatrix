@@ -282,7 +282,7 @@ fn test_domain_pack_registry_no_runtime_write_path() {
     // If the above compile, the API surface is read-only as required.
 }
 
-/// T-DPR-12: CategoryAllowlist integration — built-in categories include all 8 initial ones
+/// T-DPR-12: CategoryAllowlist integration — built-in categories include all 5 active ones
 #[test]
 fn test_builtin_pack_has_all_initial_categories() {
     let registry = DomainPackRegistry::with_builtin_claude_code();
@@ -296,8 +296,6 @@ fn test_builtin_pack_has_all_initial_categories() {
         "convention",
         "pattern",
         "procedure",
-        "duties",
-        "reference",
     ];
     for cat in &expected {
         assert!(
@@ -305,6 +303,15 @@ fn test_builtin_pack_has_all_initial_categories() {
             "claude-code pack must include category '{cat}'"
         );
     }
+    // Removed in bugfix-436: duties and reference were stale categories.
+    assert!(
+        !pack.categories.contains(&"duties".to_string()),
+        "claude-code pack must not include retired category 'duties'"
+    );
+    assert!(
+        !pack.categories.contains(&"reference".to_string()),
+        "claude-code pack must not include retired category 'reference'"
+    );
 }
 
 /// T-DPR-14: Empty event_types matches all events for that domain (EC-05)

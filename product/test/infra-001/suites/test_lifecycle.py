@@ -277,7 +277,7 @@ def test_briefing_reflects_stored_knowledge(server):
     server.context_store(
         "developers should always write tests before implementation for reliability",
         "testing",
-        "duties",
+        "convention",
         agent_id="human",
     )
     resp = server.context_briefing("developer", "implement new feature", agent_id="human")

@@ -34,6 +34,7 @@ use std::path::{Path, PathBuf};
 
 use unimatrix_engine::confidence::{COLD_START_ALPHA, COLD_START_BETA, ConfidenceParams};
 
+use crate::infra::categories::INITIAL_CATEGORIES;
 use crate::infra::scanning::ContentScanner;
 
 // ---------------------------------------------------------------------------
@@ -124,7 +125,7 @@ pub struct ProfileConfig {
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 #[serde(default)]
 pub struct KnowledgeConfig {
-    /// Allowed entry categories. Default: the 7 INITIAL_CATEGORIES.
+    /// Allowed entry categories. Default: the 5 INITIAL_CATEGORIES.
     pub categories: Vec<String>,
     /// Categories that receive a provenance boost in search re-ranking.
     /// Default: `["lesson-learned"]`.
@@ -145,19 +146,6 @@ impl Default for KnowledgeConfig {
         }
     }
 }
-
-/// The 7 initial entry categories (mirrors `categories.rs::INITIAL_CATEGORIES`).
-/// Used to populate the default `KnowledgeConfig`.
-/// Note: "outcome" was removed in crt-025 (ADR-005) — only new ingest is blocked, no data deleted.
-pub const INITIAL_CATEGORIES: [&str; 7] = [
-    "lesson-learned",
-    "decision",
-    "convention",
-    "pattern",
-    "procedure",
-    "duties",
-    "reference",
-];
 
 /// `[server]` section — server presentation.
 #[derive(Debug, Default, Clone, PartialEq, serde::Deserialize)]
@@ -3892,7 +3880,7 @@ mod tests {
         let toml_str = r#"
 [knowledge]
 categories = ["outcome", "lesson-learned", "decision", "convention",
-              "pattern", "procedure", "duties", "reference"]
+              "pattern", "procedure"]
 "#;
         let config: UnimatrixConfig =
             toml::from_str(toml_str).expect("toml must parse without [observation] section");

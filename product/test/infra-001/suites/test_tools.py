@@ -537,7 +537,7 @@ def test_briefing_returns_content(server):
     server.context_store(
         "developer guidance for testing patterns",
         "testing",
-        "duties",
+        "convention",
         agent_id="human",
     )
     resp = server.context_briefing("developer", "implement feature", agent_id="human")
