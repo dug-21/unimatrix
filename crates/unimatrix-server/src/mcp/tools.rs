@@ -932,6 +932,14 @@ impl UnimatrixServer {
                         .collect(),
                 });
             }
+            // friction_signals are unconditional — they report agent workflow patterns,
+            // not KM graph health, so they are not gated by lambda or maintain flag.
+            report
+                .maintenance_recommendations
+                .extend(tick_meta.friction_signals.iter().cloned());
+            report
+                .maintenance_recommendations
+                .extend(tick_meta.dead_knowledge_signals.iter().cloned());
         }
 
         // 5. Audit (standalone, best-effort)
