@@ -273,6 +273,17 @@ pub async fn run_graph_inference_tick(
         return;
     }
 
+    let n = nli_scores.len();
+    let (nli_score_max, nli_score_mean, nli_score_p75) = nli_score_stats(&nli_scores);
+    tracing::debug!(
+        nli_score_max,
+        nli_score_mean,
+        nli_score_p75,
+        threshold = config.supports_edge_threshold,
+        pairs = n,
+        "graph inference tick: nli score distribution"
+    );
+
     let write_pairs: Vec<(u64, u64)> = scored_input
         .iter()
         .map(|(src, tgt, _, _)| (*src, *tgt))
@@ -352,6 +363,25 @@ fn select_source_candidates(
         .map(|e| e.id)
         .take(max_sources)
         .collect()
+}
+
+/// Compute (max, mean, p75) of the `.entailment` field across all NLI scores.
+///
+/// Returns `(0.0, 0.0, 0.0)` for an empty slice. Uses nearest-rank p75 (same formula as
+/// `compute_observed_spread` in `status.rs`). f32 throughout — NLI scores are at the ONNX
+/// boundary and must not be widened.
+fn nli_score_stats(scores: &[NliScores]) -> (f32, f32, f32) {
+    if scores.is_empty() {
+        return (0.0, 0.0, 0.0);
+    }
+    let mut vals: Vec<f32> = scores.iter().map(|s| s.entailment).collect();
+    vals.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let n = vals.len();
+    let max = vals[n - 1];
+    let mean = vals.iter().sum::<f32>() / n as f32;
+    let p75_idx = (((0.75 * n as f32).ceil() as usize).saturating_sub(1)).min(n - 1);
+    let p75 = vals[p75_idx];
+    (max, mean, p75)
 }
 
 /// Write NLI-scored `Supports` edges; returns `edges_written`.
@@ -865,5 +895,54 @@ mod tests {
     fn test_tick_pair_dedup_normalization() {
         let (a, b) = (10u64, 20u64);
         assert_eq!((a.min(b), a.max(b)), (b.min(a), b.max(a)));
+    }
+
+    // -----------------------------------------------------------------------
+    // nli_score_stats
+    // -----------------------------------------------------------------------
+
+    /// Empty slice returns (0.0, 0.0, 0.0) without panic.
+    #[test]
+    fn test_nli_score_stats_empty_returns_zero() {
+        let (max, mean, p75) = nli_score_stats(&[]);
+        assert_eq!(max, 0.0);
+        assert_eq!(mean, 0.0);
+        assert_eq!(p75, 0.0);
+    }
+
+    /// Single element: all three fields equal that element.
+    #[test]
+    fn test_nli_score_stats_single_element() {
+        let scores = vec![NliScores {
+            entailment: 0.42,
+            neutral: 0.3,
+            contradiction: 0.28,
+        }];
+        let (max, mean, p75) = nli_score_stats(&scores);
+        assert!((max - 0.42).abs() < 1e-6, "max={max}");
+        assert!((mean - 0.42).abs() < 1e-6, "mean={mean}");
+        assert!((p75 - 0.42).abs() < 1e-6, "p75={p75}");
+    }
+
+    /// n=4: exercises p75 index math — p75_idx = ceil(0.75*4)-1 = ceil(3.0)-1 = 2.
+    /// Sorted vals: [0.1, 0.4, 0.7, 0.9] → p75 = vals[2] = 0.7.
+    #[test]
+    fn test_nli_score_stats_four_elements() {
+        let vals = [0.4f32, 0.9, 0.1, 0.7];
+        let scores: Vec<NliScores> = vals
+            .iter()
+            .map(|&e| NliScores {
+                entailment: e,
+                neutral: 0.05,
+                contradiction: 0.05,
+            })
+            .collect();
+        let (max, mean, p75) = nli_score_stats(&scores);
+        assert!((max - 0.9).abs() < 1e-6, "max={max}");
+        let expected_mean = (0.1 + 0.4 + 0.7 + 0.9) / 4.0;
+        assert!((mean - expected_mean).abs() < 1e-5, "mean={mean}");
+        // p75_idx = (ceil(0.75 * 4.0) as usize).saturating_sub(1).min(3)
+        //         = (3 as usize).saturating_sub(1).min(3) = 2
+        assert!((p75 - 0.7).abs() < 1e-6, "p75={p75}");
     }
 }
