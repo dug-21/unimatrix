@@ -101,6 +101,41 @@ pub fn detect_dead_knowledge_candidates(
     Some(candidates)
 }
 
+/// Compute ephemeral dead-knowledge recommendations from observation records.
+///
+/// Returns human-readable recommendation strings for entries that appear to be
+/// stale (accessed historically but absent from recent sessions). Returns an
+/// empty `Vec` when there is insufficient observation data (fewer sessions than
+/// the detection window).
+///
+/// No entries are written. Recommendations are surfaced via `context_status`
+/// `maintenance_recommendations` and re-computed each tick.
+///
+/// This is a synchronous function and must be called from a blocking context
+/// (e.g. inside `tokio::task::spawn_blocking`).
+pub fn compute_dead_knowledge_recommendations(
+    observations: &[ObservationRecord],
+    store: &SqlxStore,
+) -> Vec<String> {
+    const DEFAULT_WINDOW: usize = 5;
+    match detect_dead_knowledge_candidates(observations, store, DEFAULT_WINDOW) {
+        None => {
+            // Insufficient sessions — not enough data to make a confident recommendation.
+            vec![]
+        }
+        Some(candidates) if candidates.is_empty() => vec![],
+        Some(candidates) => {
+            vec![format!(
+                "{} entr{} may be stale (accessed historically but absent from recent {} sessions) \
+                 — run context_status with maintain=true to deprecate or review manually",
+                candidates.len(),
+                if candidates.len() == 1 { "y" } else { "ies" },
+                DEFAULT_WINDOW,
+            )]
+        }
+    }
+}
+
 /// Extract entry IDs from a response snippet.
 /// Looks for patterns like `"id": 42` or `#42` in the text.
 pub(crate) fn extract_entry_ids(snippet: &str) -> Vec<u64> {
@@ -339,6 +374,91 @@ mod tests {
         assert!(
             !candidates.contains(&id),
             "recently accessed entry must not be a deprecation candidate"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // compute_dead_knowledge_recommendations tests (GH #437)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compute_dead_knowledge_recommendations_empty_with_insufficient_sessions() {
+        let store = make_store().await;
+        // Only 4 sessions, window=5 → None from detect → empty recommendations
+        let observations: Vec<ObservationRecord> = (0..4)
+            .map(|i| make_obs(&format!("s{}", i), 1000 + i as u64, None, None))
+            .collect();
+        let recs = compute_dead_knowledge_recommendations(&observations, &store);
+        assert!(
+            recs.is_empty(),
+            "must return empty recommendations when fewer sessions than window"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compute_dead_knowledge_recommendations_empty_with_no_stale_entries() {
+        let store = make_store().await;
+        // 6 sessions but no accessed entries — nothing to flag
+        let observations: Vec<ObservationRecord> = (0..6)
+            .map(|i| make_obs(&format!("s{}", i), 1000 + i as u64, None, None))
+            .collect();
+        let recs = compute_dead_knowledge_recommendations(&observations, &store);
+        assert!(
+            recs.is_empty(),
+            "must return empty recommendations when no accessed entries exist"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compute_dead_knowledge_recommendations_surfaces_stale_entries() {
+        let store = make_store().await;
+
+        // Insert an accessed entry
+        let entry = unimatrix_store::NewEntry {
+            title: "Stale but accessed entry".to_string(),
+            content: "This entry was accessed but not recently".to_string(),
+            topic: "test".to_string(),
+            category: "convention".to_string(),
+            tags: vec![],
+            source: "human".to_string(),
+            status: unimatrix_store::Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: "test-feature".to_string(),
+            trust_source: "human".to_string(),
+        };
+        let id = store.insert(entry).await.expect("insert");
+        store
+            .record_usage(&[id], &[id], &[], &[], &[], &[])
+            .await
+            .expect("record usage");
+
+        // 6 sessions, none referencing this entry in snippets
+        let observations: Vec<ObservationRecord> = (0..6)
+            .map(|i| {
+                make_obs(
+                    &format!("s{}", i),
+                    (1000 + i * 100) as u64,
+                    Some("mcp__unimatrix__context_search"),
+                    Some("No results"),
+                )
+            })
+            .collect();
+
+        let recs = compute_dead_knowledge_recommendations(&observations, &store);
+        assert_eq!(
+            recs.len(),
+            1,
+            "should surface one recommendation for stale entry"
+        );
+        assert!(
+            recs[0].contains("stale"),
+            "recommendation must mention 'stale'; got: {}",
+            recs[0]
+        );
+        assert!(
+            recs[0].contains("maintain=true"),
+            "recommendation must mention maintain=true; got: {}",
+            recs[0]
         );
     }
 

@@ -123,8 +123,10 @@ const ALLOWED_CATEGORIES: &[&str] = &["convention", "pattern", "lesson-learned",
 fn min_features_for_rule(rule_name: &str) -> usize {
     match rule_name {
         "knowledge-gap" => 2,
-        "implicit-convention" | "recurring-friction" | "file-dependency" => 3,
+        // "recurring-friction" removed from extraction pipeline (GH #437):
+        // signals are now ephemeral recommendations, not stored entries.
         // "dead-knowledge" removed from extraction pipeline (GH #351)
+        "implicit-convention" | "file-dependency" => 3,
         _ => 3,
     }
 }
@@ -190,17 +192,21 @@ pub fn quality_gate(entry: &ProposedEntry, ctx: &mut ExtractionContext) -> Quali
     QualityGateResult::Accept
 }
 
-/// Return the default set of extraction rules (4 total).
+/// Return the default set of extraction rules (3 total).
 ///
-/// `DeadKnowledgeRule` was removed: it used an additive `ExtractionRule` to signal
-/// a maintenance action (inserting `lesson-learned` entries), which created an
-/// idempotency-free replication loop. Detection helpers are preserved in
-/// `dead_knowledge` for future curation surfacing work (GH #369, #370).
+/// `DeadKnowledgeRule` was removed (GH #351): it used an additive `ExtractionRule`
+/// to signal a maintenance action (inserting `lesson-learned` entries), which
+/// created an idempotency-free replication loop. Detection helpers are preserved
+/// in `dead_knowledge` for future curation surfacing work (GH #369, #370).
+///
+/// `RecurringFrictionRule` was removed (GH #437): recurring friction signals are
+/// ephemeral operational recommendations, not stored knowledge entries. Use
+/// `recurring_friction::compute_friction_recommendations()` instead, which surfaces
+/// signals via `context_status` `maintenance_recommendations`.
 pub fn default_extraction_rules() -> Vec<Box<dyn ExtractionRule>> {
     vec![
         Box::new(knowledge_gap::KnowledgeGapRule),
         Box::new(implicit_convention::ImplicitConventionRule),
-        Box::new(recurring_friction::RecurringFrictionRule),
         Box::new(file_dependency::FileDependencyRule),
     ]
 }
@@ -266,11 +272,11 @@ mod tests {
     }
 
     #[test]
-    fn default_extraction_rules_returns_four() {
-        // DeadKnowledgeRule was removed from the extraction pipeline (GH #351).
-        // Dead-knowledge detection now runs as a deprecation pass in background.rs.
+    fn default_extraction_rules_returns_three() {
+        // DeadKnowledgeRule removed (GH #351); RecurringFrictionRule removed (GH #437).
+        // Friction signals are now ephemeral recommendations via compute_friction_recommendations().
         let rules = default_extraction_rules();
-        assert_eq!(rules.len(), 4);
+        assert_eq!(rules.len(), 3);
     }
 
     #[test]
@@ -279,10 +285,11 @@ mod tests {
         let names: Vec<&str> = rules.iter().map(|r| r.name()).collect();
         assert!(names.contains(&"knowledge-gap"));
         assert!(names.contains(&"implicit-convention"));
-        assert!(names.contains(&"recurring-friction"));
         assert!(names.contains(&"file-dependency"));
         // DeadKnowledgeRule must NOT be in the extraction pipeline (GH #351)
         assert!(!names.contains(&"dead-knowledge"));
+        // RecurringFrictionRule must NOT be in the extraction pipeline (GH #437)
+        assert!(!names.contains(&"recurring-friction"));
     }
 
     #[test]
@@ -295,6 +302,18 @@ mod tests {
         assert!(
             !names.contains(&"dead-knowledge"),
             "DeadKnowledgeRule must not be in default_extraction_rules (GH #351)"
+        );
+    }
+
+    #[test]
+    fn test_recurring_friction_rule_removed_from_defaults() {
+        // GH #437: RecurringFrictionRule must not appear in default_extraction_rules().
+        // Friction signals are ephemeral operational recommendations, not stored entries.
+        let rules = default_extraction_rules();
+        let names: Vec<&str> = rules.iter().map(|r| r.name()).collect();
+        assert!(
+            !names.contains(&"recurring-friction"),
+            "RecurringFrictionRule must not be in default_extraction_rules (GH #437)"
         );
     }
 
@@ -402,8 +421,9 @@ mod tests {
     fn min_features_for_each_rule() {
         assert_eq!(min_features_for_rule("knowledge-gap"), 2);
         assert_eq!(min_features_for_rule("implicit-convention"), 3);
-        assert_eq!(min_features_for_rule("recurring-friction"), 3);
         assert_eq!(min_features_for_rule("file-dependency"), 3);
+        // "recurring-friction" removed from extraction pipeline (GH #437); falls through to default
+        assert_eq!(min_features_for_rule("recurring-friction"), 3);
         // "dead-knowledge" removed from extraction pipeline (GH #351); falls through to default
         assert_eq!(min_features_for_rule("dead-knowledge"), 3);
         assert_eq!(min_features_for_rule("unknown-rule"), 3);

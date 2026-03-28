@@ -17,7 +17,9 @@ use unimatrix_core::{
 };
 use unimatrix_learn::TrainingService;
 use unimatrix_learn::models::{ConventionScorer, SignalClassifier};
+use unimatrix_observe::extraction::dead_knowledge::compute_dead_knowledge_recommendations;
 use unimatrix_observe::extraction::neural::{EnhancerMode, NeuralEnhancer};
+use unimatrix_observe::extraction::recurring_friction::compute_friction_recommendations;
 use unimatrix_observe::extraction::shadow::{ShadowEvaluator, ShadowLogEntry};
 use unimatrix_observe::extraction::{
     ExtractionContext, ExtractionStats, ProposedEntry, QualityGateResult, default_extraction_rules,
@@ -123,6 +125,16 @@ pub struct TickMetadata {
     /// run every N ticks rather than every tick. Starts at 0; the first
     /// tick is tick 0 (`tick_counter % N == 0` fires on tick 0).
     pub tick_counter: u32,
+    /// Ephemeral friction recommendations from the last extraction tick.
+    ///
+    /// Re-computed each tick; repeated appearance is expected — no dedup applied.
+    /// Surfaced via `context_status` `maintenance_recommendations`.
+    pub friction_signals: Vec<String>,
+    /// Ephemeral dead-knowledge recommendations from the last extraction tick.
+    ///
+    /// Re-computed each tick. Surfaced via `context_status`
+    /// `maintenance_recommendations`.
+    pub dead_knowledge_signals: Vec<String>,
 }
 
 impl TickMetadata {
@@ -712,10 +724,12 @@ async fn run_single_tick(
     )
     .await
     {
-        Ok(Ok(stats)) => {
+        Ok(Ok((stats, friction_recs, dead_knowledge_recs))) => {
             if let Ok(mut meta) = tick_metadata.lock() {
                 meta.last_extraction_run = Some(now_secs());
                 meta.extraction_stats = stats;
+                meta.friction_signals = friction_recs;
+                meta.dead_knowledge_signals = dead_knowledge_recs;
             }
             tracing::info!("extraction tick complete");
         }
@@ -1412,7 +1426,7 @@ async fn extraction_tick(
     neural_enhancer: Option<&NeuralEnhancer>,
     shadow_evaluator: Option<&mut ShadowEvaluator>,
     ml_inference_pool: &Arc<RayonPool>, // crt-022 (ADR-004): ML inference pool for quality-gate
-) -> Result<ExtractionStats, ServiceError> {
+) -> Result<(ExtractionStats, Vec<String>, Vec<String>), ServiceError> {
     let store_clone = Arc::clone(store);
     let watermark = ctx.last_watermark;
 
@@ -1421,16 +1435,23 @@ async fn extraction_tick(
     let (observations, new_watermark) = fetch_observation_batch(&store_clone, watermark).await?;
 
     if observations.is_empty() {
-        return Ok(ctx.stats.clone());
+        return Ok((ctx.stats.clone(), Vec::new(), Vec::new()));
     }
 
-    // 2. Run extraction rules
+    // 2. Run extraction rules + ephemeral signal computation.
+    // Both operations share the same obs_for_rules borrow inside spawn_blocking
+    // (architect F-1: observations are not available at run_single_tick call site).
     let store_for_rules = Arc::clone(store);
     let obs_for_rules = observations;
 
-    let proposals = tokio::task::spawn_blocking(move || {
+    let (proposals, friction_recs, dead_knowledge_recs) = tokio::task::spawn_blocking(move || {
         let rules = default_extraction_rules();
-        run_extraction_rules(&obs_for_rules, &store_for_rules, &rules)
+        let proposals = run_extraction_rules(&obs_for_rules, &store_for_rules, &rules);
+        // Ephemeral signals: pure CPU, no store writes.
+        let friction_recs = compute_friction_recommendations(&obs_for_rules);
+        let dead_knowledge_recs =
+            compute_dead_knowledge_recommendations(&obs_for_rules, &store_for_rules);
+        (proposals, friction_recs, dead_knowledge_recs)
     })
     .await
     .map_err(|e| ServiceError::Core(CoreError::JoinError(e.to_string())))?;
@@ -1566,7 +1587,7 @@ async fn extraction_tick(
                         error = %e,
                         "quality-gate embedding rayon task cancelled; skipping store step"
                     );
-                    return Ok(ctx.stats.clone());
+                    return Ok((ctx.stats.clone(), friction_recs, dead_knowledge_recs));
                 }
             };
 
@@ -1618,7 +1639,7 @@ async fn extraction_tick(
     ctx.last_watermark = new_watermark;
     ctx.stats.last_extraction_run = Some(now_secs());
 
-    Ok(ctx.stats.clone())
+    Ok((ctx.stats.clone(), friction_recs, dead_knowledge_recs))
 }
 
 #[cfg(test)]
@@ -3412,6 +3433,101 @@ mod tests {
             entry.status,
             unimatrix_store::Status::Active,
             "migration must be idempotent — entry not touched when marker is set"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // GH #437 regression: extraction_tick must NOT write recurring friction
+    // entries to ENTRIES. Signals must be returned as Vec<String>, not stored.
+    // -----------------------------------------------------------------------
+
+    /// GH #437: extraction_tick must not write recurring-friction entries to ENTRIES.
+    ///
+    /// Before this fix, RecurringFrictionRule::evaluate() produced ProposedEntry objects
+    /// that were inserted into ENTRIES by the extraction pipeline. After the fix,
+    /// RecurringFrictionRule is removed from default_extraction_rules() and
+    /// compute_friction_recommendations() returns ephemeral Vec<String> signals.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_extraction_tick_does_not_write_recurring_friction_to_entries() {
+        use std::sync::Mutex;
+        use tempfile::TempDir;
+        use unimatrix_observe::extraction::recurring_friction::compute_friction_recommendations;
+        use unimatrix_observe::extraction::{ExtractionContext, default_extraction_rules};
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().unwrap();
+        let raw_store = open_test_store(&tmp).await;
+        let store: Arc<Store> = Arc::new(raw_store);
+
+        // Create observations with orphaned-call friction across 3+ sessions.
+        // OrphanedCallsRule fires when pre_count - terminal_count > 2 for a tool.
+        let mut observations = Vec::new();
+        for session_idx in 0..3_usize {
+            let session_id = format!("test-session-{}", session_idx);
+            // 5 PreToolUse + 2 PostToolUse for "Read" = 3 orphaned (> threshold 2)
+            for i in 0..5u64 {
+                observations.push(unimatrix_observe::types::ObservationRecord {
+                    ts: 1700000000000 + session_idx as u64 * 100_000 + i * 1000,
+                    event_type: "PreToolUse".to_string(),
+                    source_domain: "claude-code".to_string(),
+                    session_id: session_id.clone(),
+                    tool: Some("Read".to_string()),
+                    input: Some(serde_json::json!({"file_path": "/tmp/test.rs"})),
+                    response_size: None,
+                    response_snippet: None,
+                });
+            }
+            for i in 0..2u64 {
+                observations.push(unimatrix_observe::types::ObservationRecord {
+                    ts: 1700000000000 + session_idx as u64 * 100_000 + 5000 + i * 1000,
+                    event_type: "PostToolUse".to_string(),
+                    source_domain: "claude-code".to_string(),
+                    session_id: session_id.clone(),
+                    tool: Some("Read".to_string()),
+                    input: None,
+                    response_size: Some(100),
+                    response_snippet: None,
+                });
+            }
+        }
+
+        // Assert: RecurringFrictionRule is NOT in the default extraction rules.
+        let rules = default_extraction_rules();
+        let rule_names: Vec<&str> = rules.iter().map(|r| r.name()).collect();
+        assert!(
+            !rule_names.contains(&"recurring-friction"),
+            "RecurringFrictionRule must not be in default_extraction_rules (GH #437): found {:?}",
+            rule_names
+        );
+
+        // Assert: compute_friction_recommendations returns non-empty signals for
+        // observations that span 3+ sessions.
+        let friction_recs = compute_friction_recommendations(&observations);
+        assert!(
+            !friction_recs.is_empty(),
+            "compute_friction_recommendations must return non-empty signals for 3-session friction pattern"
+        );
+
+        // Assert: ENTRIES contains zero process-improvement entries after running
+        // run_extraction_rules directly (the old code path that caused the bug).
+        let store_for_rules = Arc::clone(&store);
+        let obs_clone = observations.clone();
+        let entries_written = tokio::task::spawn_blocking(move || {
+            use unimatrix_observe::extraction::run_extraction_rules;
+            let rules = default_extraction_rules();
+            let proposals = run_extraction_rules(&obs_clone, &store_for_rules, &rules);
+            // Count proposals with topic=process-improvement (the old bug signature)
+            proposals
+                .iter()
+                .filter(|p| p.topic == "process-improvement")
+                .count()
+        })
+        .await
+        .expect("spawn_blocking");
+
+        assert_eq!(
+            entries_written, 0,
+            "extraction pipeline must produce zero process-improvement proposals (GH #437)"
         );
     }
 
