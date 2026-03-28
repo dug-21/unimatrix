@@ -340,12 +340,17 @@ fn test_cc_at_k_scenario_rows_unicode_query_no_panic() {
         "query shorter than 60 chars must be returned unchanged"
     );
 
-    // Now test with a query that truly exceeds 60 chars (70 × "あ" = 70 chars, 210 bytes).
-    let very_long_query: String = "あ".repeat(70);
+    // Now test with a query that would have panicked on old code.
+    // "a".repeat(58) + "こ".repeat(10):
+    //   - 58 ASCII bytes + 10 × 3 bytes (U+3053 = 0xE3 0x81 0x93) = 88 bytes total
+    //   - Byte 60 = last byte of first "こ" (continuation byte 0x93) → NOT a char boundary
+    //   - Old code `&s[..60]` would panic; fixed code uses chars().take(60).
+    let very_long_query: String = "a".repeat(58) + &"こ".repeat(10);
+    assert_eq!(very_long_query.len(), 88, "precondition: 88 bytes");
     assert_eq!(
         very_long_query.chars().count(),
-        70,
-        "precondition: 70 chars"
+        68,
+        "precondition: 68 chars"
     );
 
     let r2 = make_scenario_result_with_metrics(
@@ -373,8 +378,8 @@ fn test_cc_at_k_scenario_rows_unicode_query_no_panic() {
         rows2[0].query
     );
 
-    // The prefix before the ellipsis must be exactly 60 "あ" characters.
-    let expected_prefix: String = "あ".repeat(60);
+    // chars().take(60) on "a"*58 + "こ"*10 = "a"*58 + "こ"*2 (58 + 2 = 60 chars).
+    let expected_prefix: String = "a".repeat(58) + "ここ";
     let expected = format!("{}…", expected_prefix);
     assert_eq!(
         rows2[0].query, expected,
