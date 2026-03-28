@@ -378,17 +378,19 @@ mod tests {
         assert!((s3 - 1.0_f32 / 3.0_f32).abs() < 1e-5, "s3={s3}");
     }
 
-    // R-07: 5-bucket last rank = 0.8, never 0.0
+    // R-07: 5-bucket last rank = 0.2 (= 1 - 4/5), never 0.0.
+    // Formula: 1.0 - ((rank-1)/N). Rank 5 of 5: 1.0 - 4/5 = 0.2.
+    // (The banned `1-rank/N` form would give 0.0 for rank=N — this test guards against that.)
     #[test]
     fn test_rebuild_normalization_last_entry_in_five_bucket() {
         let bucket = rank_bucket(&[1, 2, 3, 4, 5]);
         let t = table_with("delivery", "pattern", bucket);
         let last = t.phase_affinity_score(5, "pattern", "delivery");
         assert!(
-            (last - 0.8_f32).abs() < 1e-6,
-            "rank-5 of 5 must be 0.8, got {last}"
+            (last - 0.2_f32).abs() < 1e-5,
+            "rank-5 of 5 must be ~0.2, got {last}"
         );
-        assert!(last > 0.0_f32);
+        assert!(last > 0.0_f32, "last-rank entry must never be 0.0");
     }
 
     // AC-14: N=2 bucket
