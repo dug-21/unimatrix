@@ -828,7 +828,7 @@ This analysis builds on and contextualizes the earlier optimization work:
    - **DECIDED**: Warn-and-proceed for searches. Hard-reject on writes. Log matches for forensics.
 
 6. ~~**UDS capability strictness**: Should UDS get `{Read, Search, SessionWrite}` (restrictive) or `{Read, Search, SessionWrite, Write}` (permissive)?~~
-   - **DECIDED**: Restrictive — `{Read, Search, SessionWrite}`. Least privilege applies: hook callers do not need Write. Auto-outcome writes (currently `write_auto_outcome_entry` in UDS) move to a service-internal caller path. The internal caller concept is defined generically (not outcome-specific) to support future service-initiated writes.
+   - **DECIDED**: Restrictive — `{Read, Search, SessionWrite}`. Least privilege applies: hook callers do not need Write. ~~Auto-outcome writes (currently `write_auto_outcome_entry` in UDS) move to a service-internal caller path.~~ **GH #430**: `write_auto_outcome_entry` was deleted as dead code — it wrote to ENTRIES instead of OUTCOME_INDEX, and SESSIONS already holds all session telemetry. The "service-internal caller path" referenced here was never built; no replacement is needed. The internal caller concept remains valid for future service-initiated writes if required.
 
 7. ~~**Rate limiting scope**: Per-caller only, or also global server-wide limits?~~
    - **DECIDED**: Per-caller initially. Global limits deferred until HTTP transport is built.

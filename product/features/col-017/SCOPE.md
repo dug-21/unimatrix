@@ -141,7 +141,7 @@ On SessionClose:
 
 1. **Naming** (RESOLVED): Add `topic_signal: Option<String>` directly to `ImplantEvent`. The purity argument for wrapping in RecordEvent is premature with only one metadata field. Refactor if a second metadata field appears.
 
-2. **Auto-outcome topic** (DEFERRED): Currently `write_auto_outcome_entry()` sets `topic: "session/{session_id}"`. Using the resolved session topic instead is a follow-up -- handle if trivial during implementation, otherwise defer.
+2. **Auto-outcome topic** (CLOSED — GH #430): `write_auto_outcome_entry()` has been deleted. It wrote to ENTRIES instead of OUTCOME_INDEX and was dead code with broken intent. SESSIONS holds all session telemetry. This open question is moot.
 
 3. **Backfill strategy** (RESOLVED): Backfill in migration (blocking). Small data volume (~100 sessions), content scan is cheap, runs once. No background task complexity.
 
