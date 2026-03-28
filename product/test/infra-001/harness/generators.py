@@ -17,8 +17,6 @@ CATEGORIES = [
     "convention",
     "pattern",
     "procedure",
-    "duties",
-    "reference",
 ]
 
 TOPICS = [

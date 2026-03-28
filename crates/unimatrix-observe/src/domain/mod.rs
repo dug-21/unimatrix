@@ -51,7 +51,7 @@ fn builtin_claude_code_pack() -> DomainPack {
             "SubagentStart".to_string(),
             "SubagentStop".to_string(),
         ],
-        // All 8 INITIAL_CATEGORIES from CategoryAllowlist (C-10).
+        // All 5 active INITIAL_CATEGORIES from CategoryAllowlist (C-10).
         categories: vec![
             "outcome".to_string(),
             "lesson-learned".to_string(),
@@ -59,8 +59,6 @@ fn builtin_claude_code_pack() -> DomainPack {
             "convention".to_string(),
             "pattern".to_string(),
             "procedure".to_string(),
-            "duties".to_string(),
-            "reference".to_string(),
         ],
         // Built-in claude-code detection rules are Rust impls, not DSL descriptors.
         rules: vec![],
