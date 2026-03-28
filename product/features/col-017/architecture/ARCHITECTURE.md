@@ -216,7 +216,7 @@ Claude Code Hook Event (stdin JSON)
   │   ├── max count, tie-break by last_seen
   │   └── or: fallback content-based attribution
   ├── UPDATE sessions SET feature_cycle = topic
-  └── write_auto_outcome_entry() with resolved topic
+  └── (write_auto_outcome_entry deleted — GH #430; SESSIONS holds session telemetry)
         │
         ▼
   context_retrospective("col-017")

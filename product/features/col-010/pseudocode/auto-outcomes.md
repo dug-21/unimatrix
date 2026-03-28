@@ -108,9 +108,11 @@ Constraint: SessionClose must NOT block on ONNX.
 
 ## 4. OUTCOME_INDEX Population
 
-When `insert_entry` is called with a non-empty `feature_cycle` and `category = "outcome"`, the existing code in `write.rs` already populates OUTCOME_INDEX. This is the col-001 integration — no additional code needed for the index write.
+> **RETRACTED — GH #430**: The claim below is false. `store.insert()` (the raw store method) does NOT auto-populate OUTCOME_INDEX. Only `insert_outcome_index_if_applicable()` does that, and it is called separately from the MCP write path. `write_auto_outcome_entry()` used `store.insert()` directly from a fire-and-forget spawn, bypassing the index entirely. The function has been deleted as dead code with broken intent (fix: GH #430). SESSIONS already holds all session telemetry. Do not reinstate this approach.
 
-Verify by checking: `crates/unimatrix-store/src/write.rs` — confirm OUTCOME_INDEX is populated when `feature_cycle != ""` and `category == "outcome"`.
+~~When `insert_entry` is called with a non-empty `feature_cycle` and `category = "outcome"`, the existing code in `write.rs` already populates OUTCOME_INDEX. This is the col-001 integration — no additional code needed for the index write.~~
+
+~~Verify by checking: `crates/unimatrix-store/src/write.rs` — confirm OUTCOME_INDEX is populated when `feature_cycle != ""` and `category == "outcome"`.~~
 
 ---
 

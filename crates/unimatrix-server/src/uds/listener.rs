@@ -1648,17 +1648,16 @@ async fn process_session_close(
 ) -> HookResponse {
     // col-010: capture session metadata before drain (state is removed by drain)
     // col-017: also capture topic_signals for majority vote resolution
-    let (feature_cycle, agent_role, injection_count, compaction_count, topic_signals) = {
+    let (feature_cycle, injection_count, compaction_count, topic_signals) = {
         if let Some(state) = session_registry.get_state(session_id) {
             (
                 state.feature.clone(),
-                state.role.clone(),
                 state.injection_history.len() as u32,
                 state.compaction_count,
                 state.topic_signals.clone(),
             )
         } else {
-            (None, None, 0u32, 0u32, std::collections::HashMap::new())
+            (None, 0u32, 0u32, std::collections::HashMap::new())
         }
     };
 
@@ -1694,8 +1693,6 @@ async fn process_session_close(
             SessionOutcome::Rework => (SessionLifecycleStatus::Completed, "rework"),
             SessionOutcome::Abandoned => (SessionLifecycleStatus::Abandoned, "abandoned"),
         };
-        let is_abandoned = final_status == SessionLifecycleStatus::Abandoned;
-
         // col-017: Determine final feature_cycle — majority vote wins, else fallback to
         // content-based attribution, else use the registered feature from SessionStart.
         let final_feature_cycle = if let Some(ref topic) = resolved_topic {
@@ -1755,18 +1752,6 @@ async fn process_session_close(
                     );
                 }
             });
-        }
-
-        // col-010: write auto-outcome entry if session had injections and was not abandoned
-        if !is_abandoned && injection_count > 0 {
-            write_auto_outcome_entry(
-                store,
-                session_id,
-                outcome_str,
-                injection_count,
-                final_feature_cycle.as_deref().or(feature_cycle.as_deref()),
-                agent_role.as_deref(),
-            );
         }
 
         // Step 3: Write signals to SIGNAL_QUEUE
@@ -1871,65 +1856,6 @@ fn content_based_attribution_fallback(store: &Store, session_id: &str) -> Option
     }
 
     best.map(|(feature, _)| feature)
-}
-
-/// Write an auto-generated outcome entry for a session that completed with injections.
-///
-/// Called from process_session_close when `final_status != Abandoned && injection_count > 0`.
-/// Fire-and-forget: spawns a blocking task; never awaits the result.
-fn write_auto_outcome_entry(
-    store: &Arc<Store>,
-    session_id: &str,
-    outcome_str: &str, // "success" | "rework"
-    injection_count: u32,
-    feature_cycle: Option<&str>,
-    agent_role: Option<&str>,
-) {
-    let content = format!(
-        "Session {} completed with outcome: {}. Injected {} entries.",
-        session_id, outcome_str, injection_count
-    );
-    let result_tag = if outcome_str == "success" {
-        "result:pass"
-    } else {
-        "result:rework"
-    };
-    let tags = vec!["type:session".to_string(), result_tag.to_string()];
-
-    let _ = agent_role; // metadata available for future enrichment; not used in content
-    let entry = NewEntry {
-        title: format!("Session outcome: {}", session_id),
-        content,
-        topic: format!("session/{}", session_id),
-        category: "outcome".to_string(),
-        tags,
-        source: "hook".to_string(),
-        status: Status::Active,
-        created_by: "cortical-implant".to_string(),
-        feature_cycle: feature_cycle.unwrap_or("").to_string(),
-        trust_source: "system".to_string(),
-    };
-
-    let store_clone = Arc::clone(store);
-    let sid = session_id.to_string();
-    let _ = tokio::spawn(async move {
-        match store_clone.insert(entry).await {
-            Ok(entry_id) => {
-                tracing::debug!(
-                    session_id = %sid,
-                    entry_id = %entry_id,
-                    "Auto-outcome entry written"
-                );
-            }
-            Err(e) => {
-                tracing::warn!(
-                    session_id = %sid,
-                    error = %e,
-                    "Auto-outcome write failed"
-                );
-            }
-        }
-    });
 }
 
 /// Write a SignalRecord to SIGNAL_QUEUE for the given SignalOutput.
@@ -7198,6 +7124,69 @@ mod tests {
         assert!(
             !logs_contain("WARN"),
             "no WARN log expected for broken-pipe fire-and-forget connection"
+        );
+    }
+
+    // -- GH #430 regression: process_session_close must not write ENTRIES rows --
+
+    /// GH #430: process_session_close must NOT write any rows to ENTRIES with
+    /// topic LIKE 'session/%'.  The deleted write_auto_outcome_entry() was calling
+    /// store.insert() which wrote to ENTRIES instead of OUTCOME_INDEX, bypassing
+    /// insert_outcome_index_if_applicable().  This test closes the col-010 gap that
+    /// allowed the bug to ship undetected.
+    #[tokio::test]
+    async fn test_process_session_close_no_entries_written() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        // Register a session so injection_count > 0 (the condition that previously
+        // triggered write_auto_outcome_entry).
+        registry.register_session(
+            "s-gh430",
+            Some("col-010".to_string()),
+            Some("dev".to_string()),
+        );
+        // Simulate an injection by recording a non-empty injection history.
+        registry.record_injection("s-gh430", &[(42u64, 0.9)]);
+
+        // Close the session with outcome "success" — the scenario that previously wrote.
+        let response = dispatch_request(
+            HookRequest::SessionClose {
+                session_id: "s-gh430".to_string(),
+                outcome: Some("success".to_string()),
+                duration_secs: 30,
+            },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+        assert!(matches!(response, HookResponse::Ack));
+
+        // Yield to the tokio runtime so any fire-and-forget spawned tasks can complete.
+        for _ in 0..10 {
+            tokio::task::yield_now().await;
+        }
+
+        // Assert: zero rows in entries with topic matching 'session/%'.
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM entries WHERE topic LIKE 'session/%'")
+                .fetch_one(store.write_pool_server())
+                .await
+                .expect("count query must succeed");
+
+        assert_eq!(
+            count, 0,
+            "GH #430 regression: process_session_close wrote {count} ENTRIES row(s) \
+             with topic LIKE 'session/%'; write_auto_outcome_entry must be absent"
         );
     }
 }

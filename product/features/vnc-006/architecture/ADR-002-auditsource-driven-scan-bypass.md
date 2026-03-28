@@ -2,7 +2,9 @@
 
 ### Context
 
-The UDS path currently calls `write_auto_outcome_entry` to write system-generated outcome entries. With the unified StoreService, these writes would pass through S1 content scanning. System-generated content should not be scanned for injection/PII patterns because:
+> **GH #430**: `write_auto_outcome_entry` was deleted — it wrote to ENTRIES instead of OUTCOME_INDEX and was dead code. The motivation for this ADR (scan-bypass for system-generated writes) remains architecturally valid for any future service-internal write path, but the specific call site described below no longer exists.
+
+~~The UDS path currently calls `write_auto_outcome_entry` to write system-generated outcome entries.~~ With the unified StoreService, these writes would pass through S1 content scanning. System-generated content should not be scanned for injection/PII patterns because:
 
 1. The content is constructed by the server itself, not from user input
 2. False positives on system-generated content would silently break auto-outcomes
