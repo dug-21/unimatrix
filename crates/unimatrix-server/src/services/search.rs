@@ -103,8 +103,9 @@ pub(crate) struct FusedScoreInputs {
 ///   Each core field individually in [0.0, 1.0].
 ///
 /// w_phase_histogram and w_phase_explicit are additive terms excluded from this
-/// constraint. Their sum does not enter the six-term sum check. With defaults,
-/// total sum = 0.95 + 0.02 + 0.0 = 0.97, within <= 1.0.
+/// constraint (ADR-004, crt-026). With col-031 defaults:
+/// // 0.95 + 0.02 + 0.05 = 1.02 — w_phase_explicit is additive outside the six-weight
+/// // constraint (ADR-004, crt-026). The six-weight sum check is unchanged.
 ///
 /// Per-field range [0.0, 1.0] is enforced by InferenceConfig::validate for all eight fields.
 #[derive(Debug, Clone, Copy, Default)]
@@ -116,7 +117,7 @@ pub(crate) struct FusionWeights {
     pub w_util: f64,            // default 0.05 — effectiveness classification
     pub w_prov: f64,            // default 0.05 — category provenance hint
     pub w_phase_histogram: f64, // crt-026: default 0.02 — histogram affinity (ADR-004, ASS-028 calibrated)
-    pub w_phase_explicit: f64,  // crt-026: default 0.0  — W3-1 placeholder (ADR-003)
+    pub w_phase_explicit: f64,  // col-031: default 0.05 — PhaseFreqTable activates this (ADR-004)
 }
 
 impl FusionWeights {

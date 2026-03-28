@@ -358,9 +358,11 @@ pub struct InferenceConfig {
     #[serde(default = "default_w_phase_histogram")]
     pub w_phase_histogram: f64,
 
-    /// Fusion weight for explicit phase signal (crt-026, WA-2, ADR-003).
-    /// Reserved at 0.0 in crt-026; W3-1 placeholder. Will carry explicit phase signal once
-    /// W3-1 is trained. Not part of the six-weight sum constraint.
+    /// Fusion weight for explicit phase signal (col-031, crt-026, WA-2, ADR-004).
+    /// Raised from 0.0 (W3-1 placeholder, crt-026 ADR-003) to 0.05 by col-031
+    /// once PhaseFreqTable provides the signal source (ADR-004).
+    /// Not part of the six-weight sum constraint; additive outside.
+    /// Total weight sum with defaults: 0.95 + 0.02 + 0.05 = 1.02.
     #[serde(default = "default_w_phase_explicit")]
     pub w_phase_explicit: f64,
 
@@ -404,6 +406,24 @@ pub struct InferenceConfig {
     /// Default: 10. Range: [1, 100].
     #[serde(default = "default_graph_inference_k")]
     pub graph_inference_k: usize,
+
+    // -----------------------------------------------------------------------
+    // Phase frequency table fields (col-031)
+    // -----------------------------------------------------------------------
+    /// col-031: Lookback window in days for PhaseFreqTable rebuild SQL.
+    ///
+    /// Controls the `WHERE ts > strftime('%s','now') - lookback_days * 86400`
+    /// filter in `query_phase_freq_table`. Larger values include more history
+    /// at the cost of including older access patterns. Smaller values are more
+    /// reactive but may miss low-frequency entries.
+    ///
+    /// This governs the rebuild SQL window only — not data deletion. Data GC
+    /// belongs to #409 (cycle-aligned GC).
+    ///
+    /// Range: [1, 3650] (1 day to 10 years). Enforced by validate().
+    /// Default: 30 (two typical delivery cycles at session frequency).
+    #[serde(default = "default_query_log_lookback_days")]
+    pub query_log_lookback_days: u32,
 }
 
 impl Default for InferenceConfig {
@@ -438,12 +458,14 @@ impl Default for InferenceConfig {
             w_util: 0.05,
             w_prov: 0.05,
             w_phase_histogram: 0.02, // crt-026: full session signal budget (ADR-004)
-            w_phase_explicit: 0.0,   // crt-026: W3-1 placeholder (ADR-003)
+            w_phase_explicit: default_w_phase_explicit(), // col-031: 0.05 (ADR-004, crt-026 ADR-003)
             // crt-029: background graph inference tick fields
             supports_candidate_threshold: 0.5,
             supports_edge_threshold: 0.7,
             max_graph_inference_per_tick: 100,
             graph_inference_k: 10,
+            // col-031: phase frequency table fields
+            query_log_lookback_days: default_query_log_lookback_days(),
         }
     }
 }
@@ -513,9 +535,20 @@ fn default_w_phase_histogram() -> f64 {
     0.02
 }
 
-// crt-026: default_w_phase_explicit — 0.0 (W3-1 placeholder, ADR-003)
+// col-031: raised from 0.0 to 0.05 — PhaseFreqTable activates this term (ADR-004).
+// Previously reserved as W3-1 placeholder at 0.0 (crt-026, ADR-003).
+// Additive term outside the six-weight sum constraint (ADR-004, crt-026).
+// Total weight sum with defaults: 0.95 + 0.02 + 0.05 = 1.02.
 fn default_w_phase_explicit() -> f64 {
-    0.0
+    0.05
+}
+
+// col-031: default lookback window for PhaseFreqTable rebuild (ADR-002).
+// 30 days covers approximately 2 delivery cycles at typical session frequency.
+// Range [1, 3650] enforced by validate(). #409 owns cycle-aligned GC as the
+// long-term successor to this time-based approximation.
+fn default_query_log_lookback_days() -> u32 {
+    30
 }
 
 // ---------------------------------------------------------------------------
@@ -765,6 +798,18 @@ impl InferenceConfig {
                 w_coac: self.w_coac,
                 w_util: self.w_util,
                 w_prov: self.w_prov,
+            });
+        }
+
+        // -- col-031: query_log_lookback_days range check [1, 3650] (R-08, ADR-002). --
+        // 0 would make the WHERE clause include no rows (empty window -> use_fallback=true).
+        // >3650 is effectively unbounded and likely an operator misconfiguration.
+        if self.query_log_lookback_days < 1 || self.query_log_lookback_days > 3650 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "query_log_lookback_days",
+                value: self.query_log_lookback_days.to_string(),
+                reason: "must be in range [1, 3650]",
             });
         }
 
@@ -1800,6 +1845,14 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.graph_inference_k
             } else {
                 global.inference.graph_inference_k
+            },
+            // col-031: phase frequency table fields
+            query_log_lookback_days: if project.inference.query_log_lookback_days
+                != default.inference.query_log_lookback_days
+            {
+                project.inference.query_log_lookback_days
+            } else {
+                global.inference.query_log_lookback_days
             },
         },
     }
@@ -4449,7 +4502,8 @@ categories = ["some-cat"]
     // crt-026: InferenceConfig phase weight field tests (config.md test plan)
     // -----------------------------------------------------------------------
 
-    // T-CFG-01: default values for new phase weight fields (AC-09, R-07, R-11)
+    // T-CFG-01: default values for phase weight fields (AC-09, R-07, R-11)
+    // col-031: w_phase_explicit raised from 0.0 to 0.05 (ADR-004).
     #[test]
     fn test_inference_config_default_phase_weights() {
         let cfg = InferenceConfig::default();
@@ -4458,9 +4512,108 @@ categories = ["some-cat"]
             "w_phase_histogram default must be 0.02 (ASS-028 calibrated value, ADR-004)"
         );
         assert_eq!(
-            cfg.w_phase_explicit, 0.0,
-            "w_phase_explicit default must be 0.0 (W3-1 placeholder, ADR-003)"
+            cfg.w_phase_explicit, 0.05,
+            "w_phase_explicit default must be 0.05 (col-031 activation, ADR-004)"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // col-031: InferenceConfig phase frequency table field tests
+    // -----------------------------------------------------------------------
+
+    // AC-09: w_phase_explicit deserialized from empty TOML must be 0.05.
+    #[test]
+    fn test_w_phase_explicit_default_from_empty_toml() {
+        let cfg: InferenceConfig = toml::from_str("").unwrap();
+        assert_eq!(
+            cfg.w_phase_explicit, 0.05f64,
+            "w_phase_explicit must deserialize to 0.05 from empty TOML (col-031, ADR-004)"
+        );
+    }
+
+    // AC-10: query_log_lookback_days default from Default impl.
+    #[test]
+    fn test_inference_config_query_log_lookback_days_default() {
+        let cfg = InferenceConfig::default();
+        assert_eq!(
+            cfg.query_log_lookback_days, 30u32,
+            "query_log_lookback_days default must be 30 (col-031, ADR-002)"
+        );
+    }
+
+    // AC-10: query_log_lookback_days deserialized from empty TOML must be 30.
+    #[test]
+    fn test_query_log_lookback_days_default_from_empty_toml() {
+        let cfg: InferenceConfig = toml::from_str("").unwrap();
+        assert_eq!(
+            cfg.query_log_lookback_days, 30u32,
+            "query_log_lookback_days must deserialize to 30 from empty TOML (col-031, ADR-002)"
+        );
+    }
+
+    // AC-10: query_log_lookback_days reads explicit TOML value.
+    #[test]
+    fn test_query_log_lookback_days_deserializes_from_toml() {
+        let cfg: InferenceConfig = toml::from_str("query_log_lookback_days = 7").unwrap();
+        assert_eq!(
+            cfg.query_log_lookback_days, 7u32,
+            "query_log_lookback_days must deserialize 7 from TOML"
+        );
+    }
+
+    // R-08: validate() rejects query_log_lookback_days = 0 (below floor).
+    #[test]
+    fn test_validate_lookback_days_zero_is_error() {
+        let cfg = InferenceConfig {
+            query_log_lookback_days: 0,
+            ..Default::default()
+        };
+        let err = cfg.validate(Path::new("/fake")).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ConfigError::NliFieldOutOfRange {
+                    field: "query_log_lookback_days",
+                    ..
+                }
+            ),
+            "expected NliFieldOutOfRange for query_log_lookback_days=0, got: {err}"
+        );
+    }
+
+    // R-08: validate() rejects query_log_lookback_days = 3651 (above ceiling).
+    #[test]
+    fn test_validate_lookback_days_3651_is_error() {
+        let cfg = InferenceConfig {
+            query_log_lookback_days: 3651,
+            ..Default::default()
+        };
+        let err = cfg.validate(Path::new("/fake")).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ConfigError::NliFieldOutOfRange {
+                    field: "query_log_lookback_days",
+                    ..
+                }
+            ),
+            "expected NliFieldOutOfRange for query_log_lookback_days=3651, got: {err}"
+        );
+    }
+
+    // R-08: validate() accepts boundary values 1, 3650, and default 30.
+    #[test]
+    fn test_validate_lookback_days_boundary_values_pass() {
+        for days in [1u32, 30, 3650] {
+            let cfg = InferenceConfig {
+                query_log_lookback_days: days,
+                ..Default::default()
+            };
+            assert!(
+                cfg.validate(Path::new("/fake")).is_ok(),
+                "query_log_lookback_days={days} must pass validate()"
+            );
+        }
     }
 
     // T-CFG-02: validate() rejects out-of-range phase weights (R-11)
@@ -4510,6 +4663,7 @@ categories = ["some-cat"]
     }
 
     // T-CFG-03: six-weight sum is unchanged; phase fields are additive outside the constraint (ADR-004)
+    // col-031: w_phase_explicit raised to 0.05, so total sum is now 0.95 + 0.02 + 0.05 = 1.02.
     #[test]
     fn test_inference_config_six_weight_sum_unchanged_by_phase_fields() {
         let cfg = InferenceConfig::default();
@@ -4520,15 +4674,16 @@ categories = ["some-cat"]
             (six_weight_sum - 0.95).abs() < f64::EPSILON,
             "sum of six original weights must still be 0.95; got {six_weight_sum}"
         );
+        // col-031: w_phase_explicit is 0.05, so total = 0.95 + 0.02 + 0.05 = 1.02 (ADR-004).
         assert!(
-            (total_with_phase - 0.97).abs() < f64::EPSILON,
-            "total including phase weights must be 0.97; got {total_with_phase}"
+            (total_with_phase - 1.02).abs() < f64::EPSILON,
+            "total including phase weights must be 1.02 (col-031, ADR-004); got {total_with_phase}"
         );
         // Verify the six-weight sum check in validate() does NOT include phase fields
         // (ADR-004: phase fields are additive, outside the <= 1.0 constraint)
         assert!(
             cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
-            "default config with sum=0.97 must pass validate() (six-weight check uses only original six)"
+            "default config with total=1.02 must pass validate() (six-weight check uses only original six)"
         );
     }
 
@@ -4576,19 +4731,21 @@ w_sim = 0.25
             "missing w_phase_histogram must default to 0.02"
         );
         assert_eq!(
-            config.inference.w_phase_explicit, 0.0,
-            "missing w_phase_explicit must default to 0.0"
+            config.inference.w_phase_explicit, 0.05,
+            "missing w_phase_explicit must default to 0.05 (col-031, ADR-004)"
         );
     }
 
-    // T-CFG-06: AC-09 — placeholder fields present on InferenceConfig (R-07)
+    // T-CFG-06: AC-09 — phase weight fields present on InferenceConfig (R-07)
+    // col-031: w_phase_explicit raised from 0.0 to 0.05 (ADR-004).
     #[test]
     fn test_phase_explicit_norm_placeholder_fields_present() {
         let cfg = InferenceConfig::default();
-        // w_phase_explicit is the ADR-003 placeholder; w_phase_histogram is the WA-2 signal
+        // w_phase_explicit is activated at 0.05 by col-031 (ADR-004);
+        // w_phase_histogram is the WA-2 session histogram signal (crt-026).
         assert_eq!(
-            cfg.w_phase_explicit, 0.0,
-            "w_phase_explicit must be present and default to 0.0"
+            cfg.w_phase_explicit, 0.05,
+            "w_phase_explicit must be present and default to 0.05 (col-031, ADR-004)"
         );
         assert_eq!(
             cfg.w_phase_histogram, 0.02,
