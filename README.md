@@ -245,7 +245,7 @@ categories = ["lesson-learned", "decision", "convention",
 # Categories that receive a provenance boost in search ranking.
 boosted_categories = ["lesson-learned"]
 # Freshness decay rate. Overrides the preset's built-in value when set.
-freshness_half_life_hours = 168.0
+freshness_half_life_hours = 8760.0
 
 [server]
 # MCP server instructions passed to every connecting agent during the initialize handshake.

@@ -33,8 +33,8 @@ pub const W_TRUST: f64 = 0.16;
 /// Access counts beyond this contribute negligible signal.
 pub const MAX_MEANINGFUL_ACCESS: f64 = 50.0;
 
-/// Freshness half-life in hours (1 week).
-pub const FRESHNESS_HALF_LIFE_HOURS: f64 = 168.0;
+/// Freshness half-life in hours (1 year, 8760 hours).
+pub const FRESHNESS_HALF_LIFE_HOURS: f64 = 8760.0;
 
 /// Cold-start default for Bayesian prior positive pseudo-votes.
 ///
@@ -151,7 +151,7 @@ pub struct ConfidenceParams {
     pub w_corr: f64,
     /// Weight for creator trust level. Default: W_TRUST (0.16)
     pub w_trust: f64,
-    /// Freshness half-life in hours. Default: FRESHNESS_HALF_LIFE_HOURS (168.0)
+    /// Freshness half-life in hours. Default: FRESHNESS_HALF_LIFE_HOURS (8760.0)
     pub freshness_half_life_hours: f64,
     /// Bayesian prior positive pseudo-votes. Default: COLD_START_ALPHA (3.0)
     pub alpha0: f64,
@@ -433,9 +433,15 @@ mod tests {
 
     #[test]
     fn freshness_one_week_ago() {
+        // With a 168h half-life, a 168h-old entry is at exactly one half-life: exp(-1) ≈ 0.3679.
+        // Uses an explicit 168h param; does not depend on the compiled default (8760h).
         let now = 1_000_000u64;
         let one_week_ago = now - 168 * 3600;
-        let result = freshness_score(one_week_ago, 0, now, &ConfidenceParams::default());
+        let params = ConfidenceParams {
+            freshness_half_life_hours: 168.0,
+            ..Default::default()
+        };
+        let result = freshness_score(one_week_ago, 0, now, &params);
         assert!((result - 0.3679).abs() < 0.01);
     }
 
@@ -466,9 +472,15 @@ mod tests {
 
     #[test]
     fn freshness_very_old_entry() {
+        // A 365-day-old entry with a 168h half-life decays to exp(-52.1) ≈ 0 (< 0.001).
+        // Uses an explicit 168h param; does not depend on the compiled default (8760h).
         let now = 100_000_000u64;
         let very_old = now - 365 * 24 * 3600;
-        let result = freshness_score(very_old, 0, now, &ConfidenceParams::default());
+        let params = ConfidenceParams {
+            freshness_half_life_hours: 168.0,
+            ..Default::default()
+        };
+        let result = freshness_score(very_old, 0, now, &params);
         assert!(result >= 0.0 && result < 0.001);
     }
 
@@ -1070,8 +1082,8 @@ mod tests {
         assert!((p.w_corr - 0.14).abs() < 1e-9, "w_corr  must be 0.14");
         assert!((p.w_trust - 0.16).abs() < 1e-9, "w_trust must be 0.16");
         assert!(
-            (p.freshness_half_life_hours - 168.0).abs() < 1e-9,
-            "freshness_half_life_hours must be 168.0"
+            (p.freshness_half_life_hours - 8760.0).abs() < 1e-9,
+            "freshness_half_life_hours must be 8760.0"
         );
         assert!((p.alpha0 - 3.0).abs() < 1e-9, "alpha0 must be 3.0");
         assert!((p.beta0 - 3.0).abs() < 1e-9, "beta0  must be 3.0");
@@ -1118,18 +1130,23 @@ mod tests {
     #[test]
     fn test_freshness_score_uses_params_half_life() {
         // R-01: freshness_score must use params.freshness_half_life_hours.
+        // Uses two explicit non-default half-lives to verify the field is honoured
+        // without coupling to the current default value (8760.0h).
         let now = 1_000_000u64;
         let one_hour_secs = 3600u64;
         let age_hours = 24.0_f64;
         let last = now - (age_hours as u64) * one_hour_secs;
 
-        let params_default = ConfidenceParams::default(); // half_life = 168.0h
+        let params_168 = ConfidenceParams {
+            freshness_half_life_hours: 168.0,
+            ..Default::default()
+        };
         let params_short = ConfidenceParams {
             freshness_half_life_hours: 24.0,
             ..Default::default()
         };
 
-        let score_168 = freshness_score(last, last, now, &params_default);
+        let score_168 = freshness_score(last, last, now, &params_168);
         let score_24 = freshness_score(last, last, now, &params_short);
 
         // At 24h age with half_life=168h: score = exp(-24/168) ≈ 0.867
@@ -1156,12 +1173,16 @@ mod tests {
     #[test]
     fn test_freshness_score_configurable_half_life() {
         // AC-04: freshness_score with configurable half life.
+        // Uses explicit half-life values; does not rely on ConfidenceParams::default().
         let one_hour = 3600u64;
         let now = 10_000_000u64;
         let age_hours = 168u64; // 1 week old
         let last = now - age_hours * one_hour;
 
-        let p_168 = ConfidenceParams::default(); // half_life = 168h
+        let p_168 = ConfidenceParams {
+            freshness_half_life_hours: 168.0,
+            ..Default::default()
+        };
         let p_24 = ConfidenceParams {
             freshness_half_life_hours: 24.0,
             ..Default::default()
@@ -1205,6 +1226,28 @@ mod tests {
         assert_ne!(
             default_score, custom_score,
             "different w_trust must produce different score"
+        );
+    }
+
+    // -- GH #426 regression: 30-day-old entry must score > 0.5 with the default half-life --
+    //
+    // With FRESHNESS_HALF_LIFE_HOURS=168.0 (1 week) a 30-day-old entry returned ≈ 0.014,
+    // which effectively zeroed the freshness component for any knowledge older than a few weeks.
+    // With FRESHNESS_HALF_LIFE_HOURS=8760.0 (1 year) a 30-day-old entry returns ≈ 0.920.
+    #[test]
+    fn freshness_score_30day_old_entry_under_default_params_exceeds_floor() {
+        let one_hour = 3600u64;
+        let age_hours = 30u64 * 24; // 720 hours = 30 days
+        let now = 10_000_000u64;
+        let last = now - age_hours * one_hour;
+
+        let score = freshness_score(last, last, now, &ConfidenceParams::default());
+
+        assert!(
+            score > 0.5,
+            "30-day-old entry with default half-life (8760h) must score > 0.5; got {score:.6}. \
+             If this fails, FRESHNESS_HALF_LIFE_HOURS may have been reverted to the 168h (1 week) \
+             value from GH #426."
         );
     }
 }
