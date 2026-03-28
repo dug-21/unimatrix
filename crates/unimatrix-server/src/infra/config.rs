@@ -383,8 +383,9 @@ pub struct InferenceConfig {
     ///
     /// Pairs with scores.entailment > supports_edge_threshold receive a Supports edge.
     /// Must be strictly greater than supports_candidate_threshold (enforced by validate()).
-    /// Default: 0.7 (intentionally higher than nli_entailment_threshold = 0.6 because
-    /// the tick covers a larger pair space than the post-store path; C-06).
+    /// Default: 0.6 (lowered from 0.7 per #434; retrospective-dominated corpus produces
+    /// NLI entailment scores in 0.6–0.69 range; parity with nli_entailment_threshold is
+    /// acceptable because the HNSW pre-filter already gates candidate quality; C-06).
     /// Range: (0.0, 1.0) exclusive.
     ///
     /// Independent of nli_entailment_threshold (post-store path).
@@ -461,7 +462,7 @@ impl Default for InferenceConfig {
             w_phase_explicit: default_w_phase_explicit(), // col-031: 0.05 (ADR-004, crt-026 ADR-003)
             // crt-029: background graph inference tick fields
             supports_candidate_threshold: 0.5,
-            supports_edge_threshold: 0.7,
+            supports_edge_threshold: 0.6,
             max_graph_inference_per_tick: 100,
             graph_inference_k: 10,
             // col-031: phase frequency table fields
@@ -560,7 +561,7 @@ fn default_supports_candidate_threshold() -> f32 {
 }
 
 fn default_supports_edge_threshold() -> f32 {
-    0.7
+    0.6
 }
 
 fn default_max_graph_inference_per_tick() -> usize {
@@ -4766,8 +4767,8 @@ w_sim = 0.25
             "supports_candidate_threshold default must be 0.5"
         );
         assert_eq!(
-            config.supports_edge_threshold, 0.7_f32,
-            "supports_edge_threshold default must be 0.7"
+            config.supports_edge_threshold, 0.6_f32,
+            "supports_edge_threshold default must be 0.6"
         );
         assert_eq!(
             config.max_graph_inference_per_tick, 100_usize,
@@ -4786,9 +4787,22 @@ w_sim = 0.25
         let toml_str = "nli_enabled = true\n";
         let config: InferenceConfig = toml::from_str(toml_str).unwrap();
         assert_eq!(config.supports_candidate_threshold, 0.5_f32);
-        assert_eq!(config.supports_edge_threshold, 0.7_f32);
+        assert_eq!(config.supports_edge_threshold, 0.6_f32);
         assert_eq!(config.max_graph_inference_per_tick, 100_usize);
         assert_eq!(config.graph_inference_k, 10_usize);
+    }
+
+    #[test]
+    fn test_write_inferred_edges_default_threshold_yields_edges_at_0_6() {
+        // Regression guard for #434: default supports_edge_threshold must be strictly
+        // below 0.7 so that corpus pairs with entailment in [0.6, 0.69] are not silently
+        // gated out. The HNSW pre-filter (supports_candidate_threshold = 0.5) already
+        // gates candidate quality; parity between the two thresholds is acceptable.
+        assert!(
+            InferenceConfig::default().supports_edge_threshold < 0.7_f32,
+            "supports_edge_threshold default must be < 0.7 (lowered per #434 to unblock \
+             graph inference on retrospective-dominated corpus)"
+        );
     }
 
     #[test]
