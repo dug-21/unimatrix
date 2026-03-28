@@ -105,6 +105,7 @@ async fn run_single_profile(
         retrieval_mode,
         session_id: None,
         category_histogram: None,
+        current_phase: record.context.phase.clone(), // col-031: AC-16 fix — forward phase to SearchService
     };
 
     let audit_ctx = AuditContext {

@@ -565,7 +565,6 @@ mod tests {
     /// return a clone of the same underlying Arc (cheap, not moved).
     #[test]
     fn test_service_layer_phase_freq_table_handle_returns_arc_clone() {
-        use std::sync::RwLock;
         use crate::services::phase_freq_table::PhaseFreqTable;
 
         // Create a cold-start handle directly (same as with_rate_config does).

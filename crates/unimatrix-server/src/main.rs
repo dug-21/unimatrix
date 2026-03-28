@@ -696,6 +696,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let effectiveness_state_handle = services.effectiveness_state_handle();
     let typed_graph_handle = services.typed_graph_handle();
     let contradiction_cache_handle = services.contradiction_cache_handle();
+    let phase_freq_table_handle = services.phase_freq_table_handle(); // col-031
 
     // Parse auto-quarantine threshold at startup (Constraint 14).
     let auto_quarantine_cycles = unimatrix_server::background::parse_auto_quarantine_cycles()
@@ -724,6 +725,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         config.inference.nli_auto_quarantine_threshold, // crt-023 (ADR-007)
         nli_handle,                   // crt-023: bootstrap promotion
         Arc::clone(&inference_config), // crt-023: bootstrap promotion config
+        phase_freq_table_handle,      // col-031: shared with SearchService (ADR-005)
     );
 
     // Create daemon CancellationToken (ADR-002).
@@ -1086,6 +1088,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let typed_graph_handle = services.typed_graph_handle();
     // GH #278: extract ContradictionScanCacheHandle before services is moved.
     let contradiction_cache_handle = services.contradiction_cache_handle();
+    // col-031: extract PhaseFreqTableHandle before services is moved.
+    let phase_freq_table_handle = services.phase_freq_table_handle();
 
     // crt-018b: parse auto-quarantine threshold at startup (Constraint 14).
     let auto_quarantine_cycles = unimatrix_server::background::parse_auto_quarantine_cycles()
@@ -1114,6 +1118,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         config.inference.nli_auto_quarantine_threshold, // crt-023 (ADR-007)
         nli_handle,                     // crt-023: bootstrap promotion
         Arc::clone(&inference_config),  // crt-023: bootstrap promotion config
+        phase_freq_table_handle,        // col-031: shared with SearchService (ADR-005)
     );
 
     // Prepare lifecycle handles for shutdown.
