@@ -222,11 +222,13 @@ documented as the integration point. No PPR scaffolding goes into col-031.
 
 ### Eval Harness Gap
 
-`eval/scenarios/extract.rs` does not select `query_log.phase`, so all eval scenarios have
-`current_phase = None` → `phase_explicit_norm = 0.0` → AC-12 passes trivially (signal never
-activated). This is a vacuous gate. Fix is bounded: add `current_phase` to scenario extraction
-SQL; nothing else in `extract.rs` changes. This fix is in scope as AC-16. Without it, AC-12
-cannot be a meaningful regression gate.
+`eval/scenarios/replay.rs` does not forward `current_phase` into `ServiceSearchParams`, so all
+eval scenarios have `current_phase = None` → `phase_explicit_norm = 0.0` → AC-12 passes
+trivially (signal never activated). This is a vacuous gate. Fix is bounded: populate
+`current_phase: record.context.phase.clone()` in the `ServiceSearchParams` struct literal in
+`replay.rs`; nothing else in `replay.rs` changes. `extract.rs` and `output.rs` already handle
+phase — no changes needed there. This fix is in scope as AC-16. Without it, AC-12 cannot be
+a meaningful regression gate.
 
 ## Proposed Approach
 
@@ -371,9 +373,9 @@ lock across the scoring loop. When `use_fallback = true` or `current_phase = Non
 - **AC-15**: `services/phase_freq_table.rs` ≤ 500 lines. SQL aggregation in
   `unimatrix-store/src/query_log.rs`.
 
-- **AC-16**: `eval/scenarios/extract.rs` selects `query_log.phase` and populates
-  `current_phase` in emitted scenario output. Bounded change — nothing else in
-  `extract.rs` is modified.
+- **AC-16**: `eval/scenarios/replay.rs` forwards `current_phase` from scenario data into
+  `ServiceSearchParams`. Bounded change — nothing else in `replay.rs` is modified.
+  (`extract.rs` and `output.rs` already handle phase — no changes needed there.)
 
 ## Constraints
 

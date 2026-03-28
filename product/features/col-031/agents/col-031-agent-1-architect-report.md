@@ -40,3 +40,11 @@ This is the complete scope of AC-16. No change to `extract.rs`.
 ## Open Questions
 
 None — all scope risks resolved in architecture.
+
+## Knowledge Stewardship
+
+- Stored: ADR-001 rank-based normalization (#3685) — supersedes pre-design #3679 (0-indexed formula corrected to 1-indexed)
+- Stored: ADR-002 time-based retention (#3686) — `query_log_lookback_days=30`, no cycle-based filter
+- Stored: ADR-003 two cold-start contracts (#3687) — `phase_affinity_score` returns 1.0 (PPR); fused scoring guards on `use_fallback` before calling
+- Stored: ADR-004 activate w_phase_explicit (#3688) — raises default 0.0 → 0.05; AC-16 (replay.rs) non-separable from AC-12
+- Stored: ADR-005 required handle threading (#3689) — `PhaseFreqTableHandle` required non-optional at all 7 construction sites
