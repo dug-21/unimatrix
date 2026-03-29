@@ -184,6 +184,36 @@ impl SqlxStore {
         Ok(())
     }
 
+    /// Delete the vector mapping for the given entry (integrity write via write_pool).
+    ///
+    /// Used by the prune pass (GH #444) when an entry is quarantined: the VECTOR_MAP
+    /// row must be removed so subsequent compaction does not re-insert the stale point.
+    /// Idempotent: no error if the row does not exist.
+    pub async fn delete_vector_mapping(&self, entry_id: u64) -> Result<()> {
+        sqlx::query("DELETE FROM vector_map WHERE entry_id = ?1")
+            .bind(entry_id as i64)
+            .execute(&self.write_pool)
+            .await
+            .map_err(|e| StoreError::Database(e.into()))?;
+        Ok(())
+    }
+
+    /// Update the `embedding_dim` column for the given entry (integrity write).
+    ///
+    /// Used by the heal pass (GH #444) as the confirmation step after HNSW insert
+    /// succeeds. Writing `embedding_dim` last preserves idempotency: a crash between
+    /// HNSW insert and this write leaves `embedding_dim = 0`, causing the next tick's
+    /// heal pass to re-embed (no data loss, no phantom entry in search results).
+    pub async fn update_embedding_dim(&self, entry_id: u64, dim: u16) -> Result<()> {
+        sqlx::query("UPDATE entries SET embedding_dim = ?1 WHERE id = ?2")
+            .bind(dim as i64)
+            .bind(entry_id as i64)
+            .execute(&self.write_pool)
+            .await
+            .map_err(|e| StoreError::Database(e.into()))?;
+        Ok(())
+    }
+
     /// Insert or update a vector mapping (integrity write via write_pool).
     pub async fn put_vector_mapping(&self, entry_id: u64, hnsw_data_id: u64) -> Result<()> {
         sqlx::query("INSERT OR REPLACE INTO vector_map (entry_id, hnsw_data_id) VALUES (?1, ?2)")

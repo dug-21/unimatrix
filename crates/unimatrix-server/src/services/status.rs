@@ -17,6 +17,7 @@ use unimatrix_adapt::AdaptationService;
 use unimatrix_observe::domain::DomainPackRegistry;
 
 use crate::infra::coherence;
+use crate::infra::config::InferenceConfig;
 use crate::infra::contradiction;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::rayon_pool::RayonPool;
@@ -522,6 +523,7 @@ impl StatusService {
             supports_edge_count: 0,
             mean_entry_degree: 0.0,
             inferred_edge_count: 0,
+            unembedded_active_count: 0,
             maintenance_recommendations: Vec::new(),
             total_outcomes,
             outcomes_by_type: outcomes_by_type.into_iter().collect(),
@@ -690,6 +692,20 @@ impl StatusService {
             Err(e) => tracing::warn!("graph cohesion metrics failed: {e}"),
         }
 
+        // Fast SQL count of unembedded active entries (GH #444, Fix 5).
+        // Always populated; does not require check_embeddings=true.
+        // Uses write_pool_server() for consistency with other maintenance queries.
+        let unembedded_active_count: u64 = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM entries WHERE status = 0 AND embedding_dim = 0",
+        )
+        .fetch_one(self.store.write_pool_server())
+        .await
+        .unwrap_or_else(|e| {
+            tracing::warn!("unembedded active count query failed: {e}");
+            0
+        }) as u64;
+        report.unembedded_active_count = unembedded_active_count;
+
         let embed_dim = if report.embedding_check_performed {
             let total_checked = active_entries.len();
             let inconsistent_count = report.embedding_inconsistencies.len();
@@ -697,6 +713,12 @@ impl StatusService {
                 inconsistent_count,
                 total_checked,
             ))
+        } else if report.total_active > 0 {
+            // Fix 5 (GH #444): derive embedding consistency from SQL count even when
+            // check_embeddings=false. Formula: 1.0 - (unembedded / active).
+            // Guards divide-by-zero with the total_active > 0 check above.
+            let score = 1.0 - (unembedded_active_count as f64 / report.total_active as f64);
+            Some(score.clamp(0.0, 1.0))
         } else {
             None
         };
@@ -870,6 +892,8 @@ impl StatusService {
     /// Run maintenance operations. Called by the background tick (col-013).
     ///
     /// Operations:
+    /// 0a. Prune pass: remove quarantined entries from VECTOR_MAP / HNSW IdMap (GH #444)
+    /// 0b. Heal pass: re-embed active entries with `embedding_dim = 0` (GH #444)
     /// 1. Co-access stale pair cleanup
     /// 2. Confidence refresh (batch 500, 200ms wall-clock guard — crt-019)
     /// 2b. Empirical prior + spread computation (crt-019)
@@ -877,6 +901,10 @@ impl StatusService {
     /// 4. Observation file cleanup (60-day retention)
     /// 5. Stale session sweep + signal processing
     /// 6. Session GC (timeout + delete thresholds)
+    ///
+    /// Tick ordering for GH #444: prune → heal → graph compaction.
+    /// Prune fires first so quarantined HNSW points are absent from compaction input.
+    /// Heal fires second so newly-embedded entries are included in the compaction.
     pub(crate) async fn run_maintenance(
         &self,
         active_entries: &[EntryRecord],
@@ -884,11 +912,193 @@ impl StatusService {
         session_registry: &SessionRegistry,
         entry_store: &Arc<Store>,
         pending_entries_analysis: &Arc<std::sync::Mutex<PendingEntriesAnalysis>>,
+        inference_config: &InferenceConfig,
     ) -> Result<MaintenanceResult, ServiceError> {
         let now_ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
+
+        // 0a. Prune pass: remove quarantined entries from VECTOR_MAP / HNSW (GH #444, Fix 2).
+        //
+        // Tick ordering: prune fires BEFORE heal (Fix 1) and compaction (Fix 3) so that
+        // quarantined HNSW points are absent from both the heal set and the compaction input.
+        //
+        // For each entry in VECTOR_MAP whose ENTRIES row has status = 3 (Quarantined):
+        //   1. Delete the VECTOR_MAP row (so compact() and future loads skip it).
+        //   2. Remove from VectorIndex IdMap — marks HNSW point stale.
+        //      The stale point is cleaned up on the next compact() call.
+        {
+            let maint_pool = self.store.write_pool_server();
+            let quarantined_ids: Vec<u64> = sqlx::query_scalar::<_, i64>(
+                "SELECT vm.entry_id \
+                 FROM vector_map vm \
+                 INNER JOIN entries e ON e.id = vm.entry_id \
+                 WHERE e.status = 3",
+            )
+            .fetch_all(maint_pool)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!("prune pass: quarantined vector query failed: {e}");
+                vec![]
+            })
+            .into_iter()
+            .map(|id| id as u64)
+            .collect();
+
+            if !quarantined_ids.is_empty() {
+                tracing::info!(
+                    count = quarantined_ids.len(),
+                    "prune pass: pruning quarantined vectors"
+                );
+                for entry_id in &quarantined_ids {
+                    if let Err(e) = self.store.delete_vector_mapping(*entry_id).await {
+                        tracing::warn!(entry_id, error = %e, "prune pass: delete_vector_mapping failed");
+                    } else {
+                        self.vector_index.remove_entry(*entry_id);
+                        tracing::debug!(
+                            entry_id,
+                            "prune pass: removed from VECTOR_MAP and HNSW IdMap"
+                        );
+                    }
+                }
+            }
+        }
+
+        // 0b. Heal pass: re-embed active entries with `embedding_dim = 0` (GH #444, Fix 1).
+        //
+        // Sub-case A: entries stored when the embed adapter was unavailable
+        //   (embedding_dim = 0, VECTOR_MAP row exists but no HNSW point).
+        // Sub-case B: entries with embedding_dim > 0 but absent from VectorIndex
+        //   (restored-then-pruned race; handled by the VectorIndex::contains check below).
+        //
+        // Write order: embed → insert_hnsw_only → UPDATE embedding_dim.
+        // The DB write is the confirmation step. A crash between HNSW insert and the
+        // UPDATE leaves embedding_dim = 0, causing the next tick to re-embed (idempotent).
+        //
+        // If get_adapter() fails: log debug and skip — same as compaction path.
+        {
+            let heal_batch = inference_config.heal_pass_batch_size;
+            let maint_pool = self.store.write_pool_server();
+
+            // Sub-case A: active with embedding_dim = 0
+            let unembedded_ids: Vec<u64> = sqlx::query_scalar::<_, i64>(
+                "SELECT id FROM entries WHERE status = 0 AND embedding_dim = 0 LIMIT ?1",
+            )
+            .bind(heal_batch as i64)
+            .fetch_all(maint_pool)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!("heal pass: unembedded query failed: {e}");
+                vec![]
+            })
+            .into_iter()
+            .map(|id| id as u64)
+            .collect();
+
+            // Sub-case B: active with embedding_dim > 0 but not in VectorIndex
+            // (covers restored-then-pruned entries).
+            let missing_from_index: Vec<u64> = active_entries
+                .iter()
+                .filter(|e| e.embedding_dim > 0 && !self.vector_index.contains(e.id))
+                .map(|e| e.id)
+                .take(heal_batch)
+                .collect();
+
+            // Merge sub-case A and B, dedup, cap at heal_batch
+            let mut to_heal: Vec<u64> = unembedded_ids;
+            for id in missing_from_index {
+                if !to_heal.contains(&id) {
+                    to_heal.push(id);
+                }
+            }
+            to_heal.truncate(heal_batch);
+
+            if !to_heal.is_empty() {
+                match self.embed_service.get_adapter().await {
+                    Err(_) => {
+                        tracing::debug!(
+                            count = to_heal.len(),
+                            "heal pass: embed adapter unavailable, skipping"
+                        );
+                    }
+                    Ok(adapter) => {
+                        tracing::info!(count = to_heal.len(), "heal pass: re-embedding entries");
+                        let mut healed = 0usize;
+                        for entry_id in &to_heal {
+                            // Load entry for title+content
+                            let entry = match self.store.get(*entry_id).await {
+                                Ok(e) => e,
+                                Err(e) => {
+                                    tracing::warn!(entry_id, error = %e, "heal pass: get entry failed");
+                                    continue;
+                                }
+                            };
+
+                            // Embed
+                            let raw = match adapter
+                                .embed_entries(&[(entry.title.clone(), entry.content.clone())])
+                            {
+                                Ok(v) => v,
+                                Err(e) => {
+                                    tracing::warn!(entry_id, error = %e, "heal pass: embed failed");
+                                    continue;
+                                }
+                            };
+                            let raw_emb = match raw.into_iter().next() {
+                                Some(v) => v,
+                                None => {
+                                    tracing::warn!(entry_id, "heal pass: embed returned empty vec");
+                                    continue;
+                                }
+                            };
+                            let adapted = self.adapt_service.adapt_embedding(
+                                &raw_emb,
+                                Some(&entry.category),
+                                Some(&entry.topic),
+                            );
+                            let embedding = unimatrix_embed::l2_normalized(&adapted);
+                            let dim = embedding.len() as u16;
+
+                            // Get or allocate data_id
+                            let data_id = match self.store.get_vector_mapping(*entry_id).await {
+                                Ok(Some(existing)) => existing,
+                                _ => {
+                                    // No VECTOR_MAP row: allocate and write one
+                                    let new_id = self.vector_index.allocate_data_id();
+                                    if let Err(e) =
+                                        self.store.put_vector_mapping(*entry_id, new_id).await
+                                    {
+                                        tracing::warn!(entry_id, error = %e, "heal pass: put_vector_mapping failed");
+                                        continue;
+                                    }
+                                    new_id
+                                }
+                            };
+
+                            // HNSW insert
+                            if let Err(e) = self
+                                .vector_index
+                                .insert_hnsw_only(*entry_id, data_id, &embedding)
+                            {
+                                tracing::warn!(entry_id, error = %e, "heal pass: insert_hnsw_only failed");
+                                continue;
+                            }
+
+                            // DB confirmation write (last — preserves idempotency on crash)
+                            if let Err(e) = self.store.update_embedding_dim(*entry_id, dim).await {
+                                tracing::warn!(entry_id, error = %e, "heal pass: update_embedding_dim failed");
+                                continue;
+                            }
+
+                            healed += 1;
+                            tracing::debug!(entry_id, dim, "heal pass: entry healed");
+                        }
+                        tracing::info!(healed, "heal pass complete");
+                    }
+                }
+            }
+        }
 
         // 1. Co-access cleanup
         let staleness_cutoff = now_ts.saturating_sub(crate::coaccess::CO_ACCESS_STALENESS_SECONDS);
@@ -1781,6 +1991,242 @@ mod maintenance_snapshot_tests {
         assert_eq!(
             snapshot.graph_stale_ratio, 0.0,
             "empty vector index must produce zero stale ratio"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// GH #444: index-active-set invariant tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod bugfix_444_tests {
+    use std::sync::{Arc, Mutex};
+
+    use unimatrix_adapt::AdaptationService;
+    use unimatrix_core::{VectorConfig, VectorIndex};
+    use unimatrix_store::{NewEntry, SqlxStore as Store, Status};
+
+    use crate::infra::config::InferenceConfig;
+    use crate::infra::embed_handle::EmbedServiceHandle;
+    use crate::infra::session::SessionRegistry;
+    use crate::mcp::response::status::StatusReport;
+    use crate::server::PendingEntriesAnalysis;
+    use crate::services::confidence::ConfidenceState;
+    use crate::services::contradiction_cache::new_contradiction_cache_handle;
+    use crate::services::status::StatusService;
+
+    fn make_status_service_with_index(
+        store: &Arc<Store>,
+        vector_index: Arc<VectorIndex>,
+    ) -> StatusService {
+        let embed_service = EmbedServiceHandle::new();
+        let adapt_service = Arc::new(AdaptationService::new(
+            unimatrix_adapt::AdaptConfig::default(),
+        ));
+        let confidence_state = Arc::new(std::sync::RwLock::new(ConfidenceState::default()));
+        let contradiction_cache = new_contradiction_cache_handle();
+        let test_rayon_pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "test_pool").expect("test rayon pool"),
+        );
+        let observation_registry =
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code());
+        let confidence_params = Arc::new(unimatrix_engine::confidence::ConfidenceParams::default());
+        StatusService::new(
+            Arc::clone(store),
+            vector_index,
+            embed_service,
+            adapt_service,
+            confidence_state,
+            confidence_params,
+            contradiction_cache,
+            test_rayon_pool,
+            observation_registry,
+        )
+    }
+
+    async fn open_store(dir: &tempfile::TempDir) -> Arc<Store> {
+        Arc::new(
+            Store::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            )
+            .await
+            .expect("store open"),
+        )
+    }
+
+    fn make_inference_config_batch(n: usize) -> InferenceConfig {
+        InferenceConfig {
+            heal_pass_batch_size: n,
+            ..InferenceConfig::default()
+        }
+    }
+
+    async fn run_maintenance_simple(
+        svc: &StatusService,
+        store: &Arc<Store>,
+        inference_config: &InferenceConfig,
+    ) {
+        let session_registry = SessionRegistry::new();
+        let entry_store = Arc::clone(store);
+        let pending = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
+        let active_entries = store.load_active_entries_with_tags().await.unwrap();
+        let mut report = StatusReport::default();
+        let _ = svc
+            .run_maintenance(
+                &active_entries,
+                &mut report,
+                &session_registry,
+                &entry_store,
+                &pending,
+                inference_config,
+            )
+            .await;
+    }
+
+    // T-444-02: prune pass removes quarantined entry from VECTOR_MAP and VectorIndex.
+    //
+    // Store entry with real embedding_dim > 0 and a VECTOR_MAP row. Quarantine it.
+    // Run maintenance. Assert VectorIndex::contains == false AND no VECTOR_MAP row.
+    #[tokio::test]
+    async fn test_prune_pass_removes_quarantined_vector() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+        let vector_index =
+            Arc::new(VectorIndex::new(Arc::clone(&store), VectorConfig::default()).expect("vi"));
+        let svc = make_status_service_with_index(&store, Arc::clone(&vector_index));
+
+        // Insert an entry (embedding_dim = 0 is fine for prune test — we just need VECTOR_MAP row)
+        let entry_id = store
+            .insert(NewEntry {
+                title: "prune test".to_string(),
+                content: "content".to_string(),
+                topic: "test".to_string(),
+                category: "convention".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Active,
+                created_by: "test".to_string(),
+                feature_cycle: "bugfix-444".to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert");
+
+        // Manually write a VECTOR_MAP row and update embedding_dim to simulate a stored embedding
+        let data_id = vector_index.allocate_data_id();
+        store
+            .put_vector_mapping(entry_id, data_id)
+            .await
+            .expect("put_vector_mapping");
+        // Insert into IdMap only (no real HNSW point needed for this test)
+        // We just need VectorIndex::contains to return true.
+        // Use a valid 384-dim all-zeros-but-first embedding to pass dimension validation:
+        let mut emb = vec![0.0f32; 384];
+        emb[0] = 1.0; // non-zero to pass validation
+        vector_index
+            .insert_hnsw_only(entry_id, data_id, &emb)
+            .expect("insert_hnsw_only");
+
+        // Verify entry is in index before quarantine
+        assert!(
+            vector_index.contains(entry_id),
+            "entry must be in index before quarantine"
+        );
+
+        // Quarantine the entry
+        store
+            .update_status(entry_id, Status::Quarantined)
+            .await
+            .expect("update_status quarantine");
+
+        // Run maintenance — prune pass should fire
+        let config = make_inference_config_batch(20);
+        run_maintenance_simple(&svc, &store, &config).await;
+
+        // Assert: entry removed from VectorIndex
+        assert!(
+            !vector_index.contains(entry_id),
+            "prune pass must remove quarantined entry from VectorIndex"
+        );
+
+        // Assert: VECTOR_MAP row deleted
+        let vm = store
+            .get_vector_mapping(entry_id)
+            .await
+            .expect("get_vector_mapping");
+        assert!(
+            vm.is_none(),
+            "prune pass must delete VECTOR_MAP row for quarantined entry"
+        );
+    }
+
+    // T-444-05: compute_report exposes unembedded_active_count and corrects embedding_consistency_score.
+    //
+    // Store entry with embedding_dim = 0. Call compute_report().
+    // Assert unembedded_active_count > 0 and embedding_consistency_score < 1.0.
+    #[tokio::test]
+    async fn test_metric_unembedded_active_count_and_consistency_score() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+        let vector_index =
+            Arc::new(VectorIndex::new(Arc::clone(&store), VectorConfig::default()).expect("vi"));
+        let svc = make_status_service_with_index(&store, vector_index);
+
+        // Insert active entry with embedding_dim = 0 (default from store.insert)
+        store
+            .insert(NewEntry {
+                title: "unembedded entry".to_string(),
+                content: "no embedding yet".to_string(),
+                topic: "test".to_string(),
+                category: "convention".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Active,
+                created_by: "test".to_string(),
+                feature_cycle: "bugfix-444".to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert");
+
+        let (report, _active) = svc
+            .compute_report(None, None, false)
+            .await
+            .expect("compute_report");
+
+        assert!(
+            report.unembedded_active_count > 0,
+            "unembedded_active_count must be > 0 when active entries have embedding_dim = 0"
+        );
+        assert!(
+            report.embedding_consistency_score < 1.0,
+            "embedding_consistency_score must be < 1.0 when unembedded entries exist, got {}",
+            report.embedding_consistency_score
+        );
+    }
+
+    // T-444-06: InferenceConfig heal_pass_batch_size default is 20.
+    #[test]
+    fn test_inference_config_heal_pass_batch_size_default() {
+        let config = InferenceConfig::default();
+        assert_eq!(
+            config.heal_pass_batch_size, 20,
+            "heal_pass_batch_size default must be 20"
+        );
+    }
+
+    // T-444-06b: InferenceConfig heal_pass_batch_size is configurable.
+    #[test]
+    fn test_inference_config_heal_pass_batch_size_configurable() {
+        let config = InferenceConfig {
+            heal_pass_batch_size: 50,
+            ..InferenceConfig::default()
+        };
+        assert_eq!(
+            config.heal_pass_batch_size, 50,
+            "heal_pass_batch_size must reflect configured value"
         );
     }
 }

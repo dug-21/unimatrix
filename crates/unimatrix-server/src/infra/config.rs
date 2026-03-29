@@ -397,6 +397,19 @@ pub struct InferenceConfig {
     pub graph_inference_k: usize,
 
     // -----------------------------------------------------------------------
+    // Heal pass fields (bugfix-444)
+    // -----------------------------------------------------------------------
+    /// Maximum number of unembedded active entries to re-embed per maintenance tick.
+    ///
+    /// The heal pass queries `SELECT id FROM entries WHERE status = 0 AND embedding_dim = 0`
+    /// and re-embeds up to this many entries per tick. Setting a larger value recovers
+    /// faster after a prolonged embed-adapter outage; smaller values bound tick latency.
+    ///
+    /// Default: 20. Valid range: [1, 1000].
+    #[serde(default = "default_heal_pass_batch_size")]
+    pub heal_pass_batch_size: usize,
+
+    // -----------------------------------------------------------------------
     // Phase frequency table fields (col-031)
     // -----------------------------------------------------------------------
     /// col-031: Lookback window in days for PhaseFreqTable rebuild SQL.
@@ -515,6 +528,8 @@ impl Default for InferenceConfig {
             supports_edge_threshold: 0.6,
             max_graph_inference_per_tick: 100,
             graph_inference_k: 10,
+            // bugfix-444: heal pass batch size
+            heal_pass_batch_size: default_heal_pass_batch_size(),
             // col-031: phase frequency table fields
             query_log_lookback_days: default_query_log_lookback_days(),
             // crt-030: Personalized PageRank fields
@@ -650,6 +665,14 @@ fn default_max_graph_inference_per_tick() -> usize {
 
 fn default_graph_inference_k() -> usize {
     10
+}
+
+// ---------------------------------------------------------------------------
+// Heal pass default value functions (bugfix-444)
+// ---------------------------------------------------------------------------
+
+fn default_heal_pass_batch_size() -> usize {
+    20
 }
 
 /// Returns `true` if `name` is a recognized NLI model variant (case-insensitive).
@@ -1978,6 +2001,14 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.graph_inference_k
             } else {
                 global.inference.graph_inference_k
+            },
+            // bugfix-444: heal pass batch size
+            heal_pass_batch_size: if project.inference.heal_pass_batch_size
+                != default.inference.heal_pass_batch_size
+            {
+                project.inference.heal_pass_batch_size
+            } else {
+                global.inference.heal_pass_batch_size
             },
             // col-031: phase frequency table fields
             query_log_lookback_days: if project.inference.query_log_lookback_days

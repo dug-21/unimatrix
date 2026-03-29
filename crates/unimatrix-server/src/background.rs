@@ -467,6 +467,7 @@ async fn run_single_tick(
             store,
             nli_enabled,
             nli_auto_quarantine_threshold,
+            inference_config,
         ),
     )
     .await
@@ -794,6 +795,7 @@ async fn maintenance_tick(
     store: &Arc<Store>,
     nli_enabled: bool, // crt-023 (ADR-007): NLI auto-quarantine guard
     nli_auto_quarantine_threshold: f32, // crt-023 (ADR-007): threshold for NLI-only edges
+    inference_config: &Arc<InferenceConfig>, // bugfix-444: heal pass batch size
 ) -> Result<(), ServiceError> {
     // Step 1: Load the lightweight maintenance snapshot (#280).
     // Replaces the full compute_report() call which ran phases 2–7 unnecessarily.
@@ -941,6 +943,7 @@ async fn maintenance_tick(
             session_registry,
             entry_store,
             pending_entries,
+            inference_config,
         )
         .await?;
 

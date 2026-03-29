@@ -84,6 +84,11 @@ pub struct StatusReport {
     pub mean_entry_degree: f64,
     /// Non-bootstrap edges with source = 'nli' (NLI-inferred edges from GH #412).
     pub inferred_edge_count: u64,
+    /// Count of active entries with `embedding_dim = 0` (never embedded, GH #444).
+    ///
+    /// Always populated by `compute_report()` via a fast SQL count; does not
+    /// require `check_embeddings = true`. Zero on a healthy index.
+    pub unembedded_active_count: u64,
     /// Actionable maintenance recommendations.
     pub maintenance_recommendations: Vec<String>,
     /// Total outcome entries.
@@ -155,6 +160,7 @@ impl Default for StatusReport {
             supports_edge_count: 0,
             mean_entry_degree: 0.0,
             inferred_edge_count: 0,
+            unembedded_active_count: 0,
             maintenance_recommendations: Vec::new(),
             total_outcomes: 0,
             outcomes_by_type: Vec::new(),
@@ -263,6 +269,12 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                     report.isolated_entry_count,
                     report.cross_category_edge_count,
                     report.inferred_edge_count,
+                ));
+            }
+            if report.unembedded_active_count > 0 {
+                text.push_str(&format!(
+                    "\nUnembedded active entries: {} (heal pass pending)",
+                    report.unembedded_active_count
                 ));
             }
             for rec in &report.maintenance_recommendations {

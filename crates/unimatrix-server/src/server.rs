@@ -758,6 +758,10 @@ impl UnimatrixServer {
 
     /// Restore a quarantined entry to its pre-quarantine status (vnc-010).
     /// Falls back to Active if pre_quarantine_status is NULL or invalid (ADR-002).
+    ///
+    /// Fix 3 (GH #444): after status update, if the entry is not in the HNSW
+    /// index but has `embedding_dim > 0`, re-insert it. If `embedding_dim = 0`,
+    /// skip — the heal pass will pick it up on the next maintenance tick.
     pub(crate) async fn restore_with_audit(
         &self,
         entry_id: u64,
@@ -774,14 +778,86 @@ impl UnimatrixServer {
             .pre_quarantine_status
             .and_then(|v| unimatrix_store::Status::try_from(v).ok())
             .unwrap_or(unimatrix_store::Status::Active);
-        self.change_status_with_audit(
-            entry_id,
-            restore_to,
-            reason,
-            audit_event,
-            true, // set modified_by from audit agent_id
-        )
-        .await
+        let record = self
+            .change_status_with_audit(
+                entry_id,
+                restore_to,
+                reason,
+                audit_event,
+                true, // set modified_by from audit agent_id
+            )
+            .await?;
+
+        // Fix 3 (GH #444): Re-insert into HNSW if prune pass removed the vector.
+        // Only attempt if embedding_dim > 0 (entry was embedded before quarantine)
+        // and the entry is not already present in the index.
+        if record.embedding_dim > 0 && !self.vector_index.contains(entry_id) {
+            // Get or allocate a VECTOR_MAP entry
+            let data_id_opt = self
+                .store
+                .get_vector_mapping(entry_id)
+                .await
+                .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
+
+            match self.embed_service.get_adapter().await {
+                Ok(adapter) => {
+                    match adapter.embed_entries(&[(record.title.clone(), record.content.clone())]) {
+                        Ok(embeddings) => {
+                            if let Some(raw_emb) = embeddings.into_iter().next() {
+                                let adapted = self.adapt_service.adapt_embedding(
+                                    &raw_emb,
+                                    Some(&record.category),
+                                    Some(&record.topic),
+                                );
+                                let embedding = unimatrix_embed::l2_normalized(&adapted);
+                                let data_id = match data_id_opt {
+                                    Some(existing) => existing,
+                                    None => {
+                                        let new_id = self.vector_index.allocate_data_id();
+                                        if let Err(e) =
+                                            self.store.put_vector_mapping(entry_id, new_id).await
+                                        {
+                                            tracing::warn!(
+                                                entry_id,
+                                                error = %e,
+                                                "restore: put_vector_mapping failed; heal pass will retry"
+                                            );
+                                            return Ok(record);
+                                        }
+                                        new_id
+                                    }
+                                };
+                                if let Err(e) = self
+                                    .vector_index
+                                    .insert_hnsw_only(entry_id, data_id, &embedding)
+                                {
+                                    tracing::warn!(
+                                        entry_id,
+                                        error = %e,
+                                        "restore: insert_hnsw_only failed; heal pass will retry"
+                                    );
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                entry_id,
+                                error = %e,
+                                "restore: embed failed; heal pass will retry on next tick"
+                            );
+                        }
+                    }
+                }
+                Err(_) => {
+                    tracing::warn!(
+                        entry_id,
+                        "restore: embed service unavailable; heal pass will retry on next tick"
+                    );
+                }
+            }
+        }
+
+        Ok(record)
     }
 
     /// Shared implementation for status-change operations (deprecate, quarantine, restore).
