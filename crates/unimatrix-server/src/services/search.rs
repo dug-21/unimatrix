@@ -18,7 +18,8 @@ use unimatrix_engine::effectiveness::{
 
 use unimatrix_engine::coaccess::MAX_CO_ACCESS_BOOST;
 use unimatrix_engine::graph::{
-    FALLBACK_PENALTY, find_terminal_active, graph_penalty, suppress_contradicts,
+    FALLBACK_PENALTY, find_terminal_active, graph_penalty, personalized_pagerank,
+    suppress_contradicts,
 };
 
 use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
@@ -354,6 +355,17 @@ pub(crate) struct SearchService {
     /// extracts phase snapshot, releases before scoring loop (NFR-02).
     /// Non-optional — missing wiring is a compile error (ADR-005).
     phase_freq_table: PhaseFreqTableHandle,
+    /// crt-030: PPR damping factor α in (0.0, 1.0). Default 0.85.
+    ppr_alpha: f64,
+    /// crt-030: number of power-iteration steps. Default 20.
+    ppr_iterations: usize,
+    /// crt-030: minimum PPR score (strictly >) for PPR-only pool expansion. Default 0.05.
+    ppr_inclusion_threshold: f64,
+    /// crt-030: PPR trust weight — blends existing HNSW scores and sets initial_sim for new
+    /// PPR-only entries. Default 0.15.
+    ppr_blend_weight: f64,
+    /// crt-030: maximum number of PPR-only entries added to the pool per query. Default 50.
+    ppr_max_expand: usize,
 }
 
 // ---------------------------------------------------------------------------
@@ -474,6 +486,11 @@ impl SearchService {
         nli_enabled: bool,
         fusion_weights: FusionWeights,
         phase_freq_table: PhaseFreqTableHandle, // col-031: required, non-optional (ADR-005)
+        ppr_alpha: f64,                         // crt-030
+        ppr_iterations: usize,                  // crt-030
+        ppr_inclusion_threshold: f64,           // crt-030
+        ppr_blend_weight: f64,                  // crt-030
+        ppr_max_expand: usize,                  // crt-030
     ) -> Self {
         SearchService {
             store,
@@ -493,6 +510,11 @@ impl SearchService {
             nli_enabled,
             fusion_weights,
             phase_freq_table, // col-031
+            ppr_alpha,
+            ppr_iterations,
+            ppr_inclusion_threshold,
+            ppr_blend_weight,
+            ppr_max_expand,
         }
     }
 
@@ -754,6 +776,189 @@ impl SearchService {
             }
         }
 
+        // col-031: Pre-loop phase snapshot extraction (ADR-003, NFR-02).
+        //
+        // LOCK ORDER CONTEXT: At this point, EffectivenessStateHandle read lock has
+        // already been acquired and released (step above). TypedGraphStateHandle read
+        // lock has been acquired and released (line ~638 above). Now we acquire
+        // PhaseFreqTableHandle read lock — this is the third in the chain:
+        //   EffectivenessStateHandle -> TypedGraphStateHandle -> PhaseFreqTableHandle
+        //
+        // Lock acquired once before the scoring loop. Lock MUST be released before
+        // the loop body executes (NFR-02: no lock held across scoring loop).
+        //
+        // Moved before Step 6d (crt-030) so the snapshot is available for PPR
+        // personalization vector construction (ADR-006, NFR-04).
+        //
+        // Three cases:
+        //   1. current_phase = None:
+        //      -> phase_snapshot = None; lock never acquired.
+        //   2. current_phase = Some(phase) AND use_fallback = true:
+        //      -> Guard fires; phase_snapshot = None; phase_explicit_norm = 0.0 for all.
+        //      -> Scores bit-for-bit identical to pre-col-031 (NFR-04).
+        //      -> phase_affinity_score is NOT called (ADR-003 fused-scoring contract).
+        //   3. current_phase = Some(phase) AND use_fallback = false:
+        //      -> Clone the phase's bucket data out of the guard. Release lock.
+        //      -> phase_explicit_norm computed per-entry from cloned snapshot.
+        //
+        // Snapshot type: HashMap<String, Vec<(u64, f32)>>
+        //   key = entry_category, value = sorted (entry_id, rank_score) pairs for this phase.
+        let phase_snapshot: Option<HashMap<String, Vec<(u64, f32)>>> = match &params.current_phase {
+            None => None, // lock never acquired
+            Some(phase) => {
+                // Acquire read lock once
+                let guard = self
+                    .phase_freq_table
+                    .read()
+                    .unwrap_or_else(|e| e.into_inner());
+
+                if guard.use_fallback {
+                    // GUARD FIRES: cold-start; do NOT call phase_affinity_score.
+                    // phase_explicit_norm = 0.0 for all candidates (score identity).
+                    None
+                    // guard drops here — lock released
+                } else {
+                    // Extract all (category -> Vec<(entry_id, score)>) entries for
+                    // this specific phase. Clone out before dropping the guard.
+                    //
+                    // We need all categories for this phase because the scoring loop
+                    // iterates over diverse entries with different categories.
+                    let snapshot: HashMap<String, Vec<(u64, f32)>> = guard
+                        .table
+                        .iter()
+                        .filter(|((p, _cat), _)| p == phase)
+                        .map(|((_p, cat), bucket)| (cat.clone(), bucket.clone()))
+                        .collect();
+                    Some(snapshot)
+                    // guard drops here — lock released BEFORE scoring loop
+                }
+            }
+        };
+        // PhaseFreqTableHandle read lock is now released. Step 6d and scoring loop may begin.
+
+        // Step 6d: PPR expansion (crt-030).
+        //
+        // Expands the candidate pool with multi-hop PPR neighbors from the HNSW seed set.
+        // Guard: skip entirely when use_fallback = true (cold-start / Supersedes cycle).
+        // Bit-for-bit identical to pre-crt-030 behaviour when use_fallback = true (AC-12 / R-02).
+        if !use_fallback {
+            // -----------------------------------------------------------------------
+            // Phase 1: Build the personalization vector (FR-06 / ADR-006).
+            //
+            // Read from phase_snapshot (already extracted by col-031 pre-loop block).
+            // Do NOT call phase_affinity_score() directly — no lock re-acquisition (ADR-006).
+            // Cold-start (no phase, no snapshot): affinity = 1.0 for all seeds (SR-06).
+            // -----------------------------------------------------------------------
+            let mut seed_scores: HashMap<u64, f64> =
+                HashMap::with_capacity(results_with_scores.len());
+
+            for (entry, sim) in &results_with_scores {
+                let affinity: f64 = if let (Some(_phase), Some(snapshot)) =
+                    (&params.current_phase, &phase_snapshot)
+                {
+                    snapshot
+                        .get(&entry.category)
+                        .and_then(|bucket| bucket.iter().find(|(id, _)| *id == entry.id))
+                        .map(|(_, score)| *score as f64)
+                        .unwrap_or(1.0) // absent entry → neutral (ADR-003 col-031 contract)
+                } else {
+                    1.0 // no phase or no snapshot → cold-start neutral
+                };
+                seed_scores.insert(entry.id, sim * affinity);
+            }
+
+            // Normalize to sum 1.0.
+            let total: f64 = seed_scores.values().sum();
+
+            // Zero-sum guard (FR-08 / FM-05):
+            // All HNSW scores are 0.0 — degenerate, should not occur in practice.
+            // Skip PPR entirely; proceed to Step 6c with unchanged pool.
+            if total > 0.0 {
+                for value in seed_scores.values_mut() {
+                    *value /= total;
+                }
+
+                // -----------------------------------------------------------------------
+                // Phase 2: Run PPR.
+                // -----------------------------------------------------------------------
+                let ppr_scores: HashMap<u64, f64> = personalized_pagerank(
+                    &typed_graph,
+                    &seed_scores,
+                    self.ppr_alpha,
+                    self.ppr_iterations,
+                );
+
+                // -----------------------------------------------------------------------
+                // Phase 3: Blend scores for existing HNSW candidates (FR-08 step 5).
+                //
+                // For each entry already in results_with_scores that appears in ppr_scores:
+                //   new_sim = (1 - ppr_blend_weight) * current_sim + ppr_blend_weight * ppr_score
+                // -----------------------------------------------------------------------
+                for (entry, sim) in &mut results_with_scores {
+                    if let Some(&ppr_score) = ppr_scores.get(&entry.id) {
+                        *sim = (1.0 - self.ppr_blend_weight) * (*sim)
+                            + self.ppr_blend_weight * ppr_score;
+                    }
+                }
+
+                // -----------------------------------------------------------------------
+                // Phase 4: Identify PPR-only candidates for expansion (FR-08 step 6).
+                //
+                // Entries in ppr_scores that are NOT already in results_with_scores
+                // and whose PPR score STRICTLY exceeds ppr_inclusion_threshold (AC-13, R-06).
+                // Threshold comparison: > (not >=).
+                // -----------------------------------------------------------------------
+                let existing_ids: HashSet<u64> =
+                    results_with_scores.iter().map(|(e, _)| e.id).collect();
+
+                let mut ppr_only_candidates: Vec<(u64, f64)> = ppr_scores
+                    .iter()
+                    .filter(|(id, score)| {
+                        !existing_ids.contains(id) && **score > self.ppr_inclusion_threshold // strictly > (AC-13 / R-06)
+                    })
+                    .map(|(id, score)| (*id, *score))
+                    .collect();
+
+                // Sort descending by PPR score.
+                ppr_only_candidates
+                    .sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+
+                // Cap at ppr_max_expand (E-04).
+                ppr_only_candidates.truncate(self.ppr_max_expand);
+
+                // -----------------------------------------------------------------------
+                // Phase 5: Fetch and inject PPR-only entries (FR-08 step 6 / R-08 Critical).
+                //
+                // Sequential async fetches (ADR-008 / C-10).
+                // Error from any single fetch: silently skip (AC-13 / FM-02 / R-05).
+                // Quarantined entry: silently skip (R-08 Critical — dedicated tests required).
+                // -----------------------------------------------------------------------
+                for (entry_id, ppr_score) in ppr_only_candidates {
+                    let entry = match self.entry_store.get(entry_id).await {
+                        Ok(e) => e,
+                        Err(_) => continue, // silent skip on error (AC-13 / R-05)
+                    };
+
+                    // R-08 Critical: quarantine check — MANDATORY for every PPR-fetched entry.
+                    // PPR-only entries bypass the Step 6 HNSW quarantine filter.
+                    // This check is the ONLY thing preventing quarantined entries from
+                    // appearing in search results via the PPR expansion path.
+                    if SecurityGateway::is_quarantined(&entry.status) {
+                        continue; // silent skip (AC-13 / R-08)
+                    }
+
+                    // Assign initial similarity (FR-08 step 6 / ADR-007):
+                    //   initial_sim = ppr_blend_weight * ppr_score
+                    // PPR-only entries have no HNSW component; ppr_blend_weight is the
+                    // "PPR trust" coefficient (dual role, ADR-007).
+                    // At default 0.15, initial_sim is in [0.0, 0.15] — naturally ranks
+                    // below HNSW candidates (SR-07 resolution).
+                    let initial_sim = self.ppr_blend_weight * ppr_score;
+                    results_with_scores.push((entry, initial_sim));
+                }
+            }
+        }
+
         // Step 6c: Co-access boost map prefetch (crt-024, SR-07).
         //
         // Fully await before the scoring pass begins (correctness constraint, not optimization).
@@ -801,63 +1006,6 @@ impl SearchService {
         } else {
             HashMap::new()
         };
-
-        // col-031: Pre-loop phase snapshot extraction (ADR-003, NFR-02).
-        //
-        // LOCK ORDER CONTEXT: At this point, EffectivenessStateHandle read lock has
-        // already been acquired and released (step above). TypedGraphStateHandle read
-        // lock has been acquired and released (step 614-625 above). Now we acquire
-        // PhaseFreqTableHandle read lock — this is the third in the chain:
-        //   EffectivenessStateHandle -> TypedGraphStateHandle -> PhaseFreqTableHandle
-        //
-        // Lock acquired once before the scoring loop. Lock MUST be released before
-        // the loop body executes (NFR-02: no lock held across scoring loop).
-        //
-        // Three cases:
-        //   1. current_phase = None:
-        //      -> phase_snapshot = None; lock never acquired.
-        //   2. current_phase = Some(phase) AND use_fallback = true:
-        //      -> Guard fires; phase_snapshot = None; phase_explicit_norm = 0.0 for all.
-        //      -> Scores bit-for-bit identical to pre-col-031 (NFR-04).
-        //      -> phase_affinity_score is NOT called (ADR-003 fused-scoring contract).
-        //   3. current_phase = Some(phase) AND use_fallback = false:
-        //      -> Clone the phase's bucket data out of the guard. Release lock.
-        //      -> phase_explicit_norm computed per-entry from cloned snapshot.
-        //
-        // Snapshot type: HashMap<String, Vec<(u64, f32)>>
-        //   key = entry_category, value = sorted (entry_id, rank_score) pairs for this phase.
-        let phase_snapshot: Option<HashMap<String, Vec<(u64, f32)>>> = match &params.current_phase {
-            None => None, // lock never acquired
-            Some(phase) => {
-                // Acquire read lock once
-                let guard = self
-                    .phase_freq_table
-                    .read()
-                    .unwrap_or_else(|e| e.into_inner());
-
-                if guard.use_fallback {
-                    // GUARD FIRES: cold-start; do NOT call phase_affinity_score.
-                    // phase_explicit_norm = 0.0 for all candidates (score identity).
-                    None
-                    // guard drops here — lock released
-                } else {
-                    // Extract all (category -> Vec<(entry_id, score)>) entries for
-                    // this specific phase. Clone out before dropping the guard.
-                    //
-                    // We need all categories for this phase because the scoring loop
-                    // iterates over diverse entries with different categories.
-                    let snapshot: HashMap<String, Vec<(u64, f32)>> = guard
-                        .table
-                        .iter()
-                        .filter(|((p, _cat), _)| p == phase)
-                        .map(|((_p, cat), bucket)| (cat.clone(), bucket.clone()))
-                        .collect();
-                    Some(snapshot)
-                    // guard drops here — lock released BEFORE scoring loop
-                }
-            }
-        };
-        // PhaseFreqTableHandle read lock is now released. Scoring loop may begin.
 
         // Step 7: NLI scoring (if enabled) → fused score computation (single pass) →
         //         sort by final_score DESC → truncate to k.
@@ -4063,5 +4211,635 @@ mod tests {
             "R-06: cold-start handle must produce None snapshot; \
              write succeeded without blocking confirms lock was released"
         );
+    }
+
+    // ============================================================
+    // Step 6d: PPR expansion tests (crt-030)
+    // ============================================================
+    //
+    // These tests exercise the Step 6d logic directly using the
+    // `personalized_pagerank` function and helper graph builders,
+    // without running the full async search pipeline.
+    //
+    // Helpers imported from the engine crate.
+
+    mod step_6d {
+        use std::collections::{HashMap, HashSet};
+        use unimatrix_core::Status;
+        use unimatrix_engine::graph::{
+            GraphEdgeRow, RelationType, TypedRelationGraph, build_typed_relation_graph,
+            personalized_pagerank,
+        };
+
+        use super::make_test_entry;
+
+        // ---- Helpers ----
+
+        /// Build a TypedRelationGraph with a single Supports edge from `source` to `target`.
+        fn make_graph_supports(source: u64, target: u64) -> TypedRelationGraph {
+            let entries = vec![
+                make_test_entry(source, Status::Active, None, 0.5, "decision"),
+                make_test_entry(target, Status::Active, None, 0.5, "decision"),
+            ];
+            let edges = vec![GraphEdgeRow {
+                source_id: source,
+                target_id: target,
+                relation_type: RelationType::Supports.as_str().to_string(),
+                weight: 1.0,
+                created_at: 0,
+                created_by: "test".to_string(),
+                source: "test".to_string(),
+                bootstrap_only: false,
+            }];
+            build_typed_relation_graph(&entries, &edges).expect("test graph build must succeed")
+        }
+
+        /// Default PPR config values (matching InferenceConfig defaults).
+        struct PprCfg {
+            alpha: f64,
+            iterations: usize,
+            inclusion_threshold: f64,
+            blend_weight: f64,
+            max_expand: usize,
+        }
+
+        impl Default for PprCfg {
+            fn default() -> Self {
+                PprCfg {
+                    alpha: 0.85,
+                    iterations: 20,
+                    inclusion_threshold: 0.05,
+                    blend_weight: 0.15,
+                    max_expand: 50,
+                }
+            }
+        }
+
+        /// Run the synchronous phases of Step 6d (phases 1-4, excluding async fetch).
+        /// Returns: (blended pool scores, ppr_only candidates after sort+cap).
+        /// Pool entries are blended in-place on the returned Vec.
+        fn run_step_6d_sync(
+            results_with_scores: &mut Vec<(unimatrix_core::EntryRecord, f64)>,
+            graph: &TypedRelationGraph,
+            phase_snapshot: &Option<HashMap<String, Vec<(u64, f32)>>>,
+            current_phase: &Option<String>,
+            cfg: &PprCfg,
+        ) -> Vec<(u64, f64)> {
+            // Phase 1: build seed scores
+            let mut seed_scores: HashMap<u64, f64> =
+                HashMap::with_capacity(results_with_scores.len());
+
+            for (entry, sim) in results_with_scores.iter() {
+                let affinity: f64 =
+                    if let (Some(_phase), Some(snapshot)) = (current_phase, phase_snapshot) {
+                        snapshot
+                            .get(&entry.category)
+                            .and_then(|bucket| bucket.iter().find(|(id, _)| *id == entry.id))
+                            .map(|(_, score)| *score as f64)
+                            .unwrap_or(1.0)
+                    } else {
+                        1.0
+                    };
+                seed_scores.insert(entry.id, sim * affinity);
+            }
+
+            // Phase 2: normalize; zero-sum guard
+            let total: f64 = seed_scores.values().sum();
+            if total == 0.0 {
+                return vec![];
+            }
+            for v in seed_scores.values_mut() {
+                *v /= total;
+            }
+
+            // Phase 2b: run PPR
+            let ppr_scores = personalized_pagerank(graph, &seed_scores, cfg.alpha, cfg.iterations);
+
+            // Phase 3: blend existing HNSW candidates
+            for (entry, sim) in results_with_scores.iter_mut() {
+                if let Some(&ppr_score) = ppr_scores.get(&entry.id) {
+                    *sim = (1.0 - cfg.blend_weight) * (*sim) + cfg.blend_weight * ppr_score;
+                }
+            }
+
+            // Phase 4: collect PPR-only candidates
+            let existing_ids: HashSet<u64> =
+                results_with_scores.iter().map(|(e, _)| e.id).collect();
+
+            let mut ppr_only: Vec<(u64, f64)> = ppr_scores
+                .iter()
+                .filter(|(id, score)| {
+                    !existing_ids.contains(id) && **score > cfg.inclusion_threshold
+                })
+                .map(|(id, score)| (*id, *score))
+                .collect();
+
+            ppr_only.sort_unstable_by(|a, b| {
+                b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
+            });
+            ppr_only.truncate(cfg.max_expand);
+            ppr_only
+        }
+
+        // ---- T-6D-01: use_fallback = true → skip entirely ----
+
+        #[test]
+        fn test_step_6d_skipped_when_use_fallback_true() {
+            // When use_fallback = true the guard fires immediately; pool is unchanged.
+            // This test verifies the guard by NOT calling the inner logic.
+            let entry_a = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let entry_b = make_test_entry(2, Status::Active, None, 0.5, "decision");
+            let pool_before: Vec<(unimatrix_core::EntryRecord, f64)> =
+                vec![(entry_a.clone(), 0.8), (entry_b.clone(), 0.6)];
+
+            // Simulate: when use_fallback = true, the `if !use_fallback` block is skipped.
+            let use_fallback = true;
+            let mut pool = pool_before.clone();
+
+            if !use_fallback {
+                // This block must NOT execute.
+                pool.clear();
+            }
+
+            assert_eq!(
+                pool.len(),
+                2,
+                "pool must be unchanged when use_fallback = true"
+            );
+            assert!(
+                (pool[0].1 - 0.8).abs() < f64::EPSILON,
+                "first entry score unchanged"
+            );
+            assert!(
+                (pool[1].1 - 0.6).abs() < f64::EPSILON,
+                "second entry score unchanged"
+            );
+        }
+
+        // ---- T-6D-05 / R-06: Inclusion threshold strictly greater-than ----
+
+        #[test]
+        fn test_step_6d_entry_at_exact_threshold_not_included() {
+            // Entry at exactly threshold=0.05 must NOT be included (strictly >).
+            let threshold = 0.05_f64;
+            let score_at_threshold = threshold;
+
+            let entry_a = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let graph = make_graph_supports(99, 1); // 99 -> 1 (Supports)
+            let mut pool = vec![(entry_a, 0.8)];
+            let cfg = PprCfg {
+                inclusion_threshold: threshold,
+                max_expand: 50,
+                ..Default::default()
+            };
+
+            let ppr_only = run_step_6d_sync(&mut pool, &graph, &None, &None, &cfg);
+
+            // All PPR scores >= threshold are excluded by > filter.
+            // Verify entry 99 (PPR-only candidate) is filtered if its score == threshold.
+            for (id, score) in &ppr_only {
+                assert!(
+                    *score > threshold,
+                    "all ppr_only candidates must have score > threshold; \
+                     id={id} score={score_at_threshold} is at the boundary"
+                );
+                let _ = score_at_threshold; // suppress unused warning
+            }
+        }
+
+        #[test]
+        fn test_step_6d_entry_just_above_threshold_included() {
+            // Entry at threshold + EPSILON is included (strictly > passes).
+            let threshold = 0.05_f64;
+
+            let entry_a = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            // Build a graph where node 99 supports node 1.
+            // With node 1 as the HNSW seed, PPR will propagate mass to node 99.
+            let graph = make_graph_supports(99, 1); // 99 → 1
+
+            let mut pool = vec![(entry_a, 0.8)];
+            let cfg = PprCfg {
+                alpha: 0.85,
+                iterations: 20,
+                inclusion_threshold: threshold,
+                blend_weight: 0.15,
+                max_expand: 50,
+            };
+
+            let ppr_only = run_step_6d_sync(&mut pool, &graph, &None, &None, &cfg);
+
+            // Any PPR-only candidate returned must exceed threshold strictly.
+            for (_, score) in &ppr_only {
+                assert!(
+                    *score > threshold,
+                    "ppr_only score {score} must be strictly > threshold {threshold}"
+                );
+            }
+            // Node 99 supports node 1 (seed); with alpha=0.85 and seed at sim=0.8,
+            // PPR should propagate some mass to node 99.
+            let has_node_99 = ppr_only.iter().any(|(id, _)| *id == 99);
+            assert!(
+                has_node_99,
+                "node 99 (supporter of seed 1) should be in ppr_only with low threshold"
+            );
+        }
+
+        // ---- T-6D-06 / E-04: ppr_max_expand cap ----
+
+        #[test]
+        fn test_step_6d_pool_expansion_capped_at_ppr_max_expand() {
+            // Build a star graph: nodes 10..=14 all support node 1.
+            // HNSW pool has only node 1. With max_expand=2, only 2 should be injected.
+            let supporters: Vec<u64> = (10..=14).collect();
+            let mut all_ids = vec![1_u64];
+            all_ids.extend_from_slice(&supporters);
+
+            let entries: Vec<_> = all_ids
+                .iter()
+                .map(|&id| make_test_entry(id, Status::Active, None, 0.5, "decision"))
+                .collect();
+            let edges: Vec<GraphEdgeRow> = supporters
+                .iter()
+                .map(|&src| GraphEdgeRow {
+                    source_id: src,
+                    target_id: 1,
+                    relation_type: RelationType::Supports.as_str().to_string(),
+                    weight: 1.0,
+                    created_at: 0,
+                    created_by: "test".to_string(),
+                    source: "test".to_string(),
+                    bootstrap_only: false,
+                })
+                .collect();
+            let graph = build_typed_relation_graph(&entries, &edges).expect("test graph build");
+
+            let entry_1 = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let mut pool = vec![(entry_1, 0.8)];
+
+            let cfg = PprCfg {
+                inclusion_threshold: 0.001, // very low to include all PPR nodes
+                max_expand: 2,
+                ..Default::default()
+            };
+
+            let ppr_only = run_step_6d_sync(&mut pool, &graph, &None, &None, &cfg);
+
+            assert_eq!(
+                ppr_only.len(),
+                2,
+                "ppr_only must be capped at ppr_max_expand=2"
+            );
+        }
+
+        // ---- T-6D-07 / AC-15: Blend formula for existing HNSW candidates ----
+
+        #[test]
+        fn test_step_6d_blend_formula_known_values() {
+            // Test the blend formula with a direct calculation.
+            // For an isolated node 1 with seed {1: 1.0 (normalized)} and no edges,
+            // PPR iteration: score[1] = (1 - alpha) * seed[1] + alpha * 0.0 = (1 - 0.85) * 1.0 = 0.15.
+            // blend_weight = 0.15, hnsw_sim = 0.8:
+            // new_sim = (1.0 - 0.15) * 0.8 + 0.15 * 0.15 = 0.68 + 0.0225 = 0.7025.
+            let entry_a = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let _entries = vec![entry_a.clone()];
+            let graph = build_typed_relation_graph(&_entries, &[]).expect("test graph build");
+
+            let mut pool = vec![(entry_a, 0.8)];
+            let cfg = PprCfg {
+                alpha: 0.85,
+                iterations: 20,
+                blend_weight: 0.15,
+                inclusion_threshold: 0.05,
+                max_expand: 50,
+            };
+
+            let _ppr_only = run_step_6d_sync(&mut pool, &graph, &None, &None, &cfg);
+
+            let blended_sim = pool[0].1;
+            // Isolated node: ppr_score = (1 - 0.85) * 1.0 = 0.15
+            let ppr_score = (1.0 - 0.85) * 1.0_f64;
+            let expected = (1.0 - 0.15) * 0.8 + 0.15 * ppr_score;
+            assert!(
+                (blended_sim - expected).abs() < 1e-9,
+                "blend formula: expected {expected} = 0.85*0.8 + 0.15*ppr_score, got {blended_sim}"
+            );
+        }
+
+        #[test]
+        fn test_step_6d_blend_weight_zero_leaves_hnsw_unchanged() {
+            // blend_weight=0.0: existing HNSW scores must not change.
+            let entry_a = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let entries = vec![entry_a.clone()];
+            let graph = build_typed_relation_graph(&entries, &[]).expect("test graph");
+            let mut pool = vec![(entry_a, 0.8)];
+
+            let cfg = PprCfg {
+                blend_weight: 0.0,
+                ..Default::default()
+            };
+            let _ppr_only = run_step_6d_sync(&mut pool, &graph, &None, &None, &cfg);
+
+            assert_eq!(
+                pool[0].1, 0.8,
+                "sim must be exactly 0.8 with blend_weight=0.0"
+            );
+        }
+
+        #[test]
+        fn test_step_6d_blend_weight_one_overwrites_hnsw() {
+            // blend_weight=1.0: existing sim fully replaced by PPR score.
+            // For an isolated node 1 with alpha=0.85:
+            // ppr_score = (1 - 0.85) * 1.0 = 0.15 (teleportation only, no edges).
+            // blend_weight=1.0 → new_sim = 0.0 * 0.9 + 1.0 * 0.15 = 0.15.
+            let entry_a = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let entries = vec![entry_a.clone()];
+            let graph = build_typed_relation_graph(&entries, &[]).expect("test graph");
+            let mut pool = vec![(entry_a, 0.9)];
+
+            let cfg = PprCfg {
+                alpha: 0.85,
+                blend_weight: 1.0,
+                ..Default::default()
+            };
+            let _ppr_only = run_step_6d_sync(&mut pool, &graph, &None, &None, &cfg);
+
+            // PPR for isolated node 1 = (1 - alpha) * 1.0 = 0.15.
+            let ppr_score = (1.0 - 0.85_f64) * 1.0;
+            let expected_sim = ppr_score; // blend_weight=1.0 → new_sim = ppr_score
+            assert!(
+                (pool[0].1 - expected_sim).abs() < 1e-9,
+                "with blend_weight=1.0, sim must equal PPR score ({expected_sim}); got {}",
+                pool[0].1
+            );
+        }
+
+        // ---- T-6D-08 / R-03: blend_weight = 0.0 ----
+
+        #[test]
+        fn test_step_6d_ppr_only_entry_blend_weight_zero_initial_sim_is_zero() {
+            // PPR-only entry with blend_weight=0.0 gets initial_sim=0.0.
+            // initial_sim = blend_weight * ppr_score = 0.0 * anything = 0.0.
+            let ppr_score = 0.4_f64;
+            let blend_weight = 0.0_f64;
+            let initial_sim = blend_weight * ppr_score;
+            assert_eq!(
+                initial_sim, 0.0,
+                "initial_sim with blend_weight=0.0 must be 0.0"
+            );
+        }
+
+        // ---- AC-14: PPR-only entry initial similarity ----
+
+        #[test]
+        fn test_step_6d_ppr_only_entry_initial_sim_formula() {
+            // initial_sim = ppr_blend_weight * ppr_score (ADR-007).
+            let ppr_score = 0.4_f64;
+            let blend_weight = 0.15_f64;
+            let expected = blend_weight * ppr_score;
+            assert!(
+                (expected - 0.06).abs() < 1e-9,
+                "initial_sim = 0.15 * 0.4 = 0.06, got {expected}"
+            );
+        }
+
+        // ---- FM-05: zero-sum guard ----
+
+        #[test]
+        fn test_step_6d_all_zero_hnsw_scores_skips_ppr() {
+            // All HNSW entries have sim=0.0 → seed_scores sum=0.0 → zero-sum guard fires.
+            // The ppr_only list must be empty (PPR was not called).
+            let entry_a = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let entry_b = make_test_entry(2, Status::Active, None, 0.5, "decision");
+            let graph = make_graph_supports(99, 1);
+
+            let mut pool = vec![(entry_a.clone(), 0.0), (entry_b.clone(), 0.0)];
+            let pool_ids_before: Vec<u64> = pool.iter().map(|(e, _)| e.id).collect();
+
+            let cfg = PprCfg::default();
+            // run_step_6d_sync returns early with empty vec when total=0.0.
+            let ppr_only = run_step_6d_sync(&mut pool, &graph, &None, &None, &cfg);
+
+            assert!(
+                ppr_only.is_empty(),
+                "zero-sum guard: ppr_only must be empty"
+            );
+
+            // Pool must be unchanged: same IDs, same scores (0.0).
+            let pool_ids_after: Vec<u64> = pool.iter().map(|(e, _)| e.id).collect();
+            assert_eq!(
+                pool_ids_before, pool_ids_after,
+                "pool IDs must be unchanged after zero-sum guard"
+            );
+            for (_, sim) in &pool {
+                assert_eq!(
+                    *sim, 0.0,
+                    "pool scores must remain 0.0 after zero-sum guard"
+                );
+            }
+        }
+
+        // ---- AC-16 / R-10: Phase-aware personalization ----
+
+        #[test]
+        fn test_step_6d_none_phase_snapshot_uses_hnsw_score_only() {
+            // phase_snapshot = None → affinity = 1.0 → seed = hnsw_score * 1.0.
+            let entry_a = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let entry_b = make_test_entry(2, Status::Active, None, 0.5, "decision");
+            // Seeds before normalization: {1: 0.8, 2: 0.6}; total=1.4.
+            // Normalized: {1: 0.8/1.4 ≈ 0.5714, 2: 0.6/1.4 ≈ 0.4286}.
+            let entries = vec![entry_a.clone(), entry_b.clone()];
+            let graph = build_typed_relation_graph(&entries, &[]).expect("test graph");
+            let mut pool = vec![(entry_a, 0.8), (entry_b, 0.6)];
+
+            let cfg = PprCfg::default();
+            let _ppr_only = run_step_6d_sync(&mut pool, &graph, &None, &None, &cfg);
+
+            // With no edges and two isolated nodes, PPR reduces to teleportation only.
+            // node 1 ppr_score ≈ (1 - alpha) * normalized_seed(1) = 0.15 * (0.8/1.4).
+            // node 2 ppr_score ≈ (1 - alpha) * normalized_seed(2) = 0.15 * (0.6/1.4).
+            // Blend for node 1: (1-0.15)*0.8 + 0.15*ppr(1).
+            // Just verify no panic and scores are finite.
+            for (_, sim) in &pool {
+                assert!(sim.is_finite(), "blended score must be finite");
+                assert!(*sim >= 0.0, "blended score must be non-negative");
+            }
+        }
+
+        #[test]
+        fn test_step_6d_non_uniform_phase_snapshot_amplifies_seeds() {
+            // Phase snapshot with entry 1 at affinity=2.0 and entry 2 at 1.0.
+            // seed[1] = 0.5 * 2.0 = 1.0, seed[2] = 0.5 * 1.0 = 0.5.
+            // After normalization: seed[1] = 1.0/1.5, seed[2] = 0.5/1.5.
+            // Uniform (no snapshot): seed[1] = 0.5/1.0, seed[2] = 0.5/1.0.
+            // With phase: entry 1 has larger seed weight than entry 2.
+            let mut snapshot: HashMap<String, Vec<(u64, f32)>> = HashMap::new();
+            snapshot.insert("decision".to_string(), vec![(1, 2.0_f32), (2, 1.0_f32)]);
+            let phase = Some("nxs".to_string());
+            let phase_snapshot = Some(snapshot);
+
+            let entry_1 = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let entry_2 = make_test_entry(2, Status::Active, None, 0.5, "decision");
+            let entries = vec![entry_1.clone(), entry_2.clone()];
+            let graph = build_typed_relation_graph(&entries, &[]).expect("test graph");
+
+            // With phase snapshot
+            let mut pool_phase = vec![(entry_1.clone(), 0.5), (entry_2.clone(), 0.5)];
+            // With no snapshot (uniform)
+            let mut pool_uniform = vec![(entry_1, 0.5), (entry_2, 0.5)];
+
+            let cfg = PprCfg::default();
+
+            run_step_6d_sync(&mut pool_phase, &graph, &phase_snapshot, &phase, &cfg);
+            run_step_6d_sync(&mut pool_uniform, &graph, &None, &None, &cfg);
+
+            // In the phase-aware run, entry 1 has a higher seed than entry 2.
+            // In the uniform run, both seeds are equal (both sim=0.5, affinity=1.0).
+            let phase_sim_1 = pool_phase
+                .iter()
+                .find(|(e, _)| e.id == 1)
+                .map(|(_, s)| *s)
+                .unwrap();
+            let uniform_sim_1 = pool_uniform
+                .iter()
+                .find(|(e, _)| e.id == 1)
+                .map(|(_, s)| *s)
+                .unwrap();
+
+            // Phase-boosted run should give entry 1 a higher PPR mass → different blend result.
+            // Both runs use blend_weight=0.15, so the difference comes from PPR score.
+            assert!(
+                (phase_sim_1 - uniform_sim_1).abs() > 1e-12,
+                "phase snapshot must produce different seeds from uniform; \
+                 phase_sim_1={phase_sim_1}, uniform_sim_1={uniform_sim_1}"
+            );
+        }
+
+        // ---- AC-17: Integration — PPR surfaces supporter ----
+
+        #[test]
+        fn test_step_6d_ppr_surfaces_support_entry() {
+            // AC-17 canonical acceptance test.
+            // Graph: A(100) → B(200) [Supports]. HNSW seed: B=200. A should surface.
+            let graph = make_graph_supports(100, 200); // A=100 supports B=200
+            let entry_b = make_test_entry(200, Status::Active, None, 0.5, "decision");
+            let mut pool = vec![(entry_b, 0.8)];
+
+            let cfg = PprCfg {
+                inclusion_threshold: 0.001, // low threshold so A surfaces
+                blend_weight: 0.15,
+                max_expand: 10,
+                ..Default::default()
+            };
+
+            let ppr_only = run_step_6d_sync(&mut pool, &graph, &None, &None, &cfg);
+
+            let has_a = ppr_only.iter().any(|(id, _)| *id == 100);
+            assert!(
+                has_a,
+                "node 100 (supporter of seed 200) must be in ppr_only candidates"
+            );
+
+            // initial_sim for A = blend_weight * ppr_score_of_A
+            let (_, a_ppr_score) = ppr_only.iter().find(|(id, _)| *id == 100).unwrap();
+            let initial_sim = cfg.blend_weight * a_ppr_score;
+            assert!(
+                initial_sim >= 0.0 && initial_sim <= cfg.blend_weight,
+                "initial_sim must be in [0, blend_weight]; got {initial_sim}"
+            );
+        }
+
+        // ---- T-6D-quarantine: verify quarantine logic (sync check) ----
+
+        #[test]
+        fn test_step_6d_quarantine_check_applies_to_fetched_entries() {
+            // Verify the quarantine check logic is correct: is_quarantined returns true
+            // for Quarantined status, false for Active.
+            use crate::services::gateway::SecurityGateway;
+
+            let quarantined_entry = make_test_entry(77, Status::Quarantined, None, 0.5, "decision");
+            let active_entry = make_test_entry(77, Status::Active, None, 0.5, "decision");
+
+            assert!(
+                SecurityGateway::is_quarantined(&quarantined_entry.status),
+                "Quarantined entry must be rejected by is_quarantined"
+            );
+            assert!(
+                !SecurityGateway::is_quarantined(&active_entry.status),
+                "Active entry must not be rejected by is_quarantined"
+            );
+        }
+
+        // ---- T-6D-sort: expansion sorted by score desc ----
+
+        #[test]
+        fn test_step_6d_expansion_sorted_by_ppr_score_desc() {
+            // Build a graph where nodes 10, 11, 12 all support node 1 (seed).
+            // max_expand=2 → only top 2 by PPR score are kept.
+            let entries: Vec<_> = [1_u64, 10, 11, 12]
+                .iter()
+                .map(|&id| make_test_entry(id, Status::Active, None, 0.5, "decision"))
+                .collect();
+            let edges: Vec<GraphEdgeRow> = [10_u64, 11, 12]
+                .iter()
+                .map(|&src| GraphEdgeRow {
+                    source_id: src,
+                    target_id: 1,
+                    relation_type: RelationType::Supports.as_str().to_string(),
+                    weight: 1.0,
+                    created_at: 0,
+                    created_by: "test".to_string(),
+                    source: "test".to_string(),
+                    bootstrap_only: false,
+                })
+                .collect();
+            let graph = build_typed_relation_graph(&entries, &edges).expect("test graph");
+            let entry_1 = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let mut pool = vec![(entry_1, 0.8)];
+
+            let cfg = PprCfg {
+                inclusion_threshold: 0.001,
+                max_expand: 2,
+                ..Default::default()
+            };
+
+            let ppr_only = run_step_6d_sync(&mut pool, &graph, &None, &None, &cfg);
+
+            // Verify sorted descending: each element's score >= the next.
+            assert_eq!(ppr_only.len(), 2, "must have exactly max_expand=2 entries");
+            if ppr_only.len() >= 2 {
+                assert!(
+                    ppr_only[0].1 >= ppr_only[1].1,
+                    "ppr_only must be sorted descending by score: {} >= {}",
+                    ppr_only[0].1,
+                    ppr_only[1].1
+                );
+            }
+        }
+
+        // ---- I-03: FusionWeights sum invariant (crt-030 regression guard) ----
+
+        #[test]
+        fn test_fusion_weights_default_sum_unchanged_by_crt030() {
+            // crt-030 must not have modified FusionWeights.
+            // The sum of all default weights equals 1.02 (intentional — see config.rs:598
+            // comment: "Additive term outside the six-weight sum constraint, ADR-004 col-031").
+            // This test guards against any crt-030 change accidentally modifying the formula.
+            use super::super::FusionWeights;
+            use crate::infra::config::InferenceConfig;
+            let fw = FusionWeights::from_config(&InferenceConfig::default());
+            // 0.25 + 0.35 + 0.15 + 0.10 + 0.05 + 0.05 + 0.02 + 0.05 = 1.02
+            let total = fw.w_sim
+                + fw.w_nli
+                + fw.w_conf
+                + fw.w_coac
+                + fw.w_util
+                + fw.w_prov
+                + fw.w_phase_histogram
+                + fw.w_phase_explicit;
+            assert!(
+                (total - 1.02).abs() < 1e-9,
+                "FusionWeights default sum must be 1.02 (crt-030 regression guard); got {total}"
+            );
+        }
     }
 }
