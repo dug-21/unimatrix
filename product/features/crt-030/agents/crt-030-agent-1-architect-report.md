@@ -75,3 +75,20 @@
 - ADR-003 col-031 (#3687): Two cold-start contracts from phase_affinity_score
 - ADR-004 col-031 (#3682): Lock ordering for three RwLock handles on search hot path
 - graph_suppression.rs (col-030): Structural model for graph_ppr.rs
+
+## Knowledge Stewardship
+
+**Stored:**
+- ADR-001 graph_ppr.rs submodule structure → Unimatrix #3731
+- ADR-002 personalized_pagerank() function signature → Unimatrix #3732
+- ADR-003 edge direction semantics (Incoming for all three types) → Unimatrix #3733
+- ADR-004 deterministic accumulation via node-ID-sorted iteration → Unimatrix #3734
+- ADR-005 pipeline position Step 6d between 6b and 6c → Unimatrix #3735
+- ADR-006 personalization vector construction via pre-cloned snapshot → Unimatrix #3736
+- ADR-007 ppr_blend_weight dual role intentional → Unimatrix #3737
+- ADR-008 latency budget and RayonPool offload (deferred) → Unimatrix #3738 (corrected → #3741)
+- ADR-009 PPR score map memory profile no traversal depth cap → Unimatrix #3739
+
+**Queried:**
+- context_search: "graph traversal implementation patterns edges_of_type" — retrieved graph_suppression.rs pattern
+- context_search: "crt-030 architectural decisions", category: decision — retrieved prior session ADRs for context

@@ -16,16 +16,16 @@
 
 | Component | Pseudocode | Test Plan |
 |-----------|------------|-----------|
-| `graph_ppr.rs` | pseudocode/graph_ppr.md | test-plan/graph_ppr.md |
-| `search.rs` Step 6d | pseudocode/search_step_6d.md | test-plan/search_step_6d.md |
-| `config.rs` InferenceConfig extension | pseudocode/config_ppr_fields.md | test-plan/config_ppr_fields.md |
+| `graph_ppr.rs` | product/features/crt-030/pseudocode/graph_ppr.md | product/features/crt-030/test-plan/graph_ppr.md |
+| `search.rs` Step 6d | product/features/crt-030/pseudocode/search_step_6d.md | product/features/crt-030/test-plan/search_step_6d.md |
+| `config.rs` InferenceConfig extension | product/features/crt-030/pseudocode/config_ppr_fields.md | product/features/crt-030/test-plan/config_ppr_fields.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/crt-030/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/crt-030/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
