@@ -1880,13 +1880,13 @@ def test_get_with_string_id(server):
     string_id = str(entry_id)
     get_resp = server.call_tool(
         "context_get",
-        {"id": string_id, "agent_id": "human"},
+        {"id": string_id, "agent_id": "human", "format": "json"},
     )
 
     assert_tool_success(get_resp)
-    text = get_result_text(get_resp)
-    assert len(text) > 0, "IT-01: content must be non-empty"
-    assert "IT-01 string id coercion test content" in text, (
+    entry = parse_entry(get_resp)
+    assert len(entry.get("content", "")) > 0, "IT-01: content must be non-empty"
+    assert "IT-01 string id coercion test content" in entry.get("content", ""), (
         "IT-01: retrieved content must match stored content"
     )
 
