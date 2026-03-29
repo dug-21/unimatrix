@@ -27,6 +27,10 @@ use unimatrix_core::{EntryRecord, Status};
 mod graph_suppression;
 pub use graph_suppression::suppress_contradicts;
 
+#[path = "graph_ppr.rs"]
+mod graph_ppr;
+pub use graph_ppr::personalized_pagerank;
+
 // -- Penalty constants (ADR-006: named, fixed for v1) --
 
 /// Deprecated entry with no successors — softest penalty (orphan, not replaceable).
