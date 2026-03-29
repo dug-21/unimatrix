@@ -121,6 +121,28 @@ pub struct ProfileConfig {
     pub preset: Preset,
 }
 
+// Private serde default functions — govern what a config file omitting the field receives.
+// Distinct from `Default` impl (which returns `vec![]`). See ADR-001 decision 4 (crt-031).
+fn default_boosted_categories() -> Vec<String> {
+    vec!["lesson-learned".to_string()]
+}
+
+fn default_adaptive_categories() -> Vec<String> {
+    vec!["lesson-learned".to_string()]
+}
+
+/// Returns the default boosted-categories set as a `HashSet`.
+///
+/// Single source of truth for the default value. Replaces the six
+/// `HashSet::from(["lesson-learned".to_string()])` literals scattered across
+/// test infrastructure files (crt-031 FR-16, SR-08 resolution).
+///
+/// Importable from all seven sites via `crate::infra::config::default_boosted_categories_set()`
+/// without circular dependency (`infra/config.rs` has no upward dependency on any test file).
+pub fn default_boosted_categories_set() -> HashSet<String> {
+    default_boosted_categories().into_iter().collect()
+}
+
 /// `[knowledge]` section — categories and freshness configuration.
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 #[serde(default)]
@@ -128,8 +150,13 @@ pub struct KnowledgeConfig {
     /// Allowed entry categories. Default: the 5 INITIAL_CATEGORIES.
     pub categories: Vec<String>,
     /// Categories that receive a provenance boost in search re-ranking.
-    /// Default: `["lesson-learned"]`.
+    /// Default (serde): `["lesson-learned"]`. Default (Rust `Default` impl): `[]`.
+    #[serde(default = "default_boosted_categories")]
     pub boosted_categories: Vec<String>,
+    /// Categories eligible for automated lifecycle management (#409).
+    /// Must be a subset of `categories`. Default (serde): `["lesson-learned"]`. Default (Rust): `[]`.
+    #[serde(default = "default_adaptive_categories")]
+    pub adaptive_categories: Vec<String>,
     /// Optional operator override for freshness half-life.
     /// `None` = use the active preset's built-in value.
     /// `Some(v)` = use `v` hours (overrides preset for named presets;
@@ -141,7 +168,8 @@ impl Default for KnowledgeConfig {
     fn default() -> Self {
         KnowledgeConfig {
             categories: INITIAL_CATEGORIES.iter().map(|s| s.to_string()).collect(),
-            boosted_categories: vec!["lesson-learned".to_string()],
+            boosted_categories: vec![], // programmatic default is empty; serde default fn returns ["lesson-learned"]
+            adaptive_categories: vec![], // programmatic default is empty; serde default fn returns ["lesson-learned"]
             freshness_half_life_hours: None,
         }
     }
@@ -1044,6 +1072,10 @@ pub enum ConfigError {
         path: PathBuf,
         category: String,
     },
+    AdaptiveCategoryNotInAllowlist {
+        path: PathBuf,
+        category: String,
+    },
     InvalidHalfLifeValue {
         path: PathBuf,
         value: f64,
@@ -1194,6 +1226,13 @@ impl fmt::Display for ConfigError {
             ConfigError::BoostedCategoryNotInAllowlist { path, category } => write!(
                 f,
                 "config error in {}: [knowledge] boosted_categories contains {:?} \
+                 which is not present in the categories list; add it to [knowledge] categories first",
+                path.display(),
+                category
+            ),
+            ConfigError::AdaptiveCategoryNotInAllowlist { path, category } => write!(
+                f,
+                "config error in {}: [knowledge] adaptive_categories contains {:?} \
                  which is not present in the categories list; add it to [knowledge] categories first",
                 path.display(),
                 category
@@ -1456,6 +1495,18 @@ pub fn validate_config(config: &UnimatrixConfig, path: &Path) -> Result<(), Conf
             return Err(ConfigError::BoostedCategoryNotInAllowlist {
                 path: path.into(),
                 category: boosted.clone(),
+            });
+        }
+    }
+
+    // --- Validate [knowledge] adaptive_categories ---
+    // Reuses the same `category_set` built for the boosted check above.
+    // Empty adaptive_categories is valid (disables automated management entirely, E-01).
+    for adaptive_cat in &config.knowledge.adaptive_categories {
+        if !category_set.contains(adaptive_cat.as_str()) {
+            return Err(ConfigError::AdaptiveCategoryNotInAllowlist {
+                path: path.into(),
+                category: adaptive_cat.clone(),
             });
         }
     }
@@ -1821,6 +1872,13 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.knowledge.boosted_categories
             } else {
                 global.knowledge.boosted_categories
+            },
+            adaptive_categories: if project.knowledge.adaptive_categories
+                != default.knowledge.adaptive_categories
+            {
+                project.knowledge.adaptive_categories
+            } else {
+                global.knowledge.adaptive_categories
             },
             // Option: Some from project wins; fallback to global Some; else None.
             freshness_half_life_hours: project
@@ -2943,6 +3001,7 @@ mod tests {
             knowledge: KnowledgeConfig {
                 categories: vec!["a".into()],
                 boosted_categories: vec!["b".into()],
+                adaptive_categories: vec![], // zeroed — suppress adaptive cross-check (R-01)
                 freshness_half_life_hours: None,
             },
             ..Default::default()
@@ -3030,24 +3089,322 @@ mod tests {
 
     #[test]
     fn test_empty_categories_documented_behavior() {
-        // Empty categories list with empty boosted_categories: syntactically valid.
-        // 0 is within 0..=64 count range, and no boosted_categories to check.
-        // Note: using config_with_categories() alone would fail because the default
-        // boosted_categories ["lesson-learned"] would not be in the empty set.
+        // Empty categories list with both parallel lists zeroed: syntactically valid.
+        // 0 is within 0..=64 count range, and no boosted/adaptive categories to cross-check.
+        // Both lists must be zeroed (R-01): after the Default impl change, Default returns []
+        // for both fields, but explicit zeroing is required for custom-categories fixtures.
         let _scanner = ContentScanner::global();
         let config = UnimatrixConfig {
             knowledge: KnowledgeConfig {
                 categories: vec![],
-                boosted_categories: vec![], // empty boosted list to avoid allowlist check
-                freshness_half_life_hours: None,
+                adaptive_categories: vec![], // zeroed — suppress adaptive cross-check (R-01)
+                ..Default::default()         // boosted_categories: vec![] via Default
             },
             ..Default::default()
         };
         let result = validate_config(&config, Path::new("/fake"));
         assert!(
             result.is_ok(),
-            "empty categories + empty boosted list is a valid (degenerate) configuration, got: {:?}",
+            "empty categories + zeroed parallel lists is a valid (degenerate) configuration, got: {:?}",
             result
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-031: KnowledgeConfig Default impl regression guards (AC-17, AC-27, R-11)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_knowledge_config_default_boosted_is_empty() {
+        // AC-17: Default impl returns [] for boosted_categories (ADR-001 decision 4, crt-031).
+        // Serde default fn still returns ["lesson-learned"] — tested separately.
+        assert!(
+            KnowledgeConfig::default().boosted_categories.is_empty(),
+            "KnowledgeConfig::default().boosted_categories must be [] (serde fn governs production default)"
+        );
+    }
+
+    #[test]
+    fn test_knowledge_config_default_adaptive_is_empty() {
+        // AC-27: Default impl returns [] for adaptive_categories (crt-031).
+        assert!(
+            KnowledgeConfig::default().adaptive_categories.is_empty(),
+            "KnowledgeConfig::default().adaptive_categories must be []"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-031: adaptive_categories serde round-trip (AC-01, AC-02, AC-03)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_adaptive_categories_serde_round_trip() {
+        // AC-01 / E-07: TOML with explicit adaptive_categories deserializes correctly.
+        // KnowledgeConfig derives only Deserialize (no Serialize), so the round-trip is
+        // tested by parsing the same canonical TOML twice and confirming equal results.
+        let toml_str = "[knowledge]\nadaptive_categories = [\"custom-a\", \"custom-b\"]\n";
+        let config: UnimatrixConfig =
+            toml::from_str(toml_str).expect("TOML with adaptive_categories must parse");
+        assert_eq!(
+            config.knowledge.adaptive_categories,
+            vec!["custom-a".to_string(), "custom-b".to_string()],
+            "adaptive_categories from TOML must match expected values"
+        );
+        // Parse a second time (simulates round-trip stability).
+        let config2: UnimatrixConfig =
+            toml::from_str(toml_str).expect("second parse must also succeed");
+        assert_eq!(
+            config.knowledge.adaptive_categories, config2.knowledge.adaptive_categories,
+            "double-parse must produce equal adaptive_categories"
+        );
+    }
+
+    #[test]
+    fn test_adaptive_categories_serde_default_when_omitted() {
+        // AC-02: serde default fn returns ["lesson-learned"] when [knowledge] section is present
+        // but adaptive_categories field is absent. This is the serde field-default path.
+        //
+        // Note: when [knowledge] section is ENTIRELY absent, UnimatrixConfig's struct-level
+        // #[serde(default)] fires KnowledgeConfig::default() which returns vec![]. The field-level
+        // serde default fn only fires when [knowledge] IS present but adaptive_categories is absent.
+        let toml_str = "[knowledge]\ncategories = [\"lesson-learned\"]\n";
+        let config: UnimatrixConfig = toml::from_str(toml_str)
+            .expect("TOML with [knowledge] but no adaptive_categories must parse");
+        assert_eq!(
+            config.knowledge.adaptive_categories,
+            vec!["lesson-learned".to_string()],
+            "absent adaptive_categories within [knowledge] section must produce serde default [\"lesson-learned\"]"
+        );
+    }
+
+    #[test]
+    fn test_adaptive_categories_serde_explicit_two_values() {
+        // AC-03: explicit two-value list deserializes correctly.
+        let toml_str = "[knowledge]\nadaptive_categories = [\"lesson-learned\", \"convention\"]\n";
+        let config: UnimatrixConfig = toml::from_str(toml_str).expect("TOML must parse");
+        assert_eq!(
+            config.knowledge.adaptive_categories,
+            vec!["lesson-learned".to_string(), "convention".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_adaptive_categories_serde_explicit_empty_list() {
+        // Operator explicitly disabling adaptive management: adaptive_categories = []
+        let toml_str = "[knowledge]\nadaptive_categories = []\n";
+        let config: UnimatrixConfig = toml::from_str(toml_str).expect("TOML must parse");
+        assert_eq!(
+            config.knowledge.adaptive_categories,
+            Vec::<String>::new(),
+            "explicit empty adaptive_categories list must be preserved"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-031: validate_config adaptive_categories cross-check (AC-04, AC-14, AC-15, AC-25)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_validate_config_adaptive_category_not_in_allowlist() {
+        // AC-04: adaptive category not in categories list must be rejected.
+        let _scanner = ContentScanner::global();
+        let config = UnimatrixConfig {
+            knowledge: KnowledgeConfig {
+                categories: vec!["lesson-learned".to_string()],
+                boosted_categories: vec![], // zeroed — suppress boosted cross-check (R-01)
+                adaptive_categories: vec!["nonexistent".to_string()],
+                freshness_half_life_hours: None,
+            },
+            ..Default::default()
+        };
+        let result = validate_config(&config, Path::new("/fake"));
+        assert!(
+            matches!(
+                result,
+                Err(ConfigError::AdaptiveCategoryNotInAllowlist { ref category, .. })
+                if category == "nonexistent"
+            ),
+            "adaptive category not in allowlist must return AdaptiveCategoryNotInAllowlist, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn test_validate_config_adaptive_empty_list_ok() {
+        // AC-14: empty adaptive_categories is valid (disables automated management entirely).
+        let _scanner = ContentScanner::global();
+        let config = UnimatrixConfig {
+            knowledge: KnowledgeConfig {
+                categories: vec!["lesson-learned".to_string()],
+                boosted_categories: vec![],
+                adaptive_categories: vec![],
+                freshness_half_life_hours: None,
+            },
+            ..Default::default()
+        };
+        assert!(
+            validate_config(&config, Path::new("/fake")).is_ok(),
+            "empty adaptive_categories must pass validate_config"
+        );
+    }
+
+    #[test]
+    fn test_validate_config_adaptive_multi_entry_subset_ok() {
+        // AC-15: multiple adaptive categories that are all in the categories list passes.
+        let _scanner = ContentScanner::global();
+        let config = UnimatrixConfig {
+            knowledge: KnowledgeConfig {
+                categories: vec!["lesson-learned".to_string(), "convention".to_string()],
+                boosted_categories: vec![],
+                adaptive_categories: vec!["lesson-learned".to_string(), "convention".to_string()],
+                freshness_half_life_hours: None,
+            },
+            ..Default::default()
+        };
+        assert!(
+            validate_config(&config, Path::new("/fake")).is_ok(),
+            "adaptive categories that are a subset of categories must pass"
+        );
+    }
+
+    #[test]
+    fn test_validate_config_adaptive_error_isolated_from_boosted() {
+        // AC-25 / R-01 scenario 2: adaptive error must not be masked by boosted error.
+        // boosted_categories is explicitly zeroed so only adaptive check can fire.
+        let _scanner = ContentScanner::global();
+        let config = UnimatrixConfig {
+            knowledge: KnowledgeConfig {
+                categories: vec!["lesson-learned".to_string()],
+                boosted_categories: vec![], // MUST be zeroed
+                adaptive_categories: vec!["nonexistent".to_string()], // under test
+                freshness_half_life_hours: None,
+            },
+            ..Default::default()
+        };
+        let result = validate_config(&config, Path::new("/fake"));
+        assert!(
+            matches!(
+                result,
+                Err(ConfigError::AdaptiveCategoryNotInAllowlist { .. })
+            ),
+            "error must be AdaptiveCategoryNotInAllowlist, not BoostedCategoryNotInAllowlist, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn test_validate_config_boosted_error_isolated_from_adaptive() {
+        // R-01 scenario 3: boosted error must not be masked by adaptive error.
+        // adaptive_categories is explicitly zeroed so only boosted check can fire.
+        let _scanner = ContentScanner::global();
+        let config = UnimatrixConfig {
+            knowledge: KnowledgeConfig {
+                categories: vec!["lesson-learned".to_string()],
+                boosted_categories: vec!["nonexistent".to_string()], // under test
+                adaptive_categories: vec![],                         // MUST be zeroed
+                freshness_half_life_hours: None,
+            },
+            ..Default::default()
+        };
+        let result = validate_config(&config, Path::new("/fake"));
+        assert!(
+            matches!(
+                result,
+                Err(ConfigError::BoostedCategoryNotInAllowlist { .. })
+            ),
+            "error must be BoostedCategoryNotInAllowlist, not AdaptiveCategoryNotInAllowlist, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn test_validate_config_both_parallel_lists_zeroed_ok() {
+        // R-01 scenario 1: canonical zeroed fixture pattern passes validate_config.
+        let _scanner = ContentScanner::global();
+        let config = UnimatrixConfig {
+            knowledge: KnowledgeConfig {
+                categories: vec!["custom".to_string()],
+                boosted_categories: vec![],
+                adaptive_categories: vec![],
+                freshness_half_life_hours: None,
+            },
+            ..Default::default()
+        };
+        assert!(
+            validate_config(&config, Path::new("/fake")).is_ok(),
+            "zeroed-both-lists pattern with custom category must pass validate_config"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-031: merge_configs adaptive_categories (AC-16, R-07)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_merge_configs_adaptive_project_wins() {
+        // AC-16 scenario 1 / R-07 scenario 1: project non-default adaptive_categories wins.
+        let global = UnimatrixConfig {
+            knowledge: KnowledgeConfig {
+                adaptive_categories: vec!["lesson-learned".to_string()],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let project = UnimatrixConfig {
+            knowledge: KnowledgeConfig {
+                adaptive_categories: vec!["pattern".to_string()],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.knowledge.adaptive_categories,
+            vec!["pattern".to_string()],
+            "project adaptive_categories must win over global"
+        );
+    }
+
+    #[test]
+    fn test_merge_configs_adaptive_global_fallback() {
+        // AC-16 scenario 2 / R-07 scenario 2: project Default (vec![]) == Default (vec![]),
+        // so project value (vec![]) != default (vec![]) is false, global wins.
+        // Wait — Default returns vec![], and project is also vec![]: vec![] != vec![] is false,
+        // so the else branch returns global.adaptive_categories.
+        let global = UnimatrixConfig {
+            knowledge: KnowledgeConfig {
+                adaptive_categories: vec!["lesson-learned".to_string(), "convention".to_string()],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let project = UnimatrixConfig {
+            knowledge: KnowledgeConfig {
+                adaptive_categories: vec![], // Default value: project did not configure adaptive
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.knowledge.adaptive_categories,
+            vec!["lesson-learned".to_string(), "convention".to_string()],
+            "global adaptive_categories must be used when project uses Default (vec![])"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-031: default_boosted_categories_set helper
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_default_boosted_categories_set_contains_lesson_learned() {
+        let set = default_boosted_categories_set();
+        assert!(
+            set.contains("lesson-learned"),
+            "default_boosted_categories_set must contain 'lesson-learned'"
+        );
+        assert_eq!(
+            set.len(),
+            1,
+            "default_boosted_categories_set must have exactly 1 element"
         );
     }
 

@@ -390,16 +390,33 @@ fn test_default_config_categories_match_initial_categories() {
     );
 }
 
-/// AC-01: Default boosted_categories is ["lesson-learned"] for backward compat.
+/// crt-031 AC-17/R-11: Serde field-default fn produces ["lesson-learned"] for boosted_categories
+/// when [knowledge] section is present but field is absent. Rust Default::default() returns [].
+/// The two are intentionally different — see ADR-001 decision 4.
 #[test]
 fn test_default_config_boosted_categories_is_lesson_learned() {
-    use unimatrix_server::infra::config::UnimatrixConfig;
+    use unimatrix_server::infra::config::{KnowledgeConfig, UnimatrixConfig};
 
-    let config = UnimatrixConfig::default();
+    // Serde path: [knowledge] section present but no boosted_categories field
+    // → serde field-default fn fires → ["lesson-learned"].
+    // Note: entirely absent [knowledge] section uses struct Default → vec![].
+    let serde_config: UnimatrixConfig =
+        toml::from_str("[knowledge]\ncategories = [\"lesson-learned\"]\n")
+            .expect("TOML with [knowledge] but no boosted_categories must parse");
     assert_eq!(
-        config.knowledge.boosted_categories,
+        serde_config.knowledge.boosted_categories,
         vec!["lesson-learned".to_string()],
-        "Default boosted_categories must be ['lesson-learned'] for backward compat"
+        "absent boosted_categories within [knowledge] must produce serde default [\"lesson-learned\"]"
+    );
+
+    // Rust Default path: Default::default() → [] (ADR-001 decision 4, crt-031)
+    assert!(
+        KnowledgeConfig::default().boosted_categories.is_empty(),
+        "KnowledgeConfig::default().boosted_categories must be [] (not [\"lesson-learned\"])"
+    );
+    assert!(
+        KnowledgeConfig::default().adaptive_categories.is_empty(),
+        "KnowledgeConfig::default().adaptive_categories must be []"
     );
 }
 
