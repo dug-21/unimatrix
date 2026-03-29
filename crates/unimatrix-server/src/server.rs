@@ -2970,4 +2970,62 @@ mod tests {
         .expect("restore_with_audit timed out — GH #308 regression")
         .expect("restore_with_audit returned error");
     }
+
+    // -- vnc-012 AC-10: schema snapshot — #[schemars(with = "T")] preserves type: integer --
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_schema_integer_type_preserved_for_all_nine_fields() {
+        use std::collections::HashMap;
+
+        let server = make_server().await;
+        let tools = server.tool_router.list_all();
+
+        // Build map: tool_name -> input_schema as serde_json::Value
+        let schema_by_name: HashMap<String, serde_json::Value> = tools
+            .into_iter()
+            .map(|t| {
+                let schema_val = serde_json::Value::Object(t.input_schema.as_ref().clone());
+                (t.name.to_string(), schema_val)
+            })
+            .collect();
+
+        // The 9 fields to verify as (tool_name, field_name) pairs
+        let checks: &[(&str, &str)] = &[
+            ("context_get", "id"),
+            ("context_deprecate", "id"),
+            ("context_quarantine", "id"),
+            ("context_correct", "original_id"),
+            ("context_lookup", "id"),
+            ("context_lookup", "limit"),
+            ("context_search", "k"),
+            ("context_briefing", "max_tokens"),
+            // RetrospectiveParams tool name verified from #[tool(name = "context_cycle_review")]
+            ("context_cycle_review", "evidence_limit"),
+        ];
+
+        for (tool_name, field_name) in checks {
+            let schema = schema_by_name
+                .get(*tool_name)
+                .unwrap_or_else(|| panic!("AC-10: tool {tool_name} not found in schema_by_name"));
+
+            let field_type = &schema["properties"][field_name]["type"];
+            assert_eq!(
+                field_type, "integer",
+                "AC-10: field {field_name} on {tool_name} must have type: integer in JSON schema; \
+                 got: {field_type}. Check #[schemars(with = ...)] attribute."
+            );
+        }
+
+        // Special check: evidence_limit minimum (NFR-05 permits minimum: 0)
+        // The schemars(with = "Option<u64>") annotation may emit minimum: 0. Assert it is
+        // present and equals 0 if present, otherwise accept absence.
+        let el_props = &schema_by_name["context_cycle_review"]["properties"]["evidence_limit"];
+        if let Some(minimum) = el_props.get("minimum") {
+            assert_eq!(
+                minimum,
+                &serde_json::json!(0),
+                "AC-10: evidence_limit minimum must be 0 if present (NFR-05)"
+            );
+        }
+    }
 }
