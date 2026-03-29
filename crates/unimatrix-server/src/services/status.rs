@@ -16,6 +16,7 @@ use unimatrix_adapt::AdaptationService;
 
 use unimatrix_observe::domain::DomainPackRegistry;
 
+use crate::infra::categories::CategoryAllowlist;
 use crate::infra::coherence;
 use crate::infra::config::InferenceConfig;
 use crate::infra::contradiction;
@@ -188,6 +189,12 @@ pub(crate) struct StatusService {
     /// col-023 (ADR-002): startup-configured domain pack registry threaded into
     /// SqlObservationSource at the observation stats call site.
     observation_registry: Arc<DomainPackRegistry>,
+    /// crt-031: operator-configured lifecycle policy for per-category adaptive/pinned labeling.
+    ///
+    /// Threaded from startup wiring via ServiceLayer::new() and run_single_tick.
+    /// All four StatusService::new() construction sites must supply the operator-loaded Arc
+    /// (never a freshly constructed CategoryAllowlist::new() which ignores operator config).
+    category_allowlist: Arc<CategoryAllowlist>,
 }
 
 /// Result of maintenance operations.
@@ -226,6 +233,7 @@ impl StatusService {
         contradiction_cache: ContradictionScanCacheHandle,
         rayon_pool: Arc<RayonPool>,
         observation_registry: Arc<DomainPackRegistry>,
+        category_allowlist: Arc<CategoryAllowlist>, // crt-031: NEW final param
     ) -> Self {
         StatusService {
             store,
@@ -237,6 +245,7 @@ impl StatusService {
             contradiction_cache,
             rayon_pool,
             observation_registry,
+            category_allowlist,
         }
     }
 
@@ -539,6 +548,7 @@ impl StatusService {
             extraction_stats: None,
             coherence_by_source: Vec::new(),
             effectiveness: None,
+            category_lifecycle: Vec::new(), // populated after Phase 8 via category_allowlist
         };
 
         // Phase 2: Contradiction scan — read from cache populated by background tick.
@@ -886,6 +896,36 @@ impl StatusService {
             }
         };
         report.effectiveness = effectiveness;
+
+        // --- crt-031: populate category_lifecycle ---
+        // Call list_categories() once to get all categories (sorted alphabetically).
+        // is_adaptive() reads only the adaptive lock — no contention on categories lock.
+        //
+        // Note (crt-031, ADR-001 decision 2): category_lifecycle contains all categories.
+        // The formatter in mcp/response/status.rs uses this vec differently per format:
+        //   Summary: lists only adaptive categories (pinned is the silent default — avoids noise).
+        //   JSON:    lists all categories with their lifecycle label.
+        // This asymmetry is intentional and locked by golden-output tests (AC-09).
+        {
+            let all_categories: Vec<String> = self.category_allowlist.list_categories();
+            let mut lifecycle: Vec<(String, String)> = all_categories
+                .into_iter()
+                .map(|cat| {
+                    let label = if self.category_allowlist.is_adaptive(&cat) {
+                        "adaptive".to_string()
+                    } else {
+                        "pinned".to_string()
+                    };
+                    (cat, label)
+                })
+                .collect();
+            // Alphabetical sort by category name (R-08: non-deterministic HashSet iteration
+            // causes flaky golden tests). list_categories() already returns sorted output,
+            // but sort defensively against any future ordering change.
+            lifecycle.sort_by(|a, b| a.0.cmp(&b.0));
+            report.category_lifecycle = lifecycle;
+        }
+        // --- end crt-031 ---
 
         Ok((report, active_entries))
     }
@@ -1883,6 +1923,8 @@ mod maintenance_snapshot_tests {
         let observation_registry =
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code());
         let confidence_params = Arc::new(unimatrix_engine::confidence::ConfidenceParams::default());
+        // crt-031: supply default lifecycle policy for test helper.
+        let category_allowlist = Arc::new(crate::infra::categories::CategoryAllowlist::new());
         StatusService::new(
             Arc::clone(store),
             vector_index,
@@ -1893,6 +1935,7 @@ mod maintenance_snapshot_tests {
             contradiction_cache,
             test_rayon_pool,
             observation_registry,
+            category_allowlist,
         )
     }
 
@@ -2035,6 +2078,8 @@ mod bugfix_444_tests {
         let observation_registry =
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code());
         let confidence_params = Arc::new(unimatrix_engine::confidence::ConfidenceParams::default());
+        // crt-031: supply default lifecycle policy for test helper.
+        let category_allowlist = Arc::new(crate::infra::categories::CategoryAllowlist::new());
         StatusService::new(
             Arc::clone(store),
             vector_index,
@@ -2045,6 +2090,7 @@ mod bugfix_444_tests {
             contradiction_cache,
             test_rayon_pool,
             observation_registry,
+            category_allowlist,
         )
     }
 
@@ -2231,5 +2277,137 @@ mod bugfix_444_tests {
             config.heal_pass_batch_size, 50,
             "heal_pass_batch_size must reflect configured value"
         );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// crt-031: category_lifecycle unit tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests_crt031 {
+    use std::sync::Arc;
+
+    use unimatrix_adapt::AdaptationService;
+    use unimatrix_core::{VectorConfig, VectorIndex};
+    use unimatrix_store::SqlxStore as Store;
+
+    use crate::infra::categories::CategoryAllowlist;
+    use crate::infra::embed_handle::EmbedServiceHandle;
+    use crate::services::confidence::ConfidenceState;
+    use crate::services::contradiction_cache::new_contradiction_cache_handle;
+    use crate::services::status::StatusService;
+
+    fn make_status_service_with_allowlist(
+        store: &Arc<Store>,
+        category_allowlist: Arc<CategoryAllowlist>,
+    ) -> StatusService {
+        let vector_index = Arc::new(
+            VectorIndex::new(Arc::clone(store), VectorConfig::default()).expect("vector index"),
+        );
+        let embed_service = EmbedServiceHandle::new();
+        let adapt_service = Arc::new(AdaptationService::new(
+            unimatrix_adapt::AdaptConfig::default(),
+        ));
+        let confidence_state = Arc::new(std::sync::RwLock::new(ConfidenceState::default()));
+        let contradiction_cache = new_contradiction_cache_handle();
+        let test_rayon_pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "crt031_pool")
+                .expect("test rayon pool construction"),
+        );
+        let observation_registry =
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code());
+        let confidence_params = Arc::new(unimatrix_engine::confidence::ConfidenceParams::default());
+        StatusService::new(
+            Arc::clone(store),
+            vector_index,
+            embed_service,
+            adapt_service,
+            confidence_state,
+            confidence_params,
+            contradiction_cache,
+            test_rayon_pool,
+            observation_registry,
+            category_allowlist,
+        )
+    }
+
+    async fn open_store(dir: &tempfile::TempDir) -> Arc<Store> {
+        Arc::new(
+            Store::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            )
+            .await
+            .expect("store open"),
+        )
+    }
+
+    /// R-02 scenario 3 + AC-09: compute_report populates category_lifecycle correctly.
+    /// lesson-learned is adaptive, others pinned.
+    #[tokio::test]
+    async fn test_status_service_compute_report_has_lifecycle() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+        // Build allowlist from the default set, with lesson-learned as adaptive.
+        let default_cats = CategoryAllowlist::new().list_categories();
+        let allowlist = Arc::new(CategoryAllowlist::from_categories_with_policy(
+            default_cats,
+            vec!["lesson-learned".to_string()],
+        ));
+        let svc = make_status_service_with_allowlist(&store, allowlist);
+
+        let result = svc.compute_report(None, None, false).await;
+        assert!(result.is_ok(), "compute_report must succeed on empty store");
+        let (report, _) = result.unwrap();
+
+        assert!(
+            !report.category_lifecycle.is_empty(),
+            "category_lifecycle must be populated"
+        );
+
+        // lesson-learned must be adaptive
+        let ll = report
+            .category_lifecycle
+            .iter()
+            .find(|(cat, _)| cat == "lesson-learned")
+            .expect("lesson-learned must be present");
+        assert_eq!(ll.1, "adaptive", "lesson-learned must be labeled adaptive");
+
+        // decision must be pinned
+        let dec = report
+            .category_lifecycle
+            .iter()
+            .find(|(cat, _)| cat == "decision")
+            .expect("decision must be present");
+        assert_eq!(dec.1, "pinned", "decision must be labeled pinned");
+    }
+
+    /// R-08: category_lifecycle is sorted alphabetically in compute_report output.
+    #[tokio::test]
+    async fn test_status_service_compute_report_sorted_lifecycle() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+        let default_cats = CategoryAllowlist::new().list_categories();
+        let allowlist = Arc::new(CategoryAllowlist::from_categories_with_policy(
+            default_cats,
+            vec!["lesson-learned".to_string()],
+        ));
+        let svc = make_status_service_with_allowlist(&store, allowlist);
+
+        let (report, _) = svc
+            .compute_report(None, None, false)
+            .await
+            .expect("compute_report must succeed");
+
+        let lifecycle = &report.category_lifecycle;
+        for i in 1..lifecycle.len() {
+            assert!(
+                lifecycle[i].0 >= lifecycle[i - 1].0,
+                "category_lifecycle must be sorted alphabetically: {:?} is not >= {:?}",
+                lifecycle[i].0,
+                lifecycle[i - 1].0
+            );
+        }
     }
 }

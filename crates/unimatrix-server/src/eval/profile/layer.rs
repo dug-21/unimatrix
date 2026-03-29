@@ -299,6 +299,17 @@ impl EvalServiceLayer {
         let nli_top_k = profile.config_overrides.inference.nli_top_k;
         let nli_enabled = profile.config_overrides.inference.nli_enabled;
 
+        let eval_adaptive_categories: Vec<String> = profile
+            .config_overrides
+            .knowledge
+            .adaptive_categories
+            .clone();
+        let eval_category_allowlist = Arc::new(
+            crate::infra::categories::CategoryAllowlist::from_categories_with_policy(
+                profile.config_overrides.knowledge.categories.clone(),
+                eval_adaptive_categories,
+            ),
+        );
         let inner = ServiceLayer::with_rate_config(
             Arc::clone(&store_arc),
             Arc::clone(&vector_index),
@@ -319,6 +330,8 @@ impl EvalServiceLayer {
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
             // GH #311: default params for eval profiles (no operator config in eval context).
             Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
+            // crt-031: lifecycle policy from profile config overrides.
+            eval_category_allowlist,
         );
 
         Ok(EvalServiceLayer {

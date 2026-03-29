@@ -624,7 +624,7 @@ mod tests {
             adapt_service,
             audit,
             usage_dedup,
-            std::collections::HashSet::from(["lesson-learned".to_string()]),
+            crate::infra::config::default_boosted_categories_set(),
             test_pool,
             crate::infra::nli_handle::NliServiceHandle::new(),
             20,    // nli_top_k
@@ -632,6 +632,8 @@ mod tests {
             Arc::new(crate::infra::config::InferenceConfig::default()),
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
             Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
+            // crt-031: default lifecycle policy for test helper.
+            Arc::new(crate::infra::categories::CategoryAllowlist::new()),
         )
     }
 
