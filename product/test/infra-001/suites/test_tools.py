@@ -1856,3 +1856,64 @@ def test_status_pending_cycle_reviews_field_present(server):
     )
 
 
+# === vnc-012: String-encoded integer coercion (IT-01, IT-02) ================
+
+@pytest.mark.smoke
+def test_get_with_string_id(server):
+    """IT-01 (vnc-012): context_get accepts string-encoded id over stdio transport.
+
+    Stores an entry and retrieves it using a JSON string id (e.g., "42" instead of 42).
+    This exercises the full rmcp Parameters<T> deserialization path over stdio --
+    the exact path where the live bug fires.
+    Must return success and non-empty content.
+    """
+    store_resp = server.context_store(
+        "IT-01 string id coercion test content",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(store_resp)
+    entry_id = extract_entry_id(store_resp)
+
+    string_id = str(entry_id)
+    get_resp = server.call_tool(
+        "context_get",
+        {"id": string_id, "agent_id": "human"},
+    )
+
+    assert_tool_success(get_resp)
+    text = get_result_text(get_resp)
+    assert len(text) > 0, "IT-01: content must be non-empty"
+    assert "IT-01 string id coercion test content" in text, (
+        "IT-01: retrieved content must match stored content"
+    )
+
+
+@pytest.mark.smoke
+def test_deprecate_with_string_id(server):
+    """IT-02 (vnc-012): context_deprecate accepts string-encoded id over stdio transport.
+
+    Stores an entry and deprecates it using a JSON string id.
+    This exercises the full rmcp Parameters<T> deserialization path for a write tool.
+    Must return success.
+    """
+    store_resp = server.context_store(
+        "IT-02 string id coercion deprecate test content",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(store_resp)
+    entry_id = extract_entry_id(store_resp)
+
+    string_id = str(entry_id)
+    deprecate_resp = server.call_tool(
+        "context_deprecate",
+        {"id": string_id, "agent_id": "human", "reason": "IT-02 coercion test"},
+    )
+
+    assert_tool_success(deprecate_resp)
+
