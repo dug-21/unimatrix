@@ -376,6 +376,43 @@ fn test_prerequisite_wrong_direction_does_not_propagate() {
     );
 }
 
+/// Proof that Direction::Outgoing is the deliberate correct choice for reverse-walk PPR.
+///
+/// Graph: A=1 → B=2 via Supports (A supports B).
+/// Seed: B only.
+///
+/// WHY Direction::Outgoing achieves reverse-walk behavior:
+///   A points to B (Outgoing edge from A), so when iterating A's outgoing neighbors we
+///   find B. A therefore accumulates from B's seed score. Mass flows *backward*: seeding
+///   B surfaces A — exactly the goal (surface lesson-learneds that support a seeded decision).
+///
+///   If Direction::Incoming were used instead, B would pull from A (B's incoming neighbor).
+///   A starts at 0.0 and B is already the seed, so no additional mass would reach A via
+///   the edge — A would score only 0.0 from the edge term, staying at zero (no teleportation
+///   because A is not in seed_scores).
+///
+/// This test FAILS if Direction::Incoming is substituted — that is the proof that Outgoing
+/// is the deliberate correct choice.
+#[test]
+fn test_ppr_outgoing_not_incoming_is_correct_direction() {
+    // Minimal graph: single Supports edge A=1 → B=2 (A supports B).
+    let graph = make_graph_with_edges(&[(1, 2, RelationType::Supports, 1.0)]);
+
+    // Seed exclusively on B (the decision that A supports).
+    let seed_scores: HashMap<u64, f64> = [(2u64, 1.0)].into_iter().collect();
+
+    let result = personalized_pagerank(&graph, &seed_scores, 0.85, 20);
+
+    // A must receive non-trivial PPR mass: Direction::Outgoing lets A accumulate from B's seed.
+    // This assertion fails if Direction::Incoming is used (A would score 0.0 via the edge).
+    assert!(
+        result.get(&1).copied().unwrap_or(0.0) > 0.0,
+        "A must receive mass from B's seed via Direction::Outgoing (reverse walk). \
+         A score = {}. If this is 0.0, Direction::Incoming was used instead — wrong direction.",
+        result.get(&1).copied().unwrap_or(0.0)
+    );
+}
+
 // ---- AC-05 / R-04: Determinism ----
 
 /// T-PPR-10: Same inputs, two calls, identical output (exact HashMap equality).

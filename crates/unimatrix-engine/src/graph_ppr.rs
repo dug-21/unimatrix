@@ -31,11 +31,12 @@ use crate::graph::{RelationType, TypedRelationGraph};
 /// All graph traversal uses `edges_of_type()` exclusively (AC-02, SR-01 boundary).
 /// Direct `.edges_directed()` or `.neighbors_directed()` calls are prohibited here.
 ///
-/// **PPR direction**: this implementation uses outgoing-edge traversal from each node.
-/// For edge A→B (Supports), node A's score accumulates B's current score — so when B
-/// is a highly-scored seed, supporters like A gain mass. This is the reverse random-walk
-/// formulation that surfaces in-neighbors of seeds, consistent with ADR-003's goal of
-/// surfacing lesson-learned entries A that support seed decisions B.
+/// **PPR direction**: Pull from outgoing targets implements the reverse random walk (transpose PPR).
+/// For an edge A→B (Supports: A supports B), node A accumulates mass from B's score because A
+/// points to B (Direction::Outgoing). When B (a decision) is seeded, mass flows backward to A
+/// (the lesson-learned that supports B). Direction::Incoming would implement standard forward PPR:
+/// B would pull from A, propagating mass away from seeds toward their successors — the opposite
+/// of the desired behavior.
 pub fn personalized_pagerank(
     graph: &TypedRelationGraph,
     seed_scores: &HashMap<u64, f64>,
