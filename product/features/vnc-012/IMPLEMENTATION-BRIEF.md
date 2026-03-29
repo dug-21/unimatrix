@@ -17,21 +17,24 @@
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| mcp/serde_util.rs (new) | pseudocode/serde_util.md | test-plan/serde_util.md |
-| mcp/tools.rs (modified) | pseudocode/tools.md | test-plan/tools.md |
-| mcp/mod.rs (modified) | pseudocode/mod.md | test-plan/mod.md |
-| infra-001/test_tools.py (modified) | pseudocode/infra_001.md | test-plan/infra_001.md |
+| mcp/serde_util.rs (new) | product/features/vnc-012/pseudocode/serde_util.md | product/features/vnc-012/test-plan/serde_util.md |
+| mcp/tools.rs (modified) | product/features/vnc-012/pseudocode/tools.md | product/features/vnc-012/test-plan/tools.md |
+| mcp/mod.rs (modified) | product/features/vnc-012/pseudocode/mod.md | product/features/vnc-012/test-plan/mod.md |
+| infra-001/test_tools.py (modified) | product/features/vnc-012/pseudocode/infra_001.md | product/features/vnc-012/test-plan/infra_001.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/vnc-012/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/vnc-012/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component
-Map lists the four components confirmed by the architecture. Actual file paths are filled
-during delivery.
+### OQ-04 Resolution (recorded Stage 3a)
+`RequestContext<RoleServer>` is not constructible outside rmcp (`Peer::new` is `pub(crate)`).
+AC-13 is implemented as a direct `serde_json::from_value::<GetParams>(args)` call in the
+`tools.rs` `#[cfg(test)]` block — the exact line executed by `Parameters<T>: FromContextPart`.
+AC-10 schema snapshot requires a `#[cfg(test)] pub(crate) fn tool_router_for_test()` accessor
+added to `UnimatrixServer` in `server.rs`.
 
 ---
 
