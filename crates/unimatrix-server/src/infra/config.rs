@@ -355,7 +355,7 @@ pub struct InferenceConfig {
     #[serde(default = "default_w_conf")]
     pub w_conf: f64,
 
-    /// Fusion weight for co-access affinity signal (normalized usage pattern). Default: 0.10.
+    /// Fusion weight for co-access affinity signal (normalized usage pattern). Default: 0.0.
     #[serde(default = "default_w_coac")]
     pub w_coac: f64,
 
@@ -364,7 +364,7 @@ pub struct InferenceConfig {
     pub w_util: f64,
 
     /// Fusion weight for provenance signal (boosted-category hint). Default: 0.05.
-    /// Defaults sum to 0.95; the remaining 0.05 is headroom for WA-2's phase boost term.
+    /// Defaults sum to 0.85; the remaining 0.15 is headroom for WA-2's phase boost term.
     #[serde(default = "default_w_prov")]
     pub w_prov: f64,
 
@@ -378,7 +378,7 @@ pub struct InferenceConfig {
     /// Raised from 0.0 (W3-1 placeholder, crt-026 ADR-003) to 0.05 by col-031
     /// once PhaseFreqTable provides the signal source (ADR-004).
     /// Not part of the six-weight sum constraint; additive outside.
-    /// Total weight sum with defaults: 0.95 + 0.02 + 0.05 = 1.02.
+    /// Total weight sum with defaults: 0.85 + 0.02 + 0.05 = 0.92.
     #[serde(default = "default_w_phase_explicit")]
     pub w_phase_explicit: f64,
 
@@ -546,7 +546,7 @@ impl Default for InferenceConfig {
             w_sim: 0.25,
             w_nli: 0.35,
             w_conf: 0.15,
-            w_coac: 0.10,
+            w_coac: 0.0,
             w_util: 0.05,
             w_prov: 0.05,
             w_phase_histogram: 0.02, // crt-026: full session signal budget (ADR-004)
@@ -619,7 +619,7 @@ fn default_w_conf() -> f64 {
 }
 
 fn default_w_coac() -> f64 {
-    0.10
+    0.0
 }
 
 fn default_w_util() -> f64 {
@@ -638,7 +638,7 @@ fn default_w_phase_histogram() -> f64 {
 // col-031: raised from 0.0 to 0.05 — PhaseFreqTable activates this term (ADR-004).
 // Previously reserved as W3-1 placeholder at 0.0 (crt-026, ADR-003).
 // Additive term outside the six-weight sum constraint (ADR-004, crt-026).
-// Total weight sum with defaults: 0.95 + 0.02 + 0.05 = 1.02.
+// Total weight sum with defaults: 0.85 + 0.02 + 0.05 = 0.92.
 fn default_w_phase_explicit() -> f64 {
     0.05
 }
@@ -4726,7 +4726,7 @@ categories = ["some-cat"]
             w_sim: 0.25,
             w_nli: 0.35,
             w_conf: 0.15,
-            w_coac: 0.10,
+            w_coac: 0.0,
             w_util: 0.05,
             w_prov: 0.05,
             ..InferenceConfig::default()
@@ -4752,8 +4752,8 @@ categories = ["some-cat"]
             "w_conf default must be 0.15"
         );
         assert!(
-            (inf.w_coac - 0.10).abs() < 1e-9,
-            "w_coac default must be 0.10"
+            inf.w_coac.abs() < 1e-9,
+            "w_coac default must be 0.0"
         );
         assert!(
             (inf.w_util - 0.05).abs() < 1e-9,
@@ -4880,7 +4880,7 @@ categories = ["some-cat"]
             (inf.w_sim - 0.25).abs() < 1e-9,
             "unset w_sim must default to 0.25"
         );
-        // Total sum: 0.40 + 0.25 + 0.15 + 0.10 + 0.05 + 0.05 = 1.00 <= 1.0
+        // Total sum: 0.40 + 0.25 + 0.15 + 0.00 + 0.05 + 0.05 = 0.90 <= 1.0
         let sum = inf.w_sim + inf.w_nli + inf.w_conf + inf.w_coac + inf.w_util + inf.w_prov;
         assert!(
             sum <= 1.0 + 1e-9,
@@ -5232,8 +5232,9 @@ categories = ["some-cat"]
         );
     }
 
-    // T-CFG-03: six-weight sum is unchanged; phase fields are additive outside the constraint (ADR-004)
-    // col-031: w_phase_explicit raised to 0.05, so total sum is now 0.95 + 0.02 + 0.05 = 1.02.
+    // T-CFG-03: six-weight sum is unchanged by phase fields; phase fields are additive (ADR-004)
+    // crt-032: w_coac zeroed (PPR transition Phase 2), so six-weight sum is now 0.85.
+    // col-031: w_phase_explicit raised to 0.05, so total sum is now 0.85 + 0.02 + 0.05 = 0.92.
     #[test]
     fn test_inference_config_six_weight_sum_unchanged_by_phase_fields() {
         let cfg = InferenceConfig::default();
@@ -5241,19 +5242,19 @@ categories = ["some-cat"]
             cfg.w_sim + cfg.w_nli + cfg.w_conf + cfg.w_coac + cfg.w_util + cfg.w_prov;
         let total_with_phase = six_weight_sum + cfg.w_phase_histogram + cfg.w_phase_explicit;
         assert!(
-            (six_weight_sum - 0.95).abs() < f64::EPSILON,
-            "sum of six original weights must still be 0.95; got {six_weight_sum}"
+            (six_weight_sum - 0.85).abs() < f64::EPSILON,
+            "sum of six original weights must be 0.85 (crt-032: w_coac zeroed); got {six_weight_sum}"
         );
-        // col-031: w_phase_explicit is 0.05, so total = 0.95 + 0.02 + 0.05 = 1.02 (ADR-004).
+        // crt-032: w_coac zeroed, so total = 0.85 + 0.02 + 0.05 = 0.92 (ADR-004, col-031).
         assert!(
-            (total_with_phase - 1.02).abs() < f64::EPSILON,
-            "total including phase weights must be 1.02 (col-031, ADR-004); got {total_with_phase}"
+            (total_with_phase - 0.92).abs() < f64::EPSILON,
+            "total including phase weights must be 0.92 (crt-032, col-031, ADR-004); got {total_with_phase}"
         );
         // Verify the six-weight sum check in validate() does NOT include phase fields
         // (ADR-004: phase fields are additive, outside the <= 1.0 constraint)
         assert!(
             cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
-            "default config with total=1.02 must pass validate() (six-weight check uses only original six)"
+            "default config with total=0.92 must pass validate() (six-weight check uses only original six)"
         );
     }
 
