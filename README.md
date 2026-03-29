@@ -242,8 +242,12 @@ preset = "collaborative"   # default — matches current compiled behavior
 # Values: lowercase, [a-z0-9_-], max 64 chars, up to 64 categories total.
 categories = ["lesson-learned", "decision", "convention",
               "pattern", "procedure", "duties", "reference"]
-# Categories that receive a provenance boost in search ranking.
+# Categories surfaced more prominently in search re-ranking (provenance score boost).
 boosted_categories = ["lesson-learned"]
+# Categories eligible for automated lifecycle management (retention, auto-deprecation).
+# All other categories require explicit operator action to deprecate.
+# Prerequisite for signal-driven retention (#409). Default: ["lesson-learned"].
+adaptive_categories = ["lesson-learned"]
 # Freshness decay rate. Overrides the preset's built-in value when set.
 freshness_half_life_hours = 8760.0
 
