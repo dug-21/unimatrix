@@ -274,7 +274,8 @@ impl EvalServiceLayer {
         // ----------------------------------------------------------------
         // Step 12: Boosted categories
         // ----------------------------------------------------------------
-        let boosted_categories: HashSet<String> = HashSet::from(["lesson-learned".to_string()]);
+        let boosted_categories: HashSet<String> =
+            profile.config_overrides.knowledge.boosted_categories.iter().cloned().collect();
 
         // ----------------------------------------------------------------
         // Step 13: Build ServiceLayer via with_rate_config (TestHarness pattern)
