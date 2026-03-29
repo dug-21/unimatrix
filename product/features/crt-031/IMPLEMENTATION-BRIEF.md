@@ -1,4 +1,4 @@
-# crt-031: Category Lifecycle Policy (Pinned vs Adaptive) — Implementation Brief
+# crt-031 Implementation Brief: Category Lifecycle Policy + boosted_categories De-hardcoding
 
 ## Source Document Links
 
@@ -14,11 +14,74 @@
 
 ## Goal
 
-Introduce a two-tier categorical lifecycle policy (`pinned` vs `adaptive`) that distinguishes
-knowledge categories eligible for automated management from those requiring explicit operator
-action. The policy is config-driven, validated at startup, exposed in `context_status`, and
-establishes a tested insertion point in the maintenance tick for the future auto-deprecation
-logic in #409.
+Introduce a two-tier lifecycle policy (`adaptive` vs `pinned`) into `CategoryAllowlist`,
+driven by a new `adaptive_categories` field in `KnowledgeConfig`, so that future automated
+retention logic (#409) has a categorical guard before touching any entry. Simultaneously,
+consolidate the seven hardcoded `HashSet::from(["lesson-learned"...])` literals scattered
+across test infrastructure and the eval harness into a single `default_boosted_categories_set()`
+helper, expressing the operative default exclusively via a serde deserialization function rather
+than the Rust `Default` impl. Zero net behavior change for any operator not adding
+`adaptive_categories` to their config.
+
+---
+
+## CRITICAL RISKS — Read Before Writing Any Code
+
+### R-02 (Critical): StatusService::new() has FOUR construction sites
+
+The architecture specifies wiring `Arc<CategoryAllowlist>` through `ServiceLayer::new()`. The
+risk strategy (R-02) confirmed three additional direct construction sites that bypass
+`ServiceLayer` entirely:
+
+| # | Site | File | Approx Line |
+|---|------|------|-------------|
+| 1 | `ServiceLayer::new()` | `services/mod.rs` | startup path |
+| 2 | `run_single_tick` | `background.rs` | ~446 |
+| 3 | Test helper 1 | `services/status.rs` | ~1886 |
+| 4 | Test helper 2 | `services/status.rs` | ~2038 |
+
+**Action**: Run `grep -rn "StatusService::new" crates/` as the first step and enumerate all
+matches. Site 2 (`run_single_tick`) will NOT produce a compile error if the implementer inserts
+`CategoryAllowlist::new()` inline — it silently carries the default `["lesson-learned"]` policy
+rather than the operator-configured policy. Sites 3 and 4 will fail to compile after the
+constructor signature changes (compile-time catch). All four sites must pass the operator-loaded
+`Arc<CategoryAllowlist>`, not a freshly constructed default.
+
+### R-11 (Critical): Pre-implementation grep for KnowledgeConfig::default() callers
+
+FR-19 is a mandatory blocking first step before any code change. Run:
+
+```
+grep -rn "KnowledgeConfig::default()" crates/
+grep -rn "UnimatrixConfig::default()" crates/
+```
+
+Changing `KnowledgeConfig::Default` to return `boosted_categories: vec![]` does NOT produce a
+compile error. Any test that constructs via `Default` and implicitly expects
+`boosted_categories == ["lesson-learned"]` will fail with an opaque assertion error that looks
+unrelated to the Default change. Known affected site: `main_tests.rs` lines 393-404.
+Document the grep output in the PR description (AC-26).
+
+### R-01 (Critical): validate_config parallel-list collision
+
+Both `boosted_categories` and `adaptive_categories` default (via serde) to `["lesson-learned"]`.
+Every `validate_config` test fixture that constructs `KnowledgeConfig` with a custom `categories`
+list MUST explicitly zero BOTH parallel lists or `validate_config` fires the wrong error first:
+
+```rust
+// Required pattern for all test fixtures with custom categories:
+KnowledgeConfig {
+    categories: vec![/* test-specific */],
+    boosted_categories: vec![],    // zero — suppress boosted cross-check
+    adaptive_categories: vec![],   // zero — suppress adaptive cross-check
+    freshness_half_life_hours: None,
+}
+```
+
+Grep `KnowledgeConfig {` across `crates/` and audit every existing fixture. Any fixture that
+was already explicitly setting `boosted_categories: vec![]` for the workaround must also gain
+`adaptive_categories: vec![]`. Fixtures using `..Default::default()` spread are safe after the
+Default impl change (Default now returns `[]` for both fields).
 
 ---
 
@@ -26,11 +89,13 @@ logic in #409.
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| KnowledgeConfig + validate_config + merge_configs | pseudocode/config.md | test-plan/config.md |
-| CategoryAllowlist (categories/lifecycle module) | pseudocode/categories.md | test-plan/categories.md |
-| StatusReport + format_status_report + StatusService | pseudocode/status.md | test-plan/status.md |
-| maintenance_tick guard stub | pseudocode/background.md | test-plan/background.md |
-| main.rs call site updates | pseudocode/main.md | test-plan/main.md |
+| infra/categories (module split + lifecycle policy) | pseudocode/categories.md | test-plan/categories.md |
+| infra/config (KnowledgeConfig + validate_config + merge_configs + helper) | pseudocode/config.md | test-plan/config.md |
+| main.rs startup wiring | pseudocode/main.md | test-plan/main.md |
+| services/status (StatusService + StatusReport) | pseudocode/status.md | test-plan/status.md |
+| background (maintenance tick stub) | pseudocode/background.md | test-plan/background.md |
+| eval/profile/layer (boosted_categories fix) | pseudocode/eval-layer.md | test-plan/eval-layer.md |
+| test-infrastructure literal removal (6 sites) | pseudocode/test-infra.md | test-plan/test-infra.md |
 
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
@@ -44,61 +109,87 @@ logic in #409.
 ## Resolved Decisions
 
 | Decision | Resolution | Source | ADR File |
-|----------|------------|--------|----------|
-| Constructor API for lifecycle policy injection | Add `from_categories_with_policy(cats, adaptive)` as canonical constructor; `from_categories` and `new()` delegate to it — no call-site breakage | ADR-001 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
-| Config model for `adaptive_categories` | Parallel `Vec<String>` field on `KnowledgeConfig` under `[knowledge]`, following `boosted_categories` pattern exactly | ADR-001 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
-| Internal struct layout for adaptive set | Two independent `RwLock<HashSet<String>>` fields (not a single wide `RwLock<(HashSet, HashSet)>`) to preserve fine-grained locking from ADR-003 | ADR-001 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
-| `add_category` lifecycle default | Runtime-added categories (domain packs) silently default to `pinned`; no API change | ADR-001 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
-| `context_status` output format asymmetry | Summary text shows only adaptive categories; JSON includes all categories with labels | ADR-001 / SPEC FR-12/FR-13 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
-| `categories.rs` module split | File is 454 lines; adding ~111 lines exceeds 500-line limit; split to `infra/categories/mod.rs` + `infra/categories/lifecycle.rs` before implementation | ARCH SR-01 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
-| `BackgroundTickConfig` composite struct | Deferred out of scope for crt-031; `spawn_background_tick` accepts the 23rd parameter with explicit `#[allow(clippy::too_many_arguments)]` justification | ARCH OQ-05 / SR-02 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
-| FR-17 `merge_configs` field (WARN-01) | Accepted: necessary to prevent silent config drop (FM-04); follows `boosted_categories` pattern; zero product-direction risk | ALIGNMENT WARN-01 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
+|----------|-----------|--------|----------|
+| Constructor API: break from_categories vs add new constructor | Add `from_categories_with_policy(cats, adaptive)` as canonical constructor; `from_categories` delegates with `["lesson-learned"]` default; `new()` unchanged | ADR-001 decision 1 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
+| Config model: new `[lifecycle]` table vs parallel field on `[knowledge]` | Parallel `adaptive_categories: Vec<String>` field on `KnowledgeConfig`; same validation pattern as `boosted_categories` | ADR-001 decision 2 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
+| Internal struct layout: single wide lock vs two independent locks | Two independent `RwLock<HashSet<String>>` fields (`categories` and `adaptive`); no hot-path contention on `validate` | ADR-001 decision 3 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
+| KnowledgeConfig::Default for boosted_categories | `Default` returns `vec![]`; serde default fn `default_boosted_categories()` expresses `["lesson-learned"]` for production config deserialization | ADR-001 decision 4 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
+| StatusService lifecycle wiring: parameter vs new field | `Arc<CategoryAllowlist>` added as new `StatusService` field; follows `observation_registry` pattern (col-023) | ADR-001 decision 5 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
+| OQ-5 (eval harness path) | `profile.config_overrides.knowledge.boosted_categories` is in scope at Step 12 of `layer.rs::from_profile`; one-line fix, no threading change | ARCHITECTURE.md §OQ-5 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
+| OQ-3 (BackgroundTickConfig composite struct) | Deferred out of scope; one additional parameter (22 to 23) accepted with existing `#[allow(clippy::too_many_arguments)]` | ARCHITECTURE.md §Open Questions | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
+| context_status output format asymmetry | Summary text: adaptive categories only. JSON output: all categories with lifecycle labels. Intentional; documented in code comments and locked by golden-output test | ADR-001 decision 2 | product/features/crt-031/architecture/ADR-001-lifecycle-policy-config-model.md |
 
 ---
 
 ## Files to Create / Modify
 
-| File | Action | Summary |
-|------|--------|---------|
-| `crates/unimatrix-server/src/infra/categories/mod.rs` | Create | Module root; re-exports `CategoryAllowlist` and `INITIAL_CATEGORIES` from `lifecycle.rs`; preserves public import path |
-| `crates/unimatrix-server/src/infra/categories/lifecycle.rs` | Create | All `CategoryAllowlist` struct definition, impls, and tests (extracted from `categories.rs`) plus new `adaptive` field, `from_categories_with_policy`, and `is_adaptive` |
-| `crates/unimatrix-server/src/infra/categories.rs` | Delete / Replace | Replaced by the `infra/categories/` module directory |
-| `crates/unimatrix-server/src/infra/config.rs` | Modify | Add `adaptive_categories` field to `KnowledgeConfig`; add `default_adaptive_categories()` fn; add `ConfigError::AdaptiveCategoryNotInAllowlist` variant; extend `validate_config` cross-check; extend `merge_configs` merge block (FR-17) |
-| `crates/unimatrix-server/src/mcp/response/status.rs` | Modify | Add `category_lifecycle: Vec<(String, String)>` to `StatusReport`; add `category_lifecycle: HashMap<String, String>` to `StatusReportJson`; update `format_status_report` for both summary and JSON paths |
-| `crates/unimatrix-server/src/services/status.rs` | Modify | Populate `category_lifecycle` in `StatusService::compute_report()` via `is_adaptive`; confirm or wire `Arc<CategoryAllowlist>` into `StatusService` |
-| `crates/unimatrix-server/src/background.rs` | Modify | Add `Arc<CategoryAllowlist>` parameter to `spawn_background_tick`, `background_tick_loop`, and `maintenance_tick`; add lifecycle guard stub after Step 10 |
-| `crates/unimatrix-server/src/main.rs` | Modify | Update both `from_categories` call sites (~lines 550 and ~940) to `from_categories_with_policy(knowledge_categories, config.knowledge.adaptive_categories.clone())` |
+### New Files
+
+| File | Summary |
+|------|---------|
+| `crates/unimatrix-server/src/infra/categories/mod.rs` | Replaces `categories.rs`: all existing content + `adaptive: RwLock<HashSet<String>>` field, `from_categories_with_policy`, `is_adaptive`, `list_adaptive`, and all tests |
+| `crates/unimatrix-server/src/infra/categories/lifecycle.rs` | Reserved stub for future lifecycle extensions; initially minimal (one comment block) |
+
+### Modified Files
+
+| File | Summary |
+|------|---------|
+| `crates/unimatrix-server/src/infra/categories.rs` | Delete and replace with `infra/categories/` directory (module split) |
+| `crates/unimatrix-server/src/infra/config.rs` | Add `adaptive_categories` to `KnowledgeConfig`; change `Default::boosted_categories` to `vec![]`; add both serde default fns; add `ConfigError::AdaptiveCategoryNotInAllowlist`; add `default_boosted_categories_set()` helper; extend `validate_config` and `merge_configs` |
+| `crates/unimatrix-server/src/main.rs` | Update both `CategoryAllowlist` construction sites to `from_categories_with_policy`; update both `ServiceLayer::new()` sites; update both `spawn_background_tick` sites |
+| `crates/unimatrix-server/src/services/status.rs` | Add `category_allowlist: Arc<CategoryAllowlist>` field; update `StatusService::new()`; update `compute_report()` to populate `category_lifecycle`; update test helpers at ~lines 1886 and ~2038 |
+| `crates/unimatrix-server/src/services/mod.rs` | Update `ServiceLayer::new()` to accept and forward `Arc<CategoryAllowlist>` to `StatusService::new()` |
+| `crates/unimatrix-server/src/mcp/response/status.rs` | Add `category_lifecycle: Vec<(String, String)>` to `StatusReport`; update `Default` impl; update summary formatter (adaptive only) and JSON formatter (all categories); sort alphabetically before storing |
+| `crates/unimatrix-server/src/background.rs` | Add `Arc<CategoryAllowlist>` parameter to `maintenance_tick`, `background_tick_loop`, `spawn_background_tick`; add Step 10b lifecycle guard stub; update `run_single_tick` (~line 446) to pass operator-loaded Arc to `StatusService::new()` |
+| `crates/unimatrix-server/src/eval/profile/layer.rs` | Replace `HashSet::from(["lesson-learned".to_string()])` at line ~277 with `profile.config_overrides.knowledge.boosted_categories.iter().cloned().collect()` |
+| `crates/unimatrix-server/src/server.rs` | Replace `HashSet::from(["lesson-learned"...])` at line ~287 with `crate::infra::config::default_boosted_categories_set()` |
+| `crates/unimatrix-server/src/infra/shutdown.rs` | Replace two `HashSet::from(["lesson-learned"...])` literals at lines ~308 and ~408 with `crate::infra::config::default_boosted_categories_set()` |
+| `crates/unimatrix-server/src/test_support.rs` | Replace `HashSet::from(["lesson-learned"...])` at line ~129 with `crate::infra::config::default_boosted_categories_set()` |
+| `crates/unimatrix-server/src/services/index_briefing.rs` | Replace `HashSet::from(["lesson-learned"...])` at line ~627 with `crate::infra::config::default_boosted_categories_set()` |
+| `crates/unimatrix-server/src/uds/listener.rs` | Replace `HashSet::from(["lesson-learned"...])` at line ~2783 with `crate::infra::config::default_boosted_categories_set()` |
+| `crates/unimatrix-server/src/main_tests.rs` | Rewrite `test_default_config_boosted_categories_is_lesson_learned` (lines 393-404) to parse empty TOML string; add `test_knowledge_config_default_boosted_is_empty` and `test_knowledge_config_default_adaptive_is_empty` |
+| `README.md` | Update `[knowledge]` example block (~lines 239-248) to add `adaptive_categories` entry and update `boosted_categories` comment |
 
 ---
 
 ## Data Structures
 
-### KnowledgeConfig (extended)
-
-```rust
-pub struct KnowledgeConfig {
-    pub categories:               Vec<String>,          // existing
-    pub boosted_categories:       Vec<String>,          // existing
-    #[serde(default = "default_adaptive_categories")]
-    pub adaptive_categories:      Vec<String>,          // NEW — default ["lesson-learned"]
-    pub freshness_half_life_hours: Option<f64>,         // existing
-}
-
-fn default_adaptive_categories() -> Vec<String> {
-    vec!["lesson-learned".to_string()]
-}
-```
-
-### CategoryAllowlist (extended)
+### CategoryAllowlist (infra/categories/mod.rs)
 
 ```rust
 pub struct CategoryAllowlist {
-    categories: RwLock<HashSet<String>>,    // existing: presence validation
-    adaptive:   RwLock<HashSet<String>>,    // NEW: lifecycle policy subset
+    categories: RwLock<HashSet<String>>,  // existing — hot path for validate()
+    adaptive:   RwLock<HashSet<String>>,  // new — lifecycle policy set
 }
 ```
 
-### ConfigError (extended)
+Two independent locks. `is_adaptive` reads only `adaptive`; `validate` reads only `categories`.
+No added contention on the hot path.
+
+### KnowledgeConfig (infra/config.rs)
+
+```rust
+pub struct KnowledgeConfig {
+    pub categories: Vec<String>,
+    #[serde(default = "default_boosted_categories")]
+    pub boosted_categories: Vec<String>,   // Default impl: vec![] / serde: ["lesson-learned"]
+    #[serde(default = "default_adaptive_categories")]
+    pub adaptive_categories: Vec<String>,  // NEW — Default impl: vec![] / serde: ["lesson-learned"]
+    pub freshness_half_life_hours: Option<f64>,
+}
+// Default impl returns vec![] for both boosted and adaptive
+// Serde default fns return vec!["lesson-learned"] for both
+```
+
+### StatusReport new field (mcp/response/status.rs)
+
+```rust
+pub category_lifecycle: Vec<(String, String)>,  // (category_name, "adaptive"|"pinned")
+// Default: vec![]
+// Sorted alphabetically by category name before storing
+```
+
+### ConfigError new variant
 
 ```rust
 ConfigError::AdaptiveCategoryNotInAllowlist { path: PathBuf, category: String }
@@ -106,222 +197,182 @@ ConfigError::AdaptiveCategoryNotInAllowlist { path: PathBuf, category: String }
 //           which is not present in the categories list; add it to [knowledge] categories first"
 ```
 
-### StatusReport (extended)
-
-```rust
-pub struct StatusReport {
-    // ...existing fields...
-    pub category_lifecycle: Vec<(String, String)>,  // NEW; (name, "pinned"|"adaptive"), sorted alpha
-}
-// Default: vec![]
-```
-
-### StatusReportJson (extended)
-
-```rust
-pub struct StatusReportJson {
-    // ...existing fields...
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub category_lifecycle: HashMap<String, String>, // NEW; all categories with lifecycle labels
-}
-```
-
 ---
 
 ## Function Signatures
 
 ```rust
-// CategoryAllowlist — new canonical constructor
+// infra/categories/mod.rs — new canonical constructor
 pub fn from_categories_with_policy(cats: Vec<String>, adaptive: Vec<String>) -> Self
 
-// CategoryAllowlist — existing, now delegates to above with ["lesson-learned"] default
-pub fn from_categories(cats: Vec<String>) -> Self  // no signature change
-
-// CategoryAllowlist — new lifecycle query
+// infra/categories/mod.rs — new query methods (both use .unwrap_or_else(|e| e.into_inner()))
 pub fn is_adaptive(&self, category: &str) -> bool
+pub fn list_adaptive(&self) -> Vec<String>
 
-// maintenance_tick — new parameter added
-async fn maintenance_tick(
-    // ...existing 11 params...
-    category_allowlist: &Arc<CategoryAllowlist>,
-) -> ...
+// infra/config.rs — single source of truth for default boosted set (replaces 6 literals)
+pub fn default_boosted_categories_set() -> HashSet<String>
 
-// spawn_background_tick / background_tick_loop — new parameter threaded through
-// (same Arc<CategoryAllowlist>, exact position TBD by implementer)
+// services/status.rs — updated constructor signature
+pub fn StatusService::new(
+    /* existing params */,
+    category_allowlist: Arc<CategoryAllowlist>,  // NEW final param
+) -> Self
+
+// background.rs — all three gain the same new param
+async fn maintenance_tick(/* existing 11 params */, category_allowlist: Arc<CategoryAllowlist>)
+async fn background_tick_loop(/* existing 22 params */, category_allowlist: Arc<CategoryAllowlist>)
+pub fn spawn_background_tick(/* existing params */, category_allowlist: Arc<CategoryAllowlist>)
 ```
 
 ---
 
-## Lifecycle Guard Stub (background.rs)
-
-The stub is fully specified. Place after Step 10 (`run_maintenance`), before Step 11
-(dead-knowledge migration):
+## Maintenance Tick Guard Stub (background.rs Step 10b)
 
 ```rust
-// --- Lifecycle guard stub (crt-031) — insertion point for #409 auto-deprecation ---
-let adaptive_cats: Vec<String> = category_allowlist
-    .list_categories()
-    .into_iter()
-    .filter(|c| category_allowlist.is_adaptive(c))
-    .collect();
-if !adaptive_cats.is_empty() {
-    tracing::debug!(
-        categories = ?adaptive_cats,
-        "lifecycle guard: adaptive categories eligible for auto-deprecation"
-    );
+// --- Step 10b: Lifecycle guard stub (crt-031) — #409 insertion point ---
+{
+    let adaptive = category_allowlist.list_adaptive();
+    if !adaptive.is_empty() {
+        tracing::debug!(
+            categories = ?adaptive,
+            "lifecycle guard: adaptive categories eligible for auto-deprecation (stub, #409)"
+        );
+        // TODO(#409): for each candidate entry in these categories, call
+        // category_allowlist.is_adaptive(category) before any deprecation action.
+        // If is_adaptive returns false, skip unconditionally.
+    }
 }
-// TODO(#409): call auto-deprecation logic here for each adaptive category.
-// The outer guard is already in place; #409 fills in the loop body.
 ```
 
-Key invariants: (1) lock is dropped before any `.await`; (2) log does not fire when adaptive
-set is empty; (3) stub body is a complete no-op — no entries are modified.
+Placement: between Step 10 (`run_maintenance`) and Step 11 (dead-knowledge migration).
+No entries are modified. The outer guard structure is in place; #409 fills the body.
 
 ---
 
 ## Constraints
 
-1. `CategoryAllowlist` is `pub`. `new()` and `from_categories()` signatures are frozen — no
-   breaking changes to existing call sites. Only additive constructor and method additions.
-2. The `adaptive` `RwLock` must use `.unwrap_or_else(|e| e.into_inner())` poison recovery
-   on every read — same pattern as the existing `categories` field throughout.
-3. `StatusReport` has a `Default` impl used in `maintenance_tick` (line ~816). The new
-   `category_lifecycle` field must default to `vec![]`.
-4. `spawn_background_tick` already has `#[allow(clippy::too_many_arguments)]`. The 23rd
-   parameter is explicitly justified citing crt-031 and #409; the `BackgroundTickConfig`
-   composite refactor is deferred.
-5. `categories.rs` must be split to `infra/categories/mod.rs` + `infra/categories/lifecycle.rs`
-   before adding new code. The `mod.rs` must re-export `CategoryAllowlist` and
-   `INITIAL_CATEGORIES` so all existing import paths resolve without changes to downstream files.
-6. No database schema changes. No MCP tool surface changes. `context_status` output changes
-   are additive only.
-7. `add_category(&self, category: String)` behavior is unchanged — runtime-added categories
-   are always pinned (the `adaptive` set is frozen post-construction).
-8. `is_adaptive` MUST NOT be called on MCP request hot paths (search, lookup, briefing).
-   Call sites are limited to `maintenance_tick` (once per tick) and `compute_report` (once per
-   `context_status` invocation).
+1. `CategoryAllowlist` is `pub`. `from_categories` and `new()` signatures must NOT change.
+   All existing call sites compile without modification; only the two `main.rs` sites are
+   proactively updated to use `from_categories_with_policy`.
 
----
+2. `categories.rs` is currently 454 lines with a 500-line ceiling. The module split to
+   `infra/categories/mod.rs + lifecycle.rs` is mandatory before adding new code. The public
+   import path `crate::infra::categories::CategoryAllowlist` must remain unchanged.
 
-## Critical Test Construction Invariant (R-01 / SR-03)
+3. All `RwLock` accesses on the new `adaptive` field use `.unwrap_or_else(|e| e.into_inner())`
+   poison recovery. Tests must cover the poison path for the new lock.
 
-Both `adaptive_categories` and `boosted_categories` default to `["lesson-learned"]`. Any
-`validate_config` test that sets `categories` to a non-default value must explicitly zero
-**both** parallel lists to avoid cross-check false failures:
+4. No database schema changes. No migrations. No schema version bump.
 
-```rust
-KnowledgeConfig {
-    categories: vec!["custom-cat".into()],
-    boosted_categories: vec![],     // suppress boosted cross-check
-    adaptive_categories: vec![],    // suppress adaptive cross-check
-    freshness_half_life_hours: None,
-}
-```
+5. `StatusReport::default()` must return `category_lifecycle: vec![]`.
 
-Existing test helpers (`config_with_categories`, `config_with_half_life`, etc.) that already
-set `boosted_categories: vec![]` must also add `adaptive_categories: vec![]`.
+6. `category_lifecycle` Vec must be sorted alphabetically by category name before being stored
+   in `StatusReport` (R-08: non-deterministic HashSet iteration causes flaky golden tests).
+
+7. `maintenance_tick` already has `#[allow(clippy::too_many_arguments)]`. The 22 to 23 growth
+   on `spawn_background_tick` is accepted. The `BackgroundTickConfig` composite struct refactor
+   is explicitly deferred (OQ-05/SR-02). The PR description must reference this deferral.
+
+8. The `run_single_tick` `StatusService::new()` call (~background.rs line 446) must receive
+   the operator-loaded `Arc<CategoryAllowlist>`, NOT a freshly constructed `CategoryAllowlist::new()`.
+   Operator-configured policy must be threaded through, not reconstructed inline.
+
+9. `add_category` (domain pack runtime path) is unchanged and always defaults to pinned.
+   A doc comment must state this invariant on the method.
+
+10. The `lifecycle.rs` stub file is committed but initially minimal. Reserved for future use.
 
 ---
 
 ## Dependencies
 
-### Crates (no new dependencies)
-
-All changes are within `unimatrix-server`. No new crate or workspace dependencies required.
-
-| Dependency | Usage |
-|------------|-------|
-| `std::collections::HashSet` | adaptive set storage — existing |
-| `std::sync::RwLock` | second lock field — existing |
-| `serde` | `#[serde(default)]` on new field — existing |
-| `tracing` | `tracing::debug!` in guard stub — existing |
-
-### Existing Components Touched
-
-| Component | Location | Change |
-|-----------|----------|--------|
-| `CategoryAllowlist` | `infra/categories.rs` → `infra/categories/lifecycle.rs` | Module split + new field + new method |
-| `KnowledgeConfig` | `infra/config.rs` | New `adaptive_categories` field |
-| `validate_config` | `infra/config.rs` | New cross-check block |
-| `merge_configs` | `infra/config.rs` | New `adaptive_categories` merge line (FR-17) |
-| `ConfigError` | `infra/config.rs` | New `AdaptiveCategoryNotInAllowlist` variant |
-| `StatusReport` | `mcp/response/status.rs` | New `category_lifecycle` field |
-| `StatusReportJson` | `mcp/response/status.rs` | New `category_lifecycle` HashMap field |
-| `format_status_report` | `mcp/response/status.rs` | Summary + JSON format paths updated |
-| `StatusService::compute_report` | `services/status.rs` | Populate new field; wire `Arc<CategoryAllowlist>` if needed |
-| `maintenance_tick` | `background.rs` | New parameter + lifecycle guard stub |
-| `spawn_background_tick` | `background.rs` | New `Arc<CategoryAllowlist>` parameter |
-| `background_tick_loop` | `background.rs` | New `Arc<CategoryAllowlist>` parameter |
-| `main.rs` | `src/main.rs` | Two call sites updated to `from_categories_with_policy` |
-
-### #409 Dependency Contract
-
-crt-031 guarantees that #409 can rely on the following stable interface:
-
-1. `CategoryAllowlist::is_adaptive(&self, category: &str) -> bool` — signature is frozen.
-2. Lifecycle guard stub exists in `maintenance_tick` between Step 10 and dead-knowledge
-   migration. #409 replaces the stub body only.
-3. `Arc<CategoryAllowlist>` is wired into `maintenance_tick` as a parameter.
-4. `KnowledgeConfig::adaptive_categories: Vec<String>` is serde-deserialized at startup.
-5. #409 MUST NOT add decay schedules or signal mechanics to `CategoryAllowlist` — those belong
-   in a separate service layer.
+| Dependency | Type | Notes |
+|------------|------|-------|
+| `std::sync::RwLock<HashSet<String>>` | stdlib | Second independent lock for adaptive set |
+| `serde` | existing crate | `#[serde(default = "fn")]` on new config fields |
+| `toml` | existing crate | Deserialization of `adaptive_categories` from config file |
+| `tracing` | existing crate | `debug!` in maintenance tick lifecycle guard stub |
+| `infra/categories.rs` | internal | Extended via module split; import path unchanged |
+| `infra/config.rs` | internal | `KnowledgeConfig`, `validate_config`, `merge_configs`, `default_boosted_categories_set` |
+| `services/status.rs` | internal | `StatusReport` + `StatusService` — new field and all 4 wiring sites |
+| `mcp/response/status.rs` | internal | `StatusReport::category_lifecycle` field + formatters |
+| `background.rs` | internal | `maintenance_tick`, `background_tick_loop`, `spawn_background_tick`, `run_single_tick` |
+| `main.rs` | internal | 2 `CategoryAllowlist` sites + 2 `ServiceLayer` sites + 2 `spawn_background_tick` sites |
+| `eval/profile/layer.rs` | internal | One-line boosted_categories fix at Step 12 |
+| `README.md` | docs | `[knowledge]` example block update only |
+| Issue #409 | downstream | Consumes `is_adaptive()` and the maintenance tick stub insertion point |
 
 ---
 
 ## NOT in Scope
 
-- Entry auto-deprecation logic — #409's responsibility.
-- PPR weighting, co-access scoring, or any search/ranking signal changes.
-- Wiring lifecycle policy to the existing effectiveness-based auto-quarantine path.
-- Database schema changes or migration files.
-- Runtime MCP tool for changing lifecycle policy.
+- Entry auto-deprecation logic — #409.
+- Changes to PPR weighting, co-access scoring, or any ranking signal.
+- Wiring lifecycle policy to the effectiveness-based auto-quarantine path.
+- `DomainPackConfig.adaptive_categories`.
+- Modifying any operator-side `config.toml`.
+- A default `config.toml` from `unimatrix init`.
 - Decay schedules, score thresholds, or signal mechanics.
-- `adaptive_categories` support in `DomainPackConfig` (domain pack categories always default
-  to pinned via `add_category`).
-- Changes to any `INITIAL_CATEGORIES` entries or their set membership.
-- `BackgroundTickConfig` composite struct refactor (deferred, SR-02 / OQ-05).
-
----
-
-## Test Count Estimate
-
-Estimated 20–28 new unit tests distributed across four modules:
-
-| Module | Estimated Tests | Key Coverage |
-|--------|----------------|--------------|
-| `infra/categories/lifecycle.rs` | ~12 | `is_adaptive` default/custom, `from_categories_with_policy`, poison recovery on adaptive lock, `add_category` pinned default, constructor equivalence (AC-13), wiring (AC-17) |
-| `infra/config.rs` | ~8 | `AdaptiveCategoryNotInAllowlist` validation, empty list, multi-value, default deserialization, merge behavior (R-07), cross-check isolation (R-01 / AC-16) |
-| `mcp/response/status.rs` | ~5 | `category_lifecycle` field in summary and JSON, empty adaptive suppression, golden-output alphabetic sort, asymmetry documentation |
-| `background.rs` | ~3 | Guard stub invocation, debug log gate (AC-10), wiring test (AC-17) |
-
-Gate 3b requires at least one passing test in each of the four modules above before sign-off
-(R-10 mitigation). The exact count is non-binding; all tests must pass.
-
----
-
-## Pre-Coding Verification Steps
-
-Before writing code, the implementer must confirm:
-
-1. **R-02**: Read `StatusService::new()` to determine whether `Arc<CategoryAllowlist>` is
-   already a field. If not, add it as a field and update all construction call sites.
-2. **R-04**: Verify no file outside `infra/categories/` imports below
-   `crate::infra::categories` — only the top-level `CategoryAllowlist` and
-   `INITIAL_CATEGORIES` symbols need re-exporting from `mod.rs`.
-3. **I-01**: Confirm both `from_categories` call sites in `main.rs` are found (approximately
-   lines 550 and 940). Both must be updated.
+- A runtime MCP tool for changing lifecycle policy.
+- New documentation files (README.md update only).
+- `BackgroundTickConfig` composite struct refactor (deferred, OQ-05/SR-02).
+- Any behavior change to `merge_configs` for `boosted_categories`.
 
 ---
 
 ## Alignment Status
 
-**Overall: PASS with one accepted WARN.**
+Overall: **PASS with one accepted WARN.**
 
 | Finding | Status | Detail |
 |---------|--------|--------|
-| Vision alignment | PASS | Advances W0-3 domain-agnosticism; `adaptive_categories` is operator-configurable, not hardcoded |
-| Milestone fit | PASS | Correct Cortical phase prerequisite; Wave 1A (#409) insertion point established without over-building |
-| Scope coverage | PASS | All 5 SCOPE goals covered; all 15 original ACs plus 2 defensive additions (AC-16, AC-17) |
-| WARN-01: FR-17 `merge_configs` | ACCEPTED | Not in SCOPE.md but necessary to prevent silent FM-04 config drop; follows `boosted_categories` pattern; zero product-direction risk |
-| Architecture consistency | PASS | All SCOPE open questions resolved; ADR-001 locks all three constructor/status/domain-pack decisions |
-| Risk completeness | PASS | 10 risks registered; all 6 scope risks traced; SR-03 R-01 elevated to Critical; security and failure modes covered |
+| Vision alignment | PASS | Closes W0-3 `"lesson-learned" hardcoded in scoring` gap; enables domain-agnostic lifecycle config |
+| Milestone fit | PASS | Policy layer only; #409 mechanics not touched; BackgroundTickConfig deferral documented |
+| Scope goals coverage | PASS | All 10 SCOPE.md goals present in SPECIFICATION FRs |
+| AC coverage | PASS | All 23 original ACs in SPECIFICATION; AC-24 to AC-27 added for SR-03 and SR-09 |
+| Architecture consistency | PASS | All 7 open questions resolved before spec; StatusService bypass gap caught and mitigated by R-02 |
+| Risk completeness | PASS | 11 runtime risks + 4 integration risks + 7 edge cases; 3 Critical risks with full test plans |
+| Scope additions | **WARN — accepted** | `list_adaptive()` public method and `lifecycle.rs` stub added beyond SCOPE.md; both are internal implementation details, no approval needed |
+
+The accepted WARN does not block implementation. The vision guardian confirmed no approval is
+required. `list_adaptive()` exists to satisfy R-06 (single lock acquisition in tick stub
+instead of per-category `is_adaptive()` calls). `lifecycle.rs` is an initially-empty reserved
+stub committed as part of the module split.
+
+---
+
+## Implementation Order
+
+1. **Pre-implementation greps (mandatory, blocking before any code change):**
+   - `grep -rn "StatusService::new" crates/` — enumerate all 4 sites (R-02)
+   - `grep -rn "KnowledgeConfig::default()" crates/` — audit for boosted reliance (R-11, FR-19)
+   - `grep -rn "UnimatrixConfig::default()" crates/` — same audit
+   - `grep -rn 'KnowledgeConfig {' crates/` — audit test fixtures for parallel-list zeroing (R-01)
+
+2. **Module split**: `categories.rs` to `infra/categories/mod.rs + lifecycle.rs`. Run
+   `cargo check -p unimatrix-server` before adding any new code; confirm no import regressions.
+
+3. **Config layer**: `KnowledgeConfig` extension + `Default` impl change + serde default fns
+   + `ConfigError` variant + `validate_config` + `merge_configs` + `default_boosted_categories_set()`.
+
+4. **CategoryAllowlist extension**: `from_categories_with_policy`, `is_adaptive`, `list_adaptive`.
+
+5. **main.rs wiring**: Both `CategoryAllowlist` construction sites + both `ServiceLayer::new()`
+   sites + both `spawn_background_tick` sites.
+
+6. **StatusService wiring**: Add `category_allowlist` field + update all 4 `StatusService::new()`
+   sites (including `run_single_tick` at background.rs ~line 446) + populate `category_lifecycle`
+   in `compute_report()` with sorted output.
+
+7. **StatusReport field**: Add `category_lifecycle` to `mcp/response/status.rs` + update summary
+   and JSON formatters + alphabetic sort before storing.
+
+8. **Background tick stub**: Add parameter to all 3 background functions + add Step 10b guard
+   using `list_adaptive()`.
+
+9. **Literal removal**: `eval/profile/layer.rs` + 6 test infrastructure sites.
+
+10. **Test updates**: `main_tests.rs` rewrite + `config.rs` workaround removal + AC-17, AC-18,
+    AC-24 through AC-27 test additions.
+
+11. **README.md**: Update `[knowledge]` example block.

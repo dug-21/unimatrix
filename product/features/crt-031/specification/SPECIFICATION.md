@@ -1,578 +1,591 @@
-# SPECIFICATION: crt-031 — Category Lifecycle Policy (Pinned vs Adaptive)
+# SPECIFICATION: crt-031 — Category Lifecycle Policy + boosted_categories De-hardcoding
 
 ## Objective
 
 Unimatrix currently treats all knowledge categories as requiring explicit operator action for
-deprecation. This feature introduces a two-tier lifecycle policy — `pinned` vs `adaptive` — that
-distinguishes categories eligible for automated management (e.g., `lesson-learned`) from those
-that must only be superseded by human action (e.g., `decision`, `convention`). The policy is
-config-driven, validated at startup, and exposed in `context_status` output. It also establishes
-a tested insertion point in the maintenance tick for the future auto-deprecation pass in #409.
+deprecation, and the value `["lesson-learned"]` for `boosted_categories` is duplicated as a
+compile-time literal in seven locations outside the config load path. This feature introduces a
+two-tier lifecycle policy — `pinned` vs `adaptive` — that distinguishes categories eligible for
+automated management from those requiring human action. It also consolidates `boosted_categories`
+so the value is expressed only in config and its serde default, not in scattered Rust literals.
+The policy is config-driven, startup-validated, exposed in `context_status`, and establishes a
+tested insertion point in the maintenance tick for the future auto-deprecation pass in #409.
 
 ---
 
-## Ubiquitous Language
+## Domain Model
+
+### Ubiquitous Language
 
 | Term | Definition |
 |------|------------|
-| **Pinned** | A category whose entries are never touched by automated retention logic. Deprecation requires explicit operator action only. All categories default to pinned unless listed in `adaptive_categories`. |
-| **Adaptive** | A category whose entries are candidates for automated lifecycle management (e.g., auto-deprecation by #409). The category must appear in both `categories` and `adaptive_categories` in `[knowledge]` config. |
+| **Pinned** | A category whose entries are never touched by automated retention logic. Deprecation requires explicit operator action. All categories are pinned unless listed in `adaptive_categories`. |
+| **Adaptive** | A category whose entries are candidates for automated lifecycle management (e.g., auto-deprecation by #409). Must appear in both `categories` and `adaptive_categories`. |
 | **CategoryPolicy** | The runtime encoding of the pinned/adaptive distinction, held inside `CategoryAllowlist` alongside the category presence set. |
 | **Lifecycle label** | The string `"adaptive"` or `"pinned"` assigned to each configured category for display in `context_status`. |
-| **Lifecycle guard** | A conditional in `maintenance_tick` that calls `is_adaptive()` before dispatching any automated retention action. In this feature it is a no-op stub; #409 fills in the body. |
+| **Lifecycle guard** | A conditional in `maintenance_tick` that calls `is_adaptive()` before dispatching any automated retention action. A no-op stub in this feature; #409 fills in the body. |
 | **AdaptiveCategoryNotInAllowlist** | The `ConfigError` variant emitted when `validate_config` detects a category listed in `adaptive_categories` that is absent from `categories`. |
 | **default_adaptive_categories** | The serde default function returning `vec!["lesson-learned".to_string()]`, applied when `adaptive_categories` is omitted from config. |
+| **default_boosted_categories** | The serde default function returning `vec!["lesson-learned".to_string()]`, applied when `boosted_categories` is omitted from config. |
+| **Hardcoded literal** | A `HashSet::from(["lesson-learned".to_string()])` construct appearing outside the config load path — the seven sites identified in SCOPE.md §Background. |
+
+### Key Entities and Relationships
+
+```
+KnowledgeConfig
+  ├── categories: Vec<String>           -- allowlist (validated subset, 1–64 entries)
+  ├── boosted_categories: Vec<String>   -- search re-ranking boost, subset of categories
+  ├── adaptive_categories: Vec<String>  -- lifecycle policy, subset of categories
+  └── freshness_half_life_hours: Option<f64>
+
+CategoryAllowlist
+  ├── categories: RwLock<HashSet<String>>   -- presence set (existing)
+  └── adaptive: RwLock<HashSet<String>>     -- adaptive set (new)
+  Methods:
+    from_categories(cats) -> Self           -- existing, delegates with ["lesson-learned"] default
+    from_categories_with_policy(cats, adaptive) -> Self   -- new constructor
+    is_adaptive(&self, category: &str) -> bool            -- new method
+    validate / add_category / list_categories             -- unchanged
+
+validate_config(config, path) -> Result<(), ConfigError>
+  -- Validates adaptive_categories subset constraint (new, same pattern as boosted)
+
+merge_configs(global, project) -> UnimatrixConfig
+  -- adaptive_categories follows project-overrides-global (same as boosted_categories)
+
+StatusReport
+  └── category_lifecycle: Vec<(String, String)>   -- new field: (category, "adaptive"|"pinned")
+
+maintenance_tick(...)
+  -- Receives Arc<CategoryAllowlist>; lifecycle guard stub calls is_adaptive() (new)
+```
 
 ---
 
 ## Functional Requirements
 
-### FR-01: KnowledgeConfig field
+### Part A: adaptive_categories
 
-`KnowledgeConfig` (in `config.rs`) MUST gain a new field:
+**FR-01: KnowledgeConfig field**
+`KnowledgeConfig` gains an `adaptive_categories: Vec<String>` field annotated with
+`#[serde(default = "default_adaptive_categories")]`. The `default_adaptive_categories()` private
+fn returns `vec!["lesson-learned".to_string()]`. The field must serialize and deserialize
+correctly in a round-trip through `toml::to_string` / `toml::from_str`.
 
+**FR-02: Serde deserialization default**
+When a config file omits `adaptive_categories`, deserialization produces
+`adaptive_categories == ["lesson-learned"]`. When the field is present it takes whatever value
+the operator supplies, including an empty list `[]`.
+
+**FR-03: validate_config cross-check**
+`validate_config` adds an `adaptive_categories` cross-check immediately after the existing
+`boosted_categories` check. It iterates `config.knowledge.adaptive_categories` against the
+`category_set: HashSet<&str>` already built for the boosted check (no redundant work). On
+mismatch it returns `ConfigError::AdaptiveCategoryNotInAllowlist { path, category }` with the
+offending category name and the config file path. An empty `adaptive_categories` list passes
+validation unconditionally. Multiple-entry lists are accepted when all entries are present in
+`categories`.
+
+**FR-04: ConfigError variant**
+A new `ConfigError::AdaptiveCategoryNotInAllowlist { path: PathBuf, category: String }` variant
+is added. Its `Display` impl follows the same pattern as `BoostedCategoryNotInAllowlist`:
+`"config error in {path}: [knowledge] adaptive_categories contains {category:?} which is not present in the categories list; add it to [knowledge] categories first"`.
+
+**FR-05: CategoryAllowlist constructor**
+A new `pub fn from_categories_with_policy(cats: Vec<String>, adaptive: Vec<String>) -> Self`
+constructor is added. It initialises both the `categories` `RwLock<HashSet<String>>` and a new
+`adaptive: RwLock<HashSet<String>>` field. The existing `from_categories(cats)` delegates to
+`from_categories_with_policy(cats, vec!["lesson-learned".to_string()])` so all existing call
+sites remain valid without modification.
+
+**FR-06: CategoryAllowlist::new() backward compatibility**
+`new()` continues to delegate to `from_categories(INITIAL_CATEGORIES...)`, which delegates to
+`from_categories_with_policy` with the `["lesson-learned"]` adaptive default. Observable
+behavior of `new()` is unchanged for all existing call sites.
+
+**FR-07: is_adaptive method**
+`pub fn is_adaptive(&self, category: &str) -> bool` reads the `adaptive` RwLock with
+`.unwrap_or_else(|e| e.into_inner())` poison recovery and returns whether `category` is present
+in the adaptive set. Returns `false` for any category not in the adaptive set, including
+categories not in the allowlist at all.
+
+**FR-08: Poison recovery**
+All RwLock accesses on the new `adaptive` field use the `.unwrap_or_else(|e| e.into_inner())`
+pattern throughout — `from_categories_with_policy` (write), `is_adaptive` (read). No panics.
+
+**FR-09: main.rs wiring**
+Both CategoryAllowlist construction call sites in `main.rs` (lines ~460 and ~550 for the global
+path; lines ~849 and ~940 for the project path) are updated to use
+`from_categories_with_policy(knowledge_categories, adaptive_categories)` passing
+`config.knowledge.adaptive_categories` as the second argument.
+
+**FR-10: merge_configs**
+`merge_configs` adds `adaptive_categories` handling in the `knowledge:` block following the
+identical project-overrides-global comparison pattern used for `boosted_categories`:
 ```
-pub adaptive_categories: Vec<String>
-```
-
-annotated with `#[serde(default = "default_adaptive_categories")]`. The backing function
-`default_adaptive_categories()` MUST return `vec!["lesson-learned".to_string()]`. Serialization
-round-trips of this field MUST preserve all values without loss.
-
-### FR-02: Deserialization default
-
-A `[knowledge]` section in `config.toml` that omits `adaptive_categories` entirely MUST produce
-a `KnowledgeConfig` with `adaptive_categories == ["lesson-learned"]` after deserialization. No
-config migration is required.
-
-### FR-03: Explicit adaptive_categories in config
-
-A `[knowledge]` section that specifies `adaptive_categories = ["lesson-learned", "convention"]`
-MUST produce a `KnowledgeConfig` with exactly both values in `adaptive_categories`.
-
-### FR-04: validate_config cross-check
-
-`validate_config()` MUST check every entry in `adaptive_categories` against the `category_set`
-`HashSet<&str>` already constructed during the `boosted_categories` cross-check. The check MUST
-occur immediately after the existing `boosted_categories` block, reusing the same `category_set`
-binding. On any mismatch, MUST return:
-
-```
-ConfigError::AdaptiveCategoryNotInAllowlist { path: path.into(), category: <offending>.clone() }
-```
-
-### FR-05: ConfigError variant and display
-
-A new `ConfigError` variant MUST be added:
-
-```
-AdaptiveCategoryNotInAllowlist { path: PathBuf, category: String }
-```
-
-Its `Display` impl MUST follow the style of `BoostedCategoryNotInAllowlist`:
-
-```
-"config error in {path}: [knowledge] adaptive_categories contains {category:?} \
- which is not present in the categories list; add it to [knowledge] categories first"
-```
-
-### FR-06: CategoryAllowlist constructor API
-
-A new constructor MUST be added:
-
-```
-pub fn from_categories_with_policy(cats: Vec<String>, adaptive: Vec<String>) -> Self
-```
-
-This becomes the canonical implementation path. `from_categories(cats)` MUST delegate to
-`from_categories_with_policy(cats, vec!["lesson-learned".to_string()])`. `new()` MUST continue to
-delegate to `from_categories(INITIAL_CATEGORIES)` as before. No existing call site is broken.
-
-### FR-07: Adaptive set storage in CategoryAllowlist
-
-`CategoryAllowlist` MUST hold a second `RwLock<HashSet<String>>` field storing the adaptive
-set, populated by `from_categories_with_policy`. The implementation choice for the field name
-and whether it uses a single `RwLock<(HashSet, HashSet)>` or two separate fields is left to the
-architect, subject to the file-size constraint (FR-14).
-
-### FR-08: is_adaptive method
-
-`CategoryAllowlist` MUST expose:
-
-```
-pub fn is_adaptive(&self, category: &str) -> bool
+adaptive_categories: if project.knowledge.adaptive_categories
+    != default.knowledge.adaptive_categories
+{
+    project.knowledge.adaptive_categories
+} else {
+    global.knowledge.adaptive_categories
+},
 ```
 
-The method MUST return `true` if and only if `category` is present in the adaptive set.
-It MUST return `false` for any category not in the adaptive set, including categories that are
-not in the allowlist at all (unknown categories are not adaptive). Poison recovery MUST follow the
-existing `.unwrap_or_else(|e| e.into_inner())` pattern — the method MUST NOT panic on a
-poisoned lock.
+**FR-11: context_status lifecycle output**
+`StatusReport` gains a `category_lifecycle: Vec<(String, String)>` field with a `Default` of
+`vec![]`. `StatusService::compute_report()` populates it by calling
+`category_allowlist.list_categories()` and tagging each with `is_adaptive()`. Summary text
+(human-readable) lists only the adaptive categories. JSON output includes all categories with
+their lifecycle labels. The asymmetry is intentional and must be documented in code comments.
 
-### FR-09: main.rs call sites updated
+**FR-12: maintenance_tick lifecycle guard stub**
+`maintenance_tick` receives an additional `category_allowlist: &Arc<CategoryAllowlist>` parameter.
+Between the existing Step 10 (`run_maintenance`) and Step 11 (dead-knowledge migration) it
+contains a lifecycle guard stub:
+- Iterates the configured categories.
+- Calls `category_allowlist.is_adaptive(category)` for each.
+- Emits `tracing::debug!("lifecycle guard: category={} is_adaptive={}", category, is_adaptive)`
+  only when at least one adaptive category exists (guard does NOT fire on empty list).
+- Is a no-op otherwise — no entries are modified.
+- Is annotated with a comment: `// #409: insert auto-deprecation dispatch here`.
 
-Both `CategoryAllowlist::from_categories(knowledge_categories)` call sites in `main.rs`
-(the project-config path and the global-config path, approximately lines 550 and 940) MUST be
-updated to `CategoryAllowlist::from_categories_with_policy(knowledge_categories,
-config.knowledge.adaptive_categories)` so the loaded policy is wired into the allowlist
-from startup.
+**FR-13: add_category runtime path**
+`CategoryAllowlist::add_category` is unchanged — domain packs added at runtime default to
+`pinned`. No `adaptive` parameter is added. Operators control lifecycle via `config.toml` only.
 
-### FR-10: StatusReport lifecycle field
+### Part B: boosted_categories de-hardcoding
 
-`StatusReport` (in `mcp/response/status.rs`) MUST gain a new field:
+**FR-14: KnowledgeConfig Default impl**
+`KnowledgeConfig::default()` is changed so `boosted_categories` returns `vec![]` (empty).
+A `default_boosted_categories()` private fn is added returning `vec!["lesson-learned".to_string()]`
+and attached to the field via `#[serde(default = "default_boosted_categories")]`. Any config
+file omitting `boosted_categories` still gets `["lesson-learned"]` after deserialization.
 
+**FR-15: eval/profile/layer.rs Step 12**
+The `HashSet::from(["lesson-learned".to_string()])` literal at `eval/profile/layer.rs` line ~277
+is replaced by derivation from `profile.config_overrides.knowledge.boosted_categories`. The
+fix uses the existing `EvalProfile.config_overrides: UnimatrixConfig` path — no new config
+injection is added. See OQ-01 (below) for the conditional note on accessibility.
+
+**FR-16: Seven test infrastructure literals removed**
+The following seven `HashSet::from(["lesson-learned".to_string()])` literals are removed. Each
+site is replaced by a call to a shared helper — either the public function
+`default_boosted_categories_set() -> HashSet<String>` exported from `infra/config.rs`, or an
+equivalent zero-dependency constant. The helper must be importable from all seven sites without
+creating a circular dependency.
+
+| Site | Location |
+|------|----------|
+| 1 | `eval/profile/layer.rs` line ~277 (production — see FR-15) |
+| 2 | `server.rs` line ~287 (test infrastructure) |
+| 3 | `infra/shutdown.rs` line ~308 (test — shutdown test 1) |
+| 4 | `infra/shutdown.rs` line ~408 (test — shutdown test 2) |
+| 5 | `test_support.rs` line ~129 (`build_service_layer_for_test`) |
+| 6 | `services/index_briefing.rs` line ~627 (test code) |
+| 7 | `uds/listener.rs` line ~2783 (test code) |
+
+**FR-17: main_tests.rs test rewrite**
+`test_default_config_boosted_categories_is_lesson_learned` in `main_tests.rs` (line 393–404) is
+updated to assert the serde deserialization default: parse an empty TOML string (`""`) into
+`UnimatrixConfig` and assert `knowledge.boosted_categories == ["lesson-learned"]`. The test must
+NOT call `UnimatrixConfig::default()` (which now returns `[]`). The test name and comment must
+be revised to reflect the new invariant: the serde default governs production config; `Default`
+is for programmatic construction.
+
+**FR-18: config.rs workaround removal**
+`config.rs` test `test_empty_categories_documented_behavior` currently sets
+`boosted_categories: vec![]` with the comment "empty boosted list to avoid allowlist check".
+This explicit override is removed. The test must work without it because `KnowledgeConfig::default()`
+now returns `boosted_categories: vec![]` naturally.
+
+**FR-19: Pre-implementation grep precondition**
+Before writing any implementation code, the implementer must run:
 ```
-pub category_lifecycle: Vec<(String, String)>
+grep -rn "KnowledgeConfig::default()" crates/
 ```
+and inspect every hit for implicit reliance on `boosted_categories == ["lesson-learned"]`. Any
+test or call site that expects `["lesson-learned"]` from `Default` must be updated in the same
+PR. This is a mandatory pre-implementation step, not optional cleanup.
 
-with a `Default` of empty `Vec`. Each element is `(category_name, lifecycle_label)` where
-`lifecycle_label` is `"adaptive"` or `"pinned"`. The vector MUST be sorted alphabetically by
-category name. `StatusReport::Default` impl MUST initialize this field to `vec![]`.
-
-### FR-11: StatusService populates category_lifecycle
-
-`StatusService::compute_report()` MUST populate `category_lifecycle` by calling
-`category_allowlist.list_categories()` and tagging each category via `is_adaptive()`. The
-`StatusService` MUST receive `Arc<CategoryAllowlist>` (it already holds `Arc<CategoryAllowlist>`
-if not, this wiring is added in the same PR).
-
-### FR-12: context_status summary format
-
-The summary text format of `format_status_report` MUST include a line listing only the adaptive
-categories (since `pinned` is the default, the summary shows only categories that differ):
-
+**FR-20: README.md documentation**
+The `[knowledge]` example block in `README.md` (line ~239–248) is updated to include both:
+```toml
+boosted_categories = ["lesson-learned"]  # Categories that receive a provenance boost in search re-ranking
+adaptive_categories = ["lesson-learned"] # Categories eligible for automated lifecycle management (see #409)
 ```
-Adaptive categories: [lesson-learned]
-```
-
-If `adaptive_categories` is empty, this line MUST be omitted from the summary. The summary MUST
-NOT list pinned categories individually — their omission from the adaptive list is sufficient.
-
-### FR-13: context_status JSON format
-
-The JSON format of `format_status_report` MUST include a `category_lifecycle` object containing
-all configured categories with their lifecycle labels. All categories MUST appear, regardless of
-whether they are adaptive or pinned. Example:
-
-```json
-"category_lifecycle": {
-  "convention": "pinned",
-  "decision": "pinned",
-  "lesson-learned": "adaptive",
-  "pattern": "pinned",
-  "procedure": "pinned"
-}
-```
-
-### FR-14: categories.rs file-size constraint
-
-`categories.rs` is currently 454 lines. If adding the adaptive-set field, `is_adaptive` method,
-updated constructors, and tests causes the file to exceed 500 lines, the architect MUST plan a
-module split (e.g., extract a `lifecycle.rs` submodule) before implementation begins. This
-decision is binding on the architect.
-
-### FR-15: maintenance_tick lifecycle guard stub
-
-`maintenance_tick` MUST accept `Arc<CategoryAllowlist>` as an additional parameter. After Step 10
-(`run_maintenance`) and before the dead-knowledge migration step, MUST add a lifecycle guard stub:
-
-1. On each tick, log a single `tracing::debug!` message listing the categories currently
-   configured as adaptive (iterating `category_allowlist.list_categories()` filtered by
-   `is_adaptive()`).
-2. The debug log MUST NOT fire if `adaptive_categories` is empty (conditional on non-empty
-   adaptive set).
-3. Immediately following, a guard stub MUST call `is_adaptive(category)` for a representative
-   category (demonstrating the future call site for #409) and be annotated with a comment:
-   `// TODO(#409): replace stub with auto-deprecation dispatch when adaptive signal is implemented`
-4. The stub body MUST be a no-op — no entries are deprecated, modified, or touched.
-
-### FR-16: spawn_background_tick and background_tick_loop wiring
-
-`spawn_background_tick` and `background_tick_loop` MUST each receive `Arc<CategoryAllowlist>` as
-a parameter and forward it to `maintenance_tick`. The architect SHOULD evaluate whether bundling
-`Arc<CategoryAllowlist>` into a composite config struct reduces the growing parameter count (SR-02
-recommendation), but this is an architect decision — the spec requires the parameter to reach
-`maintenance_tick` by whatever internal structure is chosen.
-
-### FR-17: merge_configs adaptive_categories field
-
-`merge_configs` in `config.rs` MUST include `adaptive_categories` in the `KnowledgeConfig`
-merge block, following the same per-project-wins-else-global pattern used for `boosted_categories`.
+The prose description of list fields in the config section is updated to mention both fields.
+No other documentation files are created or modified.
 
 ---
 
 ## Non-Functional Requirements
 
-### NFR-01: No database schema changes
+**NFR-01: Zero effective behavior change**
+The application behaves identically after this feature for all operators who do not add
+`adaptive_categories` to their config. The only observable change is that `UnimatrixConfig::default()`
+returns `boosted_categories: []` — callers relying on `Default` directly (rather than parsing a
+TOML string) will see this, and tests are updated accordingly. All other runtime behavior is
+unchanged.
 
-Lifecycle policy is config-only. No tables, columns, or migrations are added. The schema version
-remains unchanged.
+**NFR-02: File size limit**
+`categories.rs` is currently 454 lines. Adding a second `RwLock<HashSet<String>>` field, the new
+constructor, and `is_adaptive` is expected to reach or exceed the 500-line limit. If the file
+will breach 500 lines, the architect must plan a module split (e.g., extract lifecycle logic into
+`infra/categories/lifecycle.rs`) before implementation begins. The spec records this as a
+pre-implementation decision for the architect (see SR-01).
 
-### NFR-02: No MCP tool surface changes
+**NFR-03: No panic on poisoned lock**
+All new `RwLock` accesses use `.unwrap_or_else(|e| e.into_inner())`. Tests must cover this path
+for the new `adaptive` lock (mirroring the existing poison-recovery tests in `categories.rs`).
 
-No new MCP tools are added. No existing tool signatures change. `context_status` output format is
-additive (new field, no removals).
+**NFR-04: No database schema changes**
+Lifecycle is config-only in this feature. No migrations, no new tables, no schema version bump.
 
-### NFR-03: Backward compatibility
+**NFR-05: Circular dependency prevention**
+The shared `default_boosted_categories_set()` helper (or equivalent) in `infra/config.rs` must
+be reachable from all seven call sites listed in FR-16 without creating a circular import. The
+architect must verify this before the implementation brief is finalised.
 
-Existing `config.toml` files that omit `adaptive_categories` silently receive the built-in
-default `["lesson-learned"]`. No operator action is required on upgrade.
+**NFR-06: Startup validation is fail-fast**
+An `adaptive_categories` entry absent from `categories` causes startup abort via
+`ConfigError::AdaptiveCategoryNotInAllowlist`. The error message names the offending category
+and the config file path. Same fail-fast contract as `BoostedCategoryNotInAllowlist`.
 
-### NFR-04: Poison-safety
-
-All `RwLock` reads and writes on the adaptive set MUST use `.unwrap_or_else(|e| e.into_inner())`
-recovery. The same pattern as the existing `categories` field in `CategoryAllowlist` applies
-without exception.
-
-### NFR-05: Zero performance regression on hot paths
-
-`is_adaptive` is a `HashSet::contains` call behind an `RwLock::read`. It MUST NOT be called on
-MCP request hot paths (search, lookup, briefing). It is only called from `maintenance_tick` (once
-per tick) and `compute_report` (once per `context_status` call). No caching is required.
-
-### NFR-06: File-size rule
-
-All modified files MUST remain under 500 lines after the change. If `categories.rs` would exceed
-this, a module split is required (see FR-14). `background.rs` and `config.rs` are already large;
-the architect must confirm they remain compliant or plan extraction.
-
-### NFR-07: Test count
-
-An estimated 20–28 new tests are expected across the following modules:
-- `categories.rs` / `lifecycle.rs`: ~12 tests covering `is_adaptive`, `from_categories_with_policy`,
-  poison recovery on the adaptive lock, `add_category` defaulting to pinned.
-- `config.rs`: ~8 tests covering `AdaptiveCategoryNotInAllowlist` validation, empty
-  `adaptive_categories`, multi-value `adaptive_categories`, default deserialization,
-  merge behavior.
-- `mcp/response/status.rs`: ~5 tests covering `category_lifecycle` field presence in both
-  summary and JSON formats, empty adaptive list suppression in summary, golden-output tests for
-  both formats.
-- `background.rs`: ~3 tests covering the guard stub invocation and debug log gate.
+**NFR-07: maintenance_tick parameter count**
+`spawn_background_tick` and `background_tick_loop` already carry 22+ parameters. Adding
+`Arc<CategoryAllowlist>` is acceptable per the constraint in SCOPE.md. A composite
+`BackgroundTickConfig` struct is an architect option (SR-02) but is not mandated by this spec.
 
 ---
 
 ## Acceptance Criteria
 
-Criteria carry their original SCOPE.md IDs (AC-01 through AC-15) plus additional criteria
-introduced for SR-03 and SR-05.
+All 23 AC from SCOPE.md are included verbatim. Additional ACs for SR-03 and SR-09 are added as
+AC-24 through AC-27.
 
-### AC-01
-`KnowledgeConfig` has an `adaptive_categories: Vec<String>` field with
-`#[serde(default = "default_adaptive_categories")]` defaulting to `["lesson-learned"]`.
-Serialization round-trips correctly.
-Verification: Unit test serializes and deserializes a `KnowledgeConfig` with
-`adaptive_categories = ["custom-a", "custom-b"]` and asserts round-trip identity.
+### adaptive_categories (AC-01 – AC-16)
 
-### AC-02
-A config file omitting `adaptive_categories` produces a `KnowledgeConfig` with
+**AC-01** `KnowledgeConfig` has an `adaptive_categories: Vec<String>` field with
+`#[serde(default)]` defaulting to `["lesson-learned"]`. Serialization round-trips correctly.
+Verification: unit test in `config.rs` tests.
+
+**AC-02** A config file omitting `adaptive_categories` produces a `KnowledgeConfig` with
 `adaptive_categories == ["lesson-learned"]` after deserialization.
-Verification: Unit test deserializes a minimal TOML string with no `adaptive_categories` key and
-asserts the field equals `["lesson-learned"]`.
+Verification: unit test parsing an empty/minimal TOML string.
 
-### AC-03
-A config file specifying `adaptive_categories = ["lesson-learned", "convention"]` produces a
-`KnowledgeConfig` with both values.
-Verification: Unit test deserializes TOML with two values and asserts both are present.
+**AC-03** A config file specifying `adaptive_categories = ["lesson-learned", "convention"]`
+produces a `KnowledgeConfig` with both values present.
+Verification: unit test with explicit TOML string.
 
-### AC-04
-`validate_config` rejects a config where any entry in `adaptive_categories` is absent from
-`categories`, returning `ConfigError::AdaptiveCategoryNotInAllowlist` with the offending
+**AC-04** `validate_config` rejects a config where any entry in `adaptive_categories` is absent
+from `categories`, returning `ConfigError::AdaptiveCategoryNotInAllowlist` with the offending
 category name and config file path in the error message.
-Verification: Unit test passes a config with `categories = ["lesson-learned"]` and
-`adaptive_categories = ["lesson-learned", "unknown-cat"]`; asserts the error variant and that
-`category` field equals `"unknown-cat"`.
+Verification: unit test in `config.rs` tests, `matches!` macro.
 
-### AC-05
-`CategoryAllowlist::is_adaptive("lesson-learned")` returns `true` when constructed with the
-default policy (via `new()` or `from_categories(INITIAL_CATEGORIES)`).
-Verification: Unit test calls `CategoryAllowlist::new()` and asserts
-`al.is_adaptive("lesson-learned") == true`.
+**AC-05** `CategoryAllowlist::is_adaptive("lesson-learned")` returns `true` when constructed
+with the default policy.
+Verification: unit test in `categories.rs` tests.
 
-### AC-06
-`CategoryAllowlist::is_adaptive("decision")` returns `false` when constructed with the default
-policy.
-Verification: Unit test calls `CategoryAllowlist::new()` and asserts
-`al.is_adaptive("decision") == false`.
+**AC-06** `CategoryAllowlist::is_adaptive("decision")` returns `false` when constructed with
+the default policy.
+Verification: unit test in `categories.rs` tests.
 
-### AC-07
-`CategoryAllowlist::is_adaptive` returns `false` for any category not in the allowlist (unknown
-category is not adaptive).
-Verification: Unit test calls `al.is_adaptive("no-such-category")` on a default allowlist and
-asserts `false`.
+**AC-07** `CategoryAllowlist::is_adaptive` returns `false` for any category not in the
+allowlist (unknown category is not adaptive).
+Verification: unit test with `is_adaptive("nonexistent")`.
 
-### AC-08
-Poison recovery on the adaptive set follows the same `.unwrap_or_else(|e| e.into_inner())`
+**AC-08** Poison recovery on the adaptive set follows the `.unwrap_or_else(|e| e.into_inner())`
 pattern — `is_adaptive` does not panic on a poisoned lock.
-Verification: Unit test poisons the adaptive `RwLock` using the same helper pattern as the
-existing `poison_allowlist` test helper, then calls `is_adaptive` and asserts no panic and
-returns a valid `bool`.
+Verification: unit test using the existing `poison_allowlist` helper pattern.
 
-### AC-09
-`context_status` output includes a per-category lifecycle section listing each configured
-category and its label (`"adaptive"` or `"pinned"`). Both summary and JSON formats include this
-data.
-Verification: Two unit tests — one for `ResponseFormat::Summary` asserting "Adaptive categories"
-line presence, one for `ResponseFormat::Json` asserting `category_lifecycle` key with all
-categories labeled.
+**AC-09** `context_status` output includes a per-category lifecycle section listing each
+configured category and its label (`"adaptive"` or `"pinned"`). Summary text lists only
+adaptive categories; JSON output includes all categories with lifecycle labels.
+Verification: integration test or unit test on `StatusReport` content.
 
-### AC-10
-`maintenance_tick` logs a `tracing::debug!` message listing the adaptive categories at each tick.
-The log does NOT fire if `adaptive_categories` is empty.
-Verification: Unit test using a `CategoryAllowlist` with adaptive set `["lesson-learned"]`
-confirms the debug path is reachable; test with empty adaptive set confirms it is skipped (via
-a bool guard or `is_empty()` check visible in the stub logic).
+**AC-10** `maintenance_tick` logs a `tracing::debug!` message listing the adaptive categories
+at each tick. The log does NOT fire if `adaptive_categories` is empty.
+Verification: unit test with `tracing_test` or equivalent subscriber capture.
 
-### AC-11
-The lifecycle guard stub in `maintenance_tick` calls `is_adaptive()` and is annotated with a
-comment referencing #409 as the consumer. The stub is a no-op (no actual deprecation).
-Verification: Code review (no behavioral test needed for the no-op stub body); a compile test
-confirms `is_adaptive` is called within `maintenance_tick`.
+**AC-11** The lifecycle guard stub in `maintenance_tick` calls `is_adaptive()` and is annotated
+with a comment referencing `#409` as the consumer. The stub is a no-op (no actual deprecation).
+Verification: code review + compilation; no entries are modified by the tick.
 
-### AC-12
-All existing `CategoryAllowlist` tests continue to pass without modification.
-Verification: `cargo test -p unimatrix-server -- categories` passes with zero failures and
-zero test renames.
+**AC-12** All existing `CategoryAllowlist` tests continue to pass without modification.
+Verification: `cargo test --workspace` green; existing test names unchanged.
 
-### AC-13
-`CategoryAllowlist::new()` is equivalent to constructing with default
+**AC-13** `CategoryAllowlist::new()` is equivalent to constructing with default
 `adaptive_categories = ["lesson-learned"]` — no behavior regression.
-Verification: Unit test constructs `CategoryAllowlist::new()` and
-`CategoryAllowlist::from_categories_with_policy(INITIAL_CATEGORIES.to_vec(), vec!["lesson-learned".to_string()])`
-and asserts `is_adaptive` returns identical results for all 5 initial categories.
+Verification: unit test asserting `new().is_adaptive("lesson-learned") == true`.
 
-### AC-14
-`validate_config` accepts a config where `adaptive_categories` is an empty list `[]` (disabling
-adaptive management entirely is valid).
-Verification: Unit test passes a config with `adaptive_categories = []` and asserts
-`validate_config` returns `Ok(())`.
+**AC-14** `validate_config` accepts a config where `adaptive_categories` is an empty list `[]`
+(disabling adaptive management entirely is valid).
+Verification: unit test.
 
-### AC-15
-`validate_config` accepts a config where `adaptive_categories` is a proper subset of `categories`
-with multiple entries (e.g. two adaptive categories).
-Verification: Unit test passes `categories = ["a", "b", "c"]` and
-`adaptive_categories = ["a", "b"]` and asserts `validate_config` returns `Ok(())`.
+**AC-15** `validate_config` accepts a config where `adaptive_categories` is a proper subset of
+`categories` with multiple entries (e.g., two adaptive categories).
+Verification: unit test with two-entry `adaptive_categories`.
 
-### AC-16 (SR-03 mitigation)
-Every `KnowledgeConfig` struct literal in tests that sets `categories` to a non-default value
-MUST also explicitly set both `boosted_categories: vec![]` AND `adaptive_categories: vec![]`
-to prevent cross-check false failures. This is verified by the passing test suite: any test that
-constructs `KnowledgeConfig { categories: <custom>, ..Default::default() }` while `validate_config`
-is called MUST either use the default (which satisfies the cross-check because both
-`boosted_categories` and `adaptive_categories` default to `["lesson-learned"]` which is in the
-default `categories`) or must explicitly zero both parallel lists. Existing helpers
-`config_with_categories`, `config_with_half_life`, etc. MUST be updated to include
-`adaptive_categories: vec![]` alongside any existing `boosted_categories: vec![]` modifications.
-Verification: `cargo test -p unimatrix-server -- validate_config` passes with zero failures.
+**AC-16** `merge_configs` handles `adaptive_categories` with project-overrides-global semantics,
+matching the existing `boosted_categories` merge pattern.
+Verification: unit test exercising `merge_configs` with differing global/project values.
 
-### AC-17 (SR-05 mitigation)
-The `server.rs` field that initializes `CategoryAllowlist` (using `CategoryAllowlist::new()` or
-`from_categories`) MUST produce an instance that carries the correct lifecycle policy (default
-`["lesson-learned"]` as adaptive). This is guaranteed by the `new()` and `from_categories()`
-delegation chain (FR-06). A compile-level test analogous to the `PhaseFreqTableHandle` wiring
-test (R-14 in `background.rs`) MUST be added, asserting that `CategoryAllowlist` passed through
-the `Arc` chain to `maintenance_tick` responds correctly to `is_adaptive("lesson-learned")`.
-Verification: New test in `background.rs` or `server.rs` module creates a default
-`CategoryAllowlist` (via `new()`), wraps in `Arc`, and calls `is_adaptive` — asserting `true`
-for `"lesson-learned"` and `false` for `"decision"`.
+### boosted_categories de-hardcoding (AC-17 – AC-23)
+
+**AC-17** `KnowledgeConfig::Default` impl returns `boosted_categories: vec![]`. A dedicated
+unit test asserts `KnowledgeConfig::default().boosted_categories.is_empty()`.
+Verification: unit test in `config.rs` tests.
+
+**AC-18** Deserializing an empty TOML string (`""`) into `UnimatrixConfig` produces
+`knowledge.boosted_categories == ["lesson-learned"]`. The test
+`test_default_config_boosted_categories_is_lesson_learned` is updated to cover this case (not
+`Default`). Test name and comment updated to match the new invariant.
+Verification: updated test in `main_tests.rs`.
+
+**AC-19** `eval/profile/layer.rs` contains no `HashSet::from(["lesson-learned"...])` literal.
+The eval layer's `boosted_categories` is derived from config, not a compile-time literal.
+Verification: `grep -n 'lesson-learned' eval/profile/layer.rs` returns no hits.
+
+**AC-20** `server.rs`, `shutdown.rs` (both occurrences), `test_support.rs`,
+`services/index_briefing.rs`, and `uds/listener.rs` contain no
+`HashSet::from(["lesson-learned"...])` literals. Each site reads from a shared source.
+Verification: `grep -rn 'HashSet::from.*lesson-learned'` returns zero hits across these files.
+
+**AC-21** `config.rs` test `test_empty_categories_documented_behavior` does not explicitly set
+`boosted_categories: vec![]` — the `Default` impl produces `[]` naturally, making the override
+redundant. The workaround comment is also removed.
+Verification: code review; test still passes without the explicit override.
+
+**AC-22** `README.md` `[knowledge]` example block includes both `adaptive_categories` and
+`boosted_categories` entries, each with an inline comment explaining its purpose.
+Verification: manual review of `README.md` diff.
+
+**AC-23** No test regressions — `cargo test --workspace` passes with no new failures.
+Verification: CI green.
+
+### SR-03 and SR-09 mitigations (AC-24 – AC-27)
+
+**AC-24 (SR-03: parallel list zeroing)** Every test fixture that uses partial `KnowledgeConfig`
+construction (struct literal with `..Default::default()`) must explicitly zero BOTH
+`boosted_categories: vec![]` AND `adaptive_categories: vec![]` when the test needs an empty
+category list to avoid `validate_config` allowlist errors. The following test helpers are the
+minimum affected set and must be audited:
+- `config_with_custom_weights` (config.rs)
+- `config_with_categories` (config.rs, if present)
+- Any test using `KnowledgeConfig { categories: vec![], ..Default::default() }` or equivalent
+- `test_empty_categories_documented_behavior` (config.rs — covered by AC-21 for `boosted`; must
+  also zero `adaptive_categories`)
+
+Verification: `grep -n 'KnowledgeConfig {' crates/` scan + manual audit; `cargo test` green.
+
+**AC-25 (SR-03: validate_config fixture isolation)** A dedicated `validate_config` test for
+`AdaptiveCategoryNotInAllowlist` uses a `KnowledgeConfig` with a known `categories` list,
+`boosted_categories: vec![]`, and `adaptive_categories: vec!["nonexistent".to_string()]`. The
+test must not trigger a `BoostedCategoryNotInAllowlist` error first (both lists must be zeroed
+except the one under test).
+Verification: test in `config.rs` tests, isolated from boosted check.
+
+**AC-26 (SR-09: pre-implementation grep)** Before submitting the PR, the implementer documents
+in the PR description the output of:
+```
+grep -rn "KnowledgeConfig::default()" crates/
+```
+and confirms every hit has been reviewed and updated if it relied on `boosted_categories ==
+["lesson-learned"]`. PR review gates on this confirmation.
+Verification: PR description checklist item.
+
+**AC-27 (SR-09: Default impl unit test)** A new unit test named
+`test_knowledge_config_default_boosted_is_empty` asserts
+`KnowledgeConfig::default().boosted_categories.is_empty()`. This test is distinct from AC-17
+and serves as the canonical guard that `Default` no longer implies `["lesson-learned"]`.
+Verification: test in `config.rs` tests or `main_tests.rs`.
 
 ---
 
-## Domain Models
+## Dependency Contract: Issue #409
 
-### CategoryAllowlist (extended)
+This feature is a direct prerequisite for #409 (signal-driven entry auto-deprecation). The
+contract between crt-031 and #409 is:
 
-```
-CategoryAllowlist {
-  categories: RwLock<HashSet<String>>   // existing: presence validation
-  adaptive:   RwLock<HashSet<String>>   // new: lifecycle policy (subset of categories)
-}
+1. **`is_adaptive(category)` is the entry point.** #409 calls
+   `category_allowlist.is_adaptive(entry.category)` before dispatching any auto-deprecation
+   action. If this returns `false`, the entry is skipped unconditionally.
 
-Methods:
-  from_categories_with_policy(cats, adaptive) -> Self   // canonical constructor
-  from_categories(cats) -> Self                          // delegates with ["lesson-learned"]
-  new() -> Self                                          // delegates to from_categories
-  validate(&self, category) -> Result<(), ServerError>   // unchanged
-  add_category(&self, category)                          // unchanged; defaults to pinned
-  list_categories(&self) -> Vec<String>                  // unchanged
-  is_adaptive(&self, category) -> bool                   // NEW
-```
+2. **The lifecycle guard stub in `maintenance_tick` is the insertion point.** #409 replaces the
+   no-op comment `// #409: insert auto-deprecation dispatch here` with its dispatch logic. The
+   stub is sized as a block, not a bare `if` condition, so #409 does not need to refactor
+   the outer guard structure.
 
-### KnowledgeConfig (extended)
+3. **No schema changes are provided.** #409 is responsible for any schema changes needed by its
+   deprecation logic. crt-031 provides only the policy query interface.
 
-```
-KnowledgeConfig {
-  categories:               Vec<String>   // existing
-  boosted_categories:       Vec<String>   // existing
-  adaptive_categories:      Vec<String>   // NEW; default = ["lesson-learned"]
-  freshness_half_life_hours: Option<f64>  // existing
-}
-```
+4. **`adaptive_categories` is operator-configured.** #409 must not add or remove entries from
+   the adaptive set at runtime. Any change to the adaptive set requires operator config edit and
+   server restart.
 
-### ConfigError (extended)
-
-```
-ConfigError::AdaptiveCategoryNotInAllowlist { path: PathBuf, category: String }
-```
-
-Invariant: any category in `adaptive_categories` MUST also appear in `categories`. Validated at
-startup by `validate_config`. Emits `AdaptiveCategoryNotInAllowlist` on violation.
-
-### StatusReport (extended)
-
-```
-StatusReport {
-  ...existing fields...
-  category_lifecycle: Vec<(String, String)>   // NEW; (category, "pinned"|"adaptive"), sorted
-}
-```
-
-Default: empty Vec. Populated by `StatusService::compute_report()`.
-
-### Lifecycle guard (stub)
-
-A no-op code path in `maintenance_tick`, located between Step 10 (`run_maintenance`) and the
-dead-knowledge migration step. Calls `is_adaptive()` and emits a `tracing::debug!`. Annotated
-with `// TODO(#409)`. This constitutes the defined insertion point contract that #409 may rely on
-without further refactoring.
+5. **`add_category` at runtime is always pinned.** Domain pack categories registered via
+   `add_category` are never adaptive. #409 must not assume runtime-added categories are adaptive
+   even if the operator later adds them to `adaptive_categories` in config without restart.
 
 ---
 
 ## User Workflows
 
-### Operator: configure adaptive categories
+### Operator: enable adaptive management for a custom category
 
-1. Edit `config.toml`; add `adaptive_categories = ["lesson-learned"]` under `[knowledge]`.
-2. Start (or restart) the server. `validate_config` runs at startup.
-3. If any listed category is absent from `categories`, server exits with
-   `AdaptiveCategoryNotInAllowlist` error including the offending category name and path.
-4. If valid, `CategoryAllowlist` is constructed with the policy loaded.
-5. Operator calls `context_status` to verify configuration: summary shows
-   `Adaptive categories: [lesson-learned]`; JSON shows per-category lifecycle labels.
+1. Add the category to `[knowledge] categories` in `~/.unimatrix/config.toml`.
+2. Add the same category to `[knowledge] adaptive_categories` in the same file.
+3. Restart the server. `validate_config` confirms the cross-check passes.
+4. Call `context_status` to verify the category appears with label `"adaptive"` in the lifecycle
+   section.
 
-### Operator: disable adaptive management entirely
+### Operator: disable all adaptive management
 
-1. Set `adaptive_categories = []` in `config.toml`.
-2. Restart server. `validate_config` accepts empty list (AC-14).
-3. `context_status` summary omits the "Adaptive categories" line.
-4. `maintenance_tick` skips the debug log (AC-10) because adaptive set is empty.
+1. Set `adaptive_categories = []` in `[knowledge]` section of `config.toml`.
+2. Restart the server.
+3. All categories now appear as `"pinned"` in `context_status`.
 
-### Future: #409 auto-deprecation
+### Operator: verify current lifecycle policy
 
-1. #409 implementer finds the lifecycle guard stub in `maintenance_tick`.
-2. The `is_adaptive()` guard already exists and is tested.
-3. #409 replaces the stub body with auto-deprecation dispatch, leaving the outer `is_adaptive()`
-   guard in place.
-4. No changes to `CategoryAllowlist`, `KnowledgeConfig`, or `StatusReport` are required.
+1. Call `context_status` (any format).
+2. Summary text lists the current adaptive categories by name.
+3. JSON output lists all categories with their lifecycle labels.
+
+### Developer: add auto-deprecation logic (#409)
+
+1. Locate the stub comment `// #409: insert auto-deprecation dispatch here` in `background.rs`.
+2. Implement dispatch logic inside the stub block.
+3. Call `category_allowlist.is_adaptive(category)` to gate each candidate entry.
+4. The outer guard structure is already in place — no refactoring of `maintenance_tick` needed.
 
 ---
 
 ## Constraints
 
-1. `CategoryAllowlist` is `pub`. Constructor signature changes must preserve the `new()` and
-   `from_categories()` call sites without modification. All changes are additive.
-2. `from_categories_with_policy` is the new canonical constructor; the old constructors delegate.
-3. `StatusReport` has a `Default` impl; `category_lifecycle` MUST have a sensible default (empty
-   `Vec`), compatible with the thin report shell constructed in `maintenance_tick` (line 816).
-4. `spawn_background_tick` currently has 22 parameters and already carries
-   `#[allow(clippy::too_many_arguments)]`. Adding `Arc<CategoryAllowlist>` is acceptable; a
-   thread-local or global is not.
-5. No database schema changes. No migration files.
-6. No runtime MCP tool for changing lifecycle policy. Operators use `config.toml` only.
-7. `add_category(&self, category: String)` silently defaults new runtime categories to `pinned`.
-   No API change.
-8. `categories.rs` is 454 lines. Adding the new field, methods, and tests may exceed 500 lines.
-   Architect MUST plan a module split if needed before implementation.
-9. `background.rs` is large. Adding `Arc<CategoryAllowlist>` as a parameter is the correct path.
-   Architect may bundle with a composite struct to reduce parameter count.
+1. **CategoryAllowlist is pub.** `server.rs`, both `main.rs` call sites, and tests reference it.
+   The new `from_categories_with_policy` constructor must be `pub`. The `new()` and
+   `from_categories()` signatures must not change. All call sites must compile without
+   modification — `from_categories` delegates, not a breaking change.
+
+2. **StatusReport has a Default impl.** The new `category_lifecycle: Vec<(String, String)>`
+   field must carry `#[serde(default)]` or be initialised to `vec![]` in the `Default` impl.
+
+3. **No database schema changes.** No migrations, no new tables, no schema version bump.
+
+4. **File size: categories.rs.** Currently 454 lines. The 500-line ceiling applies. If the
+   additions breach this, the architect must split the file before implementation (SR-01). A
+   `categories/lifecycle.rs` companion module is the recommended approach.
+
+5. **validate_config is already long (~200 lines).** The new adaptive cross-check is inserted
+   directly after the `boosted_categories` check using the same `category_set` — no
+   architectural change, no extract-method refactor required.
+
+6. **maintenance_tick parameter count.** Adding `Arc<CategoryAllowlist>` as a raw parameter is
+   acceptable (SCOPE.md constraint). The architect may choose a composite `BackgroundTickConfig`
+   struct (SR-02) — this decision must be made before pseudocode is written, not during
+   implementation.
+
+7. **config.toml is user-managed and not in the repository.** This feature does NOT create or
+   modify any `config.toml` file. The README.md example block is the canonical documentation
+   of defaults.
+
+8. **No MCP tool for runtime lifecycle change.** Operators use `config.toml` and restart.
+
+9. **Circular dependency prevention.** The `default_boosted_categories_set()` helper in
+   `infra/config.rs` must be importable from all seven test infrastructure sites without
+   introducing circular imports. Architect must confirm before implementation (SR-08).
 
 ---
 
 ## Dependencies
 
-### Crates (no new dependencies)
-
-All changes are within `unimatrix-server`. No new crate dependencies are required.
-- `std::collections::HashSet` — existing
-- `std::sync::RwLock` — existing
-- `serde` — existing
-
-### Existing Components
-
-| Component | Location | Relationship |
-|-----------|----------|--------------|
-| `CategoryAllowlist` | `src/infra/categories.rs` | Modified (new field + method) |
-| `KnowledgeConfig` | `src/infra/config.rs` | Modified (new field) |
-| `validate_config` | `src/infra/config.rs` | Modified (new cross-check) |
-| `merge_configs` | `src/infra/config.rs` | Modified (new field in merge block) |
-| `StatusReport` | `src/mcp/response/status.rs` | Modified (new field) |
-| `format_status_report` | `src/mcp/response/status.rs` | Modified (summary + JSON paths) |
-| `StatusService::compute_report` | `src/services/status.rs` | Modified (populate new field) |
-| `maintenance_tick` | `src/background.rs` | Modified (new parameter + stub) |
-| `spawn_background_tick` | `src/background.rs` | Modified (new parameter) |
-| `background_tick_loop` | `src/background.rs` | Modified (new parameter) |
-| `main.rs` | `src/main.rs` | Modified (two call sites) |
-
-### #409 Dependency Contract
-
-Feature #409 (auto-deprecation signal implementation) MAY assume the following from this feature:
-
-1. `CategoryAllowlist::is_adaptive(&self, category: &str) -> bool` exists and is stable. Its
-   signature will not change.
-2. A lifecycle guard stub exists in `maintenance_tick` between Step 10 and the dead-knowledge
-   migration step. #409 replaces the stub body without touching the outer guard.
-3. `Arc<CategoryAllowlist>` is already wired into `maintenance_tick` as a parameter.
-4. `KnowledgeConfig::adaptive_categories` exists and is serde-deserialized. #409 may add new
-   entries to the operator-facing documentation without changing the field type.
-5. #409 MUST NOT add decay schedules, score thresholds, or any signal mechanics to the
-   `CategoryAllowlist` struct — those belong in a separate service layer.
+| Dependency | Type | Notes |
+|------------|------|-------|
+| `std::sync::RwLock<HashSet<String>>` | stdlib | Second lock for adaptive set in `CategoryAllowlist` |
+| `serde` | existing crate | `#[serde(default = "fn")]` attribute on new fields |
+| `toml` | existing crate | Deserialization of `adaptive_categories` from config file |
+| `tracing` | existing crate | `debug!` macro in maintenance tick lifecycle guard stub |
+| `infra/categories.rs` | internal | `CategoryAllowlist` — extended, not replaced |
+| `infra/config.rs` | internal | `KnowledgeConfig`, `validate_config`, `merge_configs` — all extended |
+| `services/status.rs` | internal | `StatusReport` + `StatusService::compute_report()` |
+| `background.rs` | internal | `maintenance_tick` — gains `Arc<CategoryAllowlist>` parameter |
+| `main.rs` | internal | Two call-site pairs updated to pass `adaptive_categories` |
+| `README.md` | documentation | `[knowledge]` example block updated |
+| `#409` | downstream issue | Consumes `is_adaptive()` and the maintenance tick stub |
 
 ---
 
 ## NOT in Scope
 
-- Entry auto-deprecation logic — #409's responsibility.
-- PPR weighting, co-access scoring, or any search ranking signal changes.
-- Wiring lifecycle policy to the existing effectiveness-based auto-quarantine path.
-- Database schema changes.
-- Runtime MCP tool for changing lifecycle policy.
-- Decay schedules, score thresholds, or signal mechanics.
-- `adaptive_categories` support in `DomainPackConfig` — domain pack categories default silently
-  to `pinned` via `add_category`.
-- Markdown/summary format changes to any `context_status` section other than adding
-  "Adaptive categories" line.
-- Any changes to the 5 existing `INITIAL_CATEGORIES` entries or their set membership.
+The following are explicitly excluded to prevent scope creep:
+
+- Entry auto-deprecation logic — that is #409's responsibility.
+- Changes to PPR weighting, co-access scoring, or any ranking signal.
+- Wiring the lifecycle policy to the existing effectiveness-based auto-quarantine path.
+- `DomainPackConfig.adaptive_categories` — domain packs add categories to the allowlist;
+  lifecycle is a separate operator concern.
+- Modifying the operator's `config.toml` — user-managed, not in the repository.
+- A default `config.toml` installed by `unimatrix init` — separate future issue.
+- Decay schedules, score thresholds, or signal mechanics for #409.
+- A runtime MCP tool for changing lifecycle policy.
+- New documentation files (README.md update only).
+- Any change to the behavior of `merge_configs` for `boosted_categories` — existing logic is
+  correct and unchanged.
 
 ---
 
-## Open Questions
+## Open Questions for Architect
 
-OQ-01 (resolved by locked design): Constructor API is `from_categories_with_policy` (new) +
-`from_categories` delegates with `["lesson-learned"]` default. No callsite breakage.
+**OQ-01 (SR-07 / eval harness — conditional, non-blocking)**
+Is `profile.config_overrides.knowledge.boosted_categories` accessible at Step 12 of
+`eval/profile/layer.rs`? The SCOPE.md records `EvalProfile.config_overrides: UnimatrixConfig`
+as the expected path. If this path is reachable at the literal point of the `HashSet::from`
+construction, FR-15 is a one-line fix. If it is not reachable (e.g., `config_overrides` is not
+in scope at Step 12), a config-threading change is required and must be designed before
+implementation begins. Write the AC-19 fix implementation assuming accessibility; flag in the
+implementation brief if threading is required.
 
-OQ-02 (resolved by locked design): Status summary shows only adaptive categories; JSON includes
-all with labels. The asymmetry is intentional and MUST be documented with a golden-output test
-(SR-04 recommendation).
+**OQ-02 (SR-01 / categories.rs file size)**
+Will the additions breach the 500-line ceiling? Architect must decide module layout before
+pseudocode is written. The spec assumes a module split (`categories/lifecycle.rs`) is used if
+needed — implementer follows whatever structure the architect specifies in the implementation
+brief.
 
-OQ-03 (resolved by locked design): `add_category` at runtime silently defaults to `pinned`. No
-API change required.
+**OQ-03 (SR-02 / maintenance_tick parameter count)**
+Should `Arc<CategoryAllowlist>` be added as a raw parameter or bundled into a
+`BackgroundTickConfig` composite struct? Decision belongs to architect; the spec requires the
+lifecycle guard stub to receive the allowlist reference by whichever mechanism the architect
+chooses.
 
-OQ-04 (open, for architect): Should the adaptive `HashSet` be stored as a second `RwLock<HashSet>` field or as a `RwLock<(HashSet, HashSet)>`? Both satisfy FR-04 and FR-08. Architect decides during design phase based on FR-14 file-size impact.
+**OQ-04 (SR-08 / circular dependency for shared helper)**
+Confirm that a `pub fn default_boosted_categories_set() -> HashSet<String>` in `infra/config.rs`
+is importable from all seven sites in FR-16 (specifically: `eval/profile/layer.rs`,
+`server.rs`, `infra/shutdown.rs`, `test_support.rs`, `services/index_briefing.rs`,
+`uds/listener.rs`). If any site cannot import from `infra/config.rs` without a circular dep,
+an alternative (e.g., a dedicated `infra/defaults.rs` module) is required.
 
-OQ-05 (open, for architect): Should `Arc<CategoryAllowlist>` be bundled into a composite struct
-alongside `ConfidenceParams` and `InferenceConfig` to address SR-02 (22-parameter count)?
-This is an architect decision — the spec requires the parameter reaches `maintenance_tick` by
-whatever path is chosen.
+---
 
-OQ-06 (open): The exact test count gate requirement is not stated in IMPLEMENTATION-BRIEF (not
-yet written). The rough estimate of 20–28 new tests is non-binding; the gate verifies all tests
-pass, not a specific count delta.
+## Self-Check
+
+- [x] All 23 AC from SCOPE.md present (AC-01 through AC-23)
+- [x] AC-24 through AC-27 address SR-03 and SR-09
+- [x] #409 dependency contract section included
+- [x] boosted_categories de-hardcoding requirements fully spec'd (FR-14 through FR-20)
+- [x] Every functional requirement is testable with an explicit verification method
+- [x] Non-functional requirements include measurable targets (line counts, error message format)
+- [x] Domain Models section defines key terms
+- [x] NOT in scope section is explicit
+- [x] No placeholder or TBD sections — unknowns are open questions for architect
+- [x] OQ-01 (eval harness) written as conditional note, non-blocking
 
 ---
 
 ## Knowledge Stewardship
 
-- Queried: mcp__unimatrix__context_briefing — returned 18 entries; most relevant: #3715
-  (INITIAL_CATEGORIES lockstep rule — confirmed does NOT apply here as no new category is added),
-  #86 (CategoryAllowlist ADR-003 runtime-extensible HashSet), entry #2312 precedent for
-  `boosted_categories` default trap (SR-03 cross-reference). No results directly described the
-  pinned/adaptive lifecycle pattern; this feature establishes a new convention.
+- Queried: `mcp__unimatrix__context_briefing` — returned 20 entries. Directly relevant: #3772
+  (crt-031 CategoryAllowlist ADR), #3770 (parallel category list pattern), #3771 (shared-default
+  collision trap), #3774 (Default impl change impact on tests), #2312 (validate_config fixture
+  pattern with empty categories). Poison recovery pattern confirmed from #86 (ADR-003).
+  Two-level merge pattern confirmed from prior `merge_configs` reading. All findings applied.

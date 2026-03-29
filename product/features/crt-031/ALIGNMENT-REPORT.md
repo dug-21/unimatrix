@@ -7,7 +7,7 @@
 >   - product/features/crt-031/RISK-TEST-STRATEGY.md
 > Vision source: product/PRODUCT-VISION.md
 > Scope source: product/features/crt-031/SCOPE.md
-> Scope risk: product/features/crt-031/SCOPE-RISK-ASSESSMENT.md
+> Scope risk source: product/features/crt-031/SCOPE-RISK-ASSESSMENT.md
 
 ---
 
@@ -15,14 +15,14 @@
 
 | Check | Status | Notes |
 |-------|--------|-------|
-| Vision Alignment | PASS | Config-only prerequisite infrastructure; directly advances W0-3 domain-agnosticism direction |
-| Milestone Fit | PASS | Correct Wave 1 maintenance-layer work; enables Wave 1A / #409 signal-driven retention without over-building |
-| Scope Gaps | PASS | All 5 SCOPE goals and all 15 original acceptance criteria are addressed in source docs |
-| Scope Additions | WARN | FR-17 (`merge_configs`) is an unlisted implementation detail not in SCOPE.md goals; minor, low risk |
-| Architecture Consistency | PASS | Architecture resolves all SCOPE open questions; ADR-001 locked all three constructor/status/domain-pack questions |
-| Risk Completeness | PASS | All 6 scope risks (SR-01 through SR-06) are traced; 10 new risks added with appropriate severity; security, failure modes, and edge cases covered |
+| Vision Alignment | PASS | Directly advances W0-3 domain-agnosticism; provides the categorical guard prerequisite for ASS-032 Retention work |
+| Milestone Fit | PASS | Scoped as policy-layer infrastructure; defers all #409 mechanics; no future-milestone capabilities built |
+| Scope Gaps | PASS | All 10 SCOPE.md goals and all 23 original ACs are present in source documents |
+| Scope Additions | WARN | `list_adaptive()` public method and `lifecycle.rs` stub file added beyond SCOPE.md; both minor and internally motivated |
+| Architecture Consistency | PASS | All SCOPE open questions resolved before implementation; construction-site enumeration for StatusService wiring is incomplete (caught by risk strategy) |
+| Risk Completeness | PASS | All 9 scope risks (SR-01 through SR-09) traced; 11 runtime risks with scenario coverage; three Critical risks have adequate test plans |
 
-**Overall: PASS with one WARN.** No variances require blocking approval. The WARN is surfaced for human awareness.
+**Overall: PASS with one WARN.** No variances require blocking approval before proceeding.
 
 ---
 
@@ -30,27 +30,16 @@
 
 | Type | Item | Details |
 |------|------|---------|
-| Simplification | SCOPE §Open Questions — constructor API (OQ-1) | SCOPE left this as an open question. Architecture locked it as `from_categories_with_policy` + delegating `from_categories`. Resolution is correct and backward-compatible. |
-| Simplification | SCOPE §Open Questions — status output format (OQ-2) | SCOPE left asymmetry open. Architecture and SPECIFICATION locked summary=adaptive-only, JSON=all. Rationale: operator scanning text doesn't need noise; JSON is for programmatic audit. |
-| Simplification | SCOPE §Open Questions — `add_category` lifecycle (OQ-3) | SCOPE left this open. Architecture locked runtime-added categories to pinned by default. No API change needed. |
-| Addition | FR-17: `merge_configs` field inclusion | SCOPE.md does not mention the merge path. SPECIFICATION adds FR-17 requiring `adaptive_categories` in `merge_configs`. This is a correct implementation detail (omitting it would silently drop operator config per FM-04) but is not explicitly scoped. See Variances section. |
-| Addition | AC-16, AC-17 (SR-03, SR-05 mitigations) | Two acceptance criteria beyond the original 15 (AC-01 through AC-15). Both are defensive quality gates addressing identified risks; they expand the test scope, not the feature scope. Low concern. |
+| Addition | `CategoryAllowlist::list_adaptive()` public method | ARCHITECTURE.md §Component 1 "New public methods" adds `list_adaptive() -> Vec<String>`. Not listed in SCOPE.md goals or ACs. Used internally by the maintenance tick stub (one lock acquisition instead of per-category `is_adaptive()` calls per R-06) and `context_status` population. Not an MCP-facing surface. Well-reasoned. |
+| Addition | `lifecycle.rs` reserved stub module | ARCHITECTURE.md creates `infra/categories/lifecycle.rs` as an initially-empty reserved file for future lifecycle extensions. SCOPE.md describes the module split but does not reference a `lifecycle.rs` file. Impact: one near-empty file committed. |
+| Simplification | `BackgroundTickConfig` composite struct deferred | SCOPE-RISK-ASSESSMENT SR-02 recommended evaluating a composite struct for `spawn_background_tick`. Architecture explicitly defers this as OQ-05 out of scope for crt-031. Rationale documented: existing `#[allow(clippy::too_many_arguments)]` is in place; 22→23 parameters is acceptable. |
+| Simplification | All four SCOPE open questions resolved in architecture | OQ-1 (constructor API), OQ-2 (status format), OQ-3 (`add_category` behavior), OQ-5 (eval harness path) all resolved before implementation. OQ-4 (test count) correctly treated as non-binding. |
 
 ---
 
 ## Variances Requiring Approval
 
-### WARN-01: FR-17 `merge_configs` addition not in SCOPE.md
-
-1. **What**: SPECIFICATION FR-17 requires `merge_configs` in `config.rs` to include `adaptive_categories` in its per-project-wins-else-global merge block. This requirement is absent from SCOPE.md's Goals, Proposed Approach, and Acceptance Criteria.
-
-2. **Why it matters**: This is a correct and necessary implementation detail — without it, the operator's `adaptive_categories` config value is silently dropped for project-level configs (FM-04 in the risk strategy). However, it constitutes scope added by the specifier beyond what SCOPE.md explicitly asked for. Per alignment rules, additions require explicit approval.
-
-3. **Recommendation**: **Accept.** The addition is minimal (one merge field following the established `boosted_categories` pattern), prevents a silent failure mode identified in the risk document, and has zero product-direction risk. Human should confirm acceptance so the delivery agent does not question the requirement.
-
----
-
-*No FAIL or additional VARIANCE findings.*
+None. The two scope additions (WARN) are internal implementation details with no product-direction implications. They are surfaced for human awareness, not approval.
 
 ---
 
@@ -58,94 +47,108 @@
 
 ### Vision Alignment
 
-crt-031 is a config-infrastructure prerequisite for automated knowledge retention. It aligns with the product vision on two axes:
+**Finding: PASS**
 
-**Domain agnosticism (W0-3 direction).** The product vision's Critical Gaps table lists "lesson-learned category name hardcoded in scoring" as **Fixed** via `boosted_categories` in W0-3. crt-031 continues the same pattern: the lifecycle policy of which categories are adaptive vs pinned is now operator-configurable rather than hardcoded. This directly advances the "configured not rebuilt" principle stated in the vision story: "Any knowledge-intensive domain... runs on the same engine, configured not rebuilt."
+The product vision's "Critical Gaps — Domain Coupling" table lists two entries directly relevant to this feature:
 
-**Self-improving knowledge integrity.** The vision describes Unimatrix as a "self-learning knowledge integrity engine." Automated retention (removing stale lesson-learned entries) is a prerequisite for the "ever-improving" part of that claim. crt-031 establishes the categorical guard that makes automated retention safe — entries in `decision` or `convention` are never auto-deprecated, while `lesson-learned` entries may be. This aligns with the vision's emphasis on correctability and provenance.
+- `"lesson-learned" category name hardcoded in scoring` — Status shown as **Fixed** via W0-3 `boosted_categories` config. crt-031 completes that fix: seven hardcoded `HashSet::from(["lesson-learned"...])` literals scattered outside the config load path are eliminated. The vision declared this Critical and Fixed; crt-031 closes the remaining gap.
 
-**No vision anti-patterns detected.** The feature does not hardcode any domain-specific vocabulary, does not add schema changes, and does not expose a runtime mutation path that would bypass the config-as-operator-contract model.
+- The vision's "configured not rebuilt" principle (W0-3 story) is directly served by the new `adaptive_categories` field. An operator deploying Unimatrix in a non-software domain can now express that their equivalent of `lesson-learned` should be eligible for automated lifecycle management — without code changes.
+
+The ASS-032 ROADMAP (the active planning document) places issue #445 — which is exactly what crt-031 implements — in the "Retention" section with the note: "Prerequisite for entry auto-deprecation. Resolves unbounded quarantine/lesson accumulation at the policy layer." The dependency graph shows `#445` as having no blocking deps, and correctly positioned as the policy layer that #409 will consume. All source documents honor this positioning — the feature delivers the policy layer and nothing more.
+
+No vision anti-patterns detected. The feature adds no domain-specific vocabulary to production code, introduces no schema changes, and does not expose a runtime mutation surface for lifecycle policy (operators use `config.toml` and restart).
 
 ---
 
 ### Milestone Fit
 
-crt-031 is filed under the Cortical phase. It is prerequisite infrastructure for #409 (signal-driven auto-deprecation), which is listed in the product vision as a Wave 1A / W1-5 learning signal concern.
+**Finding: PASS**
 
-The feature explicitly avoids building any retention logic itself (SCOPE Non-Goals, SPECIFICATION §NOT in Scope). The maintenance tick stub is a no-op placeholder with a `TODO(#409)` marker — this is the correct pattern for establishing a tested insertion point without pulling forward future milestone work.
+crt-031 falls in the current work horizon between the completion of PPR (#398, gate passed 2026-03-29) and the upcoming Retention cluster (#445/#409). The ROADMAP.md dependency graph shows `#445 — no blocking deps` and `#409 — #445 schema should land first`. This feature is #445.
 
-There is no evidence of Wave 2 or Wave 3 capability being pulled into this feature. The architecture explicitly defers `BackgroundTickConfig` composite struct (SR-02 / OQ-05) to a future feature. This is good milestone discipline.
+The feature does not reach into any future-milestone capability:
+- No #409 auto-deprecation mechanics are implemented. The maintenance tick guard stub is explicitly a no-op with a `TODO(#409)` annotation.
+- No Wave 2 infrastructure (container, HTTP, OAuth) is touched.
+- No Wave 3 GNN or learning pipeline is referenced.
 
-**Milestone fitness: PASS.**
+The architecture explicitly defers the `BackgroundTickConfig` composite struct refactor (OQ-05/SR-02) — a Wave 1 maintenance-quality improvement that was identified as a candidate but correctly judged out of scope for this feature. This is correct milestone discipline per pattern #3742: deferred branches must match scope intent, and the deferral is documented.
 
 ---
 
 ### Architecture Review
 
-**Resolved open questions.** All four SCOPE open questions are resolved in the architecture:
-- OQ-1 (constructor API): locked as `from_categories_with_policy` canonical + delegating `from_categories`/`new()`. No call-site breakage.
-- OQ-2 (status output format): locked as summary=adaptive-only, JSON=all categories. Intentional asymmetry documented via SR-04 with golden-output test requirement.
-- OQ-3 (`add_category` lifecycle): locked as pinned-by-default, no API change.
-- OQ-4 / SR-01 (file-size split): mandated module split to `infra/categories/mod.rs + lifecycle.rs` before implementation.
+**Finding: PASS**
 
-**Prior patterns followed.** The architecture correctly cites and follows:
-- Entry #86 (ADR-003: `RwLock<HashSet<String>>` pattern) — second independent lock uses the same pattern.
-- Entry #2312 (`boosted_categories` default trap) — codified as the mandatory SR-03 test construction pattern in ARCHITECTURE.md §Test Construction Pattern.
-- Entry #3770 (`KnowledgeConfig` parallel list pattern) — `adaptive_categories` mirrors `boosted_categories` structure exactly.
-- Entry #3721 (5-location lockstep for `INITIAL_CATEGORIES`) — correctly identified as not applicable here since no new category is added.
+**Strengths:**
 
-**SR-02 deference (BackgroundTickConfig composite).** The architecture explicitly defers the `spawn_background_tick` composite struct refactor (OQ-05). Per pattern #3742, when an architecture defers a future branch, the scope intent must match — and it does: the SCOPE.md SR-02 already flagged this as a risk to be evaluated, not a required resolution. The deferral is documented with a `#[allow(clippy::too_many_arguments)]` justification and a forward reference to a follow-up procedure entry. PASS.
+All seven SCOPE open questions and scope risks are resolved before implementation begins. This is the correct approach — the SCOPE-RISK-ASSESSMENT.md SR-07 specifically required the architect to trace the eval harness config path before the spec was written, and ARCHITECTURE.md §OQ-5 Resolution does exactly that with a concrete one-line fix.
 
-**One open question remains in ARCHITECTURE.md (OQ-1 §StatusService wiring).** The architecture lists as open whether `StatusService` holds `Arc<CategoryAllowlist>` as a field or receives it as a `compute_report` parameter. SPECIFICATION FR-11 says "StatusService MUST receive `Arc<CategoryAllowlist>` (it already holds it if not, this wiring is added in the same PR)" and Risk R-02 explicitly calls this out as unconfirmed scope. This is correctly flagged in the risk document and mitigated with a pre-coding verification step. Not a variance — the risk is documented and mitigated.
+The construction hierarchy (`new` → `from_categories` → `from_categories_with_policy`) preserves backward compatibility. All existing call sites continue to compile without modification; only the two `main.rs` call sites are proactively updated to wire operator config.
+
+Two independent `RwLock` fields (`categories` and `adaptive`) correctly avoid adding contention to the hot `validate` path. This follows ADR-003 (entry #86) precisely.
+
+SR-03 (parallel-list default collision) is elevated to an architectural documentation concern in ARCHITECTURE.md §SR-03: the mandatory test construction pattern (zero both `boosted_categories` and `adaptive_categories` in any test using a custom `categories` list) is documented directly in the architecture document, not just the risk strategy. This is uncommon and appropriate given the Critical severity.
+
+The `default_boosted_categories_set()` public helper in `infra/config.rs` is correctly designed as the single consolidation point for seven test infrastructure sites. ARCHITECTURE.md §Component 2 confirms import safety ("infra/config.rs has no upward dependency on any of the seven test infrastructure files").
+
+**One architectural gap (mitigated by risk strategy):**
+
+ARCHITECTURE.md §Component 4 specifies wiring `StatusService` via `ServiceLayer::new()` from `main.rs`. However, RISK-TEST-STRATEGY.md R-02 (Critical) identifies three additional `StatusService::new()` construction sites that bypass `ServiceLayer`:
+- `run_single_tick` in `background.rs` (~line 446)
+- Two test helpers in `services/status.rs` (~lines 1886 and 2038)
+
+The architecture document does not enumerate these three sites as required update targets. An implementer following ARCHITECTURE.md alone could miss the `run_single_tick` path, causing `context_status` calls from the maintenance tick to return empty `category_lifecycle` data without a compile error (the compile-time catch only covers the two test helpers, not `run_single_tick` if it constructs `CategoryAllowlist::new()` inline).
+
+This gap is caught by the risk strategy (R-02 scenarios 1-4 are explicit), but the architecture is the implementer's primary design reference. The risk strategy's pre-implementation grep requirement (R-02 scenario 1) and the wiring assertion requirement (scenario 4) are the mitigating controls.
+
+This is not a FAIL because the risk is documented and mitigated, but it would have been stronger if the architecture had enumerated all four `StatusService::new()` sites directly.
 
 ---
 
 ### Specification Review
 
-**Scope goal coverage.** All five SCOPE goals map to SPECIFICATION functional requirements:
+**Finding: PASS**
 
-| SCOPE Goal | SPECIFICATION FR |
-|------------|-----------------|
-| 1. `adaptive_categories` field in `[knowledge]` with default `["lesson-learned"]` | FR-01, FR-02, FR-03 |
-| 2. `CategoryAllowlist::is_adaptive()` method | FR-06, FR-07, FR-08 |
-| 3. Startup validation (`AdaptiveCategoryNotInAllowlist`) | FR-04, FR-05 |
-| 4. Expose per-category lifecycle in `context_status` | FR-10, FR-11, FR-12, FR-13 |
-| 5. Lifecycle guard stub in maintenance tick | FR-15, FR-16 |
+**Scope goal coverage.** All ten SCOPE.md goals map to SPECIFICATION functional requirements:
 
-**Acceptance criteria coverage.** All 15 original SCOPE acceptance criteria (AC-01 through AC-15) are reproduced in SPECIFICATION with explicit verification methods added. Two new criteria (AC-16, AC-17) address SR-03 and SR-05 mitigations — these expand test coverage, not feature behavior.
+| SCOPE Goals | SPECIFICATION FRs |
+|-------------|-------------------|
+| Goals 1-5 (adaptive_categories) | FR-01 through FR-13 |
+| Goals 6-10 (boosted_categories de-hardcoding) | FR-14 through FR-20 |
 
-**Non-functional requirements.** NFR-01 through NFR-07 are well-formed. NFR-05 correctly restricts `is_adaptive` to non-hot-path call sites only (maintenance tick and `context_status`), consistent with the vision's zero-regression-on-ranking-signal requirement.
+Every AC from SCOPE.md (AC-01 through AC-23) is present in SPECIFICATION with explicit verification methods added — a meaningful upgrade. AC-24 through AC-27 add four defensive quality gates (SR-03 and SR-09 mitigations). These expand the test scope, not the feature behavior; they are appropriate additions.
 
-**FR-17 addition noted.** `merge_configs` requirement is the only SPECIFICATION requirement without a direct SCOPE.md antecedent. See WARN-01 above.
+The `#409 Dependency Contract` section in SPECIFICATION is exemplary: five explicit numbered commitments define what crt-031 provides to #409 and what it does not. This pre-declares the interface contract before #409 is scoped, preventing future scope ambiguity.
 
-**Open questions in SPECIFICATION.** OQ-04 (two `RwLock` fields vs one `RwLock<(HashSet, HashSet)>`) and OQ-05 (composite struct) are correctly marked as architect decisions. OQ-06 (test count gate) is non-binding. These are appropriate deferrals for the design phase.
+FR-10 (`merge_configs` handling) is present in SPECIFICATION but has no direct antecedent in SCOPE.md Goals or the Proposed Approach. It is a correct and necessary implementation detail — without it, operator `adaptive_categories` config would be silently dropped for project-level configs (FM-04 in the risk strategy). The specifier identified this gap and correctly added the requirement. No approval is needed because it is a direct logical consequence of the scope (adding a new `KnowledgeConfig` field without a merge rule would be a defect), but it is documented here as a scope addition for completeness.
+
+FR-12 (maintenance tick guard) specifies use of `list_adaptive()` for the tick log rather than per-category `is_adaptive()` calls — this directly mitigates R-06 (double lock acquisition). The specification correctly locks the implementation pattern at the FR level.
 
 ---
 
 ### Risk Strategy Review
 
-**Coverage is comprehensive.** Ten risks are registered, spanning:
-- Test fixture correctness (R-01 — Critical, the highest-priority risk)
-- Integration wiring (R-02, R-04, R-07, R-09)
-- Parameter count and code review friction (R-05)
-- Lock hygiene (R-03, R-06)
-- Golden-output determinism (R-08)
-- Gate delivery completeness (R-10)
+**Finding: PASS**
 
-**Scope risk traceability is explicit.** All 6 SCOPE risks (SR-01 through SR-06) are mapped to architecture risks and resolution status in the §Scope Risk Traceability table. This is above-average traceability for a design-phase risk document.
+The risk register covers 11 risks (R-01 through R-11), 4 integration risks (I-01 through I-04), 7 edge cases (E-01 through E-07), 3 security risks (S-01 through S-03), and 6 failure modes (FM-01 through FM-06). Coverage depth is above average for a design-phase risk document.
 
-**Pattern alignment confirmed.** The risk document queried Unimatrix entries #3579 (gate 3b missing test modules), #2758 (gate 3c false PASS claims), #1560, #1542, #2312, and #3770. All findings were applied correctly:
-- #3579 elevated R-10 to High severity — correct.
-- #2312 (boosted_categories default trap) directly grounds R-01 as Critical.
-- Pattern #3426 (formatter golden-output test required) is independently noted in SCOPE-RISK-ASSESSMENT SR-04, ARCHITECTURE SR-04, and SPECIFICATION FR-12/FR-13 — full traceability chain.
+The Scope Risk Traceability table maps all nine SR items (SR-01 through SR-09) from SCOPE-RISK-ASSESSMENT.md to architecture risk IDs and resolution status. This explicit traceability chain is rare and valuable.
 
-**Security coverage.** S-01 through S-03 are present. S-01 correctly identifies the debug-log blast radius as the only concern for `?adaptive_cats` formatting of operator-supplied strings — minimal risk, correctly characterized.
+Three risks are correctly classified Critical:
+- R-01 (validate_config fixture collision) — 4 test scenarios, including a mandatory pre-implementation grep.
+- R-02 (StatusService bypass sites) — 4 test scenarios, pre-implementation grep required.
+- R-11 (KnowledgeConfig Default impl change — silent test failures) — 5 test scenarios including FR-19 mandatory pre-implementation step.
 
-**One minor gap.** The risk register does not explicitly address the case where the module split (R-04) interacts with the `unimatrix-observe` crate's import path. However, ARCHITECTURE.md explicitly confirms `unimatrix-observe` is not touched by this feature (5-location lockstep rule does not apply), so the gap is benign.
+R-02 was elevated from Medium (in SCOPE-RISK-ASSESSMENT SR-05) to Critical after architecture phase discovery of the three non-ServiceLayer `StatusService::new()` construction sites. This represents appropriate risk lifecycle management and the elevation is well-justified with reference to historical pattern #3216.
+
+Security risks S-01 through S-03 are lightweight but proportionate. The `{category:?}` debug-format recommendation in S-02 is correct and consistent with the existing `BoostedCategoryNotInAllowlist` pattern.
+
+Knowledge stewardship in the risk document is thorough: four separate Unimatrix queries were made, each finding applicable patterns that were directly applied to elevate or shape specific risks. No novel patterns were stored (all applicable patterns were already captured from prior features) — a correct determination.
 
 ---
 
 ## Knowledge Stewardship
 
-- Queried: `/uni-query-patterns` for topic `vision` — found entry #3742 (optional future branch deferral WARN pattern from crt-030) and #3426 (formatter golden-output requirement pattern from col-026). Both applied to this review: #3742 confirmed SR-02 deferral is correctly handled; #3426 confirmed SR-04 golden-output test requirement is correctly propagated through all three source documents.
-- Stored: nothing novel to store — the WARN-01 scope addition (FR-17 `merge_configs`) is a specific implementation detail, not a recurring cross-feature pattern. The existing entry #3742 covers the general case of architecture scope additions; no new pattern generalizes from this review alone.
+- Queried: `/uni-query-patterns` for topic `vision`, category `pattern` — found 3 entries: #2298 (config key semantic divergence), #3337 (architecture diagram header divergence), #3742 (optional future branch in architecture must match scope intent). Applied: #3742 confirmed the SR-02 deferral is handled correctly (architecture documents the deferral, scope intent matches). #2298 and #3337 not applicable to crt-031.
+- Stored: nothing novel to store — the architecture's incomplete StatusService construction-site enumeration is an instance of the already-documented #3216 pattern (arc-threading gap + hidden run_single_tick bypass). The risk strategy correctly identifies and traces it. No new cross-feature generalization arises from this review.
