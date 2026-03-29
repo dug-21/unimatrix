@@ -547,7 +547,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
     // Initialize category allowlist from config (dsn-001).
-    let categories = Arc::new(CategoryAllowlist::from_categories(knowledge_categories));
+    let adaptive_categories: Vec<String> = config.knowledge.adaptive_categories.clone();
+    let categories = Arc::new(CategoryAllowlist::from_categories_with_policy(
+        knowledge_categories,
+        adaptive_categories,
+    ));
 
     // Build DomainPackRegistry from [observation] config (col-023 ADR-002).
     // The built-in claude-code pack is always loaded; TOML stanzas are merged in.
@@ -652,6 +656,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&inference_config), // crt-023: NLI store config snapshot
         Arc::clone(&observation_registry), // col-023: thread registry into StatusService
         Arc::clone(&confidence_params), // GH #311: propagate operator-configured weights
+        Arc::clone(&categories), // crt-031: operator-configured category allowlist with lifecycle policy
     );
 
     // Start UDS listener for hook IPC.
@@ -679,7 +684,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&embed_handle),
         Arc::clone(&registry),
         Arc::clone(&audit),
-        categories,
+        Arc::clone(&categories), // crt-031: clone to keep categories alive for spawn_background_tick
         Arc::clone(&store),
         Arc::clone(&vector_index),
         Arc::clone(&adapt_service),
@@ -726,6 +731,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         nli_handle,                   // crt-023: bootstrap promotion
         Arc::clone(&inference_config), // crt-023: bootstrap promotion config
         phase_freq_table_handle,      // col-031: shared with SearchService (ADR-005)
+        Arc::clone(&categories),      // crt-031: category allowlist for lifecycle guard stub
     );
 
     // Create daemon CancellationToken (ADR-002).
@@ -937,7 +943,11 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
     // Initialize category allowlist from config (dsn-001).
-    let categories = Arc::new(CategoryAllowlist::from_categories(knowledge_categories));
+    let adaptive_categories: Vec<String> = config.knowledge.adaptive_categories.clone();
+    let categories = Arc::new(CategoryAllowlist::from_categories_with_policy(
+        knowledge_categories,
+        adaptive_categories,
+    ));
 
     // Build DomainPackRegistry from [observation] config (col-023 ADR-002).
     // The built-in claude-code pack is always loaded; TOML stanzas are merged in.
@@ -1041,6 +1051,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&inference_config), // crt-023: NLI store config snapshot
         Arc::clone(&observation_registry), // col-023: thread registry into StatusService
         Arc::clone(&confidence_params), // GH #311: propagate operator-configured weights
+        Arc::clone(&categories), // crt-031: operator-configured category allowlist with lifecycle policy
     );
 
     // Start UDS listener for hook IPC (expanded signature per col-007 ADR-001, col-008, col-009).
@@ -1068,7 +1079,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&embed_handle),
         Arc::clone(&registry),
         Arc::clone(&audit),
-        categories,
+        Arc::clone(&categories), // crt-031: clone to keep categories alive for spawn_background_tick
         Arc::clone(&store),
         Arc::clone(&vector_index),
         Arc::clone(&adapt_service),
@@ -1119,6 +1130,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         nli_handle,                     // crt-023: bootstrap promotion
         Arc::clone(&inference_config),  // crt-023: bootstrap promotion config
         phase_freq_table_handle,        // col-031: shared with SearchService (ADR-005)
+        Arc::clone(&categories),        // crt-031: category allowlist for lifecycle guard stub
     );
 
     // Prepare lifecycle handles for shutdown.
