@@ -89,9 +89,9 @@ search.rs (Step 6d)
   │
   └── calls: personalized_pagerank(&typed_graph, &seed_scores, alpha, iterations)
                │
-               └── calls: typed_graph.edges_of_type(node, Supports, Incoming)
-                           typed_graph.edges_of_type(node, CoAccess, Incoming)
-                           typed_graph.edges_of_type(node, Prerequisite, Incoming)
+               └── calls: typed_graph.edges_of_type(node, Supports, Outgoing)
+                           typed_graph.edges_of_type(node, CoAccess, Outgoing)
+                           typed_graph.edges_of_type(node, Prerequisite, Outgoing)
                            (NEVER: .edges_directed() directly — AC-02)
 ```
 
@@ -112,7 +112,7 @@ See ADR files for full context. Summary:
 |---|---|---|
 | Module structure | `graph_ppr.rs` submodule of `graph.rs` | ADR-001 |
 | PPR function signature | `(graph, seed_scores, alpha, iterations) -> HashMap<u64, f64>` | ADR-002 |
-| Edge direction semantics | Incoming for Supports/Prerequisite/CoAccess | ADR-003 |
+| Edge direction semantics | Outgoing for Supports/Prerequisite/CoAccess (reverse/transpose PPR) | ADR-003 |
 | Determinism mechanism | Node-ID-sorted accumulation per iteration | ADR-004 |
 | Pipeline step position | Step 6d: after 6b, before 6c | ADR-005 |
 | Personalization vector | hnsw_score × phase_affinity_score, cold-start → ×1.0 | ADR-006 |

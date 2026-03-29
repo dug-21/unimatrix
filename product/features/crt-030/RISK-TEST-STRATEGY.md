@@ -15,7 +15,7 @@
 | R-09 | `edges_of_type` exclusivity: a developer adding a new edge traversal call in `graph_ppr.rs` might use `.edges_directed()` directly (violating AC-02); no compile-time enforcement exists — test-only coverage | Med | Med | Med |
 | R-10 | Phase affinity snapshot construction (ADR-006): the spec says read from the already-cloned snapshot, not call `phase_affinity_score()` directly — an implementer reading FR-06/FR-08 in SPECIFICATION.md without ADR-006 may call the method directly and hit the wrong fallback behavior under concurrent lock ordering | Med | Med | Med |
 | R-11 | `ppr_blend_weight` dual-role boundary at 1.0: existing HNSW candidates have their similarity fully replaced by PPR score; PPR-only entries get `initial_sim = ppr_score` (potentially > the HNSW floor) — this can invert the natural HNSW ranking, surfacing PPR-only entries above real HNSW candidates | Med | Low | Med |
-| R-12 | Prerequisite edge traversal: #412 has not yet produced Prerequisite edges — the PPR code will include the traversal path but it is never exercised in any real or test graph. The path can silently accumulate an off-by-one in direction semantics that is only caught when #412 ships | Med | Med | Med |
+| R-12 | Prerequisite edge traversal: #412 has not yet produced Prerequisite edges — the PPR code will include the traversal path but it is never exercised in any real or test graph. The path can silently regress to Direction::Incoming (standard forward PPR) that is only caught when #412 ships | Med | Med | Med |
 | R-13 | CoAccess edge density assumption: if production co_access table has many entries with count >= 3, CoAccess edge count grows proportional to (popular entries)^2 — the score map before threshold filtering grows O(N) but dense edge traversal cost grows O(E_pos) which could exceed the 1 ms latency budget at 10K without hitting the 100K Rayon threshold | Med | Med | Med |
 
 ---
@@ -176,17 +176,17 @@
 
 ---
 
-### R-12: Prerequisite Edge Direction — Silent Off-by-One Until #412 Ships
+### R-12: Prerequisite Edge Direction — Silent Regression to Forward PPR Until #412 Ships
 **Severity**: Med
 **Likelihood**: Med
-**Impact**: Prerequisite traversal uses `Direction::Incoming` per ADR-003. If the direction is accidentally coded as `Direction::Outgoing`, the function traverses `B → X` edges (where B is a seed) and surfaces what B is a prerequisite FOR — the opposite semantic. This error is undetectable until #412 begins producing Prerequisite edges in the real graph, at which point it causes a correctness regression silently.
+**Impact**: Prerequisite traversal uses `Direction::Outgoing` per ADR-003 (reverse/transpose PPR). `Direction::Outgoing` means node u accumulates from nodes it points to: for edge `A→B` with B as seed, A surfaces because A points outward to B. If the direction is accidentally coded as `Direction::Incoming` (standard forward PPR), traversal instead surfaces what B is a prerequisite FOR — the opposite semantic. This error is undetectable until #412 begins producing Prerequisite edges in the real graph, at which point it causes a correctness regression silently.
 
 **Test Scenarios**:
-1. Unit test (synthetic graph): construct a graph with a `Prerequisite` edge `A→B`. Seed PPR with `{B: 1.0}`. Assert `result[A] > 0.0` (Incoming direction on B finds A).
-2. Unit test: construct a `Prerequisite` edge `A→B`. Seed PPR with `{A: 1.0}`. Assert `result[B]` is either 0.0 or strictly less than `result[A]` (A is the seed; B has no Incoming edge from A — A only has Outgoing to B, so B should NOT receive direct propagation via Prerequisite).
+1. Unit test (synthetic graph): construct a graph with a `Prerequisite` edge `A→B`. Seed PPR with `{B: 1.0}`. Assert `result[A] > 0.0` (Outgoing direction on A finds B as a target, so A accumulates when B is seeded).
+2. Unit test: construct a `Prerequisite` edge `A→B`. Seed PPR with `{A: 1.0}`. Assert `result[B]` is either 0.0 or strictly less than `result[A]` (A is the seed; B has no Outgoing edge toward A, so B should NOT accumulate mass via Prerequisite from A's seed).
 3. This test must be added even though no production Prerequisite edges currently exist — it validates the direction constant used in the code.
 
-**Coverage Requirement**: A specific Prerequisite direction test must exist regardless of #412 status. This is the only way to detect a direction regression before #412 ships.
+**Coverage Requirement**: A specific Prerequisite direction test must exist regardless of #412 status. This is the only way to detect a regression to Direction::Incoming before #412 ships.
 
 ---
 
