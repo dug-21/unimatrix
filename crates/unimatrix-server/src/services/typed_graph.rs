@@ -19,7 +19,7 @@ use unimatrix_core::{EntryRecord, Store};
 use unimatrix_engine::graph::{
     GraphEdgeRow, GraphError, TypedRelationGraph, build_typed_relation_graph,
 };
-use unimatrix_store::StoreError;
+use unimatrix_store::{Status, StoreError};
 
 // ---------------------------------------------------------------------------
 // TypedGraphState
@@ -90,7 +90,16 @@ impl TypedGraphState {
     /// failure so callers can distinguish cycle vs. store error).
     pub async fn rebuild(store: &Store) -> Result<Self, StoreError> {
         // Step 1: Query all entries (all statuses).
-        let all_entries = store.query_all_entries().await?;
+        let all_entries_raw = store.query_all_entries().await?;
+
+        // Fix 4 (GH #444): filter out Quarantined entries before building the graph.
+        // Quarantined nodes must not propagate PPR mass to their neighbors.
+        // Deprecated entries are retained: Supersedes-chain traversal (SR-01) requires
+        // them for `find_terminal_active` to resolve deprecated → active chains.
+        let all_entries: Vec<EntryRecord> = all_entries_raw
+            .into_iter()
+            .filter(|e| e.status != Status::Quarantined)
+            .collect();
 
         // Step 2: Query all GRAPH_EDGES rows.
         // Map store::GraphEdgeRow → engine::GraphEdgeRow (identical fields; separate types
@@ -424,6 +433,147 @@ mod tests {
             terminal,
             Some(42),
             "swapped graph must contain the active entry"
+        );
+    }
+
+    // -- GH #444: quarantined entries must be filtered from TypedGraphState --
+
+    // T-444-04: rebuild() excludes quarantined entries from all_entries and typed_graph.
+    //
+    // One active entry (id=1) + one quarantined entry (id=2), connected by a Supports edge.
+    // After rebuild(), the quarantined entry must be absent from all_entries.
+    // find_terminal_active(2, ...) must return None (node not in graph).
+    #[tokio::test]
+    async fn test_rebuild_excludes_quarantined_entries() {
+        use unimatrix_core::Store;
+        use unimatrix_store::{NewEntry, SqlxStore, Status};
+
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = Arc::new(
+            SqlxStore::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            )
+            .await
+            .expect("open store"),
+        );
+
+        // Insert active entry
+        let id_active = store
+            .insert(NewEntry {
+                title: "active-entry".to_string(),
+                content: "active".to_string(),
+                topic: "test".to_string(),
+                category: "decision".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Active,
+                created_by: "test".to_string(),
+                feature_cycle: "bugfix-444".to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert active");
+
+        // Insert quarantined entry
+        let id_quarantined = store
+            .insert(NewEntry {
+                title: "quarantined-entry".to_string(),
+                content: "quarantined".to_string(),
+                topic: "test".to_string(),
+                category: "decision".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Active, // start active, then quarantine
+                created_by: "test".to_string(),
+                feature_cycle: "bugfix-444".to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert quarantined");
+        store
+            .update_status(id_quarantined, Status::Quarantined)
+            .await
+            .expect("quarantine entry");
+
+        // Rebuild state
+        let store_ref: &Store = &*store;
+        let state = TypedGraphState::rebuild(store_ref)
+            .await
+            .expect("rebuild ok");
+
+        // Quarantined entry must be absent from all_entries
+        let quarantined_in_entries = state.all_entries.iter().any(|e| e.id == id_quarantined);
+        assert!(
+            !quarantined_in_entries,
+            "quarantined entry must not appear in all_entries after rebuild"
+        );
+
+        // Active entry must be present
+        let active_in_entries = state.all_entries.iter().any(|e| e.id == id_active);
+        assert!(
+            active_in_entries,
+            "active entry must appear in all_entries after rebuild"
+        );
+
+        // find_terminal_active for quarantined entry must return None (not in graph)
+        let terminal = unimatrix_engine::graph::find_terminal_active(
+            id_quarantined,
+            &state.typed_graph,
+            &state.all_entries,
+        );
+        assert!(
+            terminal.is_none(),
+            "quarantined entry must not be reachable via find_terminal_active"
+        );
+    }
+
+    // T-444-04b: rebuild() retains deprecated entries (needed for Supersedes chain).
+    #[tokio::test]
+    async fn test_rebuild_retains_deprecated_entries() {
+        use unimatrix_core::Store;
+        use unimatrix_store::{NewEntry, SqlxStore, Status};
+
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = Arc::new(
+            SqlxStore::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            )
+            .await
+            .expect("open store"),
+        );
+
+        // Insert deprecated entry
+        let id_deprecated = store
+            .insert(NewEntry {
+                title: "deprecated-entry".to_string(),
+                content: "deprecated".to_string(),
+                topic: "test".to_string(),
+                category: "decision".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Active,
+                created_by: "test".to_string(),
+                feature_cycle: "bugfix-444".to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert deprecated");
+        store
+            .update_status(id_deprecated, Status::Deprecated)
+            .await
+            .expect("deprecate entry");
+
+        let store_ref: &Store = &*store;
+        let state = TypedGraphState::rebuild(store_ref)
+            .await
+            .expect("rebuild ok");
+
+        let deprecated_in_entries = state.all_entries.iter().any(|e| e.id == id_deprecated);
+        assert!(
+            deprecated_in_entries,
+            "deprecated entry must be retained in all_entries for Supersedes chain traversal (SR-01)"
         );
     }
 

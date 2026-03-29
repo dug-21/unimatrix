@@ -424,6 +424,25 @@ impl VectorIndex {
         Ok(())
     }
 
+    /// Remove an entry from the IdMap, marking its HNSW point stale.
+    ///
+    /// Removes `entry_id` from `entry_to_data` and its corresponding `data_id`
+    /// from `data_to_entry`. The HNSW point itself is not deleted (hnsw_rs has no
+    /// deletion API); it becomes a stale routing-only point that is cleaned up on
+    /// the next `compact()` call.
+    ///
+    /// This is structurally identical to the stale-point handling in `insert`
+    /// (index.rs lines 163–165). No VECTOR_MAP write is performed here — the
+    /// caller is responsible for deleting the VECTOR_MAP row (prune pass, GH #444).
+    ///
+    /// No-op if `entry_id` has no mapping (idempotent).
+    pub fn remove_entry(&self, entry_id: u64) {
+        let mut id_map = self.id_map.write().unwrap_or_else(|e| e.into_inner());
+        if let Some(data_id) = id_map.entry_to_data.remove(&entry_id) {
+            id_map.data_to_entry.remove(&data_id);
+        }
+    }
+
     /// Insert into HNSW index and update IdMap only.
     ///
     /// Skips the VECTOR_MAP write (caller already wrote it in a combined
@@ -1545,5 +1564,80 @@ mod tests {
                 "embedding round-trip mismatch for entry {entry_id}: dot={dot}"
             );
         }
+    }
+
+    // -- GH #444: VectorIndex::remove_entry (Fix 2 — prune pass support) --
+
+    // T-444-remove-01: remove_entry marks entry stale (no longer in contains()).
+    #[tokio::test]
+    async fn test_remove_entry_not_in_contains_after_removal() {
+        let tvi = TestVectorIndex::new().await;
+        let mut emb = vec![0.0f32; 384];
+        emb[0] = 1.0;
+        tvi.vi().insert(1, &emb).await.unwrap();
+
+        assert!(
+            tvi.vi().contains(1),
+            "entry must be in index before removal"
+        );
+
+        tvi.vi().remove_entry(1);
+
+        assert!(
+            !tvi.vi().contains(1),
+            "entry must not be in contains() after remove_entry"
+        );
+    }
+
+    // T-444-remove-02: remove_entry is idempotent — no panic on second call.
+    #[tokio::test]
+    async fn test_remove_entry_idempotent() {
+        let tvi = TestVectorIndex::new().await;
+        let mut emb = vec![0.0f32; 384];
+        emb[0] = 1.0;
+        tvi.vi().insert(1, &emb).await.unwrap();
+
+        tvi.vi().remove_entry(1);
+        // Second call must not panic
+        tvi.vi().remove_entry(1);
+
+        assert!(
+            !tvi.vi().contains(1),
+            "entry must remain absent after second remove_entry"
+        );
+    }
+
+    // T-444-remove-03: remove_entry increments stale_count by 1.
+    #[tokio::test]
+    async fn test_remove_entry_increments_stale_count() {
+        let tvi = TestVectorIndex::new().await;
+        let mut emb = vec![0.0f32; 384];
+        emb[0] = 1.0;
+        tvi.vi().insert(1, &emb).await.unwrap();
+
+        let stale_before = tvi.vi().stale_count();
+        tvi.vi().remove_entry(1);
+        let stale_after = tvi.vi().stale_count();
+
+        assert_eq!(
+            stale_after,
+            stale_before + 1,
+            "remove_entry must increment stale_count by 1"
+        );
+    }
+
+    // T-444-remove-04: remove_entry on non-existent entry is a no-op (no change to stale_count).
+    #[tokio::test]
+    async fn test_remove_entry_nonexistent_is_noop() {
+        let tvi = TestVectorIndex::new().await;
+
+        let stale_before = tvi.vi().stale_count();
+        tvi.vi().remove_entry(999);
+        let stale_after = tvi.vi().stale_count();
+
+        assert_eq!(
+            stale_after, stale_before,
+            "remove_entry on non-existent entry must not change stale_count"
+        );
     }
 }
