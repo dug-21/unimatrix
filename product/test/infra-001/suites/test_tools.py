@@ -530,6 +530,40 @@ def test_status_all_formats(server):
         assert_tool_success(resp)
 
 
+def test_status_category_lifecycle_field_present(server):
+    """crt-031: context_status JSON output includes category_lifecycle field.
+
+    Verifies the new per-category lifecycle section is populated and contains
+    correctly labeled entries (adaptive vs pinned). AC-09.
+    """
+    resp = server.context_status(agent_id="human", format="json")
+    report = parse_status_report(resp)
+
+    lifecycle = report.get("category_lifecycle")
+    assert lifecycle is not None, "category_lifecycle field missing from status JSON"
+    # Vec<(String, String)> serializes as a JSON object (dict)
+    assert isinstance(lifecycle, dict), (
+        f"category_lifecycle must be a dict, got: {type(lifecycle)}"
+    )
+    # Default config: must contain at least the 5 initial categories
+    assert len(lifecycle) >= 5, (
+        f"Expected at least 5 categories in category_lifecycle, got: {lifecycle}"
+    )
+    # lesson-learned must be present and labeled adaptive (default config)
+    assert "lesson-learned" in lifecycle, (
+        f"lesson-learned not found in category_lifecycle keys: {list(lifecycle.keys())}"
+    )
+    assert lifecycle["lesson-learned"] == "adaptive", (
+        f"Expected lesson-learned to be 'adaptive', got: {lifecycle['lesson-learned']}"
+    )
+    # All other default categories must be pinned
+    for cat in ("decision", "convention", "pattern", "procedure"):
+        if cat in lifecycle:
+            assert lifecycle[cat] == "pinned", (
+                f"Expected {cat} to be 'pinned', got: {lifecycle[cat]}"
+            )
+
+
 # === context_briefing (8 tests) =======================================
 
 def test_briefing_returns_content(server):
