@@ -305,7 +305,7 @@ mod tests {
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
             Arc::clone(&usage_dedup),
-            std::collections::HashSet::from(["lesson-learned".to_string()]),
+            crate::infra::config::default_boosted_categories_set(),
             test_pool,
             // crt-023: disabled NLI for test (no model in test env)
             crate::infra::nli_handle::NliServiceHandle::new(),
@@ -316,6 +316,8 @@ mod tests {
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
             // GH #311: default params for tests.
             Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
+            // crt-031: default lifecycle policy for tests.
+            Arc::new(crate::infra::categories::CategoryAllowlist::new()),
         );
 
         // Build LifecycleHandles with ServiceLayer included (#92 fix).
@@ -405,7 +407,7 @@ mod tests {
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
             Arc::clone(&usage_dedup),
-            std::collections::HashSet::from(["lesson-learned".to_string()]),
+            crate::infra::config::default_boosted_categories_set(),
             test_pool2,
             // crt-023: disabled NLI for test (no model in test env)
             crate::infra::nli_handle::NliServiceHandle::new(),
@@ -416,6 +418,8 @@ mod tests {
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
             // GH #311: default params for tests.
             Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
+            // crt-031: default lifecycle policy for tests.
+            Arc::new(crate::infra::categories::CategoryAllowlist::new()),
         );
 
         // Drop locals except ServiceLayer

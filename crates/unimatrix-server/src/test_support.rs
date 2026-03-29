@@ -126,7 +126,7 @@ impl TestHarness {
             audit,
             usage_dedup,
             rate_config,
-            std::collections::HashSet::from(["lesson-learned".to_string()]),
+            crate::infra::config::default_boosted_categories_set(),
             test_pool,
             // crt-023: disabled NLI for test harness (no model in test env)
             crate::infra::nli_handle::NliServiceHandle::new(),
@@ -138,6 +138,8 @@ impl TestHarness {
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
             // GH #311: default params for test harness.
             Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
+            // crt-031: default lifecycle policy for test harness.
+            Arc::new(crate::infra::categories::CategoryAllowlist::new()),
         );
 
         Some(TestHarness { layer, store })

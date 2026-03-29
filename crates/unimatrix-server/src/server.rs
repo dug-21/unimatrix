@@ -284,7 +284,7 @@ impl UnimatrixServer {
             Arc::clone(&adapt_service),
             Arc::clone(&audit),
             Arc::clone(&usage_dedup),
-            std::collections::HashSet::from(["lesson-learned".to_string()]),
+            crate::infra::config::default_boosted_categories_set(),
             test_pool,
             // crt-023: disabled NLI for test server (no model in test env)
             crate::infra::nli_handle::NliServiceHandle::new(),
@@ -295,6 +295,8 @@ impl UnimatrixServer {
             Arc::new(DomainPackRegistry::with_builtin_claude_code()),
             // GH #311: default params for tests; production paths supply resolved params.
             Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
+            // crt-031: default lifecycle policy for tests.
+            Arc::new(crate::infra::categories::CategoryAllowlist::new()),
         );
 
         // crt-018b: extract handle after ServiceLayer is fully constructed so

@@ -16,6 +16,7 @@ use unimatrix_observe::domain::DomainPackRegistry;
 
 use crate::error::ServerError;
 use crate::infra::audit::AuditLog;
+use crate::infra::categories::CategoryAllowlist;
 use crate::infra::config::InferenceConfig;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::nli_handle::NliServiceHandle;
@@ -334,6 +335,7 @@ impl ServiceLayer {
         inference_config: Arc<InferenceConfig>,
         observation_registry: Arc<DomainPackRegistry>,
         confidence_params: Arc<unimatrix_engine::confidence::ConfidenceParams>,
+        category_allowlist: Arc<CategoryAllowlist>, // crt-031: NEW
     ) -> Self {
         Self::with_rate_config(
             store,
@@ -353,6 +355,7 @@ impl ServiceLayer {
             inference_config,
             observation_registry,
             confidence_params,
+            category_allowlist,
         )
     }
 
@@ -374,6 +377,7 @@ impl ServiceLayer {
         inference_config: Arc<InferenceConfig>,
         observation_registry: Arc<DomainPackRegistry>,
         confidence_params: Arc<unimatrix_engine::confidence::ConfidenceParams>,
+        category_allowlist: Arc<CategoryAllowlist>, // crt-031: NEW
     ) -> Self {
         let gateway = Arc::new(SecurityGateway::with_rate_config(
             Arc::clone(&audit),
@@ -468,6 +472,7 @@ impl ServiceLayer {
             Arc::clone(&contradiction_cache),
             Arc::clone(&ml_inference_pool),
             Arc::clone(&observation_registry),
+            Arc::clone(&category_allowlist), // crt-031: operator-loaded lifecycle policy
         );
 
         let usage = UsageService::new(

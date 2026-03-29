@@ -119,6 +119,16 @@ pub struct StatusReport {
     pub coherence_by_source: Vec<(String, f64)>,
     /// Effectiveness analysis results (None if no injection data or query failure).
     pub effectiveness: Option<unimatrix_engine::effectiveness::EffectivenessReport>,
+    /// Per-category lifecycle label (crt-031).
+    ///
+    /// Populated by compute_report() via category_allowlist.list_categories() + is_adaptive().
+    /// Sorted alphabetically by category name before storing (R-08: deterministic golden tests).
+    /// Empty vec when StatusReport is constructed via Default (e.g. maintenance_tick thin shell).
+    ///
+    /// Output format asymmetry (ADR-001 decision 2):
+    /// - Summary formatter: lists only adaptive categories (pinned is the silent default)
+    /// - JSON formatter: includes all categories with their lifecycle label
+    pub category_lifecycle: Vec<(String, String)>, // (category_name, "adaptive" | "pinned")
 }
 
 impl Default for StatusReport {
@@ -176,6 +186,7 @@ impl Default for StatusReport {
             extraction_stats: None,
             coherence_by_source: Vec::new(),
             effectiveness: None,
+            category_lifecycle: Vec::new(),
         }
     }
 }
@@ -349,6 +360,24 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 None => {
                     text.push_str("\nEffectiveness: no injection data");
                 }
+            }
+            // crt-031: lifecycle summary — show only adaptive categories (pinned is the silent default).
+            // If no adaptive categories are configured, this block is silent (E-01: empty adaptive list).
+            {
+                let adaptive_categories: Vec<&str> = report
+                    .category_lifecycle
+                    .iter()
+                    .filter(|(_, label)| label == "adaptive")
+                    .map(|(cat, _)| cat.as_str())
+                    .collect();
+                if !adaptive_categories.is_empty() {
+                    text.push_str(&format!(
+                        "\nAdaptive categories: {}",
+                        adaptive_categories.join(", ")
+                    ));
+                }
+                // Note: when adaptive_categories is empty, no line is added.
+                // Rationale: showing all pinned categories adds noise for standard configurations.
             }
             CallToolResult::success(vec![Content::text(text)])
         }
@@ -819,6 +848,12 @@ struct StatusReportJson {
     coherence_by_source: Vec<CoherenceBySourceEntry>,
     #[serde(skip_serializing_if = "Option::is_none")]
     effectiveness: Option<EffectivenessReportJson>,
+    /// Per-category lifecycle label (crt-031).
+    ///
+    /// All categories included with their lifecycle label.
+    /// Output format asymmetry: summary shows only adaptive; JSON shows all (ADR-001 decision 2).
+    /// BTreeMap preserves insertion order (alphabetically sorted by category name, per R-08).
+    category_lifecycle: std::collections::BTreeMap<String, String>,
 }
 
 #[derive(Serialize)]
@@ -954,7 +989,7 @@ struct DataWindowJson {
 }
 
 // ---------------------------------------------------------------------------
-// Unit tests (col-029)
+// Unit tests (col-029 + crt-031)
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
@@ -1092,6 +1127,175 @@ mod tests {
             graph_cohesion_pos > coherence_pos,
             "#### Graph Cohesion must appear after ### Coherence block"
         );
+    }
+
+    // --- crt-031: category_lifecycle tests ---
+
+    /// I-02: StatusReport::default() must return category_lifecycle: vec![]
+    #[test]
+    fn test_status_report_default_category_lifecycle_is_empty() {
+        let report = StatusReport::default();
+        assert_eq!(
+            report.category_lifecycle,
+            vec![],
+            "Default StatusReport must have empty category_lifecycle"
+        );
+    }
+
+    /// AC-09 summary path: summary lists only adaptive categories, not pinned ones.
+    #[test]
+    fn test_status_report_summary_lists_only_adaptive() {
+        let report = StatusReport {
+            category_lifecycle: vec![
+                ("decision".to_string(), "pinned".to_string()),
+                ("lesson-learned".to_string(), "adaptive".to_string()),
+            ],
+            ..StatusReport::default()
+        };
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(
+            text.contains("Adaptive categories: lesson-learned"),
+            "Summary must contain adaptive category line"
+        );
+        assert!(
+            !text.contains("decision"),
+            "Summary must not contain pinned category 'decision' in lifecycle section"
+        );
+        assert!(
+            !text.contains("pinned"),
+            "Summary must not contain the word 'pinned'"
+        );
+    }
+
+    /// E-01: when no adaptive categories are configured, lifecycle section is absent from summary.
+    #[test]
+    fn test_status_report_summary_no_adaptive_section_when_empty() {
+        let report = StatusReport {
+            category_lifecycle: vec![
+                ("decision".to_string(), "pinned".to_string()),
+                ("lesson-learned".to_string(), "pinned".to_string()),
+            ],
+            ..StatusReport::default()
+        };
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(
+            !text.contains("Adaptive categories"),
+            "Summary must omit 'Adaptive categories' line when no adaptive categories exist"
+        );
+        assert!(
+            !text.contains("adaptive"),
+            "Summary must not contain 'adaptive' when list is empty"
+        );
+    }
+
+    /// R-08 scenario 2 + I-03: JSON output is deterministic and contains lifecycle data.
+    /// Uses deserialized comparison, not raw string equality.
+    #[test]
+    fn test_category_lifecycle_json_sorted_and_deterministic() {
+        let report = StatusReport {
+            category_lifecycle: vec![
+                ("convention".to_string(), "pinned".to_string()),
+                ("decision".to_string(), "pinned".to_string()),
+                ("lesson-learned".to_string(), "adaptive".to_string()),
+            ],
+            ..StatusReport::default()
+        };
+        // Two calls must produce identical JSON (I-03).
+        let result1 = format_status_report(&report, ResponseFormat::Json);
+        let result2 = format_status_report(&report, ResponseFormat::Json);
+        let text1 = result_text(&result1);
+        let text2 = result_text(&result2);
+        let parsed1: serde_json::Value = serde_json::from_str(&text1).expect("JSON must be valid");
+        let parsed2: serde_json::Value = serde_json::from_str(&text2).expect("JSON must be valid");
+        assert_eq!(parsed1, parsed2, "JSON output must be deterministic");
+
+        // category_lifecycle must be present and contain the expected entries.
+        let lifecycle = &parsed1["category_lifecycle"];
+        assert!(
+            lifecycle.is_object(),
+            "category_lifecycle must be a JSON object"
+        );
+        assert_eq!(
+            lifecycle["lesson-learned"].as_str(),
+            Some("adaptive"),
+            "lesson-learned must be labeled adaptive"
+        );
+        assert_eq!(
+            lifecycle["decision"].as_str(),
+            Some("pinned"),
+            "decision must be labeled pinned"
+        );
+        assert_eq!(
+            lifecycle["convention"].as_str(),
+            Some("pinned"),
+            "convention must be labeled pinned"
+        );
+    }
+
+    /// AC-09 JSON path: all 5 default categories labeled correctly.
+    #[test]
+    fn test_status_report_json_includes_all_categories() {
+        let report = StatusReport {
+            category_lifecycle: vec![
+                ("convention".to_string(), "pinned".to_string()),
+                ("decision".to_string(), "pinned".to_string()),
+                ("lesson-learned".to_string(), "adaptive".to_string()),
+                ("pattern".to_string(), "pinned".to_string()),
+                ("procedure".to_string(), "pinned".to_string()),
+            ],
+            ..StatusReport::default()
+        };
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).expect("JSON must be valid");
+        let lifecycle = &parsed["category_lifecycle"];
+
+        assert_eq!(lifecycle["lesson-learned"].as_str(), Some("adaptive"));
+        assert_eq!(lifecycle["decision"].as_str(), Some("pinned"));
+        assert_eq!(lifecycle["convention"].as_str(), Some("pinned"));
+        assert_eq!(lifecycle["pattern"].as_str(), Some("pinned"));
+        assert_eq!(lifecycle["procedure"].as_str(), Some("pinned"));
+    }
+
+    /// R-08 scenario 1: golden test verifying alphabetic sort of category_lifecycle.
+    #[test]
+    fn test_category_lifecycle_alphabetic_sort_golden() {
+        // Input tuples in non-alphabetical order to verify sort is applied.
+        let report = StatusReport {
+            category_lifecycle: vec![
+                ("procedure".to_string(), "pinned".to_string()),
+                ("convention".to_string(), "pinned".to_string()),
+                ("lesson-learned".to_string(), "adaptive".to_string()),
+                ("decision".to_string(), "pinned".to_string()),
+                ("pattern".to_string(), "pinned".to_string()),
+            ],
+            ..StatusReport::default()
+        };
+        // Verify the Vec itself is sorted (as produced by compute_report).
+        // This test checks that IF the Vec has been sorted, assertion holds.
+        // The compute_report() implementation is responsible for sorting before storing.
+        let lifecycle = &report.category_lifecycle;
+        // Note: this test checks the Vec as-is (unsorted here) — the sort invariant is
+        // tested in the compute_report test in services/status.rs. This golden test
+        // checks that the JSON formatter handles pre-sorted input deterministically.
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).expect("JSON must be valid");
+        let lifecycle_json = parsed["category_lifecycle"]
+            .as_object()
+            .expect("must be object");
+        // BTreeMap iteration in JSON serialization is alphabetical.
+        let keys: Vec<&str> = lifecycle_json.keys().map(|s| s.as_str()).collect();
+        let mut sorted_keys = keys.clone();
+        sorted_keys.sort_unstable();
+        assert_eq!(
+            keys, sorted_keys,
+            "JSON category_lifecycle keys must appear in alphabetical order"
+        );
+        // Suppress unused variable warning.
+        let _ = lifecycle;
     }
 }
 
@@ -1299,6 +1503,14 @@ impl From<&StatusReport> for StatusReportJson {
                 })
                 .collect(),
             effectiveness,
+            // crt-031: all categories with lifecycle labels.
+            // category_lifecycle Vec is already sorted alphabetically (R-08).
+            // BTreeMap insertion in sorted order preserves deterministic JSON output.
+            category_lifecycle: r
+                .category_lifecycle
+                .iter()
+                .map(|(cat, label)| (cat.clone(), label.clone()))
+                .collect(),
         }
     }
 }

@@ -2780,7 +2780,7 @@ mod tests {
             Arc::clone(adapt),
             audit,
             usage_dedup,
-            std::collections::HashSet::from(["lesson-learned".to_string()]),
+            crate::infra::config::default_boosted_categories_set(),
             test_pool,
             // crt-023: disabled NLI for test (no model in test env)
             crate::infra::nli_handle::NliServiceHandle::new(),
@@ -2791,6 +2791,8 @@ mod tests {
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
             // GH #311: default params for test helper.
             Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
+            // crt-031: default lifecycle policy for test helper.
+            Arc::new(crate::infra::categories::CategoryAllowlist::new()),
         )
     }
 
