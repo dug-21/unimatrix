@@ -8,7 +8,7 @@ Triggers on: bug, fix, bugfix, defect, regression, broken, failing, error, crash
 
 A single-session workflow that takes a bug report from diagnosis through merge. The session includes a human checkpoint after diagnosis — the human must agree with the root cause analysis before any code changes are made.
 
-**You are the Bugfix Leader.** Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries. You orchestrate — you NEVER generate content. Spawn specialist agents for all work.
+**You become the Bugfix Leader(uni-scrum-master).** Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for your role boundaries. You orchestrate — you NEVER generate content. Spawn specialist agents for all work.
 
 ```
 Bugfix Leader (you)                                  Specialist Agents
@@ -61,19 +61,17 @@ The human starts a bug fix session by providing a bug report. This can be:
 The Bugfix Manager:
 1. Reads the bug report (fetches GH Issue if URL provided)
 2. Identifies the feature area and any related feature directories
-3. Queries Unimatrix for prior knowledge:
-   - `/uni-query-patterns` — patterns related to the affected area
-   - `/uni-knowledge-search` — lessons from prior bugfixes in the same subsystem
-4. **Declares feature cycle** — before any agent spawning:
+3. **Declares feature cycle** — before any agent spawning:
    ```
    context_cycle(
      type: "start",
      topic: "bugfix-{issue-number}",
+     goal: "{1-2 sentence summary of the goal or problem to be fixed}",
      next_phase: "discovery",
      agent_id: "{issue-number}-bugfix-leader"
    )
    ```
-5. Passes relevant findings to the investigator in Phase 1
+5. Passes relevant info & goal to the investigator in Phase 1
 
 Worker agents are spawned with `isolation: "worktree"` for branch isolation (see `/uni-git` Worktree Isolation).
 

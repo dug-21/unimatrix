@@ -257,13 +257,6 @@ git commit -m "chore: add retro artifacts ({feature-id})"
 git push origin main
 ```
 
-Use `/uni-record-outcome` with:
-- Feature: `{feature-id}`
-- Type: `retro`
-- Phase: `retro`
-- Result: `pass`
-- Content: `Retrospective complete. {N} patterns, {N} procedures, {N} lessons extracted. {N} ADRs validated. Hotspots: {count} ({warning_count} warnings). Outliers: {list outlier metric names}.`
-
 **Return format:**
 ```
 RETROSPECTIVE COMPLETE — Knowledge base updated.
