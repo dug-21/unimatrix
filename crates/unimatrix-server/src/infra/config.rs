@@ -413,6 +413,68 @@ pub struct InferenceConfig {
     /// Default: 30 (two typical delivery cycles at session frequency).
     #[serde(default = "default_query_log_lookback_days")]
     pub query_log_lookback_days: u32,
+
+    // -----------------------------------------------------------------------
+    // Personalized PageRank fields (crt-030)
+    // -----------------------------------------------------------------------
+    /// Damping factor α for Personalized PageRank power iteration.
+    ///
+    /// At each step, proportion α of relevance mass flows through graph edges;
+    /// proportion (1 - α) teleports back to the personalization (seed) distribution.
+    ///
+    /// Higher α: more diffusion through graph, lower personalization recall.
+    /// Lower α: mass stays closer to seeds.
+    ///
+    /// Default: 0.85. Valid range: (0.0, 1.0) exclusive.
+    /// Distinct from crt-029 tick fields (supports_candidate_threshold etc.) —
+    /// PPR operates at query time on the pre-built TypedRelationGraph.
+    #[serde(default = "default_ppr_alpha")]
+    pub ppr_alpha: f64,
+
+    /// Number of power-iteration steps.
+    ///
+    /// Runs exactly this many steps — no early-exit convergence check.
+    /// Determinism requirement (ADR-004 crt-030): fixed count ensures identical
+    /// outputs for identical inputs across process restarts.
+    ///
+    /// Default: 20. Valid range: [1, 100] inclusive.
+    #[serde(default = "default_ppr_iterations")]
+    pub ppr_iterations: usize,
+
+    /// PPR score floor for injecting new entries into the candidate pool.
+    ///
+    /// An entry NOT already in the HNSW pool is injected only if its PPR score
+    /// strictly exceeds this threshold (> not >=, AC-13 crt-030).
+    ///
+    /// Default: 0.05. Valid range: (0.0, 1.0) exclusive.
+    #[serde(default = "default_ppr_inclusion_threshold")]
+    pub ppr_inclusion_threshold: f64,
+
+    /// PPR trust weight — dual role (ADR-007 crt-030):
+    ///
+    /// Role 1 (blend for existing HNSW candidates):
+    ///   new_sim = (1 - ppr_blend_weight) * hnsw_sim + ppr_blend_weight * ppr_score
+    ///
+    /// Role 2 (initial similarity for PPR-only injected entries):
+    ///   initial_sim = ppr_blend_weight * ppr_score
+    ///
+    /// Both roles express "how much to trust the PPR signal." The dual role is
+    /// intentional; a separate ppr_inject_weight is deferred (ADR-007).
+    ///
+    /// Default: 0.15. Valid range: [0.0, 1.0] inclusive.
+    /// NOTE: This field does NOT add a new FusionWeights term — PPR influence
+    /// enters only through pool expansion and the similarity field.
+    #[serde(default = "default_ppr_blend_weight")]
+    pub ppr_blend_weight: f64,
+
+    /// Maximum number of PPR-only entries to fetch and inject into the pool.
+    ///
+    /// After filtering by ppr_inclusion_threshold, candidate entries are sorted
+    /// by PPR score descending and the top ppr_max_expand are fetched sequentially.
+    ///
+    /// Default: 50. Valid range: [1, 500] inclusive.
+    #[serde(default = "default_ppr_max_expand")]
+    pub ppr_max_expand: usize,
 }
 
 impl Default for InferenceConfig {
@@ -455,6 +517,12 @@ impl Default for InferenceConfig {
             graph_inference_k: 10,
             // col-031: phase frequency table fields
             query_log_lookback_days: default_query_log_lookback_days(),
+            // crt-030: Personalized PageRank fields
+            ppr_alpha: default_ppr_alpha(),
+            ppr_iterations: default_ppr_iterations(),
+            ppr_inclusion_threshold: default_ppr_inclusion_threshold(),
+            ppr_blend_weight: default_ppr_blend_weight(),
+            ppr_max_expand: default_ppr_max_expand(),
         }
     }
 }
@@ -538,6 +606,30 @@ fn default_w_phase_explicit() -> f64 {
 // long-term successor to this time-based approximation.
 fn default_query_log_lookback_days() -> u32 {
     30
+}
+
+// ---------------------------------------------------------------------------
+// Personalized PageRank default value functions (crt-030)
+// ---------------------------------------------------------------------------
+
+fn default_ppr_alpha() -> f64 {
+    0.85
+}
+
+fn default_ppr_iterations() -> usize {
+    20
+}
+
+fn default_ppr_inclusion_threshold() -> f64 {
+    0.05
+}
+
+fn default_ppr_blend_weight() -> f64 {
+    0.15
+}
+
+fn default_ppr_max_expand() -> usize {
+    50
 }
 
 // ---------------------------------------------------------------------------
@@ -799,6 +891,58 @@ impl InferenceConfig {
                 field: "query_log_lookback_days",
                 value: self.query_log_lookback_days.to_string(),
                 reason: "must be in range [1, 3650]",
+            });
+        }
+
+        // -- PPR f64 range checks (crt-030) --
+
+        // ppr_alpha: (0.0, 1.0) exclusive
+        if self.ppr_alpha <= 0.0 || self.ppr_alpha >= 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "ppr_alpha",
+                value: self.ppr_alpha.to_string(),
+                reason: "must be in range (0.0, 1.0) exclusive",
+            });
+        }
+
+        // ppr_iterations: [1, 100] inclusive
+        if self.ppr_iterations < 1 || self.ppr_iterations > 100 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "ppr_iterations",
+                value: self.ppr_iterations.to_string(),
+                reason: "must be in range [1, 100] inclusive",
+            });
+        }
+
+        // ppr_inclusion_threshold: (0.0, 1.0) exclusive
+        if self.ppr_inclusion_threshold <= 0.0 || self.ppr_inclusion_threshold >= 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "ppr_inclusion_threshold",
+                value: self.ppr_inclusion_threshold.to_string(),
+                reason: "must be in range (0.0, 1.0) exclusive",
+            });
+        }
+
+        // ppr_blend_weight: [0.0, 1.0] inclusive
+        if self.ppr_blend_weight < 0.0 || self.ppr_blend_weight > 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "ppr_blend_weight",
+                value: self.ppr_blend_weight.to_string(),
+                reason: "must be in range [0.0, 1.0] inclusive",
+            });
+        }
+
+        // ppr_max_expand: [1, 500] inclusive
+        if self.ppr_max_expand < 1 || self.ppr_max_expand > 500 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "ppr_max_expand",
+                value: self.ppr_max_expand.to_string(),
+                reason: "must be in range [1, 500] inclusive",
             });
         }
 
@@ -1842,6 +1986,44 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.query_log_lookback_days
             } else {
                 global.inference.query_log_lookback_days
+            },
+            // crt-030: PPR fields
+            ppr_alpha: if (project.inference.ppr_alpha - default.inference.ppr_alpha).abs()
+                > f64::EPSILON
+            {
+                project.inference.ppr_alpha
+            } else {
+                global.inference.ppr_alpha
+            },
+            ppr_iterations: if project.inference.ppr_iterations != default.inference.ppr_iterations
+            {
+                project.inference.ppr_iterations
+            } else {
+                global.inference.ppr_iterations
+            },
+            ppr_inclusion_threshold: if (project.inference.ppr_inclusion_threshold
+                - default.inference.ppr_inclusion_threshold)
+                .abs()
+                > f64::EPSILON
+            {
+                project.inference.ppr_inclusion_threshold
+            } else {
+                global.inference.ppr_inclusion_threshold
+            },
+            ppr_blend_weight: if (project.inference.ppr_blend_weight
+                - default.inference.ppr_blend_weight)
+                .abs()
+                > f64::EPSILON
+            {
+                project.inference.ppr_blend_weight
+            } else {
+                global.inference.ppr_blend_weight
+            },
+            ppr_max_expand: if project.inference.ppr_max_expand != default.inference.ppr_max_expand
+            {
+                project.inference.ppr_max_expand
+            } else {
+                global.inference.ppr_max_expand
             },
         },
     }
@@ -5045,6 +5227,450 @@ w_sim = 0.25
         assert!(
             msg.contains("exceeds 1.0"),
             "must mention exceeds 1.0: {msg}"
+        );
+    }
+
+    // crt-030: InferenceConfig PPR field tests
+    // -------------------------------------------------------------------------
+    // AC-09: Default values, serde round-trip, absent-field fallback, explicit override
+
+    #[test]
+    fn test_inference_config_ppr_defaults() {
+        let cfg = InferenceConfig::default();
+        assert_eq!(cfg.ppr_alpha, 0.85, "ppr_alpha default must be 0.85");
+        assert_eq!(cfg.ppr_iterations, 20, "ppr_iterations default must be 20");
+        assert_eq!(
+            cfg.ppr_inclusion_threshold, 0.05,
+            "ppr_inclusion_threshold default must be 0.05"
+        );
+        assert_eq!(
+            cfg.ppr_blend_weight, 0.15,
+            "ppr_blend_weight default must be 0.15"
+        );
+        assert_eq!(cfg.ppr_max_expand, 50, "ppr_max_expand default must be 50");
+    }
+
+    #[test]
+    fn test_inference_config_ppr_serde_round_trip() {
+        // Explicit values → deserialize → assert back to the same values.
+        // InferenceConfig is Deserialize-only; fields are at top level (no [inference] header).
+        // Pattern: entry #3662 (TOML tests must use flat top-level fields).
+        let toml_str = "ppr_alpha = 0.85\n\
+            ppr_iterations = 20\n\
+            ppr_inclusion_threshold = 0.05\n\
+            ppr_blend_weight = 0.15\n\
+            ppr_max_expand = 50\n";
+        let cfg: InferenceConfig =
+            toml::from_str(toml_str).expect("InferenceConfig must deserialize from TOML");
+        assert_eq!(cfg.ppr_alpha, 0.85, "ppr_alpha round-trip");
+        assert_eq!(cfg.ppr_iterations, 20, "ppr_iterations round-trip");
+        assert_eq!(
+            cfg.ppr_inclusion_threshold, 0.05,
+            "ppr_inclusion_threshold round-trip"
+        );
+        assert_eq!(cfg.ppr_blend_weight, 0.15, "ppr_blend_weight round-trip");
+        assert_eq!(cfg.ppr_max_expand, 50, "ppr_max_expand round-trip");
+    }
+
+    #[test]
+    fn test_inference_config_ppr_serde_absent_fields_use_defaults() {
+        // Simulates a config file written before crt-030 was deployed — no PPR fields.
+        // All five PPR fields must fall back to their compiled defaults via #[serde(default)].
+        let cfg: InferenceConfig = toml::from_str("").unwrap();
+        assert_eq!(cfg.ppr_alpha, 0.85, "absent ppr_alpha must default to 0.85");
+        assert_eq!(
+            cfg.ppr_iterations, 20,
+            "absent ppr_iterations must default to 20"
+        );
+        assert_eq!(
+            cfg.ppr_inclusion_threshold, 0.05,
+            "absent ppr_inclusion_threshold must default to 0.05"
+        );
+        assert_eq!(
+            cfg.ppr_blend_weight, 0.15,
+            "absent ppr_blend_weight must default to 0.15"
+        );
+        assert_eq!(
+            cfg.ppr_max_expand, 50,
+            "absent ppr_max_expand must default to 50"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_ppr_serde_explicit_override() {
+        let toml_str = "ppr_alpha = 0.9\nppr_iterations = 10\nppr_inclusion_threshold = 0.1\nppr_blend_weight = 0.2\nppr_max_expand = 25";
+        let cfg: InferenceConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(cfg.ppr_alpha, 0.9, "explicit ppr_alpha = 0.9");
+        assert_eq!(cfg.ppr_iterations, 10, "explicit ppr_iterations = 10");
+        assert_eq!(
+            cfg.ppr_inclusion_threshold, 0.1,
+            "explicit ppr_inclusion_threshold = 0.1"
+        );
+        assert_eq!(cfg.ppr_blend_weight, 0.2, "explicit ppr_blend_weight = 0.2");
+        assert_eq!(cfg.ppr_max_expand, 25, "explicit ppr_max_expand = 25");
+    }
+
+    // AC-10 / R-06: Validation — rejection of out-of-range values
+
+    // ppr_alpha: (0.0, 1.0) exclusive
+
+    #[test]
+    fn test_ppr_alpha_zero_rejected() {
+        let c = InferenceConfig {
+            ppr_alpha: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "ppr_alpha");
+    }
+
+    #[test]
+    fn test_ppr_alpha_one_rejected() {
+        let c = InferenceConfig {
+            ppr_alpha: 1.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "ppr_alpha");
+    }
+
+    #[test]
+    fn test_ppr_alpha_valid_boundary_low() {
+        let c = InferenceConfig {
+            ppr_alpha: f64::EPSILON,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_alpha = f64::EPSILON must pass"
+        );
+    }
+
+    #[test]
+    fn test_ppr_alpha_valid_boundary_high() {
+        let c = InferenceConfig {
+            ppr_alpha: 1.0 - f64::EPSILON,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_alpha = 1.0 - f64::EPSILON must pass"
+        );
+    }
+
+    #[test]
+    fn test_ppr_alpha_typical_value() {
+        let c = InferenceConfig {
+            ppr_alpha: 0.85,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_alpha = 0.85 (default) must pass"
+        );
+    }
+
+    // ppr_iterations: [1, 100] inclusive
+
+    #[test]
+    fn test_ppr_iterations_zero_rejected() {
+        let c = InferenceConfig {
+            ppr_iterations: 0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "ppr_iterations");
+    }
+
+    #[test]
+    fn test_ppr_iterations_101_rejected() {
+        let c = InferenceConfig {
+            ppr_iterations: 101,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "ppr_iterations");
+    }
+
+    #[test]
+    fn test_ppr_iterations_valid_min() {
+        let c = InferenceConfig {
+            ppr_iterations: 1,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_iterations = 1 must pass"
+        );
+    }
+
+    #[test]
+    fn test_ppr_iterations_valid_max() {
+        let c = InferenceConfig {
+            ppr_iterations: 100,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_iterations = 100 must pass"
+        );
+    }
+
+    #[test]
+    fn test_ppr_iterations_default_valid() {
+        let c = InferenceConfig {
+            ppr_iterations: 20,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_iterations = 20 (default) must pass"
+        );
+    }
+
+    // ppr_inclusion_threshold: (0.0, 1.0) exclusive
+
+    #[test]
+    fn test_ppr_inclusion_threshold_zero_rejected() {
+        // R-06: threshold of 0.0 would include every non-zero PPR score.
+        let c = InferenceConfig {
+            ppr_inclusion_threshold: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "ppr_inclusion_threshold");
+    }
+
+    #[test]
+    fn test_ppr_inclusion_threshold_one_rejected() {
+        let c = InferenceConfig {
+            ppr_inclusion_threshold: 1.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "ppr_inclusion_threshold");
+    }
+
+    #[test]
+    fn test_ppr_inclusion_threshold_valid_boundary_low() {
+        let c = InferenceConfig {
+            ppr_inclusion_threshold: f64::EPSILON,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_inclusion_threshold = f64::EPSILON must pass"
+        );
+    }
+
+    #[test]
+    fn test_ppr_inclusion_threshold_default_valid() {
+        let c = InferenceConfig {
+            ppr_inclusion_threshold: 0.05,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_inclusion_threshold = 0.05 (default) must pass"
+        );
+    }
+
+    // ppr_blend_weight: [0.0, 1.0] inclusive
+
+    #[test]
+    fn test_ppr_blend_weight_negative_rejected() {
+        let c = InferenceConfig {
+            ppr_blend_weight: -0.001,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "ppr_blend_weight");
+    }
+
+    #[test]
+    fn test_ppr_blend_weight_above_one_rejected() {
+        let c = InferenceConfig {
+            ppr_blend_weight: 1.001,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "ppr_blend_weight");
+    }
+
+    #[test]
+    fn test_ppr_blend_weight_zero_valid() {
+        // R-03: 0.0 is a valid config value (disables PPR blending).
+        let c = InferenceConfig {
+            ppr_blend_weight: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_blend_weight = 0.0 must pass (inclusive lower bound)"
+        );
+    }
+
+    #[test]
+    fn test_ppr_blend_weight_one_valid() {
+        // R-11: 1.0 is a valid config value.
+        let c = InferenceConfig {
+            ppr_blend_weight: 1.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_blend_weight = 1.0 must pass (inclusive upper bound)"
+        );
+    }
+
+    #[test]
+    fn test_ppr_blend_weight_default_valid() {
+        let c = InferenceConfig {
+            ppr_blend_weight: 0.15,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_blend_weight = 0.15 (default) must pass"
+        );
+    }
+
+    // ppr_max_expand: [1, 500] inclusive
+
+    #[test]
+    fn test_ppr_max_expand_zero_rejected() {
+        let c = InferenceConfig {
+            ppr_max_expand: 0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "ppr_max_expand");
+    }
+
+    #[test]
+    fn test_ppr_max_expand_501_rejected() {
+        let c = InferenceConfig {
+            ppr_max_expand: 501,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "ppr_max_expand");
+    }
+
+    #[test]
+    fn test_ppr_max_expand_valid_min() {
+        let c = InferenceConfig {
+            ppr_max_expand: 1,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_max_expand = 1 must pass"
+        );
+    }
+
+    #[test]
+    fn test_ppr_max_expand_valid_max() {
+        let c = InferenceConfig {
+            ppr_max_expand: 500,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_max_expand = 500 must pass"
+        );
+    }
+
+    #[test]
+    fn test_ppr_max_expand_default_valid() {
+        let c = InferenceConfig {
+            ppr_max_expand: 50,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "ppr_max_expand = 50 (default) must pass"
+        );
+    }
+
+    // Validation error specificity: error must name the specific field.
+
+    #[test]
+    fn test_ppr_validation_error_names_field() {
+        // Verify each invalid field produces an error that names the field.
+        let cases: &[(&str, InferenceConfig)] = &[
+            (
+                "ppr_alpha",
+                InferenceConfig {
+                    ppr_alpha: 0.0,
+                    ..InferenceConfig::default()
+                },
+            ),
+            (
+                "ppr_iterations",
+                InferenceConfig {
+                    ppr_iterations: 0,
+                    ..InferenceConfig::default()
+                },
+            ),
+            (
+                "ppr_inclusion_threshold",
+                InferenceConfig {
+                    ppr_inclusion_threshold: 0.0,
+                    ..InferenceConfig::default()
+                },
+            ),
+            (
+                "ppr_blend_weight",
+                InferenceConfig {
+                    ppr_blend_weight: -0.001,
+                    ..InferenceConfig::default()
+                },
+            ),
+            (
+                "ppr_max_expand",
+                InferenceConfig {
+                    ppr_max_expand: 0,
+                    ..InferenceConfig::default()
+                },
+            ),
+        ];
+        for (field_name, cfg) in cases {
+            assert_validate_fails_with_field(cfg.clone(), field_name);
+        }
+    }
+
+    // Global+project config merge
+
+    #[test]
+    fn test_ppr_fields_merged_from_project_config() {
+        // Project overrides ppr_alpha; global has a different value.
+        // Merged result must use project's value.
+        let global = UnimatrixConfig {
+            inference: InferenceConfig {
+                ppr_alpha: 0.80,
+                ..InferenceConfig::default()
+            },
+            ..UnimatrixConfig::default()
+        };
+        let project = UnimatrixConfig {
+            inference: InferenceConfig {
+                ppr_alpha: 0.90,
+                ..InferenceConfig::default()
+            },
+            ..UnimatrixConfig::default()
+        };
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.ppr_alpha, 0.90,
+            "project ppr_alpha = 0.90 must win over global 0.80"
+        );
+        // Other PPR fields remain at defaults (project == default, so global wins == default).
+        assert_eq!(
+            merged.inference.ppr_iterations, 20,
+            "ppr_iterations unchanged at default"
+        );
+        assert_eq!(
+            merged.inference.ppr_inclusion_threshold, 0.05,
+            "ppr_inclusion_threshold unchanged at default"
+        );
+        assert_eq!(
+            merged.inference.ppr_blend_weight, 0.15,
+            "ppr_blend_weight unchanged at default"
+        );
+        assert_eq!(
+            merged.inference.ppr_max_expand, 50,
+            "ppr_max_expand unchanged at default"
         );
     }
 }
