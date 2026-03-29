@@ -7,4 +7,5 @@ pub(crate) mod context;
 pub mod identity;
 pub mod knowledge_reuse;
 pub mod response;
+mod serde_util;
 pub mod tools;
