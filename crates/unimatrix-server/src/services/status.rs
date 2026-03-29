@@ -9,8 +9,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sqlx::Row;
 use unimatrix_core::{CoreError, EmbedService, Store, VectorAdapter, VectorIndex};
-use unimatrix_store::EntryRecord;
 use unimatrix_store::sessions::{DELETE_THRESHOLD_SECS, TIMED_OUT_THRESHOLD_SECS};
+use unimatrix_store::{EntryRecord, Status};
 
 use unimatrix_adapt::AdaptationService;
 
@@ -696,8 +696,9 @@ impl StatusService {
         // Always populated; does not require check_embeddings=true.
         // Uses write_pool_server() for consistency with other maintenance queries.
         let unembedded_active_count: u64 = sqlx::query_scalar::<_, i64>(
-            "SELECT COUNT(*) FROM entries WHERE status = 0 AND embedding_dim = 0",
+            "SELECT COUNT(*) FROM entries WHERE status = ?1 AND embedding_dim = 0",
         )
+        .bind(Status::Active as u8 as i64)
         .fetch_one(self.store.write_pool_server())
         .await
         .unwrap_or_else(|e| {
@@ -934,8 +935,9 @@ impl StatusService {
                 "SELECT vm.entry_id \
                  FROM vector_map vm \
                  INNER JOIN entries e ON e.id = vm.entry_id \
-                 WHERE e.status = 3",
+                 WHERE e.status = ?1",
             )
+            .bind(Status::Quarantined as u8 as i64)
             .fetch_all(maint_pool)
             .await
             .unwrap_or_else(|e| {
@@ -983,8 +985,9 @@ impl StatusService {
 
             // Sub-case A: active with embedding_dim = 0
             let unembedded_ids: Vec<u64> = sqlx::query_scalar::<_, i64>(
-                "SELECT id FROM entries WHERE status = 0 AND embedding_dim = 0 LIMIT ?1",
+                "SELECT id FROM entries WHERE status = ?1 AND embedding_dim = 0 LIMIT ?2",
             )
+            .bind(Status::Active as u8 as i64)
             .bind(heal_batch as i64)
             .fetch_all(maint_pool)
             .await

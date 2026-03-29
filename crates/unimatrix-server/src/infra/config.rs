@@ -969,6 +969,17 @@ impl InferenceConfig {
             });
         }
 
+        // -- bugfix-444: heal_pass_batch_size range check [1, 1000] --
+        // 0 would produce LIMIT 0 in the heal-pass SQL, silently disabling the pass.
+        if self.heal_pass_batch_size < 1 || self.heal_pass_batch_size > 1000 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "heal_pass_batch_size",
+                value: self.heal_pass_batch_size.to_string(),
+                reason: "must be in range [1, 1000]",
+            });
+        }
+
         Ok(())
     }
 }
@@ -5611,6 +5622,62 @@ w_sim = 0.25
         assert!(
             c.validate(Path::new("/fake/config.toml")).is_ok(),
             "ppr_max_expand = 50 (default) must pass"
+        );
+    }
+
+    // heal_pass_batch_size: [1, 1000] inclusive (bugfix-444)
+
+    #[test]
+    fn test_heal_pass_batch_size_zero_rejected() {
+        let c = InferenceConfig {
+            heal_pass_batch_size: 0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "heal_pass_batch_size");
+    }
+
+    #[test]
+    fn test_heal_pass_batch_size_1001_rejected() {
+        let c = InferenceConfig {
+            heal_pass_batch_size: 1001,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "heal_pass_batch_size");
+    }
+
+    #[test]
+    fn test_heal_pass_batch_size_valid_min() {
+        let c = InferenceConfig {
+            heal_pass_batch_size: 1,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "heal_pass_batch_size = 1 must pass (inclusive lower bound)"
+        );
+    }
+
+    #[test]
+    fn test_heal_pass_batch_size_valid_max() {
+        let c = InferenceConfig {
+            heal_pass_batch_size: 1000,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "heal_pass_batch_size = 1000 must pass (inclusive upper bound)"
+        );
+    }
+
+    #[test]
+    fn test_heal_pass_batch_size_default_valid() {
+        let c = InferenceConfig {
+            heal_pass_batch_size: 20,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "heal_pass_batch_size = 20 (default) must pass"
         );
     }
 
