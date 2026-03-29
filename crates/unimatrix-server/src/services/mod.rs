@@ -420,6 +420,11 @@ impl ServiceLayer {
             nli_enabled,
             FusionWeights::from_config(&inference_config),
             Arc::clone(&phase_freq_table), // col-031: required non-optional (ADR-005)
+            inference_config.ppr_alpha,
+            inference_config.ppr_iterations,
+            inference_config.ppr_inclusion_threshold,
+            inference_config.ppr_blend_weight,
+            inference_config.ppr_max_expand,
         );
 
         let nli_store_cfg = NliStoreConfig {
