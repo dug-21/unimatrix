@@ -61,6 +61,23 @@ ADR-001 crt-032 is written at `product/features/crt-032/architecture/ADR-001-w_c
 
 ---
 
+## Component Map
+
+| Component | Pseudocode | Test Plan |
+|-----------|-----------|-----------|
+| config-production | pseudocode/config-production.md | test-plan/config-production.md |
+| config-tests | pseudocode/config-tests.md | test-plan/config-tests.md |
+| search-comment | pseudocode/search-comment.md | test-plan/search-comment.md |
+
+## Cross-Cutting Artifacts
+
+| Artifact | Path | Consumed By |
+|----------|------|-------------|
+| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
+---
+
 ## Delivery Wave
 
 Single wave. All changes are in two files; no dependencies between changes. Recommended order:
