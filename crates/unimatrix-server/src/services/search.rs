@@ -115,7 +115,7 @@ pub(crate) struct FusionWeights {
     pub w_sim: f64,             // default 0.25 — bi-encoder similarity
     pub w_nli: f64,             // default 0.35 — NLI entailment (dominant precision signal)
     pub w_conf: f64,            // default 0.15 — confidence tiebreaker
-    pub w_coac: f64,            // default 0.10 — co-access affinity (lagging signal)
+    pub w_coac: f64,            // default 0.0 (zeroed in crt-032; PPR subsumes co-access signal via GRAPH_EDGES.CoAccess)
     pub w_util: f64,            // default 0.05 — effectiveness classification
     pub w_prov: f64,            // default 0.05 — category provenance hint
     pub w_phase_histogram: f64, // crt-026: default 0.02 — histogram affinity (ADR-004, ASS-028 calibrated)
@@ -4821,13 +4821,12 @@ mod tests {
         #[test]
         fn test_fusion_weights_default_sum_unchanged_by_crt030() {
             // crt-030 must not have modified FusionWeights.
-            // The sum of all default weights equals 1.02 (intentional — see config.rs:598
-            // comment: "Additive term outside the six-weight sum constraint, ADR-004 col-031").
-            // This test guards against any crt-030 change accidentally modifying the formula.
+            // crt-032: w_coac zeroed (PPR transition Phase 2). New sum = 0.92.
+            // 0.25 + 0.35 + 0.15 + 0.00 + 0.05 + 0.05 + 0.02 + 0.05 = 0.92
+            // (six-weight sum 0.85 + additive phase terms 0.02 + 0.05 = 0.92)
             use super::super::FusionWeights;
             use crate::infra::config::InferenceConfig;
             let fw = FusionWeights::from_config(&InferenceConfig::default());
-            // 0.25 + 0.35 + 0.15 + 0.10 + 0.05 + 0.05 + 0.02 + 0.05 = 1.02
             let total = fw.w_sim
                 + fw.w_nli
                 + fw.w_conf
@@ -4837,8 +4836,8 @@ mod tests {
                 + fw.w_phase_histogram
                 + fw.w_phase_explicit;
             assert!(
-                (total - 1.02).abs() < 1e-9,
-                "FusionWeights default sum must be 1.02 (crt-030 regression guard); got {total}"
+                (total - 0.92).abs() < 1e-9,
+                "FusionWeights default sum must be 0.92 (crt-032: w_coac zeroed); got {total}"
             );
         }
     }
