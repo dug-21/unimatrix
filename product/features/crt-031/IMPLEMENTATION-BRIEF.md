@@ -92,17 +92,16 @@ Default impl change (Default now returns `[]` for both fields).
 | infra/categories (module split + lifecycle policy) | pseudocode/categories.md | test-plan/categories.md |
 | infra/config (KnowledgeConfig + validate_config + merge_configs + helper) | pseudocode/config.md | test-plan/config.md |
 | main.rs startup wiring | pseudocode/main.md | test-plan/main.md |
-| services/status (StatusService + StatusReport) | pseudocode/status.md | test-plan/status.md |
-| background (maintenance tick stub) | pseudocode/background.md | test-plan/background.md |
-| eval/profile/layer (boosted_categories fix) | pseudocode/eval-layer.md | test-plan/eval-layer.md |
-| test-infrastructure literal removal (6 sites) | pseudocode/test-infra.md | test-plan/test-infra.md |
+| services/status + services/mod + mcp/response/status | pseudocode/status.md | test-plan/status.md |
+| background (maintenance tick stub + run_single_tick) | pseudocode/background.md | test-plan/background.md |
+| eval/profile/layer + test-infrastructure literal removal (6 sites) | pseudocode/eval-layer.md | test-plan/eval-layer.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/crt-031/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/crt-031/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
