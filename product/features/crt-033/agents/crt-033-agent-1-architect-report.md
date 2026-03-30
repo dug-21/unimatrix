@@ -45,3 +45,16 @@
 
 - OQ-01: Reconcile PENDING_REVIEWS_K_WINDOW_SECS with #409's retention constant at merge.
 - OQ-02 (advisory): Optional byte-size warning log for summary_json > 512KB.
+
+## Knowledge Stewardship
+
+**Queried:**
+- `context_briefing` — returned entries covering schema migration patterns (#681, #836), schema version cascade checklist (#3539), write_pool_server vs analytics queue (#2125, #3000, #2266), and read_pool for status aggregates (#3619). All directly applied.
+- `context_search(query: "schema migration add table")` — confirmed #836 (add-table procedure) and #3539 (cascade checklist) as primary references.
+- `context_search(query: "synchronous write pool analytics queue")` — confirmed entries #2125 and #3000 on write-path selection.
+
+**Stored:**
+- ADR-001 (synchronous write for store_cycle_review) — Unimatrix #3793
+- ADR-002 (unified SUMMARY_SCHEMA_VERSION in cycle_review_index.rs) — Unimatrix #3794
+- ADR-003 (direct serde derives, no DTO) — Unimatrix #3795
+- ADR-004 (pending_cycle_reviews K-window via cycle_events.cycle_start) — Unimatrix #3796
