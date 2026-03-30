@@ -102,7 +102,7 @@ See individual ADRs for full rationale.
 | Synchronous write for store_cycle_review | write_pool_server(), not analytics queue | ADR-001 |
 | SUMMARY_SCHEMA_VERSION placement | Unified const in cycle_review_index.rs only | ADR-002 |
 | RetrospectiveReport serialization | Direct serde derives, no DTO | ADR-003 |
-| pending_cycle_reviews K-window scoping | query_log.feature_cycle + 90-day default | ADR-004 |
+| pending_cycle_reviews K-window scoping | cycle_events.cycle_start + 90-day default | ADR-004 |
 
 ## Handler Control Flow
 
@@ -155,27 +155,25 @@ Step 8a: store_cycle_review (INSERT OR REPLACE overwrites prior record)
 Step 9: audit + format dispatch
 ```
 
-### force=true path, signals purged (SR-07 discriminator)
+### force=true path, signals purged
 
 ```
 Step 3: three-path observation load → attributed: empty
 Step 2.5: force=true → check is skipped on entry; but attributed is empty:
-    → discriminator check:
-        query: SELECT COUNT(*) FROM cycle_events WHERE cycle_id = ?
-        IF count > 0: cycle had signals; they are purged
-            → get_cycle_review(feature_cycle)
-            → Some(record): return record with raw_signals_available=false + note
-            → None: return ERROR_NO_OBSERVATION_DATA
-        IF count == 0: cycle never had cycle_events signals
-            → fall through to existing empty-attributed path:
-              check observation_metrics cache → return cached or ERROR_NO_OBSERVATION_DATA
+    → get_cycle_review(feature_cycle)
+    → Some(record): return record with raw_signals_available=false + note
+    → None: return ERROR_NO_OBSERVATION_DATA
 ```
 
-**SR-07 resolution**: the discriminator uses `cycle_events` row presence to distinguish
-"signals were purged" (cycle_events rows exist but observations are empty) from "cycle never
-participated in cycle_events" (no rows). This is a targeted COUNT query — cheap (indexed on
-`cycle_id`), correct, and non-ambiguous. The existing `observation_metrics` fallback path
-for pre-cycle_events cycles is unaffected.
+**SR-07 resolution**: the handler uses `get_cycle_review()` return value as the sole
+discriminator. If a stored record exists, the cycle previously had signals that are now
+purged — return the record with the explanatory note. If no stored record exists, return
+`ERROR_NO_OBSERVATION_DATA` regardless of whether signals were purged or never existed.
+The `SELECT COUNT(*) FROM cycle_events` discriminator was considered but rejected: the
+pathological case (signals purged before any review was written) does not warrant the
+extra query, and ERROR_NO_OBSERVATION_DATA is the correct and safe response for both
+ambiguous sub-cases when no stored record is present. The existing `observation_metrics`
+fallback path (pre-cycle_events cycles, force absent or false) is unaffected.
 
 ## Integration Points
 
@@ -183,8 +181,7 @@ for pre-cycle_events cycles is unaffected.
 
 | Component | What crt-033 reads |
 |-----------|-------------------|
-| `cycle_events` | COUNT query for SR-07 discriminator |
-| `query_log` | `feature_cycle` column for K-window pending set |
+| `cycle_events` | `cycle_start` events for K-window pending set |
 | `cycle_review_index` | Memoized record on hit path |
 | `SqlxStore.write_pool_server()` | Pool for synchronous writes |
 
@@ -206,7 +203,7 @@ this gate beyond creating the table and populating it.
 
 | Integration Point | Type / Signature | Defined In |
 |-------------------|-----------------|------------|
-| `CycleReviewRecord` | `pub struct { feature_cycle: String, schema_version: u32, computed_at: i64, raw_signals_available: i32, summary_json: String }` | `unimatrix-store/src/cycle_review_index.rs` |
+| `CycleReviewRecord` | `pub struct { feature_cycle: String, schema_version: u32, computed_at: i64, raw_signals_available: bool, summary_json: String }` | `unimatrix-store/src/cycle_review_index.rs` |
 | `SUMMARY_SCHEMA_VERSION` | `pub const SUMMARY_SCHEMA_VERSION: u32 = 1` | `unimatrix-store/src/cycle_review_index.rs` |
 | `get_cycle_review` | `async fn get_cycle_review(&self, feature_cycle: &str) -> Result<Option<CycleReviewRecord>>` | `SqlxStore` impl in `cycle_review_index.rs` |
 | `store_cycle_review` | `async fn store_cycle_review(&self, record: &CycleReviewRecord) -> Result<()>` | `SqlxStore` impl in `cycle_review_index.rs` |
@@ -283,28 +280,30 @@ site). When #409 merges, delivery aligns this constant with #409's purge window.
 SQL for `pending_cycle_reviews(k_window_cutoff: i64)`:
 
 ```sql
-SELECT DISTINCT ql.feature_cycle
-FROM query_log ql
-WHERE ql.feature_cycle IS NOT NULL
-  AND ql.feature_cycle != ''
-  AND ql.queried_at >= ?
-  AND ql.feature_cycle NOT IN (
-      SELECT feature_cycle FROM cycle_review_index
-  )
-ORDER BY ql.feature_cycle
+SELECT DISTINCT ce.cycle_id
+FROM cycle_events ce
+WHERE ce.event_type = 'cycle_start'
+  AND ce.timestamp >= ?1
+  AND ce.cycle_id NOT IN (SELECT feature_cycle FROM cycle_review_index)
+ORDER BY ce.cycle_id
 ```
 
-The `k_window_cutoff` parameter is a unix timestamp: `now() - K_WINDOW_SECS`. This excludes
-pre-K-window cycles and NULL/empty `feature_cycle` rows in one query.
+The `k_window_cutoff` parameter is a unix timestamp: `now() - K_WINDOW_SECS`. This scopes
+the query to cycles that formally started within the K-window and naturally excludes
+pre-cycle_events era cycles (no `cycle_events` rows) without an extra condition.
 
 ## Open Questions
 
-None blocking delivery. Advisory items only:
+None blocking delivery.
 
-- **OQ-01**: When GH #409 merges, reconcile `PENDING_REVIEWS_K_WINDOW_DAYS` with #409's
+- **OQ-01 — CLOSED**: `ERROR_NO_OBSERVATION_DATA` accepted for the no-stored-record case on
+  the `force=true` + purged-signals path. No `cycle_events` COUNT discriminator.
+  See spec OQ-01.
+
+- **OQ-02 — CLOSED**: `cycle_events.cycle_start` accepted as the source for
+  `pending_cycle_reviews`. `query_log.feature_cycle` does not exist; architecture updated
+  throughout (ADR-004, integration points table, SQL section). See spec OQ-02.
+
+- **Advisory**: When GH #409 merges, reconcile `PENDING_REVIEWS_K_WINDOW_SECS` with #409's
   actual retention window constant. If #409 exposes a pub const, import it; otherwise keep
-  the local constant and document the coupling in a comment.
-
-- **OQ-02**: `summary_json` has no enforced byte ceiling at write time. The scope accepts
-  this for v1 (SR-02 deemed low probability). A monitoring hook (log warn when JSON > 512KB)
-  is optional but recommended if large cycles are observed in production.
+  the local constant with a comment documenting the coupling.

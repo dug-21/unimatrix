@@ -229,14 +229,17 @@ Verification: `test_current_schema_version_is_18` unit test asserts `CURRENT_SCH
 **AC-02** — v17 databases migrate to v18 without data loss; `cycle_review_index` table is created.
 Verification: `test_v17_to_v18_migration_creates_table` integration test in `tests/migration_v17_to_v18.rs` builds a v17-shaped database, opens it with `SqlxStore`, queries `SELECT name FROM sqlite_master WHERE name='cycle_review_index'`, and asserts the table exists. All pre-existing rows in other tables are readable. [SR-05]
 
-**AC-02b** — All five schema cascade touchpoints are updated.
-Verification: Code review gate. The five touchpoints are:
+**AC-02b** — All seven schema cascade touchpoints are updated.
+Verification: Code review gate. The seven touchpoints (architecture is authoritative per entry #3539) are:
 1. `migration.rs`: `CURRENT_SCHEMA_VERSION` constant updated to `18`.
 2. `migration.rs`: `if current_version < 18 { ... }` block added in `run_main_migrations()` with `CREATE TABLE IF NOT EXISTS cycle_review_index`.
-3. `db.rs`: `create_tables_if_needed()` DDL includes `cycle_review_index` table.
+3. `db.rs`: `create_tables_if_needed()` DDL includes `cycle_review_index` table; schema_version INSERT updated from 17 → 18.
 4. `tests/sqlite_parity.rs` or `tests/sqlite_parity_specialized.rs`: table-count or named-table assertion updated to include `cycle_review_index`.
 5. Any column-count structural tests in `db.rs` that enumerate tables or assert total table count are updated.
-Failure to update all five touchpoints is a gate-blocking defect per entry #3539. [SR-05]
+6. `server.rs`: `assert_eq!(version, N)` schema version assertions updated to `18`.
+7. Previous migration test: `test_current_schema_version_is_17` renamed to `test_current_schema_version_is_at_least_17` with `>= 17` predicate.
+Gate check: `grep -r 'schema_version.*== 17' crates/` MUST return zero matches before marking migration complete.
+Failure to update all seven touchpoints is a gate-blocking defect per entry #3539. [SR-05]
 
 **AC-13** — Migration integration test confirms `cycle_review_index` table exists after migrating a v17 database to v18.
 Verification: See AC-02. The `tests/migration_v17_to_v18.rs` file covers this. Pattern follows `tests/migration_v16_to_v17.rs`.
@@ -429,14 +432,26 @@ crt-033 provides the gate. It does NOT implement the purge pass. The #409 author
 
 ## Open Questions
 
-**OQ-01 (SR-07 — ambiguous empty attributed observations, no stored record):**
-When `force=true` and the three-path observation load returns empty, and `get_cycle_review()` returns `None`, FR-06 prescribes `ERROR_NO_OBSERVATION_DATA`. However, the empty result could mean "signals were purged without a review ever being written" (a pathological case) versus "this cycle never had signals." The handler cannot distinguish these without additional metadata. This specification accepts the `ERROR_NO_OBSERVATION_DATA` response for both sub-cases when no stored record exists. The architect should confirm this is acceptable or add a discriminator (e.g., check `cycle_events` for any row for this cycle_id).
+**OQ-01 — CLOSED.** Accepted: `ERROR_NO_OBSERVATION_DATA` for the no-stored-record case.
+No `cycle_events` COUNT discriminator. When `force=true`, attributed observations are empty,
+and `get_cycle_review()` returns `None`, the handler returns `ERROR_NO_OBSERVATION_DATA`
+regardless of whether signals were purged or never existed. The pathological case (signals
+purged before any review was written) does not warrant the extra COUNT query. FR-06 is
+authoritative. ADR architecture updated to remove the discriminator.
 
-**OQ-02 (query_log.feature_cycle column):**
-SCOPE references `query_log.feature_cycle` for the `pending_cycle_reviews` query. Inspection of the current `query_log` schema (`query_log.rs` and migration tests) shows no `feature_cycle` column — the table has: `query_id`, `session_id`, `query_text`, `ts`, `result_count`, `result_entry_ids`, `similarity_scores`, `retrieval_mode`, `source`, `phase`. The specification substitutes `cycle_events` (with `event_type = 'cycle_start'`) as the primary source for pending cycle identification. The architect must confirm whether `query_log.feature_cycle` was an aspirational column that does not yet exist, or whether it exists via `sessions.feature_cycle` join. If a `query_log.feature_cycle` column is intended, it requires a separate schema migration not covered by crt-033.
+**OQ-02 — CLOSED.** Accepted: `cycle_events.cycle_start` with `event_type = 'cycle_start'`
+as the source for `pending_cycle_reviews`. The `query_log.feature_cycle` column does not
+exist in the current schema and MUST NOT be introduced in crt-033. Architecture (ADR-004,
+ARCHITECTURE.md integration points and SQL) has been updated to use `cycle_events`.
+The semantic shift ("formally started" vs "Unimatrix was queried") is acceptable:
+post-col-022, a properly-run cycle always has both, and `cycle_events` is cleaner because
+it is already timestamped and naturally excludes pre-cycle_events cycles.
 
 **OQ-03 (concurrent first-call contention):**
-If two requests for the same cycle arrive concurrently and both find no stored record, both will run full computation and both will attempt `INSERT OR REPLACE`. `INSERT OR REPLACE` is safe (last writer wins), but the wasted computation is accepted. The architect should document this as a known race with acceptable duplicate-compute outcome, not a data corruption risk.
+If two requests for the same cycle arrive concurrently and both find no stored record, both
+will run full computation and both will attempt `INSERT OR REPLACE`. `INSERT OR REPLACE` is
+safe (last writer wins), but the wasted computation is accepted. This is a known race with
+acceptable duplicate-compute outcome, not a data corruption risk.
 
 ---
 

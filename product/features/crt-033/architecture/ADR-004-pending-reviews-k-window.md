@@ -1,4 +1,4 @@
-## ADR-004: pending_cycle_reviews K-window Scoping via query_log.feature_cycle
+## ADR-004: pending_cycle_reviews K-window Scoping via cycle_events.cycle_start
 
 ### Context
 
@@ -8,18 +8,21 @@
 **Q1: Which table defines "has raw signals"?**
 
 Options considered:
-- `cycle_events` table: has cycle_id column; directly tracks cycles. But `cycle_events`
-  rows represent lifecycle events (start/stop), not signal accumulation. A cycle with a
-  `cycle_start` event but no observations is not "pending" in the #409 sense.
-- `query_log` with `feature_cycle` set: `query_log` rows are written when Unimatrix tools
-  are called during an active session attributed to a feature. A `feature_cycle` value in
-  `query_log` means agents were actively querying Unimatrix for that cycle — a meaningful
-  signal of activity. This matches #409's purge window concept (query_log rows are what
-  #409's retention policy would delete).
+- `query_log` with `feature_cycle` set: would capture cycles where Unimatrix was actively
+  queried. However, `query_log.feature_cycle` does not exist as a column in the current
+  schema. Introducing it would require a separate migration not in scope for crt-033.
+- `cycle_events` table with `event_type = 'cycle_start'`: `cycle_events` rows are written
+  when `context_cycle(type="start")` is called. A `cycle_start` event means the cycle was
+  formally initiated and attribution was declared. This is the cleanest available signal:
+  already timestamped (enabling K-window filtering), already scoped to post-col-022 cycles
+  (naturally excludes pre-cycle_events era without extra conditions), and directly keyed by
+  `cycle_id` matching `cycle_review_index.feature_cycle`.
 
-**Decision**: use `query_log.feature_cycle` (NOT `cycle_events.cycle_id`) as the signal
-existence indicator. This is consistent with #409's domain and avoids inflating the list
-with lifecycle-only cycles that had no Unimatrix queries.
+**Decision**: use `cycle_events` with `event_type = 'cycle_start'` as the signal existence
+indicator. Post-col-022, a properly-run cycle always has a `cycle_start` event. This is
+cleaner than `query_log` because it is already timestamped, avoids requiring a new column,
+and the semantic shift ("formally started" vs "Unimatrix was queried") is acceptable for
+the operational use case.
 
 **Q2: What is the K-window boundary?**
 
@@ -72,10 +75,10 @@ structural precedent) uses `read_pool()`. No write-adjacent read path exists her
 ### Decision
 
 - `pending_cycle_reviews(k_window_cutoff: i64) -> Result<Vec<String>>` uses `read_pool()`
-- SQL: set difference of K-window `query_log.feature_cycle` vs `cycle_review_index`
+- SQL: set difference of K-window `cycle_events` (`event_type = 'cycle_start'`) vs `cycle_review_index`
 - Default K-window: 90 days, named `PENDING_REVIEWS_K_WINDOW_SECS` in `services/status.rs`
 - Always computed in `compute_report()` Phase 7b (no opt-in parameter)
-- NULL and empty `feature_cycle` values excluded in the SQL WHERE clause
+- Pre-cycle_events cycles excluded by definition (no `cycle_events` rows)
 
 ### Consequences
 
@@ -83,12 +86,12 @@ structural precedent) uses `read_pool()`. No write-adjacent read path exists her
 - Operators always see pending backlog without having to request it.
 - K-window prevents stale pre-table cycles from flooding the list permanently.
 - `read_pool()` avoids write pool contention during status queries.
+- `cycle_events.timestamp` column already exists — no schema change required.
+- Pre-cycle_events exclusion is automatic (cycles without `cycle_events` rows don't appear).
 
 **Harder**:
 - The 90-day default must be reconciled with #409 at merge time. If #409 uses a shorter
   window (e.g., 30 days), cycles in the 31–90 day range would appear in `pending_reviews`
   but would not be at risk from #409's purge — a false positive for operators.
-- `query_log` NULL handling: the WHERE clause guards `IS NOT NULL AND != ''`, but if
-  `query_log.feature_cycle` is consistently unpopulated for a deployment, the list will
-  always be empty. This is documented as a known assumption in the scope (pre-existing
-  `query_log.feature_cycle` population reliability).
+- Cycles that had `context_cycle(start)` called but zero Unimatrix queries will appear as
+  pending. These are genuine pending reviews (the cycle was declared), so this is accepted.
