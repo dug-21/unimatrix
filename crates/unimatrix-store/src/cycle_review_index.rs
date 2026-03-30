@@ -188,6 +188,68 @@ mod tests {
     use crate::test_helpers::open_test_store;
 
     // -----------------------------------------------------------------------
+    // CRS-U-01 substitute: CycleReviewRecord store + retrieve round-trip
+    //
+    // CycleReviewRecord intentionally does NOT derive Serialize/Deserialize.
+    // It is a DB-boundary type: handler code serializes the higher-level
+    // RetrospectiveReport directly; serde on this struct is not needed and
+    // would create a misleading serialization surface. The CRS-U-01 test plan
+    // item (serde JSON round-trip) does not apply to the actual design.
+    //
+    // This test covers the equivalent concern: a fully-populated record stored
+    // via store_cycle_review() and retrieved via get_cycle_review() must have
+    // all fields byte-identical, including summary_json.
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_cycle_review_record_round_trip() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let original = CycleReviewRecord {
+            feature_cycle: "crt-033-serde-substitute".to_string(),
+            schema_version: SUMMARY_SCHEMA_VERSION,
+            computed_at: 1_711_700_000,
+            raw_signals_available: 1,
+            summary_json: r#"{"feature_cycle":"crt-033-serde-substitute","schema_version":1,"hotspots":[]}"#.to_string(),
+        };
+
+        store
+            .store_cycle_review(&original)
+            .await
+            .expect("store must succeed");
+
+        let retrieved = store
+            .get_cycle_review(&original.feature_cycle)
+            .await
+            .expect("get must not error")
+            .expect("get must return Some after store");
+
+        assert_eq!(
+            retrieved.feature_cycle, original.feature_cycle,
+            "feature_cycle must survive store/retrieve"
+        );
+        assert_eq!(
+            retrieved.schema_version, original.schema_version,
+            "schema_version must survive store/retrieve"
+        );
+        assert_eq!(
+            retrieved.computed_at, original.computed_at,
+            "computed_at must survive store/retrieve"
+        );
+        assert_eq!(
+            retrieved.raw_signals_available, original.raw_signals_available,
+            "raw_signals_available must survive store/retrieve"
+        );
+        assert_eq!(
+            retrieved.summary_json, original.summary_json,
+            "summary_json must survive store/retrieve byte-identical"
+        );
+
+        store.close().await.unwrap();
+    }
+
+    // -----------------------------------------------------------------------
     // CRS-U-02: SUMMARY_SCHEMA_VERSION is 1
     // -----------------------------------------------------------------------
 
