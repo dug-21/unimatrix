@@ -40,6 +40,7 @@ use crate::infra::rayon_pool::RayonPool;
 use crate::infra::session::SessionRegistry;
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
+use crate::services::co_access_promotion_tick::run_co_access_promotion_tick;
 use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::contradiction_cache::{
     CONTRADICTION_SCAN_INTERVAL_TICKS, ContradictionScanCacheHandle, ContradictionScanResult,
@@ -545,6 +546,14 @@ async fn run_single_tick(
             }
         }
     }
+
+    // ── ORDERING INVARIANT (crt-034, ADR-005) ─────────────────────────────────────
+    // co_access promotion MUST run:
+    //   AFTER  step 2 (orphaned-edge compaction) — so dangling entries are removed first
+    //   BEFORE step 3 (TypedGraphState::rebuild) — so PPR sees promoted edges this tick
+    // Do NOT insert new tick steps between here and TypedGraphState::rebuild() below.
+    // ─────────────────────────────────────────────────────────────────────────────
+    run_co_access_promotion_tick(store, inference_config, current_tick).await;
 
     // crt-021: Rebuild typed graph state after maintenance tick completes.
     // Uses tokio::spawn (nxs-011: Store is now async sqlx, not sync Mutex<Connection>).
@@ -2296,6 +2305,25 @@ mod tests {
         assert_eq!(
             AUTO_QUARANTINE_CYCLES_MAX, 1000,
             "DoS mitigation constant must be 1000"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // crt-034: co_access promotion tick constant (AC-05 / ADR-005)
+    // ---------------------------------------------------------------------------
+
+    /// AC-05 (ADR-005, crt-034): PROMOTION_EARLY_RUN_WARN_TICKS must be 5.
+    ///
+    /// Value 5 covers ~75 minutes of 15-minute tick interval — long enough for
+    /// a freshly deployed server to complete initial promotion of all qualifying
+    /// pairs. Changing this value narrows or widens the SR-05 early-run signal-loss
+    /// detection window; do not change without updating ADR-005.
+    #[test]
+    fn test_promotion_early_run_warn_ticks_constant_value() {
+        use crate::services::co_access_promotion_tick::PROMOTION_EARLY_RUN_WARN_TICKS;
+        assert_eq!(
+            PROMOTION_EARLY_RUN_WARN_TICKS, 5u32,
+            "SR-05 early-tick detection window must be 5 ticks (ADR-005)"
         );
     }
 
