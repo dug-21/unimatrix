@@ -14,19 +14,19 @@
 
 ## Component Map
 
-| Component | Pseudocode | Test Plan |
-|-----------|-----------|-----------|
-| co_access_promotion_tick | pseudocode/co_access_promotion_tick.md | test-plan/co_access_promotion_tick.md |
-| config_extension | pseudocode/config_extension.md | test-plan/config_extension.md |
-| store_constants | pseudocode/store_constants.md | test-plan/store_constants.md |
-| background_tick_insertion | pseudocode/background_tick_insertion.md | test-plan/background_tick_insertion.md |
+| Component | Wave | Pseudocode | Test Plan |
+|-----------|------|-----------|-----------|
+| store_constants | 1 | product/features/crt-034/pseudocode/store_constants.md | product/features/crt-034/test-plan/store_constants.md |
+| config_extension | 1 | product/features/crt-034/pseudocode/config_extension.md | product/features/crt-034/test-plan/config_extension.md |
+| co_access_promotion_tick | 2 | product/features/crt-034/pseudocode/co_access_promotion_tick.md | product/features/crt-034/test-plan/co_access_promotion_tick.md |
+| background_tick_insertion | 3 | product/features/crt-034/pseudocode/background_tick_insertion.md | product/features/crt-034/test-plan/background_tick_insertion.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/crt-034/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/crt-034/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
