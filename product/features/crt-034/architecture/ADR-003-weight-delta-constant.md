@@ -8,8 +8,8 @@ threshold of `0.1` as the churn-suppression guard.
 
 Two options:
 1. Expose the delta as an `InferenceConfig` field (e.g.,
-   `co_access_weight_update_delta: f32`, default `0.1`, operator-configurable via TOML).
-2. Hard-code it as a module-private constant `CO_ACCESS_WEIGHT_UPDATE_DELTA: f32 = 0.1`
+   `co_access_weight_update_delta: f64`, default `0.1`, operator-configurable via TOML).
+2. Hard-code it as a module-private constant `CO_ACCESS_WEIGHT_UPDATE_DELTA: f64 = 0.1`
    in `co_access_promotion_tick.rs`.
 
 The config field pattern (`max_co_access_promotion_per_tick`) is appropriate for
@@ -33,17 +33,24 @@ reason.
 
 ### Decision
 
-Implement `CO_ACCESS_WEIGHT_UPDATE_DELTA: f32 = 0.1` as a module-private constant
+Implement `CO_ACCESS_WEIGHT_UPDATE_DELTA: f64 = 0.1` as a module-private constant
 in `crates/unimatrix-server/src/services/co_access_promotion_tick.rs`.
 
 It is NOT added to `InferenceConfig`. It is NOT exported to any other module.
+
+**Type is `f64`, not `f32`.** SQLite `REAL` columns are fetched as `f64` by sqlx. When
+the tick reads an existing edge weight from `GRAPH_EDGES`, it receives an `f64`. Comparing
+against an `f32` constant after implicit cast introduces precision noise: `0.1f32` as
+`f64` is `0.100000001490116...`. The confidence system already encountered this class of
+bug in crt-005 (f32/f64 score divergence). `f64 = 0.1` avoids the issue entirely.
 
 The constant's doc comment explains its purpose:
 ```rust
 /// Minimum weight change required to UPDATE an existing CoAccess edge.
 /// Suppresses spurious writes when count drift produces only minor weight changes.
 /// Not operator-configurable: this is a calibrated noise floor, not a domain policy.
-const CO_ACCESS_WEIGHT_UPDATE_DELTA: f32 = 0.1;
+/// f64 to match SQLite REAL fetch type and avoid implicit cast precision noise.
+const CO_ACCESS_WEIGHT_UPDATE_DELTA: f64 = 0.1;
 ```
 
 ### Consequences

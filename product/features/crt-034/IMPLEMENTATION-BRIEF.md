@@ -49,7 +49,7 @@ signal; without this fix, PPR operates on a static snapshot forever.
 |----------|-----------|--------|----------|
 | SQL strategy for batch fetch + global MAX normalization | Single-query batch fetch with scalar subquery (`(SELECT MAX(count) FROM co_access WHERE count >= ?1) AS max_count`) embedded in the candidate SELECT; eliminates the separate round-trip for MAX. Per-pair write remains two-step INSERT OR IGNORE + conditional UPDATE; UPSERT rejected due to semantic mismatch with delta guard. | ADR-001 (Unimatrix #3823) | product/features/crt-034/architecture/ADR-001-sql-strategy.md |
 | Location of public constants `EDGE_SOURCE_CO_ACCESS` and `CO_ACCESS_GRAPH_MIN_COUNT` | Co-located with `EDGE_SOURCE_NLI` in `unimatrix-store/src/read.rs` at line ~1630, re-exported from `lib.rs`. New `constants.rs` sub-module rejected as over-engineering for two constants. | ADR-002 (Unimatrix #3824) | product/features/crt-034/architecture/ADR-002-constants-location.md |
-| Weight delta threshold (0.1) — config field vs. named constant | Module-private constant `CO_ACCESS_WEIGHT_UPDATE_DELTA: f32 = 0.1` in `co_access_promotion_tick.rs`. Not added to `InferenceConfig`. Config fields are reserved for operator-tunable domain behavior; the delta is a calibrated noise floor. | ADR-003 (Unimatrix #3825) | product/features/crt-034/architecture/ADR-003-weight-delta-constant.md |
+| Weight delta threshold (0.1) — config field vs. named constant | Module-private constant `CO_ACCESS_WEIGHT_UPDATE_DELTA: f64 = 0.1` in `co_access_promotion_tick.rs`. Type is `f64` (not `f32`) — sqlx fetches SQLite REAL as `f64`; comparing against `f32` introduces precision noise (`0.1f32` as `f64` = `0.100000001490116...`). Not added to `InferenceConfig`. | ADR-003 (Unimatrix #3825) | product/features/crt-034/architecture/ADR-003-weight-delta-constant.md |
 | `max_co_access_promotion_per_tick` placed in `InferenceConfig` | Added to `InferenceConfig` following the exact `max_graph_inference_per_tick` pattern: serde default fn, validate() range [1, 10000], Default impl stanza, merge_configs stanza. Default 200 (vs NLI's 100) because co_access is pure SQL with no ML cost. Separate config section rejected; sharing NLI cap rejected (different cost centers). | ADR-004 (Unimatrix #3826) | product/features/crt-034/architecture/ADR-004-inference-config-field.md |
 | Tick insertion point and SR-05 early-tick detectability | Insert with named anchor comment (ORDERING INVARIANT block, SR-06) between orphaned-edge compaction and `TypedGraphState::rebuild()`. SR-05: emit `warn!` when `qualifying_count == 0 AND current_tick < PROMOTION_EARLY_RUN_WARN_TICKS (5)`. Function signature gains `current_tick: u32`. COUNTERS marker approach rejected (one-shot semantics incompatible with recurring tick). | ADR-005 (Unimatrix #3827) | product/features/crt-034/architecture/ADR-005-tick-insertion-and-sr05.md |
 | Edge directionality — v1 matches bootstrap (one direction only) | Write `source_id = entry_id_a`, `target_id = entry_id_b` only. Bidirectional edges deferred to follow-up; writing both directions now would produce PPR asymmetry between bootstrapped (one-direction) and newly promoted (two-direction) pairs. Follow-up protocol: write `(entry_id_b, entry_id_a, 'CoAccess')` — distinct under UNIQUE constraint, no collision risk. | ADR-006 (Unimatrix #3828) | product/features/crt-034/architecture/ADR-006-edge-directionality-v1-contract.md |
@@ -192,7 +192,8 @@ pub const CO_ACCESS_GRAPH_MIN_COUNT: i64 = 3;
 // co_access_promotion_tick.rs (module-private)
 /// Minimum weight change required to UPDATE an existing CoAccess edge.
 /// Not operator-configurable: this is a calibrated noise floor, not a domain policy.
-const CO_ACCESS_WEIGHT_UPDATE_DELTA: f32 = 0.1;
+/// f64 to match SQLite REAL fetch type — avoids implicit cast precision noise from f32.
+const CO_ACCESS_WEIGHT_UPDATE_DELTA: f64 = 0.1;
 
 // background.rs
 const PROMOTION_EARLY_RUN_WARN_TICKS: u32 = 5;
@@ -293,9 +294,12 @@ resolved signature).
 
 **CoAccess edge directionality (v1).** The bootstrap and this tick write one edge per pair:
 `source_id = entry_id_a (min-id)`, `target_id = entry_id_b`. PPR's `Direction::Outgoing`
-means seeding the lower-ID entry reaches the higher-ID entry, but not the reverse. A
-follow-up issue should write reverse edges using `(entry_id_b, entry_id_a, 'CoAccess')`,
-which is distinct under the UNIQUE constraint (see ADR-006 for the safe protocol).
+means seeding the lower-ID entry reaches the higher-ID entry, but seeding `entry_id_b`
+reaches nothing via CoAccess — half the traversal paths are missing. The follow-up issue
+must: (1) write `(entry_id_b, entry_id_a, 'CoAccess')` for new pairs and (2) back-fill
+ALL bootstrap-era one-direction pairs (identifiable via `source = 'co_access'`,
+`created_by = 'bootstrap'`). Reverse CoAccess edges do not break cycle detection —
+cycle detection uses a Supersedes-only temp graph (Pattern #2429). See ADR-006 (#3828).
 
 **Near-threshold pair overhead.** Pairs at exactly count=3 are fetched and checked every
 tick. INSERT OR IGNORE no-op + delta guard ensures zero writes in steady state, but the

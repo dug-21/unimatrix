@@ -41,8 +41,17 @@ relation_type)` never conflicts between bootstrap-era and tick-era edges.
 **Follow-up contract**: A future issue adding reverse edges must:
 1. Write `(entry_id_b, entry_id_a, 'CoAccess')` — this is distinct from the existing
    `(entry_id_a, entry_id_b, 'CoAccess')` under the UNIQUE constraint.
-2. Handle back-fill of bootstrapped pairs (which also have only one direction).
+2. Back-fill ALL bootstrap-era pairs (`source = 'co_access'`, `created_by = 'bootstrap'`)
+   that currently have only one direction, so the graph is fully symmetric after the
+   follow-up ships. The bootstrap pairs are identifiable via `source` and `created_by`.
 3. Reference this ADR to confirm the forward-edge layout was intentional.
+
+**Cycle detection is not broken by bidirectional CoAccess edges.** Pattern #2429
+(`is_cyclic_directed` false-positive risk) applies when A→B and B→A edges exist for
+the same relation type. However, cycle detection in Unimatrix uses a Supersedes-only
+temp graph — CoAccess edges are excluded from the cycle-detection subgraph entirely.
+Writing reverse `CoAccess` edges does NOT trigger false-positive cycle detection. The
+follow-up can proceed without any changes to the cycle detection logic.
 
 ### Consequences
 

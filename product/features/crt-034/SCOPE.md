@@ -280,10 +280,15 @@ reads are cheap SQL lookups with no ML inference cost.
 **CoAccess edge directionality.** The bootstrap writes edges as
 `source_id = entry_id_a (min), target_id = entry_id_b (max)` — one direction only.
 PPR traverses `Direction::Outgoing`, so seeding the min-id entry reaches the max-id entry
-but not the reverse. For a symmetric signal, this means half the traversal paths are
-missing. **v1 must match the bootstrap behavior (one direction only) for consistency.**
-Writing both directions is the correct fix but is a follow-up issue — call it out as a
-known limitation in the architecture.
+but not the reverse. For a symmetric co_access signal, this means seeding `entry_id_b`
+reaches nothing via CoAccess — half the traversal paths are missing. **v1 must match the
+bootstrap behavior (one direction only) for consistency.** See ADR-006 (#3828).
+
+The follow-up must write BOTH `(entry_id_a, entry_id_b)` and `(entry_id_b, entry_id_a)`
+as distinct rows AND back-fill all bootstrap-era pairs. The UNIQUE constraint treats
+`(a, b, type)` and `(b, a, type)` as distinct rows — no collision risk. Cycle detection
+is not affected: it uses a Supersedes-only temp graph; CoAccess edges are excluded
+(Pattern #2429).
 
 ## Tracking
 

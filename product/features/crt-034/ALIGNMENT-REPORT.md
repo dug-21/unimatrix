@@ -18,7 +18,7 @@
 | Vision Alignment | PASS | Directly repairs a frozen co-access signal gap; supports the PPR-based intelligence pipeline |
 | Milestone Fit | PASS | Solidly in Wave 1 / Wave 1A territory — keeping the typed graph current is a prerequisite for W3-1 |
 | Scope Gaps | PASS | All SCOPE.md goals, non-goals, constraints, and ACs addressed in source docs |
-| Scope Additions | WARN | Architecture introduces an SR-05 first-tick detectability mechanism (warn on tick < N) that is implied by SCOPE-RISK-ASSESSMENT.md but is not in SCOPE.md; scope treats SR-05 as a deployment/ordering control |
+| Scope Additions | PASS | SR-05 early-tick warn! mechanism accepted by human reviewer. FR-08 updated with authorized exception. See WARN-01 resolution below. |
 | Architecture Consistency | PASS | Architecture, specification, and scope are internally consistent; one open question noted below |
 | Risk Completeness | PASS | Risk-test strategy covers all 6 scope risks and adds 7 implementation-level risks with full test scenario coverage |
 
@@ -35,13 +35,15 @@
 
 ## Variances Requiring Approval
 
-### WARN-01: SR-05 First-Tick Warn! Mechanism Added Beyond Scope
+### WARN-01: SR-05 First-Tick Warn! Mechanism — RESOLVED
 
-**What**: SCOPE.md §Constraints lists "No changes to co_access write paths or the co-access staleness cleanup logic" and in §Known Limitation describes the #409 race as a risk managed at the GH milestone level, not by code. The architecture (§SR-05) and the risk-test strategy (R-06, scenarios covering four warn! quadrants) define a runtime mechanism — `warn!` logged when `qualifying_count == 0 AND current_tick < PROMOTION_EARLY_RUN_WARN_TICKS` — that was not in SCOPE.md but was recommended in SCOPE-RISK-ASSESSMENT.md SR-05.
-
-**Why it matters**: This is a scope addition — behavior the human did not explicitly request. The mechanism is benign (log-only, no data impact), but it requires a per-process tick counter and changes the observable logging contract. The SCOPE-RISK-ASSESSMENT.md recommendation is advisory; it does not constitute approval.
-
-**Recommendation**: Accept. The mechanism is low-risk, directly addresses a High-severity integration risk (silent signal loss from #409 race), and was explicitly recommended by the scope risk assessment. Document as an approved addition in a follow-up SCOPE.md annotation, or accept during delivery gate review.
+**Resolution (human-approved 2026-03-30)**: Accepted. The SR-05 early-tick `warn!`
+mechanism is benign log-only code addressing a High-severity silent signal-loss risk.
+Relying purely on deployment ordering to prevent the #409 race is operationally fragile.
+FR-08 has been updated to carve out the authorized exception: "no warning — except if
+`qualifying_count == 0 AND current_tick < PROMOTION_EARLY_RUN_WARN_TICKS`."
+No implementation change required — implement SR-05 warn as designed in ADR-005.
+Overall alignment: **PASS** (no open WARNs).
 
 ---
 

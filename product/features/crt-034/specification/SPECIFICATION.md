@@ -42,7 +42,10 @@ promoted edges are visible to PPR within the same tick cycle.
 on NLI availability, feature flags, or any external condition.
 
 **FR-08** — When `co_access` is empty or no pairs meet the threshold, the tick shall
-complete as a no-op with no error and no warning.
+complete as a no-op with no error and no warning — except: if `qualifying_count == 0`
+AND `current_tick < PROMOTION_EARLY_RUN_WARN_TICKS`, the tick SHALL emit a `warn!` log
+(SR-05 early-tick signal-loss detection, authorized per ADR-005). Outside that window,
+zero qualifying pairs produces no warning.
 
 **FR-09** — The promotion tick shall be infallible (`async fn ... -> ()`). Individual
 write errors shall be logged at `warn!` and the tick shall continue to the next pair.
@@ -63,8 +66,11 @@ the promotion tick and the migration share a single authoritative value.
 **FR-13** — The public constant `EDGE_SOURCE_CO_ACCESS: &str = "co_access"` shall be
 exported from `unimatrix-store` alongside the existing `EDGE_SOURCE_NLI`.
 
-**FR-14** — The internal constant `CO_ACCESS_WEIGHT_UPDATE_DELTA: f32 = 0.1` shall be
+**FR-14** — The internal constant `CO_ACCESS_WEIGHT_UPDATE_DELTA: f64 = 0.1` shall be
 defined as a named constant within the promotion module. It is not a config field.
+The type is `f64` (not `f32`) because sqlx fetches SQLite `REAL` columns as `f64`;
+comparing a fetched weight against an `f32` delta introduces implicit cast precision
+noise (`0.1f32` as `f64` is `0.100000001490116...`). See ADR-003.
 
 **FR-15** — The promotion function shall use `write_pool_server()` directly for all
 database writes. The `AnalyticsWrite::GraphEdge` analytics drain path shall not be used,
@@ -188,9 +194,14 @@ _Verification: unit test — assert column values on a freshly promoted row._
 
 **AC-13** — Weight normalization uses `MAX(count)` computed over ALL qualifying pairs
 (count >= threshold), not only the capped batch.
-_Verification: unit test — seed 10 pairs with counts [1..10], set cap to 3, assert
-that promoted pairs use a `max_count` of 10 (global), not 8 (the max within the top-3
-batch)._
+_Verification: this test is future-proofing documentation rather than a live correctness
+discriminator. Because candidates are selected `ORDER BY count DESC`, the capped batch
+always contains the highest-count pairs, so global MAX always equals batch MAX under
+this SQL strategy. The test should be framed as: "given counts [1..10], cap=3, verify
+that the SQL normalization anchor is computed via global scope (subquery over all
+qualifying pairs) and not inlined as a Rust-side maximum of the fetched rows." Test
+authors should verify the query shape, not just the output value. The requirement is
+preserved for correctness if the SQL strategy ever changes._
 
 **AC-14** — An existing `CoAccess` edge with `INSERT OR IGNORE` applied a second time
 (pair already promoted) produces zero rows affected and no spurious UPDATE check.
@@ -234,7 +245,7 @@ tick, assert the `GRAPH_EDGES` row is still present._
 |----------|------|-------|----------|---------|
 | `CO_ACCESS_GRAPH_MIN_COUNT` | `i64` | `3` | `unimatrix-store` (public) | Minimum co_access count to qualify for promotion; shared with v13 migration |
 | `EDGE_SOURCE_CO_ACCESS` | `&str` | `"co_access"` | `unimatrix-store` (public) | Written to `graph_edges.source`; parallel to `EDGE_SOURCE_NLI` |
-| `CO_ACCESS_WEIGHT_UPDATE_DELTA` | `f32` | `0.1` | `co_access_promotion_tick.rs` (module-private) | Minimum weight drift to trigger an UPDATE; suppresses churn |
+| `CO_ACCESS_WEIGHT_UPDATE_DELTA` | `f64` | `0.1` | `co_access_promotion_tick.rs` (module-private) | Minimum weight drift to trigger an UPDATE; suppresses churn; `f64` to match SQLite REAL fetch type (see ADR-003) |
 
 ### Config Fields
 
@@ -383,11 +394,21 @@ the server reads the updated config.
 **CoAccess edge directionality (v1 limitation).** The bootstrap writes
 `source_id = entry_id_a (min-id), target_id = entry_id_b (max-id)` — one direction only.
 PPR traverses `Direction::Outgoing`, so seeding the min-id entry reaches the max-id entry
-but not the reverse. For a symmetric co-access signal, half the traversal paths are absent.
-v1 must match this bootstrap behavior for consistency (writing both directions now would
-produce duplicate weight on half the graph vs. single weight on the other half).
-A follow-up issue should write reverse edges and document the protocol for doing so
-without double-counting existing edges.
+but not the reverse. For a symmetric co-access signal, half the traversal paths are absent:
+seeding `entry_id_b` reaches nothing via CoAccess. This is the real gap. v1 must match the
+bootstrap behavior for consistency (see ADR-006, Unimatrix #3828).
+
+The follow-up issue must:
+1. Write `(entry_id_b, entry_id_a, 'CoAccess')` for newly promoted pairs — distinct from
+   the existing `(entry_id_a, entry_id_b, 'CoAccess')` row under the UNIQUE constraint.
+2. Back-fill ALL bootstrap-era pairs that have only one direction. Bootstrap pairs are
+   identifiable via `source = 'co_access'` and `created_by = 'bootstrap'`.
+
+**Cycle detection is not affected.** When bidirectional CoAccess edges exist (A→B and
+B→A), `is_cyclic_directed` on the full graph would false-positive as a cycle (Pattern
+#2429). However, Unimatrix cycle detection uses a Supersedes-only temp graph — CoAccess
+edges are excluded. Reverse CoAccess edges do not break cycle detection and the follow-up
+requires no changes to that logic.
 
 **Near-threshold pair re-evaluation each tick.** Pairs hovering near
 `CO_ACCESS_GRAPH_MIN_COUNT` are re-evaluated on every tick. The `INSERT OR IGNORE`
