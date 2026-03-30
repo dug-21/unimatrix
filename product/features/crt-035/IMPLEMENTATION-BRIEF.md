@@ -16,16 +16,16 @@
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| co_access_promotion_tick.rs | pseudocode/co_access_promotion_tick.md | test-plan/co_access_promotion_tick.md |
-| migration.rs (v18→v19) | pseudocode/migration_v18_to_v19.md | test-plan/migration_v18_to_v19.md |
-| typed_graph.rs (AC-12 test) | pseudocode/typed_graph_ac12.md | test-plan/typed_graph_ac12.md |
+| Promotion tick (co_access_promotion_tick.rs) | product/features/crt-035/pseudocode/tick.md | product/features/crt-035/test-plan/tick.md |
+| Migration v18→v19 (migration.rs + migration_v18_to_v19.rs) | product/features/crt-035/pseudocode/migration.md | product/features/crt-035/test-plan/migration.md |
+| AC-12 PPR test (typed_graph.rs) | product/features/crt-035/pseudocode/ac12-test.md | product/features/crt-035/test-plan/ac12-test.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/crt-035/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/crt-035/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
