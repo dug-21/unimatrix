@@ -129,6 +129,12 @@ pub struct StatusReport {
     /// - Summary formatter: lists only adaptive categories (pinned is the silent default)
     /// - JSON formatter: includes all categories with their lifecycle label
     pub category_lifecycle: Vec<(String, String)>, // (category_name, "adaptive" | "pinned")
+    /// Cycle IDs within the K-window that have cycle_events rows
+    /// (event_type='cycle_start') but no cycle_review_index row.
+    /// Empty vec when all K-window cycles have been reviewed.
+    /// Populated unconditionally by Phase 7b of compute_report() (C-07).
+    /// (crt-033, FR-09)
+    pub pending_cycle_reviews: Vec<String>,
 }
 
 impl Default for StatusReport {
@@ -187,6 +193,7 @@ impl Default for StatusReport {
             coherence_by_source: Vec::new(),
             effectiveness: None,
             category_lifecycle: Vec::new(),
+            pending_cycle_reviews: Vec::new(),
         }
     }
 }
@@ -378,6 +385,14 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 }
                 // Note: when adaptive_categories is empty, no line is added.
                 // Rationale: showing all pinned categories adds noise for standard configurations.
+            }
+            // crt-033: Pending cycle reviews — show when backlog is non-empty.
+            // Silent when empty (consistent with other "nothing to report" fields).
+            if !report.pending_cycle_reviews.is_empty() {
+                text.push_str(&format!(
+                    "\nPending cycle reviews: {}",
+                    report.pending_cycle_reviews.join(", ")
+                ));
             }
             CallToolResult::success(vec![Content::text(text)])
         }
@@ -783,6 +798,15 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 }
             }
 
+            // crt-033: Pending cycle reviews section.
+            if !report.pending_cycle_reviews.is_empty() {
+                text.push_str("\n### Pending Cycle Reviews\n\n");
+                text.push_str("Cycles with `cycle_start` events but no stored review:\n\n");
+                for cycle_id in &report.pending_cycle_reviews {
+                    text.push_str(&format!("- {cycle_id}\n"));
+                }
+            }
+
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Json => {
@@ -854,6 +878,10 @@ struct StatusReportJson {
     /// Output format asymmetry: summary shows only adaptive; JSON shows all (ADR-001 decision 2).
     /// BTreeMap preserves insertion order (alphabetically sorted by category name, per R-08).
     category_lifecycle: std::collections::BTreeMap<String, String>,
+    /// Cycles with cycle_start events but no stored review (crt-033).
+    /// Empty array when no cycles are pending review.
+    /// Always serialized even as an empty array (FR-11: no skip_serializing_if).
+    pending_cycle_reviews: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -1297,6 +1325,126 @@ mod tests {
         // Suppress unused variable warning.
         let _ = lifecycle;
     }
+
+    // --- crt-033: pending_cycle_reviews tests ---
+
+    /// SR-U-01: StatusReport::default() has empty pending_cycle_reviews (I-04).
+    #[test]
+    fn test_status_report_default_has_empty_pending_cycle_reviews() {
+        let report = StatusReport::default();
+        assert!(
+            report.pending_cycle_reviews.is_empty(),
+            "default StatusReport must have empty pending_cycle_reviews"
+        );
+    }
+
+    /// SR-U-02 / SR-U-03: From<&StatusReport> maps pending_cycle_reviews correctly (I-04).
+    #[test]
+    fn test_status_report_json_from_maps_pending_cycle_reviews() {
+        let report = StatusReport {
+            pending_cycle_reviews: vec!["crt-033".to_string(), "col-034".to_string()],
+            ..StatusReport::default()
+        };
+        let json_report = StatusReportJson::from(&report);
+        assert_eq!(json_report.pending_cycle_reviews.len(), 2);
+        assert!(
+            json_report
+                .pending_cycle_reviews
+                .contains(&"crt-033".to_string())
+        );
+        assert!(
+            json_report
+                .pending_cycle_reviews
+                .contains(&"col-034".to_string())
+        );
+    }
+
+    /// SR-U-04: From<&StatusReport> empty vec maps to empty vec (FR-10, FR-11).
+    #[test]
+    fn test_status_report_json_from_empty_pending_reviews() {
+        let report = StatusReport::default();
+        let json_report = StatusReportJson::from(&report);
+        assert!(json_report.pending_cycle_reviews.is_empty());
+    }
+
+    /// SR-U-05: Summary formatter includes "Pending cycle reviews" label when non-empty (FR-11).
+    #[test]
+    fn test_summary_formatter_renders_pending_cycle_reviews_when_non_empty() {
+        let report = StatusReport {
+            pending_cycle_reviews: vec!["col-022".to_string(), "crt-031".to_string()],
+            ..StatusReport::default()
+        };
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(
+            text.contains("Pending cycle reviews"),
+            "summary must contain 'Pending cycle reviews' label when list is non-empty"
+        );
+        assert!(text.contains("col-022"), "summary must contain col-022");
+        assert!(text.contains("crt-031"), "summary must contain crt-031");
+    }
+
+    /// SR-U-06: Summary formatter produces no "Pending cycle reviews" section when empty (FR-11).
+    #[test]
+    fn test_summary_formatter_omits_pending_section_when_empty() {
+        let report = StatusReport::default();
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert!(
+            !text.contains("Pending cycle reviews"),
+            "summary must not render 'Pending cycle reviews' when list is empty"
+        );
+    }
+
+    /// SR-U-07: JSON formatter includes pending_cycle_reviews as array (FR-11, AC-09).
+    #[test]
+    fn test_json_formatter_includes_pending_cycle_reviews_array() {
+        let report = StatusReport {
+            pending_cycle_reviews: vec!["nxs-005".to_string()],
+            ..StatusReport::default()
+        };
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        let arr = parsed["pending_cycle_reviews"]
+            .as_array()
+            .expect("pending_cycle_reviews must be an array in JSON output");
+        assert_eq!(arr.len(), 1);
+        assert_eq!(arr[0].as_str().unwrap(), "nxs-005");
+    }
+
+    /// SR-U-08: JSON formatter produces empty array when pending_cycle_reviews is empty (FR-11, AC-10).
+    #[test]
+    fn test_json_formatter_pending_cycle_reviews_empty_is_array() {
+        let report = StatusReport::default();
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        let arr = parsed["pending_cycle_reviews"]
+            .as_array()
+            .expect("pending_cycle_reviews must exist as empty array, not absent");
+        assert!(arr.is_empty());
+    }
+
+    /// SR-I-01: StatusReport with non-empty pending_cycle_reviews round-trips through JSON (I-04).
+    #[test]
+    fn test_status_report_json_round_trip_preserves_pending_cycle_reviews() {
+        let report = StatusReport {
+            pending_cycle_reviews: vec!["col-022".to_string()],
+            ..StatusReport::default()
+        };
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        let arr = parsed["pending_cycle_reviews"]
+            .as_array()
+            .expect("pending_cycle_reviews must be an array");
+        let recovered: Vec<String> = arr
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect();
+        assert_eq!(recovered, report.pending_cycle_reviews);
+    }
 }
 
 impl From<&StatusReport> for StatusReportJson {
@@ -1511,6 +1659,8 @@ impl From<&StatusReport> for StatusReportJson {
                 .iter()
                 .map(|(cat, label)| (cat.clone(), label.clone()))
                 .collect(),
+            // crt-033: pending cycle reviews — always included, even as empty array (FR-11).
+            pending_cycle_reviews: r.pending_cycle_reviews.clone(),
         }
     }
 }

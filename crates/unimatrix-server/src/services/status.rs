@@ -549,6 +549,7 @@ impl StatusService {
             coherence_by_source: Vec::new(),
             effectiveness: None,
             category_lifecycle: Vec::new(), // populated after Phase 8 via category_allowlist
+            pending_cycle_reviews: Vec::new(), // populated by Phase 7b (crt-033)
         };
 
         // Phase 2: Contradiction scan — read from cache populated by background tick.
