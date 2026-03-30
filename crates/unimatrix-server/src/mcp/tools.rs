@@ -249,6 +249,9 @@ pub struct RetrospectiveParams {
     pub evidence_limit: Option<usize>,
     /// Output format: "markdown" (default) or "json". (vnc-011)
     pub format: Option<String>,
+    /// Force recomputation even if a stored review exists. (crt-033)
+    /// Absent or None is equivalent to false.
+    pub force: Option<bool>,
 }
 
 /// Parameters for the context_cycle tool.
@@ -1338,10 +1341,162 @@ impl UnimatrixServer {
 
         attribution_path_label = Some(obs_path_label);
 
-        // 6. Check for data availability
         let store = Arc::clone(&self.store);
         let feature_cycle = params.feature_cycle.clone();
 
+        // -----------------------------------------------------------------------
+        // Step 2.5 (crt-033): Memoization check / force=true purged-signals gate.
+        // Executes AFTER three-path observation load, BEFORE step 4 (is_empty check).
+        // -----------------------------------------------------------------------
+        let force = params.force.unwrap_or(false);
+
+        if !force {
+            // Normal path: check for a stored review before any computation.
+            match store.get_cycle_review(&feature_cycle).await {
+                Ok(Some(record)) => {
+                    // Memoization hit — deserialize and return (skip steps 4–8a).
+                    match check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION) {
+                        Ok((report, advisory)) => {
+                            // 11. Audit (fire-and-forget, same as full path)
+                            self.audit_fire_and_forget(AuditEvent {
+                                event_id: 0,
+                                timestamp: 0,
+                                session_id: String::new(),
+                                agent_id: identity.agent_id.clone(),
+                                operation: "context_cycle_review".to_string(),
+                                target_ids: vec![],
+                                outcome: Outcome::Success,
+                                detail: format!(
+                                    "retrospective for {} (memoization hit)",
+                                    feature_cycle
+                                ),
+                            });
+                            // Apply evidence_limit at render time (C-03).
+                            let fmt = params.format.as_deref().unwrap_or("markdown");
+                            return dispatch_review_with_advisory(
+                                report,
+                                fmt,
+                                params.evidence_limit,
+                                advisory,
+                            );
+                        }
+                        Err(e) => {
+                            // ADR-003: deserialization error → treat as cache miss.
+                            tracing::warn!(
+                                "crt-033: deserialization of stored summary_json failed for \
+                                 {}: {} — falling through to full recomputation",
+                                feature_cycle,
+                                e
+                            );
+                            // Fall through to full pipeline.
+                        }
+                    }
+                }
+                Ok(None) => {
+                    // Cache miss — proceed to full pipeline.
+                }
+                Err(e) => {
+                    // Read error — treat as cache miss (ADR-003).
+                    tracing::warn!(
+                        "crt-033: get_cycle_review read error for {}: {} — treating as cache miss",
+                        feature_cycle,
+                        e
+                    );
+                    // Fall through to full pipeline.
+                }
+            }
+        } else if attributed.is_empty() {
+            // force=true AND observations are empty.
+            // Sole discriminator is get_cycle_review() return value (OQ-01, FR-05/FR-06).
+            match store.get_cycle_review(&feature_cycle).await {
+                Ok(Some(record)) => {
+                    // Stored record exists: signals were purged after review was written.
+                    let computed_at_display = record.computed_at.to_string();
+                    let note = format!(
+                        "Raw signals have been purged; returning stored record from {}.",
+                        computed_at_display
+                    );
+                    match check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION) {
+                        Ok((report, _advisory)) => {
+                            // 11. Audit
+                            self.audit_fire_and_forget(AuditEvent {
+                                event_id: 0,
+                                timestamp: 0,
+                                session_id: String::new(),
+                                agent_id: identity.agent_id.clone(),
+                                operation: "context_cycle_review".to_string(),
+                                target_ids: vec![],
+                                outcome: Outcome::Success,
+                                detail: format!(
+                                    "retrospective for {} (purged signals path)",
+                                    feature_cycle
+                                ),
+                            });
+                            let fmt = params.format.as_deref().unwrap_or("markdown");
+                            return dispatch_review_with_advisory(
+                                report,
+                                fmt,
+                                params.evidence_limit,
+                                Some(note),
+                            );
+                        }
+                        Err(e) => {
+                            // Corrupt stored record + no signals = cannot recover.
+                            tracing::warn!(
+                                "crt-033: deserialization failed on purged-signals path \
+                                 for {}: {}",
+                                feature_cycle,
+                                e
+                            );
+                            return Err(rmcp::model::ErrorData::new(
+                                crate::error::ERROR_INTERNAL,
+                                format!(
+                                    "Stored cycle review for '{}' is corrupt and raw signals \
+                                     have been purged. A reindex is required.",
+                                    feature_cycle
+                                ),
+                                None,
+                            ));
+                        }
+                    }
+                }
+                Ok(None) => {
+                    // No stored record: return ERROR_NO_OBSERVATION_DATA (FR-06).
+                    return Err(rmcp::model::ErrorData::new(
+                        ERROR_NO_OBSERVATION_DATA,
+                        format!(
+                            "No observation data found for feature '{}'. \
+                             Ensure hook scripts are installed and sessions have been run.",
+                            feature_cycle
+                        ),
+                        None,
+                    ));
+                }
+                Err(e) => {
+                    // Read error with force=true + empty attributed: cannot distinguish
+                    // purged from never-existed → safest response is ERROR_NO_OBSERVATION_DATA.
+                    tracing::warn!(
+                        "crt-033: get_cycle_review read error (force=true, empty attributed) \
+                         for {}: {}",
+                        feature_cycle,
+                        e
+                    );
+                    return Err(rmcp::model::ErrorData::new(
+                        ERROR_NO_OBSERVATION_DATA,
+                        format!(
+                            "No observation data found for feature '{}'. \
+                             Ensure hook scripts are installed and sessions have been run.",
+                            feature_cycle
+                        ),
+                        None,
+                    ));
+                }
+            }
+        }
+        // If force=true AND attributed is non-empty: step 2.5 check is skipped entirely;
+        // fall through to step 4 and full pipeline (FR-04).
+
+        // 6. Check for data availability
         if attributed.is_empty() {
             // No new data -- check for cached MetricVector
             let cached = store
@@ -1865,6 +2020,35 @@ impl UnimatrixServer {
         // attribution_path: label recorded at path-selection time in step 3
         report.attribution_path = attribution_path_label.map(|s| s.to_string());
 
+        // -----------------------------------------------------------------------
+        // Step 8a (crt-033): Serialize and store the computed review.
+        // Executes AFTER full pipeline, BEFORE step 11 audit.
+        // evidence_limit truncation is NOT applied here — the full report is stored (C-03).
+        // Uses write_pool_server() directly — MUST NOT be in spawn_blocking (ADR-001).
+        // -----------------------------------------------------------------------
+        match build_cycle_review_record(&feature_cycle, &report) {
+            Ok(record) => {
+                if let Err(e) = store.store_cycle_review(&record).await {
+                    tracing::warn!(
+                        "crt-033: store_cycle_review failed for {}: {} — continuing",
+                        feature_cycle,
+                        e
+                    );
+                    // Log and continue — GH #409 gate note: if this fails, the purge gate
+                    // will not fire for this cycle. This is acceptable over failing the caller.
+                }
+            }
+            Err(e) => {
+                // serde_json::to_string failed — should not occur after serde audit (ADR-003)
+                // but propagate defensively rather than panicking.
+                tracing::warn!(
+                    "crt-033: build_cycle_review_record serialization failed for {}: {} — continuing",
+                    feature_cycle,
+                    e
+                );
+            }
+        }
+
         // 11. Audit
         self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
@@ -2049,6 +2233,124 @@ impl UnimatrixServer {
         Ok(CallToolResult::success(vec![rmcp::model::Content::text(
             response_text,
         )]))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// crt-033: Memoization helpers for context_cycle_review
+// ---------------------------------------------------------------------------
+
+/// Deserialize a stored `CycleReviewRecord` into a `RetrospectiveReport`.
+///
+/// Returns `(report, advisory)` where `advisory` is `Some(msg)` when the stored
+/// `schema_version` differs from `current_version` (FR-02, C-05, R-08).
+///
+/// On deserialization failure, returns `Err(serde_json::Error)`. The caller must
+/// treat this as a cache miss and fall through to full recomputation (ADR-003).
+///
+/// Evidence-limit truncation is NOT applied here — the caller applies it at
+/// render time (C-03).
+fn check_stored_review(
+    record: &unimatrix_store::CycleReviewRecord,
+    current_version: u32,
+) -> Result<(unimatrix_observe::RetrospectiveReport, Option<String>), serde_json::Error> {
+    let advisory = if record.schema_version != current_version {
+        Some(format!(
+            "computed with schema_version {}, current is {} — use force=true to recompute.",
+            record.schema_version, current_version
+        ))
+    } else {
+        None
+    };
+
+    let report: unimatrix_observe::RetrospectiveReport =
+        serde_json::from_str(&record.summary_json)?;
+
+    Ok((report, advisory))
+}
+
+/// Serialize a `RetrospectiveReport` into a `CycleReviewRecord` ready for storage.
+///
+/// Sets `schema_version = SUMMARY_SCHEMA_VERSION`, `raw_signals_available = 1`,
+/// and `computed_at` to the current unix timestamp.
+///
+/// Evidence-limit truncation MUST NOT be applied before this call (C-03).
+/// 4MB ceiling enforcement is delegated to `store_cycle_review()` (NFR-03).
+fn build_cycle_review_record(
+    feature_cycle: &str,
+    report: &unimatrix_observe::RetrospectiveReport,
+) -> Result<unimatrix_store::CycleReviewRecord, serde_json::Error> {
+    // Serialize the full report — no evidence_limit truncation (C-03).
+    let summary_json = serde_json::to_string(report)?;
+
+    let computed_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+
+    Ok(unimatrix_store::CycleReviewRecord {
+        feature_cycle: feature_cycle.to_string(),
+        schema_version: unimatrix_store::SUMMARY_SCHEMA_VERSION,
+        computed_at,
+        raw_signals_available: 1i32, // live signals — full pipeline just ran
+        summary_json,
+    })
+}
+
+/// Apply evidence-limit truncation and format dispatch, appending an optional
+/// advisory string to the response.
+///
+/// Called from the memoization hit path and the purged-signals path.
+/// Mirrors the existing step 12 format dispatch in the handler.
+/// Evidence-limit truncation is applied here — NOT before this call (C-03).
+fn dispatch_review_with_advisory(
+    report: unimatrix_observe::RetrospectiveReport,
+    format: &str,
+    evidence_limit: Option<usize>,
+    advisory: Option<String>,
+) -> Result<rmcp::model::CallToolResult, rmcp::model::ErrorData> {
+    use crate::error::ERROR_INVALID_PARAMS;
+    use crate::mcp::response::format_retrospective_markdown;
+    use crate::mcp::response::format_retrospective_report;
+
+    match format {
+        "markdown" | "summary" => {
+            let mut result = format_retrospective_markdown(&report);
+            if let Some(note) = advisory {
+                // Append advisory as additional text content item.
+                result
+                    .content
+                    .push(rmcp::model::Content::text(format!("\n\n{}", note)));
+            }
+            Ok(result)
+        }
+        "json" => {
+            let evidence_limit = evidence_limit.unwrap_or(3);
+            let final_report = if evidence_limit > 0 {
+                let mut truncated = report.clone();
+                for hotspot in &mut truncated.hotspots {
+                    hotspot.evidence.truncate(evidence_limit);
+                }
+                truncated
+            } else {
+                report
+            };
+            let mut result = format_retrospective_report(&final_report);
+            if let Some(note) = advisory {
+                result
+                    .content
+                    .push(rmcp::model::Content::text(format!("\n\n{}", note)));
+            }
+            Ok(result)
+        }
+        _ => Err(rmcp::model::ErrorData::new(
+            ERROR_INVALID_PARAMS,
+            format!(
+                "Unknown format '{}'. Valid values: \"markdown\", \"json\".",
+                format
+            ),
+            None,
+        )),
     }
 }
 
@@ -3201,6 +3503,201 @@ mod tests {
         assert_eq!(params.agent_id, Some("agent-1".to_string()));
         assert_eq!(params.evidence_limit, Some(5));
         assert_eq!(params.format, Some("json".to_string()));
+    }
+
+    // -- crt-033: force field tests (TH-U-01, TH-U-02) --
+
+    /// TH-U-01: force absent → None (AC-12)
+    #[test]
+    fn test_retrospective_params_force_absent_is_none() {
+        let params: RetrospectiveParams =
+            serde_json::from_str(r#"{"feature_cycle": "test-001"}"#).unwrap();
+        assert!(params.force.is_none());
+    }
+
+    /// TH-U-02a: force=true deserializes correctly (AC-12)
+    #[test]
+    fn test_retrospective_params_force_true() {
+        let params: RetrospectiveParams =
+            serde_json::from_str(r#"{"feature_cycle": "test-001", "force": true}"#).unwrap();
+        assert_eq!(params.force, Some(true));
+    }
+
+    /// TH-U-02b: force=false deserializes correctly (AC-12)
+    #[test]
+    fn test_retrospective_params_force_false() {
+        let params: RetrospectiveParams =
+            serde_json::from_str(r#"{"feature_cycle": "test-001", "force": false}"#).unwrap();
+        assert_eq!(params.force, Some(false));
+    }
+
+    // -- crt-033: check_stored_review helper tests (TH-U-03 through TH-U-06) --
+
+    /// Helper: build a minimal CycleReviewRecord with a valid serialized
+    /// RetrospectiveReport for use in check_stored_review tests.
+    fn minimal_cycle_review_record(
+        schema_version: u32,
+        summary_json: Option<&str>,
+    ) -> unimatrix_store::CycleReviewRecord {
+        let valid_json = if let Some(json) = summary_json {
+            json.to_string()
+        } else {
+            // Build valid JSON by serializing a real RetrospectiveReport.
+            let report = unimatrix_observe::RetrospectiveReport {
+                feature_cycle: "x".to_string(),
+                session_count: 0,
+                total_records: 0,
+                metrics: unimatrix_observe::MetricVector::default(),
+                hotspots: vec![],
+                is_cached: false,
+                baseline_comparison: None,
+                entries_analysis: None,
+                narratives: None,
+                recommendations: vec![],
+                session_summaries: None,
+                feature_knowledge_reuse: None,
+                rework_session_count: None,
+                context_reload_pct: None,
+                attribution: None,
+                phase_narrative: None,
+                goal: None,
+                cycle_type: None,
+                attribution_path: None,
+                is_in_progress: None,
+                phase_stats: None,
+            };
+            serde_json::to_string(&report).expect("test report must serialize")
+        };
+        unimatrix_store::CycleReviewRecord {
+            feature_cycle: "x".to_string(),
+            schema_version,
+            computed_at: 1_700_000_000,
+            raw_signals_available: 1,
+            summary_json: valid_json,
+        }
+    }
+
+    /// TH-U-03: matching schema_version → no advisory (R-08)
+    #[test]
+    fn test_check_stored_review_matching_version_no_advisory() {
+        let record = minimal_cycle_review_record(unimatrix_store::SUMMARY_SCHEMA_VERSION, None);
+        let result = check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION);
+        let (_, advisory) = result.expect("check_stored_review must return Ok");
+        assert!(
+            advisory.is_none(),
+            "no advisory when schema_version matches current"
+        );
+    }
+
+    /// TH-U-04: mismatched schema_version (stored < current) → advisory contains key phrases (AC-04b, R-08)
+    #[test]
+    fn test_check_stored_review_mismatched_version_produces_advisory() {
+        let old_version = 0u32;
+        let record = minimal_cycle_review_record(old_version, None);
+        let (_, advisory) =
+            check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION).unwrap();
+        let advisory_text = advisory.expect("advisory must be Some when schema_version differs");
+        assert!(
+            advisory_text.contains("use force=true to recompute"),
+            "advisory must contain 'use force=true to recompute', got: {advisory_text}"
+        );
+        assert!(
+            advisory_text.contains(&old_version.to_string()),
+            "advisory must include stored version ({old_version}), got: {advisory_text}"
+        );
+        assert!(
+            advisory_text.contains(&unimatrix_store::SUMMARY_SCHEMA_VERSION.to_string()),
+            "advisory must include current version ({}), got: {advisory_text}",
+            unimatrix_store::SUMMARY_SCHEMA_VERSION
+        );
+    }
+
+    /// TH-U-05: future schema_version (stored > current) → advisory produced (R-08)
+    #[test]
+    fn test_check_stored_review_future_version_produces_advisory() {
+        let future_version = 999u32;
+        let record = minimal_cycle_review_record(future_version, None);
+        let (_, advisory) =
+            check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION).unwrap();
+        assert!(
+            advisory.is_some(),
+            "future schema_version must also produce an advisory"
+        );
+    }
+
+    /// TH-U-06: corrupted summary_json → returns Err, does NOT panic (R-06-3, ADR-003)
+    #[test]
+    fn test_check_stored_review_corrupted_json_returns_err() {
+        let record = minimal_cycle_review_record(
+            unimatrix_store::SUMMARY_SCHEMA_VERSION,
+            Some("not valid json {{{{"),
+        );
+        // Must not panic. Use catch_unwind to confirm panic-freedom.
+        let result = std::panic::catch_unwind(|| {
+            check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION)
+        });
+        assert!(
+            result.is_ok(),
+            "check_stored_review must not panic on corrupted JSON"
+        );
+        // The inner result must be Err (caller treats as cache miss).
+        let inner = result.unwrap();
+        assert!(
+            inner.is_err(),
+            "check_stored_review must return Err for corrupted JSON"
+        );
+    }
+
+    // -- crt-033: build_cycle_review_record helper tests (TH-U-07) --
+
+    /// TH-U-07: build_cycle_review_record round-trip (AC-03)
+    #[test]
+    fn test_build_cycle_review_record_sets_correct_fields() {
+        let report = unimatrix_observe::RetrospectiveReport {
+            feature_cycle: "feat-x".to_string(),
+            session_count: 0,
+            total_records: 0,
+            metrics: unimatrix_observe::MetricVector::default(),
+            hotspots: vec![],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![],
+            session_summaries: None,
+            feature_knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
+            phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
+        };
+
+        let record = build_cycle_review_record("feat-x", &report)
+            .expect("build_cycle_review_record must succeed");
+
+        assert_eq!(record.feature_cycle, "feat-x");
+        assert_eq!(
+            record.schema_version,
+            unimatrix_store::SUMMARY_SCHEMA_VERSION,
+            "schema_version must be SUMMARY_SCHEMA_VERSION"
+        );
+        assert_eq!(
+            record.raw_signals_available, 1i32,
+            "raw_signals_available must be 1 (live signals)"
+        );
+        // summary_json must round-trip to a valid RetrospectiveReport.
+        serde_json::from_str::<unimatrix_observe::RetrospectiveReport>(&record.summary_json)
+            .expect("summary_json must be valid JSON that deserializes to RetrospectiveReport");
+        // computed_at must be a plausible unix timestamp (after 2020-01-01).
+        assert!(
+            record.computed_at > 1_577_836_800,
+            "computed_at must be a valid recent unix timestamp"
+        );
     }
 
     // -- col-010b: clone-and-truncate tests --

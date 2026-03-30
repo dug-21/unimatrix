@@ -1362,6 +1362,7 @@ mod tests {
             agent_id: None,
             evidence_limit: None,
             format: None,
+            force: None,
         };
         assert!(validate_retrospective_params(&params).is_ok());
     }
@@ -1373,6 +1374,7 @@ mod tests {
             agent_id: None,
             evidence_limit: None,
             format: None,
+            force: None,
         };
         assert!(validate_retrospective_params(&params).is_err());
     }
@@ -1384,6 +1386,7 @@ mod tests {
             agent_id: None,
             evidence_limit: None,
             format: None,
+            force: None,
         };
         assert!(validate_retrospective_params(&params).is_err());
     }
