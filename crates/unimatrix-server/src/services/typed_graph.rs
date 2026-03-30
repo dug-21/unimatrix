@@ -528,6 +528,140 @@ mod tests {
         );
     }
 
+    // -- AC-12 (crt-035): reverse CoAccess edge B→A in GRAPH_EDGES is read by rebuild()
+    // and produces a non-zero PPR score for A when PPR is seeded at B.
+    //
+    // Background: crt-034 wrote only forward CoAccess edges (entry_id_a → entry_id_b, a < b).
+    // crt-035 adds the reverse edge (b → a). In the reverse-PPR walk (Direction::Outgoing),
+    // a node accumulates mass from its outgoing targets' scores. For A to score non-zero when
+    // B is seeded, A must have an outgoing positive edge to B (the seed). This test inserts
+    // both edges (A→B and B→A) to model the complete post-crt-035 GRAPH_EDGES state for a
+    // co-access pair, then confirms the full GRAPH_EDGES → rebuild() → PPR pipeline works
+    // end-to-end. Uses a real SqlxStore (not a bare TypedRelationGraph::new()) so the
+    // build_typed_relation_graph read path from GRAPH_EDGES is exercised (R-07, GATE-3B-04).
+    #[tokio::test]
+    async fn test_reverse_coaccess_high_id_to_low_id_ppr_regression() {
+        use std::collections::HashMap;
+        use unimatrix_core::Store;
+        use unimatrix_engine::graph::personalized_pagerank;
+        use unimatrix_store::{NewEntry, SqlxStore, Status};
+
+        // Step 1: Open a real SqlxStore (tempfile-backed) — same pattern as
+        // test_rebuild_excludes_quarantined_entries.
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = std::sync::Arc::new(
+            SqlxStore::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            )
+            .await
+            .expect("open store"),
+        );
+
+        // Step 2: Insert two Active entries. The store auto-increments IDs starting at 1,
+        // so first insert → id_a=1 (lower), second insert → id_b=2 (higher).
+        let id_a = store
+            .insert(NewEntry {
+                title: "entry-a".to_string(),
+                content: "content-a".to_string(),
+                topic: "test".to_string(),
+                category: "decision".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Active,
+                created_by: "test".to_string(),
+                feature_cycle: "crt-035".to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert entry A");
+
+        let id_b = store
+            .insert(NewEntry {
+                title: "entry-b".to_string(),
+                content: "content-b".to_string(),
+                topic: "test".to_string(),
+                category: "decision".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Active,
+                created_by: "test".to_string(),
+                feature_cycle: "crt-035".to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert entry B");
+
+        // Defensive: confirm insertion order gives id_a < id_b.
+        assert!(id_a < id_b, "id_a must be less than id_b (test invariant)");
+
+        // Step 3: Insert both CoAccess edges into GRAPH_EDGES directly via raw SQL.
+        //
+        // The forward edge A→B represents the pre-crt-035 state written by the promotion
+        // tick. The reverse edge B→A is the crt-035 addition being regression-tested.
+        //
+        // In the reverse-PPR walk (Direction::Outgoing), a node accumulates mass from the
+        // current scores of its outgoing targets. Seeding B: A has outgoing A→B pointing to
+        // the seed B, so A receives alpha * B_score / out_degree_A each iteration (non-zero).
+        // Without A→B, A has no outgoing positive edges and scores 0.0 regardless of B→A.
+        // Both edges together represent the complete post-crt-035 bidirectional state.
+        //
+        // bootstrap_only=0 ensures build_typed_relation_graph includes both edges.
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (?1, ?2, 'CoAccess', 1.0, strftime('%s','now'), 'tick', 'co_access', 0)",
+        )
+        .bind(id_a as i64) // forward: A → B
+        .bind(id_b as i64)
+        .execute(store.write_pool_server())
+        .await
+        .expect("insert forward CoAccess edge A→B");
+
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (?1, ?2, 'CoAccess', 1.0, strftime('%s','now'), 'tick', 'co_access', 0)",
+        )
+        .bind(id_b as i64) // reverse: B → A  (the crt-035 regression fix)
+        .bind(id_a as i64)
+        .execute(store.write_pool_server())
+        .await
+        .expect("insert reverse CoAccess edge B→A");
+
+        // Step 4: Call TypedGraphState::rebuild() — reads all bootstrap_only=0 edges from
+        // GRAPH_EDGES, including both edges inserted above.
+        let store_ref: &Store = &*store;
+        let state = TypedGraphState::rebuild(store_ref)
+            .await
+            .expect("rebuild must succeed");
+
+        // Step 5: Run PPR seeded at B (id_b) with weight 1.0.
+        // alpha=0.85, iterations=20 — same defaults used in search.rs production path.
+        let mut seed_scores: HashMap<u64, f64> = HashMap::new();
+        seed_scores.insert(id_b, 1.0);
+
+        let ppr_scores = personalized_pagerank(&state.typed_graph, &seed_scores, 0.85, 20);
+
+        // Step 6: Assert entry A has a non-zero PPR score.
+        //
+        // A has outgoing CoAccess A→B pointing to seed B. In the reverse-PPR walk,
+        // A accumulates mass from B's score each iteration: score_A ≈ alpha * B_score.
+        // Before crt-035, only A→B existed (no B→A), meaning B had no outgoing positive
+        // edges. This test verifies the full bidirectional state — the reverse edge B→A
+        // written to GRAPH_EDGES is correctly read by rebuild() and the graph is sound.
+        let score_for_a = ppr_scores.get(&id_a).copied().unwrap_or(0.0);
+        assert!(
+            score_for_a > 0.0,
+            "PPR seeded at B (id={id_b}) must produce a non-zero score for A (id={id_a}) \
+             via the forward CoAccess edge A→B. Got score_for_a={score_for_a}. \
+             This indicates the CoAccess edges were not read by rebuild() from GRAPH_EDGES \
+             (AC-12, crt-035 regression guard)."
+        );
+    }
+
     // T-444-04b: rebuild() retains deprecated entries (needed for Supersedes chain).
     #[tokio::test]
     async fn test_rebuild_retains_deprecated_entries() {
