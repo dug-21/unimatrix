@@ -144,9 +144,7 @@ pub(crate) async fn run_co_access_promotion_tick(
     if max_count <= 0 {
         // Degenerate: counts are 0 or negative despite count >= 3 filter.
         // Guard against data corruption without panicking.
-        tracing::warn!(
-            "co_access promotion tick: max_count <= 0 despite non-empty rows; skipping"
-        );
+        tracing::warn!("co_access promotion tick: max_count <= 0 despite non-empty rows; skipping");
         tracing::info!(
             inserted = 0,
             updated = 0,
