@@ -1,4 +1,4 @@
-//! Recurring co_access → GRAPH_EDGES promotion tick (crt-034).
+//! Recurring co_access → GRAPH_EDGES promotion tick (crt-034, updated crt-035).
 //!
 //! Promotes qualifying `co_access` pairs (count >= CO_ACCESS_GRAPH_MIN_COUNT) into
 //! `GRAPH_EDGES` as `CoAccess`-typed edges. For already-promoted edges, refreshes
@@ -9,7 +9,9 @@
 //! - Direct write pool path only (ADR-001/#3821): `AnalyticsWrite::GraphEdge` cannot
 //!   express conditional UPDATE semantics and must not be used.
 //! - No rayon pool: pure SQL, no ML inference.
-//! - One-directional edges v1 (ADR-006): `source_id = entry_id_a`, `target_id = entry_id_b`.
+//! - Bidirectional edges (crt-035, ADR-006 follow-up): both (a→b) and (b→a) written per pair.
+//!   `promote_one_direction` helper called twice; forward direction: (entry_id_a, entry_id_b);
+//!   reverse direction: (entry_id_b, entry_id_a).
 
 use unimatrix_core::Store;
 use unimatrix_store::{CO_ACCESS_GRAPH_MIN_COUNT, EDGE_SOURCE_CO_ACCESS};
@@ -59,14 +61,142 @@ struct CoAccessBatchRow {
 }
 
 // ---------------------------------------------------------------------------
+// Module-private helper
+// ---------------------------------------------------------------------------
+
+/// Write (or refresh) a single directed CoAccess edge `(source_id → target_id)`.
+///
+/// Three-step sequence:
+/// 1. INSERT OR IGNORE — inserts the edge if it does not already exist.
+/// 2. On no-op (rows_affected == 0): fetch current weight and check delta.
+/// 3. UPDATE weight if `|new_weight - existing_weight| > CO_ACCESS_WEIGHT_UPDATE_DELTA`.
+///
+/// Returns `(inserted, updated)`:
+/// - `(true, false)` — fresh edge inserted this tick.
+/// - `(false, true)` — existing edge weight updated.
+/// - `(false, false)` — no-op (weight current) or any SQL error (logged at `warn!`).
+///
+/// Infallible: all SQL errors are logged at `warn!` and `(false, false)` is returned.
+/// Each direction is independent per ADR-001 (crt-035) eventual-consistency decision.
+async fn promote_one_direction(
+    store: &Store,
+    source_id: i64,
+    target_id: i64,
+    new_weight: f64,
+) -> (bool, bool) {
+    // Step A: INSERT OR IGNORE.
+    // On UNIQUE constraint conflict, SQLite silently ignores the INSERT
+    // and rows_affected = 0.
+    let insert_result = sqlx::query(
+        "INSERT OR IGNORE INTO graph_edges
+             (source_id, target_id, relation_type, weight, created_at,
+              created_by, source, bootstrap_only)
+         VALUES (?1, ?2, 'CoAccess', ?3, strftime('%s','now'), 'tick', ?4, 0)",
+    )
+    .bind(source_id)
+    .bind(target_id)
+    .bind(new_weight)
+    .bind(EDGE_SOURCE_CO_ACCESS)
+    .execute(store.write_pool_server())
+    .await;
+
+    let insert_result = match insert_result {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!(
+                source_id,
+                target_id,
+                error = %e,
+                "co_access promotion tick: INSERT failed for direction"
+            );
+            return (false, false);
+        }
+    };
+
+    if insert_result.rows_affected() > 0 {
+        // Fresh insert: edge did not previously exist.
+        return (true, false);
+    }
+
+    // rows_affected == 0: edge already exists (INSERT was a no-op).
+    // Step B: Fetch current stored weight to check for drift.
+    let fetch_result = sqlx::query_scalar::<_, f64>(
+        "SELECT weight FROM graph_edges
+         WHERE source_id = ?1 AND target_id = ?2 AND relation_type = 'CoAccess'",
+    )
+    .bind(source_id)
+    .bind(target_id)
+    .fetch_optional(store.write_pool_server())
+    .await;
+
+    let existing_weight = match fetch_result {
+        Ok(w) => w,
+        Err(e) => {
+            tracing::warn!(
+                source_id,
+                target_id,
+                error = %e,
+                "co_access promotion tick: weight fetch failed for direction; skipping update"
+            );
+            return (false, false);
+        }
+    };
+
+    let existing_weight = match existing_weight {
+        Some(w) => w,
+        None => {
+            // Edge disappeared between INSERT no-op and fetch (race with deletion).
+            // Harmless: skip; will be re-evaluated on next tick.
+            return (false, false);
+        }
+    };
+
+    // Delta guard (ADR-003/#3825): strict greater-than.
+    // delta == CO_ACCESS_WEIGHT_UPDATE_DELTA does NOT trigger an update.
+    let delta = (new_weight - existing_weight).abs();
+    if delta <= CO_ACCESS_WEIGHT_UPDATE_DELTA {
+        return (false, false);
+    }
+
+    // Step C: UPDATE the weight.
+    let update_result = sqlx::query(
+        "UPDATE graph_edges
+         SET weight = ?1
+         WHERE source_id = ?2 AND target_id = ?3 AND relation_type = 'CoAccess'",
+    )
+    .bind(new_weight)
+    .bind(source_id)
+    .bind(target_id)
+    .execute(store.write_pool_server())
+    .await;
+
+    match update_result {
+        Ok(_) => (false, true),
+        Err(e) => {
+            tracing::warn!(
+                source_id,
+                target_id,
+                new_weight,
+                error = %e,
+                "co_access promotion tick: weight UPDATE failed for direction"
+            );
+            (false, false)
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Public tick function
 // ---------------------------------------------------------------------------
 
 /// Recurring background tick: promote qualifying `co_access` pairs into
 /// `GRAPH_EDGES` as `CoAccess`-typed edges and refresh stale weights.
 ///
+/// Writes both `(a→b)` and `(b→a)` per qualifying pair (crt-035, ADR-006).
+///
 /// Infallible. Write errors are logged at `warn!` and the tick continues.
-/// Always emits a `tracing::info!` with inserted/updated counts at the end.
+/// Always emits a `tracing::info!` with `promoted_pairs`/`edges_inserted`/
+/// `edges_updated` counts at the end.
 ///
 /// # SR-05 early-tick detection
 /// When `qualifying_count == 0 AND current_tick < PROMOTION_EARLY_RUN_WARN_TICKS`,
@@ -103,8 +233,9 @@ pub(crate) async fn run_co_access_promotion_tick(
         Err(e) => {
             tracing::warn!(error = %e, "co_access promotion tick: batch fetch failed");
             tracing::info!(
-                inserted = 0,
-                updated = 0,
+                promoted_pairs = 0,
+                edges_inserted = 0,
+                edges_updated = 0,
                 "co_access promotion tick complete (fetch error)"
             );
             return;
@@ -128,8 +259,9 @@ pub(crate) async fn run_co_access_promotion_tick(
 
     if qualifying_count == 0 {
         tracing::info!(
-            inserted = 0,
-            updated = 0,
+            promoted_pairs = 0,
+            edges_inserted = 0,
+            edges_updated = 0,
             "co_access promotion tick complete"
         );
         return;
@@ -146,18 +278,19 @@ pub(crate) async fn run_co_access_promotion_tick(
         // Guard against data corruption without panicking.
         tracing::warn!("co_access promotion tick: max_count <= 0 despite non-empty rows; skipping");
         tracing::info!(
-            inserted = 0,
-            updated = 0,
+            promoted_pairs = 0,
+            edges_inserted = 0,
+            edges_updated = 0,
             "co_access promotion tick complete (degenerate max)"
         );
         return;
     }
 
-    // Phase 3: Per-pair two-step write.
-    // INSERT OR IGNORE per pair; on no-op (rows_affected == 0), check weight delta
-    // and UPDATE only if delta exceeds CO_ACCESS_WEIGHT_UPDATE_DELTA.
-    // Errors on individual pairs are logged and skipped (infallible contract).
-    // No transaction: pairs are independent; partial completion is acceptable.
+    // Phase 3: Per-pair bidirectional write.
+    // Calls promote_one_direction twice per pair: forward (a→b) and reverse (b→a).
+    // Both directions use the same new_weight (derived from the same co_access row).
+    // Each direction is independent per ADR-001 (eventual consistency).
+    // Errors on individual directions are logged and do not abort the pair or batch.
     let mut inserted_count: usize = 0;
     let mut updated_count: usize = 0;
 
@@ -165,116 +298,39 @@ pub(crate) async fn run_co_access_promotion_tick(
         let new_weight: f64 = row.count as f64 / max_count as f64;
         // new_weight is in (0.0, 1.0] given 0 < row.count <= max_count.
 
-        // Step A: INSERT OR IGNORE.
-        // Inserts the edge if (source_id, target_id, 'CoAccess') is not already
-        // in graph_edges. On UNIQUE constraint conflict, SQLite silently ignores
-        // the INSERT and rows_affected = 0.
-        let insert_result = sqlx::query(
-            "INSERT OR IGNORE INTO graph_edges
-                 (source_id, target_id, relation_type, weight, created_at,
-                  created_by, source, bootstrap_only)
-             VALUES (?1, ?2, 'CoAccess', ?3, strftime('%s','now'), 'tick', ?4, 0)",
-        )
-        .bind(row.entry_id_a) // ?1: source_id (ADR-006: one direction only, min-id first)
-        .bind(row.entry_id_b) // ?2: target_id
-        .bind(new_weight) // ?3: REAL, normalized [0.0, 1.0]
-        .bind(EDGE_SOURCE_CO_ACCESS) // ?4: "co_access"
-        .execute(store.write_pool_server())
-        .await;
+        // Forward direction: (entry_id_a → entry_id_b)
+        let (fwd_inserted, fwd_updated) =
+            promote_one_direction(store, row.entry_id_a, row.entry_id_b, new_weight).await;
 
-        let insert_result = match insert_result {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::warn!(
-                    entry_id_a = row.entry_id_a,
-                    entry_id_b = row.entry_id_b,
-                    error = %e,
-                    "co_access promotion tick: INSERT failed; skipping pair"
-                );
-                continue;
-            }
-        };
+        // Reverse direction: (entry_id_b → entry_id_a)
+        // Independent call — failure here does not abort or re-run the forward call (ADR-001).
+        let (rev_inserted, rev_updated) =
+            promote_one_direction(store, row.entry_id_b, row.entry_id_a, new_weight).await;
 
-        if insert_result.rows_affected() > 0 {
-            // New edge inserted.
+        // Accumulate across both directions.
+        // inserted_count and updated_count can each be 0, 1, or 2 per pair.
+        if fwd_inserted {
             inserted_count += 1;
-            continue;
         }
-
-        // rows_affected == 0: edge already exists (INSERT was a no-op).
-        // Step B: Fetch the current stored weight to check for drift.
-        let fetch_result = sqlx::query_scalar::<_, f64>(
-            "SELECT weight FROM graph_edges
-             WHERE source_id = ?1 AND target_id = ?2 AND relation_type = 'CoAccess'",
-        )
-        .bind(row.entry_id_a)
-        .bind(row.entry_id_b)
-        .fetch_optional(store.write_pool_server())
-        .await;
-
-        let existing_weight = match fetch_result {
-            Ok(w) => w,
-            Err(e) => {
-                tracing::warn!(
-                    entry_id_a = row.entry_id_a,
-                    entry_id_b = row.entry_id_b,
-                    error = %e,
-                    "co_access promotion tick: weight fetch failed; skipping update"
-                );
-                continue;
-            }
-        };
-
-        let existing_weight = match existing_weight {
-            Some(w) => w,
-            None => {
-                // Edge disappeared between INSERT no-op and this fetch (race with deletion).
-                // Harmless: skip, will be re-evaluated on next tick.
-                continue;
-            }
-        };
-
-        // Delta guard: suppress churn for small weight changes (ADR-003/#3825).
-        // Strict greater-than: delta exactly equal to CO_ACCESS_WEIGHT_UPDATE_DELTA
-        // is NOT updated (E-05 boundary: |0.6 - 0.5| = 0.1 → no update).
-        let delta = (new_weight - existing_weight).abs();
-        if delta <= CO_ACCESS_WEIGHT_UPDATE_DELTA {
-            continue;
+        if rev_inserted {
+            inserted_count += 1;
         }
-
-        // Step C: UPDATE the weight.
-        let update_result = sqlx::query(
-            "UPDATE graph_edges
-             SET weight = ?1
-             WHERE source_id = ?2 AND target_id = ?3 AND relation_type = 'CoAccess'",
-        )
-        .bind(new_weight) // ?1: new normalized weight (f64)
-        .bind(row.entry_id_a) // ?2
-        .bind(row.entry_id_b) // ?3
-        .execute(store.write_pool_server())
-        .await;
-
-        match update_result {
-            Ok(_) => {
-                updated_count += 1;
-            }
-            Err(e) => {
-                tracing::warn!(
-                    entry_id_a = row.entry_id_a,
-                    entry_id_b = row.entry_id_b,
-                    new_weight = new_weight,
-                    error = %e,
-                    "co_access promotion tick: weight UPDATE failed"
-                );
-            }
+        if fwd_updated {
+            updated_count += 1;
+        }
+        if rev_updated {
+            updated_count += 1;
         }
     }
 
-    // Phase 4: Summary log (FR-10). Always emits, even if all writes failed.
+    // Phase 4: Summary log (FR-05, D2).
+    // promoted_pairs: count of co_access rows processed (business metric).
+    // edges_inserted: total new edges written (up to 2*promoted_pairs on a fresh graph).
+    // edges_updated: total weight updates applied (up to 2*promoted_pairs on all-stale graph).
     tracing::info!(
-        inserted = inserted_count,
-        updated = updated_count,
-        qualifying = qualifying_count,
+        promoted_pairs = qualifying_count,
+        edges_inserted = inserted_count,
+        edges_updated = updated_count,
         "co_access promotion tick complete"
     );
 }
