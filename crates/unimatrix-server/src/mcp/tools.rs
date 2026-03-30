@@ -49,6 +49,11 @@ pub struct SearchParams {
     /// Filter by tags (all must match).
     pub tags: Option<Vec<String>>,
     /// Max results to return (default: 5).
+    #[serde(
+        default,
+        deserialize_with = "crate::mcp::serde_util::deserialize_opt_i64_or_string"
+    )]
+    #[schemars(with = "Option<i64>")]
     pub k: Option<i64>,
     /// Agent making the request.
     pub agent_id: Option<String>,
@@ -73,10 +78,20 @@ pub struct LookupParams {
     /// Filter by tags (all must match).
     pub tags: Option<Vec<String>>,
     /// Lookup by specific entry ID.
+    #[serde(
+        default,
+        deserialize_with = "crate::mcp::serde_util::deserialize_opt_i64_or_string"
+    )]
+    #[schemars(with = "Option<i64>")]
     pub id: Option<i64>,
     /// Filter by status (active, deprecated, proposed).
     pub status: Option<String>,
     /// Max results to return (default: 10).
+    #[serde(
+        default,
+        deserialize_with = "crate::mcp::serde_util::deserialize_opt_i64_or_string"
+    )]
+    #[schemars(with = "Option<i64>")]
     pub limit: Option<i64>,
     /// Agent making the request.
     pub agent_id: Option<String>,
@@ -121,6 +136,8 @@ pub struct StoreParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetParams {
     /// Entry ID to retrieve.
+    #[serde(deserialize_with = "crate::mcp::serde_util::deserialize_i64_or_string")]
+    #[schemars(with = "i64")]
     pub id: i64,
     /// Agent making the request.
     pub agent_id: Option<String>,
@@ -139,6 +156,8 @@ pub struct GetParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CorrectParams {
     /// ID of the entry to correct (will be deprecated).
+    #[serde(deserialize_with = "crate::mcp::serde_util::deserialize_i64_or_string")]
+    #[schemars(with = "i64")]
     pub original_id: i64,
     /// Corrected content to replace the original.
     pub content: String,
@@ -162,6 +181,8 @@ pub struct CorrectParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct DeprecateParams {
     /// ID of the entry to deprecate.
+    #[serde(deserialize_with = "crate::mcp::serde_util::deserialize_i64_or_string")]
+    #[schemars(with = "i64")]
     pub id: i64,
     /// Reason for deprecation.
     pub reason: Option<String>,
@@ -175,6 +196,8 @@ pub struct DeprecateParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct QuarantineParams {
     /// Entry ID to quarantine or restore.
+    #[serde(deserialize_with = "crate::mcp::serde_util::deserialize_i64_or_string")]
+    #[schemars(with = "i64")]
     pub id: i64,
     /// Reason for the action.
     pub reason: Option<String>,
@@ -211,6 +234,11 @@ pub struct BriefingParams {
     /// Feature cycle identifier (e.g., "crt-027"). Used as query fallback when `task` is empty; does not apply a scoring boost.
     pub feature: Option<String>,
     /// Reserved for future output truncation. Accepted and validated (500–10000, default 3000) but not currently enforced on results.
+    #[serde(
+        default,
+        deserialize_with = "crate::mcp::serde_util::deserialize_opt_i64_or_string"
+    )]
+    #[schemars(with = "Option<i64>")]
     pub max_tokens: Option<i64>,
     /// Agent making the request.
     pub agent_id: Option<String>,
@@ -246,6 +274,11 @@ pub struct RetrospectiveParams {
     /// Agent making the request.
     pub agent_id: Option<String>,
     /// Maximum evidence items per hotspot (default: 3, JSON path only). (col-010b)
+    #[serde(
+        default,
+        deserialize_with = "crate::mcp::serde_util::deserialize_opt_usize_or_string"
+    )]
+    #[schemars(with = "Option<u64>")]
     pub evidence_limit: Option<usize>,
     /// Output format: "markdown" (default) or "json". (vnc-011)
     pub format: Option<String>,
@@ -6137,6 +6170,365 @@ mod cycle_review_integration_tests {
         assert_eq!(
             row_b.feature_cycle, "concurrent-B",
             "TH-I-10: concurrent-B row must be present"
+        );
+    }
+}
+
+// ---- vnc-012: string-encoded integer coercion tests ----
+// All tests exercise the full serde deserialization path including the
+// #[serde(deserialize_with)] attribute routing. No server required.
+#[cfg(test)]
+mod vnc012_coercion_tests {
+    use serde_json::{from_str, from_value, json};
+
+    use super::{
+        BriefingParams, CorrectParams, DeprecateParams, GetParams, LookupParams, QuarantineParams,
+        RetrospectiveParams, SearchParams,
+    };
+
+    // -- AC-01: Required integer fields accept string input --
+
+    #[test]
+    fn test_get_params_string_id() {
+        let params: GetParams = from_str(r#"{"id": "3770"}"#).unwrap();
+        assert_eq!(params.id, 3770i64);
+    }
+
+    #[test]
+    fn test_deprecate_params_string_id() {
+        let params: DeprecateParams = from_str(r#"{"id": "3770"}"#).unwrap();
+        assert_eq!(params.id, 3770i64);
+    }
+
+    #[test]
+    fn test_quarantine_params_string_id() {
+        let params: QuarantineParams = from_str(r#"{"id": "3770"}"#).unwrap();
+        assert_eq!(params.id, 3770i64);
+    }
+
+    // -- AC-02: CorrectParams.original_id accepts string input --
+
+    #[test]
+    fn test_correct_params_string_original_id() {
+        let params: CorrectParams = from_str(r#"{"original_id": "3770", "content": "c"}"#).unwrap();
+        assert_eq!(params.original_id, 3770i64);
+    }
+
+    // -- AC-03: LookupParams optional fields accept string + absent + null --
+
+    #[test]
+    fn test_lookup_params_string_id() {
+        let params: LookupParams = from_str(r#"{"id": "42"}"#).unwrap();
+        assert_eq!(params.id, Some(42i64));
+    }
+
+    #[test]
+    fn test_lookup_params_string_limit() {
+        let params: LookupParams = from_str(r#"{"limit": "10"}"#).unwrap();
+        assert_eq!(params.limit, Some(10i64));
+    }
+
+    #[test]
+    fn test_lookup_params_absent_id() {
+        // AC-03-ABSENT-ID: #[serde(default)] must yield None when key is missing (R-01)
+        let params: LookupParams = from_str(r#"{}"#).unwrap();
+        assert!(params.id.is_none());
+    }
+
+    #[test]
+    fn test_lookup_params_absent_limit() {
+        // AC-03-ABSENT-LIMIT: #[serde(default)] must yield None when key is missing (R-01)
+        let params: LookupParams = from_str(r#"{}"#).unwrap();
+        assert!(params.limit.is_none());
+    }
+
+    #[test]
+    fn test_lookup_params_null_id() {
+        // AC-03-NULL-ID: visit_none/visit_unit must return Ok(None) for JSON null (R-03)
+        let params: LookupParams = from_str(r#"{"id": null}"#).unwrap();
+        assert!(params.id.is_none());
+    }
+
+    #[test]
+    fn test_lookup_params_null_limit() {
+        // AC-03-NULL-LIMIT: visit_none/visit_unit must return Ok(None) for JSON null (R-03)
+        let params: LookupParams = from_str(r#"{"limit": null}"#).unwrap();
+        assert!(params.limit.is_none());
+    }
+
+    // -- AC-04: SearchParams.k accepts string + absent + null --
+
+    #[test]
+    fn test_search_params_string_k() {
+        let params: SearchParams = from_str(r#"{"query": "q", "k": "5"}"#).unwrap();
+        assert_eq!(params.k, Some(5i64));
+    }
+
+    #[test]
+    fn test_search_params_absent_k() {
+        // AC-04-ABSENT
+        let params: SearchParams = from_str(r#"{"query": "q"}"#).unwrap();
+        assert!(params.k.is_none());
+    }
+
+    #[test]
+    fn test_search_params_null_k() {
+        // AC-04-NULL
+        let params: SearchParams = from_str(r#"{"query": "q", "k": null}"#).unwrap();
+        assert!(params.k.is_none());
+    }
+
+    // -- AC-05: BriefingParams.max_tokens accepts string + absent + null --
+
+    #[test]
+    fn test_briefing_params_string_max_tokens() {
+        let params: BriefingParams = from_str(r#"{"task": "t", "max_tokens": "3000"}"#).unwrap();
+        assert_eq!(params.max_tokens, Some(3000i64));
+    }
+
+    #[test]
+    fn test_briefing_params_absent_max_tokens() {
+        // AC-05-ABSENT
+        let params: BriefingParams = from_str(r#"{"task": "t"}"#).unwrap();
+        assert!(params.max_tokens.is_none());
+    }
+
+    #[test]
+    fn test_briefing_params_null_max_tokens() {
+        // AC-05-NULL
+        let params: BriefingParams = from_str(r#"{"task": "t", "max_tokens": null}"#).unwrap();
+        assert!(params.max_tokens.is_none());
+    }
+
+    // -- AC-06: RetrospectiveParams.evidence_limit accepts string + zero + absent + null --
+
+    #[test]
+    fn test_retro_params_string_evidence_limit() {
+        // AC-06
+        let params: RetrospectiveParams =
+            from_str(r#"{"feature_cycle": "col-001", "evidence_limit": "5"}"#).unwrap();
+        assert_eq!(params.evidence_limit, Some(5usize));
+    }
+
+    #[test]
+    fn test_retro_params_zero_evidence_limit() {
+        // AC-06-ZERO
+        let params: RetrospectiveParams =
+            from_str(r#"{"feature_cycle": "col-001", "evidence_limit": "0"}"#).unwrap();
+        assert_eq!(params.evidence_limit, Some(0usize));
+    }
+
+    #[test]
+    fn test_retro_params_absent_evidence_limit() {
+        // AC-06-ABSENT
+        let params: RetrospectiveParams = from_str(r#"{"feature_cycle": "col-001"}"#).unwrap();
+        assert!(params.evidence_limit.is_none());
+    }
+
+    #[test]
+    fn test_retro_params_null_evidence_limit() {
+        // AC-06-NULL
+        let params: RetrospectiveParams =
+            from_str(r#"{"feature_cycle": "col-001", "evidence_limit": null}"#).unwrap();
+        assert!(params.evidence_limit.is_none());
+    }
+
+    // -- AC-07: Required integer fields continue to accept JSON integer input (regression) --
+
+    #[test]
+    fn test_get_params_integer_id() {
+        let params: GetParams = from_str(r#"{"id": 42}"#).unwrap();
+        assert_eq!(params.id, 42i64);
+    }
+
+    #[test]
+    fn test_deprecate_params_integer_id() {
+        let params: DeprecateParams = from_str(r#"{"id": 42}"#).unwrap();
+        assert_eq!(params.id, 42i64);
+    }
+
+    #[test]
+    fn test_quarantine_params_integer_id() {
+        let params: QuarantineParams = from_str(r#"{"id": 42}"#).unwrap();
+        assert_eq!(params.id, 42i64);
+    }
+
+    #[test]
+    fn test_correct_params_integer_original_id() {
+        let params: CorrectParams = from_str(r#"{"original_id": 42, "content": "c"}"#).unwrap();
+        assert_eq!(params.original_id, 42i64);
+    }
+
+    // -- AC-08: Non-numeric strings rejected for required fields --
+
+    #[test]
+    fn test_get_params_nonnumeric_id_is_err() {
+        let result: Result<GetParams, _> = from_str(r#"{"id": "abc"}"#);
+        assert!(
+            result.is_err(),
+            "AC-08: non-numeric string must produce error"
+        );
+    }
+
+    #[test]
+    fn test_deprecate_params_nonnumeric_id_is_err() {
+        let result: Result<DeprecateParams, _> = from_str(r#"{"id": "abc"}"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_quarantine_params_nonnumeric_id_is_err() {
+        let result: Result<QuarantineParams, _> = from_str(r#"{"id": "abc"}"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_correct_params_nonnumeric_original_id_is_err() {
+        let result: Result<CorrectParams, _> =
+            from_str(r#"{"original_id": "abc", "content": "c"}"#);
+        assert!(result.is_err());
+    }
+
+    // -- AC-08-OPT: Non-numeric strings rejected for optional fields --
+
+    #[test]
+    fn test_lookup_params_nonnumeric_id_is_err() {
+        let result: Result<LookupParams, _> = from_str(r#"{"id": "abc"}"#);
+        assert!(
+            result.is_err(),
+            "AC-08-OPT: non-numeric string rejected for optional id"
+        );
+    }
+
+    #[test]
+    fn test_lookup_params_nonnumeric_limit_is_err() {
+        let result: Result<LookupParams, _> = from_str(r#"{"limit": "abc"}"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_search_params_nonnumeric_k_is_err() {
+        let result: Result<SearchParams, _> = from_str(r#"{"query": "q", "k": "abc"}"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_briefing_params_nonnumeric_max_tokens_is_err() {
+        let result: Result<BriefingParams, _> = from_str(r#"{"task": "t", "max_tokens": "abc"}"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_retro_params_nonnumeric_evidence_limit_is_err() {
+        let result: Result<RetrospectiveParams, _> =
+            from_str(r#"{"feature_cycle": "c", "evidence_limit": "abc"}"#);
+        assert!(result.is_err());
+    }
+
+    // -- AC-09: Negative strings and float strings rejected --
+
+    #[test]
+    fn test_retro_params_negative_evidence_limit_is_err() {
+        // AC-09: negative string rejected for usize field (R-04)
+        let result: Result<RetrospectiveParams, _> =
+            from_str(r#"{"feature_cycle": "c", "evidence_limit": "-1"}"#);
+        assert!(
+            result.is_err(),
+            "AC-09: negative string must be rejected for usize"
+        );
+    }
+
+    #[test]
+    fn test_get_params_float_string_is_err() {
+        // AC-09-FLOAT: float string rejected for required i64
+        let result: Result<GetParams, _> = from_str(r#"{"id": "3.5"}"#);
+        assert!(
+            result.is_err(),
+            "AC-09-FLOAT: float string must be rejected"
+        );
+    }
+
+    #[test]
+    fn test_search_params_float_string_k_is_err() {
+        // AC-09-FLOAT: float string rejected for optional i64
+        let result: Result<SearchParams, _> = from_str(r#"{"query": "q", "k": "3.5"}"#);
+        assert!(result.is_err());
+    }
+
+    // -- AC-09-FLOAT-NUMBER: Float JSON Numbers rejected (FR-13) --
+
+    #[test]
+    fn test_get_params_float_number_is_err() {
+        // AC-09-FLOAT-NUMBER: 3.0 is a JSON float Number — must invoke visit_f64 -> Err
+        let result: Result<GetParams, _> = from_str(r#"{"id": 3.0}"#);
+        assert!(
+            result.is_err(),
+            "AC-09-FLOAT-NUMBER: float JSON Number must be rejected"
+        );
+        // Double assertion: guard against silent truncation to integer
+        assert!(
+            !result.is_ok(),
+            "float JSON Number must not silently truncate to Ok(id=3)"
+        );
+    }
+
+    #[test]
+    fn test_search_params_float_number_k_is_err() {
+        // AC-09-FLOAT-NUMBER: 5.0 is a JSON float Number
+        let result: Result<SearchParams, _> = from_str(r#"{"query": "q", "k": 5.0}"#);
+        assert!(
+            result.is_err(),
+            "AC-09-FLOAT-NUMBER: float JSON Number must be rejected for optional field"
+        );
+    }
+
+    #[test]
+    fn test_lookup_params_float_number_id_is_err() {
+        // AC-09-FLOAT-NUMBER: covers optional i64 field path
+        let result: Result<LookupParams, _> = from_str(r#"{"id": 3.0}"#);
+        assert!(result.is_err());
+    }
+
+    // -- AC-13: In-process rmcp dispatch path test (serde_json::from_value) --
+    // This exercises the EXACT code path run by Parameters<T>: FromContextPart in rmcp.
+    // rmcp calls: serde_json::from_value::<T>(Value::Object(arguments))
+
+    #[test]
+    fn test_get_params_string_id_coercion() {
+        // AC-13 primary: verify serde_json::from_value (the rmcp Parameters<T> dispatch path)
+        // accepts string-encoded id. Name includes "coercion" per AC-13 requirement.
+        let args = json!({"id": "3770", "agent_id": "human"});
+        let result = from_value::<GetParams>(args);
+        assert!(
+            result.is_ok(),
+            "AC-13: string id must not produce serde error; got: {:?}",
+            result.err()
+        );
+        assert_eq!(
+            result.unwrap().id,
+            3770i64,
+            "AC-13: string id must coerce to i64"
+        );
+    }
+
+    #[test]
+    fn test_deprecate_params_string_id_coercion() {
+        // AC-13 secondary: covers DeprecateParams on the from_value path.
+        let args = json!({"id": "42"});
+        let result = from_value::<DeprecateParams>(args);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().id, 42i64);
+    }
+
+    // -- Additional regression: string and integer forms produce equal results (AC-07 guard) --
+
+    #[test]
+    fn test_get_params_string_and_integer_equal() {
+        let from_string: GetParams = from_str(r#"{"id": "3770"}"#).unwrap();
+        let from_integer: GetParams = from_str(r#"{"id": 3770}"#).unwrap();
+        assert_eq!(
+            from_string.id, from_integer.id,
+            "AC-07: string and integer forms must produce the same i64 value"
         );
     }
 }
