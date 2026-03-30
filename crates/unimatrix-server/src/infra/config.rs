@@ -425,6 +425,23 @@ pub struct InferenceConfig {
     pub graph_inference_k: usize,
 
     // -----------------------------------------------------------------------
+    // co_access promotion tick fields (crt-034)
+    // -----------------------------------------------------------------------
+    /// Maximum number of co_access pairs to promote per background tick.
+    ///
+    /// Controls how many qualifying pairs (count >= CO_ACCESS_GRAPH_MIN_COUNT = 3)
+    /// are fetched and processed per tick invocation. Highest-count pairs are
+    /// selected first (ORDER BY count DESC), so the cap prioritizes high-signal
+    /// pairs when the qualifying set exceeds the budget.
+    ///
+    /// Default: 200. Higher than max_graph_inference_per_tick (100) because
+    /// co_access promotion is pure SQL with no CPU-bound ML inference cost.
+    /// Valid range: [1, 10000]. Out-of-range aborts startup with a structured
+    /// error naming the field.
+    #[serde(default = "default_max_co_access_promotion_per_tick")]
+    pub max_co_access_promotion_per_tick: usize,
+
+    // -----------------------------------------------------------------------
     // Heal pass fields (bugfix-444)
     // -----------------------------------------------------------------------
     /// Maximum number of unembedded active entries to re-embed per maintenance tick.
@@ -556,6 +573,8 @@ impl Default for InferenceConfig {
             supports_edge_threshold: 0.6,
             max_graph_inference_per_tick: 100,
             graph_inference_k: 10,
+            // crt-034: co_access promotion tick fields
+            max_co_access_promotion_per_tick: 200,
             // bugfix-444: heal pass batch size
             heal_pass_batch_size: default_heal_pass_batch_size(),
             // col-031: phase frequency table fields
@@ -689,6 +708,10 @@ fn default_supports_edge_threshold() -> f32 {
 
 fn default_max_graph_inference_per_tick() -> usize {
     100
+}
+
+fn default_max_co_access_promotion_per_tick() -> usize {
+    200
 }
 
 fn default_graph_inference_k() -> usize {
@@ -864,6 +887,18 @@ impl InferenceConfig {
                 field: "max_graph_inference_per_tick",
                 value: self.max_graph_inference_per_tick.to_string(),
                 reason: "must be in range [1, 1000]",
+            });
+        }
+
+        // -- crt-034: max_co_access_promotion_per_tick range check [1, 10000] --
+        if self.max_co_access_promotion_per_tick < 1
+            || self.max_co_access_promotion_per_tick > 10000
+        {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "max_co_access_promotion_per_tick",
+                value: self.max_co_access_promotion_per_tick.to_string(),
+                reason: "must be in range [1, 10000]",
             });
         }
 
@@ -2070,6 +2105,14 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.graph_inference_k
             } else {
                 global.inference.graph_inference_k
+            },
+            // crt-034: co_access promotion tick
+            max_co_access_promotion_per_tick: if project.inference.max_co_access_promotion_per_tick
+                != default.inference.max_co_access_promotion_per_tick
+            {
+                project.inference.max_co_access_promotion_per_tick
+            } else {
+                global.inference.max_co_access_promotion_per_tick
             },
             // bugfix-444: heal pass batch size
             heal_pass_batch_size: if project.inference.heal_pass_batch_size
@@ -4751,10 +4794,7 @@ categories = ["some-cat"]
             (inf.w_conf - 0.15).abs() < 1e-9,
             "w_conf default must be 0.15"
         );
-        assert!(
-            inf.w_coac.abs() < 1e-9,
-            "w_coac default must be 0.0"
-        );
+        assert!(inf.w_coac.abs() < 1e-9, "w_coac default must be 0.0");
         assert!(
             (inf.w_util - 0.05).abs() < 1e-9,
             "w_util default must be 0.05"
@@ -5596,6 +5636,101 @@ w_sim = 0.25
         assert!(
             c_high.validate(Path::new("/fake/config.toml")).is_ok(),
             "graph_inference_k = 100 must pass"
+        );
+    }
+
+    // crt-034: max_co_access_promotion_per_tick tests
+
+    #[test]
+    fn test_max_co_access_promotion_per_tick_default() {
+        // AC-06(a): absent field deserializes to 200 via serde default fn.
+        let config: InferenceConfig = toml::from_str("").unwrap();
+        assert_eq!(
+            config.max_co_access_promotion_per_tick, 200,
+            "max_co_access_promotion_per_tick default must be 200"
+        );
+    }
+
+    #[test]
+    fn test_max_co_access_promotion_per_tick_validation_zero() {
+        // AC-06(b), AC-10: value 0 is below [1, 10000]; error must name the field.
+        let c = InferenceConfig {
+            max_co_access_promotion_per_tick: 0,
+            ..InferenceConfig::default()
+        };
+        let err = c
+            .validate(Path::new("/fake/config.toml"))
+            .expect_err("max_co_access_promotion_per_tick = 0 must fail");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("max_co_access_promotion_per_tick"),
+            "error must name field; got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_max_co_access_promotion_per_tick_validation_over_limit() {
+        // AC-06(c): value 10001 is above [1, 10000]; error must name the field.
+        let c = InferenceConfig {
+            max_co_access_promotion_per_tick: 10001,
+            ..InferenceConfig::default()
+        };
+        let err = c
+            .validate(Path::new("/fake/config.toml"))
+            .expect_err("max_co_access_promotion_per_tick = 10001 must fail");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("max_co_access_promotion_per_tick"),
+            "error must name field; got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_max_co_access_promotion_per_tick_validation_boundary_values() {
+        // ADR-004: range is [1, 10000] inclusive.
+        let c_low = InferenceConfig {
+            max_co_access_promotion_per_tick: 1,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c_low.validate(Path::new("/fake/config.toml")).is_ok(),
+            "max_co_access_promotion_per_tick = 1 must pass"
+        );
+        let c_high = InferenceConfig {
+            max_co_access_promotion_per_tick: 10000,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c_high.validate(Path::new("/fake/config.toml")).is_ok(),
+            "max_co_access_promotion_per_tick = 10000 must pass"
+        );
+    }
+
+    #[test]
+    fn test_merge_configs_project_overrides_global_co_access_cap() {
+        // AC-06(d), R-07: project-level value 50 wins over global 200.
+        let mut global = UnimatrixConfig::default();
+        global.inference.max_co_access_promotion_per_tick = 200;
+        let mut project = UnimatrixConfig::default();
+        project.inference.max_co_access_promotion_per_tick = 50;
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.max_co_access_promotion_per_tick, 50,
+            "project value (50) must win over global (200)"
+        );
+    }
+
+    #[test]
+    fn test_merge_configs_global_only_co_access_cap() {
+        // R-07 secondary: project does not override → global value preserved.
+        let mut global = UnimatrixConfig::default();
+        global.inference.max_co_access_promotion_per_tick = 300;
+        // project uses default (200) — != default is false, so global wins
+        let project = UnimatrixConfig::default();
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.max_co_access_promotion_per_tick, 300,
+            "global value (300) must be preserved when project does not override"
         );
     }
 
