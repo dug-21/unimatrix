@@ -47,6 +47,18 @@ const COLD_START_ALPHA: f64 = 3.0;
 /// Cold-start beta0 prior (negative pseudo-votes).
 const COLD_START_BETA: f64 = 3.0;
 
+/// K-window for pending cycle review detection (crt-033, ADR-004).
+///
+/// Cycles with a cycle_start event older than this window are excluded from
+/// `pending_cycle_reviews`. Default: 90 days = 7_776_000 seconds.
+///
+/// Must match #409's RETENTION_WINDOW_SECS when that feature merges.
+/// If #409 exposes a pub const, import it; otherwise update this value
+/// and add a comment referencing the #409 constant.
+///
+/// Not inlined at the call site (C-11, NFR-05).
+pub(crate) const PENDING_REVIEWS_K_WINDOW_SECS: i64 = 90 * 24 * 3600; // 7_776_000
+
 /// Compute empirical Bayesian prior (alpha0, beta0) from voted-entry population.
 ///
 /// Uses method-of-moments estimation on the Beta distribution. Requires
@@ -823,6 +835,36 @@ impl StatusService {
             vec![]
         });
         report.retrospected_feature_count = retrospected.len() as u64;
+
+        // Phase 7b: Pending cycle reviews (crt-033).
+        //
+        // Set-difference query: cycles with cycle_start events in K-window
+        // but no cycle_review_index row.
+        // Uses read_pool() — never write_pool_server() (ADR-004, entry #3619).
+        // Always computed — no opt-in parameter (C-07, FR-09).
+        // On query failure: degrade gracefully with empty vec; do NOT fail compute_report().
+        {
+            let now_secs = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs() as i64;
+            let k_window_cutoff = now_secs - PENDING_REVIEWS_K_WINDOW_SECS;
+            match self.store.pending_cycle_reviews(k_window_cutoff).await {
+                Ok(pending) => {
+                    report.pending_cycle_reviews = pending;
+                }
+                Err(e) => {
+                    // Graceful degradation: log and leave pending_cycle_reviews as the
+                    // default empty vec. context_status must not fail because of Phase 7b.
+                    tracing::error!(
+                        "crt-033: pending_cycle_reviews query failed: {} — \
+                         pending_cycle_reviews will be empty in this response",
+                        e
+                    );
+                    // report.pending_cycle_reviews remains Vec::new() (set by StatusReport initializer)
+                }
+            }
+        }
 
         // Phase 8: Effectiveness analysis (crt-018)
         let effectiveness = match self.store.compute_effectiveness_aggregates().await {
@@ -2410,5 +2452,274 @@ mod tests_crt031 {
                 lifecycle[i - 1].0
             );
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// crt-033: Phase 7b tests (status_service component test plan)
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests_crt033 {
+    use std::sync::Arc;
+
+    use unimatrix_adapt::AdaptationService;
+    use unimatrix_core::{VectorConfig, VectorIndex};
+    use unimatrix_store::SqlxStore as Store;
+    use unimatrix_store::{
+        CycleReviewRecord, SUMMARY_SCHEMA_VERSION as STORE_SUMMARY_SCHEMA_VERSION,
+    };
+
+    use crate::infra::categories::CategoryAllowlist;
+    use crate::infra::embed_handle::EmbedServiceHandle;
+    use crate::services::confidence::ConfidenceState;
+    use crate::services::contradiction_cache::new_contradiction_cache_handle;
+    use crate::services::status::{PENDING_REVIEWS_K_WINDOW_SECS, StatusService};
+
+    // -----------------------------------------------------------------------
+    // SS-U-01: PENDING_REVIEWS_K_WINDOW_SECS constant value (NFR-05, C-11)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_pending_reviews_k_window_secs_is_90_days() {
+        // 90 days * 24 * 60 * 60 = 7_776_000 seconds
+        assert_eq!(
+            PENDING_REVIEWS_K_WINDOW_SECS, 7_776_000_i64,
+            "K-window must default to 90 days (7_776_000 seconds)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers shared across integration tests
+    // -----------------------------------------------------------------------
+
+    fn make_status_service(store: &Arc<Store>) -> StatusService {
+        let vector_index = Arc::new(
+            VectorIndex::new(Arc::clone(store), VectorConfig::default()).expect("vector index"),
+        );
+        let embed_service = EmbedServiceHandle::new();
+        let adapt_service = Arc::new(AdaptationService::new(
+            unimatrix_adapt::AdaptConfig::default(),
+        ));
+        let confidence_state = Arc::new(std::sync::RwLock::new(ConfidenceState::default()));
+        let contradiction_cache = new_contradiction_cache_handle();
+        let test_rayon_pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "crt033_pool")
+                .expect("test rayon pool construction"),
+        );
+        let observation_registry =
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code());
+        let confidence_params = Arc::new(unimatrix_engine::confidence::ConfidenceParams::default());
+        let category_allowlist = Arc::new(CategoryAllowlist::new());
+        StatusService::new(
+            Arc::clone(store),
+            vector_index,
+            embed_service,
+            adapt_service,
+            confidence_state,
+            confidence_params,
+            contradiction_cache,
+            test_rayon_pool,
+            observation_registry,
+            category_allowlist,
+        )
+    }
+
+    async fn open_store(dir: &tempfile::TempDir) -> Arc<Store> {
+        Arc::new(
+            Store::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            )
+            .await
+            .expect("store open"),
+        )
+    }
+
+    fn now_secs() -> i64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64
+    }
+
+    const ONE_DAY: i64 = 86_400;
+    const FIVE_DAYS: i64 = 5 * ONE_DAY;
+    const NINETY_ONE_DAYS: i64 = 91 * ONE_DAY;
+
+    // -----------------------------------------------------------------------
+    // SS-I-01: Phase 7b populates pending_cycle_reviews for unreviewed cycles
+    //          (AC-09, R-07)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_compute_report_includes_pending_cycle_reviews() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+        let now = now_secs();
+
+        // Two cycle_start events within the K-window.
+        store
+            .insert_cycle_event(
+                "pending-A",
+                0,
+                "cycle_start",
+                None,
+                None,
+                None,
+                now - ONE_DAY,
+                None,
+            )
+            .await
+            .expect("insert pending-A");
+        store
+            .insert_cycle_event(
+                "pending-B",
+                0,
+                "cycle_start",
+                None,
+                None,
+                None,
+                now - FIVE_DAYS,
+                None,
+            )
+            .await
+            .expect("insert pending-B");
+
+        // Store a review for pending-B only, leaving pending-A unreviewed.
+        let review_b = CycleReviewRecord {
+            feature_cycle: "pending-B".to_string(),
+            schema_version: STORE_SUMMARY_SCHEMA_VERSION,
+            computed_at: now,
+            raw_signals_available: 1,
+            summary_json: r#"{"reviewed":true}"#.to_string(),
+        };
+        store
+            .store_cycle_review(&review_b)
+            .await
+            .expect("store pending-B review");
+
+        let svc = make_status_service(&store);
+        let (report, _) = svc
+            .compute_report(None, None, false)
+            .await
+            .expect("compute_report must succeed");
+
+        assert_eq!(
+            report.pending_cycle_reviews,
+            vec!["pending-A".to_string()],
+            "pending-B has a review; only pending-A must appear in pending_cycle_reviews"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // SS-I-02: Phase 7b returns empty list when all cycles are reviewed
+    //          (AC-10, R-07)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_compute_report_pending_cycle_reviews_empty_when_all_reviewed() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+        let now = now_secs();
+
+        for cycle_id in &["done-X", "done-Y"] {
+            store
+                .insert_cycle_event(
+                    cycle_id,
+                    0,
+                    "cycle_start",
+                    None,
+                    None,
+                    None,
+                    now - ONE_DAY,
+                    None,
+                )
+                .await
+                .expect("insert cycle_start event");
+
+            let review = CycleReviewRecord {
+                feature_cycle: cycle_id.to_string(),
+                schema_version: STORE_SUMMARY_SCHEMA_VERSION,
+                computed_at: now,
+                raw_signals_available: 1,
+                summary_json: r#"{}"#.to_string(),
+            };
+            store
+                .store_cycle_review(&review)
+                .await
+                .expect("store review");
+        }
+
+        let svc = make_status_service(&store);
+        let (report, _) = svc
+            .compute_report(None, None, false)
+            .await
+            .expect("compute_report must succeed");
+
+        assert!(
+            report.pending_cycle_reviews.is_empty(),
+            "all cycles have review rows — pending_cycle_reviews must be empty"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // SS-I-03: Phase 7b excludes cycles outside K-window (R-07)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_compute_report_excludes_old_cycles_from_pending() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+        let now = now_secs();
+
+        // old-cycle: 91 days ago — outside K-window, no review.
+        store
+            .insert_cycle_event(
+                "old-cycle",
+                0,
+                "cycle_start",
+                None,
+                None,
+                None,
+                now - NINETY_ONE_DAYS,
+                None,
+            )
+            .await
+            .expect("insert old-cycle");
+
+        // recent-cycle: 1 day ago — inside K-window, no review.
+        store
+            .insert_cycle_event(
+                "recent-cycle",
+                0,
+                "cycle_start",
+                None,
+                None,
+                None,
+                now - ONE_DAY,
+                None,
+            )
+            .await
+            .expect("insert recent-cycle");
+
+        let svc = make_status_service(&store);
+        let (report, _) = svc
+            .compute_report(None, None, false)
+            .await
+            .expect("compute_report must succeed");
+
+        assert_eq!(
+            report.pending_cycle_reviews,
+            vec!["recent-cycle".to_string()],
+            "old-cycle is outside the 90-day K-window and must be excluded; \
+             recent-cycle must appear"
+        );
+        assert!(
+            !report
+                .pending_cycle_reviews
+                .contains(&"old-cycle".to_string()),
+            "old-cycle must not appear in pending_cycle_reviews"
+        );
     }
 }
