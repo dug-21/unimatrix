@@ -1,10 +1,12 @@
-//! Integration tests for the v16→v17 schema migration (col-028).
+//! Integration tests for the v17→v18 schema migration (crt-033).
 //!
-//! Covers: AC-13 (CURRENT_SCHEMA_VERSION = 17), AC-14 (query_log.phase column added),
-//! AC-15 (idempotency), AC-17 (phase round-trip SR-01 guard), AC-18 (pre-existing rows
-//! get phase=None), AC-19 (all six T-V17-* tests), pattern #1264 (pragma_table_info guard).
+//! Covers: MIG-U-01 (CURRENT_SCHEMA_VERSION = 18), MIG-U-02 (fresh DB creates v18),
+//! MIG-U-03 (v17→v18 creates cycle_review_index), MIG-U-04 (all 5 columns present),
+//! MIG-U-05 (pre-existing data survives), MIG-U-06 (idempotency), MIG-U-07
+//! (test_current_schema_version_is_at_least_17 in migration_v16_to_v17.rs verified
+//! separately via grep).
 //!
-//! Pattern: create a v16-shaped database, open with current SqlxStore to trigger
+//! Pattern: create a v17-shaped database, open with current SqlxStore to trigger
 //! migration, assert schema state and data round-trips.
 
 #![cfg(feature = "test-support")]
@@ -16,24 +18,22 @@ use sqlx::sqlite::SqliteConnectOptions;
 use tempfile::TempDir;
 use unimatrix_store::SqlxStore;
 use unimatrix_store::pool_config::PoolConfig;
-use unimatrix_store::query_log::QueryLogRecord;
-use unimatrix_store::test_helpers::open_test_store;
 
 // ---------------------------------------------------------------------------
-// V16 database builder
+// V17 database builder
 // ---------------------------------------------------------------------------
 
-/// Create a v16-shaped database at the given path.
+/// Create a v17-shaped database at the given path.
 ///
-/// Contains all tables present at v16: all v15 tables + `cycle_events.goal` column.
-/// The `query_log` table has NO `phase` column — that is what v16→v17 adds.
-/// schema_version = 16.
-async fn create_v16_database(path: &Path) {
+/// Contains all tables present at v17: all v16 tables + `query_log.phase` column.
+/// The `cycle_review_index` table must NOT exist — that is what v17→v18 adds.
+/// schema_version = 17.
+async fn create_v17_database(path: &Path) {
     let opts = SqliteConnectOptions::new()
         .filename(path)
         .create_if_missing(true);
 
-    let mut conn = opts.connect().await.expect("open v16 setup conn");
+    let mut conn = opts.connect().await.expect("open v17 setup conn");
 
     sqlx::query("PRAGMA journal_mode = WAL")
         .execute(&mut conn)
@@ -221,8 +221,7 @@ async fn create_v16_database(path: &Path) {
             total_duration_secs INTEGER NOT NULL DEFAULT 0,
             phases_completed TEXT
         )",
-        // query_log WITHOUT phase column — this is the v16 shape.
-        // v16→v17 adds the phase column.
+        // query_log WITH phase column — v16→v17 added it. This is the v17 shape.
         "CREATE TABLE query_log (
             query_id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL,
@@ -232,7 +231,8 @@ async fn create_v16_database(path: &Path) {
             result_entry_ids TEXT,
             similarity_scores TEXT,
             retrieval_mode TEXT,
-            source TEXT NOT NULL
+            source TEXT NOT NULL,
+            phase TEXT
         )",
         "CREATE TABLE graph_edges (
             id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -259,6 +259,7 @@ async fn create_v16_database(path: &Path) {
             timestamp  INTEGER NOT NULL,
             goal       TEXT
         )",
+        // NOTE: cycle_review_index intentionally absent — this is the v17 shape.
         "CREATE INDEX idx_entries_topic ON entries(topic)",
         "CREATE INDEX idx_entries_category ON entries(category)",
         "CREATE INDEX idx_entries_status ON entries(status)",
@@ -277,6 +278,7 @@ async fn create_v16_database(path: &Path) {
         "CREATE INDEX idx_shadow_eval_ts ON shadow_evaluations(timestamp)",
         "CREATE INDEX idx_query_log_session ON query_log(session_id)",
         "CREATE INDEX idx_query_log_ts ON query_log(ts)",
+        "CREATE INDEX idx_query_log_phase ON query_log(phase)",
         "CREATE INDEX idx_graph_edges_source_id ON graph_edges(source_id)",
         "CREATE INDEX idx_graph_edges_target_id ON graph_edges(target_id)",
         "CREATE INDEX idx_graph_edges_relation_type ON graph_edges(relation_type)",
@@ -288,9 +290,9 @@ async fn create_v16_database(path: &Path) {
             .expect("create table/index");
     }
 
-    // Seed counters at v16.
+    // Seed counters at v17.
     for seed in &[
-        "INSERT INTO counters (name, value) VALUES ('schema_version', 16)",
+        "INSERT INTO counters (name, value) VALUES ('schema_version', 17)",
         "INSERT INTO counters (name, value) VALUES ('next_entry_id', 1)",
         "INSERT INTO counters (name, value) VALUES ('next_signal_id', 0)",
         "INSERT INTO counters (name, value) VALUES ('next_log_id', 0)",
@@ -314,34 +316,35 @@ async fn read_schema_version(store: &SqlxStore) -> i64 {
         .expect("read schema_version")
 }
 
-async fn phase_column_exists(store: &SqlxStore) -> bool {
+async fn cycle_review_index_exists(store: &SqlxStore) -> bool {
     let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM pragma_table_info('query_log') WHERE name = 'phase'",
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='cycle_review_index'",
     )
     .fetch_one(store.read_pool_test())
     .await
-    .expect("check query_log.phase column");
+    .expect("check cycle_review_index table");
     count > 0
 }
 
 // ---------------------------------------------------------------------------
-// Unit test: CURRENT_SCHEMA_VERSION constant >= 17 (AC-13; renamed crt-033 cascade)
+// MIG-U-01: CURRENT_SCHEMA_VERSION constant == 18 (AC-01, R-01)
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_current_schema_version_is_at_least_17() {
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 17,
-        "CURRENT_SCHEMA_VERSION must be >= 17"
+fn test_current_schema_version_is_18() {
+    assert_eq!(
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
+        18,
+        "CURRENT_SCHEMA_VERSION must be 18"
     );
 }
 
 // ---------------------------------------------------------------------------
-// T-V17-01: Fresh database creates schema v17 directly (AC-14, AC-13)
+// MIG-U-02: Fresh database creates schema v18 (AC-01, R-01)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_fresh_db_creates_schema_v17() {
+async fn test_fresh_db_creates_schema_v18() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
@@ -351,317 +354,224 @@ async fn test_fresh_db_creates_schema_v17() {
         .await
         .expect("open fresh store");
 
-    // Assert: schema_version >= 17 (crt-033 cascade: fresh DB initialises to CURRENT_SCHEMA_VERSION)
-    assert!(
-        read_schema_version(&store).await >= 17,
-        "fresh database must be at schema >= v17"
+    // Assert: schema_version == 18
+    assert_eq!(
+        read_schema_version(&store).await,
+        18,
+        "fresh database must be at schema v18"
     );
 
-    // Assert: phase column present (fresh schema has full DDL including phase)
+    // Assert: cycle_review_index table present (fresh schema has full DDL)
     assert!(
-        phase_column_exists(&store).await,
-        "fresh database must have query_log.phase column"
+        cycle_review_index_exists(&store).await,
+        "fresh database must have cycle_review_index table"
     );
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-V17-02: v16→v17 migration adds phase column (AC-14)
+// MIG-U-03: v17→v18 migration creates cycle_review_index table (AC-02, AC-13, R-01)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v16_to_v17_migration_adds_phase_column() {
+async fn test_v17_to_v18_migration_creates_table() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
-    // Arrange: v16 database — query_log exists, phase column absent.
-    create_v16_database(&db_path).await;
+    // Arrange: v17 database — cycle_review_index table absent.
+    create_v17_database(&db_path).await;
 
-    // Act: open triggers v16→v17 migration.
+    // Assert pre-condition: cycle_review_index not yet in DB.
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("pre-check conn");
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='cycle_review_index'",
+        )
+        .fetch_one(&mut conn)
+        .await
+        .expect("pre-check");
+        assert_eq!(count, 0, "cycle_review_index must not exist in v17 shape");
+    }
+
+    // Act: open triggers v17→v18 migration.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("open store after v16→v17 migration");
+        .expect("open store after v17→v18 migration");
 
-    // Assert: phase column now exists.
+    // Assert: cycle_review_index now exists.
     assert!(
-        phase_column_exists(&store).await,
-        "query_log.phase column must exist after v16→v17 migration (AC-14)"
+        cycle_review_index_exists(&store).await,
+        "cycle_review_index table must exist after v17→v18 migration (AC-02)"
     );
 
-    // Assert: schema_version >= 17 (crt-033 cascade: full migration chain runs to CURRENT).
-    assert!(read_schema_version(&store).await >= 17);
+    // Assert: schema_version == 18.
+    assert_eq!(
+        read_schema_version(&store).await,
+        18,
+        "schema_version must be 18 after v17→v18 migration"
+    );
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-V17-03: idx_query_log_phase index present after migration (AC-14)
+// MIG-U-04: All five columns present after migration (AC-02, R-01)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v16_to_v17_migration_creates_phase_index() {
+async fn test_v17_to_v18_migration_table_has_five_columns() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
-    create_v16_database(&db_path).await;
+    create_v17_database(&db_path).await;
 
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open store after migration");
+
+    // Assert: exactly 5 columns in cycle_review_index.
+    let col_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('cycle_review_index')")
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("pragma_table_info count");
+
+    assert_eq!(
+        col_count, 5,
+        "cycle_review_index must have exactly 5 columns after v17→v18 migration"
+    );
+
+    // Assert all five column names.
+    let columns: Vec<String> =
+        sqlx::query_scalar("SELECT name FROM pragma_table_info('cycle_review_index') ORDER BY cid")
+            .fetch_all(store.read_pool_test())
+            .await
+            .expect("pragma_table_info names");
+
+    assert!(
+        columns.contains(&"feature_cycle".to_string()),
+        "cycle_review_index must have feature_cycle column"
+    );
+    assert!(
+        columns.contains(&"schema_version".to_string()),
+        "cycle_review_index must have schema_version column"
+    );
+    assert!(
+        columns.contains(&"computed_at".to_string()),
+        "cycle_review_index must have computed_at column"
+    );
+    assert!(
+        columns.contains(&"raw_signals_available".to_string()),
+        "cycle_review_index must have raw_signals_available column"
+    );
+    assert!(
+        columns.contains(&"summary_json".to_string()),
+        "cycle_review_index must have summary_json column"
+    );
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-U-05: Pre-existing data survives migration (AC-02, NFR-04, R-01)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_v17_to_v18_migration_preserves_existing_data() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    // Arrange: v17 database with a pre-seeded entries row.
+    create_v17_database(&db_path).await;
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+        sqlx::query(
+            "INSERT INTO entries \
+             (id, title, content, topic, category, source, status, confidence, \
+              created_at, updated_at) \
+             VALUES (1, 'test-title', 'test-content', 'test-topic', 'convention', \
+                     'test', 0, 0.5, 1700000000, 1700000000)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert pre-existing entry");
+    }
+
+    // Act: SqlxStore::open triggers v17→v18 migration.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
         .expect("open after migration");
 
-    // Check index exists via sqlite_master
-    let index_exists: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sqlite_master \
-         WHERE type='index' AND name='idx_query_log_phase'",
-    )
-    .fetch_one(store.read_pool_test())
-    .await
-    .expect("check idx_query_log_phase");
-
+    // Assert: schema_version == 18 (confirming migration ran).
     assert_eq!(
-        index_exists, 1,
-        "idx_query_log_phase must be created by v16→v17 migration"
+        read_schema_version(&store).await,
+        18,
+        "schema_version must be 18 after migration"
+    );
+
+    // Assert: pre-existing entry is still readable (no data loss).
+    let entry = store
+        .get(1)
+        .await
+        .expect("entry must still be readable after migration");
+    assert_eq!(
+        entry.title, "test-title",
+        "pre-existing entry title must survive migration"
+    );
+
+    // Assert: cycle_review_index exists with no rows (no spurious inserts).
+    let row_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cycle_review_index")
+        .fetch_one(store.read_pool_test())
+        .await
+        .expect("count cycle_review_index rows");
+    assert_eq!(
+        row_count, 0,
+        "cycle_review_index must be empty after migration (no backfill)"
     );
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// T-V17-04: Idempotency — running migration twice succeeds (AC-15)
+// MIG-U-06: Idempotency — running migration twice succeeds (NFR-06, R-01)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v16_to_v17_migration_idempotent() {
+async fn test_v17_to_v18_migration_idempotent() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
-    create_v16_database(&db_path).await;
+    create_v17_database(&db_path).await;
 
-    // Run 1: applies v16→v17 migration.
+    // Run 1: applies v17→v18 migration.
     {
         let store = SqlxStore::open(&db_path, PoolConfig::default())
             .await
             .expect("first open");
-        assert!(phase_column_exists(&store).await);
-        assert!(read_schema_version(&store).await >= 17);
+        assert!(cycle_review_index_exists(&store).await);
+        assert_eq!(read_schema_version(&store).await, 18);
         store.close().await.unwrap();
     }
 
-    // Run 2: must be a no-op — no errors, no duplicate column.
+    // Run 2: must be a no-op — CREATE TABLE IF NOT EXISTS swallows no-op.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
         .expect("second open must succeed (idempotency)");
 
-    assert!(read_schema_version(&store).await >= 17);
+    assert_eq!(read_schema_version(&store).await, 18);
 
-    // Exactly one phase column (pragma_table_info guard prevents duplicate ALTER)
-    let col_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM pragma_table_info('query_log') WHERE name = 'phase'",
+    // Exactly one cycle_review_index table (not two).
+    let table_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='cycle_review_index'",
     )
     .fetch_one(store.read_pool_test())
     .await
-    .expect("count phase columns");
+    .expect("count cycle_review_index tables");
     assert_eq!(
-        col_count, 1,
-        "exactly one phase column after idempotent run"
+        table_count, 1,
+        "exactly one cycle_review_index table after idempotent run (NFR-06)"
     );
 
     store.close().await.unwrap();
-}
-
-// ---------------------------------------------------------------------------
-// T-V17-05: Pre-existing rows have phase=None after migration (AC-18)
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_v16_pre_existing_query_log_rows_have_null_phase() {
-    let dir = TempDir::new().expect("temp dir");
-    let db_path = dir.path().join("test.db");
-
-    // Arrange: v16 database with a pre-seeded query_log row (v16 columns only).
-    create_v16_database(&db_path).await;
-    {
-        let opts = SqliteConnectOptions::new().filename(&db_path);
-        let mut conn = opts.connect().await.expect("setup conn");
-        // Insert with 8 columns (no phase — this is the v16 schema)
-        sqlx::query(
-            "INSERT INTO query_log \
-             (session_id, query_text, ts, result_count, \
-              result_entry_ids, similarity_scores, retrieval_mode, source) \
-             VALUES ('pre-migration-session', 'test query', 1700000000, 0, \
-                     NULL, NULL, 'semantic', 'mcp')",
-        )
-        .execute(&mut conn)
-        .await
-        .expect("insert pre-existing row");
-    }
-
-    // Act: open triggers v16→v17 migration.
-    let store = SqlxStore::open(&db_path, PoolConfig::default())
-        .await
-        .expect("open after migration");
-
-    // Assert: read the row back using the updated scan function.
-    let rows = store
-        .scan_query_log_by_session("pre-migration-session")
-        .await
-        .expect("scan_query_log_by_session must not error");
-
-    assert_eq!(rows.len(), 1, "exactly one pre-existing row");
-    assert!(
-        rows[0].phase.is_none(),
-        "pre-existing query_log row must have phase = None after migration (no backfill, AC-18)"
-    );
-
-    store.close().await.unwrap();
-}
-
-// ---------------------------------------------------------------------------
-// T-V17-06: schema_version counter >= 17 after migration (AC-13, AC-19; crt-033 cascade)
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_schema_version_is_17_after_migration() {
-    let dir = TempDir::new().expect("temp dir");
-    let db_path = dir.path().join("test.db");
-    create_v16_database(&db_path).await;
-
-    let store = SqlxStore::open(&db_path, PoolConfig::default())
-        .await
-        .expect("open migrated store");
-
-    // Assert: counters table carries schema_version >= 17 (full chain runs to CURRENT).
-    assert!(read_schema_version(&store).await >= 17);
-
-    // Assert: Rust const is >= 17.
-    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 17);
-
-    store.close().await.unwrap();
-}
-
-// ---------------------------------------------------------------------------
-// AC-17: query_log.phase round-trip — SR-01 atomic-unit guard
-// ---------------------------------------------------------------------------
-//
-// This is the primary runtime guard against positional column index drift
-// across the four atomic sites: analytics.rs INSERT (?9), both scan_query_log_*
-// SELECTs (tenth column), and row_to_query_log (index 9).
-//
-// If any of the four sites diverges:
-// - INSERT missing phase bind: rows[0].phase = None even though Some("design") written.
-// - SELECT missing phase column: row_to_query_log panics or returns wrong type at index 9.
-// - row_to_query_log reading index 8 (source): phase reads back as "mcp" instead of "design".
-//
-// Pattern: flush (close+reopen) drains the analytics channel so rows are committed
-// before the scan reads. This matches the sqlite_parity.rs `flush` pattern (#3004).
-
-#[tokio::test]
-async fn test_query_log_phase_round_trip_some() {
-    // Arrange: fresh v17 store
-    let dir = TempDir::new().expect("temp dir");
-    let store = open_test_store(&dir).await;
-
-    // Act: enqueue a query_log row via insert_query_log with phase = Some("design")
-    let record = QueryLogRecord::new(
-        "session-rt-some".to_string(),
-        "round trip phase some".to_string(),
-        &[1_u64, 2, 3],
-        &[0.9_f64, 0.8, 0.7],
-        "semantic",
-        "mcp",
-        Some("design".to_string()), // col-028: phase — NEW parameter
-    );
-    store.insert_query_log(&record);
-
-    // Flush: close + reopen drains the analytics channel (sqlite_parity flush pattern).
-    store.close().await.expect("close");
-    let store = open_test_store(&dir).await;
-
-    // Assert: read back via scan_query_log_by_session
-    let rows = store
-        .scan_query_log_by_session("session-rt-some")
-        .await
-        .expect("scan_query_log_by_session must not error (AC-17)");
-
-    assert_eq!(rows.len(), 1, "exactly one row in AC-17 round-trip test");
-    assert_eq!(
-        rows[0].phase,
-        Some("design".to_string()),
-        "AC-17 SR-01 guard: phase must round-trip — written as Some('design'), read back as \
-         Some('design'). Mismatch indicates positional drift in INSERT, SELECT, or \
-         row_to_query_log (col-028, ADR-007)."
-    );
-
-    store.close().await.expect("close");
-}
-
-#[tokio::test]
-async fn test_query_log_phase_round_trip_none() {
-    // phase=None must deserialize as None (not empty string, not panic) — AC-17 NULL path.
-    let dir = TempDir::new().expect("temp dir");
-    let store = open_test_store(&dir).await;
-
-    let record = QueryLogRecord::new(
-        "session-rt-none".to_string(),
-        "round trip phase none".to_string(),
-        &[4_u64, 5],
-        &[0.85_f64, 0.75],
-        "strict",
-        "mcp",
-        None, // col-028: phase = NULL
-    );
-    store.insert_query_log(&record);
-
-    store.close().await.expect("close");
-    let store = open_test_store(&dir).await;
-
-    let rows = store
-        .scan_query_log_by_session("session-rt-none")
-        .await
-        .expect("scan_query_log_by_session with phase=None must not error");
-
-    assert_eq!(rows.len(), 1, "exactly one row in AC-17 None round-trip");
-    assert!(
-        rows[0].phase.is_none(),
-        "AC-17 SR-01 guard: phase=None must round-trip as None (NULL → Option<String>::None). \
-         Got: {:?}",
-        rows[0].phase
-    );
-
-    store.close().await.expect("close");
-}
-
-#[tokio::test]
-async fn test_query_log_phase_round_trip_non_trivial_value() {
-    // EC-06: phase containing a slash must round-trip correctly.
-    // Verifies that SQLx parameterized binding handles non-trivial strings.
-    let dir = TempDir::new().expect("temp dir");
-    let store = open_test_store(&dir).await;
-
-    let record = QueryLogRecord::new(
-        "session-rt-slash".to_string(),
-        "round trip non-trivial phase".to_string(),
-        &[],
-        &[],
-        "flexible",
-        "mcp",
-        Some("design/v2".to_string()), // EC-06: contains slash
-    );
-    store.insert_query_log(&record);
-
-    store.close().await.expect("close");
-    let store = open_test_store(&dir).await;
-
-    let rows = store
-        .scan_query_log_by_session("session-rt-slash")
-        .await
-        .expect("scan must not error");
-
-    assert_eq!(rows.len(), 1);
-    assert_eq!(
-        rows[0].phase,
-        Some("design/v2".to_string()),
-        "EC-06: phase 'design/v2' must round-trip exactly (parameterized binding, no injection)"
-    );
-
-    store.close().await.expect("close");
 }

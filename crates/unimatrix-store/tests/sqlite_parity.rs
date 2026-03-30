@@ -1008,14 +1008,15 @@ async fn test_sql_analytics_query() {
 // Updated to 15 for crt-025 (cycle_events + feature_entries.phase).
 // Updated to 16 for col-025 (cycle_events.goal column).
 // Updated to 17 for col-028 (query_log.phase column). Uses >= per pattern #2933.
+// Updated to 18 for crt-033 (cycle_review_index table).
 #[tokio::test]
 async fn test_schema_version_is_14() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 17,
-        "schema version must be 17 after col-028 (was 16 after col-025)"
+        version, 18,
+        "schema version must be 18 after crt-033 (was 17 after col-028)"
     );
     store.close().await.unwrap();
 }
@@ -1304,4 +1305,72 @@ async fn test_create_tables_idempotent() {
         "query_log should still have 10 columns after re-open" // col-028: phase added
     );
     store2.close().await.unwrap();
+}
+
+// === SCHEMA DDL: cycle_review_index (crt-033) ===
+
+#[tokio::test]
+async fn test_create_tables_cycle_review_index_exists() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='cycle_review_index'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .unwrap();
+
+    assert_eq!(
+        count, 1,
+        "cycle_review_index table must exist after fresh schema creation (crt-033)"
+    );
+
+    store.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_create_tables_cycle_review_index_schema() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    use sqlx::Row;
+    let rows = sqlx::query("SELECT name FROM pragma_table_info('cycle_review_index') ORDER BY cid")
+        .fetch_all(store.read_pool_test())
+        .await
+        .unwrap();
+
+    assert_eq!(
+        rows.len(),
+        5,
+        "cycle_review_index must have exactly 5 columns (crt-033)"
+    );
+
+    let names: Vec<String> = rows
+        .iter()
+        .map(|r| r.try_get::<String, _>(0).unwrap())
+        .collect();
+
+    assert!(
+        names.contains(&"feature_cycle".to_string()),
+        "cycle_review_index must have feature_cycle column"
+    );
+    assert!(
+        names.contains(&"schema_version".to_string()),
+        "cycle_review_index must have schema_version column"
+    );
+    assert!(
+        names.contains(&"computed_at".to_string()),
+        "cycle_review_index must have computed_at column"
+    );
+    assert!(
+        names.contains(&"raw_signals_available".to_string()),
+        "cycle_review_index must have raw_signals_available column"
+    );
+    assert!(
+        names.contains(&"summary_json".to_string()),
+        "cycle_review_index must have summary_json column"
+    );
+
+    store.close().await.unwrap();
 }

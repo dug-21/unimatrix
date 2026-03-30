@@ -1937,3 +1937,116 @@ def test_search_current_phase_none_succeeds(server):
     assert "sigma88" in result_text.lower() or "col031" in result_text.lower(), (
         "L-COL031-02: search with no phase must still find stored entry"
     )
+
+
+# === crt-033 cycle_review_index restart persistence ====================
+
+
+def test_cycle_review_persists_across_restart(tmp_path):
+    """L-CRT033-01: cycle_review_index row persists across server restart.
+
+    Step 1: Start server, seed observation data, call context_cycle_review
+            to trigger memoization write. Record the raw computed_at timestamp
+            from the cycle_review_index table.
+    Step 2: Shut down and restart with the same project_dir.
+    Step 3: Call context_cycle_review again for the same cycle.
+    Assert: The second call returns successfully without recomputing
+            (memoization hit, not error), confirming the row survived restart.
+
+    Covers: crt-033 AC-03 (row written on first call), the persistence guarantee
+    from SQLite, and the memoization hit path after restart.
+    """
+    import sqlite3 as _sqlite3
+    import hashlib as _hashlib
+    import os as _os
+    import uuid as _uuid
+    import json as _json
+    import time as _time
+
+    binary = get_binary_path()
+    topic = f"crt033-restart-persist-{_uuid.uuid4().hex[:8]}"
+
+    # --- Start first server instance ---
+    client1 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client1.initialize()
+    client1.wait_until_ready()
+
+    # Compute DB path for direct SQL verification
+    canonical = _os.path.realpath(str(tmp_path))
+    digest = _hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    db_path = _os.path.join(_os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+    # Seed observation data directly (UDS hook path not active in harness)
+    now_secs = int(_time.time())
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    session_id = f"test-{topic}-{_uuid.uuid4().hex[:8]}"
+    conn.execute(
+        "INSERT INTO sessions (session_id, feature_cycle, started_at, status) VALUES (?, ?, ?, 0)",
+        (session_id, topic, now_secs),
+    )
+    for i in range(20):
+        ts_millis = now_secs * 1000 - 86_400_000 + (i * 300_000)
+        hook = "PreToolUse" if i % 2 == 0 else "PostToolUse"
+        conn.execute(
+            "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (session_id, ts_millis, hook, "Read", None,
+             1024 if hook == "PostToolUse" else None,
+             "output" if hook == "PostToolUse" else None),
+        )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+    # First call: triggers full computation + memoization write
+    resp1 = client1.call_tool("context_cycle_review", {
+        "feature_cycle": topic,
+        "agent_id": "human",
+        "format": "json",
+    }, timeout=30.0)
+    assert_tool_success(resp1), (
+        "L-CRT033-01: first context_cycle_review call must succeed with seeded data"
+    )
+
+    # Read computed_at from cycle_review_index before restart
+    conn2 = _sqlite3.connect(db_path)
+    row = conn2.execute(
+        "SELECT computed_at FROM cycle_review_index WHERE feature_cycle = ?", (topic,)
+    ).fetchone()
+    conn2.close()
+    assert row is not None, (
+        "L-CRT033-01: cycle_review_index row must exist after first call"
+    )
+    computed_at_before = row[0]
+
+    client1.shutdown()
+
+    # --- Restart with same project_dir ---
+    client2 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client2.initialize()
+    client2.wait_until_ready()
+
+    # Second call on same cycle: must hit memoization (no recompute)
+    resp2 = client2.call_tool("context_cycle_review", {
+        "feature_cycle": topic,
+        "agent_id": "human",
+        "format": "json",
+    }, timeout=30.0)
+    assert_tool_success(resp2), (
+        "L-CRT033-01: second context_cycle_review call after restart must succeed"
+    )
+
+    # Verify computed_at is unchanged (memoization hit, not recompute)
+    conn3 = _sqlite3.connect(db_path)
+    row2 = conn3.execute(
+        "SELECT computed_at FROM cycle_review_index WHERE feature_cycle = ?", (topic,)
+    ).fetchone()
+    conn3.close()
+    assert row2 is not None, "L-CRT033-01: cycle_review_index row must still exist after restart"
+    assert row2[0] == computed_at_before, (
+        f"L-CRT033-01: computed_at must be unchanged on memoization hit after restart. "
+        f"Before={computed_at_before}, After={row2[0]}"
+    )
+
+    client2.shutdown()

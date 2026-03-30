@@ -642,7 +642,8 @@ mod tests {
             supports_edge_count: 0,
             mean_entry_degree: 0.0,
             inferred_edge_count: 0,
-            category_lifecycle: Vec::new(), // crt-031
+            category_lifecycle: Vec::new(),    // crt-031
+            pending_cycle_reviews: Vec::new(), // crt-033
         }
     }
 
@@ -736,7 +737,8 @@ mod tests {
             supports_edge_count: 0,
             mean_entry_degree: 0.0,
             inferred_edge_count: 0,
-            category_lifecycle: Vec::new(), // crt-031
+            category_lifecycle: Vec::new(),    // crt-031
+            pending_cycle_reviews: Vec::new(), // crt-033
         };
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
@@ -997,7 +999,8 @@ mod tests {
             supports_edge_count: 0,
             mean_entry_degree: 0.0,
             inferred_edge_count: 0,
-            category_lifecycle: Vec::new(), // crt-031
+            category_lifecycle: Vec::new(),    // crt-031
+            pending_cycle_reviews: Vec::new(), // crt-033
         };
 
         let result = format_status_report(&report, ResponseFormat::Summary);
@@ -1076,7 +1079,8 @@ mod tests {
             supports_edge_count: 0,
             mean_entry_degree: 0.0,
             inferred_edge_count: 0,
-            category_lifecycle: Vec::new(), // crt-031
+            category_lifecycle: Vec::new(),    // crt-031
+            pending_cycle_reviews: Vec::new(), // crt-033
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1157,7 +1161,8 @@ mod tests {
             supports_edge_count: 0,
             mean_entry_degree: 0.0,
             inferred_edge_count: 0,
-            category_lifecycle: Vec::new(), // crt-031
+            category_lifecycle: Vec::new(),    // crt-031
+            pending_cycle_reviews: Vec::new(), // crt-033
         };
 
         let result = format_status_report(&report, ResponseFormat::Json);
@@ -1230,7 +1235,8 @@ mod tests {
             supports_edge_count: 0,
             mean_entry_degree: 0.0,
             inferred_edge_count: 0,
-            category_lifecycle: Vec::new(), // crt-031
+            category_lifecycle: Vec::new(),    // crt-031
+            pending_cycle_reviews: Vec::new(), // crt-033
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1307,7 +1313,8 @@ mod tests {
             supports_edge_count: 0,
             mean_entry_degree: 0.0,
             inferred_edge_count: 0,
-            category_lifecycle: Vec::new(), // crt-031
+            category_lifecycle: Vec::new(),    // crt-031
+            pending_cycle_reviews: Vec::new(), // crt-033
         }
     }
 
@@ -1452,6 +1459,7 @@ mod tests {
             mean_entry_degree: 0.0,
             inferred_edge_count: 0,
             category_lifecycle: Vec::new(), // crt-031
+            pending_cycle_reviews: Vec::new(), // crt-033
         }
     }
 

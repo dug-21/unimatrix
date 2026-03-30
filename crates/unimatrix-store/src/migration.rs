@@ -15,8 +15,8 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 16 to 17 by col-028 (query_log.phase).
-pub const CURRENT_SCHEMA_VERSION: u64 = 17;
+/// Current schema version. Incremented from 17 to 18 by crt-033 (CYCLE_REVIEW_INDEX).
+pub const CURRENT_SCHEMA_VERSION: u64 = 18;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -593,7 +593,36 @@ async fn run_main_migrations(
             })?;
     }
 
-    // Update schema_version counter to CURRENT_SCHEMA_VERSION (17).
+    // v17 → v18: cycle_review_index table (crt-033).
+    //
+    // Stores memoized RetrospectiveReport JSON keyed by feature_cycle.
+    // Used as a purge gate by GH #409 (retention pass).
+    // CREATE TABLE IF NOT EXISTS: idempotent on re-run (NFR-06).
+    if current_version < 18 {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS cycle_review_index (
+                feature_cycle         TEXT    PRIMARY KEY,
+                schema_version        INTEGER NOT NULL,
+                computed_at           INTEGER NOT NULL,
+                raw_signals_available INTEGER NOT NULL DEFAULT 1,
+                summary_json          TEXT    NOT NULL
+            )",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query("UPDATE counters SET value = 18 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // Update schema_version counter to CURRENT_SCHEMA_VERSION (18).
     sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', ?1)")
         .bind(CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut **txn)

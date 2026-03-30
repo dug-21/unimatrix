@@ -832,6 +832,20 @@ pub(crate) async fn create_tables_if_needed(
     .execute(&mut *conn)
     .await?;
 
+    // cycle_review_index: memoized RetrospectiveReport archive (crt-033).
+    // No FOREIGN KEY clause — consistent with all other tables (C-09).
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS cycle_review_index (
+            feature_cycle         TEXT    PRIMARY KEY,
+            schema_version        INTEGER NOT NULL,
+            computed_at           INTEGER NOT NULL,
+            raw_signals_available INTEGER NOT NULL DEFAULT 1,
+            summary_json          TEXT    NOT NULL
+        )",
+    )
+    .execute(&mut *conn)
+    .await?;
+
     // Initialize counters that other modules expect.
     // Bind CURRENT_SCHEMA_VERSION to avoid drift between this and migration.rs (crt-025).
     sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', ?1)")

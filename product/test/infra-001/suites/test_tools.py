@@ -1797,3 +1797,62 @@ def test_briefing_response_starts_with_context_get_instruction(server):
         )
 
 
+# === context_cycle_review crt-033 memoization ==========================
+
+
+def test_cycle_review_force_param_accepted(server):
+    """T-CRT033-01: context_cycle_review accepts force parameter without param-validation error.
+
+    With force=true and no observation data, the expected response is
+    ERROR_NO_OBSERVATION_DATA (not a parameter-validation error). This confirms
+    that the force field is recognized and deserialized correctly (AC-12).
+    """
+    resp = server.call_tool("context_cycle_review", {
+        "feature_cycle": "crt033-force-param-test",
+        "agent_id": "human",
+        "force": True,
+    })
+    # A JSON-RPC level error is expected (no observation data).
+    # Confirm it is the expected error type (observation data absent, error code -32010),
+    # not a parameter parse failure (-32602 invalid params) or unknown-field error.
+    assert resp.error is not None, (
+        "T-CRT033-01: expected a JSON-RPC error (no observation data), got success"
+    )
+    error_code = resp.error.get("code", 0)
+    error_message = resp.error.get("message", "")
+    # Must NOT be a parameter-validation error (-32602)
+    assert error_code != -32602, (
+        f"T-CRT033-01: force=true must not cause param-validation error (-32602). "
+        f"Got code={error_code}, message={error_message[:200]}"
+    )
+    # Must be the observation-data-absent error (-32010) or similar observation error
+    assert "observation" in error_message.lower() or "no data" in error_message.lower() or error_code == -32010, (
+        f"T-CRT033-01: expected observation-data error, got code={error_code}, "
+        f"message={error_message[:200]}"
+    )
+
+
+# === context_status crt-033 pending_cycle_reviews field =================
+
+
+def test_status_pending_cycle_reviews_field_present(server):
+    """T-CRT033-02: context_status JSON response contains pending_cycle_reviews as an array.
+
+    Verifies the new field added in crt-033 is always present and always an array
+    (may be empty on a fresh DB). AC-09/AC-10.
+    """
+    resp = server.context_status(agent_id="human", format="json")
+    report = parse_status_report(resp)
+    assert "pending_cycle_reviews" in report, (
+        "T-CRT033-02: pending_cycle_reviews field must be present in context_status JSON"
+    )
+    field_value = report["pending_cycle_reviews"]
+    assert isinstance(field_value, list), (
+        f"T-CRT033-02: pending_cycle_reviews must be a list/array, got {type(field_value)}: {field_value!r}"
+    )
+    # On a fresh DB with no cycle_events rows, the list must be empty
+    assert field_value == [], (
+        f"T-CRT033-02: fresh DB must have empty pending_cycle_reviews, got: {field_value!r}"
+    )
+
+

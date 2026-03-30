@@ -325,12 +325,11 @@ async fn goal_column_exists(store: &SqlxStore) -> bool {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_current_schema_version_is_17() {
-    // Simple constant check to catch accidental off-by-one in version bump.
-    assert_eq!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
-        17,
-        "CURRENT_SCHEMA_VERSION must be 17"
+fn test_current_schema_version_is_at_least_16() {
+    // Changed from == 17 to >= 16 (crt-033 cascade): constant advances with each schema bump.
+    assert!(
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 16,
+        "CURRENT_SCHEMA_VERSION must be >= 16"
     );
 }
 
@@ -349,11 +348,10 @@ async fn test_fresh_db_creates_schema_v17() {
         .await
         .expect("open fresh store");
 
-    // Assert: schema_version == 17
-    assert_eq!(
-        read_schema_version(&store).await,
-        17,
-        "fresh database must be at schema v17"
+    // Assert: schema_version >= 16 (crt-033 cascade: fresh DB initialises to CURRENT_SCHEMA_VERSION)
+    assert!(
+        read_schema_version(&store).await >= 16,
+        "fresh database must be at schema >= v16"
     );
 
     // Assert: goal column present on cycle_events (fresh schema has the full DDL).
@@ -388,8 +386,8 @@ async fn test_v15_to_v16_migration_adds_goal_column() {
         "cycle_events.goal column must exist after v15→v16 migration (AC-09)"
     );
 
-    // Assert: schema_version == 17.
-    assert_eq!(read_schema_version(&store).await, 17);
+    // Assert: schema_version >= 16 (crt-033 cascade: full chain runs to CURRENT).
+    assert!(read_schema_version(&store).await >= 16);
 
     store.close().await.unwrap();
 }
@@ -454,7 +452,7 @@ async fn test_v15_to_v16_migration_idempotent() {
             .await
             .expect("first open");
         assert!(goal_column_exists(&store).await);
-        assert_eq!(read_schema_version(&store).await, 17);
+        assert!(read_schema_version(&store).await >= 16);
         store.close().await.unwrap();
     }
 
@@ -463,7 +461,7 @@ async fn test_v15_to_v16_migration_idempotent() {
         .await
         .expect("second open must succeed (idempotency)");
 
-    assert_eq!(read_schema_version(&store).await, 17);
+    assert!(read_schema_version(&store).await >= 16);
     assert!(goal_column_exists(&store).await);
 
     // Exactly one goal column must exist (not duplicated).
@@ -503,8 +501,8 @@ async fn test_pragma_table_info_guard_prevents_duplicate_goal_column() {
         .await
         .expect("open must succeed — pragma guard skips duplicate ALTER TABLE");
 
-    // Assert: no error; schema_version == 17; exactly one goal column.
-    assert_eq!(read_schema_version(&store).await, 17);
+    // Assert: no error; schema_version >= 16; exactly one goal column.
+    assert!(read_schema_version(&store).await >= 16);
     let col_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM pragma_table_info('cycle_events') WHERE name = 'goal'",
     )
@@ -520,7 +518,7 @@ async fn test_pragma_table_info_guard_prevents_duplicate_goal_column() {
 }
 
 // ---------------------------------------------------------------------------
-// T-V16-06: schema_version counter = 17 after migration (AC-16, SR-02 cascade)
+// T-V16-06: schema_version counter >= 16 after migration (AC-16; crt-033 cascade)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -534,11 +532,11 @@ async fn test_schema_version_is_17_after_v15_to_v16_migration() {
         .await
         .expect("open migrated store");
 
-    // Assert: counters table carries schema_version = 17.
-    assert_eq!(read_schema_version(&store).await, 17);
+    // Assert: counters table carries schema_version >= 16 (full chain runs to CURRENT).
+    assert!(read_schema_version(&store).await >= 16);
 
-    // Assert: Rust const agrees.
-    assert_eq!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION, 17);
+    // Assert: Rust const is >= 16.
+    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 16);
 
     store.close().await.unwrap();
 }
