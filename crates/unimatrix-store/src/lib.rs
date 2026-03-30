@@ -35,7 +35,8 @@ pub use injection_log::InjectionLogRecord;
 pub use metrics::{MetricVector, PhaseMetrics, UNIVERSAL_METRICS_FIELDS, UniversalMetrics};
 pub use query_log::{PhaseFreqRow, QueryLogRecord};
 pub use read::{
-    ContradictEdgeRow, EDGE_SOURCE_NLI, GraphCohesionMetrics, GraphEdgeRow, StatusAggregates,
+    CO_ACCESS_GRAPH_MIN_COUNT, ContradictEdgeRow, EDGE_SOURCE_CO_ACCESS, EDGE_SOURCE_NLI,
+    GraphCohesionMetrics, GraphEdgeRow, StatusAggregates,
 };
 pub use schema::status_counter_key;
 pub use schema::{AgentRecord, AuditEvent, Capability, Outcome, TrustLevel};

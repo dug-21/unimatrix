@@ -1629,6 +1629,29 @@ pub struct ContradictEdgeRow {
 /// deferred — out of scope for col-029 but should be addressed in a future cycle.
 pub const EDGE_SOURCE_NLI: &str = "nli";
 
+/// Named constant for the co_access-origin edge source value.
+///
+/// Written to `graph_edges.source` for all edges promoted by the recurring
+/// co_access promotion tick (`run_co_access_promotion_tick`). Parallel to
+/// `EDGE_SOURCE_NLI` — prevents silent string divergence between read.rs,
+/// migration.rs, and co_access_promotion_tick.rs.
+///
+/// Matches the `source = 'co_access'` literal already written by the v13
+/// migration bootstrap (migration.rs `CO_ACCESS_BOOTSTRAP_MIN_COUNT` step).
+pub const EDGE_SOURCE_CO_ACCESS: &str = "co_access";
+
+/// Minimum co_access pair count required for promotion to GRAPH_EDGES.
+///
+/// A co_access pair where count >= CO_ACCESS_GRAPH_MIN_COUNT qualifies for
+/// a CoAccess edge in GRAPH_EDGES. Equals the bootstrap threshold used in
+/// the v12->v13 migration (migration.rs `CO_ACCESS_BOOTSTRAP_MIN_COUNT = 3`).
+///
+/// Type is i64 to match sqlx binding conventions for SQLite INTEGER parameters.
+/// Both the promotion tick and the migration must use the same threshold value --
+/// this constant is the single authoritative source for the tick path; the
+/// migration has its own file-private copy (not removed, out of scope for crt-034).
+pub const CO_ACCESS_GRAPH_MIN_COUNT: i64 = 3;
+
 // ---------------------------------------------------------------------------
 // Public output types
 // ---------------------------------------------------------------------------
@@ -1704,6 +1727,36 @@ pub struct EntryClassificationMeta {
 mod tests {
     use super::*;
     use crate::test_helpers::open_test_store;
+
+    // -----------------------------------------------------------------------
+    // store_constants tests (crt-034 AC-07, AC-08)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_edge_source_co_access_value() {
+        // AC-08: EDGE_SOURCE_CO_ACCESS must equal "co_access" and be accessible
+        // via the crate root (re-exported in lib.rs).
+        assert_eq!(EDGE_SOURCE_CO_ACCESS, "co_access");
+    }
+
+    #[test]
+    fn test_co_access_graph_min_count_value() {
+        // AC-07: CO_ACCESS_GRAPH_MIN_COUNT must equal 3i64 (not i32 or usize) to
+        // match sqlx binding conventions for SQLite INTEGER parameters.
+        assert_eq!(CO_ACCESS_GRAPH_MIN_COUNT, 3i64);
+        // Compile-time type assertion: if the type is wrong this will not compile.
+        let _typed: i64 = CO_ACCESS_GRAPH_MIN_COUNT;
+    }
+
+    #[test]
+    fn test_co_access_constants_colocated_with_nli() {
+        // ADR-002 structural compliance: both constants share the same module as
+        // EDGE_SOURCE_NLI. Verify all three are accessible from the same `super::*`
+        // import (i.e., all defined in read.rs).
+        let _nli: &str = EDGE_SOURCE_NLI;
+        let _src: &str = EDGE_SOURCE_CO_ACCESS;
+        let _min: i64 = CO_ACCESS_GRAPH_MIN_COUNT;
+    }
 
     /// Create the graph_edges table for tests that run against a pre-v13 schema.
     async fn create_graph_edges_table(pool: &sqlx::sqlite::SqlitePool) {
