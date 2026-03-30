@@ -219,6 +219,51 @@
 
 ---
 
+## Gate-3b Validation Requirements
+
+These checks are **non-negotiable** and must be verified by the gate validator before delivery is accepted. They are not advisory — a failed check is a gate block.
+
+### GATE-3B-01: `"no duplicate"` grep (R-02 — Critical)
+
+```
+grep -n '"no duplicate"' crates/unimatrix-server/src/services/co_access_promotion_tick_tests.rs
+```
+
+**Must return zero matches.** The string `"no duplicate"` in `test_existing_edge_stale_weight_updated` (T-BLR-08) encodes the old one-directional contract. Its presence after crt-035 means the test was not updated — it will assert `count == 1` and pass only if the implementation is incomplete. Any match is a delivery block.
+
+### GATE-3B-02: Odd `count_co_access_edges` assertion grep (R-08 — Critical)
+
+```
+grep -n 'count_co_access_edges\|assert_eq!(count' crates/unimatrix-server/src/services/co_access_promotion_tick_tests.rs
+```
+
+Inspect every numeric assertion value in the output. **All post-crt-035 `count_co_access_edges` return values must be even (0, 2, 4, 6, 10…).** An odd value (1, 3, 5…) means a blast-radius test was missed or updated to the wrong target. Even-only is not a coincidence — it is the invariant that bidirectional edge pairs produce.
+
+### GATE-3B-03: EXPLAIN QUERY PLAN on back-fill SQL (R-01 — High)
+
+Run against the real schema (open a tempfile-backed `SqlxStore`, then execute):
+
+```sql
+EXPLAIN QUERY PLAN
+INSERT OR IGNORE INTO graph_edges
+    (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only)
+SELECT g.target_id, g.source_id, 'CoAccess', g.weight, strftime('%s','now'),
+       g.created_by, 'co_access', 0
+FROM graph_edges g
+WHERE g.relation_type = 'CoAccess'
+  AND g.source = 'co_access'
+  AND NOT EXISTS (
+    SELECT 1 FROM graph_edges rev
+    WHERE rev.source_id = g.target_id
+      AND rev.target_id = g.source_id
+      AND rev.relation_type = 'CoAccess'
+  )
+```
+
+**Expected**: inner select uses `SEARCH graph_edges rev USING INDEX sqlite_autoindex_graph_edges_1` (the UNIQUE constraint B-tree). If the output shows `SCAN graph_edges rev` (full scan) for the NOT EXISTS sub-select, add a composite index `CREATE INDEX IF NOT EXISTS idx_ge_rev_lookup ON graph_edges (source_id, target_id, relation_type)` to the v18→v19 migration DDL before merging. Document the EXPLAIN output as a comment in `tests/migration_v18_to_v19.rs`.
+
+---
+
 ## Knowledge Stewardship
 
 - Queried: `/uni-knowledge-search` for `lesson-learned failures gate rejection migration` — found #3579 (absent test modules), #2758 (gate-3c non-negotiable grep), #3548 (test omits plan assertion); applied to R-02 and R-08 severity assessments.
