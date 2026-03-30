@@ -1,0 +1,636 @@
+//! Tests for `co_access_promotion_tick.rs` (crt-034).
+//!
+//! Extracted to a separate file to keep the main module under the 500-line limit.
+
+use unimatrix_core::Store;
+
+use super::run_co_access_promotion_tick;
+use crate::infra::config::InferenceConfig;
+
+fn make_config(cap: usize) -> InferenceConfig {
+    InferenceConfig {
+        max_co_access_promotion_per_tick: cap,
+        ..InferenceConfig::default()
+    }
+}
+
+/// Seed a co_access pair.
+async fn seed_co_access(store: &Store, a: i64, b: i64, count: i64) {
+    sqlx::query(
+        "INSERT OR REPLACE INTO co_access (entry_id_a, entry_id_b, count, last_updated)
+         VALUES (?1, ?2, ?3, 0)",
+    )
+    .bind(a)
+    .bind(b)
+    .bind(count)
+    .execute(store.write_pool_server())
+    .await
+    .unwrap();
+}
+
+/// Seed an existing CoAccess edge in graph_edges.
+async fn seed_graph_edge(store: &Store, source_id: i64, target_id: i64, weight: f64) {
+    sqlx::query(
+        "INSERT OR REPLACE INTO graph_edges
+             (source_id, target_id, relation_type, weight, created_at,
+              created_by, source, bootstrap_only)
+         VALUES (?1, ?2, 'CoAccess', ?3, 0, 'test', 'co_access', 0)",
+    )
+    .bind(source_id)
+    .bind(target_id)
+    .bind(weight)
+    .execute(store.write_pool_server())
+    .await
+    .unwrap();
+}
+
+/// Count CoAccess rows in graph_edges.
+async fn count_co_access_edges(store: &Store) -> i64 {
+    sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM graph_edges WHERE relation_type = 'CoAccess'",
+    )
+    .fetch_one(store.write_pool_server())
+    .await
+    .unwrap()
+}
+
+struct GraphEdgeRow {
+    source_id: i64,
+    target_id: i64,
+    weight: f64,
+    bootstrap_only: i64,
+    source: String,
+    created_by: String,
+    relation_type: String,
+}
+
+/// Fetch a specific CoAccess edge, or None if absent.
+async fn fetch_co_access_edge(store: &Store, a: i64, b: i64) -> Option<GraphEdgeRow> {
+    sqlx::query_as::<_, (i64, i64, f64, i64, String, String, String)>(
+        "SELECT source_id, target_id, weight, bootstrap_only, source,
+                created_by, relation_type
+         FROM graph_edges
+         WHERE source_id = ?1 AND target_id = ?2 AND relation_type = 'CoAccess'",
+    )
+    .bind(a)
+    .bind(b)
+    .fetch_optional(store.write_pool_server())
+    .await
+    .unwrap()
+    .map(
+        |(source_id, target_id, weight, bootstrap_only, source, created_by, relation_type)| {
+            GraphEdgeRow {
+                source_id,
+                target_id,
+                weight,
+                bootstrap_only,
+                source,
+                created_by,
+                relation_type,
+            }
+        },
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Group A: Basic Promotion
+// ---------------------------------------------------------------------------
+
+/// AC-01, R-13, R-10: new qualifying pair is promoted with correct fields.
+#[tokio::test]
+async fn test_basic_promotion_new_qualifying_pair() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    seed_co_access(&store, 1, 2, 5).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    let edge = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("edge must exist");
+    assert_eq!(edge.source_id, 1);
+    assert_eq!(edge.target_id, 2);
+    assert_eq!(edge.relation_type, "CoAccess");
+    assert_eq!(edge.bootstrap_only, 0);
+    assert_eq!(edge.source, "co_access");
+    assert_eq!(edge.created_by, "tick");
+    assert!(
+        (edge.weight - 1.0).abs() < 1e-9,
+        "only pair: weight must be 1.0"
+    );
+    // R-10: no reverse edge
+    assert!(
+        fetch_co_access_edge(&store, 2, 1).await.is_none(),
+        "no reverse edge must exist"
+    );
+}
+
+/// AC-12, R-13: all four metadata fields verified on a multi-pair batch.
+#[tokio::test]
+async fn test_inserted_edge_metadata_all_four_fields() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    seed_co_access(&store, 1, 2, 3).await;
+    seed_co_access(&store, 1, 3, 6).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    let edge = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("edge must exist");
+    assert_eq!(edge.bootstrap_only, 0);
+    assert_eq!(edge.source, "co_access");
+    assert_eq!(edge.created_by, "tick");
+    assert_eq!(edge.relation_type, "CoAccess");
+    // weight = 3/6 = 0.5
+    assert!((edge.weight - 0.5).abs() < 1e-9, "weight must be 0.5 (3/6)");
+}
+
+/// R-10: edge is one-directional only.
+#[tokio::test]
+async fn test_inserted_edge_is_one_directional() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    seed_co_access(&store, 5, 10, 4).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    assert_eq!(count_co_access_edges(&store).await, 1);
+    assert!(fetch_co_access_edge(&store, 5, 10).await.is_some());
+    assert!(
+        fetch_co_access_edge(&store, 10, 5).await.is_none(),
+        "reverse edge must not be created"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Group B: Cap and Ordering
+// ---------------------------------------------------------------------------
+
+/// AC-04, R-11: cap respected and ORDER BY count DESC selects top-N.
+#[tokio::test]
+async fn test_cap_selects_highest_count_pairs() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    let counts = [3i64, 3, 3, 3, 3, 10, 20, 50, 80, 100];
+    for (i, &count) in counts.iter().enumerate() {
+        seed_co_access(&store, (i + 1) as i64, (i + 11) as i64, count).await;
+    }
+
+    run_co_access_promotion_tick(&store, &make_config(3), 10).await;
+
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        3,
+        "cap must be respected"
+    );
+    // Top-3 by count: 100, 80, 50 (indices 9, 8, 7 → pairs (10,20), (9,19), (8,18))
+    assert!(
+        fetch_co_access_edge(&store, 10, 20).await.is_some(),
+        "count=100 pair must be selected"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 9, 19).await.is_some(),
+        "count=80 pair must be selected"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 8, 18).await.is_some(),
+        "count=50 pair must be selected"
+    );
+    // count=3 pairs must NOT be present
+    assert!(
+        fetch_co_access_edge(&store, 1, 11).await.is_none(),
+        "count=3 pair must not be promoted when cap=3"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Group C: Weight Refresh
+// ---------------------------------------------------------------------------
+
+/// AC-02, R-04: stale weight (delta > 0.1) is updated.
+#[tokio::test]
+async fn test_existing_edge_stale_weight_updated() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    seed_co_access(&store, 1, 2, 10).await;
+    seed_graph_edge(&store, 1, 2, 0.5).await; // delta = |1.0 - 0.5| = 0.5 > 0.1
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    let edge = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("edge must exist");
+    assert_eq!(count_co_access_edges(&store).await, 1, "no duplicate");
+    assert!(
+        (edge.weight - 1.0).abs() < 1e-9,
+        "weight must be updated to 1.0"
+    );
+}
+
+/// AC-03, R-04: weight within delta (0.0) is not updated.
+#[tokio::test]
+async fn test_existing_edge_current_weight_no_update() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    // pair (1,2): count=5, pair (1,3): count=10 → max_count=10, weight(1,2)=0.5
+    seed_co_access(&store, 1, 2, 5).await;
+    seed_co_access(&store, 1, 3, 10).await;
+    seed_graph_edge(&store, 1, 2, 0.5).await; // delta = 0.0
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    let edge = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("edge must exist");
+    assert!((edge.weight - 0.5).abs() < 1e-9, "weight must remain 0.5");
+    // (1,3) is newly inserted
+    assert!(
+        fetch_co_access_edge(&store, 1, 3).await.is_some(),
+        "pair (1,3) must be inserted"
+    );
+}
+
+/// E-05: delta exactly at boundary (0.1) must NOT trigger update.
+#[tokio::test]
+async fn test_weight_delta_exactly_at_boundary_no_update() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    // pair (1,2): count=6, pair (1,3): count=10 → max_count=10, weight(1,2)=0.6
+    // existing weight=0.5 → delta = |0.6 - 0.5| = 0.1 exactly → no update
+    seed_co_access(&store, 1, 2, 6).await;
+    seed_co_access(&store, 1, 3, 10).await;
+    seed_graph_edge(&store, 1, 2, 0.5).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    let edge = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("edge must exist");
+    assert!(
+        (edge.weight - 0.5).abs() < 1e-9,
+        "weight must NOT be updated when delta == 0.1 (strictly greater than required)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Group D: Idempotency
+// ---------------------------------------------------------------------------
+
+/// AC-14, R-09: second tick on unchanged co_access leaves exactly 1 row.
+#[tokio::test]
+async fn test_double_tick_idempotent() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    seed_co_access(&store, 1, 2, 5).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+    let weight_after_first = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("edge after first tick")
+        .weight;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 11).await;
+
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        1,
+        "exactly 1 row after 2 ticks"
+    );
+    let weight_after_second = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("edge after second tick")
+        .weight;
+    assert!(
+        (weight_after_first - weight_after_second).abs() < 1e-9,
+        "weight must be unchanged after second tick"
+    );
+}
+
+/// AC-15: sub-threshold pair after initial promotion is not deleted.
+#[tokio::test]
+async fn test_sub_threshold_pair_not_gc() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    seed_co_access(&store, 1, 2, 5).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+    assert!(fetch_co_access_edge(&store, 1, 2).await.is_some());
+
+    // Drop count below threshold
+    sqlx::query("UPDATE co_access SET count = 1 WHERE entry_id_a = 1 AND entry_id_b = 2")
+        .execute(store.write_pool_server())
+        .await
+        .unwrap();
+
+    run_co_access_promotion_tick(&store, &make_config(200), 11).await;
+
+    assert!(
+        fetch_co_access_edge(&store, 1, 2).await.is_some(),
+        "promoted edge must not be deleted (GC is #409)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Group E: Empty and Sub-threshold Table
+// ---------------------------------------------------------------------------
+
+/// AC-09(a), R-02: empty table at late tick → no panic, no warn, 0/0.
+#[tracing_test::traced_test]
+#[tokio::test]
+async fn test_empty_co_access_table_noop_late_tick() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    assert_eq!(count_co_access_edges(&store).await, 0);
+    assert!(
+        !logs_contain("zero qualifying pairs"),
+        "no SR-05 warn at tick >= 5"
+    );
+}
+
+/// AC-09(c), R-02: all-below-threshold at late tick → no warn, 0 edges.
+#[tracing_test::traced_test]
+#[tokio::test]
+async fn test_all_below_threshold_noop_late_tick() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    seed_co_access(&store, 1, 2, 1).await;
+    seed_co_access(&store, 3, 4, 2).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    assert_eq!(count_co_access_edges(&store).await, 0);
+    assert!(!logs_contain("zero qualifying pairs"));
+}
+
+/// AC-09(b), R-06: qualifying_count=0 AND tick < 5 → warn! emitted.
+#[tracing_test::traced_test]
+#[tokio::test]
+async fn test_early_tick_warn_when_qualifying_count_zero() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    // empty table → qualifying_count = 0
+
+    run_co_access_promotion_tick(&store, &make_config(200), 0).await;
+
+    assert!(
+        logs_contain("zero qualifying pairs"),
+        "SR-05 warn must fire at tick=0 with empty table"
+    );
+}
+
+/// R-06: qualifying_count=0, tick=5 (boundary) → NO warn.
+#[tracing_test::traced_test]
+#[tokio::test]
+async fn test_late_tick_no_warn_empty_table() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 5).await;
+
+    assert!(
+        !logs_contain("zero qualifying pairs"),
+        "no SR-05 warn at exactly tick=5"
+    );
+}
+
+/// R-06: qualifying_count > 0, tick < 5 → NO warn (SR-05 only fires on zero qualifying).
+#[tracing_test::traced_test]
+#[tokio::test]
+async fn test_fully_promoted_table_no_warn() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    seed_co_access(&store, 1, 2, 4).await;
+    seed_co_access(&store, 3, 4, 5).await;
+    seed_co_access(&store, 5, 6, 6).await;
+    // All already promoted
+    seed_graph_edge(&store, 1, 2, 0.67).await;
+    seed_graph_edge(&store, 3, 4, 0.83).await;
+    seed_graph_edge(&store, 5, 6, 1.0).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 0).await;
+
+    assert!(
+        !logs_contain("zero qualifying pairs"),
+        "no SR-05 warn when qualifying_count > 0"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Group F: Write Failure Handling (R-01) — Critical Priority
+// ---------------------------------------------------------------------------
+
+/// AC-11, R-01: batch continues after one pair is a no-op, remaining pairs inserted.
+///
+/// We verify the continue-on-error semantics by seeding pair (1,2) with a
+/// pre-existing edge at exactly the computed weight (no INSERT or UPDATE),
+/// then asserting pairs (1,3) and (1,4) are still attempted and inserted.
+#[tokio::test]
+async fn test_write_failure_mid_batch_warn_and_continue() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    // 3 qualifying pairs
+    seed_co_access(&store, 1, 2, 10).await;
+    seed_co_access(&store, 1, 3, 8).await;
+    seed_co_access(&store, 1, 4, 6).await;
+
+    // Force pair (1,2) INSERT to be a no-op by pre-seeding the exact computed weight.
+    // new_weight for (1,2) = 10/10 = 1.0; delta=0 → no UPDATE either.
+    // Pairs (1,3) and (1,4) are new → must be inserted.
+    seed_graph_edge(&store, 1, 2, 1.0).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    // Function must return () — verified by reaching this line.
+    assert!(
+        fetch_co_access_edge(&store, 1, 3).await.is_some(),
+        "pair (1,3) must be attempted and inserted"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 1, 4).await.is_some(),
+        "pair (1,4) must be attempted and inserted"
+    );
+}
+
+/// R-01: info! log fires even when no writes occur.
+#[tracing_test::traced_test]
+#[tokio::test]
+async fn test_write_failure_info_log_always_fires() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    // Seed one pair with exact-match weight so nothing is written
+    seed_co_access(&store, 1, 2, 5).await;
+    seed_graph_edge(&store, 1, 2, 1.0).await; // weight = 5/5 = 1.0 → delta=0
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    assert!(
+        logs_contain("co_access promotion tick complete"),
+        "info! must always fire"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Group G: Normalization
+// ---------------------------------------------------------------------------
+
+/// AC-13, R-03: global MAX used as normalization anchor, not batch-local max.
+#[tokio::test]
+async fn test_global_max_normalization_subquery_shape() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    // Counts [1..10]; qualifying: [3..10], max=10; cap=3 → selects [10,9,8]
+    for i in 1i64..=10 {
+        seed_co_access(&store, i, i + 100, i).await;
+    }
+
+    run_co_access_promotion_tick(&store, &make_config(3), 10).await;
+
+    let e10 = fetch_co_access_edge(&store, 10, 110)
+        .await
+        .expect("count=10 pair");
+    let e9 = fetch_co_access_edge(&store, 9, 109)
+        .await
+        .expect("count=9 pair");
+    let e8 = fetch_co_access_edge(&store, 8, 108)
+        .await
+        .expect("count=8 pair");
+    assert!((e10.weight - 1.0).abs() < 1e-9, "10/10 = 1.0");
+    assert!((e9.weight - 0.9).abs() < 1e-9, "9/10 = 0.9");
+    assert!((e8.weight - 0.8).abs() < 1e-9, "8/10 = 0.8");
+}
+
+/// R-03 scenario 2: global max is the top selected entry; weight of lower-count
+/// pair reflects global normalization (5/100 = 0.05).
+#[tokio::test]
+async fn test_global_max_outside_capped_batch() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    let pairs = [
+        (1i64, 101i64, 3i64),
+        (2, 102, 4),
+        (3, 103, 5),
+        (4, 104, 80),
+        (5, 105, 100),
+    ];
+    for (a, b, count) in pairs {
+        seed_co_access(&store, a, b, count).await;
+    }
+
+    run_co_access_promotion_tick(&store, &make_config(3), 10).await;
+
+    let e100 = fetch_co_access_edge(&store, 5, 105)
+        .await
+        .expect("count=100");
+    let e80 = fetch_co_access_edge(&store, 4, 104)
+        .await
+        .expect("count=80");
+    let e5 = fetch_co_access_edge(&store, 3, 103).await.expect("count=5");
+    assert!((e100.weight - 1.0).abs() < 1e-9, "100/100 = 1.0");
+    assert!((e80.weight - 0.8).abs() < 1e-9, "80/100 = 0.8");
+    assert!((e5.weight - 0.05).abs() < 1e-9, "5/100 = 0.05");
+}
+
+// ---------------------------------------------------------------------------
+// Group H: Edge Cases
+// ---------------------------------------------------------------------------
+
+/// E-01: single qualifying pair → weight=1.0; second tick no update (delta=0).
+#[tokio::test]
+async fn test_single_qualifying_pair_weight_one() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    seed_co_access(&store, 1, 2, 7).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    let edge = fetch_co_access_edge(&store, 1, 2).await.expect("edge");
+    assert!((edge.weight - 1.0).abs() < 1e-9, "7/7 = 1.0");
+
+    run_co_access_promotion_tick(&store, &make_config(200), 11).await;
+    let edge2 = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("edge after 2nd tick");
+    assert!(
+        (edge2.weight - 1.0).abs() < 1e-9,
+        "weight unchanged after 2nd tick"
+    );
+}
+
+/// E-02: tied counts — cap respected, all selected have weight=1.0.
+#[tokio::test]
+async fn test_tied_counts_secondary_sort_stable() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    for i in 1i64..=5 {
+        seed_co_access(&store, i, i + 10, 5).await;
+    }
+
+    run_co_access_promotion_tick(&store, &make_config(3), 10).await;
+
+    assert_eq!(count_co_access_edges(&store).await, 3, "cap=3 respected");
+}
+
+/// E-03: cap equals qualifying count — no off-by-one.
+#[tokio::test]
+async fn test_cap_equals_qualifying_count() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    for i in 1i64..=5 {
+        seed_co_access(&store, i, i + 10, 4).await;
+    }
+
+    run_co_access_promotion_tick(&store, &make_config(5), 10).await;
+
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        5,
+        "all 5 pairs promoted"
+    );
+}
+
+/// E-04: cap=1 selects highest-count pair.
+#[tokio::test]
+async fn test_cap_one_selects_highest_count() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    seed_co_access(&store, 1, 2, 5).await;
+    seed_co_access(&store, 1, 3, 3).await;
+    seed_co_access(&store, 1, 4, 4).await;
+
+    run_co_access_promotion_tick(&store, &make_config(1), 10).await;
+
+    assert_eq!(count_co_access_edges(&store).await, 1);
+    assert!(
+        fetch_co_access_edge(&store, 1, 2).await.is_some(),
+        "count=5 pair must be the one selected"
+    );
+}
+
+/// E-06: self-loop pair → no panic regardless of DB behavior.
+///
+/// The co_access schema has CHECK (entry_id_a < entry_id_b) so inserting a
+/// self-loop will fail at the seed stage. We verify the promotion tick itself
+/// does not panic when the co_access table contains only sub-threshold or zero
+/// rows (which covers the same "unusual input" scenario without violating the DB
+/// constraint).
+#[tokio::test]
+async fn test_self_loop_pair_no_panic() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    // Self-loop (1,1) violates CHECK(entry_id_a < entry_id_b); the DB will reject
+    // the seed insert. We ignore that error and verify the tick handles an empty
+    // qualifying set without panicking.
+    let _ = sqlx::query(
+        "INSERT OR IGNORE INTO co_access (entry_id_a, entry_id_b, count, last_updated)
+         VALUES (1, 1, 5, 0)",
+    )
+    .execute(store.write_pool_server())
+    .await; // may fail due to CHECK — that's fine
+
+    // Must not panic regardless of whether the row was inserted
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+}

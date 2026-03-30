@@ -25,6 +25,7 @@ use crate::infra::registry::TrustLevel;
 use crate::infra::usage_dedup::UsageDedup;
 use crate::services::store_ops::NliStoreConfig;
 
+pub(crate) mod co_access_promotion_tick;
 pub(crate) mod confidence;
 pub(crate) mod contradiction_cache;
 pub(crate) mod effectiveness;
