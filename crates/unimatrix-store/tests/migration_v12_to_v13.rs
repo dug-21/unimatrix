@@ -487,8 +487,10 @@ async fn test_v12_to_v13_co_access_threshold_and_weights() {
         .await
         .expect("open store");
 
-    // Assert: exactly 2 CoAccess edges (count=2 pair excluded)
-    assert_eq!(count_graph_edges_by_type(&store, "CoAccess").await, 2);
+    // Assert: 4 CoAccess edges — 2 forward-only pairs written by v13 bootstrap,
+    // each gets a reverse edge added by the v18→v19 back-fill (crt-035).
+    // The below-threshold pair (1,2) count=2 is still excluded from both directions.
+    assert_eq!(count_graph_edges_by_type(&store, "CoAccess").await, 4);
 
     // Assert: pair (1, 2) does NOT appear — count < threshold
     let count_12: i64 = sqlx::query_scalar(
