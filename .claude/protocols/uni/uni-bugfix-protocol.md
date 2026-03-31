@@ -63,15 +63,15 @@ The Bugfix Manager:
 2. Identifies the feature area and any related feature directories
 3. **Declares feature cycle** — before any agent spawning:
    ```
-   context_cycle(
-     type: "start",
-     topic: "bugfix-{issue-number}",
-     goal: "{1-2 sentence summary of the goal or problem to be fixed}",
-     next_phase: "discovery",
-     agent_id: "{issue-number}-bugfix-leader"
-   )
+   mcp__unimatrix__context_cycle({
+     "type": "start",
+     "topic": "bugfix-{issue-number}",
+     "goal": "{1-2 sentence summary of the goal or problem to be fixed}",
+     "next_phase": "discovery",
+     "agent_id": "{issue-number}-bugfix-leader"
+   })
    ```
-5. Passes relevant info & goal to the investigator in Phase 1
+4. Passes relevant info & goal to the investigator in Phase 1
 
 Worker agents are spawned with `isolation: "worktree"` for branch isolation (see `/uni-git` Worktree Isolation).
 
@@ -164,7 +164,13 @@ If either the diagnosis or design is wrong, provide feedback and I will re-inves
 On human approval:
 
 ```
-context_cycle(type: "phase-end", phase: "discovery", next_phase: "fix", agent_id: "{issue-number}-bugfix-leader")
+mcp__unimatrix__context_cycle({
+  "type": "phase-end",
+  "topic": "bugfix-{issue-number}",
+  "phase": "discovery",
+  "next_phase": "fix",
+  "agent_id": "{issue-number}-bugfix-leader"
+})
 ```
 
 **If the human disagrees**: Re-spawn the investigator with the human's feedback:
@@ -225,12 +231,18 @@ Task(subagent_type: "uni-rust-dev",
 Wait for the rust-dev to complete. Provide updates back to the GH issue periodically.
 
 ```
-context_cycle(type: "phase-end", phase: "fix", next_phase: "testing", agent_id: "{issue-number}-bugfix-leader")
+mcp__unimatrix__context_cycle({
+  "type": "phase-end",
+  "topic": "bugfix-{issue-number}",
+  "phase": "fix",
+  "next_phase": "testing",
+  "agent_id": "{issue-number}-bugfix-leader"
+})
 ```
 
 ---
 
-## Phase 3: Verification
+## Phase 3: Testing
 
 **Agent**: uni-tester (execution mode)
 
@@ -310,7 +322,15 @@ Task(subagent_type: "uni-validator",
 
 **Gate results:**
 - **PASS** →
-  1. `context_cycle(type: "phase-end", phase: "testing", next_phase: "bug-review", agent_id: "{issue-number}-bugfix-leader")`
+  1. ```
+     mcp__unimatrix__context_cycle({
+       "type": "phase-end",
+       "topic": "bugfix-{issue-number}",
+       "phase": "testing",
+       "next_phase": "bug-review",
+       "agent_id": "{issue-number}-bugfix-leader"
+     })
+     ```
   2. Commit fix code + tests, open PR, proceed to Phase 4
 - **REWORKABLE FAIL** → Loop back to Phase 2 with failure details (max 2 iterations). Include the gate report path in the re-spawn prompt.
 - **SCOPE FAIL** → Session stops. Return to human with recommendation.
@@ -326,11 +346,31 @@ On PASS, the Bugfix Manager:
 
 ---
 
-## Phase 4: PR Review
+## Phase 4: PR Review (bug-review)
 
 After the PR is opened, invoke `/uni-review-pr` with the PR number, feature/issue ID, and GH Issue number. This spawns a fresh-context security reviewer and assesses merge readiness.
 
 For bugfix PRs, the review verifies the single gate report (not three delivery gates).
+
+When the security review returns with no blocking findings:
+
+```
+mcp__unimatrix__context_cycle({
+  "type": "phase-end",
+  "topic": "bugfix-{issue-number}",
+  "phase": "bug-review",
+  "agent_id": "{issue-number}-bugfix-leader"
+})
+
+mcp__unimatrix__context_cycle({
+  "type": "stop",
+  "topic": "bugfix-{issue-number}",
+  "outcome": "Bugfix complete. Root cause: {summary}. PR: {url}",
+  "agent_id": "{issue-number}-bugfix-leader"
+})
+```
+
+If the review returns blocking findings, resolve them before stopping the cycle.
 
 ---
 
@@ -360,7 +400,7 @@ Reports:
 Human action required: Review PR and approve merge.
 ```
 
-On human approval, the Bugfix Manager:
+On human approval to merge, the Bugfix Manager:
 1. Merges the PR with `gh pr merge --rebase` (if human requests it)
 2. Closes the GH Issue with reference to the PR (if applicable)
 
@@ -427,55 +467,65 @@ NEVER pipe full cargo output into context.
 
 ---
 
+## Agent Polling (CRITICAL)
+
+Never use `sleep` to wait for background agents or tasks. Use `run_in_background` + `TaskOutput`:
+
+```
+# Launch agent in background
+Task(subagent_type: "uni-tester", run_in_background: true, ...)
+# -> returns task ID, e.g. "btask123"
+
+# Read output when notified
+TaskOutput("btask123")
+```
+
+You will be automatically notified when a background task completes. Do NOT sleep, poll, or proactively check before the notification arrives.
+
+---
+
 ## Quick Reference: Message Map
 
 ```
 BUGFIX LEADER (you):
   Init:       /uni-query-patterns + /uni-knowledge-search — prior knowledge
-              context_cycle(type: "start", topic: "bugfix-{issue-number}", next_phase: "discovery", agent_id: "{issue-number}-bugfix-leader")
+              mcp__unimatrix__context_cycle({ "type": "start", "topic": "bugfix-{issue-number}",
+                "goal": "{summary}", "next_phase": "discovery", "agent_id": "{issue-number}-bugfix-leader" })
   Phase 1:    Task(uni-bug-investigator) — diagnose root cause → GH Issue comment
               ...wait...
   Phase 1b:   Task(uni-architect) — design review of proposed fix
               ...present diagnosis + design review to human...
               ★ HUMAN CHECKPOINT — human approves diagnosis + design ★
-              context_cycle(type: "phase-end", phase: "discovery", next_phase: "fix", ...)
+              mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
+                "phase": "discovery", "next_phase": "fix", "agent_id": "{issue-number}-bugfix-leader" })
   Phase 2:    git checkout -b bugfix/{issue}-{desc}
               Task(uni-rust-dev) — implement fix + tests → GH Issue comment
               ...wait...
-              context_cycle(type: "phase-end", phase: "fix", next_phase: "testing", ...)
+              mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
+                "phase": "fix", "next_phase": "testing", "agent_id": "{issue-number}-bugfix-leader" })
   Phase 3:    Task(uni-tester) — full test suite verification → GH Issue comment
               ...wait...
   Gate 3:     Task(uni-validator, bugfix check set) → GH Issue comment
-              ...PASS → context_cycle(phase-end, testing → bug-review) → commit + push + PR
+              ...PASS → mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
+                          "phase": "testing", "next_phase": "bug-review", "agent_id": "..." })
+                       → commit + push + PR
               ...FAIL → rework or stop...
   Phase 4:    /uni-review-pr — security review + merge readiness → GH Issue comment
               ...wait...
+              ...no blocking findings →
+                mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
+                  "phase": "bug-review", "agent_id": "{issue-number}-bugfix-leader" })
+                mcp__unimatrix__context_cycle({ "type": "stop", "topic": "bugfix-{issue-number}",
+                  "outcome": "Bugfix complete. Root cause: {summary}. PR: {url}", "agent_id": "..." })
+                /uni-store-lesson (if generalizable)
   Phase 5:    Present PR + security assessment to human — SESSION ENDS
-              context_cycle(type: "phase-end", phase: "bug-review", ...)
-              context_cycle(type: "stop", topic: "bugfix-{issue-number}", outcome: "...", agent_id: "{issue-number}-bugfix-leader")
-              /uni-store-lesson (if generalizable)
 ```
 
 ---
 
 ## Outcome Recording
 
-After presenting the PR to the human, close the bug-review phase and stop the cycle:
-
-```
-context_cycle(
-  type: "phase-end",
-  phase: "bug-review",
-  agent_id: "{issue-number}-bugfix-leader"
-)
-
-context_cycle(
-  type: "stop",
-  topic: "bugfix-{issue-number}",
-  outcome: "Bugfix complete. Root cause: {summary}. PR: {url}",
-  agent_id: "{issue-number}-bugfix-leader"
-)
-```
+After the security review returns with no blocking findings (Phase 4), close the bug-review phase and stop the cycle. See Phase 4 for the full call syntax.
 
 Then use Unimatrix skills as applicable:
 

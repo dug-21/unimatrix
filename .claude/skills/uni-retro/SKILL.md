@@ -7,7 +7,7 @@ description: "Post-merge retrospective — extracts patterns, procedures, and le
 
 ## What This Skill Does
 
-Analyzes a shipped feature and extracts reusable knowledge — patterns, procedures, and lessons — into Unimatrix. This is how the project learns.
+Analyzes a shipped feature and shares valuable feedback with the human, reports Unimatrix usage, and extracts reusable knowledge — patterns, procedures, and lessons — into Unimatrix. This is how the project learns.
 
 ---
 
@@ -74,7 +74,7 @@ Gather all evidence about the shipped feature:
    ```
    Look for rework commits (`fix(gate):`) — these indicate where the process struggled.
 
-6. **Share the interim results**: provide cleaned view of the retrospective output with key observations before moving forward
+6. **Share the interim results**: Provide cleanesed view of the context_cycle_review output with key observations before moving forward.  At a MINIMUM show the ##Phase Narrative and ##Phase Timeline.  Also Highlight a specific section of content retrieved during the cycle... (This reinforces the Unimatrix Value Prop)
 
 ---
 

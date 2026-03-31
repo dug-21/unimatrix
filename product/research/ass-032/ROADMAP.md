@@ -202,3 +202,4 @@ All phase-conditioned signals use string keys resolved at runtime from `query_lo
 | NEER (Novel Entry Exposure Rate) | After session-level eval is designed; requires cross-query session context |
 | Briefing relationship annotations in response | After PPR + phase signals are contributing (provenance annotations meaningful) |
 | Category Coverage Floor | Measure CC@k after PPR lands; add hard floor only if organic signals insufficient |
+| **ASS-034: Parameterized relationship taxonomy** | After cortical work (#409, #415) stabilizes. Attacks 79% isolation by expanding the semantic vocabulary of the graph — text_reference + feature_field detection, InformedBy/ImplementsDecision/Mentions types, per-type PPR weights. See `product/research/ass-034/`. |
