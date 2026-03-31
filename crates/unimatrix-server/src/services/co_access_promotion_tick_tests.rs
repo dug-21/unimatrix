@@ -1,4 +1,4 @@
-//! Tests for `co_access_promotion_tick.rs` (crt-034).
+//! Tests for `co_access_promotion_tick.rs` (crt-034, updated crt-035).
 //!
 //! Extracted to a separate file to keep the main module under the 500-line limit.
 
@@ -96,7 +96,8 @@ async fn fetch_co_access_edge(store: &Store, a: i64, b: i64) -> Option<GraphEdge
 // Group A: Basic Promotion
 // ---------------------------------------------------------------------------
 
-/// AC-01, R-13, R-10: new qualifying pair is promoted with correct fields.
+/// T-BLR-01: AC-01, AC-02, R-13, R-10: new qualifying pair is promoted with correct
+/// fields in both directions.
 #[tokio::test]
 async fn test_basic_promotion_new_qualifying_pair() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -118,11 +119,23 @@ async fn test_basic_promotion_new_qualifying_pair() {
         (edge.weight - 1.0).abs() < 1e-9,
         "only pair: weight must be 1.0"
     );
-    // R-10: no reverse edge
-    assert!(
-        fetch_co_access_edge(&store, 2, 1).await.is_none(),
-        "no reverse edge must exist"
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        2,
+        "both directions must be inserted"
     );
+    let reverse = fetch_co_access_edge(&store, 2, 1)
+        .await
+        .expect("reverse edge must exist after bidirectional tick");
+    assert_eq!(reverse.source_id, 2);
+    assert_eq!(reverse.target_id, 1);
+    assert!(
+        (reverse.weight - 1.0).abs() < 1e-9,
+        "reverse edge weight must equal forward"
+    );
+    assert_eq!(reverse.created_by, "tick");
+    assert_eq!(reverse.source, "co_access");
+    assert_eq!(reverse.bootstrap_only, 0);
 }
 
 /// AC-12, R-13: all four metadata fields verified on a multi-pair batch.
@@ -146,20 +159,29 @@ async fn test_inserted_edge_metadata_all_four_fields() {
     assert!((edge.weight - 0.5).abs() < 1e-9, "weight must be 0.5 (3/6)");
 }
 
-/// R-10: edge is one-directional only.
+/// T-BLR-02: edge is bidirectional (crt-035).
 #[tokio::test]
-async fn test_inserted_edge_is_one_directional() {
+async fn test_inserted_edge_is_bidirectional() {
     let tmp = tempfile::TempDir::new().unwrap();
     let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
     seed_co_access(&store, 5, 10, 4).await;
 
     run_co_access_promotion_tick(&store, &make_config(200), 10).await;
 
-    assert_eq!(count_co_access_edges(&store).await, 1);
-    assert!(fetch_co_access_edge(&store, 5, 10).await.is_some());
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        2,
+        "bidirectional: 2 edges for 1 pair"
+    );
+    let fwd = fetch_co_access_edge(&store, 5, 10)
+        .await
+        .expect("forward edge (5→10) must exist");
+    let rev = fetch_co_access_edge(&store, 10, 5)
+        .await
+        .expect("reverse edge (10→5) must exist after crt-035");
     assert!(
-        fetch_co_access_edge(&store, 10, 5).await.is_none(),
-        "reverse edge must not be created"
+        (fwd.weight - rev.weight).abs() < 1e-9,
+        "both directions must have equal weight"
     );
 }
 
@@ -167,7 +189,8 @@ async fn test_inserted_edge_is_one_directional() {
 // Group B: Cap and Ordering
 // ---------------------------------------------------------------------------
 
-/// AC-04, R-11: cap respected and ORDER BY count DESC selects top-N.
+/// T-BLR-04: AC-04, R-11: cap respected and ORDER BY count DESC selects top-N.
+/// 3 pairs × 2 directions = 6 edges.
 #[tokio::test]
 async fn test_cap_selects_highest_count_pairs() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -181,8 +204,8 @@ async fn test_cap_selects_highest_count_pairs() {
 
     assert_eq!(
         count_co_access_edges(&store).await,
-        3,
-        "cap must be respected"
+        6,
+        "cap=3 pairs × 2 directions = 6 edges"
     );
     // Top-3 by count: 100, 80, 50 (indices 9, 8, 7 → pairs (10,20), (9,19), (8,18))
     assert!(
@@ -197,6 +220,19 @@ async fn test_cap_selects_highest_count_pairs() {
         fetch_co_access_edge(&store, 8, 18).await.is_some(),
         "count=50 pair must be selected"
     );
+    // Reverse edges for top-3 pairs must also exist
+    assert!(
+        fetch_co_access_edge(&store, 20, 10).await.is_some(),
+        "reverse of count=100 pair"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 19, 9).await.is_some(),
+        "reverse of count=80 pair"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 18, 8).await.is_some(),
+        "reverse of count=50 pair"
+    );
     // count=3 pairs must NOT be present
     assert!(
         fetch_co_access_edge(&store, 1, 11).await.is_none(),
@@ -208,7 +244,8 @@ async fn test_cap_selects_highest_count_pairs() {
 // Group C: Weight Refresh
 // ---------------------------------------------------------------------------
 
-/// AC-02, R-04: stale weight (delta > 0.1) is updated.
+/// T-BLR-08: AC-02, AC-03, R-04: stale weight (delta > 0.1) is updated in both
+/// directions. forward (updated) + reverse (new) = 2 rows.
 #[tokio::test]
 async fn test_existing_edge_stale_weight_updated() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -218,13 +255,29 @@ async fn test_existing_edge_stale_weight_updated() {
 
     run_co_access_promotion_tick(&store, &make_config(200), 10).await;
 
-    let edge = fetch_co_access_edge(&store, 1, 2)
+    // Forward edge updated.
+    let fwd = fetch_co_access_edge(&store, 1, 2)
         .await
-        .expect("edge must exist");
-    assert_eq!(count_co_access_edges(&store).await, 1, "no duplicate");
+        .expect("forward edge must exist");
     assert!(
-        (edge.weight - 1.0).abs() < 1e-9,
-        "weight must be updated to 1.0"
+        (fwd.weight - 1.0).abs() < 1e-9,
+        "forward edge weight must be updated to 1.0"
+    );
+
+    // Reverse edge newly inserted by tick.
+    let rev = fetch_co_access_edge(&store, 2, 1)
+        .await
+        .expect("reverse edge must be inserted by tick");
+    assert!(
+        (rev.weight - 1.0).abs() < 1e-9,
+        "reverse edge weight must be 1.0 (newly inserted)"
+    );
+
+    // Exactly 2 rows: forward (updated) + reverse (new). No third row.
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        2,
+        "no duplicate: forward (updated) + reverse (new) = 2"
     );
 }
 
@@ -248,6 +301,11 @@ async fn test_existing_edge_current_weight_no_update() {
     assert!(
         fetch_co_access_edge(&store, 1, 3).await.is_some(),
         "pair (1,3) must be inserted"
+    );
+    // R-06: reverse edge for (1,2) must be inserted even when forward weight is unchanged
+    assert!(
+        fetch_co_access_edge(&store, 2, 1).await.is_some(),
+        "reverse edge for (1,2) must be inserted even when forward weight is unchanged"
     );
 }
 
@@ -277,7 +335,7 @@ async fn test_weight_delta_exactly_at_boundary_no_update() {
 // Group D: Idempotency
 // ---------------------------------------------------------------------------
 
-/// AC-14, R-09: second tick on unchanged co_access leaves exactly 1 row.
+/// T-BLR-03: AC-14, R-09: second tick on unchanged co_access leaves exactly 2 rows.
 #[tokio::test]
 async fn test_double_tick_idempotent() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -285,25 +343,40 @@ async fn test_double_tick_idempotent() {
     seed_co_access(&store, 1, 2, 5).await;
 
     run_co_access_promotion_tick(&store, &make_config(200), 10).await;
-    let weight_after_first = fetch_co_access_edge(&store, 1, 2)
-        .await
-        .expect("edge after first tick")
-        .weight;
 
-    run_co_access_promotion_tick(&store, &make_config(200), 11).await;
-
+    // After first tick: both directions inserted.
     assert_eq!(
         count_co_access_edges(&store).await,
-        1,
-        "exactly 1 row after 2 ticks"
+        2,
+        "exactly 2 rows after first tick"
     );
-    let weight_after_second = fetch_co_access_edge(&store, 1, 2)
+    let weight_after_first_fwd = fetch_co_access_edge(&store, 1, 2)
         .await
-        .expect("edge after second tick")
+        .expect("forward edge after first tick")
         .weight;
+    let weight_after_first_rev = fetch_co_access_edge(&store, 2, 1)
+        .await
+        .expect("reverse edge after first tick")
+        .weight;
+
+    // Run second tick.
+    run_co_access_promotion_tick(&store, &make_config(200), 11).await;
+
+    // After second tick: same 2 rows, weights unchanged.
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        2,
+        "exactly 2 rows after second tick (idempotent)"
+    );
     assert!(
-        (weight_after_first - weight_after_second).abs() < 1e-9,
-        "weight must be unchanged after second tick"
+        (fetch_co_access_edge(&store, 1, 2).await.unwrap().weight - weight_after_first_fwd).abs()
+            < 1e-9,
+        "forward weight unchanged after second tick"
+    );
+    assert!(
+        (fetch_co_access_edge(&store, 2, 1).await.unwrap().weight - weight_after_first_rev).abs()
+            < 1e-9,
+        "reverse weight unchanged after second tick"
     );
 }
 
@@ -453,6 +526,15 @@ async fn test_write_failure_mid_batch_warn_and_continue() {
         fetch_co_access_edge(&store, 1, 4).await.is_some(),
         "pair (1,4) must be attempted and inserted"
     );
+    // Reverse edges for (1,3) and (1,4) must also be inserted
+    assert!(
+        fetch_co_access_edge(&store, 3, 1).await.is_some(),
+        "reverse of pair (1,3) must be inserted"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 4, 1).await.is_some(),
+        "reverse of pair (1,4) must be inserted"
+    );
 }
 
 /// R-01: info! log fires even when no writes occur.
@@ -538,7 +620,7 @@ async fn test_global_max_outside_capped_batch() {
 // Group H: Edge Cases
 // ---------------------------------------------------------------------------
 
-/// E-01: single qualifying pair → weight=1.0; second tick no update (delta=0).
+/// T-BLR-07 (E-01): single qualifying pair → weight=1.0; second tick no update (delta=0).
 #[tokio::test]
 async fn test_single_qualifying_pair_weight_one() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -560,7 +642,7 @@ async fn test_single_qualifying_pair_weight_one() {
     );
 }
 
-/// E-02: tied counts — cap respected, all selected have weight=1.0.
+/// T-BLR-05 (E-02): tied counts — cap respected, 3 pairs × 2 directions = 6 edges.
 #[tokio::test]
 async fn test_tied_counts_secondary_sort_stable() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -571,10 +653,14 @@ async fn test_tied_counts_secondary_sort_stable() {
 
     run_co_access_promotion_tick(&store, &make_config(3), 10).await;
 
-    assert_eq!(count_co_access_edges(&store).await, 3, "cap=3 respected");
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        6,
+        "cap=3 pairs × 2 directions = 6 edges"
+    );
 }
 
-/// E-03: cap equals qualifying count — no off-by-one.
+/// T-BLR-06 (E-03): cap equals qualifying count — no off-by-one. 5 pairs × 2 = 10 edges.
 #[tokio::test]
 async fn test_cap_equals_qualifying_count() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -587,12 +673,12 @@ async fn test_cap_equals_qualifying_count() {
 
     assert_eq!(
         count_co_access_edges(&store).await,
-        5,
-        "all 5 pairs promoted"
+        10,
+        "5 pairs × 2 directions = 10 edges; all pairs promoted"
     );
 }
 
-/// E-04: cap=1 selects highest-count pair.
+/// T-BLR-07 (E-04): cap=1 selects highest-count pair. 1 pair × 2 = 2 edges.
 #[tokio::test]
 async fn test_cap_one_selects_highest_count() {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -603,10 +689,18 @@ async fn test_cap_one_selects_highest_count() {
 
     run_co_access_promotion_tick(&store, &make_config(1), 10).await;
 
-    assert_eq!(count_co_access_edges(&store).await, 1);
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        2,
+        "1 pair × 2 directions = 2 edges"
+    );
     assert!(
         fetch_co_access_edge(&store, 1, 2).await.is_some(),
-        "count=5 pair must be the one selected"
+        "forward edge present"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 2, 1).await.is_some(),
+        "reverse edge present"
     );
 }
 
@@ -633,4 +727,106 @@ async fn test_self_loop_pair_no_panic() {
 
     // Must not panic regardless of whether the row was inserted
     run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+}
+
+// ---------------------------------------------------------------------------
+// Group I: Bidirectional Assertions (crt-035)
+// ---------------------------------------------------------------------------
+
+/// T-NEW-01: AC-01, AC-02: both directions inserted with equal weight on a fresh pair.
+#[tokio::test]
+async fn test_bidirectional_edges_inserted_same_weight() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    // Single qualifying pair: count=5, max_count=5, new_weight=1.0
+    seed_co_access(&store, 1, 2, 5).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        2,
+        "both directions must be inserted"
+    );
+    let fwd = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("forward edge (1→2) must exist");
+    let rev = fetch_co_access_edge(&store, 2, 1)
+        .await
+        .expect("reverse edge (2→1) must exist");
+    assert!(
+        (fwd.weight - 1.0).abs() < 1e-9,
+        "forward weight must be 1.0"
+    );
+    assert!(
+        (rev.weight - 1.0).abs() < 1e-9,
+        "reverse weight must be 1.0"
+    );
+    assert!(
+        (fwd.weight - rev.weight).abs() < 1e-9,
+        "both directions must carry equal weight"
+    );
+}
+
+/// T-NEW-02: AC-03, FR-12, R-05: pre-seeded stale forward and reverse edges both
+/// converge on tick when drift exceeds delta.
+#[tokio::test]
+async fn test_bidirectional_both_directions_updated_when_drift_exceeds_delta() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    // Pre-seed asymmetric stale weights (simulates a partial prior tick failure).
+    seed_graph_edge(&store, 1, 2, 0.5).await; // forward: delta = |1.0 - 0.5| = 0.5 > 0.1
+    seed_graph_edge(&store, 2, 1, 0.2).await; // reverse: delta = |1.0 - 0.2| = 0.8 > 0.1
+    // Single pair with count=10 → new_weight = 1.0 (max is itself).
+    seed_co_access(&store, 1, 2, 10).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    let fwd = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("forward edge must exist");
+    let rev = fetch_co_access_edge(&store, 2, 1)
+        .await
+        .expect("reverse edge must exist");
+    assert!(
+        (fwd.weight - 1.0).abs() < 1e-9,
+        "forward weight must be updated from 0.5 to 1.0"
+    );
+    assert!(
+        (rev.weight - 1.0).abs() < 1e-9,
+        "reverse weight must be updated from 0.2 to 1.0"
+    );
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        2,
+        "exactly 2 rows: both directions present"
+    );
+}
+
+/// T-NEW-03: AC-05, FR-05: tracing summary emits promoted_pairs, edges_inserted,
+/// edges_updated structured fields.
+#[tracing_test::traced_test]
+#[tokio::test]
+async fn test_log_format_promoted_pairs_and_edges_inserted() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+    // Two qualifying pairs, all fresh: 2 pairs × 2 directions = 4 inserts, 0 updates.
+    seed_co_access(&store, 1, 2, 5).await;
+    seed_co_access(&store, 3, 4, 4).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    // Structured key-value fields in the tracing::info! record.
+    assert!(
+        logs_contain("promoted_pairs=2") || logs_contain("promoted_pairs: 2"),
+        "log must contain promoted_pairs=2"
+    );
+    assert!(
+        logs_contain("edges_inserted=4") || logs_contain("edges_inserted: 4"),
+        "log must contain edges_inserted=4 (2 pairs × 2 directions)"
+    );
+    assert!(
+        logs_contain("edges_updated=0") || logs_contain("edges_updated: 0"),
+        "log must contain edges_updated=0 (all fresh inserts)"
+    );
 }

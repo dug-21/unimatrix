@@ -15,8 +15,8 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 17 to 18 by crt-033 (CYCLE_REVIEW_INDEX).
-pub const CURRENT_SCHEMA_VERSION: u64 = 18;
+/// Current schema version. Incremented from 18 to 19 by crt-035 (bidirectional CoAccess back-fill).
+pub const CURRENT_SCHEMA_VERSION: u64 = 19;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -622,7 +622,68 @@ async fn run_main_migrations(
             })?;
     }
 
-    // Update schema_version counter to CURRENT_SCHEMA_VERSION (18).
+    // v18 → v19: bidirectional CoAccess edges back-fill (crt-035).
+    //
+    // Inserts a reverse edge (b→a) for every forward-only CoAccess edge (a→b)
+    // in GRAPH_EDGES where:
+    //   - relation_type = 'CoAccess'   (only CoAccess; Supersedes/Supports/Contradicts untouched)
+    //   - source = 'co_access'         (only tick/bootstrap managed edges; excludes any manual rows)
+    //   - the reverse (b→a) does not already exist  (NOT EXISTS guard, D4)
+    //
+    // INSERT OR IGNORE: UNIQUE(source_id, target_id, relation_type) provides a second
+    // idempotency layer — concurrent or repeated runs produce no duplicates and no errors.
+    //
+    // created_by is copied from the forward edge (D1): 'bootstrap' for crt-030/v13 bootstrap
+    // edges; 'tick' for crt-034 tick-managed edges. created_by tracks relationship origin,
+    // not code path.
+    //
+    // created_at = strftime('%s','now'): records when the reverse row was written, not
+    // when the relationship was first observed (EC-06 design decision).
+    //
+    // bootstrap_only = 0: reverse edges are always included in build_typed_relation_graph
+    // reads (which filter out bootstrap_only=1 rows). bootstrap_only=1 is reserved for
+    // edges created solely for the bootstrap analytic snapshot and excluded from live PPR.
+    if current_version < 19 {
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             SELECT
+                 g.target_id          AS source_id,
+                 g.source_id          AS target_id,
+                 'CoAccess'           AS relation_type,
+                 g.weight             AS weight,
+                 strftime('%s','now') AS created_at,
+                 g.created_by         AS created_by,
+                 'co_access'          AS source,
+                 0                    AS bootstrap_only
+             FROM graph_edges g
+             WHERE g.relation_type = 'CoAccess'
+               AND g.source = 'co_access'
+               AND NOT EXISTS (
+                 SELECT 1 FROM graph_edges rev
+                 WHERE rev.source_id = g.target_id
+                   AND rev.target_id = g.source_id
+                   AND rev.relation_type = 'CoAccess'
+               )",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // Bump the in-transaction schema_version to 19 so that if a subsequent
+        // migration block is added later, it observes the correct version baseline.
+        sqlx::query("UPDATE counters SET value = 19 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // Update schema_version counter to CURRENT_SCHEMA_VERSION (19).
     sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', ?1)")
         .bind(CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut **txn)

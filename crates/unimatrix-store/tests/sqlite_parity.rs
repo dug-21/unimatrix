@@ -1009,14 +1009,15 @@ async fn test_sql_analytics_query() {
 // Updated to 16 for col-025 (cycle_events.goal column).
 // Updated to 17 for col-028 (query_log.phase column). Uses >= per pattern #2933.
 // Updated to 18 for crt-033 (cycle_review_index table).
+// Updated to 19 for crt-035 (bidirectional CoAccess back-fill).
 #[tokio::test]
 async fn test_schema_version_is_14() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 18,
-        "schema version must be 18 after crt-033 (was 17 after col-028)"
+        version, 19,
+        "schema version must be 19 after crt-035 (was 18 after crt-033)"
     );
     store.close().await.unwrap();
 }

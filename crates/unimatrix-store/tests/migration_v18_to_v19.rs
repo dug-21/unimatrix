@@ -1,0 +1,814 @@
+//! Integration tests for the v18→v19 schema migration (crt-035).
+//!
+//! Covers: MIG-U-01 (CURRENT_SCHEMA_VERSION = 19), MIG-U-02 (fresh DB creates v19),
+//! MIG-U-03 (bootstrap-era back-fill), MIG-U-04 (tick-era back-fill),
+//! MIG-U-05 (non-CoAccess edges unaffected), MIG-U-06 (idempotency),
+//! MIG-U-07 (empty graph_edges no-op).
+//!
+//! Pattern: create a v18-shaped database (matching post-v17→v18 migration schema),
+//! open with current SqlxStore to trigger v18→v19 migration, assert schema state
+//! and edge counts.
+//!
+//! GATE-3B-03: EXPLAIN QUERY PLAN output for back-fill NOT EXISTS sub-join.
+//!
+//! Run against a v19-schema tempfile DB:
+//!   EXPLAIN QUERY PLAN
+//!   INSERT OR IGNORE INTO graph_edges (source_id, target_id, relation_type,
+//!       weight, created_at, created_by, source, bootstrap_only)
+//!   SELECT g.target_id, g.source_id, 'CoAccess', g.weight,
+//!          strftime('%s','now'), g.created_by, 'co_access', 0
+//!   FROM graph_edges g
+//!   WHERE g.relation_type = 'CoAccess'
+//!     AND g.source = 'co_access'
+//!     AND NOT EXISTS (
+//!       SELECT 1 FROM graph_edges rev
+//!       WHERE rev.source_id = g.target_id
+//!         AND rev.target_id = g.source_id
+//!         AND rev.relation_type = 'CoAccess'
+//!     )
+//!
+//! Captured output (SQLite 3.40.1):
+//!   QUERY PLAN
+//!   |--SEARCH g USING INDEX idx_graph_edges_relation_type (relation_type=?)
+//!   `--CORRELATED SCALAR SUBQUERY 1
+//!      `--SEARCH rev USING COVERING INDEX sqlite_autoindex_graph_edges_1
+//!                  (source_id=? AND target_id=? AND relation_type=?)
+//!
+//! Result: NOT EXISTS sub-select uses SEARCH via sqlite_autoindex_graph_edges_1
+//! (the UNIQUE B-tree on source_id, target_id, relation_type). No SCAN (full table
+//! scan) detected. No composite covering index required. GATE-3B-03 PASSED.
+
+#![cfg(feature = "test-support")]
+
+use std::path::Path;
+
+use sqlx::ConnectOptions as _;
+use sqlx::sqlite::SqliteConnectOptions;
+use tempfile::TempDir;
+use unimatrix_store::SqlxStore;
+use unimatrix_store::pool_config::PoolConfig;
+
+// ---------------------------------------------------------------------------
+// V18 database builder
+// ---------------------------------------------------------------------------
+
+/// Create a v18-shaped database at the given path.
+///
+/// Contains all tables present at v18: all v17 tables + `cycle_review_index`.
+/// schema_version = 18. The `graph_edges` table has no rows — callers insert
+/// rows as needed per test scenario.
+async fn create_v18_database(path: &Path) {
+    let opts = SqliteConnectOptions::new()
+        .filename(path)
+        .create_if_missing(true);
+
+    let mut conn = opts.connect().await.expect("open v18 setup conn");
+
+    sqlx::query("PRAGMA journal_mode = WAL")
+        .execute(&mut conn)
+        .await
+        .expect("wal");
+    sqlx::query("PRAGMA foreign_keys = ON")
+        .execute(&mut conn)
+        .await
+        .expect("fk");
+
+    for ddl in &[
+        "CREATE TABLE counters (
+            name TEXT PRIMARY KEY,
+            value INTEGER NOT NULL
+        )",
+        "CREATE TABLE entries (
+            id              INTEGER PRIMARY KEY,
+            title           TEXT    NOT NULL,
+            content         TEXT    NOT NULL,
+            topic           TEXT    NOT NULL,
+            category        TEXT    NOT NULL,
+            source          TEXT    NOT NULL,
+            status          INTEGER NOT NULL DEFAULT 0,
+            confidence      REAL    NOT NULL DEFAULT 0.0,
+            created_at      INTEGER NOT NULL,
+            updated_at      INTEGER NOT NULL,
+            last_accessed_at INTEGER NOT NULL DEFAULT 0,
+            access_count    INTEGER NOT NULL DEFAULT 0,
+            supersedes      INTEGER,
+            superseded_by   INTEGER,
+            correction_count INTEGER NOT NULL DEFAULT 0,
+            embedding_dim   INTEGER NOT NULL DEFAULT 0,
+            created_by      TEXT    NOT NULL DEFAULT '',
+            modified_by     TEXT    NOT NULL DEFAULT '',
+            content_hash    TEXT    NOT NULL DEFAULT '',
+            previous_hash   TEXT    NOT NULL DEFAULT '',
+            version         INTEGER NOT NULL DEFAULT 0,
+            feature_cycle   TEXT    NOT NULL DEFAULT '',
+            trust_source    TEXT    NOT NULL DEFAULT '',
+            helpful_count   INTEGER NOT NULL DEFAULT 0,
+            unhelpful_count INTEGER NOT NULL DEFAULT 0,
+            pre_quarantine_status INTEGER
+        )",
+        "CREATE TABLE entry_tags (
+            entry_id INTEGER NOT NULL,
+            tag      TEXT    NOT NULL,
+            PRIMARY KEY (entry_id, tag),
+            FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+        )",
+        "CREATE TABLE co_access (
+            entry_id_a   INTEGER NOT NULL,
+            entry_id_b   INTEGER NOT NULL,
+            count        INTEGER NOT NULL DEFAULT 1,
+            last_updated INTEGER NOT NULL,
+            PRIMARY KEY (entry_id_a, entry_id_b),
+            CHECK (entry_id_a < entry_id_b)
+        )",
+        "CREATE TABLE vector_map (
+            entry_id INTEGER PRIMARY KEY,
+            hnsw_data_id INTEGER NOT NULL
+        )",
+        "CREATE TABLE feature_entries (
+            feature_id TEXT NOT NULL,
+            entry_id   INTEGER NOT NULL,
+            phase      TEXT,
+            PRIMARY KEY (feature_id, entry_id)
+        )",
+        "CREATE TABLE outcome_index (
+            feature_cycle TEXT NOT NULL,
+            entry_id INTEGER NOT NULL,
+            PRIMARY KEY (feature_cycle, entry_id)
+        )",
+        "CREATE TABLE signal_queue (
+            signal_id     INTEGER PRIMARY KEY,
+            session_id    TEXT    NOT NULL,
+            created_at    INTEGER NOT NULL,
+            entry_ids     TEXT    NOT NULL DEFAULT '[]',
+            signal_type   INTEGER NOT NULL,
+            signal_source INTEGER NOT NULL
+        )",
+        "CREATE TABLE sessions (
+            session_id       TEXT    PRIMARY KEY,
+            feature_cycle    TEXT,
+            agent_role       TEXT,
+            started_at       INTEGER NOT NULL,
+            ended_at         INTEGER,
+            status           INTEGER NOT NULL DEFAULT 0,
+            compaction_count INTEGER NOT NULL DEFAULT 0,
+            outcome          TEXT,
+            total_injections INTEGER NOT NULL DEFAULT 0,
+            keywords         TEXT
+        )",
+        "CREATE TABLE injection_log (
+            log_id     INTEGER PRIMARY KEY,
+            session_id TEXT    NOT NULL,
+            entry_id   INTEGER NOT NULL,
+            confidence REAL    NOT NULL,
+            timestamp  INTEGER NOT NULL
+        )",
+        "CREATE TABLE agent_registry (
+            agent_id           TEXT    PRIMARY KEY,
+            trust_level        INTEGER NOT NULL,
+            capabilities       TEXT    NOT NULL DEFAULT '[]',
+            allowed_topics     TEXT,
+            allowed_categories TEXT,
+            enrolled_at        INTEGER NOT NULL,
+            last_seen_at       INTEGER NOT NULL,
+            active             INTEGER NOT NULL DEFAULT 1
+        )",
+        "CREATE TABLE audit_log (
+            event_id   INTEGER PRIMARY KEY,
+            timestamp  INTEGER NOT NULL,
+            session_id TEXT    NOT NULL,
+            agent_id   TEXT    NOT NULL,
+            operation  TEXT    NOT NULL,
+            target_ids TEXT    NOT NULL DEFAULT '[]',
+            outcome    INTEGER NOT NULL,
+            detail     TEXT    NOT NULL DEFAULT ''
+        )",
+        "CREATE TABLE observations (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id      TEXT    NOT NULL,
+            ts_millis       INTEGER NOT NULL,
+            hook            TEXT    NOT NULL,
+            tool            TEXT,
+            input           TEXT,
+            response_size   INTEGER,
+            response_snippet TEXT,
+            topic_signal    TEXT
+        )",
+        "CREATE TABLE observation_metrics (
+            feature_cycle                      TEXT    PRIMARY KEY,
+            computed_at                        INTEGER NOT NULL DEFAULT 0,
+            total_tool_calls                   INTEGER NOT NULL DEFAULT 0,
+            total_duration_secs                INTEGER NOT NULL DEFAULT 0,
+            session_count                      INTEGER NOT NULL DEFAULT 0,
+            search_miss_rate                   REAL    NOT NULL DEFAULT 0.0,
+            edit_bloat_total_kb                REAL    NOT NULL DEFAULT 0.0,
+            edit_bloat_ratio                   REAL    NOT NULL DEFAULT 0.0,
+            permission_friction_events         INTEGER NOT NULL DEFAULT 0,
+            bash_for_search_count              INTEGER NOT NULL DEFAULT 0,
+            cold_restart_events                INTEGER NOT NULL DEFAULT 0,
+            coordinator_respawn_count          INTEGER NOT NULL DEFAULT 0,
+            parallel_call_rate                 REAL    NOT NULL DEFAULT 0.0,
+            context_load_before_first_write_kb REAL    NOT NULL DEFAULT 0.0,
+            total_context_loaded_kb            REAL    NOT NULL DEFAULT 0.0,
+            post_completion_work_pct           REAL    NOT NULL DEFAULT 0.0,
+            follow_up_issues_created           INTEGER NOT NULL DEFAULT 0,
+            knowledge_entries_stored           INTEGER NOT NULL DEFAULT 0,
+            sleep_workaround_count             INTEGER NOT NULL DEFAULT 0,
+            agent_hotspot_count                INTEGER NOT NULL DEFAULT 0,
+            friction_hotspot_count             INTEGER NOT NULL DEFAULT 0,
+            session_hotspot_count              INTEGER NOT NULL DEFAULT 0,
+            scope_hotspot_count                INTEGER NOT NULL DEFAULT 0,
+            domain_metrics_json                TEXT    NULL
+        )",
+        "CREATE TABLE observation_phase_metrics (
+            feature_cycle   TEXT    NOT NULL,
+            phase_name      TEXT    NOT NULL,
+            duration_secs   INTEGER NOT NULL DEFAULT 0,
+            tool_call_count INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (feature_cycle, phase_name),
+            FOREIGN KEY (feature_cycle) REFERENCES observation_metrics(feature_cycle) ON DELETE CASCADE
+        )",
+        "CREATE TABLE shadow_evaluations (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp         INTEGER NOT NULL,
+            rule_name         TEXT    NOT NULL,
+            rule_category     TEXT    NOT NULL,
+            neural_category   TEXT    NOT NULL,
+            neural_confidence REAL    NOT NULL,
+            convention_score  REAL    NOT NULL,
+            rule_accepted     INTEGER NOT NULL,
+            digest            BLOB
+        )",
+        "CREATE TABLE topic_deliveries (
+            topic TEXT PRIMARY KEY,
+            created_at INTEGER NOT NULL,
+            completed_at INTEGER,
+            status TEXT NOT NULL DEFAULT 'active',
+            github_issue INTEGER,
+            total_sessions INTEGER NOT NULL DEFAULT 0,
+            total_tool_calls INTEGER NOT NULL DEFAULT 0,
+            total_duration_secs INTEGER NOT NULL DEFAULT 0,
+            phases_completed TEXT
+        )",
+        "CREATE TABLE query_log (
+            query_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            query_text TEXT NOT NULL,
+            ts INTEGER NOT NULL,
+            result_count INTEGER NOT NULL,
+            result_entry_ids TEXT,
+            similarity_scores TEXT,
+            retrieval_mode TEXT,
+            source TEXT NOT NULL,
+            phase TEXT
+        )",
+        "CREATE TABLE graph_edges (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_id      INTEGER NOT NULL,
+            target_id      INTEGER NOT NULL,
+            relation_type  TEXT    NOT NULL,
+            weight         REAL    NOT NULL DEFAULT 1.0,
+            created_at     INTEGER NOT NULL,
+            created_by     TEXT    NOT NULL DEFAULT '',
+            source         TEXT    NOT NULL DEFAULT '',
+            bootstrap_only INTEGER NOT NULL DEFAULT 0,
+            metadata       TEXT    DEFAULT NULL,
+            UNIQUE(source_id, target_id, relation_type)
+        )",
+        "CREATE TABLE cycle_events (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            cycle_id   TEXT    NOT NULL,
+            seq        INTEGER NOT NULL,
+            event_type TEXT    NOT NULL,
+            phase      TEXT,
+            outcome    TEXT,
+            next_phase TEXT,
+            timestamp  INTEGER NOT NULL,
+            goal       TEXT
+        )",
+        // cycle_review_index: added by v17→v18 migration (crt-033). Present in v18 shape.
+        "CREATE TABLE cycle_review_index (
+            feature_cycle         TEXT    PRIMARY KEY,
+            schema_version        INTEGER NOT NULL,
+            computed_at           INTEGER NOT NULL,
+            raw_signals_available INTEGER NOT NULL DEFAULT 1,
+            summary_json          TEXT    NOT NULL
+        )",
+        "CREATE INDEX idx_entries_topic ON entries(topic)",
+        "CREATE INDEX idx_entries_category ON entries(category)",
+        "CREATE INDEX idx_entries_status ON entries(status)",
+        "CREATE INDEX idx_entries_created_at ON entries(created_at)",
+        "CREATE INDEX idx_entry_tags_tag ON entry_tags(tag)",
+        "CREATE INDEX idx_entry_tags_entry_id ON entry_tags(entry_id)",
+        "CREATE INDEX idx_co_access_b ON co_access(entry_id_b)",
+        "CREATE INDEX idx_sessions_feature_cycle ON sessions(feature_cycle)",
+        "CREATE INDEX idx_sessions_started_at ON sessions(started_at)",
+        "CREATE INDEX idx_injection_log_session ON injection_log(session_id)",
+        "CREATE INDEX idx_injection_log_entry ON injection_log(entry_id)",
+        "CREATE INDEX idx_audit_log_agent ON audit_log(agent_id)",
+        "CREATE INDEX idx_audit_log_timestamp ON audit_log(timestamp)",
+        "CREATE INDEX idx_observations_session ON observations(session_id)",
+        "CREATE INDEX idx_observations_ts ON observations(ts_millis)",
+        "CREATE INDEX idx_shadow_eval_ts ON shadow_evaluations(timestamp)",
+        "CREATE INDEX idx_query_log_session ON query_log(session_id)",
+        "CREATE INDEX idx_query_log_ts ON query_log(ts)",
+        "CREATE INDEX idx_query_log_phase ON query_log(phase)",
+        "CREATE INDEX idx_graph_edges_source_id ON graph_edges(source_id)",
+        "CREATE INDEX idx_graph_edges_target_id ON graph_edges(target_id)",
+        "CREATE INDEX idx_graph_edges_relation_type ON graph_edges(relation_type)",
+        "CREATE INDEX idx_cycle_events_cycle_id ON cycle_events (cycle_id)",
+    ] {
+        sqlx::query(ddl)
+            .execute(&mut conn)
+            .await
+            .expect("create table/index");
+    }
+
+    // Seed counters at v18.
+    for seed in &[
+        "INSERT INTO counters (name, value) VALUES ('schema_version', 18)",
+        "INSERT INTO counters (name, value) VALUES ('next_entry_id', 1)",
+        "INSERT INTO counters (name, value) VALUES ('next_signal_id', 0)",
+        "INSERT INTO counters (name, value) VALUES ('next_log_id', 0)",
+        "INSERT INTO counters (name, value) VALUES ('next_audit_event_id', 0)",
+    ] {
+        sqlx::query(seed)
+            .execute(&mut conn)
+            .await
+            .expect("seed counters");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Post-migration helpers
+// ---------------------------------------------------------------------------
+
+async fn read_schema_version(store: &SqlxStore) -> i64 {
+    sqlx::query_scalar::<_, i64>("SELECT value FROM counters WHERE name = 'schema_version'")
+        .fetch_one(store.read_pool_test())
+        .await
+        .expect("read schema_version")
+}
+
+/// Count graph_edges rows matching relation_type and source.
+async fn count_graph_edges(store: &SqlxStore, relation_type: &str, source: &str) -> i64 {
+    sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM graph_edges WHERE relation_type = ? AND source = ?",
+    )
+    .bind(relation_type)
+    .bind(source)
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("count_graph_edges")
+}
+
+/// Check whether a specific directed edge exists.
+async fn edge_exists(
+    store: &SqlxStore,
+    source_id: i64,
+    target_id: i64,
+    relation_type: &str,
+) -> bool {
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM graph_edges
+         WHERE source_id = ? AND target_id = ? AND relation_type = ?",
+    )
+    .bind(source_id)
+    .bind(target_id)
+    .bind(relation_type)
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("edge_exists");
+    count > 0
+}
+
+// ---------------------------------------------------------------------------
+// MIG-U-01: CURRENT_SCHEMA_VERSION == 19 (AC-09, R-10)
+// ---------------------------------------------------------------------------
+
+/// Verify CURRENT_SCHEMA_VERSION constant is exactly 19.
+/// Non-async: no fixture required.
+#[test]
+fn test_current_schema_version_is_19() {
+    assert_eq!(
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
+        19,
+        "CURRENT_SCHEMA_VERSION must be 19"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// MIG-U-02: Fresh database creates schema v19 (AC-09, R-10)
+// ---------------------------------------------------------------------------
+
+/// Fresh SqlxStore::open() must land at schema v19 (create_tables_if_needed path).
+#[tokio::test]
+async fn test_fresh_db_creates_schema_v19() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open fresh store");
+
+    assert_eq!(
+        read_schema_version(&store).await,
+        19,
+        "fresh database must be at schema v19"
+    );
+
+    // graph_edges table must exist with no rows (fresh DB, data-only migration).
+    let row_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges")
+        .fetch_one(store.read_pool_test())
+        .await
+        .expect("count graph_edges");
+    assert_eq!(row_count, 0, "fresh database graph_edges must be empty");
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-U-03: Bootstrap-era back-fill (AC-06, R-01 multi-row correctness)
+// ---------------------------------------------------------------------------
+
+/// v18 DB with bootstrap-era forward-only CoAccess edges: migration must insert
+/// the reverse edge for each pair. Covers R-04 (zero-weight edge copied faithfully).
+#[tokio::test]
+async fn test_v18_to_v19_back_fills_bootstrap_era_edges() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v18_database(&db_path).await;
+
+    // Arrange: three bootstrap-era forward CoAccess edges + one zero-weight edge (R-04).
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+        for (src, tgt, weight) in &[(1i64, 2i64, 0.8f64), (3, 4, 0.6), (5, 6, 1.0), (7, 8, 0.0)] {
+            sqlx::query(
+                "INSERT INTO graph_edges
+                     (source_id, target_id, relation_type, weight, created_at,
+                      created_by, source, bootstrap_only)
+                 VALUES (?, ?, 'CoAccess', ?, 0, 'bootstrap', 'co_access', 0)",
+            )
+            .bind(src)
+            .bind(tgt)
+            .bind(weight)
+            .execute(&mut conn)
+            .await
+            .expect("insert forward edge");
+        }
+
+        // Pre-condition: no reverse edges yet.
+        let rev: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM graph_edges
+             WHERE source_id IN (2, 4, 6, 8) AND relation_type = 'CoAccess'",
+        )
+        .fetch_one(&mut conn)
+        .await
+        .expect("pre-check reverses");
+        assert_eq!(rev, 0, "no reverse edges must exist before migration");
+    }
+
+    // Act: open triggers v18→v19 migration.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open after migration");
+
+    // Assert: schema_version == 19.
+    assert_eq!(read_schema_version(&store).await, 19);
+
+    // Assert: 8 CoAccess edges total (4 forward + 4 reverse).
+    // Even count is the invariant: any odd value here is a bug (crt-035 key invariant #5).
+    assert_eq!(
+        count_graph_edges(&store, "CoAccess", "co_access").await,
+        8,
+        "4 pairs × 2 directions = 8 CoAccess edges; odd count indicates back-fill bug"
+    );
+
+    // Assert each reverse edge exists.
+    assert!(
+        edge_exists(&store, 2, 1, "CoAccess").await,
+        "reverse (2→1) must exist"
+    );
+    assert!(
+        edge_exists(&store, 4, 3, "CoAccess").await,
+        "reverse (4→3) must exist"
+    );
+    assert!(
+        edge_exists(&store, 6, 5, "CoAccess").await,
+        "reverse (6→5) must exist"
+    );
+    assert!(
+        edge_exists(&store, 8, 7, "CoAccess").await,
+        "reverse (8→7) must exist"
+    );
+
+    // Assert forward edges still present.
+    assert!(
+        edge_exists(&store, 1, 2, "CoAccess").await,
+        "forward (1→2) must survive"
+    );
+    assert!(
+        edge_exists(&store, 3, 4, "CoAccess").await,
+        "forward (3→4) must survive"
+    );
+
+    // Assert reverse edge (2→1) carries correct field values (D1: created_by copied from forward).
+    let (weight, created_by, source_col, bootstrap_only): (f64, String, String, i64) =
+        sqlx::query_as(
+            "SELECT weight, created_by, source, bootstrap_only FROM graph_edges
+             WHERE source_id = 2 AND target_id = 1 AND relation_type = 'CoAccess'",
+        )
+        .fetch_one(store.read_pool_test())
+        .await
+        .expect("fetch reverse edge (2→1)");
+    assert!(
+        (weight - 0.8).abs() < 1e-9,
+        "reverse weight must match forward (0.8)"
+    );
+    assert_eq!(
+        created_by, "bootstrap",
+        "created_by must be copied from forward (D1)"
+    );
+    assert_eq!(source_col, "co_access");
+    assert_eq!(bootstrap_only, 0);
+
+    // R-04: zero-weight edge must be copied faithfully (no floor applied).
+    let (zero_weight,): (f64,) = sqlx::query_as(
+        "SELECT weight FROM graph_edges
+         WHERE source_id = 8 AND target_id = 7 AND relation_type = 'CoAccess'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("fetch zero-weight reverse edge");
+    assert!(
+        zero_weight.abs() < 1e-9,
+        "zero-weight reverse edge must have weight == 0.0, got {zero_weight}"
+    );
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-U-04: Tick-era back-fill (AC-06)
+// ---------------------------------------------------------------------------
+
+/// v18 DB with tick-era forward-only CoAccess edges: migration must insert the
+/// reverse edge with created_by='tick' (D1: provenance copied from forward edge).
+#[tokio::test]
+async fn test_v18_to_v19_back_fills_tick_era_edges() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v18_database(&db_path).await;
+
+    // Arrange: two tick-era forward CoAccess edges.
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+        for (src, tgt, weight) in &[(10i64, 20i64, 0.5f64), (30i64, 40i64, 0.75f64)] {
+            sqlx::query(
+                "INSERT INTO graph_edges
+                     (source_id, target_id, relation_type, weight, created_at,
+                      created_by, source, bootstrap_only)
+                 VALUES (?, ?, 'CoAccess', ?, 0, 'tick', 'co_access', 0)",
+            )
+            .bind(src)
+            .bind(tgt)
+            .bind(weight)
+            .execute(&mut conn)
+            .await
+            .expect("insert tick forward edge");
+        }
+    }
+
+    // Act: open triggers v18→v19 migration.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open after migration");
+
+    // Assert: schema_version == 19.
+    assert_eq!(read_schema_version(&store).await, 19);
+
+    // Assert: 4 CoAccess edges (2 forward + 2 reverse). Even count invariant.
+    assert_eq!(
+        count_graph_edges(&store, "CoAccess", "co_access").await,
+        4,
+        "2 pairs × 2 directions = 4; odd count indicates back-fill bug"
+    );
+
+    // Assert: reverse edges exist.
+    assert!(
+        edge_exists(&store, 20, 10, "CoAccess").await,
+        "reverse (20→10) must exist"
+    );
+    assert!(
+        edge_exists(&store, 40, 30, "CoAccess").await,
+        "reverse (40→30) must exist"
+    );
+
+    // Assert: created_by='tick' on reverse edge (D1: provenance copied from forward).
+    let (created_by, weight): (String, f64) = sqlx::query_as(
+        "SELECT created_by, weight FROM graph_edges
+         WHERE source_id = 20 AND target_id = 10 AND relation_type = 'CoAccess'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("fetch reverse tick edge");
+    assert_eq!(
+        created_by, "tick",
+        "tick-era reverse edge must have created_by='tick' (D1)"
+    );
+    assert!(
+        (weight - 0.5).abs() < 1e-9,
+        "tick reverse weight must match forward (0.5)"
+    );
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-U-05: Non-CoAccess edges unaffected (AC-08)
+// ---------------------------------------------------------------------------
+
+/// The back-fill must NOT reverse Supersedes, Contradicts, or Supports edges.
+/// Only CoAccess rows with source='co_access' gain reverse edges.
+#[tokio::test]
+async fn test_v18_to_v19_does_not_touch_non_coaccess_edges() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v18_database(&db_path).await;
+
+    // Arrange: one CoAccess forward edge + three non-CoAccess edges.
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+
+        // CoAccess forward edge (will gain reverse).
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (1, 2, 'CoAccess', 1.0, 0, 'tick', 'co_access', 0)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert CoAccess");
+
+        // Non-CoAccess edges (must NOT gain reverses).
+        for (src, tgt, rel_type) in &[
+            (3i64, 4i64, "Supersedes"),
+            (5, 6, "Contradicts"),
+            (7, 8, "Supports"),
+        ] {
+            sqlx::query(
+                "INSERT INTO graph_edges
+                     (source_id, target_id, relation_type, weight, created_at,
+                      created_by, source, bootstrap_only)
+                 VALUES (?, ?, ?, 1.0, 0, 'system', 'manual', 0)",
+            )
+            .bind(src)
+            .bind(tgt)
+            .bind(*rel_type)
+            .execute(&mut conn)
+            .await
+            .expect("insert non-CoAccess edge");
+        }
+    }
+
+    // Act: open triggers v18→v19 migration.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open after migration");
+
+    // Assert: total edge count == 5 (1 original CoAccess + 1 new reverse + 3 non-CoAccess).
+    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges")
+        .fetch_one(store.read_pool_test())
+        .await
+        .expect("total count");
+    assert_eq!(
+        total, 5,
+        "1 CoAccess fwd + 1 CoAccess rev + 3 non-CoAccess = 5 total edges"
+    );
+
+    // Assert: CoAccess reverse was created.
+    assert!(
+        edge_exists(&store, 2, 1, "CoAccess").await,
+        "CoAccess reverse (2→1) must exist"
+    );
+
+    // Assert: no reverse was created for non-CoAccess edge types (EC-03).
+    assert!(
+        !edge_exists(&store, 4, 3, "Supersedes").await,
+        "Supersedes reverse must NOT be back-filled (EC-03)"
+    );
+    assert!(
+        !edge_exists(&store, 6, 5, "Contradicts").await,
+        "Contradicts reverse must NOT be back-filled (EC-03)"
+    );
+    assert!(
+        !edge_exists(&store, 8, 7, "Supports").await,
+        "Supports reverse must NOT be back-filled (EC-03)"
+    );
+
+    // Assert: each non-CoAccess type still has exactly 1 row.
+    for rel_type in &["Supersedes", "Contradicts", "Supports"] {
+        let cnt: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges WHERE relation_type = ?")
+                .bind(*rel_type)
+                .fetch_one(store.read_pool_test())
+                .await
+                .expect("count by type");
+        assert_eq!(cnt, 1, "{rel_type} must have exactly 1 row after migration");
+    }
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-U-06: Idempotency — second open does not duplicate reverse edges (AC-07, R-09)
+// ---------------------------------------------------------------------------
+
+/// Opening the same v18→v19-migrated database a second time must not add duplicate
+/// reverse edges. Version guard (current == 19) skips the migration block.
+/// INSERT OR IGNORE + NOT EXISTS provide additional safety layers.
+#[tokio::test]
+async fn test_v18_to_v19_migration_idempotent() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v18_database(&db_path).await;
+
+    // Arrange: two forward-only CoAccess edges.
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+        for (src, tgt) in &[(1i64, 2i64), (3, 4)] {
+            sqlx::query(
+                "INSERT INTO graph_edges
+                     (source_id, target_id, relation_type, weight, created_at,
+                      created_by, source, bootstrap_only)
+                 VALUES (?, ?, 'CoAccess', 0.5, 0, 'bootstrap', 'co_access', 0)",
+            )
+            .bind(src)
+            .bind(tgt)
+            .execute(&mut conn)
+            .await
+            .expect("insert forward edge");
+        }
+    }
+
+    // Run 1: applies v18→v19 back-fill.
+    {
+        let store = SqlxStore::open(&db_path, PoolConfig::default())
+            .await
+            .expect("first open");
+        assert_eq!(read_schema_version(&store).await, 19);
+        assert_eq!(
+            count_graph_edges(&store, "CoAccess", "co_access").await,
+            4,
+            "2 pairs × 2 directions = 4 after first open"
+        );
+        store.close().await.unwrap();
+    }
+
+    // Run 2: version guard (current == 19) prevents re-run; edge count must be unchanged.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("second open must succeed (idempotency)");
+
+    assert_eq!(read_schema_version(&store).await, 19);
+    assert_eq!(
+        count_graph_edges(&store, "CoAccess", "co_access").await,
+        4,
+        "second open must not duplicate edges — NOT EXISTS + UNIQUE guard idempotent (NFR-02); \
+         odd count would indicate a back-fill bug"
+    );
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-U-07: Empty graph_edges at migration time — no-op (EC-01)
+// ---------------------------------------------------------------------------
+
+/// When graph_edges is empty at v18→v19 migration time, the back-fill SELECT
+/// returns zero rows and the INSERT inserts nothing. Migration completes without error.
+#[tokio::test]
+async fn test_v18_to_v19_empty_graph_edges_is_noop() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v18_database(&db_path).await;
+    // No graph_edges rows inserted — empty table at migration time (EC-01).
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("migration on empty graph_edges must not error");
+
+    assert_eq!(read_schema_version(&store).await, 19);
+
+    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges")
+        .fetch_one(store.read_pool_test())
+        .await
+        .expect("count graph_edges");
+    assert_eq!(total, 0, "back-fill on empty table must be a no-op (EC-01)");
+
+    store.close().await.unwrap();
+}

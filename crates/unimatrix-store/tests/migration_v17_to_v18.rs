@@ -327,15 +327,16 @@ async fn cycle_review_index_exists(store: &SqlxStore) -> bool {
 }
 
 // ---------------------------------------------------------------------------
-// MIG-U-01: CURRENT_SCHEMA_VERSION constant == 18 (AC-01, R-01)
+// MIG-U-01: CURRENT_SCHEMA_VERSION constant >= 18 (AC-01, R-01)
+// Note: renamed from test_current_schema_version_is_18 to test_current_schema_version_is_at_least_18
+// per pattern #3803 — exact-value assertion breaks on every subsequent version bump.
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_current_schema_version_is_18() {
-    assert_eq!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
-        18,
-        "CURRENT_SCHEMA_VERSION must be 18"
+fn test_current_schema_version_is_at_least_18() {
+    assert!(
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 18,
+        "CURRENT_SCHEMA_VERSION must be >= 18"
     );
 }
 
@@ -354,11 +355,10 @@ async fn test_fresh_db_creates_schema_v18() {
         .await
         .expect("open fresh store");
 
-    // Assert: schema_version == 18
-    assert_eq!(
-        read_schema_version(&store).await,
-        18,
-        "fresh database must be at schema v18"
+    // Assert: schema_version >= 18 (fresh DB migrates to CURRENT_SCHEMA_VERSION)
+    assert!(
+        read_schema_version(&store).await >= 18,
+        "fresh database must be at schema v18 or later"
     );
 
     // Assert: cycle_review_index table present (fresh schema has full DDL)
@@ -406,11 +406,10 @@ async fn test_v17_to_v18_migration_creates_table() {
         "cycle_review_index table must exist after v17→v18 migration (AC-02)"
     );
 
-    // Assert: schema_version == 18.
-    assert_eq!(
-        read_schema_version(&store).await,
-        18,
-        "schema_version must be 18 after v17→v18 migration"
+    // Assert: schema_version >= 18 (v17→v18 ran; further migrations may also run).
+    assert!(
+        read_schema_version(&store).await >= 18,
+        "schema_version must be >= 18 after v17→v18 migration"
     );
 
     store.close().await.unwrap();
@@ -504,11 +503,10 @@ async fn test_v17_to_v18_migration_preserves_existing_data() {
         .await
         .expect("open after migration");
 
-    // Assert: schema_version == 18 (confirming migration ran).
-    assert_eq!(
-        read_schema_version(&store).await,
-        18,
-        "schema_version must be 18 after migration"
+    // Assert: schema_version >= 18 (v17→v18 ran; further migrations may also run).
+    assert!(
+        read_schema_version(&store).await >= 18,
+        "schema_version must be >= 18 after migration"
     );
 
     // Assert: pre-existing entry is still readable (no data loss).
@@ -550,7 +548,7 @@ async fn test_v17_to_v18_migration_idempotent() {
             .await
             .expect("first open");
         assert!(cycle_review_index_exists(&store).await);
-        assert_eq!(read_schema_version(&store).await, 18);
+        assert!(read_schema_version(&store).await >= 18);
         store.close().await.unwrap();
     }
 
@@ -559,7 +557,7 @@ async fn test_v17_to_v18_migration_idempotent() {
         .await
         .expect("second open must succeed (idempotency)");
 
-    assert_eq!(read_schema_version(&store).await, 18);
+    assert!(read_schema_version(&store).await >= 18);
 
     // Exactly one cycle_review_index table (not two).
     let table_count: i64 = sqlx::query_scalar(
