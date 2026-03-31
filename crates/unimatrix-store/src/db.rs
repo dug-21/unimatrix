@@ -345,17 +345,22 @@ impl SqlxStore {
     /// Load the goal from the `cycle_start` event row for a given `cycle_id` (col-025).
     ///
     /// Returns:
-    ///   `Ok(Some(goal))` — cycle_start row exists with a non-NULL goal
-    ///   `Ok(None)`       — row absent, or goal IS NULL (caller omitted goal, or pre-v16 cycle)
+    ///   `Ok(Some(goal))` — at least one cycle_start row with a non-NULL goal exists
+    ///   `Ok(None)`       — no matching row, or all cycle_start rows have goal IS NULL
     ///   `Err(...)`       — DB infrastructure failure (caller should degrade to None)
+    ///
+    /// Semantics: first-written-goal-wins. Filters `goal IS NOT NULL` and orders
+    /// `ASC` so the earliest non-NULL goal is selected. A later NULL row (e.g. a
+    /// second swarm session opening the same feature_cycle without a goal) cannot
+    /// shadow the original goal (GH #468).
     ///
     /// Uses `idx_cycle_events_cycle_id` for a single indexed point lookup (pattern #3383).
     /// `LIMIT 1` guards against duplicate cycle_start rows (defensive, ADR-001).
     pub async fn get_cycle_start_goal(&self, cycle_id: &str) -> Result<Option<String>> {
         let result: Option<Option<String>> = sqlx::query_scalar::<_, Option<String>>(
             "SELECT goal FROM cycle_events
-             WHERE cycle_id = ?1 AND event_type = 'cycle_start'
-             ORDER BY timestamp DESC, seq DESC
+             WHERE cycle_id = ?1 AND event_type = 'cycle_start' AND goal IS NOT NULL
+             ORDER BY timestamp ASC, seq ASC
              LIMIT 1",
         )
         .bind(cycle_id)
