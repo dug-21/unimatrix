@@ -18,7 +18,7 @@ use unimatrix_observe::domain::DomainPackRegistry;
 
 use crate::infra::categories::CategoryAllowlist;
 use crate::infra::coherence;
-use crate::infra::config::InferenceConfig;
+use crate::infra::config::{InferenceConfig, RetentionConfig};
 use crate::infra::contradiction;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::rayon_pool::RayonPool;
@@ -29,6 +29,7 @@ use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
 use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::contradiction_cache::ContradictionScanCacheHandle;
+use unimatrix_store::cycle_review_index::CycleReviewRecord;
 
 /// Minimum number of voted entries required for empirical Bayesian prior estimation.
 ///
@@ -982,7 +983,8 @@ impl StatusService {
     /// 2. Confidence refresh (batch 500, 200ms wall-clock guard — crt-019)
     /// 2b. Empirical prior + spread computation (crt-019)
     /// 3. Graph compaction (if stale ratio > trigger)
-    /// 4. Observation file cleanup (60-day retention)
+    /// 4. Cycle-based activity GC (crt-036: replaces 60-day DELETE)
+    /// 4f. audit_log time-based GC
     /// 5. Stale session sweep + signal processing
     /// 6. Session GC (timeout + delete thresholds)
     ///
@@ -997,6 +999,7 @@ impl StatusService {
         entry_store: &Arc<Store>,
         pending_entries_analysis: &Arc<std::sync::Mutex<PendingEntriesAnalysis>>,
         inference_config: &InferenceConfig,
+        retention_config: &RetentionConfig, // NEW — crt-036
     ) -> Result<MaintenanceResult, ServiceError> {
         let now_ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -1369,18 +1372,180 @@ impl StatusService {
             }
         }
 
-        // 4. Observation retention cleanup (col-012: SQL DELETE)
+        // 4. Cycle-based activity GC (crt-036: replaces 60-day DELETE)
+        'gc_cycle_block: {
+            let k = retention_config.activity_detail_retention_cycles;
+            let max_per_tick = retention_config.max_cycles_per_tick;
+
+            // Resolve purgeable cycles and oldest retained computed_at for alignment check.
+            // list_purgeable_cycles returns (purgeable: Vec<String>, oldest_retained: Option<i64>).
+            // Errors here are non-fatal: log warn and skip the entire GC cycle loop this tick.
+            // Step 4f (audit_log GC) still runs unconditionally after this block.
+            let (purgeable_cycles, oldest_retained_computed_at) = match self
+                .store
+                .list_purgeable_cycles(k, max_per_tick)
+                .await
+            {
+                Ok(result) => result,
+                Err(e) => {
+                    tracing::warn!(error = %e, "cycle GC: list_purgeable_cycles failed; skipping GC this tick");
+                    break 'gc_cycle_block;
+                }
+            };
+
+            // PhaseFreqTable alignment guard (FR-10, ADR-003): advisory only — does not block GC.
+            // Emits tracing::warn! if query_log_lookback_days implies a window older than the
+            // oldest retained cycle's computed_at. Skipped when oldest_retained is None
+            // (fewer than K cycles reviewed; no pruning has occurred, no gap is possible).
+            run_phase_freq_table_alignment_check(
+                &oldest_retained_computed_at,
+                inference_config.query_log_lookback_days,
+                retention_config.activity_detail_retention_cycles,
+            );
+
+            let purgeable_count = purgeable_cycles.len();
+            tracing::info!(
+                k = k,
+                purgeable_count = purgeable_count,
+                capped_to = max_per_tick,
+                "cycle GC: pass starting"
+            );
+
+            let mut cycles_pruned: u32 = 0;
+            let mut cycles_skipped: u32 = 0;
+            let mut total_rows_deleted: u64 = 0;
+
+            // 4a-4e: Per-cycle loop
+            for cycle_id in &purgeable_cycles {
+                // 4a. crt-033 gate check: verify cycle_review_index row exists.
+                // Record is retained in scope for use in step 4c (raw_signals_available update).
+                let record = match self.store.get_cycle_review(cycle_id).await {
+                    Ok(Some(r)) => r, // gate passed: record retained in scope
+                    Ok(None) => {
+                        // Defense-in-depth: cycle was in purgeable set but has no review row.
+                        // Should not normally happen; skip and log warn (FR-04).
+                        tracing::warn!(
+                            cycle_id = %cycle_id,
+                            reason = "no cycle_review_index row",
+                            "cycle GC: gate skip"
+                        );
+                        cycles_skipped += 1;
+                        continue;
+                    }
+                    Err(e) => {
+                        // Transient read failure: skip cycle, continue to next (FR-04).
+                        tracing::warn!(
+                            cycle_id = %cycle_id,
+                            error = %e,
+                            "cycle GC: gate check error, skipping cycle"
+                        );
+                        cycles_skipped += 1;
+                        continue;
+                    }
+                };
+
+                // 4b. Execute per-cycle transaction: DELETE observations, query_log,
+                //     injection_log, sessions for this cycle. Connection released on return.
+                let stats = match self.store.gc_cycle_activity(cycle_id).await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        // Transaction rolled back. Cycle will be retried on next tick.
+                        // Do NOT call store_cycle_review() — data is still present.
+                        tracing::warn!(
+                            cycle_id = %cycle_id,
+                            error = %e,
+                            "cycle GC: gc_cycle_activity failed; cycle deferred to next tick"
+                        );
+                        cycles_skipped += 1;
+                        continue;
+                    }
+                };
+
+                // 4c. Update raw_signals_available = 0 using the record retained from 4a.
+                //     Runs OUTSIDE the per-cycle transaction (store_cycle_review takes &self,
+                //     not a transaction handle). Uses struct update syntax to preserve summary_json
+                //     and all other fields (SR-05 mitigation, ADR-001 consequences).
+                if let Err(e) = self
+                    .store
+                    .store_cycle_review(&CycleReviewRecord {
+                        raw_signals_available: 0,
+                        ..record
+                    })
+                    .await
+                {
+                    // Non-fatal: GC data was deleted successfully; flag update failed.
+                    // raw_signals_available stays 1 (stale). A future scan can repair.
+                    tracing::warn!(
+                        cycle_id = %cycle_id,
+                        error = %e,
+                        "cycle GC: store_cycle_review raw_signals_available=0 failed (data deleted)"
+                    );
+                }
+
+                // 4d. Log per-cycle info.
+                tracing::info!(
+                    cycle_id = %cycle_id,
+                    observations_deleted = stats.observations_deleted,
+                    query_log_deleted = stats.query_log_deleted,
+                    injection_log_deleted = stats.injection_log_deleted,
+                    sessions_deleted = stats.sessions_deleted,
+                    "cycle GC: cycle pruned"
+                );
+
+                let cycle_total = stats.observations_deleted
+                    + stats.query_log_deleted
+                    + stats.injection_log_deleted
+                    + stats.sessions_deleted;
+                total_rows_deleted += cycle_total;
+                cycles_pruned += 1;
+            }
+
+            // 4e. Unattributed cleanup (runs after cycle loop regardless of cap).
+            match self.store.gc_unattributed_activity().await {
+                Ok(ua) => {
+                    tracing::info!(
+                        observations_deleted = ua.observations_deleted,
+                        query_log_deleted = ua.query_log_deleted,
+                        sessions_deleted = ua.sessions_deleted,
+                        injection_log_deleted = ua.injection_log_deleted,
+                        "cycle GC: unattributed cleanup"
+                    );
+                    total_rows_deleted += ua.observations_deleted
+                        + ua.query_log_deleted
+                        + ua.sessions_deleted
+                        + ua.injection_log_deleted;
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "cycle GC: gc_unattributed_activity failed");
+                }
+            }
+
+            tracing::info!(
+                cycles_pruned = cycles_pruned,
+                cycles_skipped = cycles_skipped,
+                total_rows_deleted = total_rows_deleted,
+                "cycle GC: pass complete"
+            );
+        }
+
+        // 4f. audit_log time-based GC (independent of cycle GC; "4f" avoids sub-step collision).
         {
-            let now_millis = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_millis() as i64;
-            let sixty_days_millis = 60_i64 * 24 * 60 * 60 * 1000;
-            let cutoff = now_millis - sixty_days_millis;
-            let _ = sqlx::query("DELETE FROM observations WHERE ts_millis < ?1")
-                .bind(cutoff)
-                .execute(self.store.write_pool_server())
-                .await;
+            match self
+                .store
+                .gc_audit_log(retention_config.audit_log_retention_days)
+                .await
+            {
+                Ok(rows) => {
+                    tracing::info!(
+                        rows_deleted = rows,
+                        cutoff_days = retention_config.audit_log_retention_days,
+                        "cycle GC: audit_log cleanup"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "cycle GC: gc_audit_log failed");
+                }
+            }
         }
 
         // 5. Stale session sweep (col-009, FR-09.2)
@@ -1457,6 +1622,56 @@ impl StatusService {
             stale_pairs_cleaned,
         })
     }
+}
+
+// ---------------------------------------------------------------------------
+// PhaseFreqTable alignment guard (crt-036, FR-10, ADR-003)
+// ---------------------------------------------------------------------------
+
+/// Emit `tracing::warn!` when `query_log_lookback_days` implies a data window
+/// older than the oldest retained cycle's `computed_at`.
+///
+/// Advisory only — does not block GC or alter config. Called at the start of
+/// step 4 after `list_purgeable_cycles()` resolves the retain set.
+///
+/// Skipped (no warning, no error) when `oldest_retained_computed_at` is `None`,
+/// which means fewer than K cycles have been reviewed and no pruning has occurred.
+fn run_phase_freq_table_alignment_check(
+    oldest_retained_computed_at: &Option<i64>,
+    query_log_lookback_days: u32,
+    activity_detail_retention_cycles: u32,
+) {
+    let oldest = match oldest_retained_computed_at {
+        Some(ts) => *ts,
+        None => return, // fewer than K cycles: no warning, no action
+    };
+
+    let now_secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+
+    let lookback_cutoff_secs = now_secs - (query_log_lookback_days as i64) * 86_400;
+
+    // If oldest_retained_computed_at <= lookback_cutoff_secs:
+    // The oldest retained cycle was reviewed BEFORE the lookback window started.
+    // PhaseFreqTable may query for data that has been pruned. Emit warn (AC-17).
+    if oldest <= lookback_cutoff_secs {
+        tracing::warn!(
+            query_log_lookback_days = query_log_lookback_days,
+            activity_detail_retention_cycles = activity_detail_retention_cycles,
+            oldest_retained_cycle_computed_at = oldest,
+            lookback_cutoff_secs = lookback_cutoff_secs,
+            "PhaseFreqTable lookback window ({} days) extends beyond retention window; \
+             oldest retained cycle reviewed at {}, lookback cutoff is {}. \
+             Consider reducing query_log_lookback_days or increasing \
+             activity_detail_retention_cycles.",
+            query_log_lookback_days,
+            oldest,
+            lookback_cutoff_secs,
+        );
+    }
+    // If oldest > lookback_cutoff_secs: no action. Correct coverage.
 }
 
 #[cfg(test)]
@@ -2165,6 +2380,7 @@ mod bugfix_444_tests {
         let pending = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
         let active_entries = store.load_active_entries_with_tags().await.unwrap();
         let mut report = StatusReport::default();
+        let retention_config = crate::infra::config::RetentionConfig::default();
         let _ = svc
             .run_maintenance(
                 &active_entries,
@@ -2173,6 +2389,7 @@ mod bugfix_444_tests {
                 &entry_store,
                 &pending,
                 inference_config,
+                &retention_config,
             )
             .await;
     }
@@ -2720,6 +2937,475 @@ mod tests_crt033 {
                 .pending_cycle_reviews
                 .contains(&"old-cycle".to_string()),
             "old-cycle must not appear in pending_cycle_reviews"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// crt-036: PhaseFreqTable alignment guard unit tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod crt_036_phase_freq_table_guard_tests {
+    use super::run_phase_freq_table_alignment_check;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn now_secs() -> i64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64
+    }
+
+    /// AC-17 sub-case 1: warning fires when lookback window extends beyond retention coverage.
+    ///
+    /// Oldest retained cycle reviewed 400 days ago, lookback = 365 days.
+    /// oldest (400 days ago) < cutoff (365 days ago) → warn must fire.
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_gc_phase_freq_table_mismatch_warning_fires() {
+        let now = now_secs();
+        // Oldest retained cycle reviewed 400 days ago (before the 365-day lookback cutoff).
+        let oldest_retained = Some(now - 400 * 86_400);
+
+        run_phase_freq_table_alignment_check(&oldest_retained, 365, 5);
+
+        assert!(
+            logs_contain("query_log_lookback_days"),
+            "WARN must mention query_log_lookback_days (AC-17)"
+        );
+        assert!(
+            logs_contain("retention window"),
+            "WARN must mention retention window (AC-17)"
+        );
+    }
+
+    /// AC-17 sub-case 2: warning suppressed when coverage is sufficient.
+    ///
+    /// Oldest retained cycle reviewed 1 day ago, lookback = 3 days.
+    /// oldest (1 day ago) > cutoff (3 days ago) → no warn.
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_gc_phase_freq_table_no_warning_when_sufficient_coverage() {
+        let now = now_secs();
+        // Oldest retained reviewed 1 day ago; lookback = 3 days.
+        // cutoff = now - 3d. oldest = now - 1d. oldest > cutoff → no warn.
+        let oldest_retained = Some(now - 1 * 86_400);
+
+        run_phase_freq_table_alignment_check(&oldest_retained, 3, 5);
+
+        assert!(
+            !logs_contain("retention window"),
+            "WARN must NOT fire when coverage is sufficient (AC-17 negative case)"
+        );
+    }
+
+    /// R-16 / sub-case 3: guard skipped when fewer than K cycles reviewed.
+    ///
+    /// oldest_retained = None → function returns immediately, no warning emitted.
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_gc_phase_freq_table_skipped_when_fewer_than_k_cycles() {
+        run_phase_freq_table_alignment_check(&None, 365, 10);
+
+        assert!(
+            !logs_contain("retention window"),
+            "WARN must NOT fire when oldest_retained_computed_at is None (fewer than K cycles)"
+        );
+    }
+
+    /// R-16 K-boundary accuracy: K-th oldest cycle's timestamp is used, not K-1th.
+    ///
+    /// Oldest retained = 30 days ago, lookback = 20 days.
+    /// 30d ago < 20d ago cutoff → warn fires, confirming K-th cycle was used.
+    /// If K-1th (5 days ago) were used, no warn would fire.
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_gc_phase_freq_table_k_boundary_uses_kth_oldest() {
+        let now = now_secs();
+        // K-th cycle (oldest retained) reviewed 30 days ago.
+        // lookback = 20d: cutoff = now - 20d.
+        // oldest (now - 30d) < cutoff (now - 20d) → warn fires.
+        let oldest_retained = Some(now - 30 * 86_400);
+
+        run_phase_freq_table_alignment_check(&oldest_retained, 20, 3);
+
+        assert!(
+            logs_contain("retention window"),
+            "warn must fire: K-th cycle (30 days old) beyond lookback (20 days)"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// crt-036: run_maintenance GC block integration tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod crt_036_gc_block_tests {
+    use std::sync::{Arc, Mutex};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use unimatrix_core::{VectorConfig, VectorIndex};
+    use unimatrix_store::SqlxStore as Store;
+    use unimatrix_store::cycle_review_index::CycleReviewRecord;
+
+    use crate::infra::config::{InferenceConfig, RetentionConfig};
+    use crate::infra::session::SessionRegistry;
+    use crate::mcp::response::status::StatusReport;
+    use crate::server::PendingEntriesAnalysis;
+    use crate::services::status::StatusService;
+
+    use unimatrix_adapt::AdaptationService;
+    use unimatrix_store::cycle_review_index::SUMMARY_SCHEMA_VERSION;
+
+    fn now_secs() -> i64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64
+    }
+
+    async fn open_store(dir: &tempfile::TempDir) -> Arc<Store> {
+        Arc::new(
+            Store::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            )
+            .await
+            .expect("store open"),
+        )
+    }
+
+    fn make_status_service(store: &Arc<Store>) -> StatusService {
+        use crate::infra::categories::CategoryAllowlist;
+        use crate::services::confidence::ConfidenceState;
+        use crate::services::contradiction_cache::new_contradiction_cache_handle;
+
+        let embed_service = crate::infra::embed_handle::EmbedServiceHandle::new();
+        let adapt_service = Arc::new(AdaptationService::new(
+            unimatrix_adapt::AdaptConfig::default(),
+        ));
+        let vector_index =
+            Arc::new(VectorIndex::new(Arc::clone(store), VectorConfig::default()).expect("vi"));
+        let confidence_state = Arc::new(std::sync::RwLock::new(ConfidenceState::default()));
+        let contradiction_cache = new_contradiction_cache_handle();
+        let test_rayon_pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "test_pool_crt036")
+                .expect("test rayon pool"),
+        );
+        let observation_registry =
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code());
+        let confidence_params = Arc::new(unimatrix_engine::confidence::ConfidenceParams::default());
+        let category_allowlist = Arc::new(CategoryAllowlist::new());
+        StatusService::new(
+            Arc::clone(store),
+            vector_index,
+            embed_service,
+            adapt_service,
+            confidence_state,
+            confidence_params,
+            contradiction_cache,
+            test_rayon_pool,
+            observation_registry,
+            category_allowlist,
+        )
+    }
+
+    async fn run_gc_block(
+        svc: &StatusService,
+        store: &Arc<Store>,
+        retention_config: &RetentionConfig,
+    ) {
+        let session_registry = SessionRegistry::new();
+        let entry_store = Arc::clone(store);
+        let pending = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
+        let active_entries = store.load_active_entries_with_tags().await.unwrap();
+        let mut report = StatusReport::default();
+        let _ = svc
+            .run_maintenance(
+                &active_entries,
+                &mut report,
+                &session_registry,
+                &entry_store,
+                &pending,
+                &InferenceConfig::default(),
+                retention_config,
+            )
+            .await;
+    }
+
+    async fn insert_session_with_observations(
+        store: &Arc<Store>,
+        feature_cycle: &str,
+        obs_count: usize,
+    ) {
+        let session_id = format!("sess-{feature_cycle}");
+        sqlx::query(
+            "INSERT OR IGNORE INTO sessions \
+             (session_id, started_at, status, feature_cycle) \
+             VALUES (?1, ?2, 0, ?3)",
+        )
+        .bind(&session_id)
+        .bind(now_secs())
+        .bind(feature_cycle)
+        .execute(store.write_pool_server())
+        .await
+        .expect("insert session");
+
+        for i in 0..obs_count {
+            sqlx::query(
+                "INSERT INTO observations \
+                 (session_id, ts_millis, hook) \
+                 VALUES (?1, ?2, 'test_hook')",
+            )
+            .bind(&session_id)
+            .bind(now_secs() * 1000 + i as i64)
+            .execute(store.write_pool_server())
+            .await
+            .expect("insert observation");
+        }
+    }
+
+    /// AC-05 / R-03: summary_json preserved byte-identical, raw_signals_available set to 0.
+    ///
+    /// Non-negotiable Gate 3c test. Verifies struct update syntax preserves summary_json
+    /// (SR-05 mitigation, ADR-001 consequences).
+    #[tokio::test]
+    async fn test_gc_raw_signals_flag_and_summary_json_preserved() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+
+        let now = now_secs();
+        let summary_json_original = r#"{"report":"test-content-xyz","hotspots":[]}"#;
+
+        // K=1: retain only the most recent cycle (C2). C1 is purgeable.
+        let c1_computed_at = now - 1000;
+        let c2_computed_at = now - 100;
+
+        for (fc, computed_at) in &[
+            ("c1-gc-test", c1_computed_at),
+            ("c2-gc-test", c2_computed_at),
+        ] {
+            store
+                .store_cycle_review(&CycleReviewRecord {
+                    feature_cycle: fc.to_string(),
+                    schema_version: SUMMARY_SCHEMA_VERSION,
+                    computed_at: *computed_at,
+                    raw_signals_available: 1,
+                    summary_json: summary_json_original.to_string(),
+                })
+                .await
+                .expect("store review");
+        }
+
+        insert_session_with_observations(&store, "c1-gc-test", 3).await;
+        insert_session_with_observations(&store, "c2-gc-test", 2).await;
+
+        let retention_config = RetentionConfig {
+            activity_detail_retention_cycles: 1,
+            max_cycles_per_tick: 10,
+            audit_log_retention_days: 180,
+        };
+
+        let svc = make_status_service(&store);
+        run_gc_block(&svc, &store, &retention_config).await;
+
+        // C1: raw_signals_available must be 0, summary_json byte-identical.
+        let c1_after = store
+            .get_cycle_review("c1-gc-test")
+            .await
+            .expect("get c1")
+            .expect("c1 row must exist");
+        assert_eq!(
+            c1_after.raw_signals_available, 0,
+            "C1: raw_signals_available must be 0 after GC"
+        );
+        assert_eq!(
+            c1_after.summary_json, summary_json_original,
+            "C1: summary_json must be preserved byte-identical (SR-05)"
+        );
+
+        // C2: retained, raw_signals_available must remain 1.
+        let c2_after = store
+            .get_cycle_review("c2-gc-test")
+            .await
+            .expect("get c2")
+            .expect("c2 row must exist");
+        assert_eq!(
+            c2_after.raw_signals_available, 1,
+            "C2: raw_signals_available must remain 1 (retained cycle)"
+        );
+    }
+
+    /// AC-16 / R-04 / R-08: max_cycles_per_tick cap processes at most N cycles per tick.
+    ///
+    /// One tick with cap = 5, 10 purgeable cycles. After one tick:
+    /// - Exactly 5 oldest cycles are pruned (sessions deleted, raw_signals_available=0).
+    /// - The 5 newer cycles are untouched (sessions still present, raw_signals_available=1).
+    /// - Retained cycle is unaffected.
+    ///
+    /// Idempotency: a second tick is also safe (no-op for already-pruned cycles, no error).
+    #[tokio::test]
+    async fn test_gc_max_cycles_per_tick_cap() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+
+        let now = now_secs();
+        let total_cycles = 10usize;
+        let cap = 5u32;
+
+        // Insert one retained cycle (newest, within K=1).
+        store
+            .store_cycle_review(&CycleReviewRecord {
+                feature_cycle: "retained-cycle".to_string(),
+                schema_version: SUMMARY_SCHEMA_VERSION,
+                computed_at: now + 1000,
+                raw_signals_available: 1,
+                summary_json: "{}".to_string(),
+            })
+            .await
+            .expect("store retained cycle");
+
+        // Insert 10 purgeable cycles with distinct computed_at.
+        // i=0 is oldest (computed_at = now - 2000), i=9 is newest (computed_at = now - 1991).
+        for i in 0..total_cycles {
+            let fc = format!("purgeable-{i:03}");
+            store
+                .store_cycle_review(&CycleReviewRecord {
+                    feature_cycle: fc.clone(),
+                    schema_version: SUMMARY_SCHEMA_VERSION,
+                    computed_at: now - (2000 - i as i64),
+                    raw_signals_available: 1,
+                    summary_json: "{}".to_string(),
+                })
+                .await
+                .expect("store purgeable cycle");
+            insert_session_with_observations(&store, &fc, 1).await;
+        }
+
+        let retention_config = RetentionConfig {
+            activity_detail_retention_cycles: 1,
+            max_cycles_per_tick: cap,
+            audit_log_retention_days: 180,
+        };
+
+        let svc = make_status_service(&store);
+
+        // One tick: cap = 5, so only 5 cycles should be purged.
+        run_gc_block(&svc, &store, &retention_config).await;
+
+        // The 5 oldest (i=0..4) should be purged.
+        for i in 0..5usize {
+            let fc = format!("purgeable-{i:03}");
+            let record = store
+                .get_cycle_review(&fc)
+                .await
+                .expect("get review")
+                .expect("review must exist");
+            assert_eq!(
+                record.raw_signals_available, 0,
+                "{fc}: must be purged (raw_signals_available=0) after tick 1"
+            );
+            let session_count: i64 = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM sessions WHERE feature_cycle = ?1",
+            )
+            .bind(&fc)
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("session count");
+            assert_eq!(
+                session_count, 0,
+                "{fc}: sessions must be deleted after cap GC"
+            );
+        }
+
+        // The 5 newer (i=5..9) should NOT be pruned yet.
+        for i in 5..10usize {
+            let fc = format!("purgeable-{i:03}");
+            let record = store
+                .get_cycle_review(&fc)
+                .await
+                .expect("get review")
+                .expect("review must exist");
+            assert_eq!(
+                record.raw_signals_available, 1,
+                "{fc}: must NOT be pruned yet (raw_signals_available=1) — beyond cap"
+            );
+            let session_count: i64 = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM sessions WHERE feature_cycle = ?1",
+            )
+            .bind(&fc)
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("session count");
+            assert!(
+                session_count > 0,
+                "{fc}: sessions must still exist — beyond cap"
+            );
+        }
+
+        // Retained cycle unaffected.
+        let retained = store
+            .get_cycle_review("retained-cycle")
+            .await
+            .expect("get retained")
+            .expect("must exist");
+        assert_eq!(
+            retained.raw_signals_available, 1,
+            "retained cycle must not be touched by GC"
+        );
+
+        // Idempotency: a second tick must not error. Already-purged cycles are no-ops.
+        run_gc_block(&svc, &store, &retention_config).await;
+    }
+
+    /// AC-04 / R-05: cycles without a review row do not appear in the purgeable set.
+    ///
+    /// The SQL self-gates: list_purgeable_cycles only returns cycles with review rows.
+    #[tokio::test]
+    async fn test_gc_gate_no_review_row() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+
+        let now = now_secs();
+
+        // Insert 3 reviewed cycles (K=1 → 2 are purgeable).
+        for i in 0..3usize {
+            store
+                .store_cycle_review(&CycleReviewRecord {
+                    feature_cycle: format!("reviewed-{i}"),
+                    schema_version: SUMMARY_SCHEMA_VERSION,
+                    computed_at: now - (500 - i as i64),
+                    raw_signals_available: 1,
+                    summary_json: "{}".to_string(),
+                })
+                .await
+                .expect("store reviewed");
+        }
+
+        // Insert sessions for ghost-cycle — NO review row.
+        insert_session_with_observations(&store, "ghost-cycle", 2).await;
+
+        let retention_config = RetentionConfig {
+            activity_detail_retention_cycles: 1,
+            max_cycles_per_tick: 10,
+            audit_log_retention_days: 180,
+        };
+
+        let svc = make_status_service(&store);
+        run_gc_block(&svc, &store, &retention_config).await;
+
+        // ghost-cycle sessions must still exist.
+        let session_count: i64 = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM sessions WHERE feature_cycle = 'ghost-cycle'",
+        )
+        .fetch_one(store.read_pool_test())
+        .await
+        .expect("query");
+        assert!(
+            session_count > 0,
+            "ghost-cycle sessions must not be pruned (no review row gates the cycle)"
         );
     }
 }
