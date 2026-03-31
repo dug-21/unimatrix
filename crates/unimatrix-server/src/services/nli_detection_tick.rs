@@ -80,8 +80,8 @@ struct InformsCandidate {
     cosine: f32,
     source_created_at: i64,       // Unix seconds — required; not Option
     target_created_at: i64,       // Unix seconds — required; not Option
-    source_feature_cycle: String, // required — cross-feature guard; not Option
-    target_feature_cycle: String, // required — cross-feature guard; not Option
+    source_feature_cycle: String, // empty string means pre-attribution entry; Informs detection allows this
+    target_feature_cycle: String, // empty string means pre-attribution entry; Informs detection allows this
     source_category: String,      // required — category pair filter; not Option
     target_category: String,      // required — category pair filter; not Option
 }
@@ -288,11 +288,6 @@ pub async fn run_graph_inference_tick(
                 continue;
             }
 
-            // Cross-feature guard requires a non-empty feature_cycle on source.
-            // EntryRecord.feature_cycle is String; empty string means absent.
-            if source_meta.feature_cycle.is_empty() {
-                continue;
-            }
             let source_feature_cycle = source_meta.feature_cycle.clone();
 
             let embedding = match vector_index.get_embedding(*source_id) {
@@ -744,7 +739,7 @@ fn select_source_candidates(
 /// - `similarity >= cosine_floor` (inclusive — AC-17: floor is inclusive, not strict)
 /// - `[source_category, target_category]` is in `informs_category_pairs` (AC-16)
 /// - `source_created_at < target_created_at` (strict — AC-14)
-/// - `source_feature_cycle != target_feature_cycle` and both non-empty (AC-15)
+/// - block only when both feature_cycles are non-empty AND equal (intra-feature) (AC-15)
 ///
 /// Module-private. Accessible to tests via `use super::*`.
 fn phase4b_candidate_passes_guards(
@@ -767,13 +762,14 @@ fn phase4b_candidate_passes_guards(
     if !is_valid_pair {
         return false;
     }
-    if source_feature_cycle.is_empty() || target_feature_cycle.is_empty() {
-        return false;
-    }
     if source_created_at >= target_created_at {
         return false;
     }
-    if source_feature_cycle == target_feature_cycle {
+    // Block intra-feature pairs only — empty feature_cycle means unknown provenance, allow it.
+    if !source_feature_cycle.is_empty()
+        && !target_feature_cycle.is_empty()
+        && source_feature_cycle == target_feature_cycle
+    {
         return false;
     }
     true
@@ -785,7 +781,8 @@ fn phase4b_candidate_passes_guards(
 ///
 /// 1. `nli_scores.neutral > 0.5` — neutral-zone signal (fixed constant C-09).
 /// 2. `candidate.source_created_at < candidate.target_created_at` — temporal ordering.
-/// 3. `candidate.source_feature_cycle != candidate.target_feature_cycle` — cross-feature.
+/// 3. cross-feature: block only when both feature_cycles are non-empty AND equal (intra-feature);
+///    entries with empty feature_cycle (unknown provenance) are allowed through.
 /// 4. Category pair membership — implicit in `Informs` variant (verified by Phase 4b).
 /// 5. `nli_scores.entailment <= supports_edge_threshold` AND
 ///    `nli_scores.contradiction <= nli_contradiction_threshold` — FR-11 mutual exclusion.
@@ -798,7 +795,9 @@ fn apply_informs_composite_guard(
 ) -> bool {
     nli_scores.neutral > 0.5
         && candidate.source_created_at < candidate.target_created_at
-        && candidate.source_feature_cycle != candidate.target_feature_cycle
+        && (candidate.source_feature_cycle.is_empty()
+            || candidate.target_feature_cycle.is_empty()
+            || candidate.source_feature_cycle != candidate.target_feature_cycle)
         && nli_scores.entailment <= config.supports_edge_threshold
         && nli_scores.contradiction <= config.nli_contradiction_threshold
 }
@@ -1585,6 +1584,83 @@ mod tests {
         assert!(
             !apply_informs_composite_guard(&scores, &candidate, &config),
             "AC-15: same feature cycle must fail guard"
+        );
+    }
+
+    /// AC-15 (relaxed): source has empty feature_cycle (unknown provenance) → guard passes.
+    #[test]
+    fn test_phase4b_accepts_source_with_empty_feature_cycle() {
+        let config = informs_config();
+        let (src_cat, tgt_cat) = (
+            config.informs_category_pairs[0][0].as_str(),
+            config.informs_category_pairs[0][1].as_str(),
+        );
+        let result = phase4b_candidate_passes_guards(
+            0.50, src_cat, tgt_cat, 1_000_000, 2_000_000,
+            "",        // source_feature_cycle empty — unknown provenance
+            "crt-037", // target has known cycle
+            &config,
+        );
+        assert!(
+            result,
+            "AC-15: source with empty feature_cycle must pass guard (unknown provenance)"
+        );
+    }
+
+    /// AC-15 (relaxed): target has empty feature_cycle (unknown provenance) → guard passes.
+    #[test]
+    fn test_phase4b_accepts_target_with_empty_feature_cycle() {
+        let config = informs_config();
+        let (src_cat, tgt_cat) = (
+            config.informs_category_pairs[0][0].as_str(),
+            config.informs_category_pairs[0][1].as_str(),
+        );
+        let result = phase4b_candidate_passes_guards(
+            0.50, src_cat, tgt_cat, 1_000_000, 2_000_000, "crt-037", // source has known cycle
+            "",        // target_feature_cycle empty — unknown provenance
+            &config,
+        );
+        assert!(
+            result,
+            "AC-15: target with empty feature_cycle must pass guard (unknown provenance)"
+        );
+    }
+
+    /// AC-15 (relaxed): both feature_cycles empty → guard passes (newly-reachable path after Site 1 removal).
+    #[test]
+    fn test_phase4b_accepts_both_empty_feature_cycle() {
+        let config = informs_config();
+        let (src_cat, tgt_cat) = (
+            config.informs_category_pairs[0][0].as_str(),
+            config.informs_category_pairs[0][1].as_str(),
+        );
+        let result = phase4b_candidate_passes_guards(
+            0.50, src_cat, tgt_cat, 1_000_000, 2_000_000,
+            "", // both empty — unknown provenance on both sides
+            "", &config,
+        );
+        assert!(
+            result,
+            "AC-15: both-empty feature_cycles must pass guard (unknown provenance on both sides)"
+        );
+    }
+
+    /// AC-15 (Site 3): both-empty feature_cycles reaching apply_informs_composite_guard must pass.
+    /// This path was newly-reachable after Sites 1 and 2 were relaxed.
+    #[test]
+    fn test_apply_informs_composite_guard_both_empty_passes() {
+        let config = informs_config();
+        let (src_cat, tgt_cat) = (
+            config.informs_category_pairs[0][0].as_str(),
+            config.informs_category_pairs[0][1].as_str(),
+        );
+        // Both feature_cycles empty — unknown provenance. Should not be blocked by Site 3.
+        let candidate =
+            make_informs_candidate(src_cat, tgt_cat, 0.50, 1_000_000, 2_000_000, "", "");
+        let scores = informs_passing_scores();
+        assert!(
+            apply_informs_composite_guard(&scores, &candidate, &config),
+            "AC-15 Site 3: both-empty feature_cycles must pass composite guard"
         );
     }
 
