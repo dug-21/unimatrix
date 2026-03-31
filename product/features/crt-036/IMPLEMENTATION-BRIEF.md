@@ -19,18 +19,18 @@
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| RetentionConfig | pseudocode/retention-config.md | test-plan/retention-config.md |
-| CycleGcPass (store methods) | pseudocode/cycle-gc-pass.md | test-plan/cycle-gc-pass.md |
-| run_maintenance GC block | pseudocode/run-maintenance-gc-block.md | test-plan/run-maintenance-gc-block.md |
-| Legacy DELETE removal | pseudocode/legacy-delete-removal.md | test-plan/legacy-delete-removal.md |
-| PhaseFreqTable alignment guard | pseudocode/phase-freq-table-guard.md | test-plan/phase-freq-table-guard.md |
+| RetentionConfig | product/features/crt-036/pseudocode/retention-config.md | product/features/crt-036/test-plan/retention-config.md |
+| CycleGcPass (store methods) | product/features/crt-036/pseudocode/cycle-gc-pass.md | product/features/crt-036/test-plan/cycle-gc-pass.md |
+| run_maintenance GC block | product/features/crt-036/pseudocode/run-maintenance-gc-block.md | product/features/crt-036/test-plan/run-maintenance-gc-block.md |
+| Legacy DELETE removal | product/features/crt-036/pseudocode/legacy-delete-removal.md | product/features/crt-036/test-plan/legacy-delete-removal.md |
+| PhaseFreqTable alignment guard | product/features/crt-036/pseudocode/phase-freq-table-guard.md | product/features/crt-036/test-plan/phase-freq-table-guard.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/crt-036/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/crt-036/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
@@ -47,8 +47,8 @@ Replace Unimatrix's 60-day wall-clock observation DELETE with a cycle-aligned GC
 | Transaction granularity for GC pass | Per-cycle `pool.begin()` / `tx.commit()` transactions; connection released between cycles; not a single spanning transaction | SR-01, SR-02 | architecture/ADR-001-per-cycle-transaction-granularity.md |
 | `max_cycles_per_tick` config placement | Belongs in `RetentionConfig`, not `InferenceConfig`; GC throughput is a retention concern, not an ML inference concern | SR-01 scope | architecture/ADR-002-max-cycles-per-tick-in-retention-config.md |
 | PhaseFreqTable / K-cycle alignment | Tick-time `tracing::warn!` comparing oldest retained cycle `computed_at` against `query_log_lookback_days` window; no breaking config change | SR-07 | architecture/ADR-003-phase-freq-table-k-cycle-alignment.md |
-| `raw_signals_available` update path | Targeted `UPDATE cycle_review_index SET raw_signals_available = 0 WHERE feature_cycle = ?` — NOT `store_cycle_review()` INSERT OR REPLACE (would clobber `summary_json`) | SR-05 | architecture/ADR-001-per-cycle-transaction-granularity.md (consequences) |
-| `mark_signals_purged` transaction placement | Runs OUTSIDE the per-cycle transaction, after commit, via `mark_signals_purged(&self, cycle_id)` — cannot join an in-flight `pool.begin()` on the same pool | VARIANCE-01 (resolved) | architecture/ADR-001-per-cycle-transaction-granularity.md |
+| `raw_signals_available` update path | Call `store_cycle_review(&CycleReviewRecord { raw_signals_available: 0, ..record })` using the record already fetched in the gate check. Struct update preserves `summary_json` and all other fields. No new `mark_signals_purged()` method. | SR-05 | architecture/ADR-001-per-cycle-transaction-granularity.md (consequences) |
+| Gate-check record retention | The `CycleReviewRecord` returned by `get_cycle_review()` must be retained in scope and passed to the `store_cycle_review()` call after commit. Must NOT be discarded and reconstructed — reconstruction clobbers `summary_json`. | VARIANCE-01 (resolved) | architecture/ADR-001-per-cycle-transaction-granularity.md |
 | Unattributed session guard | `gc_unattributed_activity()` skips sessions with `status = Active` to protect in-flight retrospectives | SR-06 | ARCHITECTURE.md component 2 |
 
 ---
@@ -120,9 +120,11 @@ async fn list_purgeable_cycles(&self, k: u32, max_per_tick: u32) -> Result<Vec<S
 /// Uses pool.begin() / tx.commit(). Connection released on return.
 async fn gc_cycle_activity(&self, feature_cycle: &str) -> Result<CycleGcStats>;
 
-/// Targeted UPDATE: sets raw_signals_available = 0. Must NOT use store_cycle_review().
+/// NOT a new method — use store_cycle_review() with struct update syntax instead:
+///   store_cycle_review(&CycleReviewRecord { raw_signals_available: 0, ..record })
+/// where `record` is the CycleReviewRecord returned by get_cycle_review() in the gate check.
 /// Runs after gc_cycle_activity() commits — outside the per-cycle transaction.
-async fn mark_signals_purged(&self, feature_cycle: &str) -> Result<()>;
+/// The `record` from the gate check MUST be retained in scope for this call.
 
 /// Deletes observation/query_log rows with no matching session, and unattributed
 /// (feature_cycle IS NULL) sessions/injection_log rows where status != Active.
@@ -177,7 +179,8 @@ DELETE FROM injection_log
 DELETE FROM sessions WHERE feature_cycle = ?;
 
 -- raw_signals_available flag update (AFTER transaction commit, separate write)
-UPDATE cycle_review_index SET raw_signals_available = 0 WHERE feature_cycle = ?;
+-- Use store_cycle_review() with struct update: { raw_signals_available: 0, ..record }
+-- where `record` is the CycleReviewRecord fetched in the gate check above.
 
 -- Unattributed cleanup (gc_unattributed_activity, no transaction)
 DELETE FROM observations WHERE session_id NOT IN (SELECT session_id FROM sessions);
@@ -202,7 +205,7 @@ DELETE FROM audit_log
 3. **Delete order within per-cycle transaction is fixed:** `observations` → `query_log` → `injection_log` → `sessions`. Deleting `sessions` last ensures the `IN (SELECT session_id FROM sessions WHERE feature_cycle = ?)` subquery resolves within the same transaction.
 4. **`pool.begin()` / `tx.commit()` API required.** Never issue raw `BEGIN`/`COMMIT` SQL (entry #2159 pattern: sqlx does not guarantee connection identity across `.execute()` calls without a transaction handle).
 5. **`write_pool_server()` max_connections = 1.** Per-cycle transaction must acquire, operate, commit, and release the connection before the next cycle. The entire multi-cycle loop must not hold the connection.
-6. **`mark_signals_purged()` uses targeted UPDATE only.** `store_cycle_review()` INSERT OR REPLACE overwrites the entire row including `summary_json`. The targeted UPDATE is the only correct path.
+6. **`raw_signals_available` update uses `store_cycle_review()` with struct update syntax.** Call `store_cycle_review(&CycleReviewRecord { raw_signals_available: 0, ..record })` using the gate-check record retained in scope. Do NOT discard the record and reconstruct it — reconstruction clobbers `summary_json`.
 7. **Both 60-day DELETE sites removed unconditionally.** `status.rs` ~1372–1384 and `tools.rs` ~1630–1642. No flags, no conditions. Running both GC policies concurrently is not supported.
 8. **crt-033 gate is unconditional.** `get_cycle_review()` must return `Ok(Some(_))` before any data for a cycle is deleted. No bypass.
 9. **`RetentionConfig` loaded once at startup, passed by value.** Must not be re-read from `config.toml` on each tick (SR-09 mitigation, NFR-06).
@@ -264,7 +267,7 @@ DELETE FROM audit_log
 | Architecture Consistency | VARIANCE-01: RESOLVED before synthesis — SPECIFICATION FR-03/FR-06 incorrectly described `raw_signals_available` UPDATE as inside the per-cycle transaction; ARCHITECTURE and ADR-001 are correct: `mark_signals_purged()` runs OUTSIDE the transaction after commit. Implementers must follow the architecture design, not the now-corrected spec language. |
 | Risk Completeness | PASS — 16 risks registered; all 9 scope risks traced; 8 non-negotiable gate blockers identified |
 
-**Implementer note on VARIANCE-01:** `mark_signals_purged(&self, feature_cycle: &str)` takes `&self`, not a transaction handle. It acquires its own connection from `write_pool_server()` and executes a single-statement atomic UPDATE after the per-cycle transaction has already committed and released the connection. Do not attempt to include it inside `gc_cycle_activity()`'s transaction block.
+**Implementer note on VARIANCE-01 (resolved):** After `gc_cycle_activity()` commits and the connection is released, call `store_cycle_review(&CycleReviewRecord { raw_signals_available: 0, ..record })` where `record` is the `CycleReviewRecord` fetched during the gate check (`get_cycle_review()`). Retain that record in scope across the `gc_cycle_activity()` call. Do not include this call inside `gc_cycle_activity()`'s transaction block — `store_cycle_review()` takes `&self`, not a transaction handle.
 
 ---
 
@@ -282,7 +285,7 @@ DELETE FROM audit_log
     - list_purgeable_cycles(k, max_per_tick)
     - for each purgeable cycle: gate → gc_cycle_activity → mark_signals_purged
     - gc_unattributed_activity()
-4b. audit_log time-based GC  ← new
+4f. audit_log time-based GC  ← new (4f avoids collision with sub-steps 4a–4e)
 5.  Stale session sweep
 6.  Session GC (existing time-based gc_sessions — continues for sessions not covered by cycle GC)
 ```

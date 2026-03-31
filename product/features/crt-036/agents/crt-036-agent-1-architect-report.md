@@ -62,3 +62,13 @@
 ## Open Questions
 
 None. All design decisions are resolved.
+
+## Knowledge Stewardship
+
+Stored in Unimatrix:
+
+| Entry ID | Title | Category |
+|----------|-------|----------|
+| #3915 | Per-Cycle Transaction Granularity for Activity GC Pass | decision |
+| #3916 | max_cycles_per_tick Cap in RetentionConfig, Not InferenceConfig | decision |
+| #3917 | PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning | decision |
