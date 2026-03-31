@@ -1482,6 +1482,10 @@ pub fn load_config(home_dir: &Path, data_dir: &Path) -> Result<UnimatrixConfig, 
     // Step 3: merge (per-project fields win over global, global wins over compiled defaults).
     let merged = merge_configs(global_config, project_config);
 
+    // Step 4: post-merge validation — catches constraint violations that only appear
+    // when two individually-valid configs are combined (e.g., fusion weight sum > 1.0).
+    validate_config(&merged, &global_path)?;
+
     Ok(merged)
 }
 
@@ -6262,6 +6266,76 @@ w_sim = 0.25
         assert_eq!(
             merged.inference.ppr_max_expand, 50,
             "ppr_max_expand unchanged at default"
+        );
+    }
+
+    // GH #337: post-merge validation catches constraint violations invisible per-file.
+    //
+    // The merge logic picks per-project values when they differ from compiled defaults,
+    // otherwise falls back to the global value. This means two configs that are each
+    // individually valid can produce a merged config that violates the sum-of-six
+    // fusion weight constraint.
+    //
+    // Scenario:
+    //   global:  w_sim=0.5, all others zeroed   → sum=0.5 (valid)
+    //   project: w_nli=0.6, all others zeroed   → sum=0.6 (valid)
+    //   merged:  w_sim from global (project kept default 0.25, so global 0.5 wins),
+    //            w_nli from project (differs from default 0.35)
+    //            w_conf/w_util/w_prov from project (all 0, differ from defaults)
+    //            → sum = 0.5 + 0.6 = 1.1 > 1.0 → must fail
+    #[test]
+    fn test_merge_configs_post_merge_fusion_weight_sum_exceeded() {
+        let _scanner = ContentScanner::global();
+
+        // Global: w_sim=0.5, all other fusion weights zeroed.
+        // Individually valid: sum = 0.5.
+        let mut global = UnimatrixConfig::default();
+        global.inference.w_sim = 0.5;
+        global.inference.w_nli = 0.0;
+        global.inference.w_conf = 0.0;
+        global.inference.w_coac = 0.0;
+        global.inference.w_util = 0.0;
+        global.inference.w_prov = 0.0;
+
+        // Project: w_nli=0.6, w_sim stays at default (0.25) so global value (0.5) wins
+        // in the merge. All other weights zeroed (differ from defaults → project wins).
+        // Individually valid: sum = 0.6.
+        let mut project = UnimatrixConfig::default();
+        // w_sim intentionally left at default (0.25) so global's 0.5 is inherited.
+        project.inference.w_nli = 0.6;
+        project.inference.w_conf = 0.0;
+        project.inference.w_coac = 0.0;
+        project.inference.w_util = 0.0;
+        project.inference.w_prov = 0.0;
+
+        // Verify each config alone is valid.
+        let global_valid = validate_config(&global, Path::new("/fake/global/config.toml"));
+        assert!(
+            global_valid.is_ok(),
+            "global config must be valid alone: {global_valid:?}"
+        );
+        let project_valid = validate_config(&project, Path::new("/fake/project/config.toml"));
+        assert!(
+            project_valid.is_ok(),
+            "project config must be valid alone: {project_valid:?}"
+        );
+
+        // After merge: w_sim=0.5 (from global), w_nli=0.6 (from project) → sum=1.1 > 1.0
+        let merged = merge_configs(global, project);
+        let result = validate_config(&merged, Path::new("/fake/global/config.toml"));
+        assert!(
+            result.is_err(),
+            "merged config with fusion weight sum > 1.0 must fail validate_config; \
+             merged w_sim={} w_nli={}",
+            merged.inference.w_sim,
+            merged.inference.w_nli
+        );
+        assert!(
+            matches!(
+                result.unwrap_err(),
+                ConfigError::FusionWeightSumExceeded { .. }
+            ),
+            "error must be FusionWeightSumExceeded"
         );
     }
 }

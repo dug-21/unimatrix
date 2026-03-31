@@ -264,7 +264,7 @@ impl SessionRegistry {
                 .category_counts
                 .entry(category.to_string())
                 .or_insert(0);
-            *count += 1;
+            *count = count.saturating_add(1);
         }
         // Unregistered session: silent no-op (matches record_injection contract)
     }
@@ -403,7 +403,11 @@ impl SessionRegistry {
             return None;
         }
 
-        let total_count: u32 = state.topic_signals.values().map(|t| t.count).sum();
+        let total_count: u32 = state
+            .topic_signals
+            .values()
+            .map(|t| t.count)
+            .fold(0u32, |acc, v| acc.saturating_add(v));
 
         // Find the leader
         let (leader_topic, leader_tally) =
@@ -428,7 +432,7 @@ impl SessionRegistry {
                 count: 0,
                 last_seen: 0,
             });
-            tally.count += 1;
+            tally.count = tally.count.saturating_add(1);
             if timestamp > tally.last_seen {
                 tally.last_seen = timestamp;
             }
@@ -1989,6 +1993,34 @@ mod tests {
         assert!(
             state.confirmed_entries.is_empty(),
             "make_state_with_rework must initialise confirmed_entries as empty HashSet"
+        );
+    }
+
+    // GH #345: saturating_add prevents counter wrap at u32::MAX
+    #[test]
+    fn test_category_counter_saturates_at_u32_max() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+
+        // Manually pre-set the category counter to u32::MAX via repeated stores would be
+        // impractical; instead directly mutate the state via the lock.
+        {
+            let mut sessions = reg.sessions.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(state) = sessions.get_mut("s1") {
+                state
+                    .category_counts
+                    .insert("overflow-cat".to_string(), u32::MAX);
+            }
+        }
+
+        // One more store must NOT wrap to 0
+        reg.record_category_store("s1", "overflow-cat");
+
+        let histogram = reg.get_category_histogram("s1");
+        assert_eq!(
+            histogram.get("overflow-cat"),
+            Some(&u32::MAX),
+            "counter must saturate at u32::MAX, not wrap to 0"
         );
     }
 }
