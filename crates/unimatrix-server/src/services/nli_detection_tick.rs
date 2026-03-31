@@ -593,6 +593,10 @@ pub async fn run_graph_inference_tick(
     let mut edges_written: usize = 0;
     for pair in &merged_pairs {
         if edges_written >= config.max_graph_inference_per_tick {
+            // ORDERING INVARIANT (ADR-002): this break is safe only because Phase 6 appends
+            // SupportsContradict pairs before Informs pairs in merged_pairs. If Phase 6 ever
+            // reorders the merge, this break could fire mid-Supports and cause Phase 8b to
+            // miss Informs variants silently. Keep Phase 6 ordering, or remove this break.
             break;
         }
         if let NliCandidatePair::SupportsContradict {
@@ -640,6 +644,9 @@ pub async fn run_graph_inference_tick(
             if apply_informs_composite_guard(nli_scores, candidate, config) {
                 let weight = candidate.cosine * config.nli_informs_ppr_weight;
                 debug_assert!(weight.is_finite(), "Informs edge weight must be finite");
+                if !weight.is_finite() {
+                    continue;
+                }
                 let metadata_json = format_nli_metadata_informs(nli_scores);
                 let written = write_nli_edge(
                     store,
