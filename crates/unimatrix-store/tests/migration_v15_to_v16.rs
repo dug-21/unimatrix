@@ -866,13 +866,13 @@ async fn test_get_cycle_start_goal_multiple_start_rows_returns_first() {
 }
 
 // ---------------------------------------------------------------------------
-// T-V16-14: last-writer-wins semantics — second insert_cycle_event overwrites
-//           the first goal for the same (cycle_id, event_type='cycle_start').
+// T-V16-14: first-written-goal-wins semantics — when two cycle_start rows exist
+//           for the same cycle_id, the first non-NULL goal is preserved.
 //           R-13 / Gate 3c scenario 9.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_uds_truncate_then_overwrite_last_writer_wins() {
+async fn test_goal_correction_first_written_goal_is_preserved() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
@@ -880,7 +880,7 @@ async fn test_uds_truncate_then_overwrite_last_writer_wins() {
         .await
         .expect("open fresh store");
 
-    // First write: simulates a truncated oversized goal arriving via the UDS path.
+    // First write: the original cycle_start with a goal.
     store
         .insert_cycle_event(
             "test-cycle-1", // cycle_id
@@ -906,8 +906,8 @@ async fn test_uds_truncate_then_overwrite_last_writer_wins() {
         "first insert: get_cycle_start_goal must return the first goal"
     );
 
-    // Second write: simulates the corrected goal from a UDS cycle_start retry
-    // (same cycle_id, same event_type, later timestamp, different goal).
+    // Second write: simulates a second session opening the same cycle_id with
+    // a different (non-NULL) goal at a later timestamp.
     store
         .insert_cycle_event(
             "test-cycle-1", // cycle_id — same as first
@@ -916,13 +916,13 @@ async fn test_uds_truncate_then_overwrite_last_writer_wins() {
             None,
             None,
             None,
-            1700000002_i64, // timestamp (later — this is the last writer)
+            1700000002_i64, // timestamp (later)
             Some("second goal"),
         )
         .await
         .expect("second insert_cycle_event must succeed");
 
-    // Assert: last-writer-wins — the second goal (higher timestamp) is returned.
+    // Assert: first-written-goal-wins — the first goal (lower timestamp) is returned.
     let result = store
         .get_cycle_start_goal("test-cycle-1")
         .await
@@ -930,15 +930,77 @@ async fn test_uds_truncate_then_overwrite_last_writer_wins() {
 
     assert_eq!(
         result.as_deref(),
-        Some("second goal"),
-        "last-writer-wins: get_cycle_start_goal must return the second (later) goal, not the first"
+        Some("first goal"),
+        "first-written-goal-wins: get_cycle_start_goal must return the first (earlier) goal, not the second"
     );
 
-    // Explicitly confirm the returned value is NOT the first (truncated) goal.
+    // Explicitly confirm the returned value is NOT the later goal.
     assert_ne!(
         result.as_deref(),
-        Some("first goal"),
-        "last-writer-wins: first goal must NOT be returned after the second write"
+        Some("second goal"),
+        "first-written-goal-wins: second goal must NOT shadow the first goal"
+    );
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// T-V16-15: NULL cycle_start from a second session must not shadow the
+//           original goal — exact reproduction of GH #468.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_multi_session_null_start_preserves_original_goal() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open fresh store");
+
+    // First session: cycle_start with a goal.
+    store
+        .insert_cycle_event(
+            "multi-session-cycle", // cycle_id
+            0,                     // seq
+            "cycle_start",         // event_type
+            None,                  // phase
+            None,                  // outcome
+            None,                  // next_phase
+            1700000001_i64,        // timestamp (earlier)
+            Some("original goal"),
+        )
+        .await
+        .expect("first insert_cycle_event must succeed");
+
+    // Second session: opens the same feature_cycle without providing a goal
+    // (goal = NULL). This is the exact scenario that caused the bug — the NULL
+    // row has a later timestamp and under DESC ordering it sorted first,
+    // shadowing the original goal.
+    store
+        .insert_cycle_event(
+            "multi-session-cycle", // cycle_id — same as first
+            1,                     // seq — incremented
+            "cycle_start",         // event_type — same as first
+            None,
+            None,
+            None,
+            1700000002_i64, // timestamp (later — this is what sorts first under DESC)
+            None,           // goal = NULL — second session had no goal
+        )
+        .await
+        .expect("second insert_cycle_event (NULL goal) must succeed");
+
+    // Assert: the NULL row must not shadow the original goal.
+    let result = store
+        .get_cycle_start_goal("multi-session-cycle")
+        .await
+        .expect("get_cycle_start_goal must not error");
+
+    assert_eq!(
+        result.as_deref(),
+        Some("original goal"),
+        "NULL cycle_start from second session must not shadow the original goal (GH #468)"
     );
 
     store.close().await.unwrap();
