@@ -115,9 +115,9 @@ pub(crate) struct FusionWeights {
     pub w_sim: f64,             // default 0.25 — bi-encoder similarity
     pub w_nli: f64,             // default 0.35 — NLI entailment (dominant precision signal)
     pub w_conf: f64,            // default 0.15 — confidence tiebreaker
-    pub w_coac: f64,            // default 0.0 (zeroed in crt-032; PPR subsumes co-access signal via GRAPH_EDGES.CoAccess)
-    pub w_util: f64,            // default 0.05 — effectiveness classification
-    pub w_prov: f64,            // default 0.05 — category provenance hint
+    pub w_coac: f64, // default 0.0 (zeroed in crt-032; PPR subsumes co-access signal via GRAPH_EDGES.CoAccess)
+    pub w_util: f64, // default 0.05 — effectiveness classification
+    pub w_prov: f64, // default 0.05 — category provenance hint
     pub w_phase_histogram: f64, // crt-026: default 0.02 — histogram affinity (ADR-004, ASS-028 calibrated)
     pub w_phase_explicit: f64,  // col-031: default 0.05 — PhaseFreqTable activates this (ADR-004)
 }
@@ -1037,7 +1037,11 @@ impl SearchService {
         // If category_histogram is None (cold start), total = 0 and all norms will be 0.0.
         let category_histogram = params.category_histogram.as_ref();
         let histogram_total: u32 = category_histogram
-            .map(|h| h.values().copied().sum())
+            .map(|h| {
+                h.values()
+                    .copied()
+                    .fold(0u32, |acc, v| acc.saturating_add(v))
+            })
             .unwrap_or(0);
 
         // Single fused scoring pass: one iteration over all candidates.

@@ -179,12 +179,33 @@ fn render_header(report: &RetrospectiveReport) -> String {
     out
 }
 
+/// Escape a string for use in a Markdown table cell.
+/// Collapses newlines to a space and escapes pipe characters.
+fn escape_md_cell(s: &str) -> String {
+    s.replace('\n', " ").replace('\r', " ").replace('|', "\\|")
+}
+
+/// Escape a string for use as free text outside a Markdown table.
+/// Collapses newlines to a space, escapes pipe characters, and escapes
+/// a leading `#` character to prevent rendering as a Markdown heading.
+/// IMPORTANT: Only escapes `#` when the trimmed string *starts with* `#`.
+/// Do NOT do a global replace('#', "\\#") — that corrupts issue references
+/// like `#378` embedded in goal text.
+fn escape_md_text(s: &str) -> String {
+    let s = s.replace('\n', " ").replace('\r', " ").replace('|', "\\|");
+    if s.trim_start().starts_with('#') {
+        format!("\\{}", s.trim_start())
+    } else {
+        s
+    }
+}
+
 fn render_goal_section(report: &RetrospectiveReport) -> String {
     let mut out = String::new();
     out.push_str("## Goal\n");
     match &report.goal {
         Some(goal) => {
-            let safe_goal = goal.replace('\n', " ").replace('\r', " ");
+            let safe_goal = escape_md_text(goal);
             let _ = writeln!(out, "{}", safe_goal);
         }
         None => {
@@ -234,21 +255,28 @@ fn render_sessions(summaries: &[SessionSummary]) -> String {
             tools_parts.join(" ")
         };
 
-        // FR-15: Agents column
+        // FR-15: Agents column — escape each element before joining
         let agents_str = if s.agents_spawned.is_empty() {
             "—".to_string()
         } else if s.agents_spawned.len() <= 3 {
-            s.agents_spawned.join(", ")
+            s.agents_spawned
+                .iter()
+                .map(|a| escape_md_cell(a))
+                .collect::<Vec<_>>()
+                .join(", ")
         } else {
-            let first3 = s.agents_spawned[..3].join(", ");
-            format!("{} +{} more", first3, s.agents_spawned.len() - 3)
+            let first3: Vec<String> = s.agents_spawned[..3]
+                .iter()
+                .map(|a| escape_md_cell(a))
+                .collect();
+            format!("{} +{} more", first3.join(", "), s.agents_spawned.len() - 3)
         };
 
         let knowledge = format!(
             "{} served, {} stored",
             s.knowledge_served, s.knowledge_stored
         );
-        let outcome = s.outcome.as_deref().unwrap_or("-");
+        let outcome = escape_md_cell(s.outcome.as_deref().unwrap_or("-"));
         let _ = writeln!(
             out,
             "| {} | {} | {} | {} | {} | {} | {} |",
@@ -308,9 +336,9 @@ fn render_phase_timeline(report: &RetrospectiveReport) -> String {
 
     for ps in phase_stats {
         let phase_display = if ps.phase.is_empty() {
-            "—"
+            "—".to_string()
         } else {
-            &ps.phase
+            escape_md_cell(&ps.phase)
         };
         let duration = format_duration(ps.duration_secs);
         let passes = if ps.pass_count > 1 {
@@ -321,7 +349,11 @@ fn render_phase_timeline(report: &RetrospectiveReport) -> String {
         let agents_str = if ps.agents.is_empty() {
             "—".to_string()
         } else {
-            ps.agents.join(", ")
+            ps.agents
+                .iter()
+                .map(|a| escape_md_cell(a))
+                .collect::<Vec<_>>()
+                .join(", ")
         };
         let knowledge = format!("{}↓ {}↑", ps.knowledge_served, ps.knowledge_stored);
         let gate_str = match ps.gate_result {
@@ -343,7 +375,7 @@ fn render_phase_timeline(report: &RetrospectiveReport) -> String {
         if ps.pass_count > 1 && ps.pass_number == 1 && !rework_emitted.contains(ps.phase.as_str()) {
             rework_emitted.insert(&ps.phase);
             let outcome_text = ps.gate_outcome_text.as_deref().unwrap_or("(unknown)");
-            let safe_outcome = outcome_text.replace('\n', " ").replace('\r', " ");
+            let safe_outcome = escape_md_text(outcome_text);
             let pass2_opt = phase_stats
                 .iter()
                 .find(|p| p.phase == ps.phase && p.pass_number == 2);
@@ -358,7 +390,7 @@ fn render_phase_timeline(report: &RetrospectiveReport) -> String {
             let _ = writeln!(
                 out,
                 "\n**Rework**: {} — pass 1 gate {}: {}. {}",
-                ps.phase,
+                escape_md_cell(&ps.phase),
                 match ps.gate_result {
                     GateResult::Fail => "fail",
                     _ => "result",
@@ -561,11 +593,12 @@ fn render_baseline_outliers(outliers: &[&BaselineComparison]) -> String {
     out.push_str("|--------|-------|------|-------|\n");
 
     for c in outliers {
+        let metric_name = escape_md_cell(&c.metric_name);
         let sigma_str = sigma_string(c);
         let _ = writeln!(
             out,
             "| {} | {:.1} | {:.1} | {} |",
-            c.metric_name, c.current_value, c.mean, sigma_str
+            metric_name, c.current_value, c.mean, sigma_str
         );
     }
 
@@ -935,12 +968,13 @@ fn render_phase_outliers(outliers: &[&BaselineComparison]) -> String {
     out.push_str("|-------|--------|-------|------|-------|\n");
 
     for c in outliers {
-        let phase = c.phase.as_deref().unwrap_or("unknown");
+        let phase = escape_md_cell(c.phase.as_deref().unwrap_or("unknown"));
+        let metric_name = escape_md_cell(&c.metric_name);
         let sigma_str = sigma_string(c);
         let _ = writeln!(
             out,
             "| {} | {} | {:.1} | {:.1} | {} |",
-            phase, c.metric_name, c.current_value, c.mean, sigma_str
+            phase, metric_name, c.current_value, c.mean, sigma_str
         );
     }
 
@@ -983,7 +1017,8 @@ fn render_knowledge_reuse(reuse: &FeatureKnowledgeReuse, feature_cycle: &str) ->
     let _ = writeln!(
         out,
         "| Intra-cycle ({} entries) | {} |",
-        feature_cycle, reuse.intra_cycle_reuse
+        escape_md_cell(feature_cycle),
+        reuse.intra_cycle_reuse
     );
     out.push('\n');
 
@@ -1010,11 +1045,15 @@ fn render_knowledge_reuse(reuse: &FeatureKnowledgeReuse, feature_cycle: &str) ->
         out.push_str("| Entry | Type | Served | Source |\n");
         out.push_str("|-------|------|--------|--------|\n");
         for entry in &reuse.top_cross_feature_entries {
-            let safe_title = entry.title.replace('|', "\\|");
+            let safe_title = escape_md_cell(&entry.title);
             let _ = writeln!(
                 out,
                 "| `#{}` {} | {} | {}× | {} |",
-                entry.id, safe_title, entry.category, entry.serve_count, entry.feature_cycle
+                entry.id,
+                safe_title,
+                escape_md_cell(&entry.category),
+                entry.serve_count,
+                escape_md_cell(&entry.feature_cycle)
             );
         }
         out.push('\n');
@@ -1145,7 +1184,11 @@ fn render_cross_cycle_table(out: &mut String, comparisons: &[PhaseCategoryCompar
         let _ = writeln!(
             out,
             "| {} | {} | {} | {:.1} | {} |",
-            c.phase, c.category, c.this_feature_count, c.cross_cycle_mean, c.sample_features
+            escape_md_cell(&c.phase),
+            escape_md_cell(&c.category),
+            c.this_feature_count,
+            c.cross_cycle_mean,
+            c.sample_features
         );
     }
 
@@ -2313,7 +2356,15 @@ mod tests {
             phase: None,
         };
         let out = render_baseline_outliers(&[&c]);
-        assert!(out.contains("metric|with|pipes"));
+        // GH #379: pipes in metric_name must now be escaped for valid markdown tables
+        assert!(
+            out.contains("metric\\|with\\|pipes"),
+            "metric_name pipes must be escaped; got: {out:?}"
+        );
+        assert!(
+            !out.contains("| metric|with|pipes |"),
+            "raw unescaped pipe in metric_name breaks the markdown table"
+        );
     }
 
     #[test]
@@ -3905,6 +3956,104 @@ mod tests {
         assert!(
             !injected_as_section,
             "markdown injection must not produce a section header"
+        );
+    }
+
+    // ── GH #378 / #379: Markdown escaping helpers ──────────────────────
+
+    #[test]
+    fn test_escape_md_cell_escapes_pipe_and_newlines() {
+        // pipe only
+        assert_eq!(escape_md_cell("deci|sion"), "deci\\|sion");
+        // newline only
+        assert_eq!(escape_md_cell("line1\nline2"), "line1 line2");
+        // both
+        assert_eq!(escape_md_cell("a|b\nc"), "a\\|b c");
+        // carriage return
+        assert_eq!(escape_md_cell("x\ry"), "x y");
+        // no special chars — unchanged
+        assert_eq!(escape_md_cell("hello"), "hello");
+    }
+
+    #[test]
+    fn test_escape_md_text_heading_embedded_reference_and_pipe() {
+        // Leading '#' triggers heading escape
+        let leading = escape_md_text("## Implement feature");
+        assert!(
+            leading.starts_with('\\'),
+            "leading # must be escaped, got: {leading:?}"
+        );
+        assert!(
+            leading.contains("## Implement feature"),
+            "content after escape must be preserved, got: {leading:?}"
+        );
+
+        // Embedded '#378' must NOT be escaped (no global replace)
+        let embedded = escape_md_text("Fix for #378 and #379");
+        assert_eq!(
+            embedded, "Fix for #378 and #379",
+            "embedded issue references must not be escaped"
+        );
+
+        // Pipe must be escaped regardless
+        let with_pipe = escape_md_text("goal | secondary");
+        assert_eq!(with_pipe, "goal \\| secondary");
+    }
+
+    #[test]
+    fn test_knowledge_reuse_section_pipe_in_category_and_feature_cycle() {
+        use unimatrix_observe::EntryRef;
+        let mut report = make_report();
+        report.feature_knowledge_reuse = Some(FeatureKnowledgeReuse {
+            delivery_count: 3,
+            cross_session_count: 0,
+            by_category: HashMap::new(),
+            category_gaps: vec![],
+            total_served: 3,
+            total_stored: 0,
+            cross_feature_reuse: 3,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![EntryRef {
+                id: 99,
+                title: "Some ADR".to_string(),
+                feature_cycle: "col-02|4".to_string(),
+                category: "deci|sion".to_string(),
+                serve_count: 3,
+            }],
+        });
+        let text = extract_text(&format_retrospective_markdown(&report));
+        assert!(
+            text.contains("deci\\|sion"),
+            "pipe in category must be escaped in output"
+        );
+        assert!(
+            text.contains("col-02\\|4"),
+            "pipe in feature_cycle must be escaped in output"
+        );
+        // Unescaped pipes must NOT appear in table cells
+        assert!(
+            !text.contains("| deci|sion |"),
+            "raw pipe in category cell breaks markdown table"
+        );
+    }
+
+    #[test]
+    fn test_render_goal_section_heading_goal_is_escaped() {
+        let mut report = make_report();
+        report.goal = Some("## Implement feature".to_string());
+        let text = extract_text(&format_retrospective_markdown(&report));
+        // The output must not have a line starting with "## Implement" as a section header
+        // (it should be escaped as \## Implement feature)
+        let raw_heading = text.lines().any(|l| l.starts_with("## Implement"));
+        assert!(
+            !raw_heading,
+            "goal starting with ## must be escaped to avoid creating a new markdown section"
+        );
+        // The escaped form must be present
+        assert!(
+            text.contains("\\## Implement feature"),
+            "escaped heading must appear in output, got text snippet: {:?}",
+            text.get(0..200)
         );
     }
 }

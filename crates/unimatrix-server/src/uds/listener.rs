@@ -1093,6 +1093,13 @@ async fn dispatch_request(
                     message: "insufficient capability: Search + Read required".to_string(),
                 };
             }
+            if let Err(e) = sanitize_session_id(&session_id) {
+                tracing::warn!(session_id, error = %e, "UDS: CompactPayload rejected: invalid session_id");
+                return HookResponse::Error {
+                    code: ERR_INVALID_PAYLOAD,
+                    message: e,
+                };
+            }
             handle_compact_payload(
                 &session_id,
                 role,
@@ -3145,6 +3152,57 @@ mod tests {
         .await;
 
         assert_eq!(registry.get_state("s1").unwrap().compaction_count, 1);
+    }
+
+    // GH #346: CompactPayload must reject invalid session_id (mirrors SessionRegister / SessionClose)
+    #[tokio::test]
+    async fn dispatch_compact_payload_invalid_session_id_returns_error() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let invalid_ids: &[&str] = &[
+            "",                   // empty
+            &"x".repeat(129),     // > 128 chars
+            "session/with/slash", // contains '/'
+        ];
+
+        for bad_id in invalid_ids {
+            let response = dispatch_request(
+                HookRequest::CompactPayload {
+                    session_id: bad_id.to_string(),
+                    injected_entry_ids: vec![],
+                    role: None,
+                    feature: None,
+                    token_limit: None,
+                },
+                &store,
+                &embed,
+                &vs,
+                &es,
+                &adapt,
+                "0.1.0",
+                &registry,
+                &make_pending(),
+                &make_services(&store, &embed, &vs, &es, &adapt),
+            )
+            .await;
+
+            match response {
+                HookResponse::Error { code, .. } => {
+                    assert_eq!(
+                        code, ERR_INVALID_PAYLOAD,
+                        "CompactPayload with invalid session_id {:?} must return ERR_INVALID_PAYLOAD",
+                        bad_id
+                    );
+                }
+                other => panic!(
+                    "CompactPayload with invalid session_id {:?} must return Error, got {:?}",
+                    bad_id, other
+                ),
+            }
+        }
     }
 
     // -- format_compaction_payload unit tests --
