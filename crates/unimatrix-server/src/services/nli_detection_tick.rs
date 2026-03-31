@@ -643,7 +643,6 @@ pub async fn run_graph_inference_tick(
         {
             if apply_informs_composite_guard(nli_scores, candidate, config) {
                 let weight = candidate.cosine * config.nli_informs_ppr_weight;
-                debug_assert!(weight.is_finite(), "Informs edge weight must be finite");
                 if !weight.is_finite() {
                     continue;
                 }
@@ -855,7 +854,7 @@ async fn write_inferred_edges_with_cap(
 
     for i in 0..pairs.len() {
         if edges_written >= max_edges {
-            break; // cap reached (FR-09, AC-11)
+            break; // cap reached — checked before pair i is written, so count is exact (FR-09, AC-11)
         }
 
         let (source_id, target_id) = pairs[i];
