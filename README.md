@@ -206,6 +206,8 @@ context_briefing(topic: "crt-027", max_tokens: 1000)
 
 10. **Pin `nli_model_sha256` in production.** A replaced or tampered NLI model file is an undetectable model-poisoning attack. Setting `nli_model_sha256` in `[inference]` config causes the server to verify the model file at startup; a mismatch aborts NLI loading (falls back to cosine) and logs a security warning. Production deployments should always set this field.
 
+11. **Run retrospectives to advance the retention window.** Activity data (observations, query_log, sessions) is retained indefinitely for any cycle that has not been reviewed with `context_cycle_review`. The retention K-window only advances past cycles that have a stored review. If retrospectives are skipped, the retention window stalls and raw signal data accumulates without bound. Call `context_cycle_review` after each cycle completes to allow the GC pass to prune older data. `context_status` shows `pending_cycle_reviews` — the list of cycles awaiting review.
+
 ---
 
 ## Configuration
@@ -308,6 +310,25 @@ w_phase_explicit = 0.05
 # Default 30. Increasing this window widens the historical signal; decreasing it makes
 # rankings more sensitive to recent access patterns.
 query_log_lookback_days = 30
+
+[retention]
+# Number of completed (reviewed) feature cycles to retain activity data for.
+# Observations, query_log, sessions, and injection_log for cycles beyond this
+# window are deleted after their cycle_review_index row exists.
+# Governs the ceiling for PhaseFreqTable lookback and future GNN training window.
+# Range: [1, 10000]. Default: 50.
+activity_detail_retention_cycles = 50
+
+# Maximum number of purgeable cycles to process in a single maintenance tick.
+# Limits tick budget consumed by GC. Older cycles are processed first.
+# Deferred cycles are picked up on the next tick.
+# Range: [1, 1000]. Default: 10.
+max_cycles_per_tick = 10
+
+# Retention window in days for audit_log rows.
+# Audit data is an accountability record, not a learning signal.
+# Range: [1, 3650]. Default: 180.
+audit_log_retention_days = 180
 ```
 
 ```toml
