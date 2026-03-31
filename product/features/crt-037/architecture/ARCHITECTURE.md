@@ -122,53 +122,61 @@ if self.nli_informs_ppr_weight < 0.0 || self.nli_informs_ppr_weight > 1.0 {
 No cross-field invariant with `supports_candidate_threshold`. The Informs HNSW scan is
 a separate scan at a separate threshold; the `candidate < edge` invariant does not apply.
 
-### D. NliCandidatePair Discriminator Struct (unimatrix-server/src/services/nli_detection_tick.rs)
+### D. NliCandidatePair Tagged Union (unimatrix-server/src/services/nli_detection_tick.rs)
 
 **Responsibility:** Carry per-pair metadata through the merged Phase 7 rayon batch so that
 Phase 8 and Phase 8b can route correctly without index-matching parallel vectors (SR-08).
+The enum variant is the routing discriminator; misrouting between Phase 8 and Phase 8b is a
+compile error, not a runtime branch.
 
-**Struct definition (in nli_detection_tick.rs, module-private):**
+**Type definitions (in nli_detection_tick.rs, module-private):**
 
 ```rust
-/// Carries per-pair origin and guard metadata from Phase 4/4b through Phase 7 to Phase 8/8b.
+/// Tagged union carrying per-pair metadata from Phase 4/4b through Phase 7 to Phase 8/8b.
 ///
-/// The discriminator tag ensures Phase 8 (Supports write) and Phase 8b (Informs write)
-/// route to the correct write path based on origin — not by index-matched parallel vecs.
+/// The enum variant is the routing discriminator. Phase 8 pattern-matches on
+/// SupportsContradict; Phase 8b pattern-matches on Informs. Misrouting is a compile error.
 ///
-/// SR-08: parallel index-matched vecs are the failure mode this struct prevents.
+/// SR-08: parallel index-matched vecs are the failure mode this type prevents.
+/// FR-10: spec requires a tagged union so misrouting is a compile-time error.
 #[derive(Debug, Clone)]
-struct NliCandidatePair {
-    source_id: u64,
-    target_id: u64,
-    similarity: f32,
-    /// Origin of this pair: which detection pass produced it.
-    origin: PairOrigin,
-    /// For Informs pairs only: source entry's category string.
-    /// Used in Phase 8b to re-verify the category guard at write time.
-    source_category: Option<String>,
-    /// For Informs pairs only: target entry's category string.
-    source_feature_cycle: Option<String>,
-    target_feature_cycle: Option<String>,
-    source_created_at: Option<i64>,  // Unix timestamp seconds
-    target_created_at: Option<i64>,
+enum NliCandidatePair {
+    SupportsContradict {
+        source_id: u64,
+        target_id: u64,
+        cosine: f32,
+        nli_scores: NliScores,
+    },
+    Informs {
+        candidate: InformsCandidate,
+        nli_scores: NliScores,
+    },
 }
 
-/// Discriminates the write path in Phase 8 / Phase 8b.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PairOrigin {
-    /// Produced by the Phase 4 Supports/Contradicts HNSW scan (cosine > 0.50).
-    SupportsContradict,
-    /// Produced by the Phase 4b Informs HNSW scan (cosine >= 0.45).
-    Informs,
+/// Carries all Phase 4b guard metadata for an Informs candidate.
+/// All fields are required (non-Option): the compiler guarantees Phase 8b has
+/// everything it needs without defensive None checks. This eliminates the R-05
+/// vacuous-pass risk present in a flat struct with Option<*> guard fields.
+#[derive(Debug, Clone)]
+struct InformsCandidate {
+    source_id: u64,
+    target_id: u64,
+    cosine: f32,
+    source_created_at: i64,         // Unix timestamp seconds; required for temporal guard
+    target_created_at: i64,
+    source_feature_cycle: String,   // required for cross-feature guard
+    target_feature_cycle: String,
+    source_category: String,        // required for category re-verification at write time
+    target_category: String,
 }
 ```
 
-**Routing invariant:** After Phase 7 `score_batch`, the `NliScores` vec is index-aligned to
-the `NliCandidatePair` vec. Phase 8 iterates pairs with `origin == SupportsContradict`,
-applying `entailment > supports_edge_threshold`. Phase 8b iterates pairs with
-`origin == Informs`, applying the composite guard (see Phase 8b section). Pairs in Phase 8
-with `origin == Informs` are skipped; pairs in Phase 8b with `origin == SupportsContradict`
-are skipped.
+**Routing invariant:** `NliScores` is embedded in each variant. After Phase 7 `score_batch`
+returns, scores are inserted into the constructed pairs via a zip. Phase 8 pattern-matches on
+`NliCandidatePair::SupportsContradict`, applying `entailment > supports_edge_threshold`.
+Phase 8b pattern-matches on `NliCandidatePair::Informs { candidate, nli_scores }`,
+destructuring all guard fields directly from `candidate` — no unwrap, no Option handling.
+The compiler enforces exhaustiveness at both match sites.
 
 ### E. Store Query: query_existing_informs_pairs (unimatrix-store/src/read.rs)
 
@@ -271,9 +279,12 @@ Phase 4b runs after Phase 4 completes. It uses the same `source_candidates` pool
        if already written.
      - **In-tick dedup:** check `seen_informs_pairs` (a `HashSet<(u64,u64)>` local to
        Phase 4b). Skip if already seen this tick. Insert on first encounter.
-     - Append `NliCandidatePair { source_id, target_id: neighbor_id, similarity,
-       origin: Informs, source_category, source_feature_cycle, target_feature_cycle,
-       source_created_at, target_created_at }` to `informs_candidate_pairs`.
+     - Append `NliCandidatePair::Informs { candidate: InformsCandidate { source_id,
+       target_id: neighbor_id, cosine: similarity, source_created_at, target_created_at,
+       source_feature_cycle, target_feature_cycle, source_category, target_category },
+       nli_scores: /* populated after Phase 7 */ }` to `informs_candidate_pairs`.
+       All `InformsCandidate` fields are required; the struct cannot be constructed with
+       missing guard data.
 
 4. The `informs_candidate_pairs` vec is **not** separately capped before Phase 5. The
    combined sort + truncation in Phase 5 applies the single `max_graph_inference_per_tick`
@@ -331,33 +342,64 @@ Phase 8b runs after Phase 8 completes, iterating the same `merged_pairs` / `nli_
 index-aligned vecs.
 
 **Composite guard (SR-01):** A single predicate is not sufficient. All of the following
-must hold before writing an Informs edge:
+must hold before writing an Informs edge. With `NliCandidatePair` as a tagged union, guard
+fields 3–5 destructure directly from `InformsCandidate` — no unwrap, no Option handling,
+no R-05 vacuous-pass risk:
 
-1. `pair.origin == Informs` (routing discriminator)
-2. `nli_scores[i].neutral > 0.5` (fixed neutral floor — model property, not domain tunable)
-3. `pair.source_created_at < pair.target_created_at` (temporal ordering re-verified from
-   struct fields set in Phase 4b — not re-queried from DB)
-4. `pair.source_feature_cycle != pair.target_feature_cycle` (cross-feature re-verified)
-5. Category pair membership was already verified in Phase 4b and is implicit via
-   `origin == Informs` on this pair. No re-query needed.
+1. Pattern match on `NliCandidatePair::Informs { candidate, nli_scores }` (routing is
+   enforced by the compiler; no explicit discriminator check needed)
+2. `nli_scores.neutral > 0.5` (fixed neutral floor — model property, not domain tunable;
+   see OQ-S2 resolution below)
+3. `candidate.source_created_at < candidate.target_created_at` (temporal ordering
+   re-verified from struct fields — not re-queried from DB)
+4. `candidate.source_feature_cycle != candidate.target_feature_cycle` (cross-feature
+   re-verified)
+5. Category pair membership was verified in Phase 4b and is implicit in the `Informs`
+   variant. No re-query needed.
+
+**OQ-S2 resolution — neutral threshold calibration:** `NliScores.neutral` is a true
+3-class softmax output. The model produces three class scores (entailment, neutral,
+contradiction) that sum to 1.0 (invariant documented in `cross_encoder.rs`). `neutral`
+is therefore a first-class probability, not a residual. A threshold of `neutral > 0.5`
+means the model assigns more than 50% probability to the "unrelated" class — a strict
+criterion indicating the pair lacks a meaningful directional relationship. This is the
+correct calibration for the Informs guard: pairs that are semantically proximate (cosine
+>= 0.45) but where the model is confident they are unrelated should not produce edges.
+The 0.5 floor is not arbitrary; it is the majority-class threshold for the neutral
+probability given a 3-class softmax.
 
 **Write call:**
 
 ```rust
-if all_guards_pass {
-    let weight = pair.similarity * config.nli_informs_ppr_weight;
-    let metadata_json = format_nli_metadata(&nli_scores[i]);
-    write_nli_edge(
-        store,
-        pair.source_id,
-        pair.target_id,
-        "Informs",         // RelationType::Informs.as_str()
-        weight,
-        timestamp,
-        &metadata_json,
-    ).await;
-    informs_edges_written += 1;
+if let NliCandidatePair::Informs { candidate, nli_scores } = pair {
+    if nli_scores.neutral > 0.5
+        && candidate.source_created_at < candidate.target_created_at
+        && candidate.source_feature_cycle != candidate.target_feature_cycle
+    {
+        let weight = candidate.cosine * config.nli_informs_ppr_weight;
+        let metadata_json = format_nli_metadata_informs(&nli_scores);
+        write_nli_edge(
+            store,
+            candidate.source_id,
+            candidate.target_id,
+            "Informs",         // RelationType::Informs.as_str()
+            weight,
+            timestamp,
+            &metadata_json,
+        ).await;
+        informs_edges_written += 1;
+    }
 }
+```
+
+**Delivery note — `format_nli_metadata` and neutral score:** The existing
+`format_nli_metadata` serializes only `entailment` and `contradiction`. For Informs edges,
+the neutral score is the decision criterion (guard predicate 2 above). The delivery agent
+should ensure that when writing Informs edges, `"nli_neutral": scores.neutral` is included
+in the metadata JSON. This can be done by calling a dedicated `format_nli_metadata_informs`
+variant or by extending `format_nli_metadata` to accept an optional flag. This is not
+blocking delivery — the edge will be written correctly either way — but the neutral score
+should be present for observability and post-hoc analysis.
 ```
 
 **Cap in Phase 8b:** There is no secondary cap inside Phase 8b. The pre-Phase 5 truncation
@@ -454,8 +496,8 @@ No direct coupling. PPR reads `GRAPH_EDGES` through `build_typed_relation_graph`
 | `InferenceConfig::informs_category_pairs` | `Vec<[String; 2]>`, default 4 pairs | `config.rs` |
 | `InferenceConfig::nli_informs_cosine_floor` | `f32`, default 0.45, range (0.0, 1.0) | `config.rs` |
 | `InferenceConfig::nli_informs_ppr_weight` | `f32`, default 0.6, range [0.0, 1.0] | `config.rs` |
-| `NliCandidatePair` | struct (module-private to `nli_detection_tick.rs`) | `nli_detection_tick.rs` |
-| `PairOrigin` | enum `{ SupportsContradict, Informs }` (module-private) | `nli_detection_tick.rs` |
+| `NliCandidatePair` | enum `{ SupportsContradict { source_id, target_id, cosine, nli_scores }, Informs { candidate, nli_scores } }` (module-private) | `nli_detection_tick.rs` |
+| `InformsCandidate` | struct with 9 required (non-Option) fields: source_id, target_id, cosine, created_at×2, feature_cycle×2, category×2 (module-private) | `nli_detection_tick.rs` |
 | `Store::query_existing_informs_pairs` | `async fn(&self) -> Result<HashSet<(u64, u64)>>` | `unimatrix-store/src/read.rs` |
 | `write_nli_edge` (Informs call) | `(store, source_id, target_id, "Informs", weight: f32, ts, metadata)` | `nli_detection.rs` (pub(crate)) |
 
@@ -477,11 +519,18 @@ filter.
 
 None. All OQs in SCOPE.md are resolved. Risks SR-01 through SR-08 are addressed:
 
-- SR-01: Composite guard typed struct (NliCandidatePair carries all metadata; Phase 8b applies all five predicates before writing).
+- SR-01: Composite guard — NliCandidatePair is a tagged union (FR-10); all Phase 8b guard
+  fields are non-Option on InformsCandidate. R-05 vacuous-pass risk eliminated at the type
+  level. Phase 8b applies all guard predicates before writing.
 - SR-02: Informs candidates share the Phase 5 combined cap (second-priority truncation bounds fan-out).
 - SR-03: Cap-drop count logged at debug level per tick.
 - SR-04: Default pair list is frozen at four. Expansion is explicitly deferred.
 - SR-05: Penalty invariant documented in this section and in graph.rs module header.
 - SR-06: crt-036 merge is a delivery gate check, not an architecture concern.
 - SR-07: PPR direction confirmed; AC-05 must assert lesson node receives mass (not just non-zero somewhere).
-- SR-08: NliCandidatePair discriminator struct with PairOrigin enum — routing is by struct field, not index-matched parallel vecs.
+- SR-08: NliCandidatePair is a tagged union — routing is by enum variant (compile-time
+  enforced), not by index-matched parallel vecs or a runtime discriminator field.
+- OQ-S2 (neutral threshold): NliScores.neutral is a true 3-class softmax output summing to
+  1.0 with entailment and contradiction (invariant in cross_encoder.rs). The neutral > 0.5
+  threshold is the majority-class criterion for the "unrelated" probability. Correctly
+  calibrated; no change to the threshold value.

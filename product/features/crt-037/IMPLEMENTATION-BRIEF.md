@@ -41,7 +41,7 @@ Add `RelationType::Informs` as a sixth positive edge type in the Unimatrix Typed
 
 | Decision | Resolution | Source | ADR File |
 |----------|------------|--------|----------|
-| OQ-2: Batch structure for merged NLI batch | Use `NliCandidatePair` flat struct with `PairOrigin` discriminator enum. All guard metadata co-located on the struct. SR-08 misrouting eliminated. Spec model (true tagged union) is stronger — implementer must follow spec, not architecture flat-struct shape. | Unimatrix #3938 | product/features/crt-037/architecture/ADR-001-discriminator-tag-struct.md |
+| OQ-2: Batch structure for merged NLI batch | Use `NliCandidatePair` as a Rust tagged union with `SupportsContradict` and `Informs` variants. `Informs` variant carries `InformsCandidate` struct with all guard metadata as required (non-Option) fields. Compiler enforces routing — `None`-field vacuous-pass (R-05) is impossible at the type level. Architecture updated to match spec (ADR-001 corrected, WARN-1 resolved). | Unimatrix #3941 | product/features/crt-037/architecture/ADR-001-discriminator-tag-struct.md |
 | OQ-1: Cap budget split between Supports and Informs | Sequential reservation: Supports/Contradicts candidates first (sort + truncate to `max_graph_inference_per_tick`), then `remaining = cap - supports_count`; Informs candidates truncated to `remaining`. No new config field. `max_graph_inference_per_tick` remains sole throttle. | Unimatrix #3939 | product/features/crt-037/architecture/ADR-002-combined-cap-priority.md |
 | OQ-3: Dedup scope for `query_existing_informs_pairs` | Directional `(source_id, target_id)` — no symmetric normalization. Temporal ordering guard makes reverse edge detection-impossible; symmetric dedup would obscure the directional contract and risk suppressing valid edges on timestamp anomalies. `INSERT OR IGNORE` is the secondary backstop. | Unimatrix #3940 | product/features/crt-037/architecture/ADR-003-directional-dedup.md |
 | OQ-4: Neutral threshold configurability | Fixed constant `0.5`. Parameterizing the neutral floor would tune the model output, not the domain — out of scope for v1. | SCOPE.md §Open Questions | — |
@@ -80,36 +80,30 @@ Informs       -- NEW: empirical→normative cross-feature bridge; positive PPR
 (`graph_penalty`, `find_terminal_active`) use `Supersedes` only — `Informs` is invisible to
 penalty logic (SR-01 invariant).
 
-### `PairOrigin` (module-private enum, `nli_detection_tick.rs`)
-
-```rust
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PairOrigin {
-    SupportsContradict,
-    Informs,
-}
-```
-
-### `NliCandidatePair` (module-private struct, `nli_detection_tick.rs`)
+### `NliCandidatePair` (module-private tagged union, `nli_detection_tick.rs`)
 
 ```rust
 #[derive(Debug, Clone)]
-struct NliCandidatePair {
+enum NliCandidatePair {
+    SupportsContradict { source_id: u64, target_id: u64, cosine: f32, nli_scores: NliScores },
+    Informs { candidate: InformsCandidate, nli_scores: NliScores },
+}
+
+#[derive(Debug, Clone)]
+struct InformsCandidate {
     source_id: u64,
     target_id: u64,
-    similarity: f32,
-    origin: PairOrigin,
-    // Informs-only fields (None for SupportsContradict pairs):
-    source_category: Option<String>,
-    target_category: Option<String>,
-    source_feature_cycle: Option<String>,
-    target_feature_cycle: Option<String>,
-    source_created_at: Option<i64>,   // Unix timestamp seconds
-    target_created_at: Option<i64>,
+    cosine: f32,
+    source_created_at: i64,       // required — temporal ordering guard; not Option
+    target_created_at: i64,       // required — temporal ordering guard; not Option
+    source_feature_cycle: String, // required — cross-feature guard; not Option
+    target_feature_cycle: String, // required — cross-feature guard; not Option
+    source_category: String,      // required — category pair filter; not Option
+    target_category: String,      // required — category pair filter; not Option
 }
 ```
 
-Note: SPECIFICATION.md models this as a true tagged enum (`NliCandidatePair::Informs { candidate: InformsCandidate, nli_scores }`) which is structurally stronger — it eliminates `None`-field vacuous-pass risk at compile time. The implementer must follow the spec's tagged-union form (ALIGNMENT-REPORT.md WARN-1). The architecture's flat-struct definition is superseded by the spec on this point.
+All guard metadata in `InformsCandidate` is required. The compiler makes `None`-field vacuous-pass (R-05 risk) impossible. Phase 8b routes via pattern matching — `NliCandidatePair::Informs { candidate, nli_scores }` — not a discriminator field check. (Architecture corrected to match spec FR-10; WARN-1 resolved. ADR-001 updated, Unimatrix #3941.)
 
 ### `InferenceConfig` (three new fields, `config.rs`)
 
@@ -163,16 +157,22 @@ if self.nli_informs_ppr_weight < 0.0 || self.nli_informs_ppr_weight > 1.0 { ... 
 ### Phase 8b write call (`nli_detection_tick.rs`)
 
 ```rust
-write_nli_edge(
-    store,
-    pair.source_id,
-    pair.target_id,
-    "Informs",                                         // RelationType::Informs.as_str()
-    pair.similarity * config.nli_informs_ppr_weight,  // weight: f32, must be finite
-    timestamp,
-    &metadata_json,
-).await;
+// Pattern match — compiler enforces Informs variant only
+if let NliCandidatePair::Informs { candidate, nli_scores } = pair {
+    // composite guard verified (neutral > 0.5, temporal, cross-feature, category)
+    write_nli_edge(
+        store,
+        candidate.source_id,
+        candidate.target_id,
+        "Informs",                                              // RelationType::Informs.as_str()
+        candidate.cosine * config.nli_informs_ppr_weight,      // weight: f32, must be finite
+        timestamp,
+        &metadata_json,                                         // include "nli_neutral": nli_scores.neutral
+    ).await;
+}
 ```
+
+**Delivery note — `format_nli_metadata`:** The existing helper serializes only `entailment` and `contradiction`. For `Informs` edges, `neutral` is the decision criterion. Add `"nli_neutral": nli_scores.neutral` to the metadata JSON when writing `Informs` edges. Non-blocking, but worth doing while touching this code path for future debugging and score distribution monitoring.
 
 ---
 
@@ -181,21 +181,21 @@ write_nli_edge(
 ```
 Phase 2  — query_existing_supports_pairs (unchanged) + query_existing_informs_pairs (NEW)
 Phase 3  — select_source_candidates (unchanged)
-Phase 4  — HNSW scan @ supports_candidate_threshold (0.50) → NliCandidatePair { origin: SupportsContradict }
+Phase 4  — HNSW scan @ supports_candidate_threshold (0.50) → NliCandidatePair::SupportsContradict { ... }
 Phase 4b — HNSW scan @ nli_informs_cosine_floor (0.45) (NEW)
              cross-category, temporal, cross-feature, dedup guards applied before NLI scoring
-             → NliCandidatePair { origin: Informs, source/target metadata populated }
+             → NliCandidatePair::Informs { candidate: InformsCandidate { ... }, nli_scores: _ }
 Phase 5  — Sequential reservation cap (ADR-002):
              supports_pairs truncated to max_cap;
              remaining = max_cap - supports_pairs.len();
              informs_pairs truncated to remaining;
              debug log: candidates accepted/dropped
 Phase 6  — text fetch for all merged pairs (unchanged)
-Phase 7  — single rayon spawn: score_batch on all pairs; Vec<NliScores> index-aligned to merged vec
-Phase 8  — iterate pairs where origin == SupportsContradict; write Supports/Contradicts (unchanged)
-Phase 8b — iterate pairs where origin == Informs (NEW)
-             composite guard: neutral > 0.5 AND temporal AND cross-feature from stored metadata
-             write Informs edge via write_nli_edge
+Phase 7  — single rayon spawn: score_batch on all pairs; NliScores embedded in each NliCandidatePair variant
+Phase 8  — pattern match NliCandidatePair::SupportsContradict; write Supports/Contradicts (unchanged)
+Phase 8b — pattern match NliCandidatePair::Informs { candidate, nli_scores } (NEW)
+             composite guard: nli_scores.neutral > 0.5 AND temporal AND cross-feature from InformsCandidate
+             write Informs edge via write_nli_edge; metadata includes "nli_neutral": nli_scores.neutral
 ```
 
 ---
@@ -220,10 +220,10 @@ Phase 8b — iterate pairs where origin == Informs (NEW)
 - **C-14**: Fourth `edges_of_type` call for `Informs` in PPR uses `Direction::Outgoing`. `Direction::Incoming` silently produces zero mass flow.
 - **C-15**: crt-036 must be merged before Phase C delivery begins.
 
-**Pre-delivery gates (blocking):**
+**Pre-delivery gates — CLEARED:**
 
-- **OQ-S1 (R-01 blocking)**: Confirm `GRAPH_EDGES.relation_type` has no CHECK constraint via DDL inspection before Phase C. If a constraint exists, inserting `"Informs"` fails silently — entire feature delivers zero value.
-- **OQ-S2 (WARN)**: Confirm `NliScores.neutral` computation model property (direct logit vs. residual `1 - entailment - contradiction`). Must be resolved before Phase C. FR-11's entailment exclusion guard partially mitigates residual-neutral noise but does not replace this confirmation.
+- **OQ-S1 (CLEARED)**: DDL confirmed — `GRAPH_EDGES.relation_type` is plain `TEXT NOT NULL` with only a `UNIQUE(source_id, target_id, relation_type)` index. No CHECK constraint. `"Informs"` writes without restriction.
+- **OQ-S2 (CLEARED)**: `NliScores.neutral` is a true 3-class softmax output (`entailment + neutral + contradiction ≈ 1.0`, invariant documented in `cross_encoder.rs` lines 32–42). `neutral > 0.5` means the model assigns >50% probability to "unrelated" as a first-class output. Threshold is correctly calibrated. WARN-2 resolved.
 
 ---
 

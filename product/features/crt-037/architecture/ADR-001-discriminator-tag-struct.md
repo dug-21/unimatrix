@@ -1,4 +1,4 @@
-## ADR-001: Discriminator Tag Struct for Merged NLI Batch
+## ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch
 
 ### Context
 
@@ -6,82 +6,103 @@ SCOPE.md OQ-2 resolved that the Supports/Contradicts and Informs candidate pairs
 merged into a single Phase 7 rayon batch to maintain the W1-2 contract (one `rayon_pool.spawn`
 per tick). After scoring, Phase 8 writes Supports edges and Phase 8b writes Informs edges.
 
-Two options for carrying origin and per-pair guard metadata through the batch:
+Three options for carrying origin and per-pair guard metadata through the batch were
+considered:
 
 1. **Parallel index-matched vecs**: one `Vec<(u64, u64, f32)>` for all pairs and a separate
    `Vec<PairOrigin>` + several additional `Vec<T>` for guard data (feature_cycles, timestamps,
    categories). Phase 8/8b index into these by position.
 
-2. **Single discriminator struct**: one `Vec<NliCandidatePair>` where each element carries
-   its `origin` tag plus all guard metadata as named fields.
+2. **Flat discriminator struct with `Option<*>` fields**: one `Vec<NliCandidatePair>` where
+   each element carries an `origin: PairOrigin` tag plus all guard metadata as `Option<T>`
+   named fields (None for SupportsContradict pairs, Some for Informs pairs).
 
-SR-08 (SCOPE-RISK-ASSESSMENT.md) identifies option 1 as the failure mode: if the tag routing
-in Phase 8/8b diverges from how Phase 4b attaches metadata, Informs pairs may be silently
-routed to the Supports write path and dropped. Index misalignment is a compile-invisible bug
-that can occur any time the vec construction and the write loop are maintained separately.
+3. **Tagged union (Rust enum)**: `NliCandidatePair` is itself an enum where each variant
+   carries exactly the fields required for its write path — no `Option` fields, no
+   discriminator tag needed.
 
-The existing `scored_input: Vec<(u64, u64, String, String)>` in the current tick is a
-precedent for using a single struct-like tuple — but it lacks a discriminator, and adding a
-fifth field (origin) while keeping others as a parallel vec is the indexed-misalignment trap.
+SR-08 (SCOPE-RISK-ASSESSMENT.md) identifies option 1 as the failure mode: index misalignment
+is a compile-invisible bug. Option 2 improves on 1 by co-locating all data, but retains a
+runtime risk: an `Informs`-origin pair can have `source_created_at: None` — Phase 8b must
+then handle that case defensively or risk a panic. If a guard is omitted, the pair silently
+passes with a vacuous check (R-05 vacuous-pass risk).
+
+Option 3 eliminates this at the type level. When the struct is a tagged union, an `Informs`
+variant carries all guard fields as non-`Option` values — the compiler enforces that they
+are present. Phase 8b cannot accidentally skip a guard because the fields are always populated.
+Misrouting between Phase 8 and Phase 8b is a compile error, not a runtime branch.
+
+A design review pass after initial architecture identified option 2 (flat struct) in the
+original ADR as inconsistent with FR-10 in the specification, which specifies a tagged union.
+This corrected ADR adopts the spec model.
 
 ### Decision
 
-Define two module-private types in `nli_detection_tick.rs`:
+Define `NliCandidatePair` as a module-private Rust enum in `nli_detection_tick.rs`:
 
 ```rust
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PairOrigin {
-    SupportsContradict,
-    Informs,
+/// Tagged union carrying per-pair metadata from Phase 4/4b through Phase 7 to Phase 8/8b.
+///
+/// The enum variant is the routing discriminator. Phase 8 pattern-matches on
+/// SupportsContradict; Phase 8b pattern-matches on Informs. Misrouting is a compile error,
+/// not a runtime branch. SR-08: parallel index-matched vecs are the failure mode this
+/// type prevents.
+#[derive(Debug, Clone)]
+enum NliCandidatePair {
+    SupportsContradict {
+        source_id: u64,
+        target_id: u64,
+        cosine: f32,
+        nli_scores: NliScores,
+    },
+    Informs {
+        candidate: InformsCandidate,
+        nli_scores: NliScores,
+    },
 }
 
+/// Carries all Phase 4b guard metadata for an Informs candidate.
+/// All fields are required (non-Option): the compiler guarantees Phase 8b has
+/// everything it needs without defensive None checks.
 #[derive(Debug, Clone)]
-struct NliCandidatePair {
+struct InformsCandidate {
     source_id: u64,
     target_id: u64,
-    similarity: f32,
-    origin: PairOrigin,
-    // Informs-only guard data (None for SupportsContradict pairs):
-    source_category: Option<String>,
-    target_category: Option<String>,
-    source_feature_cycle: Option<String>,
-    target_feature_cycle: Option<String>,
-    source_created_at: Option<i64>,
-    target_created_at: Option<i64>,
+    cosine: f32,
+    source_created_at: i64,         // Unix timestamp seconds; required for temporal guard
+    target_created_at: i64,
+    source_feature_cycle: String,   // required for cross-feature guard
+    target_feature_cycle: String,
+    source_category: String,        // required for category re-verification at write time
+    target_category: String,
 }
 ```
 
-The merged batch for Phase 6 and Phase 7 is `Vec<NliCandidatePair>`. After scoring, the
-`Vec<NliScores>` is index-aligned to this vec (one `NliScores` per `NliCandidatePair`, in
-order). The length-mismatch guard already present after Phase 7 (line 267 in
-`nli_detection_tick.rs`) applies to the merged vec identically.
+The merged batch for Phase 6 and Phase 7 is `Vec<NliCandidatePair>`. `NliScores` is embedded
+in each variant directly rather than maintained as a parallel vec. After Phase 7 `score_batch`
+returns, scores are inserted into the constructed pairs. The length-mismatch guard present
+after Phase 7 continues to apply during score insertion.
 
-Phase 8 iterates all pairs, processes those with `origin == SupportsContradict`, skips
-`Informs`. Phase 8b iterates all pairs, processes those with `origin == Informs`, skips
-`SupportsContradict`. This is a simple match arm per iteration — no separate loop, no
-second index.
-
-The existing `write_inferred_edges_with_cap` function takes `pairs: &[(u64, u64)]`. To
-avoid changing its signature, Phase 8 builds a temporary `write_pairs` slice on the fly
-(as the current code already does at line 288), but filtered to `SupportsContradict` only.
-Alternatively, `write_inferred_edges_with_cap` can be refactored to accept
-`&[NliCandidatePair]` — this is an implementation agent decision. The discriminator struct
-interface is the invariant; the write helper's internal signature is not.
+Phase 8 pattern-matches on `NliCandidatePair::SupportsContradict`, ignores `Informs` arms.
+Phase 8b pattern-matches on `NliCandidatePair::Informs { candidate, nli_scores }` — all
+guard fields destructure directly from `candidate` with no unwrap, no Option handling.
 
 Phase 8b does NOT use `write_inferred_edges_with_cap`. It calls `write_nli_edge` directly
 (as `pub(crate)`) for each qualifying Informs pair, applying the composite guard inline.
 
 ### Consequences
 
-- SR-08 misrouting is eliminated. The origin field is co-located with source/target IDs on
-  the same struct; Phase 4b cannot attach metadata to one vec while indexing from another.
-- Guard data for Phase 8b (feature_cycles, timestamps, categories) is carried as named
-  `Option<T>` fields on `NliCandidatePair`. Accessing `pair.source_feature_cycle` at write
-  time is self-documenting; accessing `feature_cycle_vec[i]` is not.
-- `NliCandidatePair` for `SupportsContradict` origin carries `None` for all Informs-only
-  fields. This is a small allocation cost — accepted because the cap bounds the vec size to
-  at most `max_graph_inference_per_tick` (default 100) entries.
-- The existing length-mismatch guard between `nli_scores.len()` and `scored_input.len()`
-  is preserved verbatim. The only change is that `scored_input` becomes `Vec<NliCandidatePair>`.
-- Tests for Phase 8b routing must explicitly verify that an Informs pair with
-  `origin == SupportsContradict` is not written as an Informs edge, and vice versa.
+- SR-08 misrouting is a compile error. Accessing `SupportsContradict` fields in Phase 8b
+  code is a type error — the compiler rejects it.
+- R-05 vacuous-pass risk is eliminated. Phase 8b guard fields (`source_created_at`,
+  `source_feature_cycle`, etc.) are non-Option on `InformsCandidate`; there is no path
+  where a guard is skipped because a field was None.
+- Phase 4b must populate all `InformsCandidate` fields before appending to the candidate
+  vec. This is an intentional constraint: incompletely specified pairs cannot be constructed.
+- The `NliScores` embedding in each variant removes the need for a parallel `Vec<NliScores>`
+  and eliminates the separate length-mismatch guard. Score insertion becomes a zip operation.
+- The existing length-mismatch guard between raw `score_batch` output and the input text vec
+  is preserved; only the downstream parallel-scores vec is removed.
+- Tests for Phase 8b routing must explicitly verify that a `SupportsContradict` variant is
+  not written as an Informs edge, and vice versa. Pattern exhaustiveness is enforced by the
+  compiler, so missing arms are caught at build time.
