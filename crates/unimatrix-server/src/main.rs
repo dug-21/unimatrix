@@ -639,6 +639,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Build shared ServiceLayer for UDS and MCP transports (vnc-006, vnc-009).
     let usage_dedup = Arc::new(UsageDedup::new());
     let inference_config = Arc::new(config.inference.clone()); // crt-023: snapshot for service layer
+    let retention_config = Arc::new(config.retention.clone()); // crt-036: snapshot for GC policy
     let services = unimatrix_server::services::ServiceLayer::new(
         Arc::clone(&store),
         Arc::clone(&vector_index),
@@ -732,6 +733,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&inference_config), // crt-023: bootstrap promotion config
         phase_freq_table_handle,      // col-031: shared with SearchService (ADR-005)
         Arc::clone(&categories),      // crt-031: category allowlist for lifecycle guard stub
+        Arc::clone(&retention_config), // crt-036: activity data retention policy
     );
 
     // Create daemon CancellationToken (ADR-002).
@@ -1034,6 +1036,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Build shared ServiceLayer for UDS and MCP transports (vnc-006, vnc-009).
     let usage_dedup = Arc::new(UsageDedup::new());
     let inference_config = Arc::new(config.inference.clone()); // crt-023: snapshot for service layer
+    let retention_config = Arc::new(config.retention.clone()); // crt-036: snapshot for GC policy
     let services = unimatrix_server::services::ServiceLayer::new(
         Arc::clone(&store),
         Arc::clone(&vector_index),
@@ -1131,6 +1134,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&inference_config),  // crt-023: bootstrap promotion config
         phase_freq_table_handle,        // col-031: shared with SearchService (ADR-005)
         Arc::clone(&categories),        // crt-031: category allowlist for lifecycle guard stub
+        Arc::clone(&retention_config),  // crt-036: activity data retention policy
     );
 
     // Prepare lifecycle handles for shutdown.

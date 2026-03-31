@@ -211,7 +211,9 @@ mod tests {
             schema_version: SUMMARY_SCHEMA_VERSION,
             computed_at: 1_711_700_000,
             raw_signals_available: 1,
-            summary_json: r#"{"feature_cycle":"crt-033-serde-substitute","schema_version":1,"hotspots":[]}"#.to_string(),
+            summary_json:
+                r#"{"feature_cycle":"crt-033-serde-substitute","schema_version":1,"hotspots":[]}"#
+                    .to_string(),
         };
 
         store
@@ -853,5 +855,4 @@ mod tests {
             .await
             .unwrap();
     }
-
 }

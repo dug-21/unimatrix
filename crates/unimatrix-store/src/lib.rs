@@ -21,6 +21,7 @@ pub mod injection_log;
 pub mod observations;
 pub mod query_log;
 pub mod registry;
+pub mod retention;
 pub mod sessions;
 pub mod signal;
 pub mod topic_deliveries;
@@ -38,6 +39,7 @@ pub use read::{
     CO_ACCESS_GRAPH_MIN_COUNT, ContradictEdgeRow, EDGE_SOURCE_CO_ACCESS, EDGE_SOURCE_NLI,
     GraphCohesionMetrics, GraphEdgeRow, StatusAggregates,
 };
+pub use retention::{CycleGcStats, UnattributedGcStats};
 pub use schema::status_counter_key;
 pub use schema::{AgentRecord, AuditEvent, Capability, Outcome, TrustLevel};
 pub use schema::{CoAccessRecord, co_access_key};

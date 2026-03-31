@@ -32,7 +32,7 @@ use unimatrix_adapt::AdaptationService;
 
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::categories::CategoryAllowlist;
-use crate::infra::config::InferenceConfig;
+use crate::infra::config::{InferenceConfig, RetentionConfig};
 use crate::infra::contradiction::{self, ContradictionConfig};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::nli_handle::NliServiceHandle;
@@ -253,6 +253,7 @@ pub fn spawn_background_tick(
     inference_config: Arc<InferenceConfig>,   // crt-023: bootstrap promotion config
     phase_freq_table: PhaseFreqTableHandle,   // col-031: required non-optional (ADR-005)
     category_allowlist: Arc<CategoryAllowlist>, // crt-031: lifecycle policy for Step 10b stub
+    retention_config: Arc<RetentionConfig>,   // crt-036: activity data retention policy
 ) -> tokio::task::JoinHandle<()> {
     // Outer supervisor — this handle is stored as tick_handle and aborted on shutdown.
     tokio::spawn(async move {
@@ -282,6 +283,7 @@ pub fn spawn_background_tick(
                 Arc::clone(&inference_config),
                 phase_freq_table.clone(), // col-031: Arc::clone via .clone() (same as typed_graph_state)
                 Arc::clone(&category_allowlist), // crt-031: pass category_allowlist to tick loop
+                Arc::clone(&retention_config), // crt-036: retention policy
             ));
 
             match inner_handle.await {
@@ -328,6 +330,7 @@ async fn background_tick_loop(
     inference_config: Arc<InferenceConfig>,   // crt-023: bootstrap promotion config
     phase_freq_table: PhaseFreqTableHandle,   // col-031: threaded to run_single_tick
     category_allowlist: Arc<CategoryAllowlist>, // crt-031: lifecycle policy for run_single_tick
+    retention_config: Arc<RetentionConfig>,   // crt-036: activity data retention policy
 ) {
     let tick_interval_secs = read_tick_interval();
     let mut interval = tokio::time::interval(Duration::from_secs(tick_interval_secs));
@@ -390,6 +393,7 @@ async fn background_tick_loop(
             &confidence_params, // GH #311: operator-configured weights for StatusService
             &phase_freq_table,  // col-031: passed by reference (mirrors typed_graph_state pattern)
             &category_allowlist, // crt-031
+            &retention_config,  // crt-036: activity data retention policy
         )
         .await;
 
@@ -441,6 +445,7 @@ async fn run_single_tick(
     confidence_params: &Arc<ConfidenceParams>, // GH #311: operator-configured weights for StatusService
     phase_freq_table: &PhaseFreqTableHandle,   // col-031: required (ADR-005)
     category_allowlist: &Arc<CategoryAllowlist>, // crt-031: lifecycle policy
+    retention_config: &Arc<RetentionConfig>,   // crt-036: activity data retention policy
 ) -> Result<(), String> {
     let tick_start = now_secs();
     tracing::info!("background tick starting");
@@ -477,6 +482,7 @@ async fn run_single_tick(
             nli_auto_quarantine_threshold,
             inference_config,
             category_allowlist, // crt-031: &Arc<CategoryAllowlist>
+            retention_config,   // crt-036: activity data retention policy
         ),
     )
     .await
@@ -815,6 +821,7 @@ async fn maintenance_tick(
     nli_auto_quarantine_threshold: f32, // crt-023 (ADR-007): threshold for NLI-only edges
     inference_config: &Arc<InferenceConfig>, // bugfix-444: heal pass batch size
     category_allowlist: &Arc<CategoryAllowlist>, // crt-031: lifecycle policy for Step 10b
+    retention_config: &Arc<RetentionConfig>, // crt-036: activity data retention policy
 ) -> Result<(), ServiceError> {
     // Step 1: Load the lightweight maintenance snapshot (#280).
     // Replaces the full compute_report() call which ran phases 2–7 unnecessarily.
@@ -963,6 +970,7 @@ async fn maintenance_tick(
             entry_store,
             pending_entries,
             inference_config,
+            retention_config, // crt-036: cycle-based GC policy
         )
         .await?;
 
