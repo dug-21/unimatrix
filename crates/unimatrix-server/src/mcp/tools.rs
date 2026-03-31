@@ -1627,20 +1627,6 @@ impl UnimatrixServer {
         // 8. Store MetricVector (nxs-009: typed API, no bincode serialization)
         store.store_metrics(&feature_cycle, &metrics);
 
-        // 9. Cleanup expired observations (FR-07: 60-day retention via SQL DELETE)
-        {
-            let now_millis = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_millis() as i64;
-            let sixty_days_millis = 60_i64 * 24 * 60 * 60 * 1000;
-            let cutoff = now_millis - sixty_days_millis;
-            let _ = sqlx::query("DELETE FROM observations WHERE ts_millis < ?1")
-                .bind(cutoff)
-                .execute(store.write_pool_server())
-                .await;
-        }
-
         // 10a. Compute baseline comparison
         let baseline = unimatrix_observe::compute_baselines(&history)
             .map(|baselines| unimatrix_observe::compare_to_baseline(&metrics, &baselines));
