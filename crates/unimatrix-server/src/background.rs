@@ -518,9 +518,10 @@ async fn run_single_tick(
     {
         let compaction_result = sqlx::query(
             "DELETE FROM graph_edges
-             WHERE source_id NOT IN (SELECT id FROM entries)
-                OR target_id NOT IN (SELECT id FROM entries)",
+             WHERE source_id NOT IN (SELECT id FROM entries WHERE status != ?1)
+                OR target_id NOT IN (SELECT id FROM entries WHERE status != ?1)",
         )
+        .bind(Status::Quarantined as u8 as i64)
         .execute(store.write_pool_server())
         .await;
 
@@ -2931,11 +2932,14 @@ mod tests {
     /// Extracted to keep tests focused on the compaction step without wiring
     /// the full tick pipeline.
     async fn run_graph_edges_compaction(store: &unimatrix_store::SqlxStore) -> u64 {
+        // IMPORTANT: this SQL must remain identical to the production DELETE in
+        // run_single_tick. If you change one, change both.
         sqlx::query(
             "DELETE FROM graph_edges
-             WHERE source_id NOT IN (SELECT id FROM entries)
-                OR target_id NOT IN (SELECT id FROM entries)",
+             WHERE source_id NOT IN (SELECT id FROM entries WHERE status != ?1)
+                OR target_id NOT IN (SELECT id FROM entries WHERE status != ?1)",
         )
+        .bind(unimatrix_store::Status::Quarantined as u8 as i64)
         .execute(store.write_pool_server())
         .await
         .expect("compaction DELETE must succeed")
@@ -3100,6 +3104,120 @@ mod tests {
         assert_eq!(
             1, 1,
             "structural assertion: compaction uses write_pool_server() (see code review gate)"
+        );
+    }
+
+    /// GH #458: Quarantined entry as source — edges FROM a quarantined entry must be
+    /// deleted by compaction, just like edges from a fully-deleted entry.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_background_tick_compaction_removes_quarantined_source_edges() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        // Insert one active entry (id=20, status=0).
+        insert_test_entry(&store, 20).await;
+
+        // Insert one quarantined entry (id=21, status=3).
+        sqlx::query(
+            "INSERT OR IGNORE INTO entries
+             (id, title, content, topic, category, source, status, confidence,
+              created_at, updated_at, last_accessed_at, access_count,
+              correction_count, embedding_dim, created_by, modified_by,
+              content_hash, previous_hash, version, feature_cycle, trust_source,
+              helpful_count, unhelpful_count)
+             VALUES (?1, 'quarantined entry', '', 'test', 'decision', 'test', ?2, 0.5,
+                     1000000, 1000000, 1000000, 0, 0, 0, 'test', 'test',
+                     '', '', 1, '', 'agent', 0, 0)",
+        )
+        .bind(21_i64)
+        .bind(unimatrix_store::Status::Quarantined as u8 as i64)
+        .execute(store.write_pool_server())
+        .await
+        .expect("insert quarantined entry must succeed");
+
+        // Edges FROM the quarantined entry Q (id=21) to the active entry A (id=20).
+        insert_graph_edge(&store, 21, 20, "CoAccess").await;
+        insert_graph_edge(&store, 21, 20, "Supports").await;
+
+        // An edge between two active entries — must NOT be deleted.
+        insert_graph_edge(&store, 20, 20, "CoAccess").await;
+
+        // Run compaction.
+        let rows_deleted = run_graph_edges_compaction(&store).await;
+
+        // Both edges from the quarantined source must be gone.
+        assert_eq!(
+            count_graph_edges(&store, 21, 20).await,
+            0,
+            "edges from quarantined source (21→20) must be deleted by compaction"
+        );
+
+        // The valid edge between active entries must survive.
+        assert_eq!(
+            count_graph_edges(&store, 20, 20).await,
+            1,
+            "edge between active entries (20→20) must survive compaction"
+        );
+
+        // Sanity check: exactly 2 rows deleted (CoAccess + Supports from Q→A).
+        assert_eq!(
+            rows_deleted, 2,
+            "exactly 2 quarantined-source edges must be deleted"
+        );
+    }
+
+    /// GH #458: Quarantined entry as target — edges TO a quarantined entry must be
+    /// deleted by compaction, just like edges to a fully-deleted entry.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_background_tick_compaction_removes_quarantined_target_edges() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        // Insert one active entry (id=30, status=0).
+        insert_test_entry(&store, 30).await;
+
+        // Insert one quarantined entry (id=31, status=3).
+        sqlx::query(
+            "INSERT OR IGNORE INTO entries
+             (id, title, content, topic, category, source, status, confidence,
+              created_at, updated_at, last_accessed_at, access_count,
+              correction_count, embedding_dim, created_by, modified_by,
+              content_hash, previous_hash, version, feature_cycle, trust_source,
+              helpful_count, unhelpful_count)
+             VALUES (?1, 'quarantined entry', '', 'test', 'decision', 'test', ?2, 0.5,
+                     1000000, 1000000, 1000000, 0, 0, 0, 'test', 'test',
+                     '', '', 1, '', 'agent', 0, 0)",
+        )
+        .bind(31_i64)
+        .bind(unimatrix_store::Status::Quarantined as u8 as i64)
+        .execute(store.write_pool_server())
+        .await
+        .expect("insert quarantined entry must succeed");
+
+        // Edges TO the quarantined entry Q (id=31) from the active entry A (id=30).
+        insert_graph_edge(&store, 30, 31, "CoAccess").await;
+        insert_graph_edge(&store, 30, 31, "Supports").await;
+
+        // Run compaction.
+        let rows_deleted = run_graph_edges_compaction(&store).await;
+
+        // Both edges to the quarantined target must be gone.
+        assert_eq!(
+            count_graph_edges(&store, 30, 31).await,
+            0,
+            "edges to quarantined target (30→31) must be deleted by compaction"
+        );
+
+        // Sanity check: exactly 2 rows deleted (CoAccess + Supports from A→Q).
+        assert_eq!(
+            rows_deleted, 2,
+            "exactly 2 quarantined-target edges must be deleted"
         );
     }
 
