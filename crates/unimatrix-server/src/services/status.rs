@@ -3431,9 +3431,9 @@ mod crt_036_gc_block_tests {
         // K=1: one retained cycle (newest), two purgeable cycles.
         // C1 = oldest purgeable, C2 = second purgeable, C3 = retained.
         let cycles = [
-            ("trace-c1", now - 3000, true),  // purgeable
-            ("trace-c2", now - 2000, true),  // purgeable
-            ("trace-c3", now - 100, false),  // retained (within K=1)
+            ("trace-c1", now - 3000, true), // purgeable
+            ("trace-c2", now - 2000, true), // purgeable
+            ("trace-c3", now - 100, false), // retained (within K=1)
         ];
 
         for (fc, computed_at, _purgeable) in &cycles {
