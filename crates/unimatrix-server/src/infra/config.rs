@@ -535,6 +535,41 @@ pub struct InferenceConfig {
     /// Default: 50. Valid range: [1, 500] inclusive.
     #[serde(default = "default_ppr_max_expand")]
     pub ppr_max_expand: usize,
+
+    // -----------------------------------------------------------------------
+    // Informs edge detection fields (crt-037)
+    // -----------------------------------------------------------------------
+    /// Category pairs eligible for Informs detection.
+    ///
+    /// Each element [lhs, rhs] means: entries with category `lhs` may Inform entries
+    /// with category `rhs`. Domain vocabulary lives ONLY here — not in detection logic
+    /// (C-12 / AC-22). Detection receives this list as a runtime config value.
+    ///
+    /// Default: four software-engineering pairs (frozen at v1, C-10 / SR-04).
+    /// An empty list disables Informs detection without error.
+    #[serde(default = "default_informs_category_pairs")]
+    pub informs_category_pairs: Vec<[String; 2]>,
+
+    /// HNSW cosine similarity floor for Informs candidate pre-filter.
+    ///
+    /// Phase 4b includes pairs with similarity >= nli_informs_cosine_floor.
+    /// Inclusive floor (>= not >) — pairs at exactly 0.45 are valid candidates (AC-17, AC-18).
+    /// Distinct from supports_candidate_threshold (Phase 4 uses strict >; Phase 4b uses >=).
+    ///
+    /// Default: 0.45. Range: (0.0, 1.0) exclusive (>0.0, <1.0).
+    #[serde(default = "default_nli_informs_cosine_floor")]
+    pub nli_informs_cosine_floor: f32,
+
+    /// PPR edge weight multiplier for Informs edges.
+    ///
+    /// Informs edge weight = candidate.cosine * nli_informs_ppr_weight (both f32).
+    /// Controls how strongly institutional memory influences PPR traversal relative to
+    /// Supports edges (which use the NLI entailment score as weight directly).
+    /// Weight must be finite — NaN/+-Inf rejected before any write (C-13, NF-08).
+    ///
+    /// Default: 0.6. Range: [0.0, 1.0] inclusive (0.0 disables PPR contribution; 1.0 is max).
+    #[serde(default = "default_nli_informs_ppr_weight")]
+    pub nli_informs_ppr_weight: f32,
 }
 
 impl Default for InferenceConfig {
@@ -587,6 +622,10 @@ impl Default for InferenceConfig {
             ppr_inclusion_threshold: default_ppr_inclusion_threshold(),
             ppr_blend_weight: default_ppr_blend_weight(),
             ppr_max_expand: default_ppr_max_expand(),
+            // crt-037: Informs edge detection fields
+            informs_category_pairs: default_informs_category_pairs(),
+            nli_informs_cosine_floor: default_nli_informs_cosine_floor(),
+            nli_informs_ppr_weight: default_nli_informs_ppr_weight(),
         }
     }
 }
@@ -718,6 +757,34 @@ fn default_max_co_access_promotion_per_tick() -> usize {
 
 fn default_graph_inference_k() -> usize {
     10
+}
+
+// ---------------------------------------------------------------------------
+// Informs edge detection default value functions (crt-037)
+// ---------------------------------------------------------------------------
+
+/// Default category pairs for Informs detection.
+///
+/// These four pairs are the ONLY locations in the codebase where domain vocabulary
+/// strings ("lesson-learned", "decision", "pattern", "convention") appear as string
+/// literals. Detection logic must not contain these strings (C-12 / AC-22).
+///
+/// Frozen at four pairs for v1 (C-10 / SR-04).
+fn default_informs_category_pairs() -> Vec<[String; 2]> {
+    vec![
+        ["lesson-learned".to_string(), "decision".to_string()],
+        ["lesson-learned".to_string(), "convention".to_string()],
+        ["pattern".to_string(), "decision".to_string()],
+        ["pattern".to_string(), "convention".to_string()],
+    ]
+}
+
+fn default_nli_informs_cosine_floor() -> f32 {
+    0.45
+}
+
+fn default_nli_informs_ppr_weight() -> f32 {
+    0.6
 }
 
 // ---------------------------------------------------------------------------
@@ -1044,6 +1111,29 @@ impl InferenceConfig {
                 reason: "must be in range [1, 1000]",
             });
         }
+
+        // -- crt-037: nli_informs_cosine_floor range check (0.0, 1.0) exclusive --
+        if self.nli_informs_cosine_floor <= 0.0 || self.nli_informs_cosine_floor >= 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "nli_informs_cosine_floor",
+                value: self.nli_informs_cosine_floor.to_string(),
+                reason: "must be in range (0.0, 1.0) exclusive",
+            });
+        }
+
+        // -- crt-037: nli_informs_ppr_weight range check [0.0, 1.0] inclusive --
+        if self.nli_informs_ppr_weight < 0.0 || self.nli_informs_ppr_weight > 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "nli_informs_ppr_weight",
+                value: self.nli_informs_ppr_weight.to_string(),
+                reason: "must be in range [0.0, 1.0] inclusive",
+            });
+        }
+
+        // Note: informs_category_pairs has no range check — empty list is valid
+        // (disables Informs detection without error; C-08, pseudocode/config.md).
 
         Ok(())
     }
@@ -2311,6 +2401,32 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.ppr_max_expand
             } else {
                 global.inference.ppr_max_expand
+            },
+            // crt-037: Informs edge detection fields
+            informs_category_pairs: if project.inference.informs_category_pairs
+                != default.inference.informs_category_pairs
+            {
+                project.inference.informs_category_pairs
+            } else {
+                global.inference.informs_category_pairs
+            },
+            nli_informs_cosine_floor: if (project.inference.nli_informs_cosine_floor
+                - default.inference.nli_informs_cosine_floor)
+                .abs()
+                > f32::EPSILON
+            {
+                project.inference.nli_informs_cosine_floor
+            } else {
+                global.inference.nli_informs_cosine_floor
+            },
+            nli_informs_ppr_weight: if (project.inference.nli_informs_ppr_weight
+                - default.inference.nli_informs_ppr_weight)
+                .abs()
+                > f32::EPSILON
+            {
+                project.inference.nli_informs_ppr_weight
+            } else {
+                global.inference.nli_informs_ppr_weight
             },
         },
         // crt-036: per-field project-wins merge for retention config
@@ -6709,6 +6825,226 @@ max_cycles_per_tick = 20
         assert!(
             matches!(err, ConfigError::RetentionFieldOutOfRange { .. }),
             "must be RetentionFieldOutOfRange variant; got: {err:?}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-037: InferenceConfig Informs edge detection fields
+    // -----------------------------------------------------------------------
+
+    // AC-07: empty TOML deserializes informs_category_pairs to the four default SE pairs.
+    #[test]
+    fn test_inference_config_default_informs_category_pairs() {
+        let config = InferenceConfig::default();
+        let expected: Vec<[String; 2]> = vec![
+            ["lesson-learned".to_string(), "decision".to_string()],
+            ["lesson-learned".to_string(), "convention".to_string()],
+            ["pattern".to_string(), "decision".to_string()],
+            ["pattern".to_string(), "convention".to_string()],
+        ];
+        assert_eq!(
+            config.informs_category_pairs, expected,
+            "default informs_category_pairs must be the four SE pairs in order"
+        );
+        assert_eq!(
+            config.informs_category_pairs.len(),
+            4,
+            "default informs_category_pairs must have exactly four pairs"
+        );
+    }
+
+    // AC-08: empty TOML deserializes nli_informs_cosine_floor to 0.45.
+    #[test]
+    fn test_inference_config_default_nli_informs_cosine_floor() {
+        let config = InferenceConfig::default();
+        assert_eq!(
+            config.nli_informs_cosine_floor, 0.45_f32,
+            "default nli_informs_cosine_floor must be 0.45"
+        );
+    }
+
+    // AC-09: empty TOML deserializes nli_informs_ppr_weight to 0.6.
+    #[test]
+    fn test_inference_config_default_nli_informs_ppr_weight() {
+        let config = InferenceConfig::default();
+        assert_eq!(
+            config.nli_informs_ppr_weight, 0.6_f32,
+            "default nli_informs_ppr_weight must be 0.6"
+        );
+    }
+
+    // AC-12: default InferenceConfig passes validate().
+    #[test]
+    fn test_inference_config_default_passes_validate() {
+        let config = InferenceConfig::default();
+        assert!(
+            config.validate(Path::new("/fake")).is_ok(),
+            "default InferenceConfig must pass validate()"
+        );
+    }
+
+    // TOML override: explicitly set informs fields via TOML and verify deserialization.
+    #[test]
+    fn test_inference_config_toml_override_informs_fields() {
+        let toml = r#"
+nli_informs_cosine_floor = 0.55
+nli_informs_ppr_weight = 0.4
+"#;
+        let config: InferenceConfig = toml::from_str(toml).expect("valid TOML must parse");
+        assert_eq!(
+            config.nli_informs_cosine_floor, 0.55_f32,
+            "nli_informs_cosine_floor must be overridden to 0.55"
+        );
+        assert_eq!(
+            config.nli_informs_ppr_weight, 0.4_f32,
+            "nli_informs_ppr_weight must be overridden to 0.4"
+        );
+        // Existing non-informs fields must be unaffected (use defaults).
+        assert_eq!(config.nli_top_k, 20);
+        assert_eq!(config.max_graph_inference_per_tick, 100);
+    }
+
+    // AC-10: validate() rejects nli_informs_cosine_floor at 0.0 (exclusive lower bound).
+    #[test]
+    fn test_validate_nli_informs_cosine_floor_zero_is_error() {
+        let c = InferenceConfig {
+            nli_informs_cosine_floor: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_err(),
+            "nli_informs_cosine_floor = 0.0 must fail validate (exclusive lower bound)"
+        );
+    }
+
+    // AC-10: validate() rejects nli_informs_cosine_floor at 1.0 (exclusive upper bound).
+    #[test]
+    fn test_validate_nli_informs_cosine_floor_one_is_error() {
+        let c = InferenceConfig {
+            nli_informs_cosine_floor: 1.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_err(),
+            "nli_informs_cosine_floor = 1.0 must fail validate (exclusive upper bound)"
+        );
+    }
+
+    // AC-10: validate() accepts nli_informs_cosine_floor = 0.45 (nominal default).
+    #[test]
+    fn test_validate_nli_informs_cosine_floor_valid_value_is_ok() {
+        let c = InferenceConfig {
+            nli_informs_cosine_floor: 0.45,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "nli_informs_cosine_floor = 0.45 must pass validate"
+        );
+    }
+
+    // AC-10: boundary sweep — values just inside are Ok; at boundary are Err.
+    #[test]
+    fn test_validate_nli_informs_cosine_floor_near_boundaries() {
+        let just_above_zero = InferenceConfig {
+            nli_informs_cosine_floor: 0.001,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            just_above_zero.validate(Path::new("/fake")).is_ok(),
+            "nli_informs_cosine_floor = 0.001 must pass (just above exclusive lower bound)"
+        );
+
+        let just_below_one = InferenceConfig {
+            nli_informs_cosine_floor: 0.999,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            just_below_one.validate(Path::new("/fake")).is_ok(),
+            "nli_informs_cosine_floor = 0.999 must pass (just below exclusive upper bound)"
+        );
+
+        let at_zero = InferenceConfig {
+            nli_informs_cosine_floor: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            at_zero.validate(Path::new("/fake")).is_err(),
+            "nli_informs_cosine_floor = 0.0 must fail (exclusive bound)"
+        );
+
+        let at_one = InferenceConfig {
+            nli_informs_cosine_floor: 1.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            at_one.validate(Path::new("/fake")).is_err(),
+            "nli_informs_cosine_floor = 1.0 must fail (exclusive bound)"
+        );
+    }
+
+    // AC-11: validate() accepts nli_informs_ppr_weight = 0.0 (inclusive lower bound).
+    #[test]
+    fn test_validate_nli_informs_ppr_weight_zero_is_ok() {
+        let c = InferenceConfig {
+            nli_informs_ppr_weight: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "nli_informs_ppr_weight = 0.0 must pass validate (inclusive lower bound)"
+        );
+    }
+
+    // AC-11: validate() accepts nli_informs_ppr_weight = 1.0 (inclusive upper bound).
+    #[test]
+    fn test_validate_nli_informs_ppr_weight_one_is_ok() {
+        let c = InferenceConfig {
+            nli_informs_ppr_weight: 1.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "nli_informs_ppr_weight = 1.0 must pass validate (inclusive upper bound)"
+        );
+    }
+
+    // AC-11: validate() rejects nli_informs_ppr_weight = -0.01 (below inclusive lower bound).
+    #[test]
+    fn test_validate_nli_informs_ppr_weight_negative_is_error() {
+        let c = InferenceConfig {
+            nli_informs_ppr_weight: -0.01,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_err(),
+            "nli_informs_ppr_weight = -0.01 must fail validate"
+        );
+    }
+
+    // AC-11: validate() rejects nli_informs_ppr_weight = 1.01 (above inclusive upper bound).
+    #[test]
+    fn test_validate_nli_informs_ppr_weight_above_one_is_error() {
+        let c = InferenceConfig {
+            nli_informs_ppr_weight: 1.01,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_err(),
+            "nli_informs_ppr_weight = 1.01 must fail validate"
+        );
+    }
+
+    // validate() with empty informs_category_pairs returns Ok — disables detection without error.
+    #[test]
+    fn test_validate_empty_informs_category_pairs_is_ok() {
+        let c = InferenceConfig {
+            informs_category_pairs: vec![],
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "empty informs_category_pairs must pass validate (disables detection)"
         );
     }
 }

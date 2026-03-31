@@ -616,3 +616,244 @@ fn test_ppr_10k_node_completes_within_budget() {
         elapsed.as_millis()
     );
 }
+
+// ---- crt-037: Informs edge PPR traversal (AC-05, AC-06, R-02) ----
+
+/// AC-05 / R-02: Informs edge propagates PPR mass to lesson node when decision node is seeded.
+///
+/// Two-node graph: lesson A (id=1) --Informs--> decision B (id=2).
+/// Both A→B (forward, the Informs edge) and B→A (reverse) are inserted per entry #3896:
+/// without the B→A reverse edge the test would pass vacuously — A would score 0.0 regardless
+/// of direction because A has no path back to B via PPR.
+///
+/// Seed: B (the decision node). After PPR, A must have a non-zero score.
+/// The assertion is on the SPECIFIC node index for A (id=1), not an aggregate check.
+///
+/// If Direction::Incoming were used in the fourth edges_of_type call, A would receive
+/// zero mass because PPR would pull FROM A's incoming neighbors (none), not push from
+/// B's score. See entries #3744 and #3896.
+#[test]
+fn test_personalized_pagerank_informs_edge_propagates_mass_to_lesson_node() {
+    // lesson_A --Informs--> decision_B, plus reverse edge so both directions exist.
+    // Entry #3896 trap: without B→A, A scores 0.0 regardless of Direction choice.
+    let graph = make_graph_with_edges(&[
+        (1, 2, RelationType::Informs, 0.5), // A→B: the Informs edge
+        (2, 1, RelationType::Informs, 0.5), // B→A: reverse edge (required per #3896)
+    ]);
+
+    // Seed exclusively on B (the decision node, id=2).
+    let seed_scores: HashMap<u64, f64> = [(2u64, 1.0)].into_iter().collect();
+
+    let scores = personalized_pagerank(&graph, &seed_scores, 0.85, 20);
+
+    // AC-05: assert by the specific lesson node index (id=1), not scores.values().any(...)
+    assert!(
+        scores.get(&1).copied().unwrap_or(0.0) > 0.0,
+        "lesson node A (id=1) must receive non-zero PPR mass when decision node B (id=2) is seeded. \
+         score[A]={:.6}. If 0.0, Direction::Incoming was used instead of Direction::Outgoing. \
+         See entry #3744 (direction trap) and entry #3896 (both-edges required).",
+        scores.get(&1).copied().unwrap_or(0.0)
+    );
+}
+
+/// AC-05 extension / test-plan: three-node graph — unrelated node C must receive zero mass.
+///
+/// Three nodes: lesson A (id=1), decision B (id=2), unrelated C (id=3).
+/// Informs edge A→B and reverse B→A. No edges to/from C.
+/// Seed: B. After PPR: A > 0.0, C == 0.0.
+#[test]
+fn test_personalized_pagerank_decision_seed_reaches_only_lesson_via_informs() {
+    let graph = make_graph_with_edges(&[
+        (1, 2, RelationType::Informs, 0.5), // A→B
+        (2, 1, RelationType::Informs, 0.5), // B→A (reverse, required per #3896)
+                                            // C (id=3) has no edges
+    ]);
+    // C must appear in the graph even with no edges — add it via an isolated entry.
+    // make_graph_with_edges only adds nodes referenced in edges, so we build manually.
+    use crate::graph::{GraphEdgeRow, build_typed_relation_graph};
+    let entries = vec![make_entry(1), make_entry(2), make_entry(3)];
+    let edge_rows = vec![
+        GraphEdgeRow {
+            source_id: 1,
+            target_id: 2,
+            relation_type: RelationType::Informs.as_str().to_string(),
+            weight: 0.5,
+            created_at: 0,
+            created_by: "test".to_string(),
+            source: "test".to_string(),
+            bootstrap_only: false,
+        },
+        GraphEdgeRow {
+            source_id: 2,
+            target_id: 1,
+            relation_type: RelationType::Informs.as_str().to_string(),
+            weight: 0.5,
+            created_at: 0,
+            created_by: "test".to_string(),
+            source: "test".to_string(),
+            bootstrap_only: false,
+        },
+    ];
+    let graph =
+        build_typed_relation_graph(&entries, &edge_rows).expect("test graph build must succeed");
+
+    let seed_scores: HashMap<u64, f64> = [(2u64, 1.0)].into_iter().collect();
+    let scores = personalized_pagerank(&graph, &seed_scores, 0.85, 20);
+
+    // A surfaces (lesson informs decision B, B is seeded).
+    assert!(
+        scores.get(&1).copied().unwrap_or(0.0) > 0.0,
+        "lesson A must receive non-zero PPR mass when decision B is seeded"
+    );
+    // C is unreachable — no edges to or from C.
+    assert_eq!(
+        scores.get(&3).copied().unwrap_or(0.0),
+        0.0,
+        "unrelated node C must receive zero PPR mass (no edges)"
+    );
+}
+
+/// test-plan: Informs and Supports produce comparable PPR mass with equal edge weights.
+///
+/// Verifies that Informs participates in the PPR mass pool with the same mechanics as
+/// Supports. Two independent two-node graphs, each with matching weights.
+#[test]
+fn test_personalized_pagerank_informs_weight_influences_mass() {
+    // Informs pair: A=1 → B=2 (+ reverse), seed at B.
+    let graph_informs = make_graph_with_edges(&[
+        (1, 2, RelationType::Informs, 0.8),
+        (2, 1, RelationType::Informs, 0.8),
+    ]);
+    // Supports pair: C=3 → D=4 (+ reverse), seed at D.
+    let graph_supports = make_graph_with_edges(&[
+        (3, 4, RelationType::Supports, 0.8),
+        (4, 3, RelationType::Supports, 0.8),
+    ]);
+
+    let seed_b: HashMap<u64, f64> = [(2u64, 1.0)].into_iter().collect();
+    let seed_d: HashMap<u64, f64> = [(4u64, 1.0)].into_iter().collect();
+
+    let scores_informs = personalized_pagerank(&graph_informs, &seed_b, 0.85, 20);
+    let scores_supports = personalized_pagerank(&graph_supports, &seed_d, 0.85, 20);
+
+    let score_a = scores_informs.get(&1).copied().unwrap_or(0.0);
+    let score_c = scores_supports.get(&3).copied().unwrap_or(0.0);
+
+    assert!(
+        score_a > 0.0,
+        "Informs: lesson A must receive non-zero PPR mass"
+    );
+    assert!(
+        score_c > 0.0,
+        "Supports: node C must receive non-zero PPR mass"
+    );
+
+    // Both should be comparable in magnitude (same edge weight, same graph topology).
+    let ratio = if score_c > 0.0 {
+        score_a / score_c
+    } else {
+        0.0
+    };
+    assert!(
+        (0.9..=1.1).contains(&ratio),
+        "Informs and Supports with equal weights must produce comparable PPR mass. \
+         score_a={score_a:.6}, score_c={score_c:.6}, ratio={ratio:.4}"
+    );
+}
+
+/// AC-06: positive_out_degree_weight includes Informs edge weight.
+///
+/// Node X with exactly one outgoing Informs edge to Y at weight 0.6, no other edges.
+/// positive_out_degree_weight(X) must return 0.6, not 0.0.
+#[test]
+fn test_positive_out_degree_weight_includes_informs_edge() {
+    use super::positive_out_degree_weight_pub_for_test as positive_out_degree_weight;
+
+    // Build graph: X (id=10) → Y (id=11) via Informs, weight 0.6.
+    let graph = make_graph_with_edges(&[(10, 11, RelationType::Informs, 0.6)]);
+
+    let x_idx = *graph.node_index.get(&10).expect("node 10 must exist");
+    let result = positive_out_degree_weight(&graph, x_idx);
+
+    assert!(
+        (result - 0.6_f64).abs() < 1e-6,
+        "positive_out_degree_weight for node with only Informs edge must return 0.6, got {result}"
+    );
+}
+
+/// AC-06 additive: Informs weight adds to existing positive edges, does not replace.
+///
+/// Node X with one Supports edge (weight 0.8) and one Informs edge (weight 0.6).
+/// positive_out_degree_weight(X) must return 1.4.
+#[test]
+fn test_positive_out_degree_weight_informs_adds_to_existing_positive_edges() {
+    use super::positive_out_degree_weight_pub_for_test as positive_out_degree_weight;
+
+    // X (id=20) → Y (id=21) Supports 0.8, X (id=20) → Z (id=22) Informs 0.6.
+    let graph = make_graph_with_edges(&[
+        (20, 21, RelationType::Supports, 0.8),
+        (20, 22, RelationType::Informs, 0.6),
+    ]);
+
+    let x_idx = *graph.node_index.get(&20).expect("node 20 must exist");
+    let result = positive_out_degree_weight(&graph, x_idx);
+
+    assert!(
+        (result - 1.4_f64).abs() < 1e-6,
+        "positive_out_degree_weight must sum Supports + Informs: expected 1.4, got {result}"
+    );
+}
+
+/// Supersedes edge is not included in positive_out_degree_weight (penalty edge).
+#[test]
+fn test_positive_out_degree_weight_supersedes_not_included() {
+    use super::positive_out_degree_weight_pub_for_test as positive_out_degree_weight;
+
+    // Node 30 supersedes node 31 — Supersedes is a penalty edge, not positive.
+    let mut entry31 = make_entry(31);
+    entry31.supersedes = Some(30);
+    let entries = vec![make_entry(30), entry31];
+    let graph = crate::graph::build_typed_relation_graph(&entries, &[]).expect("build ok");
+
+    let idx30 = *graph.node_index.get(&30).expect("node 30 must exist");
+    let result = positive_out_degree_weight(&graph, idx30);
+
+    assert_eq!(
+        result, 0.0,
+        "Supersedes is a penalty edge — positive_out_degree_weight must return 0.0, got {result}"
+    );
+}
+
+/// Direction regression guard (R-02, C-14): Informs mass flows correctly with Direction::Outgoing.
+///
+/// Documents the wrong-direction failure mode. With Direction::Outgoing (correct),
+/// lesson node A receives mass when decision node B is seeded.
+///
+/// If Direction::Incoming were substituted in the fourth edges_of_type call, this test
+/// would fail: A would score 0.0 because PPR would look at A's incoming neighbors
+/// (none, since only A→B and B→A exist) rather than A's outgoing target B.
+/// See entry #3744 (direction semantics trap documented from crt-030).
+#[test]
+fn test_direction_outgoing_required_for_informs_mass_flow() {
+    // lesson A (id=100) --Informs--> decision B (id=101).
+    // Both edges present per entry #3896.
+    // Comment: if Direction::Incoming were used instead of Direction::Outgoing in the
+    // fourth edges_of_type call, scores[100] would be 0.0. See entry #3744.
+    let graph = make_graph_with_edges(&[
+        (100, 101, RelationType::Informs, 0.7),
+        (101, 100, RelationType::Informs, 0.7),
+    ]);
+
+    let seed_scores: HashMap<u64, f64> = [(101u64, 1.0)].into_iter().collect();
+    let scores = personalized_pagerank(&graph, &seed_scores, 0.85, 20);
+
+    // With Direction::Outgoing, A accumulates from B's seed score.
+    assert!(
+        scores.get(&100).copied().unwrap_or(0.0) > 0.0,
+        "Direction::Outgoing must allow lesson A (id=100) to accumulate mass from seeded \
+         decision B (id=101). score[100]={:.6}. \
+         A score of 0.0 indicates Direction::Incoming was used — wrong direction. \
+         See entry #3744.",
+        scores.get(&100).copied().unwrap_or(0.0)
+    );
+}

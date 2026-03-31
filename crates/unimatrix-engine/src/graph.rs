@@ -12,8 +12,8 @@
 //! Outgoing Supersedes edges point toward newer knowledge.
 //!
 //! `graph_penalty` and `find_terminal_active` filter exclusively to Supersedes edges
-//! via `edges_of_type`. Non-Supersedes edges (CoAccess, Contradicts, Supports, Prerequisite)
-//! are present in the graph but invisible to all penalty logic (SR-01 mitigation).
+//! via `edges_of_type`. Non-Supersedes edges (CoAccess, Contradicts, Supports, Prerequisite,
+//! Informs) are present in the graph but invisible to all penalty logic (SR-01 mitigation).
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -65,12 +65,14 @@ pub enum GraphError {
 
 // -- Typed edge classification --
 
-/// Five edge types covering the full relationship taxonomy.
+/// Six edge types covering the full relationship taxonomy.
 ///
 /// Stored as strings in GRAPH_EDGES — NOT integer discriminants.
 /// String encoding allows extension without schema migration or GNN retraining.
 ///
 /// `Prerequisite` is reserved for W3-1; no write path exists in crt-021.
+/// `Informs` bridges empirical knowledge (lesson-learned, pattern) from earlier feature
+/// cycles to normative knowledge (decision, convention) in later cycles (crt-037).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RelationType {
     Supersedes,
@@ -78,6 +80,9 @@ pub enum RelationType {
     Supports,
     CoAccess,
     Prerequisite,
+    /// Empirical→normative cross-feature bridge; positive PPR (crt-037).
+    /// `graph_penalty` and `find_terminal_active` do NOT traverse Informs edges (SR-01).
+    Informs,
 }
 
 impl RelationType {
@@ -89,6 +94,7 @@ impl RelationType {
             RelationType::Supports => "Supports",
             RelationType::CoAccess => "CoAccess",
             RelationType::Prerequisite => "Prerequisite",
+            RelationType::Informs => "Informs",
         }
     }
 
@@ -104,6 +110,7 @@ impl RelationType {
             "Supports" => Some(RelationType::Supports),
             "CoAccess" => Some(RelationType::CoAccess),
             "Prerequisite" => Some(RelationType::Prerequisite),
+            "Informs" => Some(RelationType::Informs),
             _ => None,
         }
     }

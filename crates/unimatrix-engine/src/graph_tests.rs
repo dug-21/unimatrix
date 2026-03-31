@@ -1066,3 +1066,244 @@ fn test_build_typed_graph_skips_unknown_relation_type() {
         "unrecognized edge must not be added"
     );
 }
+
+// ============================================================
+// crt-037: RelationType::Informs tests
+// ============================================================
+
+// -- AC-01: from_str returns Some(Informs) for "Informs" --
+
+#[test]
+fn test_relation_type_informs_from_str_returns_some() {
+    let result = RelationType::from_str("Informs");
+    assert_eq!(
+        result,
+        Some(RelationType::Informs),
+        "from_str(\"Informs\") must return Some(RelationType::Informs)"
+    );
+}
+
+// -- AC-02: as_str returns "Informs" --
+
+#[test]
+fn test_relation_type_informs_as_str_returns_string() {
+    let s = RelationType::Informs.as_str();
+    assert_eq!(
+        s, "Informs",
+        "Informs.as_str() must return \"Informs\" exactly"
+    );
+}
+
+// -- Round-trip: from_str(as_str()) == Some(Informs) --
+
+#[test]
+fn test_relation_type_informs_round_trip() {
+    let s = RelationType::Informs.as_str();
+    let parsed = RelationType::from_str(s);
+    assert_eq!(
+        parsed,
+        Some(RelationType::Informs),
+        "from_str(Informs.as_str()) must round-trip"
+    );
+}
+
+// -- Case-sensitivity: "informs", "INFORMS", "Inform" all return None --
+
+#[test]
+fn test_relation_type_from_str_case_sensitive() {
+    for s in &["informs", "INFORMS", "Inform", "inform", "iNFORMS"] {
+        assert_eq!(
+            RelationType::from_str(s),
+            None,
+            "from_str({s:?}) must return None — from_str is case-sensitive"
+        );
+    }
+}
+
+// -- Regression: all pre-existing variants still round-trip correctly (AC variant) --
+
+#[test]
+fn test_existing_relation_type_variants_unchanged() {
+    let cases: &[(RelationType, &str)] = &[
+        (RelationType::Supersedes, "Supersedes"),
+        (RelationType::Contradicts, "Contradicts"),
+        (RelationType::Supports, "Supports"),
+        (RelationType::CoAccess, "CoAccess"),
+        (RelationType::Prerequisite, "Prerequisite"),
+    ];
+    for (variant, expected_str) in cases {
+        let s = variant.as_str();
+        assert_eq!(
+            s, *expected_str,
+            "{variant:?}.as_str() must still return {expected_str:?}"
+        );
+        let parsed = RelationType::from_str(s);
+        assert_eq!(
+            parsed,
+            Some(*variant),
+            "from_str({expected_str:?}) must still return Some({variant:?})"
+        );
+    }
+}
+
+// -- AC-03: build_typed_relation_graph includes Informs edge --
+
+#[test]
+fn test_build_typed_relation_graph_includes_informs_edge() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "Informs", 0.6, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "graph must contain exactly one edge"
+    );
+
+    let node1_idx = g.node_index[&1];
+    let informs_edges: Vec<_> = g
+        .edges_of_type(node1_idx, RelationType::Informs, Direction::Outgoing)
+        .collect();
+    assert_eq!(
+        informs_edges.len(),
+        1,
+        "must find exactly one Informs edge from node 1"
+    );
+    assert_eq!(
+        informs_edges[0].weight().relation_type,
+        "Informs",
+        "edge relation_type string must be \"Informs\""
+    );
+}
+
+// -- AC-04: build_typed_relation_graph does NOT warn for "Informs" --
+//
+// Structural test: if from_str("Informs") returns Some(_), the warn! branch is
+// not reached. We verify the edge is included (AC-03) which is only possible when
+// the warn-and-skip branch did NOT fire. The tracing_test crate is not a workspace
+// dependency, so we assert via observable behavior (edge present).
+
+#[test]
+fn test_build_typed_relation_graph_informs_no_warn_log() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "Informs", 0.5, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+
+    // If the warn branch had fired, the edge would have been skipped (edge_count == 0).
+    // edge_count == 1 proves the warn! did NOT fire for "Informs".
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "edge_count == 1 proves warn! did not fire for \"Informs\" (AC-04)"
+    );
+}
+
+// -- AC-24: graph_penalty with Informs-only graph returns FALLBACK_PENALTY --
+//
+// Node A has no outgoing Supersedes edges. A is Active. dfs_active_reachable
+// from A returns false (no Supersedes successors). → DEAD_END_PENALTY, not
+// CLEAN_REPLACEMENT_PENALTY. The Informs edge to B is invisible to all penalty
+// traversal (SR-01 invariant).
+
+#[test]
+fn test_graph_penalty_with_informs_only_returns_fallback() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let informs_row = make_edge_row(1, 2, "Informs", 0.6, false);
+    let g = build_typed_relation_graph(&entries, &[informs_row]).unwrap();
+
+    let p = graph_penalty(1, &g, &entries);
+    // Node 1 is Active, has no outgoing Supersedes → active_reachable=false → DEAD_END_PENALTY.
+    // The Informs edge must NOT contribute to penalty (SR-01 invariant).
+    // The penalty must equal FALLBACK_PENALTY (as per test plan) or DEAD_END_PENALTY.
+    // Both confirm Informs has zero effect on penalty traversal. DEAD_END_PENALTY < 1.0.
+    assert!(
+        p < 1.0,
+        "penalty must be < 1.0 for an Active node in the graph, got {p}"
+    );
+    assert_ne!(
+        p, CLEAN_REPLACEMENT_PENALTY,
+        "Informs edge must not produce CLEAN_REPLACEMENT_PENALTY; Informs is not Supersedes"
+    );
+    // Verify exactly: Active node, zero outgoing Supersedes, active_reachable=false → DEAD_END
+    assert_eq!(
+        p, DEAD_END_PENALTY,
+        "Active node with only Informs outgoing → DEAD_END_PENALTY (no Supersedes chain)"
+    );
+}
+
+// -- AC-24 (second assertion): find_terminal_active with Informs-only returns None --
+//
+// Starting at node 1 which is Active but has no outgoing Supersedes edges.
+// find_terminal_active checks the starting node first — if it is Active && superseded_by.is_none(),
+// it returns Some(1). We need superseded_by=Some(x) to prevent the starting node matching.
+
+#[test]
+fn test_find_terminal_active_with_informs_only_returns_empty() {
+    // Node 1 is Active but has superseded_by=Some(99) (marked as superseded).
+    // Node 2 is Active with no Supersedes edge from 1.
+    // Only an Informs edge from 1→2 exists. find_terminal_active must return None.
+    let entries = vec![
+        make_entry(1, Status::Active, None, Some(99)), // superseded_by set → not terminal
+        make_entry(2, Status::Active, None, None),
+    ];
+    let informs_row = make_edge_row(1, 2, "Informs", 0.6, false);
+    let g = build_typed_relation_graph(&entries, &[informs_row]).unwrap();
+
+    let result = find_terminal_active(1, &g, &entries);
+    assert_eq!(
+        result, None,
+        "find_terminal_active must return None — Informs edges are not traversed"
+    );
+}
+
+// -- Informs + Supersedes: penalty uses Supersedes only --
+
+#[test]
+fn test_graph_penalty_informs_plus_supersedes_uses_supersedes_only() {
+    // Node A(1): Supersedes edge to B(2, Active terminal) + Informs edge to C(3, Active).
+    // graph_penalty(1) must equal CLEAN_REPLACEMENT_PENALTY (depth-1 Supersedes chain),
+    // exactly as if the Informs edge did not exist.
+    let entries = vec![
+        make_entry(1, Status::Active, None, Some(2)), // superseded_by=2
+        make_entry(2, Status::Active, Some(1), None), // supersedes=1 → Supersedes edge 1→2
+        make_entry(3, Status::Active, None, None),
+    ];
+    let informs_row = make_edge_row(1, 3, "Informs", 0.5, false);
+    let g = build_typed_relation_graph(&entries, &[informs_row]).unwrap();
+
+    let p = graph_penalty(1, &g, &entries);
+    assert_eq!(
+        p, CLEAN_REPLACEMENT_PENALTY,
+        "penalty must equal CLEAN_REPLACEMENT_PENALTY; Informs edge must not alter it"
+    );
+}
+
+// -- Informs edge weight is preserved in graph --
+
+#[test]
+fn test_informs_edge_weight_preserved() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "Informs", 0.42, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    let node1_idx = g.node_index[&1];
+    let edges: Vec<_> = g
+        .edges_of_type(node1_idx, RelationType::Informs, Direction::Outgoing)
+        .collect();
+    assert_eq!(edges.len(), 1);
+    assert!(
+        (edges[0].weight().weight - 0.42).abs() < 1e-6,
+        "Informs edge weight must be preserved as-is"
+    );
+}
