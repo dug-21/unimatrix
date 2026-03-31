@@ -1432,6 +1432,41 @@ impl SqlxStore {
             .collect::<Result<HashSet<(u64, u64)>>>()
     }
 
+    /// Return all non-bootstrap Informs edges as directional `(source_id, target_id)` pairs (crt-037).
+    ///
+    /// Pairs are returned as-is — no `(min, max)` normalization. This is correct because
+    /// `Informs` is a directed, temporally-ordered relation: `source.created_at < target.created_at`
+    /// is enforced by the Phase 8b composite guard, so the reverse pair `(target, source)` can
+    /// never be written by detection. Symmetric normalization would obscure the directional contract
+    /// and risk suppressing valid edges on timestamp anomalies. `INSERT OR IGNORE` on
+    /// `UNIQUE(source_id, target_id, relation_type)` is the secondary dedup backstop (ADR-003).
+    ///
+    /// Only non-bootstrap Informs rows are returned — bootstrap edges are excluded via
+    /// `bootstrap_only = 0`. All other relation types are excluded via `relation_type = 'Informs'`.
+    ///
+    /// Uses `read_pool()` — this is a read-only query (C-02, ADR-003, crt-037).
+    pub async fn query_existing_informs_pairs(&self) -> Result<HashSet<(u64, u64)>> {
+        let rows = sqlx::query(
+            "SELECT source_id, target_id FROM graph_edges \
+             WHERE relation_type = 'Informs' AND bootstrap_only = 0",
+        )
+        .fetch_all(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        rows.into_iter()
+            .map(|row| {
+                let source_id =
+                    row.try_get::<i64, _>("source_id")
+                        .map_err(|e| StoreError::Database(e.into()))? as u64;
+                let target_id =
+                    row.try_get::<i64, _>("target_id")
+                        .map_err(|e| StoreError::Database(e.into()))? as u64;
+                Ok((source_id, target_id)) // directional — NOT (a.min(b), a.max(b))
+            })
+            .collect::<Result<HashSet<(u64, u64)>>>()
+    }
+
     /// Fetch all GRAPH_EDGES rows with bootstrap_only=1 AND relation_type='Contradicts'.
     ///
     /// Returns (edge_id, source_id, target_id) for all bootstrap contradiction edges.
@@ -2455,6 +2490,277 @@ mod tests {
         assert!(
             !pairs.contains(&(30, 10)),
             "raw (30, 10) form must not be present after normalization"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // query_existing_informs_pairs tests (crt-037, R-09)
+    // ---------------------------------------------------------------------------
+
+    /// R-09 / ADR-003: empty graph_edges returns empty HashSet.
+    #[tokio::test]
+    async fn test_query_existing_informs_pairs_empty_table_returns_empty_set() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let pairs = store
+            .query_existing_informs_pairs()
+            .await
+            .expect("query_existing_informs_pairs");
+
+        assert!(
+            pairs.is_empty(),
+            "empty graph_edges must return empty HashSet"
+        );
+    }
+
+    /// R-09 scenario 1: one non-bootstrap Informs row is returned as directional (source, target).
+    #[tokio::test]
+    async fn test_query_existing_informs_pairs_returns_directional_tuple() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 100, "lesson-learned", 0).await;
+        insert_test_entry(&store.write_pool, 200, "decision", 0).await;
+        insert_test_edge(&store.write_pool, 100, 200, "Informs", "nli", 0).await;
+
+        let pairs = store
+            .query_existing_informs_pairs()
+            .await
+            .expect("query_existing_informs_pairs");
+
+        assert_eq!(pairs.len(), 1, "exactly one pair expected");
+        assert!(
+            pairs.contains(&(100u64, 200u64)),
+            "directional pair (100, 200) must be present"
+        );
+    }
+
+    /// R-09 scenario 2 (critical — ADR-003): reverse lookup must return false.
+    ///
+    /// Verifies non-normalization: a row stored as (source=100, target=200) must NOT
+    /// appear as (200, 100) in the result set. This is the key behavioral difference
+    /// from `query_existing_supports_pairs` which normalises to (min, max).
+    #[tokio::test]
+    async fn test_query_existing_informs_pairs_does_not_normalize_reverse() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 100, "lesson-learned", 0).await;
+        insert_test_entry(&store.write_pool, 200, "decision", 0).await;
+        insert_test_edge(&store.write_pool, 100, 200, "Informs", "nli", 0).await;
+
+        let pairs = store
+            .query_existing_informs_pairs()
+            .await
+            .expect("query_existing_informs_pairs");
+
+        assert!(
+            !pairs.contains(&(200u64, 100u64)),
+            "reverse pair (200, 100) must NOT be present — no normalization applied"
+        );
+    }
+
+    /// Multiple non-bootstrap Informs rows all returned.
+    #[tokio::test]
+    async fn test_query_existing_informs_pairs_multiple_rows() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        for i in [10u64, 20, 30, 40, 50, 60] {
+            insert_test_entry(&store.write_pool, i, "decision", 0).await;
+        }
+        insert_test_edge(&store.write_pool, 10, 20, "Informs", "nli", 0).await;
+        insert_test_edge(&store.write_pool, 30, 40, "Informs", "nli", 0).await;
+        insert_test_edge(&store.write_pool, 50, 60, "Informs", "nli", 0).await;
+
+        let pairs = store
+            .query_existing_informs_pairs()
+            .await
+            .expect("query_existing_informs_pairs");
+
+        assert_eq!(pairs.len(), 3, "all three non-bootstrap pairs expected");
+        assert!(pairs.contains(&(10u64, 20u64)), "(10, 20) must be present");
+        assert!(pairs.contains(&(30u64, 40u64)), "(30, 40) must be present");
+        assert!(pairs.contains(&(50u64, 60u64)), "(50, 60) must be present");
+    }
+
+    /// R-09 scenario 3: bootstrap_only=1 Informs rows are excluded.
+    #[tokio::test]
+    async fn test_query_existing_informs_pairs_excludes_bootstrap_only_rows() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "lesson-learned", 0).await;
+        insert_test_entry(&store.write_pool, 2, "decision", 0).await;
+        insert_test_edge(&store.write_pool, 1, 2, "Informs", "nli", 1).await; // bootstrap
+
+        let pairs = store
+            .query_existing_informs_pairs()
+            .await
+            .expect("query_existing_informs_pairs");
+
+        assert!(
+            pairs.is_empty(),
+            "bootstrap_only=1 Informs rows must be excluded"
+        );
+    }
+
+    /// Mixed bootstrap / non-bootstrap: only non-bootstrap row included.
+    #[tokio::test]
+    async fn test_query_existing_informs_pairs_includes_non_bootstrap_excludes_bootstrap() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        for i in [100u64, 200, 300, 400] {
+            insert_test_entry(&store.write_pool, i, "decision", 0).await;
+        }
+        insert_test_edge(&store.write_pool, 100, 200, "Informs", "nli", 0).await; // non-bootstrap
+        insert_test_edge(&store.write_pool, 300, 400, "Informs", "nli", 1).await; // bootstrap
+
+        let pairs = store
+            .query_existing_informs_pairs()
+            .await
+            .expect("query_existing_informs_pairs");
+
+        assert_eq!(pairs.len(), 1, "only non-bootstrap pair expected");
+        assert!(
+            pairs.contains(&(100u64, 200u64)),
+            "(100, 200) must be present"
+        );
+        assert!(
+            !pairs.contains(&(300u64, 400u64)),
+            "bootstrap (300, 400) must be excluded"
+        );
+    }
+
+    /// Relation type isolation: only Informs rows included; Supports and Contradicts excluded.
+    #[tokio::test]
+    async fn test_query_existing_informs_pairs_excludes_other_relation_types() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        for i in [1u64, 2, 3, 4, 5, 6] {
+            insert_test_entry(&store.write_pool, i, "decision", 0).await;
+        }
+        insert_test_edge(&store.write_pool, 1, 2, "Supports", "nli", 0).await;
+        insert_test_edge(&store.write_pool, 3, 4, "Contradicts", "nli", 0).await;
+        insert_test_edge(&store.write_pool, 5, 6, "Informs", "nli", 0).await;
+
+        let pairs = store
+            .query_existing_informs_pairs()
+            .await
+            .expect("query_existing_informs_pairs");
+
+        assert_eq!(pairs.len(), 1, "only the Informs pair expected");
+        assert!(
+            pairs.contains(&(5u64, 6u64)),
+            "Informs pair (5, 6) must be present"
+        );
+        assert!(
+            !pairs.contains(&(1u64, 2u64)),
+            "Supports pair must not be present"
+        );
+        assert!(
+            !pairs.contains(&(3u64, 4u64)),
+            "Contradicts pair must not be present"
+        );
+    }
+
+    /// R-01 write + readback: Informs row written via insert_test_edge is retrievable.
+    #[tokio::test]
+    async fn test_write_nli_edge_informs_row_is_retrievable() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 42, "lesson-learned", 0).await;
+        insert_test_entry(&store.write_pool, 99, "convention", 0).await;
+        insert_test_edge(&store.write_pool, 42, 99, "Informs", "nli", 0).await;
+
+        let pairs = store
+            .query_existing_informs_pairs()
+            .await
+            .expect("query_existing_informs_pairs");
+
+        assert!(
+            pairs.contains(&(42u64, 99u64)),
+            "written (42, 99) Informs pair must be retrievable"
+        );
+    }
+
+    /// R-01 scenario 3: relation_type string stored verbatim as "Informs" (no truncation/case shift).
+    #[tokio::test]
+    async fn test_graph_edges_informs_relation_type_stored_verbatim() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 7, "pattern", 0).await;
+        insert_test_entry(&store.write_pool, 8, "decision", 0).await;
+        insert_test_edge(&store.write_pool, 7, 8, "Informs", "nli", 0).await;
+
+        let relation_type: String = sqlx::query_scalar(
+            "SELECT relation_type FROM graph_edges WHERE source_id = 7 AND target_id = 8",
+        )
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("fetch relation_type");
+
+        assert_eq!(
+            relation_type, "Informs",
+            "relation_type must be stored verbatim as 'Informs'"
+        );
+    }
+
+    /// R-17 / AC-23: INSERT OR IGNORE backstop prevents duplicate rows; set length stays 1.
+    #[tokio::test]
+    async fn test_query_existing_informs_pairs_dedup_prevents_duplicate_write() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 11, "lesson-learned", 0).await;
+        insert_test_entry(&store.write_pool, 22, "decision", 0).await;
+        // First insert succeeds.
+        insert_test_edge(&store.write_pool, 11, 22, "Informs", "nli", 0).await;
+        // Second insert hits INSERT OR IGNORE — silently ignored.
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges \
+                (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) \
+             VALUES (?1, ?2, ?3, 1.0, 0, 'test', 'nli', 0)",
+        )
+        .bind(11i64)
+        .bind(22i64)
+        .bind("Informs")
+        .execute(&store.write_pool)
+        .await
+        .expect("second insert (OR IGNORE)");
+
+        let pairs = store
+            .query_existing_informs_pairs()
+            .await
+            .expect("query_existing_informs_pairs");
+
+        assert_eq!(
+            pairs.len(),
+            1,
+            "INSERT OR IGNORE backstop must keep exactly one row"
+        );
+    }
+
+    /// ADR-003 directional contract: row stored as (source=20, target=10) is returned as
+    /// (20, 10) — not normalized to (10, 20).
+    #[tokio::test]
+    async fn test_query_existing_informs_pairs_directional_contract_reversed_storage() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 20, "lesson-learned", 0).await;
+        insert_test_entry(&store.write_pool, 10, "decision", 0).await;
+        // Stored with source=20, target=10 (higher id → lower id in DB order)
+        insert_test_edge(&store.write_pool, 20, 10, "Informs", "nli", 0).await;
+
+        let pairs = store
+            .query_existing_informs_pairs()
+            .await
+            .expect("query_existing_informs_pairs");
+
+        assert_eq!(pairs.len(), 1, "exactly one pair expected");
+        assert!(
+            pairs.contains(&(20u64, 10u64)),
+            "(20, 10) must be present as-is — directional, not normalized"
+        );
+        assert!(
+            !pairs.contains(&(10u64, 20u64)),
+            "(10, 20) must NOT be present — no normalization applied"
         );
     }
 }
