@@ -358,12 +358,13 @@ DELETE FROM query_log WHERE session_id NOT IN (SELECT session_id FROM sessions)
 These catch observations/queries whose sessions were already deleted (by the existing
 `gc_sessions` time-based sweep) as well as rows written without a valid session.
 
-**Step 4b: audit_log retention**
+**Step 4f: audit_log retention**
 ```sql
 DELETE FROM audit_log
 WHERE timestamp < (strftime('%s','now') - :audit_retention_days * 86400)
 ```
-Uses the existing `idx_audit_log_timestamp` index.
+Uses the existing `idx_audit_log_timestamp` index. This is independent of the cycle loop
+and runs unconditionally after sub-steps 4a–4e complete.
 
 ### Config Block Specification
 
@@ -388,6 +389,21 @@ audit_log_retention_days = 180
 `RetentionConfig` follows the `#[serde(default)]` pattern. `validate()` checks:
 - `activity_detail_retention_cycles` in `[1, 10000]`
 - `audit_log_retention_days` in `[1, 3650]`
+
+### Interaction with Existing Step 6: gc_sessions
+
+The existing step 6 `gc_sessions()` (30-day time-based cascade) is **unchanged** and
+continues to run after the new cycle-based GC at step 4. These two mechanisms target
+different populations:
+
+- Step 4 (new): prunes sessions belonging to reviewed cycles outside the K window —
+  cycle-attributed sessions for which the retrospective is complete.
+- Step 6 (existing): prunes sessions by elapsed time — primarily covers sessions with no
+  `feature_cycle` attribution and sessions that timed out without completing a cycle.
+
+There is no conflict: a session pruned by the cycle-based GC at step 4 will no longer
+exist when step 6 runs, so step 6's subquery simply finds zero rows for that session.
+Both steps are necessary; neither replaces the other.
 
 ### crt-033 Gate
 
@@ -431,8 +447,11 @@ rather than a raw UPDATE — keeping the write path consistent with crt-033's AD
   `sessions`; their `injection_log`, `observations`, and `query_log` rows are also pruned.
 - AC-07: `query_log` rows for sessions belonging to the purgeable cycles are deleted.
   `query_log` rows for sessions in retained cycles are preserved.
-- AC-08: `sessions` and `injection_log` rows for purgeable cycles are deleted in the
-  correct cascade order (injection_log first, sessions second) within a transaction.
+- AC-08: The per-cycle transaction is atomic across all four tables: observations,
+  query_log, injection_log, and sessions are all deleted or none are (rollback on error).
+  Within the transaction, injection_log is deleted before sessions (cascade order).
+  Verified by: simulating a mid-transaction failure and asserting all four tables retain
+  their rows (no partial state).
 - AC-09: `audit_log` rows older than `audit_log_retention_days` (default 180) are
   deleted on each maintenance tick. Rows within the retention window are preserved.
 - AC-10: `[retention]` config block parses correctly from `config.toml`.

@@ -55,10 +55,20 @@ New methods:
   3. DELETE injection_log WHERE session_id IN (SELECT session_id FROM sessions WHERE feature_cycle = ?)
   4. DELETE sessions WHERE feature_cycle = ?
   Commits, then returns row counts per table.
-- `mark_signals_purged(feature_cycle: &str) -> Result<()>`
-  Targeted UPDATE: `UPDATE cycle_review_index SET raw_signals_available = 0 WHERE feature_cycle = ?`
-  Uses `write_pool_server()` directly (NOT `store_cycle_review()` INSERT OR REPLACE, to
-  avoid clobbering `summary_json` — SR-05 resolution).
+No `mark_signals_purged()` method is added. Instead, the gate-check record fetched in
+step 3a is reused directly:
+```
+store_cycle_review(&CycleReviewRecord { raw_signals_available: 0, ..record }).await?
+```
+where `record` is the `CycleReviewRecord` returned by `get_cycle_review()`. The struct
+update syntax preserves `summary_json` and all other fields; `store_cycle_review()`
+uses INSERT OR REPLACE, which is safe here because the full record is supplied.
+
+**Critical dependency**: the `CycleReviewRecord` retrieved in step 3a (gate check)
+must NOT be discarded after the gate passes. It must be retained in scope and passed to
+the `store_cycle_review()` call in step 3c. Discarding the record and reconstructing it
+from partial data (e.g. only setting `raw_signals_available`) would clobber
+`summary_json` — the original SR-05 risk.
 - `gc_unattributed_activity() -> Result<UnattributedGcStats>`
   Deletes rows whose session is absent from `sessions`:
   1. DELETE observations WHERE session_id NOT IN (SELECT session_id FROM sessions)
@@ -74,7 +84,13 @@ New methods:
 
 Step 4 is rewritten. The existing 60-day DELETE is removed entirely and replaced with
 a call to the CycleGcPass methods. Step 4 is renamed from "Observation retention
-cleanup" to "Cycle-based activity GC". A new step 4b handles `audit_log`.
+cleanup" to "Cycle-based activity GC". A new step 4f handles `audit_log` (using "4f"
+to avoid collision with sub-steps 4a–4e inside the cycle loop).
+
+Step 6 (`gc_sessions`, existing 30-day time-based cascade) is **unchanged**. It handles
+sessions with no `feature_cycle` attribution and timed-out sessions. The cycle-based GC
+at step 4 and the time-based GC at step 6 target disjoint session populations; both
+are necessary.
 
 The GC block receives `retention_config: &RetentionConfig` as a parameter to
 `run_maintenance()` (same threading pattern as `inference_config: &Arc<InferenceConfig>`
@@ -85,14 +101,14 @@ Per-cycle loop:
 2. Apply `max_cycles_per_tick` cap: take at most `retention_config.max_cycles_per_tick`
    from the purgeable list this tick.
 3. For each purgeable cycle:
-   a. Verify `get_cycle_review(feature_cycle)` returns `Ok(Some(_))` — crt-033 gate.
-      Skip and log if absent (should not happen given list_purgeable_cycles, but
-      defense-in-depth).
+   a. Fetch `let record = get_cycle_review(feature_cycle)` — crt-033 gate. Skip and log
+      if `Ok(None)` (defense-in-depth). **Retain `record` in scope.**
    b. Call `gc_cycle_activity(feature_cycle)`.
-   c. Call `mark_signals_purged(feature_cycle)`.
+   c. Call `store_cycle_review(&CycleReviewRecord { raw_signals_available: 0, ..record })`
+      — uses the record fetched in step 3a. Must not reconstruct from scratch.
    d. Log `tracing::info!` with cycle ID and per-table row counts.
 4. Call `gc_unattributed_activity()` — runs after the cycle loop regardless of cap.
-5. (Step 4b) Call `gc_audit_log(retention_config.audit_log_retention_days)`.
+5. (Step 4f) Call `gc_audit_log(retention_config.audit_log_retention_days)`.
 
 ### 4. Removal of Legacy DELETE Sites
 
@@ -132,7 +148,7 @@ set's oldest entry is a by-product of that query).
 ```
 background.rs (run_single_tick)
     │
-    └─► run_maintenance(&retention_config)    [step 4 + 4b]
+    └─► run_maintenance(&retention_config)    [step 4 + 4f; step 6 gc_sessions unchanged]
             │
             ├─► SqlxStore::list_purgeable_cycles(k)
             │       └─ reads: cycle_review_index (read_pool)
@@ -144,7 +160,7 @@ background.rs (run_single_tick)
             │       │       DELETE query_log WHERE session_id IN (...)
             │       │       DELETE injection_log WHERE session_id IN (...)
             │       │       DELETE sessions WHERE feature_cycle = ?
-            │       └─► SqlxStore::mark_signals_purged(cycle_id) [write_pool, targeted UPDATE]
+            │       └─► store_cycle_review(&CycleReviewRecord { raw_signals_available: 0, ..record })
             │
             ├─► SqlxStore::gc_unattributed_activity()           [write_pool, no transaction]
             │
@@ -158,7 +174,7 @@ background.rs (run_single_tick)
 | Transaction granularity | Per-cycle `pool.begin()` transactions, not a single spanning transaction | ADR-001 |
 | Batch cap placement | `max_cycles_per_tick` in `RetentionConfig`, not `InferenceConfig` | ADR-002 |
 | PhaseFreqTable alignment | Tick-time `tracing::warn!` guard comparing `computed_at` timestamps | ADR-003 |
-| raw_signals_available update | Targeted `UPDATE` (not INSERT OR REPLACE) | SCOPE-RISK SR-05 |
+| raw_signals_available update | `store_cycle_review()` with struct update `{ raw_signals_available: 0, ..record }` — record from gate check retained in scope | SCOPE-RISK SR-05 |
 | Unattributed session guard | Skip if `status = Active` to protect in-flight sessions | SCOPE-RISK SR-06 |
 
 See individual ADR files for full rationale.
@@ -198,7 +214,7 @@ for writes and `read_pool()` for `list_purgeable_cycles`. GC stats structs (`Cyc
 | `UnimatrixConfig::retention` | `pub retention: RetentionConfig` with `#[serde(default)]` | `infra/config.rs` (new field) |
 | `SqlxStore::list_purgeable_cycles` | `async fn list_purgeable_cycles(&self, k: u32) -> Result<Vec<String>>` | `unimatrix-store/retention.rs` (new) |
 | `SqlxStore::gc_cycle_activity` | `async fn gc_cycle_activity(&self, feature_cycle: &str) -> Result<CycleGcStats>` | `unimatrix-store/retention.rs` (new) |
-| `SqlxStore::mark_signals_purged` | `async fn mark_signals_purged(&self, feature_cycle: &str) -> Result<()>` | `unimatrix-store/retention.rs` (new) |
+| `store_cycle_review()` (reused) | Called with `&CycleReviewRecord { raw_signals_available: 0, ..record }` — no new method | `unimatrix-store/cycle_review_index.rs` (existing) |
 | `SqlxStore::gc_unattributed_activity` | `async fn gc_unattributed_activity(&self) -> Result<UnattributedGcStats>` | `unimatrix-store/retention.rs` (new) |
 | `SqlxStore::gc_audit_log` | `async fn gc_audit_log(&self, retention_days: u32) -> Result<u64>` | `unimatrix-store/retention.rs` (new) |
 | `CycleGcStats` | `pub struct CycleGcStats { observations_deleted: u64, query_log_deleted: u64, injection_log_deleted: u64, sessions_deleted: u64 }` | `unimatrix-store/retention.rs` (new) |
@@ -229,9 +245,9 @@ Each maintenance tick:
           (SELECT session_id FROM sessions WHERE feature_cycle = cycle_id)
         DELETE FROM sessions WHERE feature_cycle = cycle_id
       COMMIT
-   c. mark_signals_purged(cycle_id):
-      UPDATE cycle_review_index SET raw_signals_available = 0
-        WHERE feature_cycle = cycle_id
+   c. store_cycle_review(&CycleReviewRecord { raw_signals_available: 0, ..record })
+      -- record is the CycleReviewRecord returned in step 3a; struct update preserves
+      -- summary_json and all other fields (SR-05 mitigation)
 
 4. gc_unattributed_activity():
    DELETE FROM observations WHERE session_id NOT IN (SELECT session_id FROM sessions)

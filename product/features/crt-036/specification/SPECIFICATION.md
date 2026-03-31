@@ -91,9 +91,10 @@ uses `session_id` as a foreign key; deleting sessions first would leave orphaned
 
 After the transaction commits and the connection is released, the GC pass executes:
 
-6. **Set `raw_signals_available = 0`** (FR-06) — targeted `UPDATE` on `cycle_review_index`,
-   outside the per-cycle transaction. `mark_signals_purged(&self, cycle_id)` takes `&self`
-   (not a transaction handle) and cannot join an in-flight `pool.begin()`.
+6. **Set `raw_signals_available = 0`** (FR-06) — call `store_cycle_review()` with the
+   `CycleReviewRecord` fetched in step 1 (gate check), using struct update syntax
+   `CycleReviewRecord { raw_signals_available: 0, ..record }`. The record from step 1
+   must be kept in scope for this call.
 
 ### FR-04: crt-033 Gate
 
@@ -138,22 +139,26 @@ deleted; rows belonging to an Active session are never deleted.
 
 ### FR-06: raw_signals_available Flag Update
 
-After the per-cycle transaction commits (FR-03 steps 1–5), update
-`cycle_review_index.raw_signals_available` to `0` for that cycle using a targeted SQL
-UPDATE. This runs outside the transaction — `mark_signals_purged(&self, cycle_id)`
-takes `&self`, not a transaction handle, and cannot participate in the in-flight
-`pool.begin()` block:
+After the per-cycle transaction commits (FR-03 steps 1–5), call `store_cycle_review()`
+reusing the `CycleReviewRecord` already fetched in FR-04 (the gate check):
 
-```sql
-UPDATE cycle_review_index
-SET raw_signals_available = 0
-WHERE feature_cycle = :cycle_id
+```rust
+store_cycle_review(&CycleReviewRecord { raw_signals_available: 0, ..record }).await?
 ```
 
-This UPDATE executes within the same per-cycle transaction as the DELETE operations. It
-must NOT use `store_cycle_review()` INSERT OR REPLACE, which would overwrite the stored
-`summary_json`. A bare targeted UPDATE is required to avoid clobbering the review
-record.
+The struct update syntax (`..record`) preserves `summary_json` and all other fields.
+This runs outside the per-cycle transaction — `store_cycle_review()` takes `&self`,
+not a transaction handle.
+
+**Critical implementation constraint**: the `CycleReviewRecord` returned by
+`get_cycle_review()` in FR-04 must be retained in scope and passed here. It must NOT
+be discarded after the gate check and reconstructed from partial data. Reconstruction
+would supply only `raw_signals_available = 0` and default-initialize all other fields,
+clobbering `summary_json` with an empty string and invalidating the retrospective report.
+
+This call runs outside the per-cycle transaction. Using `store_cycle_review()` with the
+struct update pattern is safe precisely because the full `record` is supplied — INSERT
+OR REPLACE correctly preserves all fields since `..record` carries them.
 
 ### FR-07: audit_log Time-Based GC
 
@@ -264,7 +269,7 @@ inserted at the same position. Step ordering after this feature:
 - 2b. Empirical prior computation
 - 3. Graph compaction
 - **4. Cycle-based GC** (observations + query_log + injection_log + sessions; replaces old step 4)
-- **4b. audit_log time-based GC** (new)
+- **4f. audit_log time-based GC** (new; "4f" avoids collision with sub-steps 4a–4e)
 - 5. Stale session sweep
 - 6. Session GC (existing time-based gc_sessions — continues to run for sessions
    not covered by cycle-based GC, e.g. sessions with no feature_cycle)
@@ -395,9 +400,9 @@ FROM cycle_review_index WHERE feature_cycle = :pruned_cycle_id` returns `0` for 
 pruned cycle. Retained cycles still have `raw_signals_available = 1` (or their original
 value).
 
-**Additional guard:** `summary_json` for each pruned cycle is unchanged (same text
-before and after GC). This verifies the targeted UPDATE did not overwrite the stored
-review content.
+**Additional guard:** `summary_json` for each pruned cycle is byte-for-byte unchanged
+before and after GC. This verifies the struct update pattern preserved the review
+content and did not clobber it with a default-initialized value.
 
 ### AC-06: Unattributed Session Pruning
 
@@ -417,18 +422,26 @@ are zero for sessions belonging to pruned cycles, and non-zero for sessions belo
 to retained cycles. Verify via direct `SELECT COUNT(*) FROM query_log WHERE session_id
 IN (SELECT session_id FROM sessions WHERE feature_cycle = :cycle_id)`.
 
-### AC-08: Cascade Delete Order (injection_log Before sessions)
+### AC-08: Per-Cycle Transaction Atomicity and Cascade Delete Order
 
-**Verification:** Integration test: insert a cycle with sessions, injection_log, and
-observations. Verify that after GC:
+**Verification — atomicity:** Integration test: simulate a mid-transaction failure
+(e.g. a deliberately failing DELETE on one table) for a purgeable cycle. Assert that
+after the rollback, all four tables (observations, query_log, injection_log, sessions)
+retain their rows for that cycle — no partial state. The cycle must remain purgeable
+on the next tick.
+
+**Verification — cascade order:** Integration test: insert a cycle with sessions,
+injection_log, and observations. Verify that after a successful GC:
+- observations rows for those sessions are deleted.
+- query_log rows for those sessions are deleted.
 - injection_log rows for those sessions are deleted.
 - sessions rows for that cycle are deleted.
-- No orphaned injection_log rows remain (injection_log rows whose session_id no longer
-  exists in sessions).
+- No orphaned injection_log rows remain.
 
-Order-of-operations test: modify the implementation to delete sessions first (intentional
-inversion), verify the test fails with orphaned injection_log rows. Then restore correct
-order. This confirms the test catches the ordering constraint.
+**Order mutation test:** Modify the implementation to delete sessions before
+injection_log (intentional inversion); verify the test fails with orphaned
+injection_log rows. Restore correct order. This confirms the test enforces the
+cascade constraint, not just observes incidental correctness.
 
 ### AC-09: audit_log Time-Based GC
 
@@ -561,9 +574,9 @@ the transaction. The connection is released before processing the next cycle.
 2. GC pass resolves purgeable cycles via K-cycle query against `cycle_review_index`.
 3. If purgeable cycles > `max_cycles_per_tick`, oldest `max_cycles_per_tick` are selected.
 4. For each selected cycle:
-   a. crt-033 gate: `get_cycle_review()` → `Ok(Some(_))` — proceed.
+   a. crt-033 gate: `let record = get_cycle_review()` → `Ok(Some(record))` — proceed. Retain `record`.
    b. Per-cycle transaction: delete observations, query_log, injection_log, sessions. Commit + release connection.
-   c. `mark_signals_purged()`: targeted UPDATE `raw_signals_available = 0` (outside transaction).
+   c. `store_cycle_review(&CycleReviewRecord { raw_signals_available: 0, ..record })` (outside transaction, uses record from step a).
    d. Emit `info` log with per-table row counts.
 5. Unattributed cleanup runs (outside per-cycle loop).
 6. audit_log time-based cleanup runs.
@@ -622,10 +635,12 @@ the transaction. The connection is released before processing the next cycle.
    `pool.begin()` → `tx.commit()` API for all per-cycle atomic deletes (entry #2159
    pattern; SR-03 mitigation).
 
-6. **raw_signals_available update must use targeted UPDATE.** The `store_cycle_review()`
-   INSERT OR REPLACE path overwrites the entire row including `summary_json`. Setting
-   `raw_signals_available = 0` must use `UPDATE cycle_review_index SET raw_signals_available = 0
-   WHERE feature_cycle = ?` exclusively (SR-05 mitigation).
+6. **raw_signals_available update must use `store_cycle_review()` with struct update
+   syntax.** The `CycleReviewRecord` fetched in FR-04 (gate check) must be retained in
+   scope and used as: `store_cycle_review(&CycleReviewRecord { raw_signals_available: 0,
+   ..record })`. The struct update preserves `summary_json` and all other fields. The
+   record must NOT be discarded and reconstructed — reconstruction with partial data
+   clobbers `summary_json` (SR-05 mitigation).
 
 7. **Both 60-day DELETE sites removed unconditionally.** The two sites in `status.rs`
    (~1380) and `tools.rs` (~1638) are removed, not conditioned on a feature flag.
@@ -708,9 +723,9 @@ author and resolved by codebase exploration per SCOPE.md "Open Questions" sectio
 
 Two items escalated to architect as design notes (not blocking this specification):
 
-1. **SR-05 (raw_signals_available update path):** Architect must confirm the targeted
-   UPDATE approach rather than INSERT OR REPLACE. Specified as Constraint 6 above;
-   architect must not deviate.
+1. **SR-05 (raw_signals_available update path):** Resolved. Architecture specifies
+   `store_cycle_review()` with struct update syntax `{ raw_signals_available: 0, ..record }`
+   using the record retained from the FR-04 gate check. Constraint 6 updated accordingly.
 
 2. **SR-07 (PhaseFreqTable mismatch check timing):** The tick-time guard (FR-10) is
    specified as a `tracing::warn!` only. Architect confirms whether the oldest-cycle
