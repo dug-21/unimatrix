@@ -1,4 +1,4 @@
-//! Personalized PageRank over positive edges (Supports, CoAccess, Prerequisite).
+//! Personalized PageRank over positive edges (Supports, CoAccess, Prerequisite, Informs).
 //!
 //! This module is declared as a submodule of `graph.rs` via `#[path = "graph_ppr.rs"]`
 //! and re-exported from there. It does NOT appear in `lib.rs` (ADR-001, SR-01 boundary).
@@ -16,11 +16,11 @@ use petgraph::visit::EdgeRef;
 
 use crate::graph::{RelationType, TypedRelationGraph};
 
-/// Compute Personalized PageRank over positive edges (Supports, CoAccess, Prerequisite).
+/// Compute Personalized PageRank over positive edges (Supports, CoAccess, Prerequisite, Informs).
 ///
 /// SR-01 constrains `graph_penalty` and `find_terminal_active` to Supersedes-only
 /// traversal; it does not restrict new retrieval functions from using other edge types.
-/// PPR uses Supports, CoAccess, and Prerequisite only.
+/// PPR uses Supports, CoAccess, Prerequisite, and Informs.
 ///
 /// `seed_scores` must be pre-normalized to sum 1.0 (caller responsibility).
 /// The function does NOT re-normalize internally.
@@ -86,7 +86,8 @@ pub fn personalized_pagerank(
             //           (current_scores[v] * edge_weight(node_id, v) / positive_out_degree(node_id))
             //
             // Traverse Direction::Outgoing on this node to reach targets v such that node_id → v.
-            // Three separate edges_of_type calls (AC-02 — no .edges_directed() allowed).
+            // Four separate edges_of_type calls (AC-02 — no .edges_directed() allowed).
+            // Fourth call: RelationType::Informs (crt-037).
             //
             // This formulation surfaces nodes that point to highly-scored seeds:
             // if node_id→v and v is a seed, node_id gains mass proportional to v's score.
@@ -109,6 +110,12 @@ pub fn personalized_pagerank(
                 }
                 for edge_ref in
                     graph.edges_of_type(node_idx, RelationType::Prerequisite, Direction::Outgoing)
+                {
+                    neighbor_contribution +=
+                        outgoing_contribution(&current_scores, &edge_ref, out_degree, graph);
+                }
+                for edge_ref in
+                    graph.edges_of_type(node_idx, RelationType::Informs, Direction::Outgoing)
                 {
                     neighbor_contribution +=
                         outgoing_contribution(&current_scores, &edge_ref, out_degree, graph);
@@ -153,7 +160,7 @@ fn outgoing_contribution(
     target_score * edge_weight / out_degree
 }
 
-/// Compute the sum of outgoing Supports + CoAccess + Prerequisite edge weights from a node.
+/// Compute the sum of outgoing Supports + CoAccess + Prerequisite + Informs edge weights from a node.
 ///
 /// Used for out-degree normalization in PPR. Returns 0.0 for nodes with no positive out-edges.
 /// All traversal uses `edges_of_type()` exclusively (AC-02).
@@ -161,7 +168,8 @@ fn outgoing_contribution(
 fn positive_out_degree_weight(graph: &TypedRelationGraph, node_idx: NodeIndex) -> f64 {
     let mut total: f64 = 0.0;
 
-    // Three outgoing edge-type queries (AC-02: edges_of_type only).
+    // Four outgoing edge-type queries (AC-02: edges_of_type only).
+    // Fourth call: RelationType::Informs (crt-037).
     for edge_ref in graph.edges_of_type(node_idx, RelationType::Supports, Direction::Outgoing) {
         total += edge_ref.weight().weight as f64;
     }
@@ -171,8 +179,21 @@ fn positive_out_degree_weight(graph: &TypedRelationGraph, node_idx: NodeIndex) -
     for edge_ref in graph.edges_of_type(node_idx, RelationType::Prerequisite, Direction::Outgoing) {
         total += edge_ref.weight().weight as f64;
     }
+    for edge_ref in graph.edges_of_type(node_idx, RelationType::Informs, Direction::Outgoing) {
+        total += edge_ref.weight().weight as f64;
+    }
 
     total
+}
+
+/// Test-only re-export of `positive_out_degree_weight` so `graph_ppr_tests.rs` can call it
+/// directly for AC-06 assertions without making the function part of the public API.
+#[cfg(test)]
+pub fn positive_out_degree_weight_pub_for_test(
+    graph: &TypedRelationGraph,
+    node_idx: NodeIndex,
+) -> f64 {
+    positive_out_degree_weight(graph, node_idx)
 }
 
 // -- Tests --
