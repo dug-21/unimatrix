@@ -1,0 +1,25 @@
+# Unimatrix configuration file.
+#
+# All sections are optional. Absent sections apply compiled defaults.
+# Copy this file to ~/.unimatrix/config.toml (global) or
+# ~/.unimatrix/{project-hash}/config.toml (per-project) and edit as needed.
+
+[retention]
+# Number of completed (reviewed) feature cycles to retain activity data for.
+# Observations, query_log, sessions, and injection_log for cycles beyond this
+# window are deleted after their cycle_review_index row exists.
+# This value is the governing ceiling for PhaseFreqTable lookback and
+# future GNN training window. Reducing it truncates data for PhaseFreqTable::rebuild.
+# Range: [1, 10000]. Default: 50.
+activity_detail_retention_cycles = 50
+
+# Maximum number of purgeable cycles to process in a single maintenance tick.
+# Limits tick budget consumed by GC. Older cycles (lowest computed_at) are processed
+# first. Deferred cycles are picked up on the next tick.
+# Range: [1, 1000]. Default: 10.
+max_cycles_per_tick = 10
+
+# Retention window in days for audit_log rows.
+# Audit data is an accountability record, not a learning signal.
+# Range: [1, 3650]. Default: 180.
+audit_log_retention_days = 180

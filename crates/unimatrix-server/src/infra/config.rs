@@ -78,6 +78,8 @@ pub struct UnimatrixConfig {
     pub inference: InferenceConfig,
     #[serde(default)]
     pub observation: ObservationConfig,
+    #[serde(default)]
+    pub retention: RetentionConfig,
     // CycleConfig is intentionally absent (ADR-004: stub removed, rename is hardcoded).
 }
 
@@ -1048,6 +1050,118 @@ impl InferenceConfig {
 }
 
 // ---------------------------------------------------------------------------
+// RetentionConfig (crt-036)
+// ---------------------------------------------------------------------------
+
+/// `[retention]` section — activity data and audit log retention policy.
+///
+/// All fields have compiled defaults via `#[serde(default = "...")]` so an absent
+/// `[retention]` block in config.toml applies defaults without error.
+#[derive(serde::Deserialize, Debug, Clone, PartialEq)]
+#[serde(default)]
+pub struct RetentionConfig {
+    /// Number of completed (reviewed) feature cycles whose activity data
+    /// (observations, query_log, sessions, injection_log) is retained.
+    ///
+    /// This value is the governing ceiling for PhaseFreqTable lookback and the
+    /// future GNN training window. Reducing this value will truncate the data
+    /// available to PhaseFreqTable::rebuild. Cycles outside this window are
+    /// eligible for GC after their cycle_review_index row is confirmed present.
+    ///
+    /// Cross-reference: inference_config.query_log_lookback_days. When
+    /// query_log_lookback_days implies a window older than the oldest retained
+    /// cycle's computed_at, a tracing::warn! fires each tick (ADR-003 alignment guard).
+    ///
+    /// Range: [1, 10000]. Default: 50.
+    #[serde(default = "default_activity_detail_retention_cycles")]
+    pub activity_detail_retention_cycles: u32,
+
+    /// Retention window in days for audit_log rows.
+    ///
+    /// audit_log is an accountability record, not a learning signal. Time-based
+    /// retention is appropriate. Rows older than this value are deleted during
+    /// the maintenance tick's step 4f.
+    ///
+    /// Range: [1, 3650]. Default: 180.
+    #[serde(default = "default_audit_log_retention_days")]
+    pub audit_log_retention_days: u32,
+
+    /// Maximum purgeable cycles to process in a single maintenance tick.
+    ///
+    /// Limits the write-pool time consumed by GC. On first deployment with a large
+    /// backlog, older cycles drain incrementally at this rate per tick. Oldest cycles
+    /// (lowest computed_at) are processed first.
+    ///
+    /// Range: [1, 1000]. Default: 10.
+    #[serde(default = "default_max_cycles_per_tick")]
+    pub max_cycles_per_tick: u32,
+}
+
+fn default_activity_detail_retention_cycles() -> u32 {
+    50
+}
+fn default_audit_log_retention_days() -> u32 {
+    180
+}
+fn default_max_cycles_per_tick() -> u32 {
+    10
+}
+
+impl Default for RetentionConfig {
+    fn default() -> Self {
+        RetentionConfig {
+            activity_detail_retention_cycles: default_activity_detail_retention_cycles(),
+            audit_log_retention_days: default_audit_log_retention_days(),
+            max_cycles_per_tick: default_max_cycles_per_tick(),
+        }
+    }
+}
+
+impl RetentionConfig {
+    /// Validate all RetentionConfig fields against their documented ranges.
+    ///
+    /// Called during server startup alongside InferenceConfig::validate().
+    /// An out-of-range value aborts startup with a structured error naming the field.
+    ///
+    /// Checks:
+    ///   - activity_detail_retention_cycles in [1, 10000]
+    ///   - audit_log_retention_days in [1, 3650]
+    ///   - max_cycles_per_tick in [1, 1000]
+    pub fn validate(&self, path: &Path) -> Result<(), ConfigError> {
+        if self.activity_detail_retention_cycles < 1
+            || self.activity_detail_retention_cycles > 10_000
+        {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "activity_detail_retention_cycles",
+                value: self.activity_detail_retention_cycles.to_string(),
+                reason: "must be in range [1, 10000]",
+            });
+        }
+
+        if self.audit_log_retention_days < 1 || self.audit_log_retention_days > 3_650 {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "audit_log_retention_days",
+                value: self.audit_log_retention_days.to_string(),
+                reason: "must be in range [1, 3650]",
+            });
+        }
+
+        if self.max_cycles_per_tick < 1 || self.max_cycles_per_tick > 1_000 {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "max_cycles_per_tick",
+                value: self.max_cycles_per_tick.to_string(),
+                reason: "must be in range [1, 1000]",
+            });
+        }
+
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Preset enum
 // ---------------------------------------------------------------------------
 
@@ -1206,6 +1320,16 @@ pub enum ConfigError {
         w_coac: f64,
         w_util: f64,
         w_prov: f64,
+    },
+    /// A `[retention]` config field is outside its valid range (crt-036).
+    RetentionFieldOutOfRange {
+        path: PathBuf,
+        /// Field name, e.g. "activity_detail_retention_cycles".
+        field: &'static str,
+        /// Actual value that failed (displayed to operator).
+        value: String,
+        /// Human-readable valid range, e.g. "must be in range [1, 10000]".
+        reason: &'static str,
     },
 }
 
@@ -1427,6 +1551,19 @@ impl fmt::Display for ConfigError {
                  w_coac={w_coac}, w_util={w_util}, w_prov={w_prov}",
                 path.display(),
                 sum,
+            ),
+            ConfigError::RetentionFieldOutOfRange {
+                path,
+                field,
+                value,
+                reason,
+            } => write!(
+                f,
+                "config error in {}: [retention] field '{}' = '{}' is invalid: {}",
+                path.display(),
+                field,
+                value,
+                reason
             ),
         }
     }
@@ -1699,6 +1836,9 @@ pub fn validate_config(config: &UnimatrixConfig, path: &Path) -> Result<(), Conf
 
     // --- Validate [inference] rayon_pool_size ---
     config.inference.validate(path)?;
+
+    // --- Validate [retention] fields (crt-036) ---
+    config.retention.validate(path)?;
 
     Ok(())
 }
@@ -2171,6 +2311,30 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.ppr_max_expand
             } else {
                 global.inference.ppr_max_expand
+            },
+        },
+        // crt-036: per-field project-wins merge for retention config
+        retention: RetentionConfig {
+            activity_detail_retention_cycles: if project.retention.activity_detail_retention_cycles
+                != default.retention.activity_detail_retention_cycles
+            {
+                project.retention.activity_detail_retention_cycles
+            } else {
+                global.retention.activity_detail_retention_cycles
+            },
+            audit_log_retention_days: if project.retention.audit_log_retention_days
+                != default.retention.audit_log_retention_days
+            {
+                project.retention.audit_log_retention_days
+            } else {
+                global.retention.audit_log_retention_days
+            },
+            max_cycles_per_tick: if project.retention.max_cycles_per_tick
+                != default.retention.max_cycles_per_tick
+            {
+                project.retention.max_cycles_per_tick
+            } else {
+                global.retention.max_cycles_per_tick
             },
         },
     }
@@ -6336,6 +6500,215 @@ w_sim = 0.25
                 ConfigError::FusionWeightSumExceeded { .. }
             ),
             "error must be FusionWeightSumExceeded"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-036: RetentionConfig tests (AC-10, AC-11, AC-12, AC-12b, AC-13)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_retention_config_defaults_and_override() {
+        // AC-10: Absent [retention] section produces defaults.
+        // Must be a real TOML parse via UnimatrixConfig — not just Default::default().
+        let no_retention_toml = "";
+        let parsed: UnimatrixConfig = toml::from_str(no_retention_toml)
+            .expect("empty TOML must parse as default UnimatrixConfig");
+        assert_eq!(
+            parsed.retention.activity_detail_retention_cycles, 50,
+            "absent [retention]: activity_detail_retention_cycles must default to 50"
+        );
+        assert_eq!(
+            parsed.retention.audit_log_retention_days, 180,
+            "absent [retention]: audit_log_retention_days must default to 180"
+        );
+        assert_eq!(
+            parsed.retention.max_cycles_per_tick, 10,
+            "absent [retention]: max_cycles_per_tick must default to 10"
+        );
+
+        // AC-10: RetentionConfig::default() unit call returns the same three defaults.
+        let default_cfg = RetentionConfig::default();
+        assert_eq!(default_cfg.activity_detail_retention_cycles, 50);
+        assert_eq!(default_cfg.audit_log_retention_days, 180);
+        assert_eq!(default_cfg.max_cycles_per_tick, 10);
+
+        // AC-10: Explicit [retention] values are applied, not defaults.
+        let override_toml = r#"
+[retention]
+activity_detail_retention_cycles = 100
+audit_log_retention_days = 365
+max_cycles_per_tick = 5
+"#;
+        let override_parsed: UnimatrixConfig =
+            toml::from_str(override_toml).expect("override TOML must parse");
+        assert_eq!(
+            override_parsed.retention.activity_detail_retention_cycles,
+            100
+        );
+        assert_eq!(override_parsed.retention.audit_log_retention_days, 365);
+        assert_eq!(override_parsed.retention.max_cycles_per_tick, 5);
+
+        // Partial override: only one field present — others should be defaults.
+        let partial_toml = r#"
+[retention]
+max_cycles_per_tick = 20
+"#;
+        let partial_parsed: UnimatrixConfig =
+            toml::from_str(partial_toml).expect("partial TOML must parse");
+        assert_eq!(
+            partial_parsed.retention.activity_detail_retention_cycles,
+            50
+        );
+        assert_eq!(partial_parsed.retention.audit_log_retention_days, 180);
+        assert_eq!(partial_parsed.retention.max_cycles_per_tick, 20);
+    }
+
+    #[test]
+    fn test_retention_config_validate_rejects_zero_retention_cycles() {
+        // AC-11: Zero lower bound rejected, field name in error.
+        let cfg = RetentionConfig {
+            activity_detail_retention_cycles: 0,
+            audit_log_retention_days: 180,
+            max_cycles_per_tick: 10,
+        };
+        let err = cfg
+            .validate(Path::new("config.toml"))
+            .expect_err("activity_detail_retention_cycles = 0 must fail validate");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("activity_detail_retention_cycles"),
+            "error must name the field; got: {msg}"
+        );
+        assert!(
+            matches!(err, ConfigError::RetentionFieldOutOfRange { .. }),
+            "must be RetentionFieldOutOfRange variant"
+        );
+
+        // Upper bound: 10001 rejected.
+        let cfg_high = RetentionConfig {
+            activity_detail_retention_cycles: 10_001,
+            audit_log_retention_days: 180,
+            max_cycles_per_tick: 10,
+        };
+        let err_high = cfg_high
+            .validate(Path::new("config.toml"))
+            .expect_err("activity_detail_retention_cycles = 10001 must fail validate");
+        assert!(
+            err_high
+                .to_string()
+                .contains("activity_detail_retention_cycles"),
+            "upper-bound error must name the field"
+        );
+
+        // Lower bound accepted: 1.
+        let cfg_low = RetentionConfig {
+            activity_detail_retention_cycles: 1,
+            audit_log_retention_days: 1,
+            max_cycles_per_tick: 1,
+        };
+        assert!(
+            cfg_low.validate(Path::new("config.toml")).is_ok(),
+            "boundary value 1 for all fields must pass validate"
+        );
+
+        // Upper bounds accepted.
+        let cfg_max = RetentionConfig {
+            activity_detail_retention_cycles: 10_000,
+            audit_log_retention_days: 3_650,
+            max_cycles_per_tick: 1_000,
+        };
+        assert!(
+            cfg_max.validate(Path::new("config.toml")).is_ok(),
+            "upper boundary values must pass validate"
+        );
+    }
+
+    #[test]
+    fn test_retention_config_validate_rejects_zero_audit_days() {
+        // AC-12: Zero audit_log_retention_days rejected, field name in error.
+        let cfg = RetentionConfig {
+            activity_detail_retention_cycles: 50,
+            audit_log_retention_days: 0,
+            max_cycles_per_tick: 10,
+        };
+        let err = cfg
+            .validate(Path::new("config.toml"))
+            .expect_err("audit_log_retention_days = 0 must fail validate");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("audit_log_retention_days"),
+            "error must name the field; got: {msg}"
+        );
+
+        // Upper bound: 3651 rejected.
+        let cfg_high = RetentionConfig {
+            activity_detail_retention_cycles: 50,
+            audit_log_retention_days: 3_651,
+            max_cycles_per_tick: 10,
+        };
+        let err_high = cfg_high
+            .validate(Path::new("config.toml"))
+            .expect_err("audit_log_retention_days = 3651 must fail validate");
+        assert!(
+            err_high.to_string().contains("audit_log_retention_days"),
+            "upper-bound error must name the field"
+        );
+    }
+
+    #[test]
+    fn test_retention_config_validate_rejects_invalid_max_cycles() {
+        // AC-12b: max_cycles_per_tick = 0 rejected.
+        let cfg_zero = RetentionConfig {
+            activity_detail_retention_cycles: 50,
+            audit_log_retention_days: 180,
+            max_cycles_per_tick: 0,
+        };
+        let err_zero = cfg_zero
+            .validate(Path::new("config.toml"))
+            .expect_err("max_cycles_per_tick = 0 must fail validate");
+        let msg_zero = err_zero.to_string();
+        assert!(
+            msg_zero.contains("max_cycles_per_tick"),
+            "error must name the field; got: {msg_zero}"
+        );
+
+        // AC-12b: max_cycles_per_tick = 1001 rejected.
+        let cfg_high = RetentionConfig {
+            activity_detail_retention_cycles: 50,
+            audit_log_retention_days: 180,
+            max_cycles_per_tick: 1_001,
+        };
+        let err_high = cfg_high
+            .validate(Path::new("config.toml"))
+            .expect_err("max_cycles_per_tick = 1001 must fail validate");
+        assert!(
+            err_high.to_string().contains("max_cycles_per_tick"),
+            "upper-bound error must name the field"
+        );
+    }
+
+    #[test]
+    fn test_retention_config_defaults_pass_validate() {
+        // All three fields at their documented defaults must pass validate().
+        let cfg = RetentionConfig::default();
+        assert!(
+            cfg.validate(Path::new("config.toml")).is_ok(),
+            "default RetentionConfig must pass validate"
+        );
+    }
+
+    #[test]
+    fn test_retention_config_validate_called_by_validate_config() {
+        // validate_config must propagate RetentionConfig validation errors.
+        let mut config = UnimatrixConfig::default();
+        config.retention.activity_detail_retention_cycles = 0;
+        let err = validate_config(&config, Path::new("/fake")).expect_err(
+            "validate_config must reject retention.activity_detail_retention_cycles = 0",
+        );
+        assert!(
+            matches!(err, ConfigError::RetentionFieldOutOfRange { .. }),
+            "must be RetentionFieldOutOfRange variant; got: {err:?}"
         );
     }
 }
