@@ -33,6 +33,14 @@ use crate::infra::rayon_pool::RayonPool;
 // pub(crate) symbols promoted from nli_detection.rs (R-11):
 use crate::services::nli_detection::{current_timestamp_secs, format_nli_metadata, write_nli_edge};
 
+/// Independent per-tick budget for Informs edges.
+///
+/// Informs gets this many slots regardless of how many Supports candidates fill
+/// `max_graph_inference_per_tick`. Keeping this as a module constant (not a config
+/// field) follows the same rationale as MAX_SOURCES_PER_TICK: it is an internal
+/// throughput knob, not an operator-tunable parameter (bugfix-473).
+const MAX_INFORMS_PER_TICK: usize = 25;
+
 // ---------------------------------------------------------------------------
 // Module-private types: tagged union for merged NLI batch (crt-037, ADR-001)
 // ---------------------------------------------------------------------------
@@ -381,7 +389,8 @@ pub async fn run_graph_inference_tick(
         return;
     }
 
-    // Phase 5 — Combined cap: Supports first (priority), Informs second (remainder). ADR-002.
+    // Phase 5 — Independent caps: Supports governed by max_graph_inference_per_tick,
+    // Informs governed by MAX_INFORMS_PER_TICK (bugfix-473).
     //
     // Step 1: Sort supports by existing priority criteria, truncate to max_cap.
     // Order: (1) cross-category first, (2) either endpoint isolated, (3) similarity desc.
@@ -407,27 +416,28 @@ pub async fn run_graph_inference_tick(
     });
     candidate_pairs.truncate(config.max_graph_inference_per_tick);
 
-    // Step 2: Remaining capacity after Supports reservation.
-    let remaining_capacity = config
-        .max_graph_inference_per_tick
-        .saturating_sub(candidate_pairs.len());
-
-    // Step 3: Sort Informs candidates by similarity descending.
-    // Cross-category already guaranteed by Phase 4b filter; isolated-endpoint boost not applied.
+    // Step 2: Informs gets its own independent budget — MAX_INFORMS_PER_TICK.
+    // Supports filling max_graph_inference_per_tick does NOT reduce Informs slots.
+    // Random shuffle (same pattern as select_source_candidates) prevents deterministic
+    // re-selection of the same top-N cosine pairs across ticks (RC-1 equivalence).
+    // The existing_informs_pairs pre-filter (Phase 4b) already deduplicates written pairs,
+    // so random sampling over the deduped pool is safe.
     let informs_total_before_cap = informs_metadata.len();
-    informs_metadata
-        .sort_unstable_by(|a, b| b.cosine.partial_cmp(&a.cosine).unwrap_or(Ordering::Equal));
+    {
+        use rand::seq::SliceRandom;
+        let mut rng = rand::rng();
+        informs_metadata.shuffle(&mut rng);
+    }
+    informs_metadata.truncate(MAX_INFORMS_PER_TICK);
 
-    // Step 4: Truncate Informs to remaining capacity.
-    informs_metadata.truncate(remaining_capacity);
-
-    // Step 5: Log cap accounting (SR-03, FR-14).
+    // Step 3: Log cap accounting (SR-03, FR-14).
+    // dropped = total candidates before cap − candidates kept after cap.
+    let informs_kept = informs_metadata.len();
     tracing::debug!(
         supports_candidates = candidate_pairs.len(),
         informs_candidates_total = informs_total_before_cap,
-        informs_candidates_accepted = informs_metadata.len(),
-        informs_candidates_dropped =
-            informs_total_before_cap.saturating_sub(informs_metadata.len()),
+        informs_candidates_accepted = informs_kept,
+        informs_candidates_dropped = informs_total_before_cap.saturating_sub(informs_kept),
         "graph inference tick: merged cap accounting"
     );
 
@@ -1987,98 +1997,135 @@ mod tests {
         );
     }
 
-    /// Phase 5 combined cap: Supports fills cap → zero Informs accepted.
+    /// Phase 5 independent budget: Supports fills max_graph_inference_per_tick exactly,
+    /// Informs still gets its full MAX_INFORMS_PER_TICK budget (bugfix-473).
+    ///
+    /// This pins the core invariant: Informs budget is independent of Supports fill.
     #[test]
-    fn test_phase5_supports_fills_cap_zero_informs_accepted() {
-        let cap = 5_usize;
-        let supports_count = 5_usize; // fills cap exactly
+    fn test_phase5_informs_always_gets_dedicated_budget() {
+        // Supports fills the Supports cap completely.
+        let supports_cap = MAX_INFORMS_PER_TICK; // reuse same value to stress-test independence
+        let mut supports: Vec<(u64, u64, f32)> = (0..supports_cap as u64)
+            .map(|i| (i, i + 100, 0.9))
+            .collect();
+        supports.truncate(supports_cap);
+        assert_eq!(supports.len(), supports_cap, "Supports fills its cap");
 
-        let remaining = cap.saturating_sub(supports_count);
-        assert_eq!(remaining, 0, "no remaining capacity for Informs");
-
-        // Simulate truncating informs to remaining.
-        let mut informs: Vec<InformsCandidate> = (0..3)
+        // Build N > MAX_INFORMS_PER_TICK Informs candidates.
+        let n_informs = MAX_INFORMS_PER_TICK + 10;
+        let mut informs: Vec<InformsCandidate> = (0..n_informs as i64)
             .map(|i| make_informs_candidate("a", "b", 0.5, i, i + 1, "c1", "c2"))
             .collect();
-        informs.truncate(remaining);
-        assert!(
-            informs.is_empty(),
-            "Informs must be empty when Supports fills cap"
+
+        // Apply the fixed Phase 5 logic: shuffle + truncate to MAX_INFORMS_PER_TICK.
+        use rand::seq::SliceRandom;
+        let mut rng = rand::rng();
+        informs.shuffle(&mut rng);
+        informs.truncate(MAX_INFORMS_PER_TICK);
+
+        // Informs must get its full budget regardless of how many Supports there are.
+        assert_eq!(
+            informs.len(),
+            MAX_INFORMS_PER_TICK,
+            "Informs must always receive its dedicated budget even when Supports fills its cap"
         );
     }
 
-    /// Phase 5 combined cap: partial Supports fill → Informs fills remainder.
+    /// Phase 5 independent budget: when pool < MAX_INFORMS_PER_TICK, all candidates kept.
     #[test]
-    fn test_phase5_partial_cap_informs_fills_remainder() {
-        let cap = 10_usize;
-        let supports_count = 7_usize;
-        let remaining = cap.saturating_sub(supports_count);
-        assert_eq!(remaining, 3);
-
-        let mut informs: Vec<InformsCandidate> = (0..10)
-            .map(|i| make_informs_candidate("a", "b", 0.5 - i as f32 * 0.01, i, i + 1, "c1", "c2"))
-            .collect();
-        informs.sort_unstable_by(|a, b| b.cosine.partial_cmp(&a.cosine).unwrap_or(Ordering::Equal));
-        informs.truncate(remaining);
-        assert_eq!(informs.len(), 3);
-    }
-
-    /// Phase 5 combined cap: no Supports → all Informs up to cap.
-    #[test]
-    fn test_phase5_no_supports_all_informs_up_to_cap() {
-        let cap = 5_usize;
-        let supports_count = 0_usize;
-        let remaining = cap.saturating_sub(supports_count);
-
-        let mut informs: Vec<InformsCandidate> = (0..8)
+    fn test_phase5_informs_small_pool_all_kept() {
+        let n_informs = MAX_INFORMS_PER_TICK / 2;
+        let mut informs: Vec<InformsCandidate> = (0..n_informs as i64)
             .map(|i| make_informs_candidate("a", "b", 0.5, i, i + 1, "c1", "c2"))
             .collect();
-        informs.truncate(remaining);
-        assert_eq!(informs.len(), 5, "all cap used by Informs");
+
+        use rand::seq::SliceRandom;
+        let mut rng = rand::rng();
+        informs.shuffle(&mut rng);
+        informs.truncate(MAX_INFORMS_PER_TICK);
+
+        assert_eq!(
+            informs.len(),
+            n_informs,
+            "all candidates kept when pool < MAX_INFORMS_PER_TICK"
+        );
     }
 
-    /// Phase 5 combined cap: merged length never exceeds max_cap (property test on 4 scenarios).
+    /// Phase 5 independent budget: empty Informs pool stays empty after shuffle+truncate.
     #[test]
-    fn test_phase5_merged_len_never_exceeds_max_cap_property() {
-        let scenarios: &[(usize, usize, usize)] =
-            &[(0, 20, 10), (10, 10, 10), (5, 15, 8), (0, 0, 5)];
-        for &(supports, informs_total, cap) in scenarios {
-            let effective_supports = supports.min(cap);
-            let remaining = cap.saturating_sub(effective_supports);
-            let effective_informs = informs_total.min(remaining);
-            let merged_len = effective_supports + effective_informs;
-            assert!(
-                merged_len <= cap,
-                "scenario ({supports},{informs_total},{cap}): merged_len={merged_len} > cap={cap}"
-            );
-        }
+    fn test_phase5_informs_empty_pool_stays_empty() {
+        let mut informs: Vec<InformsCandidate> = vec![];
+
+        use rand::seq::SliceRandom;
+        let mut rng = rand::rng();
+        informs.shuffle(&mut rng);
+        informs.truncate(MAX_INFORMS_PER_TICK);
+
+        assert!(informs.is_empty(), "empty pool must remain empty");
     }
 
-    /// Phase 5 combined cap: cap=0 produces empty merged, no panic.
+    /// Phase 5 independent budget: Informs result has no duplicates and only valid IDs.
     #[test]
-    fn test_phase5_cap_zero_produces_empty_merged() {
-        let cap = 0_usize;
-        let supports_count = 5_usize;
-        let informs_total = 5_usize;
+    fn test_phase5_informs_shuffle_no_duplicates_valid_ids() {
+        let n_informs = MAX_INFORMS_PER_TICK + 15;
+        let mut informs: Vec<InformsCandidate> = (0..n_informs as i64)
+            .map(|i| {
+                let mut c = make_informs_candidate("a", "b", 0.5, i, i + 1, "c1", "c2");
+                c.source_id = i as u64;
+                c.target_id = (i + 1000) as u64;
+                c
+            })
+            .collect();
 
-        let effective_supports = supports_count.min(cap);
-        let remaining = cap.saturating_sub(effective_supports);
-        let effective_informs = informs_total.min(remaining);
-        assert_eq!(effective_supports + effective_informs, 0);
+        use rand::seq::SliceRandom;
+        let mut rng = rand::rng();
+        informs.shuffle(&mut rng);
+        informs.truncate(MAX_INFORMS_PER_TICK);
+
+        assert_eq!(informs.len(), MAX_INFORMS_PER_TICK);
+        // No duplicate (source_id, target_id) pairs.
+        let pair_set: std::collections::HashSet<(u64, u64)> =
+            informs.iter().map(|c| (c.source_id, c.target_id)).collect();
+        assert_eq!(
+            pair_set.len(),
+            MAX_INFORMS_PER_TICK,
+            "no duplicate pairs after shuffle"
+        );
+        // All source IDs must be within the original pool range.
+        assert!(
+            informs.iter().all(|c| (c.source_id as usize) < n_informs),
+            "all IDs must come from the original pool"
+        );
     }
 
-    /// Phase 5 remaining computed after truncation (not before): saturating_sub prevents underflow.
+    /// Phase 5 log accounting: dropped = total - kept, accepted + dropped == total.
     #[test]
-    fn test_phase5_remaining_computed_after_truncation() {
-        let max_cap = 5_usize;
-        let supports_before_truncate = 8_usize;
+    fn test_phase5_informs_log_accounting_consistent() {
+        let n_informs = MAX_INFORMS_PER_TICK + 7;
+        let mut informs: Vec<InformsCandidate> = (0..n_informs as i64)
+            .map(|i| make_informs_candidate("a", "b", 0.5, i, i + 1, "c1", "c2"))
+            .collect();
 
-        // Truncate supports to cap first.
-        let supports_after = supports_before_truncate.min(max_cap);
-        // Then compute remaining — must be 0, not a negative number.
-        let remaining = max_cap.saturating_sub(supports_after);
-        assert_eq!(remaining, 0, "remaining must be 0 after supports fills cap");
-        // saturating_sub prevents underflow; usize subtraction would underflow without it.
+        let informs_total_before_cap = informs.len();
+
+        use rand::seq::SliceRandom;
+        let mut rng = rand::rng();
+        informs.shuffle(&mut rng);
+        informs.truncate(MAX_INFORMS_PER_TICK);
+
+        let informs_kept = informs.len();
+        let informs_dropped = informs_total_before_cap.saturating_sub(informs_kept);
+
+        assert_eq!(
+            informs_kept + informs_dropped,
+            informs_total_before_cap,
+            "accepted + dropped must equal total (SR-03)"
+        );
+        assert_eq!(
+            informs_kept, MAX_INFORMS_PER_TICK,
+            "kept must equal the budget cap"
+        );
+        assert_eq!(informs_dropped, 7, "dropped = total - MAX_INFORMS_PER_TICK");
     }
 
     /// Edge weight finitude guard (C-13, R-15): cosine * ppr_weight is finite.
