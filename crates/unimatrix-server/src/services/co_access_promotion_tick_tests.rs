@@ -908,6 +908,55 @@ async fn test_quarantine_both_endpoints_no_edges_promoted() {
     );
 }
 
+/// GH-476-d: quarantined pair vacates batch slot — active pairs fill to cap.
+///
+/// Verifies the throughput invariant: with cap=2, 3 qualifying active pairs, and 1
+/// quarantined pair whose count exceeds all active pairs, the fix ensures all 2 cap
+/// slots go to active pairs.
+///
+/// Before fix: the quarantined pair would win the first LIMIT slot (highest count),
+/// leaving only 1 slot for the 3 active pairs → batch under-filled, valid pairs crowded out.
+/// After fix: quarantined pair excluded from SELECT, 2 active pairs fill both cap slots.
+#[tokio::test]
+async fn test_quarantine_vacated_slots_filled_by_active_pairs() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    // A=1, B=2, C=3, D=4 (all active); Q=5 (quarantined)
+    seed_entry(&store, 1, 0).await;
+    seed_entry(&store, 2, 0).await;
+    seed_entry(&store, 3, 0).await;
+    seed_entry(&store, 4, 0).await;
+    seed_entry(&store, 5, 3).await; // quarantined
+
+    // Quarantined pair has the highest count — would crowd out active pairs pre-fix.
+    seed_co_access(&store, 1, 5, 100).await; // A↔Q: count=100, quarantined endpoint
+    // Three active pairs, all qualifying.
+    seed_co_access(&store, 1, 2, 9).await; // A↔B: count=9
+    seed_co_access(&store, 2, 3, 8).await; // B↔C: count=8
+    seed_co_access(&store, 3, 4, 7).await; // C↔D: count=7
+
+    // Cap=2: only the top-2 eligible active pairs should be promoted.
+    run_co_access_promotion_tick(&store, &make_config(2), 10).await;
+
+    // Expect 4 directed edges: A↔B (2) + B↔C (2) — the top-2 active pairs by count.
+    // If the quarantined pair consumed a slot, we'd see only 2 directed edges total.
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        4,
+        "cap=2 with quarantine excluded: top-2 active pairs must fill both slots (4 directed edges)"
+    );
+    assert!(fetch_co_access_edge(&store, 1, 2).await.is_some(), "A→B must be promoted");
+    assert!(fetch_co_access_edge(&store, 2, 1).await.is_some(), "B→A must be promoted");
+    assert!(fetch_co_access_edge(&store, 2, 3).await.is_some(), "B→C must be promoted");
+    assert!(fetch_co_access_edge(&store, 3, 2).await.is_some(), "C→B must be promoted");
+    // The quarantined-endpoint pair must not appear.
+    assert!(fetch_co_access_edge(&store, 1, 5).await.is_none(), "A→Q must not be promoted");
+    assert!(fetch_co_access_edge(&store, 5, 1).await.is_none(), "Q→A must not be promoted");
+    // The third active pair (C↔D) falls outside the cap — also absent.
+    assert!(fetch_co_access_edge(&store, 3, 4).await.is_none(), "C→D outside cap must not be promoted");
+}
+
 /// GH-476-c: mixed batch — only active-both-endpoints pairs promoted, with correct weight.
 ///
 /// Seed three entries: A=active, B=active, C=quarantined.
