@@ -14,7 +14,7 @@
 //!   reverse direction: (entry_id_b, entry_id_a).
 
 use unimatrix_core::Store;
-use unimatrix_store::{CO_ACCESS_GRAPH_MIN_COUNT, EDGE_SOURCE_CO_ACCESS};
+use unimatrix_store::{CO_ACCESS_GRAPH_MIN_COUNT, EDGE_SOURCE_CO_ACCESS, Status};
 
 use crate::infra::config::InferenceConfig;
 
@@ -212,19 +212,36 @@ pub(crate) async fn run_co_access_promotion_tick(
     // MAX(count) over ALL qualifying pairs (not just the capped batch), ensuring
     // weight normalization is globally consistent regardless of the LIMIT cap.
     // ORDER BY count DESC guarantees highest-signal pairs are selected first.
+    //
+    // Both the outer SELECT and the scalar subquery JOIN against `entries` to
+    // exclude quarantined-endpoint pairs (GH #476). The subquery filter is
+    // required for weight correctness: if quarantined pairs have higher counts
+    // than any active pair, max_count would be inflated, producing artificially
+    // low weights on every promoted edge. ?3 binds Status::Quarantined as i64.
+    //
+    // CRITICAL: a missing ?3 bind causes `status != NULL` in SQL, which is
+    // always NULL (not true), silently promoting nothing. Tests are the
+    // correctness safety net for this bind.
     let rows_result = sqlx::query_as::<_, CoAccessBatchRow>(
         "SELECT
-             entry_id_a,
-             entry_id_b,
-             count,
-             (SELECT MAX(count) FROM co_access WHERE count >= ?1) AS max_count
-         FROM co_access
-         WHERE count >= ?1
-         ORDER BY count DESC
+             ca.entry_id_a,
+             ca.entry_id_b,
+             ca.count,
+             (SELECT MAX(ca2.count)
+                FROM co_access ca2
+                JOIN entries ea2 ON ea2.id = ca2.entry_id_a AND ea2.status != ?3
+                JOIN entries eb2 ON eb2.id = ca2.entry_id_b AND eb2.status != ?3
+               WHERE ca2.count >= ?1) AS max_count
+         FROM co_access ca
+         JOIN entries ea ON ea.id = ca.entry_id_a AND ea.status != ?3
+         JOIN entries eb ON eb.id = ca.entry_id_b AND eb.status != ?3
+         WHERE ca.count >= ?1
+         ORDER BY ca.count DESC
          LIMIT ?2",
     )
     .bind(CO_ACCESS_GRAPH_MIN_COUNT) // ?1: i64 = 3
     .bind(config.max_co_access_promotion_per_tick as i64) // ?2: i64 cap
+    .bind(Status::Quarantined as u8 as i64) // ?3: i64 quarantine status
     .fetch_all(store.write_pool_server())
     .await;
 

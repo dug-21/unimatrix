@@ -14,8 +14,33 @@ fn make_config(cap: usize) -> InferenceConfig {
     }
 }
 
+/// Seed an entry row with the given id and status (as raw integer per Status enum).
+///
+/// Uses a minimal INSERT: only the NOT NULL columns without defaults are required
+/// (title, content, topic, category, source). All other columns use schema defaults.
+async fn seed_entry(store: &Store, id: i64, status: i64) {
+    sqlx::query(
+        "INSERT OR IGNORE INTO entries (id, title, content, topic, category, source, status, created_at, updated_at)
+         VALUES (?1, 'test', 'content', 'test', 'test', 'test', ?2, 0, 0)",
+    )
+    .bind(id)
+    .bind(status)
+    .execute(store.write_pool_server())
+    .await
+    .unwrap();
+}
+
 /// Seed a co_access pair.
+///
+/// Also seeds Active (status=0) entries for both ids if they do not already exist,
+/// so the tick-side JOIN against `entries` (GH #476 fix) includes these rows.
+/// Tests that need quarantined entries must call `seed_entry` explicitly after
+/// `seed_co_access` to override the default Active status.
 async fn seed_co_access(store: &Store, a: i64, b: i64, count: i64) {
+    // Ensure entry rows exist so the promotion tick JOIN includes these pairs.
+    // INSERT OR IGNORE: does not overwrite a status already set by seed_entry.
+    seed_entry(store, a, 0).await;
+    seed_entry(store, b, 0).await;
     sqlx::query(
         "INSERT OR REPLACE INTO co_access (entry_id_a, entry_id_b, count, last_updated)
          VALUES (?1, ?2, ?3, 0)",
@@ -828,5 +853,116 @@ async fn test_log_format_promoted_pairs_and_edges_inserted() {
     assert!(
         logs_contain("edges_updated=0") || logs_contain("edges_updated: 0"),
         "log must contain edges_updated=0 (all fresh inserts)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Group J: Quarantine Filtering (GH #476)
+// ---------------------------------------------------------------------------
+
+/// GH-476-a: one quarantined endpoint → 0 edges promoted.
+///
+/// Verifies the tick-side JOIN excludes pairs where either endpoint is quarantined.
+/// Uses real entries rows with status=Quarantined (not missing rows) so the JOIN
+/// exclusion is exercised rather than the implicit FK miss path.
+#[tokio::test]
+async fn test_quarantine_one_endpoint_no_edges_promoted() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    // Entry 1: Active (status=0), Entry 2: Quarantined (status=3)
+    seed_entry(&store, 1, 0).await;
+    seed_entry(&store, 2, 3).await;
+    // co_access pair with count above CO_ACCESS_GRAPH_MIN_COUNT (=3)
+    seed_co_access(&store, 1, 2, 5).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        0,
+        "quarantined endpoint: 0 edges must be promoted"
+    );
+}
+
+/// GH-476-b: both endpoints quarantined → 0 edges promoted.
+///
+/// Ensures the filter applies even when both sides are quarantined, not just
+/// one. The JOIN must exclude the pair regardless of which endpoint triggers it.
+#[tokio::test]
+async fn test_quarantine_both_endpoints_no_edges_promoted() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    // Both entries quarantined
+    seed_entry(&store, 1, 3).await;
+    seed_entry(&store, 2, 3).await;
+    seed_co_access(&store, 1, 2, 5).await;
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        0,
+        "both endpoints quarantined: 0 edges must be promoted"
+    );
+}
+
+/// GH-476-c: mixed batch — only active-both-endpoints pairs promoted, with correct weight.
+///
+/// Seed three entries: A=active, B=active, C=quarantined.
+/// co_access: A↔B (count=5), A↔C (count=10, higher), B↔C (count=7).
+/// Only A↔B qualifies. Crucially, the subquery must also exclude quarantined
+/// endpoints so max_count=5 (not 10 from A↔C), yielding weight=5/5=1.0 for A↔B.
+/// If the subquery filter is missing, max_count=10, weight=0.5.
+#[tokio::test]
+async fn test_quarantine_mixed_batch_only_active_pairs_promoted_with_correct_weight() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    // A=1 (active), B=2 (active), C=3 (quarantined)
+    seed_entry(&store, 1, 0).await;
+    seed_entry(&store, 2, 0).await;
+    seed_entry(&store, 3, 3).await;
+
+    // co_access must satisfy CHECK (entry_id_a < entry_id_b)
+    seed_co_access(&store, 1, 2, 5).await; // A↔B: count=5
+    seed_co_access(&store, 1, 3, 10).await; // A↔C: count=10, higher but C is quarantined
+    seed_co_access(&store, 2, 3, 7).await; // B↔C: count=7, but C is quarantined
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    // Only A↔B edges promoted (both directions)
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        2,
+        "only A↔B (both directions) must be promoted — A↔C and B↔C excluded"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 1, 2).await.is_some(),
+        "forward edge A→B must exist"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 2, 1).await.is_some(),
+        "reverse edge B→A must exist"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 1, 3).await.is_none(),
+        "A→C edge must not exist (C is quarantined)"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 2, 3).await.is_none(),
+        "B→C edge must not exist (C is quarantined)"
+    );
+
+    // Weight must be 1.0 (5/5), not 0.5 (5/10).
+    // If the subquery filter is absent, max_count=10 from A↔C and weight=0.5.
+    // This assertion verifies the subquery also excludes quarantined endpoints.
+    let edge = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("A→B edge must exist");
+    assert!(
+        (edge.weight - 1.0).abs() < 1e-9,
+        "weight must be 1.0 (5/5 with quarantine-filtered max_count), not 0.5 (5/10)"
     );
 }
