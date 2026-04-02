@@ -296,17 +296,9 @@ pub struct InferenceConfig {
     /// Candidate pool size for NLI search re-ranking.
     ///
     /// HNSW retrieves `nli_top_k` candidates; NLI scores all of them before
-    /// truncating to the requested `k`. Distinct from `nli_post_store_k` (D-04, AC-19).
-    /// Default: 20. Valid range: `[1, 100]`.
+    /// truncating to the requested `k`. Default: 20. Valid range: `[1, 100]`.
     #[serde(default = "default_nli_top_k")]
     pub nli_top_k: usize,
-
-    /// Neighbor count for post-store NLI detection.
-    ///
-    /// After `context_store`, the NLI task queries `nli_post_store_k` HNSW neighbors.
-    /// Distinct from `nli_top_k` (D-04, AC-19). Default: 10. Valid range: `[1, 100]`.
-    #[serde(default = "default_nli_post_store_k")]
-    pub nli_post_store_k: usize,
 
     /// Entailment threshold for writing `Supports` edges.
     ///
@@ -422,7 +414,7 @@ pub struct InferenceConfig {
 
     /// HNSW neighbour count for tick path HNSW expansion.
     ///
-    /// Independent of nli_post_store_k (tick is background, not latency-sensitive).
+    /// Background tick HNSW expansion (not latency-sensitive).
     /// Default: 10. Range: [1, 100].
     #[serde(default = "default_graph_inference_k")]
     pub graph_inference_k: usize,
@@ -571,6 +563,21 @@ pub struct InferenceConfig {
     /// Default: 0.6. Range: [0.0, 1.0] inclusive (0.0 disables PPR contribution; 1.0 is max).
     #[serde(default = "default_nli_informs_ppr_weight")]
     pub nli_informs_ppr_weight: f32,
+
+    /// Cosine similarity threshold for cosine Supports edge detection (Path C).
+    ///
+    /// Path C in `run_graph_inference_tick` writes a `Supports` edge when
+    /// `cosine >= supports_cosine_threshold` AND the category pair is in
+    /// `informs_category_pairs`. Threshold validated as exclusive (0.0, 1.0).
+    ///
+    /// Note: `supports_candidate_threshold` (Phase 4 pre-filter, default 0.5) must
+    /// remain <= this value or Path C receives zero candidates (IR-02). This invariant
+    /// is not enforced by validate() but must be respected in operator config.
+    ///
+    /// Default: 0.65 (empirically validated on production corpus, ASS-035).
+    /// Range: (0.0, 1.0) exclusive.
+    #[serde(default = "default_supports_cosine_threshold")]
+    pub supports_cosine_threshold: f32,
 }
 
 impl Default for InferenceConfig {
@@ -593,7 +600,6 @@ impl Default for InferenceConfig {
             nli_model_path: None,
             nli_model_sha256: None,
             nli_top_k: 20,
-            nli_post_store_k: 10,
             nli_entailment_threshold: 0.6,
             nli_contradiction_threshold: 0.6,
             max_contradicts_per_tick: 10,
@@ -627,6 +633,8 @@ impl Default for InferenceConfig {
             informs_category_pairs: default_informs_category_pairs(),
             nli_informs_cosine_floor: default_nli_informs_cosine_floor(),
             nli_informs_ppr_weight: default_nli_informs_ppr_weight(),
+            // crt-040: cosine Supports detection threshold
+            supports_cosine_threshold: default_supports_cosine_threshold(),
         }
     }
 }
@@ -641,10 +649,6 @@ fn default_nli_enabled() -> bool {
 
 fn default_nli_top_k() -> usize {
     20
-}
-
-fn default_nli_post_store_k() -> usize {
-    10
 }
 
 fn default_nli_entailment_threshold() -> f32 {
@@ -788,6 +792,10 @@ fn default_nli_informs_ppr_weight() -> f32 {
     0.6
 }
 
+fn default_supports_cosine_threshold() -> f32 {
+    0.65
+}
+
 // ---------------------------------------------------------------------------
 // Heal pass default value functions (bugfix-444)
 // ---------------------------------------------------------------------------
@@ -813,13 +821,14 @@ impl InferenceConfig {
     ///
     /// Checks performed:
     /// - `rayon_pool_size` in `[1, 64]`
-    /// - `nli_top_k` and `nli_post_store_k` in `[1, 100]`
+    /// - `nli_top_k` in `[1, 100]`
     /// - `nli_entailment_threshold`, `nli_contradiction_threshold`, and
     ///   `nli_auto_quarantine_threshold` in `(0.0, 1.0)` exclusive
     /// - `max_contradicts_per_tick` in `[1, 100]`
     /// - `nli_model_name` is a recognized variant when `Some` (R-15, AC-17)
     /// - `nli_model_sha256` is exactly 64 hex chars when `Some`
     /// - Cross-field: `nli_auto_quarantine_threshold > nli_contradiction_threshold` (ADR-007)
+    /// - `supports_cosine_threshold` in `(0.0, 1.0)` exclusive (crt-040)
     pub fn validate(&self, path: &Path) -> Result<(), ConfigError> {
         // -- Existing check (unchanged) --
         if self.rayon_pool_size < 1 || self.rayon_pool_size > 64 {
@@ -836,15 +845,6 @@ impl InferenceConfig {
                 path: path.to_path_buf(),
                 field: "nli_top_k",
                 value: self.nli_top_k.to_string(),
-                reason: "must be in range [1, 100]",
-            });
-        }
-
-        if self.nli_post_store_k < 1 || self.nli_post_store_k > 100 {
-            return Err(ConfigError::NliFieldOutOfRange {
-                path: path.to_path_buf(),
-                field: "nli_post_store_k",
-                value: self.nli_post_store_k.to_string(),
                 reason: "must be in range [1, 100]",
             });
         }
@@ -1130,6 +1130,16 @@ impl InferenceConfig {
                 field: "nli_informs_ppr_weight",
                 value: self.nli_informs_ppr_weight.to_string(),
                 reason: "must be in range [0.0, 1.0] inclusive",
+            });
+        }
+
+        // -- crt-040: supports_cosine_threshold range check (0.0, 1.0) exclusive --
+        if self.supports_cosine_threshold <= 0.0 || self.supports_cosine_threshold >= 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "supports_cosine_threshold",
+                value: self.supports_cosine_threshold.to_string(),
+                reason: "must be in range (0.0, 1.0) exclusive",
             });
         }
 
@@ -2219,13 +2229,6 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             } else {
                 global.inference.nli_top_k
             },
-            nli_post_store_k: if project.inference.nli_post_store_k
-                != default.inference.nli_post_store_k
-            {
-                project.inference.nli_post_store_k
-            } else {
-                global.inference.nli_post_store_k
-            },
             nli_entailment_threshold: if (project.inference.nli_entailment_threshold
                 - default.inference.nli_entailment_threshold)
                 .abs()
@@ -2428,6 +2431,16 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.nli_informs_ppr_weight
             } else {
                 global.inference.nli_informs_ppr_weight
+            },
+            // crt-040: cosine Supports detection threshold
+            supports_cosine_threshold: if (project.inference.supports_cosine_threshold
+                - default.inference.supports_cosine_threshold)
+                .abs()
+                > f32::EPSILON
+            {
+                project.inference.supports_cosine_threshold
+            } else {
+                global.inference.supports_cosine_threshold
             },
         },
         // crt-036: per-field project-wins merge for retention config
@@ -4271,7 +4284,6 @@ mod tests {
         assert_eq!(config.nli_model_path, None);
         assert_eq!(config.nli_model_sha256, None);
         assert_eq!(config.nli_top_k, 20);
-        assert_eq!(config.nli_post_store_k, 10);
         assert!(
             (config.nli_entailment_threshold - 0.6f32).abs() < 1e-6,
             "nli_entailment_threshold default must be 0.6, got {}",
@@ -4300,7 +4312,6 @@ mod tests {
         assert_eq!(config.nli_model_path, None);
         assert_eq!(config.nli_model_sha256, None);
         assert_eq!(config.nli_top_k, 20);
-        assert_eq!(config.nli_post_store_k, 10);
         assert!((config.nli_entailment_threshold - 0.6f32).abs() < 1e-6);
         assert!((config.nli_contradiction_threshold - 0.6f32).abs() < 1e-6);
         assert_eq!(config.max_contradicts_per_tick, 10);
@@ -4320,7 +4331,6 @@ mod tests {
         assert_eq!(config.nli_top_k, 5);
         assert_eq!(config.max_contradicts_per_tick, 1);
         // Other fields retain defaults
-        assert_eq!(config.nli_post_store_k, 10);
         assert_eq!(config.nli_model_name, None);
     }
 
@@ -4366,24 +4376,6 @@ mod tests {
             c.validate(Path::new("/fake")).is_ok(),
             "nli_top_k = 100 (upper bound) must pass"
         );
-    }
-
-    #[test]
-    fn test_validate_nli_post_store_k_zero_fails() {
-        let c = InferenceConfig {
-            nli_post_store_k: 0,
-            ..InferenceConfig::default()
-        };
-        assert_validate_fails_with_field(c, "nli_post_store_k");
-    }
-
-    #[test]
-    fn test_validate_nli_post_store_k_101_fails() {
-        let c = InferenceConfig {
-            nli_post_store_k: 101,
-            ..InferenceConfig::default()
-        };
-        assert_validate_fails_with_field(c, "nli_post_store_k");
     }
 
     #[test]
@@ -4657,21 +4649,6 @@ mod tests {
             c.validate(Path::new("/fake")).is_ok(),
             "default InferenceConfig must pass validation"
         );
-    }
-
-    // AC-19: nli_top_k and nli_post_store_k are independent.
-
-    #[test]
-    fn test_nli_top_k_and_post_store_k_are_independent() {
-        // Setting one must not affect the other.
-        let c = InferenceConfig {
-            nli_top_k: 50,
-            nli_post_store_k: 3,
-            ..InferenceConfig::default()
-        };
-        assert_eq!(c.nli_top_k, 50);
-        assert_eq!(c.nli_post_store_k, 3);
-        assert!(c.validate(Path::new("/fake")).is_ok());
     }
 
     // R-02: pool floor behavior.
@@ -7047,6 +7024,146 @@ nli_informs_ppr_weight = 0.4
         assert!(
             c.validate(Path::new("/fake")).is_ok(),
             "empty informs_category_pairs must pass validate (disables detection)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-040: supports_cosine_threshold tests (AC-09, AC-10, AC-16, AC-17, AC-18, R-03, R-13)
+    // -----------------------------------------------------------------------
+
+    // TC-01: backing function returns 0.65 (AC-16, R-03 — first independent assertion)
+    #[test]
+    fn test_default_supports_cosine_threshold_fn() {
+        assert_eq!(
+            default_supports_cosine_threshold(),
+            0.65_f32,
+            "TC-01a: default_supports_cosine_threshold() must return 0.65"
+        );
+    }
+
+    // TC-02: impl Default path returns 0.65 (AC-10, AC-16, R-03 — second independent assertion)
+    #[test]
+    fn test_inference_config_default_supports_cosine_threshold() {
+        assert_eq!(
+            InferenceConfig::default().supports_cosine_threshold,
+            0.65_f32,
+            "TC-02: InferenceConfig::default().supports_cosine_threshold must be 0.65"
+        );
+    }
+
+    // TC-03: serde deserialization from empty TOML returns 0.65 (AC-16, R-03 — third independent assertion)
+    #[test]
+    fn test_inference_config_toml_empty_supports_cosine_threshold() {
+        let config: InferenceConfig = toml::from_str("").unwrap();
+        assert_eq!(
+            config.supports_cosine_threshold, 0.65_f32,
+            "TC-03: serde default from empty TOML must return 0.65"
+        );
+    }
+
+    // TC-04: TOML override propagates correctly
+    #[test]
+    fn test_inference_config_toml_override_supports_cosine_threshold() {
+        let toml = "supports_cosine_threshold = 0.80\n";
+        let config: InferenceConfig = toml::from_str(toml).unwrap();
+        assert!(
+            (config.supports_cosine_threshold - 0.80_f32).abs() < 1e-6,
+            "TC-04: supports_cosine_threshold must be overridden to 0.80"
+        );
+    }
+
+    // TC-05: validate() rejects 0.0 (AC-09, exclusive lower bound)
+    #[test]
+    fn test_validate_supports_cosine_threshold_zero_fails() {
+        let c = InferenceConfig {
+            supports_cosine_threshold: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "supports_cosine_threshold");
+    }
+
+    // TC-06: validate() rejects 1.0 (AC-09, exclusive upper bound)
+    #[test]
+    fn test_validate_supports_cosine_threshold_one_fails() {
+        let c = InferenceConfig {
+            supports_cosine_threshold: 1.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "supports_cosine_threshold");
+    }
+
+    // TC-07: validate() accepts 0.65 (nominal default)
+    #[test]
+    fn test_validate_supports_cosine_threshold_default_is_ok() {
+        let c = InferenceConfig {
+            supports_cosine_threshold: 0.65,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "TC-07: supports_cosine_threshold = 0.65 must pass validate"
+        );
+    }
+
+    // TC-08: validate() accepts boundary-adjacent values 0.001 and 0.999
+    #[test]
+    fn test_validate_supports_cosine_threshold_near_bounds_ok() {
+        let just_above_zero = InferenceConfig {
+            supports_cosine_threshold: 0.001,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            just_above_zero.validate(Path::new("/fake")).is_ok(),
+            "TC-08a: supports_cosine_threshold = 0.001 must pass (just above exclusive lower)"
+        );
+
+        let just_below_one = InferenceConfig {
+            supports_cosine_threshold: 0.999,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            just_below_one.validate(Path::new("/fake")).is_ok(),
+            "TC-08b: supports_cosine_threshold = 0.999 must pass (just below exclusive upper)"
+        );
+    }
+
+    // TC-09: config merge propagates project-level override (R-13)
+    #[test]
+    fn test_config_merge_supports_cosine_threshold_project_overrides() {
+        // project sets 0.70 (differs from default 0.65 by > f32::EPSILON) → project wins
+        let mut global = UnimatrixConfig::default();
+        global.inference.supports_cosine_threshold = 0.65; // default
+        let mut project = UnimatrixConfig::default();
+        project.inference.supports_cosine_threshold = 0.70;
+        let merged = merge_configs(global, project);
+        assert!(
+            (merged.inference.supports_cosine_threshold - 0.70_f32).abs() < 1e-6,
+            "TC-09: project value 0.70 must win over global 0.65"
+        );
+    }
+
+    // TC-10: config merge keeps global when project equals default (R-13)
+    #[test]
+    fn test_config_merge_supports_cosine_threshold_global_when_not_overridden() {
+        // project has default 0.65; global has 0.75 → global wins
+        let mut global = UnimatrixConfig::default();
+        global.inference.supports_cosine_threshold = 0.75;
+        let project = UnimatrixConfig::default(); // supports_cosine_threshold = 0.65 (default)
+        let merged = merge_configs(global, project);
+        assert!(
+            (merged.inference.supports_cosine_threshold - 0.75_f32).abs() < 1e-6,
+            "TC-10: global value 0.75 must be preserved when project == default"
+        );
+    }
+
+    // TC-11: nli_post_store_k absent — forward-compat serde test (AC-18, R-04)
+    #[test]
+    fn test_inference_config_toml_with_nli_post_store_k_succeeds() {
+        let toml = "nli_post_store_k = 5\n";
+        let result = toml::from_str::<InferenceConfig>(toml);
+        assert!(
+            result.is_ok(),
+            "TC-11: deserializing TOML with removed field nli_post_store_k must not error"
         );
     }
 }
