@@ -18,19 +18,16 @@
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| background.rs (tick orchestrator) | pseudocode/background.md | test-plan/background.md |
-| nli_detection_tick.rs (tick implementation) | pseudocode/nli_detection_tick.md | test-plan/nli_detection_tick.md |
-| infra/config.rs (InferenceConfig) | pseudocode/config.md | test-plan/config.md |
+| background.rs (tick orchestrator) | product/features/crt-039/pseudocode/background.md | product/features/crt-039/test-plan/background.md |
+| nli_detection_tick.rs (tick implementation) | product/features/crt-039/pseudocode/nli_detection_tick.md | product/features/crt-039/test-plan/nli_detection_tick.md |
+| infra/config.rs (InferenceConfig) | product/features/crt-039/pseudocode/config.md | product/features/crt-039/test-plan/config.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
-
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map
-lists expected components from the architecture — actual file paths are filled during delivery.
+| Pseudocode Overview | product/features/crt-039/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/crt-039/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 

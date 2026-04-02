@@ -50,3 +50,10 @@ applies to net-new candidates only — already-written pairs do not consume slot
 None. SR-02 (corpus measurement) and SR-06 (observability log line) are implementation-phase
 risk mitigations, not architectural blockers. The spec writer should formalize SR-06 as an
 observability AC.
+
+## Knowledge Stewardship
+
+- Stored: entry #4017 "ADR-001: Control Flow Split in run_graph_inference_tick (Option Z)" via /uni-store-adr (category: decision, topic: crt-039, tags: ["adr", "crt-039"])
+- Stored: entry #4018 "ADR-002: apply_informs_composite_guard Simplification" via /uni-store-adr (category: decision, topic: crt-039, tags: ["adr", "crt-039"])
+- Stored: entry #4019 "ADR-003: Raise nli_informs_cosine_floor from 0.45 to 0.50" via /uni-store-adr (category: decision, topic: crt-039, tags: ["adr", "crt-039"])
+- Queried: context_briefing (crt-039) — returned entries including #3713 (threshold tuning visibility), #3937 (NLI neutral score for Informs, directly describes guard being removed), #3826 (crt-034 ordering invariant), #3656 (file split rationale)
