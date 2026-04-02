@@ -946,15 +946,36 @@ async fn test_quarantine_vacated_slots_filled_by_active_pairs() {
         4,
         "cap=2 with quarantine excluded: top-2 active pairs must fill both slots (4 directed edges)"
     );
-    assert!(fetch_co_access_edge(&store, 1, 2).await.is_some(), "A→B must be promoted");
-    assert!(fetch_co_access_edge(&store, 2, 1).await.is_some(), "B→A must be promoted");
-    assert!(fetch_co_access_edge(&store, 2, 3).await.is_some(), "B→C must be promoted");
-    assert!(fetch_co_access_edge(&store, 3, 2).await.is_some(), "C→B must be promoted");
+    assert!(
+        fetch_co_access_edge(&store, 1, 2).await.is_some(),
+        "A→B must be promoted"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 2, 1).await.is_some(),
+        "B→A must be promoted"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 2, 3).await.is_some(),
+        "B→C must be promoted"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 3, 2).await.is_some(),
+        "C→B must be promoted"
+    );
     // The quarantined-endpoint pair must not appear.
-    assert!(fetch_co_access_edge(&store, 1, 5).await.is_none(), "A→Q must not be promoted");
-    assert!(fetch_co_access_edge(&store, 5, 1).await.is_none(), "Q→A must not be promoted");
+    assert!(
+        fetch_co_access_edge(&store, 1, 5).await.is_none(),
+        "A→Q must not be promoted"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 5, 1).await.is_none(),
+        "Q→A must not be promoted"
+    );
     // The third active pair (C↔D) falls outside the cap — also absent.
-    assert!(fetch_co_access_edge(&store, 3, 4).await.is_none(), "C→D outside cap must not be promoted");
+    assert!(
+        fetch_co_access_edge(&store, 3, 4).await.is_none(),
+        "C→D outside cap must not be promoted"
+    );
 }
 
 /// GH-476-c: mixed batch — only active-both-endpoints pairs promoted, with correct weight.

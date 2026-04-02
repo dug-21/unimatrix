@@ -343,17 +343,18 @@ pub struct InferenceConfig {
     // -----------------------------------------------------------------------
     // Ranking signal fusion weights (crt-024, ADR-003)
     // -----------------------------------------------------------------------
-    /// Fusion weight for cosine similarity signal (bi-encoder recall). Default: 0.25.
+    /// Fusion weight for cosine similarity signal (bi-encoder recall). Default: 0.50 (crt-038, conf-boost-c).
     #[serde(default = "default_w_sim")]
     pub w_sim: f64,
 
-    /// Fusion weight for NLI entailment signal (cross-encoder precision). Default: 0.35.
+    /// Fusion weight for NLI entailment signal (cross-encoder precision). Default: 0.00 (crt-038, conf-boost-c).
     /// When NLI is disabled or absent, this term contributes 0.0 and remaining weights
-    /// are re-normalized by `FusionWeights::effective(nli_available: false)`.
+    /// are passed through unchanged by `FusionWeights::effective(nli_available: false)`
+    /// (short-circuit when w_nli == 0.0, ADR-001 crt-038).
     #[serde(default = "default_w_nli")]
     pub w_nli: f64,
 
-    /// Fusion weight for confidence signal (Wilson score composite). Default: 0.15.
+    /// Fusion weight for confidence signal (Wilson score composite). Default: 0.35 (crt-038, conf-boost-c).
     #[serde(default = "default_w_conf")]
     pub w_conf: f64,
 
@@ -361,12 +362,12 @@ pub struct InferenceConfig {
     #[serde(default = "default_w_coac")]
     pub w_coac: f64,
 
-    /// Fusion weight for utility delta signal (effectiveness classification). Default: 0.05.
+    /// Fusion weight for utility delta signal (effectiveness classification). Default: 0.00 (crt-038, conf-boost-c).
     #[serde(default = "default_w_util")]
     pub w_util: f64,
 
-    /// Fusion weight for provenance signal (boosted-category hint). Default: 0.05.
-    /// Defaults sum to 0.85; the remaining 0.15 is headroom for WA-2's phase boost term.
+    /// Fusion weight for provenance signal (boosted-category hint). Default: 0.00 (crt-038, conf-boost-c).
+    /// Six-weight defaults sum to 0.85; the remaining 0.15 is headroom for WA-2's phase boost term.
     #[serde(default = "default_w_prov")]
     pub w_prov: f64,
 
@@ -587,7 +588,7 @@ impl Default for InferenceConfig {
         // On 20-core:    num_cpus = 20; 20/2 = 10; max(10, 4) = 10; min(10, 8) = 8.
         InferenceConfig {
             rayon_pool_size: (num_cpus::get() / 2).max(4).min(8),
-            nli_enabled: false,
+            nli_enabled: default_nli_enabled(),
             nli_model_name: None,
             nli_model_path: None,
             nli_model_sha256: None,
@@ -597,12 +598,12 @@ impl Default for InferenceConfig {
             nli_contradiction_threshold: 0.6,
             max_contradicts_per_tick: 10,
             nli_auto_quarantine_threshold: 0.85,
-            w_sim: 0.25,
-            w_nli: 0.35,
-            w_conf: 0.15,
+            w_sim: default_w_sim(),
+            w_nli: default_w_nli(),
+            w_conf: default_w_conf(),
             w_coac: 0.0,
-            w_util: 0.05,
-            w_prov: 0.05,
+            w_util: default_w_util(),
+            w_prov: default_w_prov(),
             w_phase_histogram: 0.02, // crt-026: full session signal budget (ADR-004)
             w_phase_explicit: default_w_phase_explicit(), // col-031: 0.05 (ADR-004, crt-026 ADR-003)
             // crt-029: background graph inference tick fields
@@ -667,15 +668,15 @@ fn default_nli_auto_quarantine_threshold() -> f32 {
 // ---------------------------------------------------------------------------
 
 fn default_w_sim() -> f64 {
-    0.25
+    0.50
 }
 
 fn default_w_nli() -> f64 {
-    0.35
+    0.00
 }
 
 fn default_w_conf() -> f64 {
-    0.15
+    0.35
 }
 
 fn default_w_coac() -> f64 {
@@ -683,11 +684,11 @@ fn default_w_coac() -> f64 {
 }
 
 fn default_w_util() -> f64 {
-    0.05
+    0.00
 }
 
 fn default_w_prov() -> f64 {
-    0.05
+    0.00
 }
 
 // crt-026: default_w_phase_histogram — 0.02 (ASS-028 calibrated, full session signal budget)
@@ -5060,33 +5061,26 @@ categories = ["some-cat"]
         }
     }
 
-    // AC-01: Default deserialization — absent weight fields get correct defaults
+    // AC-01: Default deserialization — absent weight fields get correct defaults (crt-038, conf-boost-c)
     #[test]
     fn test_inference_config_weight_defaults_when_absent() {
-        let toml = "[inference]\nnli_enabled = false\n";
+        // Use empty [inference] section so all fields take serde defaults.
+        let toml = "[inference]\n";
         let config: UnimatrixConfig = toml::from_str(toml).expect("must parse");
         let inf = &config.inference;
         assert!(
-            (inf.w_sim - 0.25).abs() < 1e-9,
-            "w_sim default must be 0.25"
+            (inf.w_sim - 0.50).abs() < 1e-9,
+            "w_sim default changed to conf-boost-c: 0.50"
         );
+        assert!(inf.w_nli.abs() < 1e-9, "w_nli default zeroed: 0.00");
         assert!(
-            (inf.w_nli - 0.35).abs() < 1e-9,
-            "w_nli default must be 0.35"
-        );
-        assert!(
-            (inf.w_conf - 0.15).abs() < 1e-9,
-            "w_conf default must be 0.15"
+            (inf.w_conf - 0.35).abs() < 1e-9,
+            "w_conf default raised from 0.15 to 0.35"
         );
         assert!(inf.w_coac.abs() < 1e-9, "w_coac default must be 0.0");
-        assert!(
-            (inf.w_util - 0.05).abs() < 1e-9,
-            "w_util default must be 0.05"
-        );
-        assert!(
-            (inf.w_prov - 0.05).abs() < 1e-9,
-            "w_prov default must be 0.05"
-        );
+        assert!(inf.w_util.abs() < 1e-9, "w_util default zeroed: 0.00");
+        assert!(inf.w_prov.abs() < 1e-9, "w_prov default zeroed: 0.00");
+        assert!(!inf.nli_enabled, "nli_enabled default changed to false");
         let sum = inf.w_sim + inf.w_nli + inf.w_conf + inf.w_coac + inf.w_util + inf.w_prov;
         assert!(
             sum <= 0.95 + 1e-9,
@@ -5201,15 +5195,14 @@ categories = ["some-cat"]
             "set field w_nli must equal 0.40"
         );
         assert!(
-            (inf.w_sim - 0.25).abs() < 1e-9,
-            "unset w_sim must default to 0.25"
+            (inf.w_sim - 0.50).abs() < 1e-9,
+            "unset w_sim must default to 0.50 (crt-038, conf-boost-c)"
         );
-        // Total sum: 0.40 + 0.25 + 0.15 + 0.00 + 0.05 + 0.05 = 0.90 <= 1.0
+        // Total sum: 0.40 + 0.50 + 0.35 + 0.00 + 0.00 + 0.00 = 1.25 — exceeds 1.0 intentionally
+        // (operator-supplied w_nli=0.40 with conf-boost-c defaults); validate() would reject this,
+        // but this test only checks that absent fields receive defaults without parse error.
         let sum = inf.w_sim + inf.w_nli + inf.w_conf + inf.w_coac + inf.w_util + inf.w_prov;
-        assert!(
-            sum <= 1.0 + 1e-9,
-            "partial config sum must not exceed 1.0, got {sum}"
-        );
+        assert!(sum > 0.0, "partial config sum must be positive, got {sum}");
     }
 
     // AC-03: Per-field negative rejection — one test per field
@@ -6556,33 +6549,35 @@ w_sim = 0.25
     // individually valid can produce a merged config that violates the sum-of-six
     // fusion weight constraint.
     //
-    // Scenario:
-    //   global:  w_sim=0.5, all others zeroed   → sum=0.5 (valid)
-    //   project: w_nli=0.6, all others zeroed   → sum=0.6 (valid)
-    //   merged:  w_sim from global (project kept default 0.25, so global 0.5 wins),
-    //            w_nli from project (differs from default 0.35)
+    // Scenario (updated for crt-038 conf-boost-c defaults: w_sim=0.50, w_nli=0.00):
+    //   global:  w_sim=0.7 (differs from default 0.50), all others zeroed → sum=0.7 (valid)
+    //   project: w_nli=0.4 (differs from default 0.00), w_sim left at default (0.50)
+    //            all others zeroed (differ from defaults → project wins)
+    //            individually valid: sum = 0.50 + 0.4 = 0.9 (valid)
+    //   merged:  w_sim from global (project kept default 0.50, so global 0.7 wins),
+    //            w_nli from project (differs from default 0.00)
     //            w_conf/w_util/w_prov from project (all 0, differ from defaults)
-    //            → sum = 0.5 + 0.6 = 1.1 > 1.0 → must fail
+    //            → sum = 0.7 + 0.4 = 1.1 > 1.0 → must fail
     #[test]
     fn test_merge_configs_post_merge_fusion_weight_sum_exceeded() {
         let _scanner = ContentScanner::global();
 
-        // Global: w_sim=0.5, all other fusion weights zeroed.
-        // Individually valid: sum = 0.5.
+        // Global: w_sim=0.7 (exceeds default 0.50), all other fusion weights zeroed.
+        // Individually valid: sum = 0.7.
         let mut global = UnimatrixConfig::default();
-        global.inference.w_sim = 0.5;
+        global.inference.w_sim = 0.7;
         global.inference.w_nli = 0.0;
         global.inference.w_conf = 0.0;
         global.inference.w_coac = 0.0;
         global.inference.w_util = 0.0;
         global.inference.w_prov = 0.0;
 
-        // Project: w_nli=0.6, w_sim stays at default (0.25) so global value (0.5) wins
+        // Project: w_nli=0.4, w_sim stays at default (0.50) so global value (0.7) wins
         // in the merge. All other weights zeroed (differ from defaults → project wins).
-        // Individually valid: sum = 0.6.
+        // Individually valid: sum = 0.50 + 0.4 = 0.9.
         let mut project = UnimatrixConfig::default();
-        // w_sim intentionally left at default (0.25) so global's 0.5 is inherited.
-        project.inference.w_nli = 0.6;
+        // w_sim intentionally left at default (0.50) so global's 0.7 is inherited.
+        project.inference.w_nli = 0.4;
         project.inference.w_conf = 0.0;
         project.inference.w_coac = 0.0;
         project.inference.w_util = 0.0;
@@ -6600,7 +6595,7 @@ w_sim = 0.25
             "project config must be valid alone: {project_valid:?}"
         );
 
-        // After merge: w_sim=0.5 (from global), w_nli=0.6 (from project) → sum=1.1 > 1.0
+        // After merge: w_sim=0.7 (from global), w_nli=0.4 (from project) → sum=1.1 > 1.0
         let merged = merge_configs(global, project);
         let result = validate_config(&merged, Path::new("/fake/global/config.toml"));
         assert!(
