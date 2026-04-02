@@ -1689,6 +1689,33 @@ pub const EDGE_SOURCE_CO_ACCESS: &str = "co_access";
 /// First writer wins. (ARCHITECTURE.md SR-04, confirmed from db.rs DDL)
 pub const EDGE_SOURCE_COSINE_SUPPORTS: &str = "cosine_supports";
 
+/// Named constant for the S1 tag co-occurrence edge source value.
+///
+/// Written to `graph_edges.source` for all Informs edges produced by the
+/// S1 (tag co-occurrence) path in `run_s1_tick`. Parallel to `EDGE_SOURCE_NLI`,
+/// `EDGE_SOURCE_CO_ACCESS`, and `EDGE_SOURCE_COSINE_SUPPORTS` — prevents silent
+/// string divergence between read.rs, graph_enrichment_tick.rs, and test assertions.
+///
+/// S1 edges use relation_type='Informs'; they are distinct from NLI-origin Informs
+/// edges in the `source` column only. The UNIQUE(source_id, target_id, relation_type)
+/// constraint means an S1 Informs edge and an NLI Informs edge for the same pair are
+/// the same row — first writer wins (INSERT OR IGNORE semantics).
+pub const EDGE_SOURCE_S1: &str = "S1";
+
+/// Named constant for the S2 structural vocabulary edge source value.
+///
+/// Written to `graph_edges.source` for all Informs edges produced by the
+/// S2 (structural vocabulary matching) path in `run_s2_tick`. Parallel to
+/// `EDGE_SOURCE_S1` — same INSERT OR IGNORE / first-writer-wins semantics.
+pub const EDGE_SOURCE_S2: &str = "S2";
+
+/// Named constant for the S8 search co-retrieval edge source value.
+///
+/// Written to `graph_edges.source` for all CoAccess edges produced by the
+/// S8 (search co-retrieval) path in `run_s8_tick`. Uses relation_type='CoAccess',
+/// distinct from S1/S2 Informs edges by relation_type.
+pub const EDGE_SOURCE_S8: &str = "S8";
+
 /// Minimum co_access pair count required for promotion to GRAPH_EDGES.
 ///
 /// A co_access pair where count >= CO_ACCESS_GRAPH_MIN_COUNT qualifies for
@@ -1846,6 +1873,77 @@ mod tests {
             val, "cosine_supports",
             "TC-02: crate root re-export must equal 'cosine_supports'"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // edge_constants tests (crt-041 AC-22, R-07)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_edge_source_s1_value() {
+        // R-07, AC-22: EDGE_SOURCE_S1 must equal "S1" exactly —
+        // uppercase S, digit 1, no trailing whitespace, no lowercase.
+        assert_eq!(EDGE_SOURCE_S1, "S1");
+    }
+
+    #[test]
+    fn test_edge_source_s2_value() {
+        // R-07, AC-22: EDGE_SOURCE_S2 must equal "S2" exactly —
+        // uppercase S, digit 2.
+        assert_eq!(EDGE_SOURCE_S2, "S2");
+    }
+
+    #[test]
+    fn test_edge_source_s8_value() {
+        // R-07, AC-22: EDGE_SOURCE_S8 must equal "S8" exactly —
+        // uppercase S, digit 8.
+        assert_eq!(EDGE_SOURCE_S8, "S8");
+    }
+
+    #[test]
+    fn test_edge_source_s1_s2_s8_distinct() {
+        // R-07: All three new constants must be distinct from each other.
+        // Guards against copy-paste errors where two constants share the same value.
+        assert_ne!(EDGE_SOURCE_S1, EDGE_SOURCE_S2);
+        assert_ne!(EDGE_SOURCE_S2, EDGE_SOURCE_S8);
+        assert_ne!(EDGE_SOURCE_S1, EDGE_SOURCE_S8);
+    }
+
+    #[test]
+    fn test_edge_source_s1_distinct_from_nli() {
+        // R-07, R-13: S1/S2/S8 must not equal "nli". If any did, edges written by
+        // those sources would be counted in inferred_edge_count (the NLI-only metric),
+        // silently corrupting GNN feature construction (AC-30).
+        assert_ne!(EDGE_SOURCE_S1, EDGE_SOURCE_NLI);
+        assert_ne!(EDGE_SOURCE_S2, EDGE_SOURCE_NLI);
+        assert_ne!(EDGE_SOURCE_S8, EDGE_SOURCE_NLI);
+    }
+
+    #[test]
+    fn test_edge_source_s1_distinct_from_co_access() {
+        // R-07: S1/S2/S8 must not equal "co_access". S8 writes CoAccess
+        // relation_type edges but with source='S8', not 'co_access'.
+        assert_ne!(EDGE_SOURCE_S1, EDGE_SOURCE_CO_ACCESS);
+        assert_ne!(EDGE_SOURCE_S2, EDGE_SOURCE_CO_ACCESS);
+        assert_ne!(EDGE_SOURCE_S8, EDGE_SOURCE_CO_ACCESS);
+    }
+
+    #[test]
+    fn test_existing_edge_source_constants_unchanged() {
+        // Regression guard: adding new constants must not silently modify existing ones.
+        assert_eq!(EDGE_SOURCE_NLI, "nli");
+        assert_eq!(EDGE_SOURCE_CO_ACCESS, "co_access");
+    }
+
+    #[test]
+    fn test_edge_source_constants_re_exported_from_crate_root() {
+        // AC-22: All three new constants must be accessible from the crate root
+        // (re-exported via lib.rs). Accessing via `crate::` validates the re-export
+        // path used by downstream crates (e.g., unimatrix-server).
+        // If the re-export in lib.rs is missing, this test fails to compile.
+        assert_eq!(crate::EDGE_SOURCE_S1, "S1");
+        assert_eq!(crate::EDGE_SOURCE_S2, "S2");
+        assert_eq!(crate::EDGE_SOURCE_S8, "S8");
     }
 
     /// Create the graph_edges table for tests that run against a pre-v13 schema.
