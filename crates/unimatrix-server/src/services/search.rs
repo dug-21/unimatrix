@@ -139,16 +139,29 @@ impl FusionWeights {
 
     /// Return an effective weight set adjusted for NLI availability.
     ///
-    /// NLI active (nli_available = true): returns self unchanged.
+    /// Short-circuit (w_nli == 0.0): returns self unchanged regardless of nli_available.
+    ///   Re-normalization is semantically meaningful only when w_nli > 0.0 (redistributing
+    ///   a real weight budget because NLI is absent). Re-normalizing zero is a correctness
+    ///   error that silently inflates sim and conf (ADR-001, crt-038).
+    ///
+    /// NLI active (nli_available = true, w_nli > 0.0): returns self unchanged.
     ///   The configured weights are used directly. No re-normalization.
     ///
-    /// NLI absent (nli_available = false): sets w_nli = 0.0, re-normalizes
+    /// NLI absent (nli_available = false, w_nli > 0.0): sets w_nli = 0.0, re-normalizes
     ///   the remaining five weights by dividing each by their sum.
     ///   This preserves the relative signal dominance ordering (Constraint 9, ADR-003).
     ///
     /// Zero-denominator guard (R-02): if all five non-NLI weights are 0.0
     ///   (pathological but reachable config), returns all-zeros without panic.
     pub(crate) fn effective(&self, nli_available: bool) -> FusionWeights {
+        // SHORT-CIRCUIT: w_nli == 0.0 means there is no NLI weight budget to redistribute.
+        // Exact f64 equality is safe here because w_nli is always set from a constant literal
+        // in default_w_nli() or from operator TOML config, never from computed arithmetic
+        // (ADR-001, crt-038).
+        if self.w_nli == 0.0 {
+            return *self;
+        }
+
         if nli_available {
             return FusionWeights {
                 w_sim: self.w_sim,
@@ -4820,14 +4833,13 @@ mod tests {
             }
         }
 
-        // ---- I-03: FusionWeights sum invariant (crt-030 regression guard) ----
+        // ---- I-03: FusionWeights sum invariant (crt-038 regression guard) ----
 
         #[test]
         fn test_fusion_weights_default_sum_unchanged_by_crt030() {
-            // crt-030 must not have modified FusionWeights.
-            // crt-032: w_coac zeroed (PPR transition Phase 2). New sum = 0.92.
-            // 0.25 + 0.35 + 0.15 + 0.00 + 0.05 + 0.05 + 0.02 + 0.05 = 0.92
-            // (six-weight sum 0.85 + additive phase terms 0.02 + 0.05 = 0.92)
+            // crt-038: conf-boost-c defaults: w_sim=0.50, w_nli=0.00, w_conf=0.35,
+            // w_coac=0.00, w_util=0.00, w_prov=0.00, w_phase_histogram=0.02, w_phase_explicit=0.05
+            // Sum: 0.50 + 0.00 + 0.35 + 0.00 + 0.00 + 0.00 + 0.02 + 0.05 = 0.92
             use super::super::FusionWeights;
             use crate::infra::config::InferenceConfig;
             let fw = FusionWeights::from_config(&InferenceConfig::default());
@@ -4841,7 +4853,114 @@ mod tests {
                 + fw.w_phase_explicit;
             assert!(
                 (total - 0.92).abs() < 1e-9,
-                "FusionWeights default sum must be 0.92 (crt-032: w_coac zeroed); got {total}"
+                "FusionWeights default sum must be 0.92 (crt-038: conf-boost-c defaults); got {total}"
+            );
+        }
+
+        // ---- AC-02: FusionWeights::effective() short-circuit tests (crt-038) ----
+
+        #[test]
+        fn test_effective_short_circuit_w_nli_zero_nli_available_false() {
+            use super::super::FusionWeights;
+            let fw = FusionWeights {
+                w_sim: 0.50,
+                w_nli: 0.00,
+                w_conf: 0.35,
+                w_coac: 0.00,
+                w_util: 0.00,
+                w_prov: 0.00,
+                w_phase_histogram: 0.02,
+                w_phase_explicit: 0.05,
+            };
+            let result = fw.effective(false);
+            // Short-circuit must fire: weights returned unchanged (not re-normalized).
+            // Without this guard, effective(false) would produce w_sim≈0.588, w_conf≈0.412.
+            assert_eq!(result.w_sim, 0.50, "w_sim must not be re-normalized");
+            assert_eq!(result.w_nli, 0.00, "w_nli must remain 0.0");
+            assert_eq!(result.w_conf, 0.35, "w_conf must not be re-normalized");
+            assert_eq!(result.w_coac, 0.00);
+            assert_eq!(result.w_util, 0.00);
+            assert_eq!(result.w_prov, 0.00);
+            assert_eq!(result.w_phase_histogram, 0.02);
+            assert_eq!(result.w_phase_explicit, 0.05);
+        }
+
+        #[test]
+        fn test_effective_short_circuit_w_nli_zero_nli_available_true() {
+            use super::super::FusionWeights;
+            let fw = FusionWeights {
+                w_sim: 0.50,
+                w_nli: 0.00,
+                w_conf: 0.35,
+                w_coac: 0.00,
+                w_util: 0.00,
+                w_prov: 0.00,
+                w_phase_histogram: 0.02,
+                w_phase_explicit: 0.05,
+            };
+            let result = fw.effective(true);
+            // Short-circuit fires before the nli_available branch — both paths return unchanged.
+            assert_eq!(result.w_sim, 0.50, "w_sim must not be re-normalized");
+            assert_eq!(result.w_nli, 0.00, "w_nli must remain 0.0");
+            assert_eq!(result.w_conf, 0.35, "w_conf must not be re-normalized");
+            assert_eq!(result.w_coac, 0.00);
+            assert_eq!(result.w_util, 0.00);
+            assert_eq!(result.w_prov, 0.00);
+            assert_eq!(result.w_phase_histogram, 0.02);
+            assert_eq!(result.w_phase_explicit, 0.05);
+        }
+
+        #[test]
+        fn test_effective_renormalization_still_fires_when_w_nli_positive() {
+            use super::super::FusionWeights;
+            // w_nli=0.20 > 0.0 — short-circuit must NOT fire.
+            // nli_available=false — re-normalization path must execute.
+            // Non-NLI sum = 0.25 + 0.15 + 0.00 + 0.05 + 0.05 = 0.50
+            let fw = FusionWeights {
+                w_sim: 0.25,
+                w_nli: 0.20,
+                w_conf: 0.15,
+                w_coac: 0.00,
+                w_util: 0.05,
+                w_prov: 0.05,
+                w_phase_histogram: 0.02,
+                w_phase_explicit: 0.05,
+            };
+            let result = fw.effective(false);
+            // w_nli must be zeroed.
+            assert_eq!(
+                result.w_nli, 0.00,
+                "w_nli must be zeroed during re-normalization"
+            );
+            // Each non-NLI weight divided by denominator 0.50.
+            assert!(
+                (result.w_sim - 0.50).abs() < 1e-10,
+                "w_sim must be re-normalized to 0.25/0.50=0.50; got {}",
+                result.w_sim
+            );
+            assert!(
+                (result.w_conf - 0.30).abs() < 1e-10,
+                "w_conf must be re-normalized to 0.15/0.50=0.30; got {}",
+                result.w_conf
+            );
+            assert_eq!(result.w_coac, 0.00);
+            assert!(
+                (result.w_util - 0.10).abs() < 1e-10,
+                "w_util must be re-normalized to 0.05/0.50=0.10; got {}",
+                result.w_util
+            );
+            assert!(
+                (result.w_prov - 0.10).abs() < 1e-10,
+                "w_prov must be re-normalized to 0.05/0.50=0.10; got {}",
+                result.w_prov
+            );
+            // Phase terms pass through unchanged.
+            assert_eq!(result.w_phase_histogram, fw.w_phase_histogram);
+            assert_eq!(result.w_phase_explicit, fw.w_phase_explicit);
+            // Confirm re-normalization occurred (result differs from input).
+            assert!(
+                (result.w_sim - fw.w_sim).abs() > 1e-10,
+                "w_sim must differ from input — re-normalization must have occurred"
             );
         }
     }
