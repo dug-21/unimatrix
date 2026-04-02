@@ -554,10 +554,10 @@ pub struct InferenceConfig {
     /// HNSW cosine similarity floor for Informs candidate pre-filter.
     ///
     /// Phase 4b includes pairs with similarity >= nli_informs_cosine_floor.
-    /// Inclusive floor (>= not >) — pairs at exactly 0.45 are valid candidates (AC-17, AC-18).
+    /// Inclusive floor (>= not >) — pairs at exactly 0.50 are valid candidates (AC-17, AC-18).
     /// Distinct from supports_candidate_threshold (Phase 4 uses strict >; Phase 4b uses >=).
     ///
-    /// Default: 0.45. Range: (0.0, 1.0) exclusive (>0.0, <1.0).
+    /// Default: 0.50 (raised from 0.45 in crt-039 ADR-003). Range: (0.0, 1.0) exclusive (>0.0, <1.0).
     #[serde(default = "default_nli_informs_cosine_floor")]
     pub nli_informs_cosine_floor: f32,
 
@@ -781,7 +781,7 @@ fn default_informs_category_pairs() -> Vec<[String; 2]> {
 }
 
 fn default_nli_informs_cosine_floor() -> f32 {
-    0.45
+    0.5 // raised from 0.45 (crt-039 ADR-003): NLI neutral guard removed; floor compensates
 }
 
 fn default_nli_informs_ppr_weight() -> f32 {
@@ -6848,13 +6848,20 @@ max_cycles_per_tick = 20
         );
     }
 
-    // AC-08: empty TOML deserializes nli_informs_cosine_floor to 0.45.
+    // AC-08 / TC-06: empty TOML deserializes nli_informs_cosine_floor to 0.5 (crt-039 ADR-003).
     #[test]
     fn test_inference_config_default_nli_informs_cosine_floor() {
+        // TC-06a: backing function returns 0.5
+        assert_eq!(
+            default_nli_informs_cosine_floor(),
+            0.5_f32,
+            "TC-06a: default_nli_informs_cosine_floor() must return 0.5"
+        );
+        // TC-06b: InferenceConfig::default() field is 0.5
         let config = InferenceConfig::default();
         assert_eq!(
-            config.nli_informs_cosine_floor, 0.45_f32,
-            "default nli_informs_cosine_floor must be 0.45"
+            config.nli_informs_cosine_floor, 0.5_f32,
+            "TC-06b: InferenceConfig::default() nli_informs_cosine_floor must be 0.5"
         );
     }
 
@@ -6925,16 +6932,16 @@ nli_informs_ppr_weight = 0.4
         );
     }
 
-    // AC-10: validate() accepts nli_informs_cosine_floor = 0.45 (nominal default).
+    // AC-10: validate() accepts nli_informs_cosine_floor = 0.5 (nominal default after crt-039).
     #[test]
     fn test_validate_nli_informs_cosine_floor_valid_value_is_ok() {
         let c = InferenceConfig {
-            nli_informs_cosine_floor: 0.45,
+            nli_informs_cosine_floor: 0.5, // was 0.45; updated to 0.5 per crt-039 ADR-003
             ..InferenceConfig::default()
         };
         assert!(
             c.validate(Path::new("/fake")).is_ok(),
-            "nli_informs_cosine_floor = 0.45 must pass validate"
+            "0.5 is a valid nli_informs_cosine_floor"
         );
     }
 
