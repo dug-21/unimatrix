@@ -192,6 +192,7 @@ the former was a localized config copy constructed from the latter.
 | `current_timestamp_secs` | `pub(crate) fn() -> u64` | nli_detection.rs:639 | Retain — imported by nli_detection_tick.rs |
 | `format_nli_metadata` | `pub(crate) fn(&NliScores) -> String` | nli_detection.rs:628 | Retain — imported by nli_detection_tick.rs |
 | `write_nli_edge` | `pub(crate) async fn` | nli_detection.rs:532 | Retain — imported by nli_detection_tick.rs |
+| `write_edges_with_cap` | `pub(crate) async fn` | nli_detection.rs | Delete — callerless after `run_post_store_nli` is removed; clippy dead-code warning if retained (AC-11) |
 
 ## Implementation Ordering Constraints
 
@@ -230,6 +231,7 @@ results in compiled source (excluding test files and comments):
 - `pub async fn run_post_store_nli`
 - `pub async fn maybe_run_bootstrap_promotion`
 - `async fn run_bootstrap_promotion`
+- `pub(crate) async fn write_edges_with_cap` — only caller was `run_post_store_nli`; callerless after removal; must be deleted to satisfy clippy -D warnings (AC-11)
 
 **Deleted from store_ops.rs:**
 - `struct NliStoreConfig`
@@ -255,10 +257,9 @@ None blocking delivery. The following are noted for completeness:
 
 1. **Module fate of nli_detection.rs**: After removal, the file will contain only
    the three retained helpers (`format_nli_metadata`, `write_nli_edge`,
-   `current_timestamp_secs`) plus a `write_edges_with_cap` that is no longer called
-   from within the file (only the three retained pub(crate) symbols will have callers
-   after removal). The module merge question is deferred to Group 2 tick
-   decomposition (ADR-004).
+   `current_timestamp_secs`). `write_edges_with_cap` is deleted (callerless after
+   `run_post_store_nli` is removed — see Symbol Checklist). The module merge question
+   is deferred to Group 2 tick decomposition (ADR-004).
 
 2. **w_util / w_prov signal zeroing**: Setting `w_util=0.00` and `w_prov=0.00`
    silently eliminates utilization and provenance signals for all queries. Both were

@@ -144,11 +144,15 @@ When `w_nli > 0.0`, existing behavior is preserved:
 - `effective(true)` returns weights unchanged.
 - `effective(false)` zeros `w_nli` and re-normalizes the remaining five core weights by their sum.
 
-Two new unit tests are required:
+Three new unit tests are required:
 - `test_effective_short_circuit_w_nli_zero_nli_available_true`: assert `effective(true)` on a
   `FusionWeights` with `w_nli=0.0` returns weights identical to input.
 - `test_effective_short_circuit_w_nli_zero_nli_available_false`: assert `effective(false)` on
   a `FusionWeights` with `w_nli=0.0` returns weights identical to input (no re-normalization).
+- `test_effective_renormalization_still_fires_when_w_nli_positive`: assert `effective(false)` on
+  a `FusionWeights` with `w_nli > 0.0` (e.g. `w_nli=0.35`, the old default) still re-normalizes
+  the remaining weights as before. Guards against the short-circuit accidentally suppressing the
+  positive-weight redistribution path.
 
 **AC-01 and AC-02 must be implemented and their tests passing before the eval gate (AC-12) is
 run.** This is an ordering constraint — see Ordering Constraint section.
@@ -304,6 +308,7 @@ AC-09, AC-13, AC-14 complete.
 - `pub async fn run_post_store_nli` — and all code paths within it
 - `pub async fn maybe_run_bootstrap_promotion`
 - private `run_bootstrap_promotion` — called only by `maybe_run_bootstrap_promotion`
+- `pub(crate) async fn write_edges_with_cap` — sole caller was `run_post_store_nli`; callerless after removal; must be deleted (AC-11 clippy gate will fail if retained)
 
 **store_ops.rs (deleted struct and fields):**
 - `pub(crate) struct NliStoreConfig` — entire struct
