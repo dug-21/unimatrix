@@ -1835,6 +1835,19 @@ mod tests {
         let _cos: &str = EDGE_SOURCE_COSINE_SUPPORTS;
     }
 
+    #[test]
+    fn test_edge_source_cosine_supports_crate_root_accessible() {
+        // TC-02: EDGE_SOURCE_COSINE_SUPPORTS must be accessible from the crate root
+        // (re-exported via lib.rs). Accessing via `crate::` validates the re-export
+        // path used by downstream crates (e.g., unimatrix-server).
+        // Covers AC-08 (second half — re-export from lib.rs).
+        let val: &str = crate::EDGE_SOURCE_COSINE_SUPPORTS;
+        assert_eq!(
+            val, "cosine_supports",
+            "TC-02: crate root re-export must equal 'cosine_supports'"
+        );
+    }
+
     /// Create the graph_edges table for tests that run against a pre-v13 schema.
     async fn create_graph_edges_table(pool: &sqlx::sqlite::SqlitePool) {
         sqlx::query(

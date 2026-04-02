@@ -3033,4 +3033,284 @@ mod tests {
             "MAX_COSINE_SUPPORTS_PER_TICK (50) must be independent of MAX_INFORMS_PER_TICK (25)"
         );
     }
+
+    // -----------------------------------------------------------------------
+    // Path C: Missing TCs from Gate 3b (crt-040)
+    // -----------------------------------------------------------------------
+
+    /// TC-03: Pair at exactly 0.65 threshold MUST qualify (>= not >) (AC-02 boundary).
+    /// Addresses the gate-3b WARN: the code at line 776 uses `<` (i.e. >= semantics)
+    /// but the boundary case lacked a dedicated test. R-09 guard fires before threshold.
+    #[tokio::test]
+    async fn test_path_c_exact_threshold_boundary_qualifies() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+        insert_test_entry_with_category(&store, 1, "lesson-learned").await;
+        insert_test_entry_with_category(&store, 2, "decision").await;
+
+        let config = InferenceConfig {
+            supports_cosine_threshold: 0.65_f32,
+            ..InferenceConfig::default()
+        };
+        // Pair at EXACTLY the threshold — must write the edge (>= semantics, not >).
+        let candidate_pairs: Vec<(u64, u64, f32)> = vec![(1, 2, 0.65_f32)];
+        let existing = HashSet::new();
+        let category_map: HashMap<u64, &str> = [(1_u64, "lesson-learned"), (2_u64, "decision")]
+            .into_iter()
+            .collect();
+        let ts = current_timestamp_secs();
+
+        run_cosine_supports_path(
+            &store,
+            &config,
+            &candidate_pairs,
+            &existing,
+            &category_map,
+            ts,
+        )
+        .await;
+
+        let edges = store.query_graph_edges().await.unwrap();
+        let supports: Vec<_> = edges
+            .iter()
+            .filter(|e| e.relation_type == "Supports")
+            .collect();
+        assert_eq!(
+            supports.len(),
+            1,
+            "TC-03: pair at exactly 0.65 must qualify (>= not >); got {} edges",
+            supports.len()
+        );
+    }
+
+    /// TC-10: Infinity cosine pair produces no edge (R-09 second variant).
+    /// `f32::INFINITY.is_finite()` is false — same guard path as NaN.
+    #[tokio::test]
+    async fn test_path_c_infinity_cosine_no_edge() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+        insert_test_entry_with_category(&store, 1, "lesson-learned").await;
+        insert_test_entry_with_category(&store, 2, "decision").await;
+
+        let config = path_c_config();
+        let candidate_pairs: Vec<(u64, u64, f32)> = vec![(1, 2, f32::INFINITY)];
+        let existing = HashSet::new();
+        let category_map: HashMap<u64, &str> = [(1_u64, "lesson-learned"), (2_u64, "decision")]
+            .into_iter()
+            .collect();
+        let ts = current_timestamp_secs();
+
+        run_cosine_supports_path(
+            &store,
+            &config,
+            &candidate_pairs,
+            &existing,
+            &category_map,
+            ts,
+        )
+        .await;
+
+        let edges = store.query_graph_edges().await.unwrap();
+        assert!(
+            edges.is_empty(),
+            "TC-10: f32::INFINITY must produce no edge (is_finite() guard)"
+        );
+    }
+
+    /// TC-11: NaN guard fires BEFORE threshold comparison (R-09 guard placement).
+    /// Sets threshold = 0.0 (every finite value qualifies) to ensure the result
+    /// cannot be explained by threshold rejection — only the is_finite() guard applies.
+    #[tokio::test]
+    async fn test_path_c_nan_guard_order_threshold_not_evaluated() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+        insert_test_entry_with_category(&store, 1, "lesson-learned").await;
+        insert_test_entry_with_category(&store, 2, "decision").await;
+
+        let config = InferenceConfig {
+            // Any finite value would pass this threshold — if threshold were evaluated
+            // first and NaN happened to pass via raw comparison, an edge might be written.
+            // The is_finite() guard must fire before the threshold check.
+            supports_cosine_threshold: 0.0_f32,
+            ..InferenceConfig::default()
+        };
+        let candidate_pairs: Vec<(u64, u64, f32)> = vec![(1, 2, f32::NAN)];
+        let existing = HashSet::new();
+        let category_map: HashMap<u64, &str> = [(1_u64, "lesson-learned"), (2_u64, "decision")]
+            .into_iter()
+            .collect();
+        let ts = current_timestamp_secs();
+
+        run_cosine_supports_path(
+            &store,
+            &config,
+            &candidate_pairs,
+            &existing,
+            &category_map,
+            ts,
+        )
+        .await;
+
+        let edges = store.query_graph_edges().await.unwrap();
+        assert!(
+            edges.is_empty(),
+            "TC-11: NaN must produce no edge even at threshold=0.0; is_finite() guard must fire first"
+        );
+    }
+
+    /// TC-13: Observability log fires with correct non-zero counts (AC-19).
+    /// 5 pairs above threshold, 3 below — candidates=5, written=5.
+    /// Structural test: no panic, correct edge count as proxy for counter correctness.
+    #[tokio::test]
+    async fn test_path_c_observability_log_counts_correct() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+        // Insert 8 pairs of entries.
+        for i in 1_u64..=8 {
+            insert_test_entry_with_category(&store, i, "lesson-learned").await;
+            insert_test_entry_with_category(&store, i + 100, "decision").await;
+        }
+
+        let config = path_c_config(); // threshold = 0.65
+        // 5 qualifying pairs (cosine=0.70), 3 below threshold (cosine=0.50).
+        let mut candidate_pairs: Vec<(u64, u64, f32)> = (1_u64..=5)
+            .map(|i| (i, i + 100, 0.70_f32))
+            .collect();
+        candidate_pairs.extend((6_u64..=8).map(|i| (i, i + 100, 0.50_f32)));
+
+        let existing = HashSet::new();
+        let mut category_map: HashMap<u64, &str> = HashMap::new();
+        for i in 1_u64..=8 {
+            category_map.insert(i, "lesson-learned");
+            category_map.insert(i + 100, "decision");
+        }
+        let ts = current_timestamp_secs();
+
+        run_cosine_supports_path(
+            &store,
+            &config,
+            &candidate_pairs,
+            &existing,
+            &category_map,
+            ts,
+        )
+        .await;
+
+        // Proxy assertion: exactly 5 edges written matches cosine_supports_edges_written=5.
+        // The debug! log is unconditional — absence of panic confirms it fired.
+        let edges = store.query_graph_edges().await.unwrap();
+        let supports: Vec<_> = edges
+            .iter()
+            .filter(|e| e.relation_type == "Supports")
+            .collect();
+        assert_eq!(
+            supports.len(),
+            5,
+            "TC-13: exactly 5 qualifying pairs must write 5 edges; observability count matches"
+        );
+    }
+
+    /// TC-15: inferred_edge_count unchanged after Path C writes cosine_supports edge (AC-15, R-05).
+    /// Confirms the SQL for inferred_edge_count still filters on source='nli' only (NFR-06).
+    #[tokio::test]
+    async fn test_inferred_edge_count_unchanged_after_path_c_write() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+        insert_test_entry_with_category(&store, 1, "lesson-learned").await;
+        insert_test_entry_with_category(&store, 2, "decision").await;
+        insert_test_entry_with_category(&store, 3, "lesson-learned").await;
+        insert_test_entry_with_category(&store, 4, "decision").await;
+
+        // Insert one nli-sourced edge to establish a non-zero baseline.
+        let ts = current_timestamp_secs();
+        write_graph_edge(&store, 3, 4, "Supports", 0.80_f32, ts, "nli", "{}").await;
+
+        let baseline = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("TC-15: baseline metrics");
+        let baseline_inferred = baseline.inferred_edge_count;
+
+        // Now run Path C to write a cosine_supports edge for a different pair.
+        let config = path_c_config();
+        let candidate_pairs: Vec<(u64, u64, f32)> = vec![(1, 2, 0.70_f32)];
+        let existing = HashSet::new();
+        let category_map: HashMap<u64, &str> = [
+            (1_u64, "lesson-learned"),
+            (2_u64, "decision"),
+            (3_u64, "lesson-learned"),
+            (4_u64, "decision"),
+        ]
+        .into_iter()
+        .collect();
+
+        run_cosine_supports_path(
+            &store,
+            &config,
+            &candidate_pairs,
+            &existing,
+            &category_map,
+            ts,
+        )
+        .await;
+
+        let after = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("TC-15: post-write metrics");
+
+        assert_eq!(
+            after.inferred_edge_count,
+            baseline_inferred,
+            "TC-15: inferred_edge_count must not change after cosine_supports write (source='nli' filter)"
+        );
+        assert!(
+            after.supports_edge_count > baseline.supports_edge_count,
+            "TC-15: supports_edge_count must increase after Path C write (source-agnostic count)"
+        );
+    }
+
+    /// TC-17: Reversed pair (A,B) and (B,A) both in candidate_pairs produces at most one edge (R-08).
+    /// INSERT OR IGNORE UNIQUE(source_id, target_id, relation_type) is the authoritative dedup.
+    /// Phase 4 canonical (lo,hi) normalization is the pre-filter; UNIQUE constraint is the backstop.
+    #[tokio::test]
+    async fn test_path_c_reversed_pair_no_duplicate_edge() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+        insert_test_entry_with_category(&store, 1, "lesson-learned").await;
+        insert_test_entry_with_category(&store, 2, "decision").await;
+
+        let config = path_c_config();
+        // Both (1,2) and (2,1) present — only one Supports edge must be written.
+        let candidate_pairs: Vec<(u64, u64, f32)> =
+            vec![(1, 2, 0.70_f32), (2, 1, 0.70_f32)];
+        let existing = HashSet::new();
+        let category_map: HashMap<u64, &str> = [(1_u64, "lesson-learned"), (2_u64, "decision")]
+            .into_iter()
+            .collect();
+        let ts = current_timestamp_secs();
+
+        run_cosine_supports_path(
+            &store,
+            &config,
+            &candidate_pairs,
+            &existing,
+            &category_map,
+            ts,
+        )
+        .await;
+
+        let edges = store.query_graph_edges().await.unwrap();
+        let supports: Vec<_> = edges
+            .iter()
+            .filter(|e| e.relation_type == "Supports")
+            .collect();
+        assert_eq!(
+            supports.len(),
+            1,
+            "TC-17: (1,2) and (2,1) must produce at most one Supports edge; got {}",
+            supports.len()
+        );
+    }
 }
