@@ -588,7 +588,7 @@ impl Default for InferenceConfig {
         // On 20-core:    num_cpus = 20; 20/2 = 10; max(10, 4) = 10; min(10, 8) = 8.
         InferenceConfig {
             rayon_pool_size: (num_cpus::get() / 2).max(4).min(8),
-            nli_enabled: false,
+            nli_enabled: default_nli_enabled(),
             nli_model_name: None,
             nli_model_path: None,
             nli_model_sha256: None,
@@ -598,12 +598,12 @@ impl Default for InferenceConfig {
             nli_contradiction_threshold: 0.6,
             max_contradicts_per_tick: 10,
             nli_auto_quarantine_threshold: 0.85,
-            w_sim: 0.25,
-            w_nli: 0.35,
-            w_conf: 0.15,
+            w_sim: default_w_sim(),
+            w_nli: default_w_nli(),
+            w_conf: default_w_conf(),
             w_coac: 0.0,
-            w_util: 0.05,
-            w_prov: 0.05,
+            w_util: default_w_util(),
+            w_prov: default_w_prov(),
             w_phase_histogram: 0.02, // crt-026: full session signal budget (ADR-004)
             w_phase_explicit: default_w_phase_explicit(), // col-031: 0.05 (ADR-004, crt-026 ADR-003)
             // crt-029: background graph inference tick fields
@@ -6549,33 +6549,35 @@ w_sim = 0.25
     // individually valid can produce a merged config that violates the sum-of-six
     // fusion weight constraint.
     //
-    // Scenario:
-    //   global:  w_sim=0.5, all others zeroed   → sum=0.5 (valid)
-    //   project: w_nli=0.6, all others zeroed   → sum=0.6 (valid)
-    //   merged:  w_sim from global (project kept default 0.25, so global 0.5 wins),
-    //            w_nli from project (differs from default 0.35)
+    // Scenario (updated for crt-038 conf-boost-c defaults: w_sim=0.50, w_nli=0.00):
+    //   global:  w_sim=0.7 (differs from default 0.50), all others zeroed → sum=0.7 (valid)
+    //   project: w_nli=0.4 (differs from default 0.00), w_sim left at default (0.50)
+    //            all others zeroed (differ from defaults → project wins)
+    //            individually valid: sum = 0.50 + 0.4 = 0.9 (valid)
+    //   merged:  w_sim from global (project kept default 0.50, so global 0.7 wins),
+    //            w_nli from project (differs from default 0.00)
     //            w_conf/w_util/w_prov from project (all 0, differ from defaults)
-    //            → sum = 0.5 + 0.6 = 1.1 > 1.0 → must fail
+    //            → sum = 0.7 + 0.4 = 1.1 > 1.0 → must fail
     #[test]
     fn test_merge_configs_post_merge_fusion_weight_sum_exceeded() {
         let _scanner = ContentScanner::global();
 
-        // Global: w_sim=0.5, all other fusion weights zeroed.
-        // Individually valid: sum = 0.5.
+        // Global: w_sim=0.7 (exceeds default 0.50), all other fusion weights zeroed.
+        // Individually valid: sum = 0.7.
         let mut global = UnimatrixConfig::default();
-        global.inference.w_sim = 0.5;
+        global.inference.w_sim = 0.7;
         global.inference.w_nli = 0.0;
         global.inference.w_conf = 0.0;
         global.inference.w_coac = 0.0;
         global.inference.w_util = 0.0;
         global.inference.w_prov = 0.0;
 
-        // Project: w_nli=0.6, w_sim stays at default (0.25) so global value (0.5) wins
+        // Project: w_nli=0.4, w_sim stays at default (0.50) so global value (0.7) wins
         // in the merge. All other weights zeroed (differ from defaults → project wins).
-        // Individually valid: sum = 0.6.
+        // Individually valid: sum = 0.50 + 0.4 = 0.9.
         let mut project = UnimatrixConfig::default();
-        // w_sim intentionally left at default (0.25) so global's 0.5 is inherited.
-        project.inference.w_nli = 0.6;
+        // w_sim intentionally left at default (0.50) so global's 0.7 is inherited.
+        project.inference.w_nli = 0.4;
         project.inference.w_conf = 0.0;
         project.inference.w_coac = 0.0;
         project.inference.w_util = 0.0;
@@ -6593,7 +6595,7 @@ w_sim = 0.25
             "project config must be valid alone: {project_valid:?}"
         );
 
-        // After merge: w_sim=0.5 (from global), w_nli=0.6 (from project) → sum=1.1 > 1.0
+        // After merge: w_sim=0.7 (from global), w_nli=0.4 (from project) → sum=1.1 > 1.0
         let merged = merge_configs(global, project);
         let result = validate_config(&merged, Path::new("/fake/global/config.toml"));
         assert!(
