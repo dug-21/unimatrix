@@ -65,7 +65,9 @@ grep -n "pub(crate) async fn write_graph_edge" \
     crates/unimatrix-server/src/services/nli_detection.rs
 ```
 
-If absent, adding it is the first implementation step. The function signature must be:
+**RESOLVED (Stage 3a)**: `write_graph_edge` exists in `nli_detection.rs` — prerequisite gate PASSES.
+
+**Actual signature (verified post-crt-040):**
 
 ```rust
 pub(crate) async fn write_graph_edge(
@@ -73,12 +75,15 @@ pub(crate) async fn write_graph_edge(
     source_id: u64,
     target_id: u64,
     relation_type: &str,
-    weight: f64,
+    weight: f32,      // ← f32, not f64; call sites: pass weight as f32
     created_at: u64,
     source: &str,
-    metadata: Option<&str>,
+    metadata: &str,   // ← &str, not Option<&str>; pass "" for no metadata
 ) -> bool
 ```
+
+The spec listed `f64` and `Option<&str>` — the actual shipped types are `f32` and `&str`.
+All pseudocode call sites use the actual signature. Stage 3b agents must use `f32` and `""`.
 
 `write_nli_edge` must NOT be reused — it hardcodes `source='nli'` and would silently retag S1/S2/S8 edges as NLI-origin, corrupting GNN feature construction (entry #4025, R-07).
 
@@ -214,10 +219,10 @@ pub(crate) async fn write_graph_edge(
     source_id: u64,
     target_id: u64,
     relation_type: &str,
-    weight: f64,
+    weight: f32,  // actual shipped type from crt-040
     created_at: u64,
     source: &str,
-    metadata: Option<&str>,
+    metadata: &str,   // actual shipped type; pass "" for no metadata
 ) -> bool
 ```
 

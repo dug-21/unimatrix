@@ -255,7 +255,7 @@ to a `graph_enrichment_tick_tests.rs` sibling file, following the pattern in
 **NFR-08 Eval gate.** After delivery, running at least one full background tick shall result
 in `cross_category_edge_count` increasing and `isolated_entry_count` decreasing relative to
 pre-delivery baseline values in `context_status`. MRR on
-`product/research/ass-039/harness/scenarios.jsonl` shall not regress below the 0.2875
+`product/research/ass-039/harness/scenarios.jsonl` shall not regress below the 0.2856
 baseline. The eval gate must be run after at least one complete tick, not immediately after
 server start (new edges are not visible in the PPR graph until `TypedGraphState::rebuild` runs
 on the following tick; SR-09).
@@ -392,7 +392,7 @@ Verified by: `wc -l` on the file at PR time.
 
 **AC-32** At least one complete background tick runs post-delivery and `context_status` shows
 `cross_category_edge_count > 0` and `isolated_entry_count` lower than pre-delivery baseline.
-MRR on `product/research/ass-039/harness/scenarios.jsonl` is ≥ 0.2875. Verified by: post-
+MRR on `product/research/ass-039/harness/scenarios.jsonl` is ≥ 0.2856. Verified by: post-
 delivery eval run.
 
 ---
@@ -484,7 +484,7 @@ After delivery, the operator or CI pipeline:
 2. Calls `context_status` and checks `cross_category_edge_count > 0` and
    `isolated_entry_count < pre-delivery value`.
 3. Runs the behavioral eval harness on `product/research/ass-039/harness/scenarios.jsonl`
-   and asserts MRR ≥ 0.2875.
+   and asserts MRR ≥ 0.2856.
 
 ---
 
@@ -614,11 +614,10 @@ signal via `context_status` (e.g., a `last_tick_at` timestamp), or (b) require a
 clock wait based on `tick_interval_secs`. This determines how the CI eval gate can reliably
 know when to query `context_status`.
 
-**OQ-05 ASS-039 MRR baseline currency.**
-The SCOPE.md eval gate references MRR 0.2875 from ASS-039 scenarios. If crt-040 shifted MRR
-(cosine Supports detection), the baseline may need refreshing before crt-041 eval runs. The
-architect should confirm whether the crt-040 delivery report updated the MRR baseline, and
-provide the current value if it differs from 0.2875.
+**OQ-05 — RESOLVED. MRR baseline is 0.2856.**
+crt-040 delivered. Post-ship re-measurement confirmed MRR = 0.2856 (stable across two runs,
+2026-04-02). DB drift from background ticks explains -0.0019 from the earlier 0.2875 measurement;
+no scoring changes were made in crt-040. The crt-041 eval gate is MRR ≥ 0.2856.
 
 ---
 

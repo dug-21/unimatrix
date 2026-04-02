@@ -44,7 +44,7 @@ distinguish edge types for training.
 6. Plug S1 and S2 into the existing `structural_graph_tick` ordering, and S8 into the
    maintenance tick sequence (with its own N-tick gate).
 7. Pass the eval gate: `cross_category_edge_count` increases and `isolated_entry_count`
-   decreases in `GraphCohesionMetrics` after delivery. No MRR regression vs baseline 0.2875
+   decreases in `GraphCohesionMetrics` after delivery. No MRR regression vs baseline 0.2856
    on `product/research/ass-039/harness/scenarios.jsonl`.
 
 ## Non-Goals
@@ -374,7 +374,7 @@ compaction → co_access_promotion → graph-rebuild → PhaseFreqTable::rebuild
   `graph_enrichment_tick` step after `structural_graph_tick`.
 - AC-21: Eval gate passes: `context_status` output (or a new graph-density query) shows
   increased `total_non_bootstrap_edge_count` and decreased isolated-entry count after
-  delivery. No MRR regression vs 0.2875 baseline on behavioral scenarios.
+  delivery. No MRR regression vs 0.2856 baseline on behavioral scenarios.
 - AC-22: S8 does not process `context_briefing` rows (only `context_search` rows). The
   audit_log filter is `operation = 'context_search'`.
 - AC-23: S8 only processes rows with `outcome = 0` (Success). Failed or denied searches are
