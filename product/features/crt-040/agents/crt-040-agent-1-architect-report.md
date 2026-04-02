@@ -73,3 +73,14 @@ insert. No migration needed, no DDL change needed.
    via TODO comment at constant (SR-03).
 3. `inferred_edge_count` in `GraphCohesionMetrics` counts only `source='nli'` — stale
    name; follow-up issue for adding `cosine_supports_edge_count` or renaming.
+
+## Knowledge Stewardship
+
+### Stored in Unimatrix
+
+| Entry | Title | Unimatrix ID |
+|-------|-------|--------------|
+| ADR-001 | write_graph_edge sibling (not parameterized write_nli_edge) | #4027 |
+| ADR-002 | InferenceConfig supports_cosine_threshold dual-site default | #4028 |
+| ADR-003 | Path C placement: after Path A, before Path B gate | #4029 |
+| ADR-004 | MAX_COSINE_SUPPORTS_PER_TICK = 50 constant | #4030 |
