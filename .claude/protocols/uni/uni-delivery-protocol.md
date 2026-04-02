@@ -56,7 +56,13 @@ The Delivery Leader:
 2. Reads `product/features/{feature-id}/ACCEPTANCE-MAP.md` — AC verification methods
 3. Reads paths to the three source documents (listed in the brief)
 4. **Creates feature branch**: `git checkout -b feature/{phase}-{NNN}` (see `/uni-git`)
-5. **Declares feature cycle** — before any agent spawning:
+5. **Commits design artifacts** — Session 1 left these as untracked files; commit them now before any agents run:
+   ```bash
+   git add product/features/{feature-id}/
+   git commit -m "design: {feature-id} artifacts (#{issue})"
+   ```
+   Use only the targeted path above — never `git add .` or `git add product/`, which could pick up unrelated in-progress design for other features.
+6. **Declares feature cycle** — before any agent spawning:
    ```
    context_cycle(
      type: "start",
@@ -65,7 +71,7 @@ The Delivery Leader:
      agent_id: "{feature-id}-delivery-leader"
    )
    ```
-6. Plans Stage 3b waves from the IMPLEMENTATION-BRIEF before spawning any implementation agents
+7. Plans Stage 3b waves from the IMPLEMENTATION-BRIEF before spawning any implementation agents
 
 ---
 

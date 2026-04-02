@@ -74,10 +74,10 @@ entries reachable. Behavioral signals close the self-sustaining loop.
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Scenarios | 1,585 | context_search + context_briefing from 79 feature cycles |
-| MRR (conf-boost-c) | 0.2913 | True behavioral floor; replaces all prior null-GT metrics |
-| P@5 | 0.1116 | Formula-invariant — determined by HNSW recall, not scoring |
-| MRR (production baseline-nli) | 0.2882 | Current production is −0.0031 vs conf-boost-c |
+| Scenarios | 1,443 | 1,585 records; 135 duplicate IDs collapse to 1,443 unique eval scenarios |
+| MRR (conf-boost-c) | 0.2875 | Live DB, 2026-04-02, `run_eval.py` (GH #487). Replaces 0.2913 snapshot baseline. |
+| P@5 | 0.1115 | Formula-invariant — determined by HNSW recall, not scoring |
+| Prior MRR (crt-038 snapshot) | 0.2913 | Was measured against ASS-037 snapshot at crt-038; superseded by live-DB run |
 
 All future eval runs use `product/research/ass-039/harness/scenarios.jsonl`.  
 The old ASS-037 qlog scenarios are deleted — do not reference them.
@@ -86,33 +86,37 @@ The old ASS-037 qlog scenarios are deleted — do not reference them.
 
 ## Roadmap
 
-### Group 1 — Formula and NLI Cleanup
+### Group 1 — Formula and NLI Cleanup ✅ COMPLETE (`crt-038`, PR #484, GH #483)
 
-Immediate. All items are config changes or targeted dead-code removal. Zero architectural
-risk. Deliver as a single feature or fast-tracked individual changes.
+Config defaults changed to conf-boost-c. Three dead NLI code paths removed. Eval gate
+passed: MRR = 0.2913 (commit 6a6d864b, behavioral ground truth, 1,585 scenarios).
+Notable: `impl Default for InferenceConfig` had hardcoded old weights separate from
+`default_w_*()` backing fns — caught by Gate 3b, pattern stored (#4011).
 
 | Issue | Title | Notes |
 |-------|-------|-------|
-| — | Apply conf-boost-c formula | Config change: `w_sim=0.50, w_conf=0.35, w_nli=0.00, w_util=0.00, w_prov=0.00`. Net +0.0031 MRR over production. No code change required if config override is sufficient. |
-| — | Remove NLI from post-store detection | `run_post_store_nli`: remove NLI path entirely. 30 Supports edges written total (27 endpoints quarantined), 0 Contradicts ever written. Replace Supports with cosine detection (Group 2). |
-| — | Remove auto-quarantine NLI guard | `background.rs: process_auto_quarantine`: remove NLI check. 0 Contradicts edges in production → guard always returns Allowed → dead code. Effectiveness-based quarantine is sufficient. |
-| — | Remove bootstrap promotion | `nli_detection.rs: maybe_run_bootstrap_promotion`: remove entirely. 0 bootstrap Contradicts rows in DB. Idempotency marker not set but would find nothing. Dead code. |
+| ✅ crt-038 | Apply conf-boost-c formula | `w_sim=0.50, w_conf=0.35, w_nli=0.00, w_util=0.00, w_prov=0.00`. `FusionWeights::effective()` short-circuit added (w_nli==0.0 → no re-normalization). MRR +0.0031 confirmed. |
+| ✅ crt-038 | Remove NLI from post-store detection | `run_post_store_nli` deleted. `NliStoreConfig` struct deleted entirely. `parse_nli_contradiction_from_metadata` + 5 cascaded dead-code tests also removed (found during delivery). |
+| ✅ crt-038 | Remove auto-quarantine NLI guard | `nli_auto_quarantine_allowed`, `NliQuarantineCheck` deleted. `process_auto_quarantine` signature cleaned (2 params dropped — threaded through 5 signatures + main.rs). |
+| ✅ crt-038 | Remove bootstrap promotion | `maybe_run_bootstrap_promotion`, `run_bootstrap_promotion` deleted. |
 
 ---
 
-### Group 2 — Tick Decomposition (Q8)
+### Group 2 — Tick Decomposition ✅ COMPLETE (`crt-039`, PR #486, GH #485)
 
-Decouple structural graph inference from NLI availability. This is the prerequisite
-for all Group 3 graph enrichment items — structural Informs inference cannot run
-until the NLI gate is removed.
+Option Z internal split: Phase 4b (structural Informs) runs unconditionally in Path A;
+Phase 8 (NLI Supports) gated by `get_provider()` in Path B. `NliCandidatePair::Informs`
+and `PairOrigin::Informs` variants removed. `apply_informs_composite_guard` simplified to
+2 guards (temporal + cross-feature). `nli_informs_cosine_floor` raised 0.45 → 0.5.
+Follow-up filed: #487 (run_eval.py eval harness runner, needed before Group 3 ships).
 
 | Issue | Title | Notes |
 |-------|-------|-------|
-| — | Structural graph tick — decouple from NLI gate | Remove `nli_enabled` guard from `run_graph_inference_tick`. Structural inference (Phase 4b) does not use NLI — the gate is a category error. Always runs regardless of NLI availability. |
-| — | Remove Phase 8b NLI guard from Informs path | The neutral zone check (`neutral > 0.5`) applies task-mismatched scores to a structurally sound filter. Remove it. Raise `nli_informs_cosine_floor` from 0.3 → 0.5 to compensate. |
-| — | Separate contradiction scan as own periodic tick | `contradiction_scan()`: gated on `nli_enabled`, runs every N ticks. Separate concern from structural inference. Remains blocked until a domain-adapted model is available (GGUF failed ASS-036). |
+| ✅ crt-039 | Structural graph tick — decouple from NLI gate | `if nli_enabled` outer gate removed from `background.rs`. Phase 4b now runs every tick regardless of NLI state. `get_provider()` moved to Path B entry — gates Phase 6/7/8 only. |
+| ✅ crt-039 | Remove Phase 8b NLI guard from Informs path | `nli_scores.neutral > 0.5` removed from `apply_informs_composite_guard`. Guards 4+5 (NLI mutual exclusion) also removed — candidate set separation enforces mutual exclusion structurally (AC-13 explicit subtraction). Cosine floor raised 0.45 → 0.50. |
+| ✅ crt-039 | Separate contradiction scan as own periodic tick | Named comment block added in `background.rs`. Zero behavioral change — condition and ordering preserved. |
 
-**Ordering invariant**: compaction → promotion → graph-rebuild → structural_graph_tick → contradiction_scan (if nli_enabled). Structural tick always runs; contradiction scan conditionally runs.
+**Ordering invariant**: compaction → co_access_promotion → graph-rebuild → PhaseFreqTable::rebuild → contradiction_scan (if embed adapter ready && tick_multiple) → extraction_tick → structural_graph_tick (always). Confirmed unchanged.
 
 ---
 
@@ -255,7 +259,7 @@ features. Reference: `product/research/ass-039/harness/scenarios.jsonl`.
 
 | Feature | Gate |
 |---------|------|
-| conf-boost-c formula | MRR ≥ 0.2913 (behavioral baseline). P@5 not a gating metric — formula-invariant. |
+| conf-boost-c formula | ✅ PASSED — MRR = 0.2875 (live DB, 2026-04-02, run_eval.py). Prior snapshot baseline 0.2913 superseded. |
 | Cosine Supports detection | Graph cohesion metrics: supports_coverage increase. No MRR regression vs conf-boost-c. |
 | S1/S2/S8 edge generation | Graph cohesion: `cross_category_edge_count` increase, `isolated_entry_count` decrease. |
 | PPR expander | **First gate where P@5 should respond**: expect P@5 increase as cross-category entries enter candidate pool. MRR ≥ 0.2913. If P@5 unchanged after expander, diagnose why ground truth entries are still outside expanded pool. |

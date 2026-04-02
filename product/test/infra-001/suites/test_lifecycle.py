@@ -2050,3 +2050,123 @@ def test_cycle_review_persists_across_restart(tmp_path):
     )
 
     client2.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# crt-040: Cosine Supports Path C — integration tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    reason="No embedding model in CI — candidate_pairs empty without embeddings; "
+    "test validates MCP-visible supports_edge_count increase after tick with Path C active"
+)
+def test_context_status_supports_edge_count_increases_after_tick(shared_server):
+    """crt-040 AC-05/NFR-05: supports_edge_count increases after tick with Path C active.
+
+    Steps:
+    1. Record baseline supports_edge_count via context_status.
+    2. Store two cross-category entries (lesson-learned + decision) to give the tick
+       candidate pairs when Path C runs.
+    3. Wait for at least one background tick (polling context_status).
+    4. Assert supports_edge_count > baseline.
+
+    Marked xfail because the test environment has no ONNX embedding model — the tick
+    cannot compute cosine similarity without embeddings, so candidate_pairs remains empty
+    and Path C writes zero edges. The test structure is correct; remove xfail when an
+    embedding model is available in CI.
+    """
+    server = shared_server
+
+    # Baseline
+    baseline_resp = server.context_status(agent_id="human", format="json")
+    baseline = parse_status_report(baseline_resp)
+    baseline_supports = baseline.get("supports_edge_count", 0)
+
+    # Store two cross-category entries — gives tick qualified pairs once embeddings run.
+    server.context_store(
+        "cosine supports test lesson learned entry unique crt040 x1y2z3",
+        "crt-040-test",
+        "lesson-learned",
+        agent_id="human",
+    )
+    server.context_store(
+        "cosine supports test decision entry unique crt040 a4b5c6",
+        "crt-040-test",
+        "decision",
+        agent_id="human",
+    )
+
+    # Wait for tick to run (up to 30s with polling).
+    import time as _time
+    deadline = _time.time() + 30.0
+    found = False
+    while _time.time() < deadline:
+        _time.sleep(2.0)
+        resp = server.context_status(agent_id="human", format="json")
+        report = parse_status_report(resp)
+        if report.get("supports_edge_count", 0) > baseline_supports:
+            found = True
+            break
+
+    assert found, (
+        f"crt-040: supports_edge_count must increase above baseline {baseline_supports} "
+        "after at least one tick with qualifying cross-category pairs and Path C active. "
+        "NFR-05, AC-05."
+    )
+
+
+@pytest.mark.xfail(
+    reason="No embedding model in CI — candidate_pairs empty without embeddings; "
+    "test validates inferred_edge_count backward compat (AC-15/NFR-06) after Path C writes"
+)
+def test_inferred_edge_count_unchanged_by_cosine_supports(shared_server):
+    """crt-040 AC-15/R-05: inferred_edge_count does not change when Path C writes edges.
+
+    Steps:
+    1. Record baseline inferred_edge_count and supports_edge_count via context_status.
+    2. Wait for a tick where Path C would write edges (cross-category pairs qualifying).
+    3. Assert inferred_edge_count unchanged (backward compat — counts only source='nli').
+    4. Assert supports_edge_count >= baseline (Path C edges counted source-agnostically).
+
+    Marked xfail: no ONNX model in CI means no Path C writes occur during the tick.
+    Remove xfail when embedding model is present.
+    """
+    server = shared_server
+
+    resp0 = server.context_status(agent_id="human", format="json")
+    report0 = parse_status_report(resp0)
+    baseline_inferred = report0.get("inferred_edge_count", 0)
+    baseline_supports = report0.get("supports_edge_count", 0)
+
+    # Store entries to prime candidate pairs for the tick.
+    server.context_store(
+        "inferred edge count backward compat lesson crt040 p1q2r3",
+        "crt-040-compat",
+        "lesson-learned",
+        agent_id="human",
+    )
+    server.context_store(
+        "inferred edge count backward compat decision crt040 s4t5u6",
+        "crt-040-compat",
+        "decision",
+        agent_id="human",
+    )
+
+    import time as _time
+    _time.sleep(15.0)  # Allow tick to run.
+
+    resp1 = server.context_status(agent_id="human", format="json")
+    report1 = parse_status_report(resp1)
+    after_inferred = report1.get("inferred_edge_count", 0)
+    after_supports = report1.get("supports_edge_count", 0)
+
+    assert after_inferred == baseline_inferred, (
+        f"crt-040 AC-15: inferred_edge_count must not change when Path C writes edges. "
+        f"Baseline={baseline_inferred}, After={after_inferred}. "
+        "The SQL for inferred_edge_count filters source='nli' only (NFR-06 backward compat)."
+    )
+    assert after_supports >= baseline_supports, (
+        f"crt-040: supports_edge_count must be >= baseline after tick. "
+        f"Baseline={baseline_supports}, After={after_supports}."
+    )

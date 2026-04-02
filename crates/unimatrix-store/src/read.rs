@@ -1675,6 +1675,20 @@ pub const EDGE_SOURCE_NLI: &str = "nli";
 /// migration bootstrap (migration.rs `CO_ACCESS_BOOTSTRAP_MIN_COUNT` step).
 pub const EDGE_SOURCE_CO_ACCESS: &str = "co_access";
 
+/// Named constant for the cosine-similarity-derived Supports edge source value.
+///
+/// Written to `graph_edges.source` for all edges produced by the pure-cosine
+/// Supports detection path (Path C) in `run_graph_inference_tick`. Parallel to
+/// `EDGE_SOURCE_NLI` and `EDGE_SOURCE_CO_ACCESS` — prevents silent string
+/// divergence between read.rs, nli_detection_tick.rs, and test assertions.
+///
+/// The `source` column in `graph_edges` is NOT part of the UNIQUE constraint
+/// `UNIQUE(source_id, target_id, relation_type)` — so edges written by Path C
+/// and edges written by Path B (NLI) for the same pair are deduplicated by
+/// `INSERT OR IGNORE` on the relation_type dimension, not the source dimension.
+/// First writer wins. (ARCHITECTURE.md SR-04, confirmed from db.rs DDL)
+pub const EDGE_SOURCE_COSINE_SUPPORTS: &str = "cosine_supports";
+
 /// Minimum co_access pair count required for promotion to GRAPH_EDGES.
 ///
 /// A co_access pair where count >= CO_ACCESS_GRAPH_MIN_COUNT qualifies for
@@ -1791,6 +1805,47 @@ mod tests {
         let _nli: &str = EDGE_SOURCE_NLI;
         let _src: &str = EDGE_SOURCE_CO_ACCESS;
         let _min: i64 = CO_ACCESS_GRAPH_MIN_COUNT;
+    }
+
+    // -----------------------------------------------------------------------
+    // store_constants tests (crt-040 AC-08)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_edge_source_cosine_supports_value() {
+        // TC-01: EDGE_SOURCE_COSINE_SUPPORTS must equal "cosine_supports".
+        // Covers AC-08 (value correctness). Mirrors test_edge_source_co_access_value.
+        assert_eq!(EDGE_SOURCE_COSINE_SUPPORTS, "cosine_supports");
+    }
+
+    #[test]
+    fn test_edge_source_cosine_supports_length() {
+        // TC-04: Length sanity guard — catches accidental trailing whitespace or
+        // typo in the string literal without relying solely on the value test.
+        assert_eq!(EDGE_SOURCE_COSINE_SUPPORTS.len(), "cosine_supports".len());
+    }
+
+    #[test]
+    fn test_edge_source_constants_colocated() {
+        // TC-03: All three EDGE_SOURCE constants are accessible from the same
+        // `super::*` import — compile success verifies co-location in read.rs.
+        // Mirrors test_co_access_constants_colocated_with_nli (crt-034).
+        let _nli: &str = EDGE_SOURCE_NLI;
+        let _co: &str = EDGE_SOURCE_CO_ACCESS;
+        let _cos: &str = EDGE_SOURCE_COSINE_SUPPORTS;
+    }
+
+    #[test]
+    fn test_edge_source_cosine_supports_crate_root_accessible() {
+        // TC-02: EDGE_SOURCE_COSINE_SUPPORTS must be accessible from the crate root
+        // (re-exported via lib.rs). Accessing via `crate::` validates the re-export
+        // path used by downstream crates (e.g., unimatrix-server).
+        // Covers AC-08 (second half — re-export from lib.rs).
+        let val: &str = crate::EDGE_SOURCE_COSINE_SUPPORTS;
+        assert_eq!(
+            val, "cosine_supports",
+            "TC-02: crate root re-export must equal 'cosine_supports'"
+        );
     }
 
     /// Create the graph_edges table for tests that run against a pre-v13 schema.
