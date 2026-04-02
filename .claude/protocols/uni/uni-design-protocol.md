@@ -6,7 +6,7 @@ Triggers on: specification, architecture, design, research, scope, risk strategy
 
 ## Execution Model
 
-Session 1 produces three sacred source-of-truth documents, a scope risk assessment, a vision alignment report, an implementation brief, and an acceptance map. All work happens on a `feature/{feature-id}` branch. The session ends by opening a **draft PR** — the human reviews the design artifacts and approves verbally. Session 2 (Implementation) continues on the same branch and converts the draft PR to ready when complete.
+Session 1 produces three sacred source-of-truth documents, a scope risk assessment, a vision alignment report, an implementation brief, and an acceptance map. All artifacts land in `product/features/{feature-id}/` as untracked files — no git operations occur during design. Session 2 (Delivery) creates the feature branch, commits the design artifacts, and continues from there.
 
 **You are the Design Leader.** Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries. You orchestrate — you NEVER generate content. Spawn specialist agents for all work.
 
@@ -45,13 +45,13 @@ Each message batches ALL related operations of the same type:
 - NO launching delivery agents (uni-rust-dev, uni-pseudocode, uni-tester)
 - Agents return: artifact paths + key decisions + open questions (NOT full file contents)
 
-### Branch Workflow
+### No Git Operations in Design
 
-The Design Leader creates a `feature/{feature-id}` branch at session start and opens a **draft PR** at session end. Implementation continues on the same branch — no separate design merge step. See `/uni-git` for branch naming and PR conventions.
+Design produces artifacts in `product/features/{feature-id}/` only. No branch is created, no commits are made, no PR is opened. The working tree stays on whatever branch is currently checked out. Git operations begin in Session 2 (Delivery), which creates the feature branch and commits the design artifacts as its first action.
 
 ### Feature Cycle Attribution
 
-After creating the branch — before spawning any agents — call `context_cycle` to declare the feature cycle:
+Before spawning any agents, call `context_cycle` to declare the feature cycle:
 
 ```
 context_cycle(
@@ -285,28 +285,14 @@ Task(
 
 The synthesizer gets a fresh context window — it reads artifacts directly for higher quality synthesis.
 
-#### Phase 2d: Commit, Push, and Checkpoint
-
-The Design Leader commits all artifacts and pushes the feature branch:
-
-```bash
-git add product/features/{feature-id}/
-git commit -m "design: {feature-id} design artifacts (#{issue})"
-git push -u origin feature/{feature-id}
-```
-
-Open a **draft PR** as a review surface (NOT for merge — implementation will add commits to this branch):
-
-```bash
-gh pr create --draft --title "[{feature-id}] {short description}" --body "..."
-```
+#### Phase 2d: Return to Human
 
 ```
 context_cycle(
   type: "phase-end",
   topic: "{feature-id}",
   phase: "design-review",
-  outcome: "Vision aligned. Synthesis complete. Draft PR: {url}.",
+  outcome: "Vision aligned. Synthesis complete.",
   next_phase: "spec",
   agent_id: "{feature-id}-design-leader"
 )
@@ -317,24 +303,26 @@ Then returns to the human:
 ```
 SESSION 1 COMPLETE — Design artifacts ready for review.
 
-Branch: feature/{feature-id}
-Draft PR: {URL}
 GH Issue: {URL}
 
-Artifacts:
-- SCOPE.md, SCOPE-RISK-ASSESSMENT.md, ARCHITECTURE.md, SPECIFICATION.md
-- RISK-TEST-STRATEGY.md, ALIGNMENT-REPORT.md
-- IMPLEMENTATION-BRIEF.md, ACCEPTANCE-MAP.md
+Artifacts (untracked — git begins in Session 2):
+- product/features/{feature-id}/SCOPE.md
+- product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md
+- product/features/{feature-id}/architecture/ARCHITECTURE.md
+- product/features/{feature-id}/specification/SPECIFICATION.md
+- product/features/{feature-id}/RISK-TEST-STRATEGY.md
+- product/features/{feature-id}/ALIGNMENT-REPORT.md
+- product/features/{feature-id}/IMPLEMENTATION-BRIEF.md
+- product/features/{feature-id}/ACCEPTANCE-MAP.md
 
 Vision Alignment: {summary}
 Variances requiring approval: {list or "none"}
 Open questions: {list or "none"}
 
-Human action required: Review design artifacts. Then proceed to Session 2
-(implementation will continue on the same branch).
+Human action required: Review design artifacts. Then start Session 2 to deliver.
 ```
 
-**Session 1 ends here.** Session 2 continues on the same branch — no merge needed between sessions.
+**Session 1 ends here.** No branch, no commit, no PR — artifacts sit untracked in `product/features/{feature-id}/` until Session 2 picks them up.
 
 ---
 
@@ -354,8 +342,7 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 
 ```
 DESIGN LEADER (you):
-  Init:       git checkout -b feature/{feature-id}
-              context_cycle(type: "start", topic: "{feature-id}", next_phase: "scope", agent_id: "{feature-id}-design-leader")
+  Init:       context_cycle(type: "start", topic: "{feature-id}", next_phase: "scope", agent_id: "{feature-id}-design-leader")
   Phase 1:    Task(uni-researcher) — scope exploration with human
               ...human approves SCOPE.md...
   Phase 1b:   Task(uni-risk-strategist, MODE: scope-risk) — scope risk assessment
@@ -368,8 +355,8 @@ DESIGN LEADER (you):
               context_cycle(type: "phase-end", phase: "design", outcome: "...", next_phase: "design-review", ...)
   Phase 2b:   Task(uni-vision-guardian) — alignment check
   Phase 2c:   Task(uni-synthesizer) — brief + maps + GH Issue (fresh context)
-  Phase 2d:   git commit + push + gh pr create --draft
-              context_cycle(type: "phase-end", phase: "design-review", outcome: "...", next_phase: "spec", ...) — SESSION 1 ENDS
+  Phase 2d:   context_cycle(type: "phase-end", phase: "design-review", outcome: "...", next_phase: "spec", ...) — SESSION 1 ENDS
+              return artifacts to human (no git ops — artifacts are untracked)
 ```
 
 ---
@@ -383,7 +370,7 @@ context_cycle(
   type: "phase-end",
   topic: "{feature-id}",
   phase: "design-review",
-  outcome: "Vision aligned. Synthesis complete. Draft PR: {url}.",
+  outcome: "Vision aligned. Synthesis complete.",
   next_phase: "spec",
   agent_id: "{feature-id}-design-leader"
 )
