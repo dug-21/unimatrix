@@ -343,17 +343,18 @@ pub struct InferenceConfig {
     // -----------------------------------------------------------------------
     // Ranking signal fusion weights (crt-024, ADR-003)
     // -----------------------------------------------------------------------
-    /// Fusion weight for cosine similarity signal (bi-encoder recall). Default: 0.25.
+    /// Fusion weight for cosine similarity signal (bi-encoder recall). Default: 0.50 (crt-038, conf-boost-c).
     #[serde(default = "default_w_sim")]
     pub w_sim: f64,
 
-    /// Fusion weight for NLI entailment signal (cross-encoder precision). Default: 0.35.
+    /// Fusion weight for NLI entailment signal (cross-encoder precision). Default: 0.00 (crt-038, conf-boost-c).
     /// When NLI is disabled or absent, this term contributes 0.0 and remaining weights
-    /// are re-normalized by `FusionWeights::effective(nli_available: false)`.
+    /// are passed through unchanged by `FusionWeights::effective(nli_available: false)`
+    /// (short-circuit when w_nli == 0.0, ADR-001 crt-038).
     #[serde(default = "default_w_nli")]
     pub w_nli: f64,
 
-    /// Fusion weight for confidence signal (Wilson score composite). Default: 0.15.
+    /// Fusion weight for confidence signal (Wilson score composite). Default: 0.35 (crt-038, conf-boost-c).
     #[serde(default = "default_w_conf")]
     pub w_conf: f64,
 
@@ -361,12 +362,12 @@ pub struct InferenceConfig {
     #[serde(default = "default_w_coac")]
     pub w_coac: f64,
 
-    /// Fusion weight for utility delta signal (effectiveness classification). Default: 0.05.
+    /// Fusion weight for utility delta signal (effectiveness classification). Default: 0.00 (crt-038, conf-boost-c).
     #[serde(default = "default_w_util")]
     pub w_util: f64,
 
-    /// Fusion weight for provenance signal (boosted-category hint). Default: 0.05.
-    /// Defaults sum to 0.85; the remaining 0.15 is headroom for WA-2's phase boost term.
+    /// Fusion weight for provenance signal (boosted-category hint). Default: 0.00 (crt-038, conf-boost-c).
+    /// Six-weight defaults sum to 0.85; the remaining 0.15 is headroom for WA-2's phase boost term.
     #[serde(default = "default_w_prov")]
     pub w_prov: f64,
 
@@ -667,15 +668,15 @@ fn default_nli_auto_quarantine_threshold() -> f32 {
 // ---------------------------------------------------------------------------
 
 fn default_w_sim() -> f64 {
-    0.25
+    0.50
 }
 
 fn default_w_nli() -> f64 {
-    0.35
+    0.00
 }
 
 fn default_w_conf() -> f64 {
-    0.15
+    0.35
 }
 
 fn default_w_coac() -> f64 {
@@ -683,11 +684,11 @@ fn default_w_coac() -> f64 {
 }
 
 fn default_w_util() -> f64 {
-    0.05
+    0.00
 }
 
 fn default_w_prov() -> f64 {
-    0.05
+    0.00
 }
 
 // crt-026: default_w_phase_histogram — 0.02 (ASS-028 calibrated, full session signal budget)
@@ -5060,33 +5061,26 @@ categories = ["some-cat"]
         }
     }
 
-    // AC-01: Default deserialization — absent weight fields get correct defaults
+    // AC-01: Default deserialization — absent weight fields get correct defaults (crt-038, conf-boost-c)
     #[test]
     fn test_inference_config_weight_defaults_when_absent() {
-        let toml = "[inference]\nnli_enabled = false\n";
+        // Use empty [inference] section so all fields take serde defaults.
+        let toml = "[inference]\n";
         let config: UnimatrixConfig = toml::from_str(toml).expect("must parse");
         let inf = &config.inference;
         assert!(
-            (inf.w_sim - 0.25).abs() < 1e-9,
-            "w_sim default must be 0.25"
+            (inf.w_sim - 0.50).abs() < 1e-9,
+            "w_sim default changed to conf-boost-c: 0.50"
         );
+        assert!(inf.w_nli.abs() < 1e-9, "w_nli default zeroed: 0.00");
         assert!(
-            (inf.w_nli - 0.35).abs() < 1e-9,
-            "w_nli default must be 0.35"
-        );
-        assert!(
-            (inf.w_conf - 0.15).abs() < 1e-9,
-            "w_conf default must be 0.15"
+            (inf.w_conf - 0.35).abs() < 1e-9,
+            "w_conf default raised from 0.15 to 0.35"
         );
         assert!(inf.w_coac.abs() < 1e-9, "w_coac default must be 0.0");
-        assert!(
-            (inf.w_util - 0.05).abs() < 1e-9,
-            "w_util default must be 0.05"
-        );
-        assert!(
-            (inf.w_prov - 0.05).abs() < 1e-9,
-            "w_prov default must be 0.05"
-        );
+        assert!(inf.w_util.abs() < 1e-9, "w_util default zeroed: 0.00");
+        assert!(inf.w_prov.abs() < 1e-9, "w_prov default zeroed: 0.00");
+        assert!(!inf.nli_enabled, "nli_enabled default changed to false");
         let sum = inf.w_sim + inf.w_nli + inf.w_conf + inf.w_coac + inf.w_util + inf.w_prov;
         assert!(
             sum <= 0.95 + 1e-9,
@@ -5201,15 +5195,14 @@ categories = ["some-cat"]
             "set field w_nli must equal 0.40"
         );
         assert!(
-            (inf.w_sim - 0.25).abs() < 1e-9,
-            "unset w_sim must default to 0.25"
+            (inf.w_sim - 0.50).abs() < 1e-9,
+            "unset w_sim must default to 0.50 (crt-038, conf-boost-c)"
         );
-        // Total sum: 0.40 + 0.25 + 0.15 + 0.00 + 0.05 + 0.05 = 0.90 <= 1.0
+        // Total sum: 0.40 + 0.50 + 0.35 + 0.00 + 0.00 + 0.00 = 1.25 — exceeds 1.0 intentionally
+        // (operator-supplied w_nli=0.40 with conf-boost-c defaults); validate() would reject this,
+        // but this test only checks that absent fields receive defaults without parse error.
         let sum = inf.w_sim + inf.w_nli + inf.w_conf + inf.w_coac + inf.w_util + inf.w_prov;
-        assert!(
-            sum <= 1.0 + 1e-9,
-            "partial config sum must not exceed 1.0, got {sum}"
-        );
+        assert!(sum > 0.0, "partial config sum must be positive, got {sum}");
     }
 
     // AC-03: Per-field negative rejection — one test per field
