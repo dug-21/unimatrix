@@ -14,13 +14,11 @@
 
 ## Component Map
 
-| Component | Pseudocode | Test Plan |
-|-----------|-----------|-----------|
-| FusionWeights::effective() short-circuit | pseudocode/effective-short-circuit.md | test-plan/effective-short-circuit.md |
-| config.rs default weight constants | pseudocode/config-defaults.md | test-plan/config-defaults.md |
-| run_post_store_nli removal | pseudocode/post-store-nli-removal.md | test-plan/post-store-nli-removal.md |
-| maybe_run_bootstrap_promotion removal | pseudocode/bootstrap-promotion-removal.md | test-plan/bootstrap-promotion-removal.md |
-| NLI auto-quarantine guard removal | pseudocode/auto-quarantine-removal.md | test-plan/auto-quarantine-removal.md |
+| Component | Wave | Pseudocode | Test Plan |
+|-----------|------|-----------|-----------|
+| FusionWeights::effective() short-circuit | 1 (parallel) | pseudocode/effective-short-circuit.md | test-plan/effective-short-circuit.md |
+| config.rs default weight constants | 1 (parallel) | pseudocode/config-defaults.md | test-plan/config-defaults.md |
+| Dead-code removal (run_post_store_nli + bootstrap + auto-quarantine) | 2 (single agent) | pseudocode/dead-code-removal.md | test-plan/dead-code-removal.md |
 
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
